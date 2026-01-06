@@ -1,0 +1,805 @@
+/**
+ * Construction Cost Service
+ * Tier 4 Market Data - Construction & Material Costs
+ * 
+ * Tracks and manages:
+ * - Building material prices (cement, steel, timber, etc.)
+ * - Labor costs by skill type and region
+ * - Equipment rental rates
+ * - Construction cost indices
+ */
+
+import { query, transaction } from '../../database';
+import { logger } from '../../utils/logger';
+
+// =====================================================
+// TYPES
+// =====================================================
+
+export type MaterialCategory =
+  | 'cement'
+  | 'steel'
+  | 'timber'
+  | 'roofing'
+  | 'blocks'
+  | 'sand'
+  | 'gravel'
+  | 'tiles'
+  | 'plumbing'
+  | 'electrical'
+  | 'paint'
+  | 'glass'
+  | 'doors_windows'
+  | 'finishing'
+  | 'miscellaneous';
+
+export type LaborCategory =
+  | 'mason'
+  | 'carpenter'
+  | 'plumber'
+  | 'electrician'
+  | 'painter'
+  | 'welder'
+  | 'general_laborer'
+  | 'foreman'
+  | 'site_engineer'
+  | 'architect'
+  | 'quantity_surveyor'
+  | 'tiler'
+  | 'steel_fixer';
+
+export type PriceUnit =
+  | 'bag'      // 50kg bag (cement)
+  | 'ton'
+  | 'kg'
+  | 'piece'
+  | 'length'   // For steel bars, timber
+  | 'sqm'      // Square meters
+  | 'sqft'
+  | 'cubic_m'  // Cubic meters (sand, gravel)
+  | 'trip'     // For bulk deliveries
+  | 'day'      // Labor day rate
+  | 'hour'
+  | 'month'
+  | 'project';
+
+export type RegionCode =
+  | 'greater_accra'
+  | 'kumasi_metro'
+  | 'eastern'
+  | 'western_cluster'
+  | 'northern_cluster';
+
+export interface MaterialPrice {
+  id: string;
+  material_category: MaterialCategory;
+  material_name: string;
+  brand: string | null;
+  specification: string | null;
+  price_ghs: number;
+  previous_price_ghs: number | null;
+  price_change_percent: number | null;
+  unit: PriceUnit;
+  quantity_per_unit: number;
+  region: RegionCode;
+  supplier_type: 'retail' | 'wholesale' | 'manufacturer';
+  supplier_name: string | null;
+  survey_date: Date;
+  is_verified: boolean;
+  confidence_level: number;
+  notes: string | null;
+  metadata: Record<string, unknown>;
+  created_at: Date;
+  updated_at: Date;
+}
+
+export interface LaborRate {
+  id: string;
+  labor_category: LaborCategory;
+  skill_level: 'apprentice' | 'journeyman' | 'master' | 'specialist';
+  rate_ghs: number;
+  previous_rate_ghs: number | null;
+  rate_change_percent: number | null;
+  rate_type: 'daily' | 'hourly' | 'monthly' | 'per_unit';
+  unit_description: string | null;
+  region: RegionCode;
+  includes_benefits: boolean;
+  minimum_hire_period: string | null;
+  survey_date: Date;
+  source: string;
+  is_verified: boolean;
+  notes: string | null;
+  metadata: Record<string, unknown>;
+  created_at: Date;
+  updated_at: Date;
+}
+
+export interface EquipmentRate {
+  id: string;
+  equipment_name: string;
+  equipment_type: string;
+  rate_ghs: number;
+  rate_period: 'hourly' | 'daily' | 'weekly' | 'monthly';
+  includes_operator: boolean;
+  includes_fuel: boolean;
+  deposit_required_ghs: number | null;
+  region: RegionCode;
+  supplier_name: string | null;
+  survey_date: Date;
+  is_verified: boolean;
+  notes: string | null;
+  created_at: Date;
+}
+
+export interface ConstructionCostIndex {
+  id: string;
+  index_name: string;
+  index_value: number;
+  base_year: number;
+  base_value: number;
+  period_start: Date;
+  period_end: Date;
+  change_from_previous: number | null;
+  change_year_on_year: number | null;
+  region: RegionCode | null;
+  property_type: string | null;
+  calculation_methodology: string | null;
+  components: Array<{ name: string; weight: number; value: number }>;
+  source: string;
+  is_official: boolean;
+  notes: string | null;
+  created_at: Date;
+}
+
+export interface CreateMaterialPriceInput {
+  material_category: MaterialCategory;
+  material_name: string;
+  brand?: string;
+  specification?: string;
+  price_ghs: number;
+  unit: PriceUnit;
+  quantity_per_unit?: number;
+  region: RegionCode;
+  supplier_type: 'retail' | 'wholesale' | 'manufacturer';
+  supplier_name?: string;
+  survey_date?: Date;
+  is_verified?: boolean;
+  confidence_level?: number;
+  notes?: string;
+  metadata?: Record<string, unknown>;
+}
+
+export interface CreateLaborRateInput {
+  labor_category: LaborCategory;
+  skill_level: 'apprentice' | 'journeyman' | 'master' | 'specialist';
+  rate_ghs: number;
+  rate_type: 'daily' | 'hourly' | 'monthly' | 'per_unit';
+  unit_description?: string;
+  region: RegionCode;
+  includes_benefits?: boolean;
+  minimum_hire_period?: string;
+  source: string;
+  is_verified?: boolean;
+  notes?: string;
+  metadata?: Record<string, unknown>;
+}
+
+export interface ConstructionEstimate {
+  property_type: string;
+  quality_level: 'basic' | 'standard' | 'premium' | 'luxury';
+  region: RegionCode;
+  built_area_sqm: number;
+  num_floors: number;
+  estimates: {
+    materials: number;
+    labor: number;
+    equipment: number;
+    overheads: number;
+    contingency: number;
+    total: number;
+    cost_per_sqm: number;
+  };
+  breakdown: Array<{
+    category: string;
+    amount: number;
+    percentage: number;
+  }>;
+  assumptions: string[];
+  validity_date: Date;
+}
+
+// =====================================================
+// SERVICE
+// =====================================================
+
+export class ConstructionCostService {
+  // Ghana-specific construction cost parameters
+  private static readonly COST_MULTIPLIERS: Record<string, number> = {
+    basic: 0.7,
+    standard: 1.0,
+    premium: 1.4,
+    luxury: 2.0,
+  };
+
+  private static readonly REGION_MULTIPLIERS: Record<RegionCode, number> = {
+    greater_accra: 1.15,  // Higher costs in Accra
+    kumasi_metro: 1.0,    // Base reference
+    eastern: 0.95,
+    western_cluster: 1.05,
+    northern_cluster: 0.90,
+  };
+
+  // Base construction costs per sqm in GHS (as of 2024/2025)
+  private static readonly BASE_COST_PER_SQM: Record<string, number> = {
+    residential_basic: 3500,
+    residential_standard: 5000,
+    residential_premium: 8000,
+    residential_luxury: 15000,
+    commercial_basic: 4000,
+    commercial_standard: 6500,
+    commercial_premium: 10000,
+    industrial_basic: 3000,
+    industrial_standard: 4500,
+  };
+
+  // Cost breakdown percentages
+  private static readonly COST_BREAKDOWN = {
+    materials: 0.55,     // 55% materials
+    labor: 0.30,         // 30% labor
+    equipment: 0.05,     // 5% equipment
+    overheads: 0.07,     // 7% overheads/profit
+    contingency: 0.03,   // 3% contingency
+  };
+
+  /**
+   * Create a new material price record
+   */
+  async createMaterialPrice(input: CreateMaterialPriceInput): Promise<MaterialPrice> {
+    // Get previous price for change calculation
+    const previousResult = await query<{ price_ghs: number }>(
+      `SELECT price_ghs FROM material_prices 
+       WHERE material_category = $1 AND material_name = $2 AND region = $3
+       ORDER BY survey_date DESC LIMIT 1`,
+      [input.material_category, input.material_name, input.region]
+    );
+    
+    const previousPrice = previousResult.rows[0]?.price_ghs || null;
+    const changePercent = previousPrice 
+      ? ((input.price_ghs - previousPrice) / previousPrice) * 100 
+      : null;
+
+    const result = await query<MaterialPrice>(
+      `INSERT INTO material_prices (
+        material_category, material_name, brand, specification,
+        price_ghs, previous_price_ghs, price_change_percent,
+        unit, quantity_per_unit, region, supplier_type, supplier_name,
+        survey_date, is_verified, confidence_level, notes, metadata
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
+      RETURNING *`,
+      [
+        input.material_category, input.material_name, input.brand || null,
+        input.specification || null, input.price_ghs, previousPrice, changePercent,
+        input.unit, input.quantity_per_unit || 1, input.region,
+        input.supplier_type, input.supplier_name || null,
+        input.survey_date || new Date(), input.is_verified || false,
+        input.confidence_level || 0.8, input.notes || null,
+        JSON.stringify(input.metadata || {}),
+      ]
+    );
+
+    logger.info('Created material price', {
+      material: input.material_name,
+      price: input.price_ghs,
+      region: input.region,
+    });
+
+    return result.rows[0];
+  }
+
+  /**
+   * Create a new labor rate record
+   */
+  async createLaborRate(input: CreateLaborRateInput): Promise<LaborRate> {
+    // Get previous rate
+    const previousResult = await query<{ rate_ghs: number }>(
+      `SELECT rate_ghs FROM labor_rates 
+       WHERE labor_category = $1 AND skill_level = $2 AND region = $3
+       ORDER BY survey_date DESC LIMIT 1`,
+      [input.labor_category, input.skill_level, input.region]
+    );
+    
+    const previousRate = previousResult.rows[0]?.rate_ghs || null;
+    const changePercent = previousRate 
+      ? ((input.rate_ghs - previousRate) / previousRate) * 100 
+      : null;
+
+    const result = await query<LaborRate>(
+      `INSERT INTO labor_rates (
+        labor_category, skill_level, rate_ghs, previous_rate_ghs, rate_change_percent,
+        rate_type, unit_description, region, includes_benefits, minimum_hire_period,
+        survey_date, source, is_verified, notes, metadata
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
+      RETURNING *`,
+      [
+        input.labor_category, input.skill_level, input.rate_ghs, previousRate, changePercent,
+        input.rate_type, input.unit_description || null, input.region,
+        input.includes_benefits || false, input.minimum_hire_period || null,
+        new Date(), input.source, input.is_verified || false, input.notes || null,
+        JSON.stringify(input.metadata || {}),
+      ]
+    );
+
+    logger.info('Created labor rate', {
+      category: input.labor_category,
+      rate: input.rate_ghs,
+      region: input.region,
+    });
+
+    return result.rows[0];
+  }
+
+  /**
+   * Get latest material prices by category and region
+   */
+  async getMaterialPrices(
+    options: {
+      category?: MaterialCategory;
+      region?: RegionCode;
+      supplier_type?: 'retail' | 'wholesale' | 'manufacturer';
+    } = {}
+  ): Promise<MaterialPrice[]> {
+    const conditions: string[] = [];
+    const params: unknown[] = [];
+    let paramIndex = 1;
+
+    if (options.category) {
+      conditions.push(`material_category = $${paramIndex++}`);
+      params.push(options.category);
+    }
+    if (options.region) {
+      conditions.push(`region = $${paramIndex++}`);
+      params.push(options.region);
+    }
+    if (options.supplier_type) {
+      conditions.push(`supplier_type = $${paramIndex++}`);
+      params.push(options.supplier_type);
+    }
+
+    const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
+
+    // Get latest price for each material/region combination
+    const result = await query<MaterialPrice>(
+      `SELECT DISTINCT ON (material_name, region) *
+       FROM material_prices ${whereClause}
+       ORDER BY material_name, region, survey_date DESC`,
+      params
+    );
+
+    return result.rows;
+  }
+
+  /**
+   * Get latest labor rates by category and region
+   */
+  async getLaborRates(
+    options: {
+      category?: LaborCategory;
+      skill_level?: 'apprentice' | 'journeyman' | 'master' | 'specialist';
+      region?: RegionCode;
+    } = {}
+  ): Promise<LaborRate[]> {
+    const conditions: string[] = [];
+    const params: unknown[] = [];
+    let paramIndex = 1;
+
+    if (options.category) {
+      conditions.push(`labor_category = $${paramIndex++}`);
+      params.push(options.category);
+    }
+    if (options.skill_level) {
+      conditions.push(`skill_level = $${paramIndex++}`);
+      params.push(options.skill_level);
+    }
+    if (options.region) {
+      conditions.push(`region = $${paramIndex++}`);
+      params.push(options.region);
+    }
+
+    const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
+
+    const result = await query<LaborRate>(
+      `SELECT DISTINCT ON (labor_category, skill_level, region) *
+       FROM labor_rates ${whereClause}
+       ORDER BY labor_category, skill_level, region, survey_date DESC`,
+      params
+    );
+
+    return result.rows;
+  }
+
+  /**
+   * Get price history for a material
+   */
+  async getMaterialPriceHistory(
+    materialName: string,
+    region: RegionCode,
+    options: { from?: Date; to?: Date; limit?: number } = {}
+  ): Promise<MaterialPrice[]> {
+    const conditions = ['material_name = $1', 'region = $2'];
+    const params: unknown[] = [materialName, region];
+    let paramIndex = 3;
+
+    if (options.from) {
+      conditions.push(`survey_date >= $${paramIndex++}`);
+      params.push(options.from);
+    }
+    if (options.to) {
+      conditions.push(`survey_date <= $${paramIndex++}`);
+      params.push(options.to);
+    }
+
+    params.push(options.limit || 52); // Default to 1 year of weekly data
+
+    const result = await query<MaterialPrice>(
+      `SELECT * FROM material_prices 
+       WHERE ${conditions.join(' AND ')}
+       ORDER BY survey_date DESC
+       LIMIT $${paramIndex}`,
+      params
+    );
+
+    return result.rows;
+  }
+
+  /**
+   * Calculate construction cost estimate
+   */
+  async estimateConstructionCost(
+    propertyType: 'residential' | 'commercial' | 'industrial',
+    qualityLevel: 'basic' | 'standard' | 'premium' | 'luxury',
+    region: RegionCode,
+    builtAreaSqm: number,
+    numFloors: number = 1
+  ): Promise<ConstructionEstimate> {
+    // Get base cost
+    const baseKey = `${propertyType}_${qualityLevel}`;
+    const baseCostPerSqm = ConstructionCostService.BASE_COST_PER_SQM[baseKey] || 
+                           ConstructionCostService.BASE_COST_PER_SQM['residential_standard'];
+
+    // Apply multipliers
+    const qualityMultiplier = ConstructionCostService.COST_MULTIPLIERS[qualityLevel] || 1.0;
+    const regionMultiplier = ConstructionCostService.REGION_MULTIPLIERS[region] || 1.0;
+    const floorMultiplier = 1 + (numFloors - 1) * 0.05; // 5% increase per additional floor
+
+    // Get current construction index to adjust for inflation
+    const latestIndex = await this.getLatestConstructionIndex(region);
+    const indexMultiplier = latestIndex ? latestIndex.index_value / latestIndex.base_value : 1.0;
+
+    const adjustedCostPerSqm = baseCostPerSqm * regionMultiplier * floorMultiplier * indexMultiplier;
+    const totalCost = adjustedCostPerSqm * builtAreaSqm;
+
+    // Calculate breakdown
+    const breakdown = ConstructionCostService.COST_BREAKDOWN;
+    const materialsCost = totalCost * breakdown.materials;
+    const laborCost = totalCost * breakdown.labor;
+    const equipmentCost = totalCost * breakdown.equipment;
+    const overheadsCost = totalCost * breakdown.overheads;
+    const contingencyCost = totalCost * breakdown.contingency;
+
+    return {
+      property_type: propertyType,
+      quality_level: qualityLevel,
+      region,
+      built_area_sqm: builtAreaSqm,
+      num_floors: numFloors,
+      estimates: {
+        materials: Math.round(materialsCost),
+        labor: Math.round(laborCost),
+        equipment: Math.round(equipmentCost),
+        overheads: Math.round(overheadsCost),
+        contingency: Math.round(contingencyCost),
+        total: Math.round(totalCost),
+        cost_per_sqm: Math.round(adjustedCostPerSqm),
+      },
+      breakdown: [
+        { category: 'Materials', amount: Math.round(materialsCost), percentage: breakdown.materials * 100 },
+        { category: 'Labor', amount: Math.round(laborCost), percentage: breakdown.labor * 100 },
+        { category: 'Equipment', amount: Math.round(equipmentCost), percentage: breakdown.equipment * 100 },
+        { category: 'Overheads & Profit', amount: Math.round(overheadsCost), percentage: breakdown.overheads * 100 },
+        { category: 'Contingency', amount: Math.round(contingencyCost), percentage: breakdown.contingency * 100 },
+      ],
+      assumptions: [
+        'Standard foundation requirements (no piling)',
+        'Municipal water and electricity connections available',
+        'No abnormal site conditions',
+        'Standard specifications for quality level',
+        `Prices as of ${new Date().toLocaleDateString()}`,
+        `Construction index multiplier: ${indexMultiplier.toFixed(2)}`,
+      ],
+      validity_date: new Date(),
+    };
+  }
+
+  /**
+   * Get latest construction cost index
+   */
+  async getLatestConstructionIndex(region?: RegionCode): Promise<ConstructionCostIndex | null> {
+    const result = await query<ConstructionCostIndex>(
+      `SELECT * FROM construction_cost_indices 
+       WHERE ($1::text IS NULL OR region = $1)
+       ORDER BY period_end DESC LIMIT 1`,
+      [region || null]
+    );
+    return result.rows[0] || null;
+  }
+
+  /**
+   * Create or update construction cost index
+   */
+  async updateConstructionIndex(input: {
+    index_name: string;
+    index_value: number;
+    base_year: number;
+    base_value: number;
+    period_start: Date;
+    period_end: Date;
+    region?: RegionCode;
+    property_type?: string;
+    components?: Array<{ name: string; weight: number; value: number }>;
+    source: string;
+    is_official?: boolean;
+    notes?: string;
+  }): Promise<ConstructionCostIndex> {
+    // Get previous index for change calculation
+    const previousResult = await query<{ index_value: number; period_end: Date }>(
+      `SELECT index_value, period_end FROM construction_cost_indices 
+       WHERE index_name = $1 AND ($2::text IS NULL OR region = $2)
+       ORDER BY period_end DESC LIMIT 1`,
+      [input.index_name, input.region || null]
+    );
+    
+    const previous = previousResult.rows[0];
+    const changeFromPrevious = previous 
+      ? ((input.index_value - previous.index_value) / previous.index_value) * 100 
+      : null;
+
+    // Calculate YoY change
+    const yoyResult = await query<{ index_value: number }>(
+      `SELECT index_value FROM construction_cost_indices 
+       WHERE index_name = $1 AND ($2::text IS NULL OR region = $2)
+         AND period_end <= $3 - INTERVAL '1 year'
+       ORDER BY period_end DESC LIMIT 1`,
+      [input.index_name, input.region || null, input.period_end]
+    );
+    const yoyPrevious = yoyResult.rows[0];
+    const changeYoY = yoyPrevious 
+      ? ((input.index_value - yoyPrevious.index_value) / yoyPrevious.index_value) * 100 
+      : null;
+
+    const result = await query<ConstructionCostIndex>(
+      `INSERT INTO construction_cost_indices (
+        index_name, index_value, base_year, base_value,
+        period_start, period_end, change_from_previous, change_year_on_year,
+        region, property_type, components, source, is_official, notes
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+      RETURNING *`,
+      [
+        input.index_name, input.index_value, input.base_year, input.base_value,
+        input.period_start, input.period_end, changeFromPrevious, changeYoY,
+        input.region || null, input.property_type || null,
+        JSON.stringify(input.components || []), input.source,
+        input.is_official || false, input.notes || null,
+      ]
+    );
+
+    logger.info('Updated construction index', {
+      name: input.index_name,
+      value: input.index_value,
+      change: changeFromPrevious,
+    });
+
+    return result.rows[0];
+  }
+
+  /**
+   * Get material price comparison across regions
+   */
+  async getMaterialPriceComparison(materialName: string): Promise<Array<{
+    region: RegionCode;
+    price_ghs: number;
+    diff_from_average: number;
+  }>> {
+    const result = await query<{ region: RegionCode; price_ghs: number }>(
+      `SELECT DISTINCT ON (region) region, price_ghs
+       FROM material_prices 
+       WHERE material_name = $1
+       ORDER BY region, survey_date DESC`,
+      [materialName]
+    );
+
+    const prices = result.rows;
+    if (prices.length === 0) return [];
+
+    const avgPrice = prices.reduce((sum, p) => sum + p.price_ghs, 0) / prices.length;
+
+    return prices.map(p => ({
+      region: p.region,
+      price_ghs: p.price_ghs,
+      diff_from_average: Math.round(((p.price_ghs - avgPrice) / avgPrice) * 100 * 10) / 10,
+    }));
+  }
+
+  /**
+   * Calculate depreciated replacement cost (for valuation)
+   */
+  async calculateDepreciatedReplacementCost(
+    propertyType: 'residential' | 'commercial' | 'industrial',
+    qualityLevel: 'basic' | 'standard' | 'premium' | 'luxury',
+    region: RegionCode,
+    builtAreaSqm: number,
+    ageYears: number,
+    condition: 'excellent' | 'good' | 'fair' | 'poor'
+  ): Promise<{
+    replacement_cost_new: number;
+    depreciation_rate: number;
+    depreciation_amount: number;
+    depreciated_value: number;
+    effective_age: number;
+    remaining_life: number;
+  }> {
+    // Get new construction cost
+    const estimate = await this.estimateConstructionCost(
+      propertyType, qualityLevel, region, builtAreaSqm, 1
+    );
+
+    const replacementCostNew = estimate.estimates.total;
+
+    // Determine useful life based on property type and quality
+    const usefulLifeYears: Record<string, number> = {
+      residential_basic: 40,
+      residential_standard: 50,
+      residential_premium: 60,
+      residential_luxury: 70,
+      commercial_basic: 35,
+      commercial_standard: 45,
+      commercial_premium: 55,
+      industrial_basic: 30,
+      industrial_standard: 40,
+    };
+
+    const lifeKey = `${propertyType}_${qualityLevel}`;
+    const totalLife = usefulLifeYears[lifeKey] || 50;
+
+    // Adjust age based on condition (effective age)
+    const conditionAdjustments: Record<string, number> = {
+      excellent: -5,  // Effectively 5 years younger
+      good: 0,
+      fair: 5,        // Effectively 5 years older
+      poor: 10,
+    };
+    const effectiveAge = Math.max(0, ageYears + (conditionAdjustments[condition] || 0));
+
+    // Calculate depreciation using straight-line method
+    const remainingLife = Math.max(0, totalLife - effectiveAge);
+    const depreciationRate = effectiveAge / totalLife;
+    const depreciationAmount = replacementCostNew * Math.min(depreciationRate, 0.85); // Max 85% depreciation
+    const depreciatedValue = replacementCostNew - depreciationAmount;
+
+    return {
+      replacement_cost_new: Math.round(replacementCostNew),
+      depreciation_rate: Math.round(depreciationRate * 1000) / 10, // percentage
+      depreciation_amount: Math.round(depreciationAmount),
+      depreciated_value: Math.round(depreciatedValue),
+      effective_age: effectiveAge,
+      remaining_life: remainingLife,
+    };
+  }
+
+  /**
+   * Seed initial construction cost data
+   */
+  async seedInitialData(): Promise<void> {
+    const regions: RegionCode[] = ['greater_accra', 'kumasi_metro', 'eastern', 'western_cluster', 'northern_cluster'];
+    
+    // Seed material prices
+    const materials: Array<Omit<CreateMaterialPriceInput, 'region'>> = [
+      // Cement
+      { material_category: 'cement', material_name: 'Portland Cement 42.5R', brand: 'Ghacem', price_ghs: 95, unit: 'bag', quantity_per_unit: 1, supplier_type: 'retail' },
+      { material_category: 'cement', material_name: 'Portland Cement 42.5R', brand: 'Diamond', price_ghs: 92, unit: 'bag', quantity_per_unit: 1, supplier_type: 'retail' },
+      { material_category: 'cement', material_name: 'Portland Cement 32.5R', brand: 'Ghacem', price_ghs: 85, unit: 'bag', quantity_per_unit: 1, supplier_type: 'retail' },
+      
+      // Steel
+      { material_category: 'steel', material_name: 'Iron Rod 12mm', specification: '12m length', price_ghs: 85, unit: 'length', quantity_per_unit: 1, supplier_type: 'retail' },
+      { material_category: 'steel', material_name: 'Iron Rod 16mm', specification: '12m length', price_ghs: 145, unit: 'length', quantity_per_unit: 1, supplier_type: 'retail' },
+      { material_category: 'steel', material_name: 'Iron Rod 8mm', specification: '12m length', price_ghs: 45, unit: 'length', quantity_per_unit: 1, supplier_type: 'retail' },
+      { material_category: 'steel', material_name: 'BRC Mesh', specification: '6mm', price_ghs: 950, unit: 'piece', quantity_per_unit: 1, supplier_type: 'retail' },
+      
+      // Blocks
+      { material_category: 'blocks', material_name: 'Sandcrete Block 6"', specification: '150mm', price_ghs: 8.5, unit: 'piece', quantity_per_unit: 1, supplier_type: 'retail' },
+      { material_category: 'blocks', material_name: 'Sandcrete Block 5"', specification: '125mm', price_ghs: 6.5, unit: 'piece', quantity_per_unit: 1, supplier_type: 'retail' },
+      { material_category: 'blocks', material_name: 'Sandcrete Block 4"', specification: '100mm', price_ghs: 5.0, unit: 'piece', quantity_per_unit: 1, supplier_type: 'retail' },
+      
+      // Aggregates
+      { material_category: 'sand', material_name: 'Sharp Sand', specification: 'Per trip (10 tons)', price_ghs: 2500, unit: 'trip', quantity_per_unit: 10, supplier_type: 'wholesale' },
+      { material_category: 'gravel', material_name: 'Gravel 3/4"', specification: 'Per trip (10 tons)', price_ghs: 3200, unit: 'trip', quantity_per_unit: 10, supplier_type: 'wholesale' },
+      { material_category: 'gravel', material_name: 'Gravel 1/2"', specification: 'Per trip (10 tons)', price_ghs: 3000, unit: 'trip', quantity_per_unit: 10, supplier_type: 'wholesale' },
+      
+      // Roofing
+      { material_category: 'roofing', material_name: 'Aluminum Roofing Sheet', specification: '0.55mm thick', price_ghs: 280, unit: 'length', quantity_per_unit: 1, supplier_type: 'retail' },
+      { material_category: 'roofing', material_name: 'Step Tile Roofing', specification: 'Long span', price_ghs: 350, unit: 'sqm', quantity_per_unit: 1, supplier_type: 'retail' },
+      
+      // Tiles
+      { material_category: 'tiles', material_name: 'Ceramic Floor Tile', specification: '40x40cm', price_ghs: 85, unit: 'sqm', quantity_per_unit: 1, supplier_type: 'retail' },
+      { material_category: 'tiles', material_name: 'Porcelain Tile', specification: '60x60cm', price_ghs: 150, unit: 'sqm', quantity_per_unit: 1, supplier_type: 'retail' },
+      { material_category: 'tiles', material_name: 'Wall Tile', specification: '25x40cm', price_ghs: 65, unit: 'sqm', quantity_per_unit: 1, supplier_type: 'retail' },
+    ];
+
+    // Seed labor rates
+    const laborRates: Array<Omit<CreateLaborRateInput, 'region'>> = [
+      { labor_category: 'mason', skill_level: 'journeyman', rate_ghs: 200, rate_type: 'daily', source: 'Market Survey' },
+      { labor_category: 'mason', skill_level: 'master', rate_ghs: 300, rate_type: 'daily', source: 'Market Survey' },
+      { labor_category: 'carpenter', skill_level: 'journeyman', rate_ghs: 180, rate_type: 'daily', source: 'Market Survey' },
+      { labor_category: 'carpenter', skill_level: 'master', rate_ghs: 280, rate_type: 'daily', source: 'Market Survey' },
+      { labor_category: 'plumber', skill_level: 'journeyman', rate_ghs: 220, rate_type: 'daily', source: 'Market Survey' },
+      { labor_category: 'electrician', skill_level: 'journeyman', rate_ghs: 250, rate_type: 'daily', source: 'Market Survey' },
+      { labor_category: 'painter', skill_level: 'journeyman', rate_ghs: 150, rate_type: 'daily', source: 'Market Survey' },
+      { labor_category: 'welder', skill_level: 'journeyman', rate_ghs: 220, rate_type: 'daily', source: 'Market Survey' },
+      { labor_category: 'tiler', skill_level: 'journeyman', rate_ghs: 200, rate_type: 'daily', source: 'Market Survey' },
+      { labor_category: 'general_laborer', skill_level: 'journeyman', rate_ghs: 80, rate_type: 'daily', source: 'Market Survey' },
+      { labor_category: 'foreman', skill_level: 'master', rate_ghs: 400, rate_type: 'daily', source: 'Market Survey' },
+      { labor_category: 'site_engineer', skill_level: 'specialist', rate_ghs: 800, rate_type: 'daily', source: 'Market Survey' },
+    ];
+
+    // Insert data for each region
+    for (const region of regions) {
+      const regionMultiplier = ConstructionCostService.REGION_MULTIPLIERS[region];
+      
+      for (const material of materials) {
+        try {
+          await this.createMaterialPrice({
+            ...material,
+            region,
+            price_ghs: Math.round(material.price_ghs * regionMultiplier * 100) / 100,
+          });
+        } catch (error) {
+          logger.debug('Material price may already exist', { material: material.material_name, region });
+        }
+      }
+
+      for (const labor of laborRates) {
+        try {
+          await this.createLaborRate({
+            ...labor,
+            region,
+            rate_ghs: Math.round(labor.rate_ghs * regionMultiplier),
+          });
+        } catch (error) {
+          logger.debug('Labor rate may already exist', { category: labor.labor_category, region });
+        }
+      }
+    }
+
+    // Create initial construction cost index
+    const now = new Date();
+    await this.updateConstructionIndex({
+      index_name: 'Ghana Construction Cost Index',
+      index_value: 115.5,
+      base_year: 2020,
+      base_value: 100,
+      period_start: new Date(now.getFullYear(), now.getMonth() - 3, 1),
+      period_end: new Date(now.getFullYear(), now.getMonth(), 0),
+      source: 'Ghana Statistical Service',
+      is_official: true,
+      components: [
+        { name: 'Materials', weight: 0.55, value: 118.2 },
+        { name: 'Labor', weight: 0.30, value: 112.5 },
+        { name: 'Equipment', weight: 0.10, value: 108.3 },
+        { name: 'Overheads', weight: 0.05, value: 115.0 },
+      ],
+    });
+
+    logger.info('Construction cost data seeded successfully');
+  }
+}
+
+export const constructionCostService = new ConstructionCostService();

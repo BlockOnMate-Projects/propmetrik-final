@@ -1,8 +1,8 @@
-PropWise Ghana - Comprehensive Product Development Document
+Propmetrik Ghana - Comprehensive Product Development Document
 
 # Executive Summary
 
-PropWise Ghana (propwise.com.gh) is a localized, AI-powered real estate data intelligence and ecosystem platform designed specifically for the Ghanaian market. The platform addresses critical market gaps by providing **reliable property valuations, comprehensive market data, integrated deal management, and digital infrastructure** for the entire property transaction lifecycle.
+Propmetrik Ghana (propmetrik.com.gh) is a localized, AI-powered real estate data intelligence and ecosystem platform designed specifically for the Ghanaian market. The platform addresses critical market gaps by providing **reliable property valuations, comprehensive market data, integrated deal management, and digital infrastructure** for the entire property transaction lifecycle.
 
 **Core Architecture:** Data Hub-centric design where centralized data acquisition and enrichment feeds all service modules (Property Management, Deal Management/CRM, Valuation Engine).
 
@@ -63,7 +63,7 @@ listings (Jiji, Tonaton) or generic CRMs (Zoho, Salesforce) that don't address r
 *   API ecosystem for banks, insurance, and government agencies
 *   Regional expansion preparation (Nigeria, Kenya)
 *   Process 50,000+ deals annually
-*   Establish PropWise as the industry-standard CRM for Ghana real estate
+*   Establish Propmetrik as the industry-standard CRM for Ghana real estate
 
 ![](data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAABOIAAAACCAYAAAD1jXPXAAAABmJLR0QA/wD/AP+gvaeTAAAACXBIWXMAAA7EAAAOxAGVKw4bAAAAWElEQVRoge3WsQnAMBADQD9kjXisDO4M9KkCIY07g+27Tr0Qina3zMwCo0RE+XaulwFmYNuAHdg2YEV+HCNERKlnvY43wEj/zvUywAxsG7AD2wasyI9jlAdjwyhP7+CnRAAAAABJRU5ErkJggg==)
 
@@ -71,7 +71,7 @@ listings (Jiji, Tonaton) or generic CRMs (Zoho, Salesforce) that don't address r
 
 ## Data Hub-Centric Architecture
 
-The **Data Hub** is the backbone of PropWise Ghana, serving as the central intelligence and data distribution layer that feeds all service modules.
+The **Data Hub** is the backbone of Propmetrik Ghana, serving as the central intelligence and data distribution layer that feeds all service modules.
 
 ┌────────────────────────────────────────────────────────────────────────────
 
@@ -237,7 +237,7 @@ CRM
 
 ## Central Data Hub & Intelligence Engine (BACKBONE)
 
-**Purpose:** Serve as Ghana's canonical property database and the central nervous system of the PropWise platform, aggregating, normalizing, enriching, and distributing property data to all service modules.
+**Purpose:** Serve as Ghana's canonical property database and the central nervous system of the Propmetrik platform, aggregating, normalizing, enriching, and distributing property data to all service modules.
 
 ### Data Acquisition Strategy (Multi-Tier Sources) Tier 1 (High Trust - Official Sources):
 
@@ -1068,7 +1068,7 @@ _\[Content remains largely the same as original document, with additions:\]_
     *   Territory management (assign regions to agents)
     *   Team scheduling and availability
 
-### Integration with Other PropWise Modules Integration with Property Management:
+### Integration with Other Propmetrik Modules Integration with Property Management:
 
 *   *   Link rental deals to tenant management (automatic tenant creation on lease signing)
     *   Track property availability (sync listing status)
@@ -1228,7 +1228,7 @@ _\[Most content remains the same as original document, with key additions:\]_
 
 **Primary Roles:**
 
-*   *   *   *   **Super Admin** \- Full system access (PropWise staff)
+*   *   *   *   **Super Admin** \- Full system access (Propmetrik staff)
             *   **Agency Admin** \- Manage agency users, settings, billing
             *   **Agent** \- Manage own deals, leads, listings
             *   **Valuer** \- Conduct valuations, submit comps
@@ -1855,7 +1855,7 @@ $500K, concerned about fraud
 *   Focus: Build agent network through viral growth and referrals
 *   Tactics:
     *   Agent referral program (refer 3 agents, get 3 months free)
-    *   Training webinars ("How to Close More Deals with PropWise CRM")
+    *   Training webinars ("How to Close More Deals with Propmetrik CRM")
     *   Facebook/Instagram ads targeting "real estate agent Ghana"
     *   Partnerships with real estate training academies
     *   Presence at GREDA events and real estate expos
@@ -1905,7 +1905,7 @@ $500K, concerned about fraud
 
 ### Success Stories (Social Proof)
 
-*   *   Agent testimonials ("I closed 3x more deals with PropWise")
+*   *   Agent testimonials ("I closed 3x more deals with Propmetrik")
     *   Buyer success stories (diaspora investors especially)
     *   Developer case studies (project sales efficiency)
     *   Valuation accuracy stories (saved buyers from overpaying)
@@ -1974,7 +1974,7 @@ $500K, concerned about fraud
 ### Educational Institutions
 
 *   *   KNUST, University of Ghana (research collaboration)
-    *   Real estate training academies (PropWise as course tool)
+    *   Real estate training academies (Propmetrik as course tool)
     *   Benefits: Research validation, student pipelines, academic credibility
 
 ## Referral & Growth Programs
@@ -1983,13 +1983,13 @@ $500K, concerned about fraud
 
 *   Refer another agent → both get 1 month free premium
 *   Refer 3 agents → 3 months free
-*   Refer 10 agents → 1 year free + "PropWise Champion" badge
+*   Refer 10 agents → 1 year free + "Propmetrik Champion" badge
 *   Leaderboard with prizes (top referrer gets iPad, conference tickets)
 
 ### Agency Partnership Program:
 
 *   White-label option with revenue share (70/30 split on subscriptions sold under agency brand)
-*   Co-marketing (agency featured in PropWise materials, PropWise featured on agency website)
+*   Co-marketing (agency featured in Propmetrik materials, Propmetrik featured on agency website)
 *   Exclusive territory rights (first agency in a region gets preferential treatment)
 
 ### User Growth Incentives:
@@ -2002,7 +2002,7 @@ $500K, concerned about fraud
 ### Viral Mechanics:
 
 *   Share property listing → referral tracking → if lead converts, original sharer gets credit/reward
-*   Social proof ("Join 5,000+ agents using PropWise")
+*   Social proof ("Join 5,000+ agents using Propmetrik")
 *   FOMO tactics ("Limited early adopter pricing ends in 30 days")
 
 ![](data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAABOIAAAACCAYAAAD1jXPXAAAABmJLR0QA/wD/AP+gvaeTAAAACXBIWXMAAA7EAAAOxAGVKw4bAAAAWElEQVRoge3WsQnAMBADQD9kjXisDO4M9KkCIY07g+27Tr0Qina3zMwCo0RE+XaulwFmYNuAHdg2YEV+HCNERKlnvY43wEj/zvUywAxsG7AD2wasyI9jlAdjwyhP7+CnRAAAAABJRU5ErkJggg==)
@@ -2226,9 +2226,9 @@ $500K, concerned about fraud
 
 # Conclusion
 
-PropWise Ghana represents a comprehensive solution to Ghana's real estate information and transaction challenges. By centering the architecture around a robust **Data Hub** that feeds all service modules - **Property Management, Deal Management/CRM, and Valuation Engine** \- the platform creates a self-reinforcing ecosystem where every user interaction enhances the collective intelligence.
+Propmetrik Ghana represents a comprehensive solution to Ghana's real estate information and transaction challenges. By centering the architecture around a robust **Data Hub** that feeds all service modules - **Property Management, Deal Management/CRM, and Valuation Engine** \- the platform creates a self-reinforcing ecosystem where every user interaction enhances the collective intelligence.
 
-The expanded **Deal Management/CRM module**, inspired by Zoho but purpose-built for Ghana's real estate workflows, provides agents, agencies, developers, and lenders with the tools they need to efficiently manage the entire transaction lifecycle. Combined with AI-powered valuations and comprehensive property data, PropWise Ghana is positioned to become the definitive platform for Ghana's real estate sector.
+The expanded **Deal Management/CRM module**, inspired by Zoho but purpose-built for Ghana's real estate workflows, provides agents, agencies, developers, and lenders with the tools they need to efficiently manage the entire transaction lifecycle. Combined with AI-powered valuations and comprehensive property data, Propmetrik Ghana is positioned to become the definitive platform for Ghana's real estate sector.
 
 ### Success hinges on:
 
@@ -2238,4 +2238,4 @@ The expanded **Deal Management/CRM module**, inspired by Zoho but purpose-built 
 4.  Executing strategic partnerships (Lands Commission, banks, agencies)
 5.  Maintaining focus on Ghana-specific needs over generic features
 
-With disciplined execution, PropWise Ghana can achieve market leadership within 3 years and serve as the foundation for regional expansion across West Africa.
+With disciplined execution, Propmetrik Ghana can achieve market leadership within 3 years and serve as the foundation for regional expansion across West Africa.
