@@ -209,7 +209,13 @@ async function bootstrap(): Promise<void> {
     logger.info('All services initialized');
     
   } catch (error) {
-    logger.fatal('Failed to initialize services', { error });
+    // Log full error details for debugging
+    const err = error as Error;
+    logger.fatal('Failed to initialize services', { 
+      error: err.message, 
+      stack: err.stack,
+      name: err.name 
+    });
     process.exit(1);
   }
 }

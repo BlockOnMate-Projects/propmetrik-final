@@ -242,7 +242,7 @@ export default function EtlJobsPage() {
                       <div className="flex items-center gap-2">
                         <Badge variant="info">{job.job_type}</Badge>
                         <span className="text-sm text-muted-foreground">
-                          Started {formatRelativeTime(job.started_at)}
+                          Started {formatRelativeTime(job.started_at || job.created_at)}
                         </span>
                       </div>
                       <div className="flex items-center gap-2">
@@ -312,7 +312,7 @@ export default function EtlJobsPage() {
               <CardTitle className="text-base font-medium">
                 Job History
                 <span className="ml-2 text-muted-foreground font-normal">
-                  ({jobs?.total || 0} jobs)
+                  ({jobs?.meta?.total || 0} jobs)
                 </span>
               </CardTitle>
             </CardHeader>
@@ -357,9 +357,9 @@ export default function EtlJobsPage() {
                             <JobStatusIcon status={job.status} />
                             <Badge variant={
                               job.status === 'completed' ? 'success' :
-                              job.status === 'running' ? 'info' :
-                              job.status === 'failed' ? 'destructive' :
-                              job.status === 'pending' ? 'warning' : 'secondary'
+                                job.status === 'running' ? 'info' :
+                                  job.status === 'failed' ? 'destructive' :
+                                    job.status === 'pending' ? 'warning' : 'secondary'
                             }>
                               {job.status}
                             </Badge>
@@ -382,15 +382,13 @@ export default function EtlJobsPage() {
                           <span className="text-sm font-mono">
                             {job.completed_at
                               ? formatDuration(
-                                  new Date(job.started_at!).getTime(),
-                                  new Date(job.completed_at).getTime()
-                                )
+                                Math.floor((new Date(job.completed_at).getTime() - new Date(job.started_at || job.created_at).getTime()) / 1000)
+                              )
                               : job.status === 'running'
-                              ? formatDuration(
-                                  new Date(job.started_at!).getTime(),
-                                  Date.now()
+                                ? formatDuration(
+                                  Math.floor((Date.now() - new Date(job.started_at || job.created_at).getTime()) / 1000)
                                 )
-                              : '-'}
+                                : '-'}
                           </span>
                         </TableCell>
                         <TableCell>
@@ -398,7 +396,7 @@ export default function EtlJobsPage() {
                             <span className="font-mono">
                               {job.records_processed?.toLocaleString() || 0}
                             </span>
-                            {job.errors_count > 0 && (
+                            {(job.errors_count || 0) > 0 && (
                               <span className="text-red-400 ml-2">
                                 ({job.errors_count} errors)
                               </span>
@@ -429,11 +427,11 @@ export default function EtlJobsPage() {
               )}
 
               {/* Pagination */}
-              {jobs && jobs.total > filters.limit! && (
+              {jobs && jobs.meta?.total > filters.limit! && (
                 <div className="flex items-center justify-between mt-4 pt-4 border-t">
                   <p className="text-sm text-muted-foreground">
                     Showing {((filters.page! - 1) * filters.limit!) + 1} to{' '}
-                    {Math.min(filters.page! * filters.limit!, jobs.total)} of {jobs.total}
+                    {Math.min(filters.page! * filters.limit!, jobs.meta.total)} of {jobs.meta.total}
                   </p>
                   <div className="flex gap-2">
                     <Button
@@ -447,7 +445,7 @@ export default function EtlJobsPage() {
                     <Button
                       variant="outline"
                       size="sm"
-                      disabled={filters.page! * filters.limit! >= jobs.total}
+                      disabled={filters.page! * filters.limit! >= jobs.meta.total}
                       onClick={() => setFilters((f) => ({ ...f, page: f.page! + 1 }))}
                     >
                       Next
