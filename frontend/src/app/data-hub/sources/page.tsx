@@ -217,7 +217,7 @@ export default function DataSourcesPage() {
               <CardTitle className="text-base font-medium">
                 Data Sources
                 <span className="ml-2 text-muted-foreground font-normal">
-                  ({sources?.total || 0} total)
+                  ({sources?.meta?.total || 0} total)
                 </span>
               </CardTitle>
             </CardHeader>
@@ -268,7 +268,7 @@ export default function DataSourcesPage() {
                             <div>
                               <p className="font-medium">{source.name}</p>
                               <p className="text-xs text-muted-foreground">
-                                {source.source_type} • {source.provider}
+                                {source.tier} • {source.slug}
                               </p>
                             </div>
                           </div>
@@ -291,7 +291,7 @@ export default function DataSourcesPage() {
                         </TableCell>
                         <TableCell>
                           <span className="font-mono text-sm">
-                            {source.record_count?.toLocaleString() || 0}
+                            {source.total_records_synced?.toLocaleString() || 0}
                           </span>
                         </TableCell>
                         <TableCell>
@@ -326,11 +326,11 @@ export default function DataSourcesPage() {
               )}
 
               {/* Pagination */}
-              {sources && sources.total > filters.limit! && (
+              {sources && sources.meta?.total > filters.limit! && (
                 <div className="flex items-center justify-between mt-4 pt-4 border-t">
                   <p className="text-sm text-muted-foreground">
                     Showing {((filters.page! - 1) * filters.limit!) + 1} to{' '}
-                    {Math.min(filters.page! * filters.limit!, sources.total)} of {sources.total}
+                    {Math.min(filters.page! * filters.limit!, sources.meta.total)} of {sources.meta.total}
                   </p>
                   <div className="flex gap-2">
                     <Button
@@ -344,7 +344,7 @@ export default function DataSourcesPage() {
                     <Button
                       variant="outline"
                       size="sm"
-                      disabled={filters.page! * filters.limit! >= sources.total}
+                      disabled={filters.page! * filters.limit! >= sources.meta.total}
                       onClick={() => setFilters((f) => ({ ...f, page: f.page! + 1 }))}
                     >
                       Next

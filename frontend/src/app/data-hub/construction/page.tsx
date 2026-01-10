@@ -328,7 +328,7 @@ export default function ConstructionCostsPage() {
                               <span className="font-medium">{material.material_name}</span>
                             </TableCell>
                             <TableCell>
-                              <Badge variant="outline">{material.category}</Badge>
+                              <Badge variant="outline">{material.material_category}</Badge>
                             </TableCell>
                             <TableCell>
                               <span className="text-muted-foreground">{material.unit}</span>
@@ -339,7 +339,7 @@ export default function ConstructionCostsPage() {
                               </span>
                             </TableCell>
                             <TableCell>
-                              {material.price_change_percent !== undefined && (
+                              {material.price_change_percent !== undefined && material.price_change_percent !== null && (
                                 <div className={cn(
                                   'flex items-center gap-1',
                                   material.price_change_percent >= 0 ? 'text-red-400' : 'text-green-400'
@@ -443,25 +443,25 @@ export default function ConstructionCostsPage() {
                         {laborRates?.data?.map((rate) => (
                           <TableRow key={rate.id}>
                             <TableCell>
-                              <span className="font-medium">{rate.trade_name}</span>
+                              <span className="font-medium">{rate.labor_category}</span>
                             </TableCell>
                             <TableCell>
                               <Badge variant={
                                 rate.skill_level === 'master' ? 'default' :
-                                rate.skill_level === 'specialist' ? 'info' :
-                                rate.skill_level === 'journeyman' ? 'secondary' : 'outline'
+                                  rate.skill_level === 'specialist' ? 'info' :
+                                    rate.skill_level === 'journeyman' ? 'secondary' : 'outline'
                               }>
                                 {rate.skill_level}
                               </Badge>
                             </TableCell>
                             <TableCell>
                               <span className="font-mono font-medium">
-                                {formatCurrency(rate.daily_rate_ghs)}
+                                {formatCurrency(rate.rate_type === 'daily' ? rate.rate_ghs : rate.rate_ghs * 8)}
                               </span>
                             </TableCell>
                             <TableCell>
                               <span className="font-mono text-muted-foreground">
-                                {formatCurrency(rate.hourly_rate_ghs || rate.daily_rate_ghs / 8)}
+                                {formatCurrency(rate.rate_type === 'hourly' ? rate.rate_ghs : rate.rate_ghs / 8)}
                               </span>
                             </TableCell>
                             <TableCell>

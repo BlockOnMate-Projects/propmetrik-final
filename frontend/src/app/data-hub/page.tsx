@@ -180,25 +180,25 @@ export default function DataHubOverview() {
                     <div className="p-4 rounded-lg bg-muted/50">
                       <p className="text-sm text-muted-foreground">USD/GHS Rate</p>
                       <p className="text-xl font-bold">
-                        {parseFloat(economicSnapshot?.data?.exchange_rate_usd as any)?.toFixed(2) || '-'}
+                        {economicSnapshot?.data?.exchange_rate_usd?.toFixed(2) || '-'}
                       </p>
                     </div>
                     <div className="p-4 rounded-lg bg-muted/50">
                       <p className="text-sm text-muted-foreground">Inflation Rate</p>
                       <p className="text-xl font-bold">
-                        {parseFloat(economicSnapshot?.data?.inflation_rate as any)?.toFixed(1) || '-'}%
+                        {economicSnapshot?.data?.inflation_rate?.toFixed(1) || '-'}%
                       </p>
                     </div>
                     <div className="p-4 rounded-lg bg-muted/50">
                       <p className="text-sm text-muted-foreground">BoG Policy Rate</p>
                       <p className="text-xl font-bold">
-                        {parseFloat(economicSnapshot?.data?.interest_rate_policy as any)?.toFixed(1) || '-'}%
+                        {economicSnapshot?.data?.interest_rate_policy?.toFixed(1) || '-'}%
                       </p>
                     </div>
                     <div className="p-4 rounded-lg bg-muted/50">
                       <p className="text-sm text-muted-foreground">GDP Growth</p>
                       <p className="text-xl font-bold">
-                        {parseFloat(economicSnapshot?.data?.gdp_growth as any)?.toFixed(1) || '-'}%
+                        {economicSnapshot?.data?.gdp_growth?.toFixed(1) || '-'}%
                       </p>
                     </div>
                   </div>
@@ -260,14 +260,14 @@ export default function DataHubOverview() {
                           <div>
                             <p className="font-medium text-sm">{job.job_type}</p>
                             <p className="text-xs text-muted-foreground">
-                              {formatRelativeTime(job.started_at)}
+                              {formatRelativeTime(job.started_at || job.created_at)}
                             </p>
                           </div>
                         </div>
                         <Badge variant={
                           job.status === 'completed' ? 'success' :
-                          job.status === 'running' ? 'info' :
-                          job.status === 'failed' ? 'destructive' : 'secondary'
+                            job.status === 'running' ? 'info' :
+                              job.status === 'failed' ? 'destructive' : 'secondary'
                         }>
                           {job.status}
                         </Badge>

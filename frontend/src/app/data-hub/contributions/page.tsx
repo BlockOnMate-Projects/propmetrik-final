@@ -103,8 +103,8 @@ function ContributionReviewDialog({
               <Badge variant="outline">{contribution.contribution_type}</Badge>
               <Badge variant={
                 contribution.validation_status === 'pending' ? 'warning' :
-                contribution.validation_status === 'approved' ? 'success' :
-                contribution.validation_status === 'rejected' ? 'destructive' : 'secondary'
+                  contribution.validation_status === 'approved' ? 'success' :
+                    contribution.validation_status === 'rejected' ? 'destructive' : 'secondary'
               }>
                 {contribution.validation_status}
               </Badge>
@@ -129,7 +129,7 @@ function ContributionReviewDialog({
                 <span className="text-sm text-muted-foreground">Confidence Score:</span>
                 <Badge variant={
                   contribution.confidence_score >= 0.8 ? 'success' :
-                  contribution.confidence_score >= 0.5 ? 'warning' : 'destructive'
+                    contribution.confidence_score >= 0.5 ? 'warning' : 'destructive'
                 }>
                   {(contribution.confidence_score * 100).toFixed(0)}%
                 </Badge>
@@ -368,7 +368,7 @@ export default function ContributionsPage() {
                                 <TableCell>
                                   <Badge variant={
                                     (contribution.confidence_score || 0) >= 0.8 ? 'success' :
-                                    (contribution.confidence_score || 0) >= 0.5 ? 'warning' : 'destructive'
+                                      (contribution.confidence_score || 0) >= 0.5 ? 'warning' : 'destructive'
                                   }>
                                     {((contribution.confidence_score || 0) * 100).toFixed(0)}%
                                   </Badge>
@@ -437,8 +437,8 @@ export default function ContributionsPage() {
                               <TableCell>
                                 <Badge variant={
                                   contribution.validation_status === 'approved' ? 'success' :
-                                  contribution.validation_status === 'rejected' ? 'destructive' :
-                                  contribution.validation_status === 'pending' ? 'warning' : 'secondary'
+                                    contribution.validation_status === 'rejected' ? 'destructive' :
+                                      contribution.validation_status === 'pending' ? 'warning' : 'secondary'
                                 }>
                                   {contribution.validation_status}
                                 </Badge>
@@ -521,7 +521,7 @@ export default function ContributionsPage() {
                         <div className="flex items-center gap-1 text-sm">
                           <Star className="h-3 w-3 text-yellow-400" />
                           <span className="font-medium">
-                            {formatNumber(contributor.total_credits)}
+                            {formatNumber(contributor.total_credits || 0)}
                           </span>
                         </div>
                       </div>

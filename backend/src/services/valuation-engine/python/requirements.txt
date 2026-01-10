@@ -1,0 +1,35 @@
+# PROPMETRIK Valuation Engine Python Requirements
+# Core dependencies for Ghana's premier property valuation service
+
+# Web Framework
+fastapi==0.104.1
+uvicorn[standard]==0.24.0
+pydantic[email]==2.5.0
+pydantic-settings==2.1.0
+
+# Database
+asyncpg==0.29.0
+
+# HTTP client for external APIs
+httpx==0.25.2
+
+# Data Processing and Scientific Computing
+numpy==1.25.2
+pandas==2.1.4
+
+# Validation and Parsing
+python-multipart==0.0.6
+email-validator==2.1.0
+
+# Date and Time
+python-dateutil==2.8.2
+
+# Environment and Configuration
+python-dotenv==1.0.0
+
+# Logging
+structlog==23.2.0
+
+# Development Tools (keep for development)
+pytest==7.4.3
+pytest-asyncio==0.21.1

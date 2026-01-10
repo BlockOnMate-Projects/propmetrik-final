@@ -10,7 +10,9 @@ export type DataSourceTier =
   | 'tier3_partners'
   | 'tier3b_user_generated'
   | 'tier4_market_data'
-  | 'tier5_public_web';
+  | 'tier4_contributions'
+  | 'tier5_public_web'
+  | 'tier5_web';
 
 export type SyncFrequency =
   | 'realtime'
@@ -28,7 +30,13 @@ export type EtlJobType =
   | 'geocoding'
   | 'enrichment'
   | 'deduplication'
-  | 'quality_scoring';
+  | 'quality_scoring'
+  | 'extract'
+  | 'transform'
+  | 'load'
+  | 'full_etl'
+  | 'incremental'
+  | 'validation';
 
 export type EtlJobStatus =
   | 'pending'
@@ -55,13 +63,20 @@ export type ContributionType =
   | 'verification'
   | 'photo'
   | 'document'
-  | 'transaction';
+  | 'transaction'
+  | 'property_listing'
+  | 'price_update'
+  | 'property_correction'
+  | 'new_development'
+  | 'market_insight'
+  | 'photo_submission';
 
 export type ValidationStatus =
   | 'pending'
   | 'auto_approved'
   | 'auto_rejected'
   | 'under_review'
+  | 'needs_review'
   | 'approved'
   | 'rejected'
   | 'needs_info';
@@ -75,8 +90,22 @@ export type ContributorTier =
 
 export type RegionCode =
   | 'greater_accra'
-  | 'kumasi_metro'
+  | 'ashanti'
+  | 'western'
   | 'eastern'
+  | 'central'
+  | 'northern'
+  | 'upper_east'
+  | 'upper_west'
+  | 'volta'
+  | 'bono'
+  | 'ahafo'
+  | 'bono_east'
+  | 'north_east'
+  | 'savannah'
+  | 'oti'
+  | 'western_north'
+  | 'kumasi_metro'
   | 'western_cluster'
   | 'northern_cluster';
 
@@ -104,6 +133,7 @@ export interface DataSource {
   regions_covered: RegionCode[];
   is_active: boolean;
   is_paused: boolean;
+  spider_config?: Record<string, any>;
   pause_reason: string | null;
   created_at: string;
   updated_at: string;
@@ -111,7 +141,7 @@ export interface DataSource {
 
 export interface DataSourceStats {
   tier: DataSourceTier;
-  count: number;
+  total: number;
   active: number;
   paused: number;
   total_records: number;
@@ -124,16 +154,22 @@ export interface DataSourceStats {
 export interface EtlJob {
   id: string;
   source_id: string | null;
+  data_source_id?: string | null;
+  source_name?: string | null;
   job_type: EtlJobType;
   job_name: string | null;
   status: EtlJobStatus;
   priority: number;
   records_total: number;
+  total_records?: number;
   records_processed: number;
   records_successful: number;
   records_failed: number;
   records_skipped: number;
+  errors_count?: number;
   progress_percentage: number;
+  progress?: number;
+  current_step?: string | null;
   properties_created: number;
   properties_updated: number;
   properties_deduplicated: number;
@@ -151,6 +187,12 @@ export interface EtlJob {
 
 export interface EtlJobStats {
   total: number;
+  running?: number;
+  pending?: number;
+  completed?: number;
+  failed?: number;
+  cancelled?: number;
+  completed_today?: number;
   by_status: Record<EtlJobStatus, number>;
   by_type: Record<EtlJobType, number>;
   avg_duration_seconds: number;
@@ -160,7 +202,8 @@ export interface EtlJobStats {
 export interface EtlJobLog {
   id: string;
   job_id: string;
-  level: 'debug' | 'info' | 'warn' | 'error';
+  timestamp: string;
+  level: 'debug' | 'info' | 'warn' | 'warning' | 'error';
   message: string;
   step: string | null;
   logged_at: string;
@@ -181,18 +224,22 @@ export interface Contribution {
   validation_status: ValidationStatus;
   trust_score: number | null;
   quality_score: number | null;
+  confidence_score?: number;
   validated_by: string | null;
   validated_at: string | null;
   validation_notes: string | null;
   is_applied: boolean;
   credits_awarded: number;
   credits_pending: boolean;
+  submitted_at: string;
   created_at: string;
   updated_at: string;
 }
 
 export interface ContributorProfile {
+  id?: string;
   user_id: string;
+  display_name?: string;
   tier: ContributorTier;
   reputation_score: number;
   total_contributions: number;
@@ -201,6 +248,7 @@ export interface ContributorProfile {
   pending_contributions: number;
   average_quality_score: number;
   credits_balance: number;
+  total_credits?: number;
   is_verified_professional: boolean;
   professional_type: ContributorType | null;
   primary_region: RegionCode | null;
@@ -289,13 +337,9 @@ export interface ConstructionEstimate {
 // =====================================================
 
 export interface QueueStats {
-  [queueName: string]: {
-    waiting: number;
-    active: number;
-    completed: number;
-    failed: number;
-    delayed: number;
-  };
+  total_pending?: number;
+  processing?: number;
+  [queueName: string]: any;
 }
 
 // =====================================================
@@ -319,4 +363,38 @@ export interface PaginatedResponse<T> {
     hasNext: boolean;
     hasPrevious: boolean;
   };
+}
+// =====================================================
+// HELPER FUNCTIONS
+// =====================================================
+
+export function getPropertyRegionDisplayName(region: RegionCode): string {
+  const displayNames: Record<RegionCode, string> = {
+    greater_accra: 'Greater Accra',
+    ashanti: 'Ashanti',
+    western: 'Western',
+    eastern: 'Eastern',
+    central: 'Central',
+    northern: 'Northern',
+    upper_east: 'Upper East',
+    upper_west: 'Upper West',
+    volta: 'Volta',
+    bono: 'Bono',
+    ahafo: 'Ahafo',
+    bono_east: 'Bono East',
+    north_east: 'North East',
+    savannah: 'Savannah',
+    oti: 'Oti',
+    western_north: 'Western North',
+    kumasi_metro: 'Kumasi Metro',
+    western_cluster: 'Western Cluster',
+    northern_cluster: 'Northern Cluster',
+  };
+  return displayNames[region] || region;
+}
+
+export function mapPropertyRegionToConstructionCluster(region: RegionCode): RegionCode {
+  // In this simplified version, we map basic regions to clusters if necessary
+  // but for now, we'll just return the region as they are already clusters/main regions
+  return region;
 }
