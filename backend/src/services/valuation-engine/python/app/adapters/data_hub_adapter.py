@@ -21,6 +21,7 @@ from ..schemas import (
     ComparableSearch,
     ComparablePropertyAnalysis
 )
+from ..schemas.land_comparable import LandComparableSearchCriteria
 
 
 logger = logging.getLogger(__name__)
@@ -79,6 +80,14 @@ class MarketDataAdapter(ABC):
         as_of_date: date
     ) -> Optional[RegionalMarketData]:
         """Fetch comprehensive market data for a region"""
+        pass
+    
+    @abstractmethod
+    async def get_land_comparables(
+        self,
+        search_criteria: LandComparableSearchCriteria
+    ) -> List[Property]:
+        """Fetch land comparables for land value estimation"""
         pass
 
 
@@ -374,6 +383,130 @@ class PostgreSQLMarketDataAdapter(MarketDataAdapter):
         except Exception as e:
             logger.error(f"Error fetching regional market data for {region}: {str(e)}")
             return None
+    
+    async def get_land_comparables(
+        self,
+        search_criteria: LandComparableSearchCriteria
+    ) -> List[Property]:
+        """
+        Fetch land comparables using PostGIS spatial queries.
+        
+        This method:
+        1. Searches for land-only properties (LAND_* property types)
+        2. Filters by region, distance, age, and size
+        3. Returns properties with sale data for comparable analysis
+        """
+        
+        # Get target property or use provided coordinates
+        target_lat, target_lng = None, None
+        
+        if search_criteria.target_coordinates:
+            target_lat, target_lng = search_criteria.target_coordinates
+        elif search_criteria.target_property_id:
+            target_property = await self.get_property_by_id(search_criteria.target_property_id)
+            if target_property and target_property.location.coordinates:
+                target_lat, target_lng = target_property.location.coordinates
+        
+        if target_lat is None or target_lng is None:
+            logger.warning("No coordinates available for land comparable search")
+            return []
+        
+        # Build the PostGIS query for LAND properties only
+        query = """
+        SELECT 
+            p.id, p.property_type, p.region, p.district, p.neighborhood,
+            p.address_raw, p.address_city, p.coordinates, p.ghana_post_gps,
+            p.bedrooms, p.bathrooms, p.parking_spaces, p.land_size_sqm, 
+            p.built_area_sqm, p.year_built, p.condition, p.land_tenure,
+            p.lease_years_remaining, p.has_swimming_pool, p.has_garden,
+            p.has_security, p.has_generator, p.has_borehole, p.has_air_conditioning,
+            p.current_price_ghs, p.previous_price_ghs, p.price_date,
+            p.rental_income_monthly_ghs, p.operating_expenses_annual_ghs,
+            p.property_taxes_annual_ghs, p.data_quality_score,
+            p.source_reliability_score, p.completeness_score, p.accuracy_score,
+            p.freshness_score, p.sources, p.last_verified, p.verification_method,
+            p.created_at, p.updated_at, p.created_by,
+            ST_Distance(
+                ST_GeogFromText('POINT(' || $1 || ' ' || $2 || ')'),
+                ST_GeogFromText('POINT(' || (p.coordinates->>'lng') || ' ' || (p.coordinates->>'lat') || ')')
+            ) / 1000 AS distance_km
+        FROM properties p
+        WHERE 
+            p.property_type IN ('LAND_RESIDENTIAL', 'LAND_COMMERCIAL', 'LAND_INDUSTRIAL', 'LAND_AGRICULTURAL')
+            AND p.region = $3
+            AND p.current_price_ghs IS NOT NULL
+            AND p.land_size_sqm IS NOT NULL
+            AND p.land_size_sqm > 0
+            AND p.price_date >= $4
+            AND (p.coordinates->>'lat') IS NOT NULL
+            AND (p.coordinates->>'lng') IS NOT NULL
+            AND ST_DWithin(
+                ST_GeogFromText('POINT(' || $1 || ' ' || $2 || ')'),
+                ST_GeogFromText('POINT(' || (p.coordinates->>'lng') || ' ' || (p.coordinates->>'lat') || ')'),
+                $5 * 1000  -- Convert km to meters
+            )
+        """
+        
+        # Calculate date cutoff
+        date_cutoff = date.today() - timedelta(days=search_criteria.max_age_days)
+        
+        params = [
+            target_lng,
+            target_lat,
+            search_criteria.target_region,
+            date_cutoff,
+            search_criteria.max_distance_km
+        ]
+        param_count = 5
+        
+        # Exclude target property if provided
+        if search_criteria.target_property_id:
+            param_count += 1
+            query += f" AND p.id != ${param_count}"
+            params.append(search_criteria.target_property_id)
+        
+        # Add size tolerance filter
+        if search_criteria.target_land_area_sqm and search_criteria.size_tolerance_pct:
+            target_size = search_criteria.target_land_area_sqm
+            tolerance = search_criteria.size_tolerance_pct
+            min_size = target_size * (1 - tolerance)
+            max_size = target_size * (1 + tolerance)
+            
+            param_count += 1
+            query += f" AND p.land_size_sqm >= ${param_count}"
+            params.append(min_size)
+            
+            param_count += 1
+            query += f" AND p.land_size_sqm <= ${param_count}"
+            params.append(max_size)
+        
+        # Order by distance and data quality
+        param_count += 1
+        query += f"""
+        ORDER BY distance_km ASC, p.data_quality_score DESC, p.price_date DESC
+        LIMIT ${param_count}
+        """
+        params.append(search_criteria.max_results)
+        
+        try:
+            async with self.db.acquire() as conn:
+                rows = await conn.fetch(query, *params)
+                
+                properties = []
+                for row in rows:
+                    property_obj = await self._row_to_property(row)
+                    if property_obj:
+                        properties.append(property_obj)
+                
+                logger.info(
+                    f"Found {len(properties)} land comparables for region {search_criteria.target_region} "
+                    f"within {search_criteria.max_distance_km}km"
+                )
+                return properties
+                
+        except Exception as e:
+            logger.error(f"Error fetching land comparables: {str(e)}")
+            return []
     
     async def _row_to_property(self, row) -> Optional[Property]:
         """Convert database row to Property object"""

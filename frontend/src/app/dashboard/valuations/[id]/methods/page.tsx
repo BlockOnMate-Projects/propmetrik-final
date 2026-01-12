@@ -380,16 +380,38 @@ export default function MethodSelectionPage() {
         selectedMethods,
         primaryMethod,
         methodWeights,
-        current_step: 4,
+        current_step: 3, // Methods is step 3
       })
 
-      // Navigate to next step based on primary method
-      const methodPath = primaryMethod === 'sales_comparison' ? 'market' : 
-                         primaryMethod === 'cost_approach' ? 'cost' :
-                         primaryMethod === 'income_approach' ? 'income' :
-                         'valuation'
+      // Determine next step based on selected methods
+      // Sales Comparison requires comparables, so always go to comparables first
+      // Other methods can benefit from comparables but don't require them
+      const hasSalesComparison = selectedMethods.includes('sales_comparison')
       
-      router.push(`/dashboard/valuations/${valuationId}/${methodPath}`)
+      if (hasSalesComparison) {
+        // Sales Comparison needs comparables - go to Comparables page
+        router.push(`/dashboard/valuations/${valuationId}/comparables`)
+      } else {
+        // No Sales Comparison - route directly to first selected method
+        const methodRoutes: Record<string, string> = {
+          'cost_approach': 'cost',
+          'income_approach': 'income',
+          'drc_method': 'drc',
+          'profits_method': 'profits',
+          'residual_method': 'residual',
+        }
+        
+        // Find first selected method in workflow order
+        const workflowOrder = ['cost_approach', 'income_approach', 'drc_method', 'profits_method', 'residual_method']
+        const firstMethod = workflowOrder.find(m => selectedMethods.includes(m as ValuationMethod))
+        
+        if (firstMethod && methodRoutes[firstMethod]) {
+          router.push(`/dashboard/valuations/${valuationId}/${methodRoutes[firstMethod]}`)
+        } else {
+          // Fallback to reconciliation if no matching route
+          router.push(`/dashboard/valuations/${valuationId}/reconciliation`)
+        }
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to save method selection')
     } finally {

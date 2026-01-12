@@ -66,9 +66,23 @@ export type PriceUnit =
 export type RegionCode =
   | 'greater_accra'
   | 'kumasi_metro'
+  | 'ashanti'
   | 'eastern'
+  | 'western'
   | 'western_cluster'
-  | 'northern_cluster';
+  | 'central'
+  | 'volta'
+  | 'northern'
+  | 'northern_cluster'
+  | 'upper_east'
+  | 'upper_west'
+  | 'bono'
+  | 'bono_east'
+  | 'ahafo'
+  | 'savannah'
+  | 'north_east'
+  | 'oti'
+  | 'western_north';
 
 export interface MaterialPrice {
   id: string;
@@ -151,6 +165,30 @@ export interface ConstructionCostIndex {
   created_at: Date;
 }
 
+export interface CalculatedRegionalMultiplier {
+  region: string;
+  value: number;
+  material_multiplier: number;
+  labor_multiplier: number;
+  transport_multiplier: number;
+  source: 'calculated' | 'static';
+  confidence: number;
+  last_calculated_at: Date | null;
+}
+
+export interface CalculatedBaseCost {
+  property_type: string;
+  quality_level: string;
+  region: string;
+  cost_ghs: number;
+  material_component_ghs: number;
+  labor_component_ghs: number;
+  overhead_component_ghs: number;
+  is_calculated: boolean;
+  calculation_source: string;
+  updated_at: Date;
+}
+
 export interface CreateMaterialPriceInput {
   material_category: MaterialCategory;
   material_name: string;
@@ -221,16 +259,31 @@ export class ConstructionCostService {
     luxury: 2.0,
   };
 
-  private static readonly REGION_MULTIPLIERS: Record<RegionCode, number> = {
-    greater_accra: 1.15,  // Higher costs in Accra
-    kumasi_metro: 1.0,    // Base reference
+  // Fallback static multipliers - used only when database values unavailable
+  private static readonly FALLBACK_REGION_MULTIPLIERS: Record<string, number> = {
+    greater_accra: 1.0,   // Base reference (matches database)
+    ashanti: 0.95,
+    kumasi_metro: 0.95,   // Alias for ashanti
+    western: 0.97,
+    western_cluster: 0.97,
     eastern: 0.95,
-    western_cluster: 1.05,
+    central: 0.96,
+    volta: 0.93,
+    northern: 0.91,
     northern_cluster: 0.90,
+    upper_east: 0.89,
+    upper_west: 0.87,
+    bono: 0.92,
+    bono_east: 0.91,
+    ahafo: 0.90,
+    savannah: 0.88,
+    north_east: 0.87,
+    oti: 0.92,
+    western_north: 0.93,
   };
 
-  // Base construction costs per sqm in GHS (as of 2024/2025)
-  private static readonly BASE_COST_PER_SQM: Record<string, number> = {
+  // Fallback base costs - used only when database calculated values unavailable
+  private static readonly FALLBACK_BASE_COST_PER_SQM: Record<string, number> = {
     residential_basic: 3500,
     residential_standard: 5000,
     residential_premium: 8000,
@@ -238,8 +291,11 @@ export class ConstructionCostService {
     commercial_basic: 4000,
     commercial_standard: 6500,
     commercial_premium: 10000,
+    commercial_luxury: 14000,
     industrial_basic: 3000,
     industrial_standard: 4500,
+    industrial_premium: 7000,
+    industrial_luxury: 11000,
   };
 
   // Cost breakdown percentages
@@ -250,6 +306,215 @@ export class ConstructionCostService {
     overheads: 0.07,     // 7% overheads/profit
     contingency: 0.03,   // 3% contingency
   };
+
+  // =====================================================
+  // DATABASE-DRIVEN MULTIPLIER & BASE COST METHODS
+  // =====================================================
+
+  /**
+   * Get regional multiplier from database with fallback to static values
+   * Uses data from regional_cost_multipliers table populated by baseCostCalculationService
+   */
+  async getRegionalMultiplier(region: string): Promise<CalculatedRegionalMultiplier> {
+    try {
+      const result = await query<{
+        region: string;
+        material_multiplier: number;
+        labor_multiplier: number;
+        transport_multiplier: number;
+        combined_multiplier: number;
+        last_calculated_at: Date | null;
+      }>(
+        `SELECT region, material_multiplier, labor_multiplier, transport_multiplier, 
+                combined_multiplier, last_calculated_at
+         FROM regional_cost_multipliers
+         WHERE region = $1`,
+        [region.toLowerCase().replace(/-/g, '_')]
+      );
+
+      if (result.rows.length > 0) {
+        const row = result.rows[0];
+        return {
+          region: row.region,
+          value: parseFloat(row.combined_multiplier as any),
+          material_multiplier: parseFloat(row.material_multiplier as any),
+          labor_multiplier: parseFloat(row.labor_multiplier as any),
+          transport_multiplier: parseFloat(row.transport_multiplier as any),
+          source: 'calculated',
+          confidence: 0.9,
+          last_calculated_at: row.last_calculated_at,
+        };
+      }
+
+      // Fallback to static multiplier
+      const staticValue = ConstructionCostService.FALLBACK_REGION_MULTIPLIERS[region] || 1.0;
+      logger.warn('Using fallback regional multiplier', { region, value: staticValue });
+
+      return {
+        region,
+        value: staticValue,
+        material_multiplier: staticValue,
+        labor_multiplier: staticValue,
+        transport_multiplier: 1.0,
+        source: 'static',
+        confidence: 0.6,
+        last_calculated_at: null,
+      };
+    } catch (error) {
+      logger.error('Error fetching regional multiplier', { region, error });
+      const staticValue = ConstructionCostService.FALLBACK_REGION_MULTIPLIERS[region] || 1.0;
+      return {
+        region,
+        value: staticValue,
+        material_multiplier: staticValue,
+        labor_multiplier: staticValue,
+        transport_multiplier: 1.0,
+        source: 'static',
+        confidence: 0.5,
+        last_calculated_at: null,
+      };
+    }
+  }
+
+  /**
+   * Get calculated base cost from database with fallback to static values
+   * Uses data from base_costs_per_sqm table populated by baseCostCalculationService
+   */
+  async getCalculatedBaseCost(
+    propertyType: string,
+    qualityLevel: string,
+    region: string
+  ): Promise<CalculatedBaseCost | null> {
+    try {
+      const normalizedRegion = region.toLowerCase().replace(/-/g, '_');
+      
+      const result = await query<{
+        property_type: string;
+        quality_level: string;
+        region: string;
+        cost_ghs: number;
+        material_component_ghs: number;
+        labor_component_ghs: number;
+        overhead_component_ghs: number;
+        is_calculated: boolean;
+        calculation_source: string;
+        updated_at: Date;
+      }>(
+        `SELECT property_type, quality_level, region, cost_ghs,
+                COALESCE(material_component_ghs, 0) as material_component_ghs,
+                COALESCE(labor_component_ghs, 0) as labor_component_ghs,
+                COALESCE(overhead_component_ghs, 0) as overhead_component_ghs,
+                COALESCE(is_calculated, false) as is_calculated,
+                COALESCE(calculation_source, 'legacy') as calculation_source,
+                updated_at
+         FROM base_costs_per_sqm
+         WHERE property_type = $1 AND quality_level = $2 AND region = $3`,
+        [propertyType, qualityLevel, normalizedRegion]
+      );
+
+      if (result.rows.length > 0) {
+        const row = result.rows[0];
+        return {
+          property_type: row.property_type,
+          quality_level: row.quality_level,
+          region: row.region,
+          cost_ghs: parseFloat(row.cost_ghs as any),
+          material_component_ghs: parseFloat(row.material_component_ghs as any),
+          labor_component_ghs: parseFloat(row.labor_component_ghs as any),
+          overhead_component_ghs: parseFloat(row.overhead_component_ghs as any),
+          is_calculated: row.is_calculated,
+          calculation_source: row.calculation_source,
+          updated_at: row.updated_at,
+        };
+      }
+
+      // Try without region (for legacy data without region column)
+      const legacyResult = await query<{
+        property_type: string;
+        quality_level: string;
+        cost_ghs: number;
+        updated_at: Date;
+      }>(
+        `SELECT property_type, quality_level, cost_ghs, updated_at
+         FROM base_costs_per_sqm
+         WHERE property_type = $1 AND quality_level = $2 AND (region IS NULL OR region = '')
+         LIMIT 1`,
+        [propertyType, qualityLevel]
+      );
+
+      if (legacyResult.rows.length > 0) {
+        const row = legacyResult.rows[0];
+        const baseCost = parseFloat(row.cost_ghs as any);
+        
+        // Apply regional multiplier to legacy base cost
+        const multiplier = await this.getRegionalMultiplier(normalizedRegion);
+        const adjustedCost = baseCost * multiplier.value;
+
+        return {
+          property_type: row.property_type,
+          quality_level: row.quality_level,
+          region: normalizedRegion,
+          cost_ghs: adjustedCost,
+          material_component_ghs: adjustedCost * 0.55,
+          labor_component_ghs: adjustedCost * 0.30,
+          overhead_component_ghs: adjustedCost * 0.15,
+          is_calculated: false,
+          calculation_source: 'legacy_with_multiplier',
+          updated_at: row.updated_at,
+        };
+      }
+
+      return null;
+    } catch (error) {
+      logger.error('Error fetching calculated base cost', { propertyType, qualityLevel, region, error });
+      return null;
+    }
+  }
+
+  /**
+   * Get all regional multipliers for comparison/display
+   */
+  async getAllRegionalMultipliers(): Promise<CalculatedRegionalMultiplier[]> {
+    try {
+      const result = await query<{
+        region: string;
+        material_multiplier: number;
+        labor_multiplier: number;
+        transport_multiplier: number;
+        combined_multiplier: number;
+        last_calculated_at: Date | null;
+      }>(
+        `SELECT region, material_multiplier, labor_multiplier, transport_multiplier, 
+                combined_multiplier, last_calculated_at
+         FROM regional_cost_multipliers
+         ORDER BY region`
+      );
+
+      return result.rows.map(row => ({
+        region: row.region,
+        value: parseFloat(row.combined_multiplier as any),
+        material_multiplier: parseFloat(row.material_multiplier as any),
+        labor_multiplier: parseFloat(row.labor_multiplier as any),
+        transport_multiplier: parseFloat(row.transport_multiplier as any),
+        source: 'calculated' as const,
+        confidence: 0.9,
+        last_calculated_at: row.last_calculated_at,
+      }));
+    } catch (error) {
+      logger.error('Error fetching all regional multipliers', { error });
+      // Return fallback static values
+      return Object.entries(ConstructionCostService.FALLBACK_REGION_MULTIPLIERS).map(([region, value]) => ({
+        region,
+        value,
+        material_multiplier: value,
+        labor_multiplier: value,
+        transport_multiplier: 1.0,
+        source: 'static' as const,
+        confidence: 0.6,
+        last_calculated_at: null,
+      }));
+    }
+  }
 
   /**
    * Create a new material price record
@@ -262,10 +527,10 @@ export class ConstructionCostService {
        ORDER BY survey_date DESC LIMIT 1`,
       [input.material_category, input.material_name, input.region]
     );
-    
+
     const previousPrice = previousResult.rows[0]?.price_ghs || null;
-    const changePercent = previousPrice 
-      ? ((input.price_ghs - previousPrice) / previousPrice) * 100 
+    const changePercent = previousPrice
+      ? ((input.price_ghs - previousPrice) / previousPrice) * 100
       : null;
 
     const result = await query<MaterialPrice>(
@@ -307,10 +572,10 @@ export class ConstructionCostService {
        ORDER BY survey_date DESC LIMIT 1`,
       [input.labor_category, input.skill_level, input.region]
     );
-    
+
     const previousRate = previousResult.rows[0]?.rate_ghs || null;
-    const changePercent = previousRate 
-      ? ((input.rate_ghs - previousRate) / previousRate) * 100 
+    const changePercent = previousRate
+      ? ((input.rate_ghs - previousRate) / previousRate) * 100
       : null;
 
     const result = await query<LaborRate>(
@@ -452,7 +717,8 @@ export class ConstructionCostService {
   }
 
   /**
-   * Calculate construction cost estimate
+   * Calculate construction cost estimate using database-driven values
+   * Uses calculated base costs from base_costs_per_sqm and regional multipliers
    */
   async estimateConstructionCost(
     propertyType: 'residential' | 'commercial' | 'industrial',
@@ -460,25 +726,73 @@ export class ConstructionCostService {
     region: RegionCode,
     builtAreaSqm: number,
     numFloors: number = 1
-  ): Promise<ConstructionEstimate> {
-    // Get base cost
-    const baseKey = `${propertyType}_${qualityLevel}`;
-    const baseCostPerSqm = ConstructionCostService.BASE_COST_PER_SQM[baseKey] || 
-                           ConstructionCostService.BASE_COST_PER_SQM['residential_standard'];
+  ): Promise<ConstructionEstimate & {
+    regional_multiplier?: CalculatedRegionalMultiplier;
+    data_source?: string;
+    base_cost_calculated?: boolean;
+  }> {
+    // Normalize region code
+    const normalizedRegion = region.toLowerCase().replace(/-/g, '_') as RegionCode;
+    
+    // 1. Try to get calculated base cost from database (includes regional adjustment)
+    const calculatedBaseCost = await this.getCalculatedBaseCost(propertyType, qualityLevel, normalizedRegion);
+    
+    // 2. Get regional multiplier for metadata
+    const regionalMultiplier = await this.getRegionalMultiplier(normalizedRegion);
+    
+    let baseCostPerSqm: number;
+    let dataSource: string;
+    let baseCalculated: boolean;
+    let materialComponent: number;
+    let laborComponent: number;
+    let overheadComponent: number;
 
-    // Apply multipliers
-    const qualityMultiplier = ConstructionCostService.COST_MULTIPLIERS[qualityLevel] || 1.0;
-    const regionMultiplier = ConstructionCostService.REGION_MULTIPLIERS[region] || 1.0;
+    if (calculatedBaseCost && calculatedBaseCost.cost_ghs > 0) {
+      // Use database-calculated base cost (already includes regional adjustment)
+      baseCostPerSqm = calculatedBaseCost.cost_ghs;
+      dataSource = calculatedBaseCost.calculation_source;
+      baseCalculated = calculatedBaseCost.is_calculated;
+      materialComponent = calculatedBaseCost.material_component_ghs;
+      laborComponent = calculatedBaseCost.labor_component_ghs;
+      overheadComponent = calculatedBaseCost.overhead_component_ghs;
+      
+      logger.debug('Using calculated base cost', { 
+        propertyType, qualityLevel, region: normalizedRegion, 
+        baseCost: baseCostPerSqm, source: dataSource 
+      });
+    } else {
+      // Fallback to static base cost + regional multiplier
+      const baseKey = `${propertyType}_${qualityLevel}`;
+      const staticBaseCost = ConstructionCostService.FALLBACK_BASE_COST_PER_SQM[baseKey] ||
+        ConstructionCostService.FALLBACK_BASE_COST_PER_SQM['residential_standard'];
+      
+      // Apply regional multiplier to static base cost
+      baseCostPerSqm = staticBaseCost * regionalMultiplier.value;
+      dataSource = 'static_with_multiplier';
+      baseCalculated = false;
+      materialComponent = baseCostPerSqm * 0.55;
+      laborComponent = baseCostPerSqm * 0.30;
+      overheadComponent = baseCostPerSqm * 0.15;
+
+      logger.warn('Using fallback static base cost', { 
+        propertyType, qualityLevel, region: normalizedRegion,
+        staticBase: staticBaseCost, multiplier: regionalMultiplier.value,
+        adjustedCost: baseCostPerSqm
+      });
+    }
+
+    // Apply floor multiplier
     const floorMultiplier = 1 + (numFloors - 1) * 0.05; // 5% increase per additional floor
 
-    // Get current construction index to adjust for inflation
-    const latestIndex = await this.getLatestConstructionIndex(region);
+    // Get current construction index to adjust for inflation (additional adjustment)
+    const latestIndex = await this.getLatestConstructionIndex(normalizedRegion);
     const indexMultiplier = latestIndex ? latestIndex.index_value / latestIndex.base_value : 1.0;
 
-    const adjustedCostPerSqm = baseCostPerSqm * regionMultiplier * floorMultiplier * indexMultiplier;
+    // Final adjusted cost per sqm
+    const adjustedCostPerSqm = baseCostPerSqm * floorMultiplier * indexMultiplier;
     const totalCost = adjustedCostPerSqm * builtAreaSqm;
 
-    // Calculate breakdown
+    // Calculate breakdown using component data
     const breakdown = ConstructionCostService.COST_BREAKDOWN;
     const materialsCost = totalCost * breakdown.materials;
     const laborCost = totalCost * breakdown.labor;
@@ -489,7 +803,7 @@ export class ConstructionCostService {
     return {
       property_type: propertyType,
       quality_level: qualityLevel,
-      region,
+      region: normalizedRegion,
       built_area_sqm: builtAreaSqm,
       num_floors: numFloors,
       estimates: {
@@ -514,9 +828,15 @@ export class ConstructionCostService {
         'No abnormal site conditions',
         'Standard specifications for quality level',
         `Prices as of ${new Date().toLocaleDateString()}`,
+        `Regional multiplier: ${regionalMultiplier.value.toFixed(3)} (${regionalMultiplier.source})`,
         `Construction index multiplier: ${indexMultiplier.toFixed(2)}`,
+        `Data source: ${dataSource}`,
       ],
       validity_date: new Date(),
+      // Extended fields for transparency
+      regional_multiplier: regionalMultiplier,
+      data_source: dataSource,
+      base_cost_calculated: baseCalculated,
     };
   }
 
@@ -524,13 +844,19 @@ export class ConstructionCostService {
    * Get latest construction cost index
    */
   async getLatestConstructionIndex(region?: RegionCode): Promise<ConstructionCostIndex | null> {
-    const result = await query<ConstructionCostIndex>(
-      `SELECT * FROM construction_cost_indices 
-       WHERE ($1::text IS NULL OR region = $1)
-       ORDER BY period_end DESC LIMIT 1`,
-      [region || null]
-    );
-    return result.rows[0] || null;
+    try {
+      const result = await query<ConstructionCostIndex>(
+        `SELECT * FROM construction_cost_indices 
+         WHERE ($1::text IS NULL OR region::text = $1)
+         ORDER BY period_end DESC LIMIT 1`,
+        [region || null]
+      );
+      return result.rows[0] || null;
+    } catch (error: any) {
+      // If no construction_cost_indices table or no data, return null
+      logger.warn('Could not fetch construction index', { region, error: error.message });
+      return null;
+    }
   }
 
   /**
@@ -557,10 +883,10 @@ export class ConstructionCostService {
        ORDER BY period_end DESC LIMIT 1`,
       [input.index_name, input.region || null]
     );
-    
+
     const previous = previousResult.rows[0];
-    const changeFromPrevious = previous 
-      ? ((input.index_value - previous.index_value) / previous.index_value) * 100 
+    const changeFromPrevious = previous
+      ? ((input.index_value - previous.index_value) / previous.index_value) * 100
       : null;
 
     // Calculate YoY change
@@ -572,8 +898,8 @@ export class ConstructionCostService {
       [input.index_name, input.region || null, input.period_end]
     );
     const yoyPrevious = yoyResult.rows[0];
-    const changeYoY = yoyPrevious 
-      ? ((input.index_value - yoyPrevious.index_value) / yoyPrevious.index_value) * 100 
+    const changeYoY = yoyPrevious
+      ? ((input.index_value - yoyPrevious.index_value) / yoyPrevious.index_value) * 100
       : null;
 
     const result = await query<ConstructionCostIndex>(
@@ -700,34 +1026,34 @@ export class ConstructionCostService {
    */
   async seedInitialData(): Promise<void> {
     const regions: RegionCode[] = ['greater_accra', 'kumasi_metro', 'eastern', 'western_cluster', 'northern_cluster'];
-    
+
     // Seed material prices
     const materials: Array<Omit<CreateMaterialPriceInput, 'region'>> = [
       // Cement
       { material_category: 'cement', material_name: 'Portland Cement 42.5R', brand: 'Ghacem', price_ghs: 95, unit: 'bag', quantity_per_unit: 1, supplier_type: 'retail' },
       { material_category: 'cement', material_name: 'Portland Cement 42.5R', brand: 'Diamond', price_ghs: 92, unit: 'bag', quantity_per_unit: 1, supplier_type: 'retail' },
       { material_category: 'cement', material_name: 'Portland Cement 32.5R', brand: 'Ghacem', price_ghs: 85, unit: 'bag', quantity_per_unit: 1, supplier_type: 'retail' },
-      
+
       // Steel
       { material_category: 'steel', material_name: 'Iron Rod 12mm', specification: '12m length', price_ghs: 85, unit: 'length', quantity_per_unit: 1, supplier_type: 'retail' },
       { material_category: 'steel', material_name: 'Iron Rod 16mm', specification: '12m length', price_ghs: 145, unit: 'length', quantity_per_unit: 1, supplier_type: 'retail' },
       { material_category: 'steel', material_name: 'Iron Rod 8mm', specification: '12m length', price_ghs: 45, unit: 'length', quantity_per_unit: 1, supplier_type: 'retail' },
       { material_category: 'steel', material_name: 'BRC Mesh', specification: '6mm', price_ghs: 950, unit: 'piece', quantity_per_unit: 1, supplier_type: 'retail' },
-      
+
       // Blocks
       { material_category: 'blocks', material_name: 'Sandcrete Block 6"', specification: '150mm', price_ghs: 8.5, unit: 'piece', quantity_per_unit: 1, supplier_type: 'retail' },
       { material_category: 'blocks', material_name: 'Sandcrete Block 5"', specification: '125mm', price_ghs: 6.5, unit: 'piece', quantity_per_unit: 1, supplier_type: 'retail' },
       { material_category: 'blocks', material_name: 'Sandcrete Block 4"', specification: '100mm', price_ghs: 5.0, unit: 'piece', quantity_per_unit: 1, supplier_type: 'retail' },
-      
+
       // Aggregates
       { material_category: 'sand', material_name: 'Sharp Sand', specification: 'Per trip (10 tons)', price_ghs: 2500, unit: 'trip', quantity_per_unit: 10, supplier_type: 'wholesale' },
       { material_category: 'gravel', material_name: 'Gravel 3/4"', specification: 'Per trip (10 tons)', price_ghs: 3200, unit: 'trip', quantity_per_unit: 10, supplier_type: 'wholesale' },
       { material_category: 'gravel', material_name: 'Gravel 1/2"', specification: 'Per trip (10 tons)', price_ghs: 3000, unit: 'trip', quantity_per_unit: 10, supplier_type: 'wholesale' },
-      
+
       // Roofing
       { material_category: 'roofing', material_name: 'Aluminum Roofing Sheet', specification: '0.55mm thick', price_ghs: 280, unit: 'length', quantity_per_unit: 1, supplier_type: 'retail' },
       { material_category: 'roofing', material_name: 'Step Tile Roofing', specification: 'Long span', price_ghs: 350, unit: 'sqm', quantity_per_unit: 1, supplier_type: 'retail' },
-      
+
       // Tiles
       { material_category: 'tiles', material_name: 'Ceramic Floor Tile', specification: '40x40cm', price_ghs: 85, unit: 'sqm', quantity_per_unit: 1, supplier_type: 'retail' },
       { material_category: 'tiles', material_name: 'Porcelain Tile', specification: '60x60cm', price_ghs: 150, unit: 'sqm', quantity_per_unit: 1, supplier_type: 'retail' },
@@ -753,7 +1079,7 @@ export class ConstructionCostService {
     // Insert data for each region
     for (const region of regions) {
       const regionMultiplier = ConstructionCostService.REGION_MULTIPLIERS[region];
-      
+
       for (const material of materials) {
         try {
           await this.createMaterialPrice({
@@ -799,6 +1125,143 @@ export class ConstructionCostService {
     });
 
     logger.info('Construction cost data seeded successfully');
+  }
+
+  // ============================================
+  // Valuation Configuration (Admin)
+  // ============================================
+
+  /**
+   * Get material category weights from database
+   */
+  async getMaterialWeights(): Promise<Array<{
+    category: string;
+    display_name: string;
+    weight: number;
+    updated_at: string;
+  }>> {
+    const result = await query<{
+      category: string;
+      percentage: number;
+      description: string;
+      updated_at: Date;
+    }>(
+      'SELECT category, percentage, description, updated_at FROM cost_breakdown ORDER BY display_order ASC'
+    );
+
+    return result.rows.map(row => ({
+      category: row.category,
+      display_name: row.description,
+      weight: parseFloat(row.percentage as any),
+      updated_at: row.updated_at.toISOString(),
+    }));
+  }
+
+  /**
+   * Update material category weight
+   */
+  async updateMaterialWeight(category: string, weight: number, updatedBy?: string): Promise<void> {
+    await query(
+      'UPDATE cost_breakdown SET percentage = $1, updated_at = NOW() WHERE category = $2',
+      [weight, category]
+    );
+
+    logger.info('Updated material weight', { category, weight, updatedBy });
+  }
+
+  /**
+   * Get regional location factors from database
+   */
+  async getRegionalFactors(): Promise<Array<{
+    region_code: string;
+    region_name: string;
+    location_factor: number;
+    updated_at: string;
+  }>> {
+    const result = await query<{
+      region: string;
+      multiplier: number;
+      description: string;
+      updated_at: Date;
+    }>(
+      'SELECT region, multiplier, description, updated_at FROM region_multipliers ORDER BY region ASC'
+    );
+
+    return result.rows.map(row => ({
+      region_code: row.region,
+      region_name: row.description || row.region,
+      location_factor: parseFloat(row.multiplier as any),
+      updated_at: row.updated_at.toISOString(),
+    }));
+  }
+
+  /**
+   * Get single regional factor
+   */
+  async getRegionalFactor(regionCode: string): Promise<{ name: string; factor: number } | null> {
+    const result = await query<{ description: string; multiplier: number }>(
+      'SELECT description, multiplier FROM region_multipliers WHERE region = $1',
+      [regionCode]
+    );
+
+    if (result.rows.length === 0) return null;
+
+    return {
+      name: result.rows[0].description,
+      factor: parseFloat(result.rows[0].multiplier as any),
+    };
+  }
+
+  /**
+   * Update regional location factor
+   */
+  async updateRegionalFactor(regionCode: string, locationFactor: number, updatedBy?: string): Promise<void> {
+    await query(
+      'UPDATE region_multipliers SET multiplier = $1, updated_at = NOW() WHERE region = $2',
+      [locationFactor, regionCode]
+    );
+
+    logger.info('Updated regional factor', { regionCode, locationFactor, updatedBy });
+  }
+
+  /**
+   * Get base construction costs per sqm from database
+   */
+  async getBaseCosts(): Promise<Array<{
+    quality_tier: string;
+    display_name: string;
+    base_cost_per_sqm: number;
+    base_year: number;
+    updated_at: string;
+  }>> {
+    const result = await query<{
+      quality_level: string;
+      cost_ghs: number;
+      notes: string;
+      updated_at: Date;
+    }>(
+      'SELECT quality_level, cost_ghs, notes, updated_at FROM base_costs_per_sqm WHERE property_type = \'residential\' ORDER BY cost_ghs ASC'
+    );
+
+    return result.rows.map(row => ({
+      quality_tier: row.quality_level,
+      display_name: row.notes || row.quality_level,
+      base_cost_per_sqm: parseFloat(row.cost_ghs as any),
+      base_year: new Date().getFullYear(), // Default to current year or fetch from dedicated column
+      updated_at: row.updated_at.toISOString(),
+    }));
+  }
+
+  /**
+   * Update base construction cost
+   */
+  async updateBaseCost(qualityTier: string, baseCostPerSqm: number, updatedBy?: string): Promise<void> {
+    await query(
+      'UPDATE base_costs_per_sqm SET cost_ghs = $1, updated_at = NOW() WHERE quality_level = $2 AND property_type = \'residential\'',
+      [baseCostPerSqm, qualityTier]
+    );
+
+    logger.info('Updated base cost', { qualityTier, baseCostPerSqm, updatedBy });
   }
 }
 

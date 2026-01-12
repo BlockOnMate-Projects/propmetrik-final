@@ -1,6 +1,6 @@
 """
 Cost Approach Service
-Pure cost approach valuation - all data via adapters
+Pure cost approach valuation - uses live Data Hub API for construction costs
 """
 
 from typing import Optional, Dict, List, Any
@@ -18,7 +18,23 @@ from ..schemas import (
     PropertyCondition
 )
 from ..adapters.data_hub_adapter import MarketDataAdapter
+from ..adapters.data_hub_api_adapter import get_data_hub_adapter, DataHubAPIAdapter
 from ..utils.ghana_validation import GhanaMarketValidator
+from .depreciation import (
+    PhysicalDepreciationCalculator,
+    FunctionalObsolescenceCalculator,
+    ExternalObsolescenceCalculator,
+    DepreciationReconciliationService,
+    PhysicalDepreciationResult,
+    FunctionalObsolescenceResult,
+    ExternalObsolescenceResult,
+    TotalDepreciationResult,
+    ConstructionType,
+    calculate_physical_depreciation,
+    calculate_functional_obsolescence,
+    calculate_external_obsolescence,
+    calculate_total_depreciation,
+)
 
 
 logger = logging.getLogger(__name__)
@@ -43,10 +59,12 @@ class CostComponents:
 
 
 class CostApproach:
-    """Cost approach valuation service"""
+    """Cost approach valuation service - uses live Data Hub API"""
     
-    def __init__(self, market_data_adapter: MarketDataAdapter):
+    def __init__(self, market_data_adapter: MarketDataAdapter = None):
         self.market_data = market_data_adapter
+        self.data_hub = get_data_hub_adapter()  # Live API adapter
+        self.reconciliation_service = DepreciationReconciliationService()
         
         # Default land value ratios by region (of total property value)
         self.DEFAULT_LAND_VALUE_RATIOS = {
@@ -92,12 +110,35 @@ class CostApproach:
         if not self._is_suitable_for_cost_approach(target_property):
             raise ValueError("Property not suitable for cost approach valuation")
         
-        # Get construction costs
-        construction_costs = await self.market_data.get_construction_costs(
-            target_property.location.region,
-            target_property.property_type,
-            valuation_date
+        # Get construction costs from live Data Hub API first
+        region_str = target_property.location.region.value if hasattr(target_property.location.region, 'value') else str(target_property.location.region)
+        construction_costs = await self.data_hub.get_construction_costs(
+            region=region_str,
+            property_type="residential",  # Map from property type
+            quality_level="standard"
         )
+        
+        if not construction_costs:
+            logger.warning("No construction cost data from API, trying database adapter")
+            # Fallback to database adapter if API fails
+            if self.market_data:
+                construction_costs = await self.market_data.get_construction_costs(
+                    target_property.location.region,
+                    target_property.property_type,
+                    valuation_date
+                )
+        
+        if not construction_costs:
+            logger.warning("No construction cost data available, using fallback estimates")
+            construction_costs = self._estimate_construction_costs(
+                target_property.location.region,
+                target_property.property_type
+            )
+        
+        # Get regional multiplier from live API
+        multiplier_data = await self.data_hub.get_regional_multiplier(region_str)
+        regional_multiplier = multiplier_data.get("value", 1.0)
+        multiplier_source = multiplier_data.get("source", "fallback")
         
         if not construction_costs:
             logger.warning("No construction cost data available, using estimates")
@@ -113,10 +154,7 @@ class CostApproach:
             valuation_date
         )
         
-        # Apply regional factors
-        regional_multiplier = GhanaMarketValidator.get_regional_multiplier(
-            target_property.location.region
-        )
+        # Apply regional multiplier (already fetched from live API)
         estimated_value = cost_components.total_estimated_value * regional_multiplier
         
         # Calculate confidence score
@@ -144,8 +182,10 @@ class CostApproach:
                 "total_depreciation": cost_components.depreciation,
                 "depreciated_construction_cost": cost_components.depreciated_construction_cost,
                 "regional_multiplier": regional_multiplier,
+                "regional_multiplier_source": multiplier_source,
                 "land_value_per_sqm": cost_components.land_value_per_sqm,
-                "construction_cost_per_sqm": cost_components.construction_cost_per_sqm
+                "construction_cost_per_sqm": cost_components.construction_cost_per_sqm,
+                "data_source": construction_costs.data_source if hasattr(construction_costs, 'data_source') else "calculated"
             },
             methodology_notes=methodology_notes,
             assumptions=assumptions,
@@ -410,51 +450,168 @@ class CostApproach:
         self,
         property: Property,
         construction_cost_new: float,
-        valuation_date: date
+        valuation_date: date,
+        location_data: Optional[Dict[str, Any]] = None,
+        market_data: Optional[Dict[str, Any]] = None,
     ) -> tuple[float, dict]:
-        """Calculate total depreciation (physical, functional, external)"""
+        """
+        Calculate total depreciation using RICS/GhIS compliant calculators.
         
-        # Physical depreciation (age and condition based)
-        physical_depreciation = self._calculate_physical_depreciation(
-            property, construction_cost_new, valuation_date
+        Integrates:
+        - PhysicalDepreciationCalculator: Modified Age-Life method with condition adjustment
+        - FunctionalObsolescenceCalculator: Auto-detection from property specifications
+        - ExternalObsolescenceCalculator: Environmental, locational, economic, regulatory factors
+        - DepreciationReconciliationService: Combines with age-based caps
+        
+        Returns tuple of (total_depreciation_amount, depreciation_details_dict)
+        """
+        
+        # 1. Physical Depreciation
+        physical_result = calculate_physical_depreciation(
+            property_data=property,
+            valuation_date=valuation_date,
+            construction_type=self._infer_construction_type(property),
         )
         
-        # Functional obsolescence (design, layout issues)
-        functional_obsolescence = self._calculate_functional_obsolescence(
-            property, construction_cost_new
+        # If calculator couldn't calculate (missing data), fall back
+        if not physical_result.auto_calculated:
+            physical_depreciation = self._calculate_physical_depreciation_legacy(
+                property, construction_cost_new, valuation_date
+            )
+            physical_rate = physical_depreciation / construction_cost_new if construction_cost_new > 0 else 0
+        else:
+            physical_rate = physical_result.depreciation_rate
+            physical_depreciation = construction_cost_new * physical_rate
+        
+        # 2. Functional Obsolescence
+        functional_result = calculate_functional_obsolescence(property)
+        
+        if not functional_result.auto_calculated:
+            functional_obsolescence = self._calculate_functional_obsolescence_legacy(
+                property, construction_cost_new
+            )
+            functional_rate = functional_obsolescence / construction_cost_new if construction_cost_new > 0 else 0
+        else:
+            functional_rate = functional_result.depreciation_rate
+            functional_obsolescence = construction_cost_new * functional_rate
+        
+        # 3. External Obsolescence - Use new ExternalObsolescenceCalculator
+        external_calculator = ExternalObsolescenceCalculator(data_hub_adapter=self.data_hub)
+        external_result = external_calculator.calculate(
+            property_data=property,
+            location_data=location_data or {},
+            market_data=market_data or {},
+        )
+        external_rate = external_result.depreciation_rate
+        external_obsolescence = construction_cost_new * external_rate
+        
+        # 4. Reconcile all components with age-based caps
+        property_age = 0
+        if property.specifications.year_built:
+            property_age = valuation_date.year - property.specifications.year_built
+        
+        reconciled = self.reconciliation_service.reconcile(
+            physical=physical_result,
+            functional=functional_result,
+            external=external_result,
+            property_age=property_age,
+            rcn=construction_cost_new,
         )
         
-        # External obsolescence (neighborhood, economic factors)
-        external_obsolescence = self._calculate_external_obsolescence(
-            property, construction_cost_new
-        )
-        
-        total_depreciation = physical_depreciation + functional_obsolescence + external_obsolescence
-        
-        # Cap depreciation at maximum for property type
-        max_depreciation = self.MAX_DEPRECIATION.get(
-            property.property_type, 0.80
-        ) * construction_cost_new
-        
-        total_depreciation = min(total_depreciation, max_depreciation)
+        # Get capped total depreciation
+        total_depreciation = reconciled.total_amount
         
         depreciation_details = {
-            'age_depreciation_pct': physical_depreciation / construction_cost_new if construction_cost_new > 0 else 0,
-            'condition_adjustment_pct': 0.0,  # Included in physical
-            'functional_obsolescence_pct': functional_obsolescence / construction_cost_new if construction_cost_new > 0 else 0,
-            'external_obsolescence_pct': external_obsolescence / construction_cost_new if construction_cost_new > 0 else 0
+            'age_depreciation_pct': reconciled.physical_rate,
+            'condition_adjustment_pct': 0.0,  # Included in physical via condition factor
+            'functional_obsolescence_pct': reconciled.functional_rate,
+            'external_obsolescence_pct': reconciled.external_rate,
+            # Include full audit trail from calculators
+            'physical_result': physical_result.to_dict() if physical_result.auto_calculated else {'error': 'fallback_used'},
+            'functional_result': functional_result.to_dict() if functional_result.auto_calculated else {'error': 'fallback_used'},
+            'external_result': external_result.to_dict(),
+            'method': 'integrated_depreciation_calculators_with_reconciliation',
+            'physical': {
+                'rate': reconciled.physical_rate,
+                'amount': reconciled.physical_amount,
+                'actual_age': physical_result.actual_age if physical_result.auto_calculated else None,
+                'effective_age': physical_result.effective_age if physical_result.auto_calculated else None,
+                'economic_life': physical_result.economic_life if physical_result.auto_calculated else None,
+                'remaining_life': physical_result.remaining_life if physical_result.auto_calculated else None,
+            },
+            'functional': {
+                'rate': reconciled.functional_rate,
+                'amount': reconciled.functional_amount,
+                'items_detected': len(functional_result.items_detected) if functional_result.auto_calculated else 0,
+                'curable_rate': functional_result.curable_rate if functional_result.auto_calculated else 0,
+                'incurable_rate': functional_result.incurable_rate if functional_result.auto_calculated else 0,
+            },
+            'external': {
+                'rate': reconciled.external_rate,
+                'amount': reconciled.external_amount,
+                'factors_detected': external_result.total_factors,
+                'category_breakdown': external_result.category_breakdown,
+            },
+            'total': {
+                'rate': reconciled.total_rate,
+                'percent': reconciled.total_percent,
+                'amount': reconciled.total_amount,
+                'was_capped': reconciled.was_capped,
+                'cap_applied': reconciled.cap_applied,
+            },
+            'reconciliation': {
+                'auto_calculated': reconciled.auto_calculated,
+                'confidence': reconciled.confidence,
+                'requires_review': reconciled.requires_review,
+                'methodology_notes': reconciled.methodology_notes,
+            },
         }
         
         return total_depreciation, depreciation_details
+        
+        return total_depreciation, depreciation_details
     
-    def _calculate_physical_depreciation(
+    def _infer_construction_type(self, property: Property) -> Optional[ConstructionType]:
+        """
+        Infer construction type from property characteristics.
+        Used for selecting appropriate economic life in physical depreciation.
+        """
+        # In Ghana, most residential is concrete block or sandcrete
+        # This could be enhanced with actual construction data when available
+        
+        if property.property_type in [
+            PropertyType.COMMERCIAL_OFFICE,
+            PropertyType.COMMERCIAL_RETAIL,
+        ]:
+            return ConstructionType.REINFORCED_CONCRETE
+        elif property.property_type in [
+            PropertyType.INDUSTRIAL_WAREHOUSE,
+            PropertyType.INDUSTRIAL_FACTORY,
+        ]:
+            return ConstructionType.STEEL_FRAME
+        elif property.property_type == PropertyType.RESIDENTIAL_VILLA:
+            return ConstructionType.REINFORCED_CONCRETE
+        elif property.property_type in [
+            PropertyType.RESIDENTIAL_HOUSE,
+            PropertyType.RESIDENTIAL_APARTMENT,
+            PropertyType.RESIDENTIAL_TOWNHOUSE,
+        ]:
+            # Default for residential in Ghana
+            return ConstructionType.SANDCRETE_BLOCK
+        
+        # Default fallback
+        return ConstructionType.CONCRETE_BLOCK
+    
+    def _calculate_physical_depreciation_legacy(
         self,
         property: Property,
         construction_cost_new: float,
         valuation_date: date
     ) -> float:
-        """Calculate physical depreciation based on age and condition"""
-        
+        """
+        Legacy physical depreciation calculation - used as fallback
+        when new calculator cannot compute due to missing data.
+        """
         if not property.specifications.year_built:
             # Assume 10 years if age unknown
             age = 10
@@ -493,12 +650,15 @@ class CostApproach:
         
         return construction_cost_new * total_depreciation_rate
     
-    def _calculate_functional_obsolescence(
+    def _calculate_functional_obsolescence_legacy(
         self,
         property: Property,
         construction_cost_new: float
     ) -> float:
-        """Calculate functional obsolescence"""
+        """
+        Legacy functional obsolescence calculation - used as fallback
+        when new calculator cannot compute.
+        """
         
         obsolescence_rate = 0.0
         

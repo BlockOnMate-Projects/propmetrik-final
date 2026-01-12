@@ -398,3 +398,28 @@ export function mapPropertyRegionToConstructionCluster(region: RegionCode): Regi
   // but for now, we'll just return the region as they are already clusters/main regions
   return region;
 }
+
+/**
+ * Maps short region codes (GAR, ASH, etc.) from valuation types to Data Hub RegionCode format
+ */
+export function mapShortRegionToDataHub(shortCode: string): RegionCode {
+  const mapping: Record<string, RegionCode> = {
+    'GAR': 'greater_accra',
+    'ASH': 'ashanti',
+    'WES': 'western',
+    'CEN': 'central',
+    'EAS': 'eastern',
+    'VOL': 'volta',
+    'NOR': 'northern',
+    'UPE': 'upper_east',
+    'UPW': 'upper_west',
+    'BON': 'bono',
+    'AHA': 'ahafo',
+    'BOE': 'bono_east',
+    'OTI': 'oti',
+    'WEN': 'western_north',
+    'NEE': 'north_east',
+    'SAV': 'savannah',
+  };
+  return mapping[shortCode] || 'greater_accra'; // Default to Greater Accra if unknown
+}

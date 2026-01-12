@@ -40,7 +40,11 @@ from pydantic import BaseModel, Field
 try:
     from .config import settings
 except ImportError:
-    from config import settings
+    import sys
+    import os
+    # Add parent directory to path for standalone execution
+    sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+    from app.config import settings
 
 # Configure logging
 logging.basicConfig(
@@ -221,6 +225,105 @@ class MarketConditionsRequest(BaseModel):
     region: str
     property_type: Optional[str] = None
     as_of_date: Optional[str] = None
+
+
+# ============================================================================
+# LAND VALUE MODELS
+# ============================================================================
+
+class LandValueMethodDetail(BaseModel):
+    """Details for a single land value method"""
+    value: float
+    value_per_sqm: float
+    confidence: float
+    weight: float
+    weighted_contribution: float
+    method_specific: Dict[str, Any] = {}
+
+
+class LandComparableSummary(BaseModel):
+    """Summary of a comparable land sale"""
+    id: str
+    distance_km: float
+    sale_date: str
+    sale_price_per_sqm: float
+    adjusted_price_per_sqm: float
+    similarity_score: float
+    adjustment_factor: float
+
+
+class LandValueRequest(BaseModel):
+    """
+    Request for land value calculation
+    
+    If user_entered_value is provided, it is a 100% OVERRIDE
+    that bypasses the valuation methods entirely.
+    """
+    property: PropertyInput
+    valuation_id: str
+    valuation_date: Optional[str] = None
+    user_entered_value: Optional[float] = None
+    user_justification: Optional[str] = None
+    force_recalculate: bool = False
+
+
+class LandValueResponse(BaseModel):
+    """
+    Response from land value calculation
+    
+    Weight Distribution (per GhIS/RICS):
+        | Comparable Strength | Residual | Comparable |
+        |---------------------|----------|------------|
+        | Weak                | 70%      | 30%        |
+        | Balanced            | 50%      | 50%        |
+        | Strong              | 30%      | 70%        |
+    """
+    success: bool
+    final_land_value: float
+    final_land_value_per_sqm: float
+    land_area_sqm: float
+    confidence_score: float
+    primary_method: str
+    
+    # User override info
+    is_user_override: bool = False
+    user_justification: Optional[str] = None
+    
+    # Method details (only present if not user override)
+    methods: Optional[Dict[str, LandValueMethodDetail]] = None
+    
+    # Comparable details (if comparable method used)
+    comparables_summary: Optional[Dict[str, Any]] = None
+    
+    # Reconciliation details
+    reconciliation: Optional[Dict[str, Any]] = None
+    
+    # Comparable strength for weighting
+    comparable_strength: str = "balanced"
+    
+    # Disclosure (RICS compliance)
+    disclosure_required: bool = False
+    disclosure_text: str = ""
+    
+    # Metadata
+    cached: bool = False
+    error: Optional[str] = None
+
+
+class LandComparablesRequest(BaseModel):
+    """Request for land comparables only"""
+    property: PropertyInput
+    options: Optional[Dict[str, Any]] = None
+
+
+class LandComparablesResponse(BaseModel):
+    """Response with land comparables only"""
+    success: bool
+    comparables: List[LandComparableSummary]
+    strength: str  # 'weak', 'balanced', 'strong'
+    count: int
+    search_radius_km: float
+    error: Optional[str] = None
 
 
 # ============================================================================
@@ -799,6 +902,317 @@ async def calculate_drc_method(request: ValuationMethodRequest):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+# ============================================================================
+# LAND VALUE ENDPOINTS (2-Method Reconciliation: Residual + Comparable)
+# ============================================================================
+
+@app.post("/api/v1/methods/land-value", response_model=LandValueResponse)
+async def calculate_land_value(request: LandValueRequest):
+    """
+    Calculate Reconciled Land Value
+    
+    LAND VALUE can come from:
+        A) Residual Land Value (GDV-based) - valuation method
+        B) Comparable-Adjusted Land Value - valuation method  
+        C) User-Entered Land Price - 100% OVERRIDE (NOT a valuation method)
+    
+    Only A and B are valuation-derived and reconciled via weighted average.
+    User-entered (C) is a 100% OVERRIDE that bypasses reconciliation.
+    
+    Weight Distribution (per GhIS/RICS):
+        | Comparable Strength | Residual | Comparable |
+        |---------------------|----------|------------|
+        | Weak                | 70%      | 30%        |
+        | Balanced            | 50%      | 50%        |
+        | Strong              | 30%      | 70%        |
+    """
+    start_time = datetime.now()
+    prop = request.property
+    
+    try:
+        # Get land area
+        land_sqm = prop.land_area_sqm or 0
+        if land_sqm <= 0:
+            return LandValueResponse(
+                success=False,
+                final_land_value=0,
+                final_land_value_per_sqm=0,
+                land_area_sqm=0,
+                confidence_score=0,
+                primary_method="none",
+                error="Property has no land area specified"
+            )
+        
+        # Check for user override - 100% bypass
+        if request.user_entered_value is not None and request.user_entered_value > 0:
+            value_per_sqm = request.user_entered_value / land_sqm
+            return LandValueResponse(
+                success=True,
+                final_land_value=round(request.user_entered_value, 2),
+                final_land_value_per_sqm=round(value_per_sqm, 2),
+                land_area_sqm=land_sqm,
+                confidence_score=1.0,  # User knows what they're doing
+                primary_method="user_entered",
+                is_user_override=True,
+                user_justification=request.user_justification or "User-provided land value",
+                comparable_strength="N/A",
+                disclosure_required=True,
+                disclosure_text=(
+                    f"Land value of GHS {request.user_entered_value:,.0f} provided by valuer. "
+                    f"Justification: {request.user_justification or 'Not provided'}. "
+                    "This user-entered value overrides automated valuation methods."
+                ),
+                cached=False
+            )
+        
+        region = _normalize_region(prop.region)
+        
+        # ========================================
+        # METHOD A: Residual Land Value (GDV-based)
+        # ========================================
+        
+        # Assume typical residential development
+        buildable_sqm = land_sqm * 0.40  # 40% plot coverage
+        floors = 2  # Typical 2-story
+        total_buildable = buildable_sqm * floors
+        
+        # Get construction costs for region
+        costs = CONSTRUCTION_COSTS.get(region, CONSTRUCTION_COSTS["greater_accra"])
+        sale_price_per_sqm = costs["standard"] * 1.5  # Completed value
+        
+        # Gross Development Value (GDV)
+        gdv = total_buildable * sale_price_per_sqm
+        
+        # Development costs
+        construction_cost = total_buildable * costs["standard"]
+        professional_fees = construction_cost * 0.10
+        marketing_costs = gdv * 0.03
+        finance_costs = construction_cost * 0.08
+        developer_profit = gdv * 0.20
+        
+        total_costs = construction_cost + professional_fees + marketing_costs + finance_costs + developer_profit
+        residual_land_value = max(0, gdv - total_costs)
+        residual_per_sqm = residual_land_value / land_sqm if land_sqm > 0 else 0
+        residual_confidence = 0.62  # Moderate confidence for residual
+        
+        # ========================================
+        # METHOD B: Comparable Land Sales
+        # ========================================
+        
+        # Get land values for region (simulated comparable analysis)
+        land_values = LAND_VALUES.get(region, LAND_VALUES["greater_accra"])
+        
+        # Determine land grade based on property characteristics
+        if prop.latitude and prop.longitude:
+            # Simplified location scoring (would use real geospatial analysis)
+            land_grade = "standard"
+        else:
+            land_grade = "emerging"  # Unknown location = conservative
+        
+        comparable_per_sqm = land_values[land_grade]
+        comparable_land_value = comparable_per_sqm * land_sqm
+        
+        # Simulate comparable strength (would come from actual comparable search)
+        # In production, this would be based on actual comparable count and quality
+        comparable_count = 5  # Simulated
+        if comparable_count >= 8:
+            comparable_strength = "strong"
+            comparable_confidence = 0.85
+        elif comparable_count >= 4:
+            comparable_strength = "balanced"
+            comparable_confidence = 0.72
+        else:
+            comparable_strength = "weak"
+            comparable_confidence = 0.55
+        
+        # ========================================
+        # RECONCILIATION: Weighted Average
+        # ========================================
+        
+        # Weight tables per GhIS/RICS guidance
+        weight_table = {
+            "weak": {"residual": 0.70, "comparable": 0.30},
+            "balanced": {"residual": 0.50, "comparable": 0.50},
+            "strong": {"residual": 0.30, "comparable": 0.70},
+        }
+        
+        weights = weight_table[comparable_strength]
+        
+        # Calculate weighted values
+        residual_weighted = residual_land_value * weights["residual"]
+        comparable_weighted = comparable_land_value * weights["comparable"]
+        
+        final_land_value = residual_weighted + comparable_weighted
+        final_per_sqm = final_land_value / land_sqm if land_sqm > 0 else 0
+        
+        # Combined confidence
+        combined_confidence = (
+            residual_confidence * weights["residual"] +
+            comparable_confidence * weights["comparable"]
+        )
+        
+        # Determine primary method
+        primary_method = "comparable" if weights["comparable"] >= weights["residual"] else "residual"
+        
+        # Check for value divergence
+        if residual_land_value > 0 and comparable_land_value > 0:
+            spread = abs(residual_land_value - comparable_land_value) / max(residual_land_value, comparable_land_value)
+            disclosure_required = spread > 0.25  # >25% divergence
+        else:
+            spread = 0
+            disclosure_required = False
+        
+        # Build method details
+        methods = {
+            "residual": LandValueMethodDetail(
+                value=round(residual_land_value, 2),
+                value_per_sqm=round(residual_per_sqm, 2),
+                confidence=residual_confidence,
+                weight=weights["residual"],
+                weighted_contribution=round(residual_weighted, 2),
+                method_specific={
+                    "gdv": round(gdv, 2),
+                    "total_costs": round(total_costs, 2),
+                    "total_buildable_sqm": round(total_buildable, 2),
+                    "developer_profit_pct": 0.20,
+                }
+            ),
+            "comparable": LandValueMethodDetail(
+                value=round(comparable_land_value, 2),
+                value_per_sqm=round(comparable_per_sqm, 2),
+                confidence=comparable_confidence,
+                weight=weights["comparable"],
+                weighted_contribution=round(comparable_weighted, 2),
+                method_specific={
+                    "comparable_count": comparable_count,
+                    "land_grade": land_grade,
+                    "search_radius_km": 5.0,
+                }
+            ),
+        }
+        
+        # Build disclosure text
+        disclosure_parts = []
+        if disclosure_required:
+            disclosure_parts.append(
+                f"Note: Land value methods showed {spread*100:.0f}% divergence. "
+                f"Residual: GHS {residual_land_value:,.0f}, Comparable: GHS {comparable_land_value:,.0f}."
+            )
+        disclosure_parts.append(
+            f"Land value of GHS {final_land_value:,.0f} derived from {comparable_strength} comparable evidence "
+            f"({weights['residual']*100:.0f}% Residual / {weights['comparable']*100:.0f}% Comparable weighting)."
+        )
+        
+        calc_time = (datetime.now() - start_time).total_seconds() * 1000
+        
+        return LandValueResponse(
+            success=True,
+            final_land_value=round(final_land_value, 2),
+            final_land_value_per_sqm=round(final_per_sqm, 2),
+            land_area_sqm=land_sqm,
+            confidence_score=round(combined_confidence, 4),
+            primary_method=primary_method,
+            is_user_override=False,
+            methods=methods,
+            reconciliation={
+                "method_weights": weights,
+                "weight_justification": f"Based on {comparable_strength} comparable evidence strength",
+                "value_spread_pct": round(spread * 100, 1),
+                "outlier_flags": ["high_divergence"] if disclosure_required else [],
+            },
+            comparable_strength=comparable_strength,
+            disclosure_required=disclosure_required,
+            disclosure_text=" ".join(disclosure_parts),
+            cached=False
+        )
+        
+    except Exception as e:
+        logger.error(f"Land value calculation failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/v1/methods/land-value/comparables", response_model=LandComparablesResponse)
+async def get_land_comparables(request: LandComparablesRequest):
+    """
+    Get land comparables without full reconciliation.
+    
+    Useful for displaying comparables to the user before calculating land value.
+    Returns comparable sales with similarity scores and adjustments.
+    """
+    prop = request.property
+    options = request.options or {}
+    
+    try:
+        region = _normalize_region(prop.region)
+        land_sqm = prop.land_area_sqm or 500
+        max_distance = options.get("max_distance_km", 10.0)
+        max_results = options.get("max_results", 10)
+        
+        # Simulated comparables (in production, would come from database)
+        # This provides structure for when real data is available
+        land_values = LAND_VALUES.get(region, LAND_VALUES["greater_accra"])
+        
+        # Generate synthetic comparables for demo
+        # In production, this would query actual land sales
+        comparables = []
+        base_per_sqm = land_values["standard"]
+        
+        for i in range(min(6, max_results)):
+            distance = 1.0 + i * 1.5  # 1km, 2.5km, 4km, etc.
+            if distance > max_distance:
+                break
+                
+            # Vary the price slightly
+            variation = 1.0 + ((i % 3) - 1) * 0.15  # -15%, 0%, +15%
+            sale_price = base_per_sqm * variation
+            
+            # Calculate adjustment
+            size_ratio = 500 / land_sqm  # Compare to standard 500sqm
+            distance_adj = 1.0 - (distance * 0.02)  # 2% per km
+            adjustment_factor = size_ratio * distance_adj
+            adjusted_price = sale_price * adjustment_factor
+            
+            similarity = max(0.4, 1.0 - (distance * 0.05) - abs(1.0 - size_ratio) * 0.1)
+            
+            comparables.append(LandComparableSummary(
+                id=f"land-comp-{region}-{i+1}",
+                distance_km=round(distance, 1),
+                sale_date=f"2024-{(12-i):02d}-15",  # Recent dates
+                sale_price_per_sqm=round(sale_price, 2),
+                adjusted_price_per_sqm=round(adjusted_price, 2),
+                similarity_score=round(similarity, 3),
+                adjustment_factor=round(adjustment_factor, 3),
+            ))
+        
+        # Determine strength
+        comp_count = len(comparables)
+        if comp_count >= 5:
+            strength = "strong"
+        elif comp_count >= 3:
+            strength = "balanced"
+        else:
+            strength = "weak"
+        
+        return LandComparablesResponse(
+            success=True,
+            comparables=comparables,
+            strength=strength,
+            count=comp_count,
+            search_radius_km=max_distance,
+        )
+        
+    except Exception as e:
+        logger.error(f"Land comparables lookup failed: {e}")
+        return LandComparablesResponse(
+            success=False,
+            comparables=[],
+            strength="weak",
+            count=0,
+            search_radius_km=10.0,
+            error=str(e)
+        )
+
+
 @app.post("/api/v1/methods/calculate-all", response_model=MultiMethodResponse)
 async def calculate_all_methods(request: MultiMethodRequest):
     """
@@ -1276,6 +1690,526 @@ def _calculate_hybrid_value(results: Dict[str, ValuationMethodResponse]) -> tupl
     }
     
     return round(hybrid_value, 2), value_range, primary_method, round(overall_confidence, 2)
+
+
+# ============================================================================
+# DEPRECIATION API ENDPOINTS (D8)
+# ============================================================================
+
+class DepreciationCalculateRequest(BaseModel):
+    """Request for depreciation calculation"""
+    property: PropertyInput
+    include_external: bool = True
+    location_data: Optional[Dict[str, Any]] = None
+    market_data: Optional[Dict[str, Any]] = None
+
+
+class DepreciationOverrideRequest(BaseModel):
+    """Request to submit a depreciation override"""
+    valuation_id: str
+    component: str = Field(..., pattern="^(physical|functional|external)$")
+    auto_calculated_rate: float = Field(..., ge=0, le=1)
+    override_rate: float = Field(..., ge=0, le=1)
+    justification: str = Field(..., min_length=50)
+    evidence_type: str = Field(..., pattern="^(inspection|photo|market_data|expert_opinion|comparable_analysis|engineering_report|insurance_assessment)$")
+    evidence_reference: Optional[str] = None
+    valuer_id: Optional[str] = None
+
+
+class DepreciationOverrideApprovalRequest(BaseModel):
+    """Request to approve a depreciation override"""
+    override_id: str
+    approver_id: str
+    approved: bool
+    comments: Optional[str] = None
+
+
+class DepreciationComponentResult(BaseModel):
+    """Result for a single depreciation component"""
+    depreciation_rate: float
+    depreciation_percent: float
+    auto_calculated: bool
+    confidence: float
+    notes: List[str]
+    details: Dict[str, Any]
+
+
+class DepreciationCalculateResponse(BaseModel):
+    """Response from depreciation calculation"""
+    success: bool
+    property_id: str
+    physical: DepreciationComponentResult
+    functional: DepreciationComponentResult
+    external: Optional[DepreciationComponentResult] = None
+    total: Dict[str, Any]
+    reconciliation: Dict[str, Any]
+    rcn: float
+    calculation_time_ms: float
+
+
+class DepreciationOverrideResponse(BaseModel):
+    """Response from override submission"""
+    success: bool
+    override_id: str
+    component: str
+    variance_percent: float
+    requires_approval: bool
+    is_valid: bool
+    validation_errors: List[str]
+    message: str
+
+
+@app.post("/api/v1/depreciation/calculate", response_model=DepreciationCalculateResponse)
+async def calculate_depreciation(request: DepreciationCalculateRequest):
+    """
+    Calculate Depreciation (D8)
+    
+    Calculates all depreciation components for a property:
+    - Physical: Modified Age-Life method with condition adjustment
+    - Functional: Auto-detected from property specifications
+    - External: Environmental, locational, economic, regulatory factors
+    
+    Uses RICS/GhIS compliant methodology with age-based caps.
+    """
+    from .services import (
+        calculate_physical_depreciation,
+        calculate_functional_obsolescence,
+        calculate_external_obsolescence,
+        DepreciationReconciliationService,
+    )
+    from .schemas.property import (
+        Property, 
+        PropertyType, 
+        PropertyCondition,
+        PropertyLocation,
+        PropertySpecifications,
+        PropertyDataQuality,
+        GhanaRegion,
+    )
+    
+    start_time = datetime.now()
+    prop = request.property
+    
+    try:
+        # Map condition string to enum
+        condition_map = {
+            "new": PropertyCondition.EXCELLENT,  # NEW not in enum, use EXCELLENT
+            "excellent": PropertyCondition.EXCELLENT,
+            "good": PropertyCondition.GOOD,
+            "fair": PropertyCondition.FAIR,
+            "poor": PropertyCondition.POOR,
+            "very_poor": PropertyCondition.RENOVATION_NEEDED,  # VERY_POOR not in enum
+            "renovation_needed": PropertyCondition.RENOVATION_NEEDED,
+        }
+        condition = condition_map.get(
+            (prop.condition or "good").lower().replace(" ", "_"),
+            PropertyCondition.GOOD
+        )
+        
+        # Map property type string to enum
+        property_type_map = {
+            "residential_house": PropertyType.RESIDENTIAL_HOUSE,
+            "residential_apartment": PropertyType.RESIDENTIAL_APARTMENT,
+            "residential_townhouse": PropertyType.RESIDENTIAL_TOWNHOUSE,
+            "residential_villa": PropertyType.RESIDENTIAL_VILLA,
+            "commercial_office": PropertyType.COMMERCIAL_OFFICE,
+            "commercial_retail": PropertyType.COMMERCIAL_RETAIL,
+            "industrial_warehouse": PropertyType.INDUSTRIAL_WAREHOUSE,
+        }
+        property_type = property_type_map.get(
+            (prop.property_type or "residential_house").lower().replace(" ", "_"),
+            PropertyType.RESIDENTIAL_HOUSE
+        )
+        
+        # Map region string to enum (cluster-based regions)
+        region_map = {
+            "greater_accra": GhanaRegion.GREATER_ACCRA,
+            "accra": GhanaRegion.GREATER_ACCRA,
+            "tema": GhanaRegion.GREATER_ACCRA,
+            "ashanti": GhanaRegion.KUMASI_METRO,
+            "kumasi": GhanaRegion.KUMASI_METRO,
+            "kumasi_metro": GhanaRegion.KUMASI_METRO,
+            "western": GhanaRegion.WESTERN_CLUSTER,
+            "western_cluster": GhanaRegion.WESTERN_CLUSTER,
+            "central": GhanaRegion.WESTERN_CLUSTER,
+            "eastern": GhanaRegion.EASTERN,
+            "volta": GhanaRegion.EASTERN,
+            "northern": GhanaRegion.NORTHERN_CLUSTER,
+            "northern_cluster": GhanaRegion.NORTHERN_CLUSTER,
+            "upper_east": GhanaRegion.NORTHERN_CLUSTER,
+            "upper_west": GhanaRegion.NORTHERN_CLUSTER,
+            "brong_ahafo": GhanaRegion.KUMASI_METRO,
+            "bono": GhanaRegion.KUMASI_METRO,
+        }
+        region = region_map.get(
+            (prop.region or "greater_accra").lower().replace(" ", "_"),
+            GhanaRegion.GREATER_ACCRA
+        )
+        
+        year_built = prop.year_built or datetime.now().year - 15
+        building_sqm = prop.building_size_sqm or 150
+        
+        # Build Property schema object
+        property_schema = Property(
+            id=prop.id,
+            property_type=property_type,
+            location=PropertyLocation(
+                region=region,
+                district=getattr(prop, 'district', None) or "Unknown",
+                neighborhood=getattr(prop, 'neighborhood', None) or "Unknown",
+                address_raw=prop.address_street or "Unknown",
+                address_city=getattr(prop, 'city', None) or "Accra",
+            ),
+            specifications=PropertySpecifications(
+                year_built=year_built,
+                condition=condition,
+                bedrooms=prop.bedrooms,
+                bathrooms=prop.bathrooms,
+                parking_spaces=getattr(prop, 'parking_spaces', None),
+                has_air_conditioning=getattr(prop, 'has_ac', None),
+                has_generator=getattr(prop, 'has_generator', None),
+                has_borehole=getattr(prop, 'has_borehole', None),
+                land_size_sqm=prop.land_area_sqm or 300,
+                built_area_sqm=building_sqm,
+            ),
+            data_quality=PropertyDataQuality(
+                data_quality_score=0.7,
+                source_reliability_score=0.7,
+                completeness_score=0.7,
+                accuracy_score=0.7,
+                freshness_score=0.7,
+                sources=["api_input"],
+            ),
+        )
+        
+        # Calculate Physical Depreciation using convenience function
+        physical_result = calculate_physical_depreciation(
+            property_data=property_schema,
+            valuation_date=date.today(),
+            construction_type=None,  # Let it infer from property type
+            last_renovation_year=getattr(prop, 'last_renovation', None),
+        )
+        
+        # Calculate Functional Obsolescence
+        functional_result = calculate_functional_obsolescence(property_schema)
+        
+        # Calculate External Obsolescence (if requested)
+        external_result = None
+        if request.include_external:
+            external_result = calculate_external_obsolescence(
+                property_data=property_schema,
+                location_data=request.location_data or {},
+                market_data=request.market_data or {},
+            )
+        
+        # Estimate RCN for context
+        norm_region = _normalize_region(prop.region)
+        costs = CONSTRUCTION_COSTS.get(norm_region, CONSTRUCTION_COSTS["greater_accra"])
+        cost_per_sqm = costs.get("standard", 8500)
+        rcn = building_sqm * cost_per_sqm
+        
+        # Reconcile with age-based caps
+        reconciliation = DepreciationReconciliationService()
+        property_age = datetime.now().year - year_built
+        
+        # Create a minimal external result if not calculated
+        if external_result is None:
+            from .services.depreciation import ExternalObsolescenceResult
+            external_result = ExternalObsolescenceResult(
+                depreciation_rate=0.0,
+                depreciation_percent=0.0,
+                factors_detected=[],
+                category_breakdown={},
+                total_factors=0,
+                auto_calculated=False,
+                confidence=0.0,
+                requires_review=False,
+                data_sources_used=[],
+                notes=["External obsolescence not calculated"],
+            )
+        
+        total_result = reconciliation.reconcile(
+            physical=physical_result,
+            functional=functional_result,
+            external=external_result,
+            property_age=property_age,
+            rcn=rcn,
+        )
+        
+        calc_time = (datetime.now() - start_time).total_seconds() * 1000
+        
+        # Build response
+        response = DepreciationCalculateResponse(
+            success=True,
+            property_id=prop.id,
+            physical=DepreciationComponentResult(
+                depreciation_rate=physical_result.depreciation_rate,
+                depreciation_percent=physical_result.depreciation_percent,
+                auto_calculated=physical_result.auto_calculated,
+                confidence=physical_result.confidence,
+                notes=physical_result.notes,
+                details={
+                    "actual_age": physical_result.actual_age,
+                    "effective_age": physical_result.effective_age,
+                    "economic_life": physical_result.economic_life,
+                    "remaining_life": physical_result.remaining_life,
+                    "method": physical_result.method,
+                    "inputs_used": physical_result.inputs_used,
+                },
+            ),
+            functional=DepreciationComponentResult(
+                depreciation_rate=functional_result.depreciation_rate,
+                depreciation_percent=functional_result.depreciation_percent,
+                auto_calculated=functional_result.auto_calculated,
+                confidence=functional_result.confidence,
+                notes=functional_result.notes,
+                details={
+                    "items_detected": [
+                        {
+                            "item_key": item.item_key,
+                            "type": item.type.value,
+                            "curable": item.curable,
+                            "description": item.description,
+                            "rate": item.rate,
+                            "rate_range": list(item.rate_range),
+                        }
+                        for item in functional_result.items_detected
+                    ],
+                    "total_items": functional_result.total_items,
+                    "curable_rate": functional_result.curable_rate,
+                    "incurable_rate": functional_result.incurable_rate,
+                    "requires_review": functional_result.requires_review,
+                },
+            ),
+            external=DepreciationComponentResult(
+                depreciation_rate=external_result.depreciation_rate,
+                depreciation_percent=external_result.depreciation_percent,
+                auto_calculated=external_result.auto_calculated,
+                confidence=external_result.confidence,
+                notes=external_result.notes,
+                details={
+                    "factors_detected": [
+                        {
+                            "factor_key": f.factor_key,
+                            "category": f.category.value,
+                            "description": f.description,
+                            "rate": f.rate,
+                            "rate_range": list(f.rate_range),
+                            "data_source": f.data_source,
+                        }
+                        for f in external_result.factors_detected
+                    ],
+                    "total_factors": external_result.total_factors,
+                    "category_breakdown": external_result.category_breakdown,
+                    "requires_review": external_result.requires_review,
+                },
+            ) if external_result else None,
+            total={
+                "rate": total_result.total_rate,
+                "percent": total_result.total_percent,
+                "was_capped": total_result.was_capped,
+                "cap_applied": total_result.cap_applied,
+                "components": {
+                    "physical": {
+                        "rate": total_result.physical_rate,
+                        "amount": total_result.physical_amount,
+                    },
+                    "functional": {
+                        "rate": total_result.functional_rate,
+                        "amount": total_result.functional_amount,
+                    },
+                    "external": {
+                        "rate": total_result.external_rate,
+                        "amount": total_result.external_amount,
+                    },
+                },
+                "methodology_notes": total_result.methodology_notes,
+            },
+            reconciliation={
+                "auto_calculated": True,
+                "confidence": min(
+                    physical_result.confidence,
+                    functional_result.confidence,
+                    external_result.confidence if external_result else 1.0,
+                ),
+                "requires_review": any([
+                    functional_result.requires_review,
+                    external_result.requires_review if external_result else False,
+                ]),
+                "methodology_notes": total_result.methodology_notes,
+            },
+            rcn=round(rcn, 2),
+            calculation_time_ms=round(calc_time, 2),
+        )
+        
+        return response
+        
+    except Exception as e:
+        logger.error(f"Depreciation calculation failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/v1/depreciation/override", response_model=DepreciationOverrideResponse)
+async def submit_depreciation_override(request: DepreciationOverrideRequest):
+    """
+    Submit Depreciation Override (D8)
+    
+    Allows valuers to override auto-calculated depreciation values.
+    Per GhIS/RICS standards:
+    - Minimum 50-character justification required
+    - Evidence must be provided (except expert opinion)
+    - Variance > 20% requires supervisor approval
+    """
+    from .services import (
+        EvidenceType as DepEvidenceType,
+        DepreciationComponent as DepComponent,
+        DepreciationOverride as DepOverride,
+        validate_override,
+    )
+    
+    try:
+        # Map string to enum
+        component_map = {
+            "physical": DepComponent.PHYSICAL,
+            "functional": DepComponent.FUNCTIONAL,
+            "external": DepComponent.EXTERNAL,
+        }
+        evidence_map = {
+            "inspection": DepEvidenceType.INSPECTION,
+            "photo": DepEvidenceType.PHOTO,
+            "market_data": DepEvidenceType.MARKET_DATA,
+            "expert_opinion": DepEvidenceType.EXPERT_OPINION,
+            "comparable_analysis": DepEvidenceType.COMPARABLE_ANALYSIS,
+            "engineering_report": DepEvidenceType.ENGINEERING_REPORT,
+            "insurance_assessment": DepEvidenceType.INSURANCE_ASSESSMENT,
+        }
+        
+        component = component_map[request.component]
+        evidence_type = evidence_map[request.evidence_type]
+        
+        # Create override object
+        override = DepOverride(
+            component=component,
+            auto_calculated_rate=request.auto_calculated_rate,
+            override_rate=request.override_rate,
+            justification=request.justification,
+            evidence_type=evidence_type,
+            evidence_reference=request.evidence_reference,
+            valuer_id=request.valuer_id,
+        )
+        
+        # Validate
+        is_valid, errors = override.is_valid()
+        requires_approval = override.requires_approval()
+        
+        # Generate override ID (in production, this would be stored in DB)
+        import uuid
+        override_id = str(uuid.uuid4())
+        
+        # Build message
+        if is_valid:
+            if requires_approval:
+                message = (
+                    f"Override submitted for approval. Variance of {override.variance_percent:.1f}% "
+                    f"exceeds {override.APPROVAL_THRESHOLD_PERCENT}% threshold."
+                )
+            else:
+                message = "Override applied successfully."
+        else:
+            message = "Override validation failed. Please fix errors and resubmit."
+        
+        return DepreciationOverrideResponse(
+            success=is_valid,
+            override_id=override_id,
+            component=request.component,
+            variance_percent=round(override.variance_percent, 2),
+            requires_approval=requires_approval,
+            is_valid=is_valid,
+            validation_errors=errors,
+            message=message,
+        )
+        
+    except Exception as e:
+        logger.error(f"Override submission failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/v1/depreciation/{valuation_id}")
+async def get_depreciation_details(
+    valuation_id: str = Path(..., description="Valuation ID"),
+    include_overrides: bool = Query(True, description="Include override history"),
+):
+    """
+    Get Depreciation Details (D8)
+    
+    Retrieves stored depreciation calculation and any overrides
+    for a specific valuation.
+    
+    Note: In production, this would fetch from database.
+    Currently returns a sample structure.
+    """
+    # In production, fetch from database
+    # For now, return a sample structure showing expected format
+    
+    return {
+        "success": True,
+        "valuation_id": valuation_id,
+        "depreciation": {
+            "physical": {
+                "auto_calculated_rate": 0.15,
+                "override_rate": None,
+                "effective_rate": 0.15,
+                "has_override": False,
+            },
+            "functional": {
+                "auto_calculated_rate": 0.05,
+                "override_rate": None,
+                "effective_rate": 0.05,
+                "has_override": False,
+            },
+            "external": {
+                "auto_calculated_rate": 0.02,
+                "override_rate": None,
+                "effective_rate": 0.02,
+                "has_override": False,
+            },
+            "total_rate": 0.22,
+            "total_percent": 22.0,
+        },
+        "overrides": [] if include_overrides else None,
+        "message": "Fetch from database in production implementation",
+    }
+
+
+@app.post("/api/v1/depreciation/override/{override_id}/approve")
+async def approve_depreciation_override(
+    override_id: str = Path(..., description="Override ID"),
+    request: DepreciationOverrideApprovalRequest = None,
+):
+    """
+    Approve/Reject Depreciation Override (D8)
+    
+    Supervisors can approve or reject overrides that exceed
+    the 20% variance threshold.
+    
+    Note: In production, this would update database records.
+    """
+    if request is None:
+        raise HTTPException(status_code=400, detail="Request body required")
+    
+    return {
+        "success": True,
+        "override_id": override_id,
+        "approved": request.approved,
+        "approved_by": request.approver_id,
+        "approval_date": date.today().isoformat(),
+        "comments": request.comments,
+        "message": (
+            "Override approved and applied to valuation."
+            if request.approved
+            else "Override rejected. Original auto-calculated value retained."
+        ),
+    }
 
 
 # ============================================================================

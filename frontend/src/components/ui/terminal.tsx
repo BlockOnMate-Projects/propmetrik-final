@@ -373,15 +373,21 @@ export function Sparkline({
   showDots = false
 }: SparklineProps) {
   if (data.length < 2) return null;
+  
+  // Filter out any NaN or Infinity values
+  const validData = data.filter(d => Number.isFinite(d));
+  if (validData.length < 2) return null;
 
-  const min = Math.min(...data);
-  const max = Math.max(...data);
-  const range = max - min || 1;
+  const min = Math.min(...validData);
+  const max = Math.max(...validData);
+  const range = max - min || 1; // Fallback to 1 if all values are the same
 
-  const points = data.map((value, i) => {
-    const x = (i / (data.length - 1)) * width;
-    const y = height - ((value - min) / range) * height;
-    return { x, y };
+  const points = validData.map((value, i) => {
+    const x = (i / (validData.length - 1)) * width;
+    // Ensure y is always a valid number
+    const normalizedY = range === 0 ? 0.5 : (value - min) / range;
+    const y = height - normalizedY * height;
+    return { x: Number.isFinite(x) ? x : 0, y: Number.isFinite(y) ? y : height / 2 };
   });
 
   const pathD = points

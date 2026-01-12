@@ -225,3 +225,124 @@ export const documentUploadSchema = fileUploadSchema.extend({
   ]),
   size: z.number().positive().max(25 * 1024 * 1024), // 25MB max for documents
 });
+
+// ==========================================
+// Land Value Validation Schemas
+// ==========================================
+
+/**
+ * Request body for calculating land value
+ * 
+ * If user_entered_value is provided, it is a 100% OVERRIDE
+ * that bypasses the valuation methods entirely.
+ */
+export const landValueCalculateRequestSchema = z.object({
+  user_entered_value: z.number().positive('User entered value must be positive').optional(),
+  user_justification: z.string().min(10, 'Justification must be at least 10 characters').max(500).optional(),
+  force_recalculate: z.boolean().default(false),
+}).refine(
+  (data) => {
+    // If user_entered_value is provided, justification is required
+    if (data.user_entered_value !== undefined && data.user_entered_value !== null) {
+      return data.user_justification !== undefined && data.user_justification !== null;
+    }
+    return true;
+  },
+  { 
+    message: 'user_justification is required when providing user_entered_value',
+    path: ['user_justification'],
+  }
+);
+
+/**
+ * Query params for land comparables endpoint
+ */
+export const landComparablesQuerySchema = z.object({
+  max_distance_km: z.coerce.number().positive().max(100).default(10),
+  max_results: z.coerce.number().int().min(1).max(50).default(10),
+});
+
+/**
+ * Comparable strength enum for land value
+ */
+export const comparableStrengthSchema = z.enum(['weak', 'balanced', 'strong']);
+
+/**
+ * Land value method detail schema
+ */
+export const landValueMethodDetailSchema = z.object({
+  value: z.number().nonnegative(),
+  value_per_sqm: z.number().nonnegative(),
+  confidence: z.number().min(0).max(1),
+  weight: z.number().min(0).max(1),
+  weighted_contribution: z.number().nonnegative(),
+  method_specific: z.record(z.any()).optional(),
+});
+
+/**
+ * Land comparable summary schema
+ */
+export const landComparableSummarySchema = z.object({
+  id: z.string(),
+  distance_km: z.number().nonnegative(),
+  sale_date: z.string(),
+  sale_price_per_sqm: z.number().positive(),
+  adjusted_price_per_sqm: z.number().positive(),
+  similarity_score: z.number().min(0).max(1),
+  adjustment_factor: z.number().positive(),
+});
+
+/**
+ * Full land value response schema for TypeScript type generation
+ */
+export const landValueResponseSchema = z.object({
+  success: z.boolean(),
+  final_land_value: z.number().nonnegative(),
+  final_land_value_per_sqm: z.number().nonnegative(),
+  land_area_sqm: z.number().positive(),
+  confidence_score: z.number().min(0).max(1),
+  primary_method: z.string(),
+  
+  // User override info
+  is_user_override: z.boolean().default(false),
+  user_justification: z.string().optional(),
+  
+  // Method details (only present if not user override)
+  methods: z.object({
+    residual: landValueMethodDetailSchema.optional(),
+    comparable: landValueMethodDetailSchema.optional(),
+  }).optional(),
+  
+  // Comparable details
+  comparables_summary: z.object({
+    count_found: z.number().int().nonnegative(),
+    count_used: z.number().int().nonnegative(),
+    strength: comparableStrengthSchema,
+    top_comparables: z.array(landComparableSummarySchema),
+  }).optional(),
+  
+  // Reconciliation details
+  reconciliation: z.object({
+    method_weights: z.record(z.number()),
+    weight_justification: z.string(),
+    value_spread_pct: z.number().nonnegative(),
+    outlier_flags: z.array(z.string()),
+  }).optional(),
+  
+  comparable_strength: comparableStrengthSchema.or(z.literal('N/A')),
+  
+  // Disclosure (RICS compliance)
+  disclosure_required: z.boolean().default(false),
+  disclosure_text: z.string().default(''),
+  
+  // Metadata
+  cached: z.boolean().default(false),
+  error: z.string().optional(),
+});
+
+// Export types inferred from schemas
+export type LandValueCalculateRequest = z.infer<typeof landValueCalculateRequestSchema>;
+export type LandComparablesQuery = z.infer<typeof landComparablesQuerySchema>;
+export type LandValueResponse = z.infer<typeof landValueResponseSchema>;
+export type LandComparableSummary = z.infer<typeof landComparableSummarySchema>;
+export type ComparableStrength = z.infer<typeof comparableStrengthSchema>;

@@ -2,7 +2,7 @@
 DRC (Depreciated Replacement Cost) Method Service
 
 Implements the Depreciated Replacement Cost method for specialized properties.
-Used for properties that rarely trade and have no comparable market data.
+Uses live Data Hub API for construction costs and regional multipliers.
 
 Typical Applications:
 - Government/institutional buildings
@@ -22,7 +22,7 @@ Key Features:
 from typing import Dict, List, Optional, Tuple
 from decimal import Decimal
 import asyncio
-from datetime import datetime, timedelta
+from datetime import datetime, date, timedelta
 import logging
 
 from ..models.schemas import (
@@ -30,6 +30,18 @@ from ..models.schemas import (
     RegionCode, PropertyType
 )
 from ..adapters.market_data import MarketDataAdapter
+from ..adapters.data_hub_api_adapter import get_data_hub_adapter
+from .depreciation import (
+    PhysicalDepreciationCalculator,
+    FunctionalObsolescenceCalculator,
+    ExternalObsolescenceCalculator,
+    DepreciationReconciliationService,
+    PhysicalDepreciationResult,
+    FunctionalObsolescenceResult,
+    ExternalObsolescenceResult,
+    TotalDepreciationResult,
+    ConstructionType,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -159,10 +171,11 @@ class AssetAnalysis:
 
 
 class DRCMethodService:
-    """DRC Method Valuation Service"""
+    """DRC Method Valuation Service - uses live Data Hub API"""
 
-    def __init__(self, market_adapter: MarketDataAdapter):
+    def __init__(self, market_adapter: MarketDataAdapter = None):
         self.market_adapter = market_adapter
+        self.data_hub = get_data_hub_adapter()  # Live API adapter
 
     async def calculate(
         self,
@@ -331,7 +344,7 @@ class DRCMethodService:
         property_data: PropertyForValuation, 
         asset_type: str
     ) -> float:
-        """Calculate Gross Replacement Cost"""
+        """Calculate Gross Replacement Cost using live Data Hub API"""
         building_size = (
             property_data.building_size_sqm or
             property_data.built_area_sqm or
@@ -339,7 +352,50 @@ class DRCMethodService:
             500  # Default size
         )
         
-        # Base cost per sqm for asset type
+        region_str = property_data.region.value if hasattr(property_data.region, 'value') else str(property_data.region)
+        
+        # Try to get construction cost from live API for specialized properties
+        try:
+            # Map asset type to standard property types for API
+            property_type_map = {
+                "institutional": "commercial",
+                "government": "commercial",
+                "religious": "commercial",
+                "church": "commercial",
+                "mosque": "commercial",
+                "industrial": "industrial",
+                "specialized_industrial": "industrial",
+                "warehouse": "industrial",
+            }
+            api_property_type = property_type_map.get(asset_type, "commercial")
+            
+            base_cost_data = await self.data_hub.get_base_cost_per_sqm(
+                property_type=api_property_type,
+                quality_level="premium",  # Specialized properties use premium costs
+                region=region_str
+            )
+            
+            if base_cost_data and base_cost_data.get("adjusted_cost", 0) > 0:
+                # Add specialized premium on top of API cost
+                specialized_premium = {
+                    "heritage": 1.5,
+                    "museum": 1.4,
+                    "power_plant": 2.0,
+                    "water_treatment": 1.8,
+                    "sewage_treatment": 1.7,
+                    "substation": 1.6,
+                    "airport": 1.5,
+                    "stadium": 1.4,
+                }.get(asset_type, 1.0)
+                
+                adjusted_cost = base_cost_data["adjusted_cost"] * specialized_premium
+                logger.info(f"Using live construction cost for DRC: {adjusted_cost} GHS/sqm (with {specialized_premium}x premium)")
+                return building_size * adjusted_cost
+                
+        except Exception as e:
+            logger.warning(f"Failed to get construction cost from API for DRC: {e}")
+        
+        # Fallback to static specialized costs
         base_cost = SPECIALIZED_COSTS.get(asset_type, 5000)
         
         # Apply regional multiplier
@@ -360,57 +416,232 @@ class DRCMethodService:
         mea_adjusted_grc: float, 
         asset_analysis: AssetAnalysis, 
         property_data: PropertyForValuation
-    ) -> Dict[str, float]:
-        """Calculate various forms of depreciation"""
+    ) -> Dict[str, any]:
+        """
+        Calculate depreciation using standardized RICS/GhIS compliant calculators.
         
-        # 1. Physical Depreciation (based on age and condition)
-        age_ratio = asset_analysis.effective_age_years / asset_analysis.useful_life_years
+        Integrates:
+        - PhysicalDepreciationCalculator: Modified Age-Life method with condition adjustment
+        - FunctionalObsolescenceCalculator: Auto-detection from property specifications
+        - ExternalObsolescenceCalculator: Environmental, locational, economic, regulatory factors
+        - DepreciationReconciliationService: Combines with age-based caps
         
-        # Use S-curve depreciation for specialized assets
-        if age_ratio <= 0.1:
-            physical_depreciation_rate = age_ratio * 0.5  # Slow initial depreciation
-        elif age_ratio <= 0.7:
-            physical_depreciation_rate = 0.05 + (age_ratio - 0.1) * 0.75  # Linear middle period
+        Returns dict with depreciation amounts and full audit trail.
+        """
+        
+        # Convert PropertyForValuation to Property schema for calculators
+        property_schema = self._convert_to_property_schema(property_data)
+        
+        # Map asset type to construction type for economic life calculation
+        construction_type = self._map_asset_to_construction_type(asset_analysis.asset_type)
+        
+        # 1. Physical Depreciation - Use standardized calculator
+        physical_calculator = PhysicalDepreciationCalculator()
+        physical_result = physical_calculator.calculate(
+            property_data=property_schema,
+            valuation_date=date.today(),
+            construction_type=construction_type,
+        )
+        
+        # For DRC, override economic life with specialized asset useful life
+        # if the asset has a specific useful life defined
+        if asset_analysis.useful_life_years > 0:
+            # Recalculate using asset-specific useful life
+            effective_age = physical_result.effective_age
+            specialized_depreciation_rate = min(
+                effective_age / asset_analysis.useful_life_years,
+                0.95
+            )
+            physical_depreciation = mea_adjusted_grc * specialized_depreciation_rate
+            physical_rate = specialized_depreciation_rate
         else:
-            physical_depreciation_rate = 0.50 + (age_ratio - 0.7) * 1.67  # Accelerated final period
+            physical_depreciation = mea_adjusted_grc * physical_result.depreciation_rate
+            physical_rate = physical_result.depreciation_rate
         
-        physical_depreciation_rate = min(0.95, physical_depreciation_rate)  # Cap at 95%
-        physical_depreciation = mea_adjusted_grc * physical_depreciation_rate
+        # 2. Functional Obsolescence - Use standardized calculator
+        functional_calculator = FunctionalObsolescenceCalculator()
+        functional_result = functional_calculator.calculate(property_data=property_schema)
         
-        # 2. Functional Obsolescence
-        functional_obsolescence_rate = 0
-        
-        # Higher functional obsolescence for older technology-dependent buildings
+        # Additional functional obsolescence for technology-dependent specialized assets
+        specialized_functional_rate = 0.0
         if asset_analysis.asset_type in ["substation", "power_plant", "water_treatment"]:
             if asset_analysis.effective_age_years > 20:
-                functional_obsolescence_rate = min(0.20, (asset_analysis.effective_age_years - 20) * 0.01)
+                specialized_functional_rate = min(0.15, (asset_analysis.effective_age_years - 20) * 0.01)
         elif asset_analysis.asset_type in ["library", "museum"]:
             if asset_analysis.effective_age_years > 15:
-                functional_obsolescence_rate = min(0.15, (asset_analysis.effective_age_years - 15) * 0.01)
+                specialized_functional_rate = min(0.10, (asset_analysis.effective_age_years - 15) * 0.01)
         
-        functional_obsolescence = mea_adjusted_grc * functional_obsolescence_rate
+        total_functional_rate = min(
+            functional_result.depreciation_rate + specialized_functional_rate,
+            0.25  # Cap at 25% per architecture
+        )
+        functional_obsolescence = mea_adjusted_grc * total_functional_rate
         
-        # 3. Economic Obsolescence (market conditions)
-        economic_obsolescence_rate = 0
+        # 3. External Obsolescence - Use ExternalObsolescenceCalculator
+        external_calculator = ExternalObsolescenceCalculator()
         
-        # Apply economic obsolescence based on location and demand
+        # Build location data for specialized assets
+        location_data = {}
         if property_data.region in [RegionCode.NORTHERN_CLUSTER, RegionCode.EASTERN]:
-            economic_obsolescence_rate = 0.05  # Lower demand areas
-        elif asset_analysis.asset_type in ["stadium", "specialized_industrial"]:
-            economic_obsolescence_rate = 0.10  # Specialized uses with limited demand
+            location_data['property_value_trend_3yr'] = 'declining_slight'  # Lower demand areas
         
-        economic_obsolescence = mea_adjusted_grc * economic_obsolescence_rate
+        # Add specialized asset external factors
+        market_data = {}
+        if asset_analysis.asset_type in ["stadium", "specialized_industrial"]:
+            market_data['market_condition_index'] = 'slow'  # Limited demand for specialized uses
         
-        # Total depreciation (but don't double-count)
+        external_result = external_calculator.calculate(
+            property_data=property_schema,
+            location_data=location_data,
+            market_data=market_data,
+        )
+        external_rate = external_result.depreciation_rate
+        economic_obsolescence = mea_adjusted_grc * external_rate
+        
+        # 4. Reconcile with age-based caps using DepreciationReconciliationService
+        reconciliation = DepreciationReconciliationService()
+        
+        # Get effective age for reconciliation
+        property_age = asset_analysis.effective_age_years if asset_analysis.effective_age_years > 0 else 20
+        
+        reconciled = reconciliation.reconcile(
+            physical=physical_result,
+            functional=functional_result,
+            external=external_result,
+            property_age=property_age,
+            rcn=mea_adjusted_grc,
+        )
+        
+        # Apply specialized overrides for DRC (physical and functional may use asset-specific rates)
+        # Total depreciation considering specialized calculations
         total_depreciation = physical_depreciation + functional_obsolescence + economic_obsolescence
-        total_depreciation = min(total_depreciation, mea_adjusted_grc * 0.95)  # Cap at 95%
+        
+        # Apply age-based cap from reconciliation service
+        max_rate = reconciliation._get_age_based_cap(property_age)
+        max_depreciation = mea_adjusted_grc * max_rate
+        total_depreciation = min(total_depreciation, max_depreciation)
+        
+        was_capped = total_depreciation >= max_depreciation
         
         return {
             "physical": physical_depreciation,
+            "physical_rate": physical_rate,
+            "physical_result": physical_result.to_dict(),  # Full audit trail
             "functional": functional_obsolescence,
+            "functional_rate": total_functional_rate,
+            "functional_result": functional_result.to_dict(),  # Full audit trail
+            "specialized_functional_rate": specialized_functional_rate,
             "economic": economic_obsolescence,
+            "economic_rate": external_rate,
+            "external_result": external_result.to_dict(),  # Full audit trail
             "total": total_depreciation,
+            "total_rate": total_depreciation / mea_adjusted_grc if mea_adjusted_grc > 0 else 0,
+            "was_capped": was_capped,
+            "cap_applied": max_rate if was_capped else None,
+            "method": "integrated_depreciation_calculators_with_reconciliation",
+            "construction_type_used": construction_type.value if construction_type else None,
+            "reconciliation": {
+                "methodology_notes": reconciled.methodology_notes,
+                "confidence": reconciled.confidence,
+                "requires_review": reconciled.requires_review,
+            },
         }
+    
+    def _convert_to_property_schema(self, property_data: PropertyForValuation):
+        """
+        Convert PropertyForValuation to Property schema for depreciation calculators.
+        """
+        from ..schemas import (
+            Property as PropertySchema,
+            PropertyLocation,
+            PropertySpecifications,
+            PropertyDataQuality,
+            PropertyCondition,
+            GhanaRegion,
+        )
+        
+        # Map condition
+        condition_map = {
+            "new": PropertyCondition.NEW,
+            "excellent": PropertyCondition.EXCELLENT,
+            "good": PropertyCondition.GOOD,
+            "fair": PropertyCondition.FAIR,
+            "poor": PropertyCondition.POOR,
+            "renovation_needed": PropertyCondition.RENOVATION_NEEDED,
+        }
+        condition = None
+        if property_data.condition:
+            condition_str = property_data.condition.value if hasattr(property_data.condition, 'value') else str(property_data.condition)
+            condition = condition_map.get(condition_str.lower(), PropertyCondition.FAIR)
+        
+        # Map region
+        region_map = {
+            RegionCode.GREATER_ACCRA: GhanaRegion.GREATER_ACCRA,
+            RegionCode.KUMASI_METRO: GhanaRegion.KUMASI_METRO,
+            RegionCode.EASTERN: GhanaRegion.EASTERN,
+            RegionCode.WESTERN_CLUSTER: GhanaRegion.WESTERN_CLUSTER,
+            RegionCode.NORTHERN_CLUSTER: GhanaRegion.NORTHERN_CLUSTER,
+        }
+        region = region_map.get(property_data.region, GhanaRegion.GREATER_ACCRA)
+        
+        # Build Property schema
+        return PropertySchema(
+            id=str(property_data.id) if property_data.id else "drc_property",
+            property_type=property_data.property_type,
+            location=PropertyLocation(
+                region=region,
+                district=getattr(property_data, 'district', None) or "Unknown",
+                neighborhood=getattr(property_data, 'neighborhood', None),
+                address_raw=getattr(property_data, 'address', None) or "Unknown",
+            ),
+            specifications=PropertySpecifications(
+                year_built=property_data.year_built,
+                condition=condition,
+                bedrooms=getattr(property_data, 'bedrooms', None),
+                bathrooms=getattr(property_data, 'bathrooms', None),
+                parking_spaces=getattr(property_data, 'parking_spaces', None),
+                land_size_sqm=property_data.land_area_sqm,
+                built_area_sqm=property_data.building_size_sqm or property_data.built_area_sqm,
+                has_air_conditioning=getattr(property_data, 'has_air_conditioning', None),
+                has_generator=getattr(property_data, 'has_generator', None),
+                has_borehole=getattr(property_data, 'has_borehole', None),
+            ),
+            data_quality=PropertyDataQuality(
+                data_quality_score=0.7,
+                source_reliability_score=0.7,
+                completeness_score=0.7,
+                accuracy_score=0.7,
+                freshness_score=0.7,
+                sources=["drc_valuation"],
+            ),
+        )
+    
+    def _map_asset_to_construction_type(self, asset_type: str) -> Optional[ConstructionType]:
+        """
+        Map specialized asset types to construction types for economic life.
+        """
+        # Most institutional/specialized buildings use reinforced concrete or concrete block
+        asset_construction_map = {
+            "institutional": ConstructionType.REINFORCED_CONCRETE,
+            "government": ConstructionType.REINFORCED_CONCRETE,
+            "religious": ConstructionType.CONCRETE_BLOCK,
+            "church": ConstructionType.CONCRETE_BLOCK,
+            "mosque": ConstructionType.CONCRETE_BLOCK,
+            "community_center": ConstructionType.CONCRETE_BLOCK,
+            "library": ConstructionType.REINFORCED_CONCRETE,
+            "museum": ConstructionType.REINFORCED_CONCRETE,
+            "heritage": ConstructionType.MIXED,  # Historic buildings vary
+            "utility": ConstructionType.CONCRETE_BLOCK,
+            "substation": ConstructionType.REINFORCED_CONCRETE,
+            "water_treatment": ConstructionType.REINFORCED_CONCRETE,
+            "sewage_treatment": ConstructionType.REINFORCED_CONCRETE,
+            "power_plant": ConstructionType.STEEL_FRAME,
+            "airport": ConstructionType.STEEL_FRAME,
+            "port": ConstructionType.REINFORCED_CONCRETE,
+            "stadium": ConstructionType.REINFORCED_CONCRETE,
+            "specialized_industrial": ConstructionType.STEEL_FRAME,
+        }
+        return asset_construction_map.get(asset_type, ConstructionType.CONCRETE_BLOCK)
 
     async def _calculate_land_value(self, property_data: PropertyForValuation) -> float:
         """Calculate land value component"""

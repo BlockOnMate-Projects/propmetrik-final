@@ -591,15 +591,24 @@ export default function MarketDataPage() {
       })
 
       // Navigate to next step based on selected methods
-      // Check if cost_approach or income_approach are selected
+      // Check which methods are selected (in workflow order)
       const selectedMethods = (valuation as any)?.selectedMethods || valuation?.methods_applied || []
       const hasCostApproach = selectedMethods.includes('cost_approach')
       const hasIncomeApproach = selectedMethods.includes('income_approach')
+      const hasDRC = selectedMethods.includes('drc_method')
+      const hasProfits = selectedMethods.includes('profits_method')
+      const hasResidual = selectedMethods.includes('residual_method')
       
       if (hasCostApproach) {
         router.push(`/dashboard/valuations/${valuationId}/cost`)
       } else if (hasIncomeApproach) {
         router.push(`/dashboard/valuations/${valuationId}/income`)
+      } else if (hasDRC) {
+        router.push(`/dashboard/valuations/${valuationId}/drc`)
+      } else if (hasProfits) {
+        router.push(`/dashboard/valuations/${valuationId}/profits`)
+      } else if (hasResidual) {
+        router.push(`/dashboard/valuations/${valuationId}/residual`)
       } else {
         // Only sales comparison selected - go directly to reconciliation
         router.push(`/dashboard/valuations/${valuationId}/reconciliation`)
@@ -870,7 +879,7 @@ export default function MarketDataPage() {
                   <thead>
                     <tr className="text-[10px] font-mono text-zinc-500 border-b border-zinc-800">
                       <th className="text-left pb-2 px-2">PROPERTY</th>
-                      <th className="text-right pb-2 px-2">SALE PRICE</th>
+                      <th className="text-right pb-2 px-2">ASKING PRICE</th>
                       <th className="text-right pb-2 px-2">₵/SQM</th>
                       <th className="text-right pb-2 px-2">ADJ %</th>
                       <th className="text-right pb-2 px-2">ADJ VALUE</th>
@@ -889,7 +898,10 @@ export default function MarketDataPage() {
                           </div>
                         </td>
                         <td className="py-2 px-2 text-right font-mono text-xs text-zinc-400">
-                          ₵{(comp.sale_price || 0).toLocaleString()}
+                          <div>₵{(comp.sale_price || 0).toLocaleString()}</div>
+                          {comp.price_currency === 'USD' && comp.price_original && (
+                            <div className="text-[9px] text-zinc-600">(${comp.price_original.toLocaleString()} USD)</div>
+                          )}
                         </td>
                         <td className="py-2 px-2 text-right font-mono text-xs text-zinc-400">
                           ₵{Math.round((comp.sale_price || 0) / (comp.gfa || 1)).toLocaleString()}
@@ -1046,8 +1058,14 @@ export default function MarketDataPage() {
             const selectedMethods = (valuation as any)?.selectedMethods || valuation?.methods_applied || []
             const hasCostApproach = selectedMethods.includes('cost_approach')
             const hasIncomeApproach = selectedMethods.includes('income_approach')
+            const hasDRC = selectedMethods.includes('drc_method')
+            const hasProfits = selectedMethods.includes('profits_method')
+            const hasResidual = selectedMethods.includes('residual_method')
             if (hasCostApproach) return 'SAVE & CONTINUE TO COST APPROACH →'
             if (hasIncomeApproach) return 'SAVE & CONTINUE TO INCOME APPROACH →'
+            if (hasDRC) return 'SAVE & CONTINUE TO DRC →'
+            if (hasProfits) return 'SAVE & CONTINUE TO PROFITS →'
+            if (hasResidual) return 'SAVE & CONTINUE TO RESIDUAL →'
             return 'SAVE & CONTINUE TO RECONCILIATION →'
           })()}
         </button>

@@ -6,7 +6,7 @@ import pinoHttp from 'pino-http';
 import { config } from './config';
 import { logger, logUnhandledException } from './utils/logger';
 import { pool, checkHealth as checkDbHealth, checkPostGIS } from './database';
-import { checkHealth as checkRedisHealth, closeAllConnections as closeRedis } from './database/redis';
+import { checkHealth as checkRedisHealth, closeAllConnections as closeRedis, connectAll as connectRedis } from './database/redis';
 import { checkHealth as checkOpenSearchHealth, initializeIndices } from './database/opensearch';
 import { checkHealth as checkMinioHealth, initializeBuckets } from './database/minio';
 import { errorHandler } from './middleware/errorHandler';
@@ -16,6 +16,12 @@ import { requestIdMiddleware } from './middleware/requestId';
 // Import routes
 import healthRoutes from './routes/health';
 import dataHubRoutes from './routes/dataHub';
+import valuationRoutes from './routes/valuations';
+import propertyRoutes from './routes/publicProperties';
+import { ingestionRouter } from './routes/ingestion';
+import contributionRoutes from './routes/contributions';
+import pullIntegrationRoutes from './routes/pullIntegrations';
+
 
 // Import Data Hub queue manager
 import { dataHubQueueManager } from './services/data-hub';
@@ -76,12 +82,18 @@ app.use(rateLimiter);
 // API routes
 app.use('/health', healthRoutes);
 app.use('/api/v1/data-hub', dataHubRoutes);
+app.use('/api/v1/valuations', valuationRoutes);
+app.use('/api/v1/properties', propertyRoutes);
+app.use('/api/v1/ingestion', ingestionRouter);
+app.use('/api/v1/contributions', contributionRoutes);
+app.use('/api/v1/pull-integrations', pullIntegrationRoutes);
+
 
 // TODO: Add more route modules as they are created
 // app.use('/api/v1/auth', authRoutes);
 // app.use('/api/v1/users', userRoutes);
-// app.use('/api/v1/properties', propertyRoutes);
 // app.use('/api/v1/search', searchRoutes);
+
 
 // 404 handler
 app.use((req, res) => {
@@ -99,26 +111,26 @@ app.use(errorHandler);
 // Graceful shutdown
 async function shutdown(signal: string): Promise<void> {
   logger.info(`Received ${signal}, starting graceful shutdown...`);
-  
+
   // Stop accepting new requests
   server.close(async (err) => {
     if (err) {
       logger.error('Error during server close', { error: err.message });
     }
-    
+
     try {
       // Shutdown Data Hub queues
       await dataHubQueueManager.shutdown();
       logger.info('Data Hub queues closed');
-      
+
       // Close database connections
       await pool.end();
       logger.info('PostgreSQL pool closed');
-      
+
       // Close Redis connections
       await closeRedis();
       logger.info('Redis connections closed');
-      
+
       logger.info('Graceful shutdown completed');
       process.exit(0);
     } catch (shutdownError) {
@@ -138,10 +150,14 @@ async function shutdown(signal: string): Promise<void> {
 async function bootstrap(): Promise<void> {
   try {
     logger.info('Starting Propmetrik API server...');
-    
+
+    // Connect Redis clients first (they use lazyConnect)
+    logger.info('Connecting to Redis...');
+    await connectRedis();
+
     // Check database connections
     logger.info('Checking database connections...');
-    
+
     const [dbHealth, postgis, redisHealth, osHealth, minioHealth] = await Promise.all([
       checkDbHealth(),
       checkPostGIS(),
@@ -149,35 +165,35 @@ async function bootstrap(): Promise<void> {
       checkOpenSearchHealth(),
       checkMinioHealth(),
     ]);
-    
+
     if (!dbHealth) {
       throw new Error('PostgreSQL connection failed');
     }
     logger.info('PostgreSQL connected');
-    
+
     if (!postgis) {
       logger.warn('PostGIS extension not available - spatial queries will fail');
     } else {
       logger.info('PostGIS extension available');
     }
-    
+
     if (!redisHealth.connected) {
       throw new Error('Redis connection failed');
     }
     logger.info('Redis connected', { clients: redisHealth.clients });
-    
+
     if (!osHealth) {
       logger.warn('OpenSearch connection failed - search will be unavailable');
     } else {
       logger.info('OpenSearch connected');
     }
-    
+
     if (!minioHealth.connected) {
       logger.warn('MinIO connection failed - file storage will be unavailable');
     } else {
       logger.info('MinIO connected', { buckets: Object.keys(minioHealth.buckets) });
     }
-    
+
     // Initialize OpenSearch indices if connected
     if (osHealth) {
       try {
@@ -187,7 +203,7 @@ async function bootstrap(): Promise<void> {
         logger.warn('Failed to initialize OpenSearch indices', { error: indexError });
       }
     }
-    
+
     // Initialize MinIO buckets if connected
     if (minioHealth.connected) {
       try {
@@ -197,7 +213,7 @@ async function bootstrap(): Promise<void> {
         logger.warn('Failed to initialize MinIO buckets', { error: bucketError });
       }
     }
-    
+
     // Initialize Data Hub job queues
     try {
       await dataHubQueueManager.initialize();
@@ -205,16 +221,21 @@ async function bootstrap(): Promise<void> {
     } catch (queueError) {
       logger.warn('Failed to initialize Data Hub queues', { error: queueError });
     }
-    
+
     logger.info('All services initialized');
-    
+
   } catch (error) {
     // Log full error details for debugging
     const err = error as Error;
-    logger.fatal('Failed to initialize services', { 
-      error: err.message, 
+    console.error('=== FATAL ERROR DETAILS ===');
+    console.error('Message:', err.message);
+    console.error('Name:', err.name);
+    console.error('Stack:', err.stack);
+    console.error('Full error:', error);
+    logger.fatal('Failed to initialize services', {
+      error: err.message,
       stack: err.stack,
-      name: err.name 
+      name: err.name
     });
     process.exit(1);
   }

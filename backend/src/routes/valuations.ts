@@ -17,6 +17,11 @@ import { Router, Request, Response, NextFunction } from 'express';
 import { query } from '../database';
 import { logger } from '../utils/logger';
 import { ghanaPostService } from '../services/data-hub/ghanaPostGeocodingService';
+import { 
+  validate, 
+  landValueCalculateRequestSchema,
+  landComparablesQuerySchema,
+} from '../middleware/validation';
 import {
   valuationEngineService,
   pythonClient,
@@ -710,24 +715,36 @@ router.put('/:id', validateUUID('id'), async (req: Request, res: Response) => {
     const values: any[] = [];
     let paramIndex = 1;
 
-    // Allowed fields for update
+    // Allowed fields for update (must match actual database columns)
     const allowedFields = [
       'current_step',
       'status',
       'valuation_date',
-      'purpose',
-      'method_results',
-      'final_value',
+      'valuation_purpose',
+      'final_value_ghs',
+      'estimated_value',
       'confidence_score',
-      'notes',
+      'methods_applied',
+      'method_weights',
+      'method_results',
+      'primary_method',
+      'methods_used',
+      'hbu_results',
+      'hbu_analysis',
+      'reconciliation_data',
     ];
 
     for (const field of allowedFields) {
       if (updateData[field] !== undefined) {
-        if (field === 'method_results') {
-          // For JSONB, merge with existing
+        // Handle JSONB fields - merge with existing
+        const jsonbFields = ['method_results', 'hbu_results', 'hbu_analysis', 'method_weights', 'reconciliation_data', 'methods_used'];
+        if (jsonbFields.includes(field)) {
           updates.push(`${field} = COALESCE(${field}, '{}'::jsonb) || $${paramIndex}::jsonb`);
           values.push(JSON.stringify(updateData[field]));
+        } else if (field === 'methods_applied' || field === 'selected_methods') {
+          // Handle array fields
+          updates.push(`${field} = $${paramIndex}::text[]`);
+          values.push(updateData[field]);
         } else {
           updates.push(`${field} = $${paramIndex}`);
           values.push(updateData[field]);
@@ -1006,7 +1023,19 @@ router.post('/:id/comparables/search', validateUUID('id'), async (req: Request, 
 
     // Build RICS-compliant comparable search query
     // Includes: location proximity, property type, size range, age, condition, building features
+    // Evidence Types: 'listing' (active), 'delisted_inferred' (probable sale), 
+    //                 'verified_sale' (confirmed), 'contributed' (user-submitted)
+    // Currency conversion: All prices converted to GHS for uniform comparison
     let searchQuery = `
+      WITH fx_rate AS (
+        -- Get latest USD/GHS exchange rate
+        SELECT COALESCE(
+          (SELECT value FROM economic_indicators 
+           WHERE indicator_type = 'exchange_rate_usd' 
+           ORDER BY effective_date DESC LIMIT 1),
+          15.5  -- Fallback rate if no data
+        ) AS usd_to_ghs
+      )
       SELECT 
         p.id,
         p.reference_number,
@@ -1026,12 +1055,41 @@ router.post('/:id/comparables/search', validateUUID('id'), async (req: Request, 
         p.condition,
         p.floors,
         p.amenities,
-        p.price AS sale_price,
+        -- Original price fields
+        p.price AS price_original,
         p.price_currency,
-        p.created_at AS sale_date,
+        -- Currency-normalized prices in GHS for uniform comparison
+        CASE 
+          WHEN p.price_currency = 'USD' THEN p.price * fx.usd_to_ghs
+          ELSE p.price  -- Already in GHS or other (treat as GHS)
+        END AS asking_price_ghs,
+        CASE 
+          WHEN p.price_currency = 'USD' THEN COALESCE(p.inferred_sale_price, p.price) * fx.usd_to_ghs
+          ELSE COALESCE(p.inferred_sale_price, p.price)
+        END AS sale_price,
+        -- Keep original asking_price for reference
+        p.price AS asking_price,
+        -- Exchange rate used for conversion
+        fx.usd_to_ghs AS fx_rate_used,
+        -- For delisted properties, use delisted_at as sale_date; otherwise use last_seen/created
+        COALESCE(p.delisted_at, p.last_seen_at, p.created_at) AS sale_date,
         p.transaction_type AS listing_type,
         p.data_source,
         p.created_at,
+        -- Evidence quality fields for RICS/GhIS compliance
+        COALESCE(p.evidence_type, 'listing') AS evidence_type,
+        p.is_delisted,
+        p.first_seen_at,
+        p.last_seen_at,
+        p.delisted_at,
+        p.inferred_sale_price,
+        -- Evidence quality weight: verified > delisted > contributed > listing
+        CASE 
+          WHEN p.evidence_type = 'verified_sale' THEN 1.0
+          WHEN p.evidence_type = 'delisted_inferred' THEN 0.85
+          WHEN p.evidence_type = 'contributed' THEN 0.75
+          ELSE 0.6  -- listing (asking price)
+        END AS evidence_weight,
         -- Calculate distance using Haversine formula (in km)
         (
           6371 * acos(
@@ -1066,11 +1124,12 @@ router.post('/:id/comparables/search', validateUUID('id'), async (req: Request, 
           ELSE 5
         END AS similarity_score
       FROM properties p
+      CROSS JOIN fx_rate fx
       WHERE p.id != COALESCE($7::uuid, p.id)
         AND p.latitude IS NOT NULL 
         AND p.longitude IS NOT NULL
-        AND p.price IS NOT NULL
-        AND p.price > 0
+        AND (p.price IS NOT NULL OR p.inferred_sale_price IS NOT NULL)
+        AND COALESCE(p.inferred_sale_price, p.price) > 0
         -- Location filter: within radius
         AND (
           6371 * acos(
@@ -1177,6 +1236,26 @@ router.post('/:id/comparables/search', validateUUID('id'), async (req: Request, 
       maxPrice: Math.max(...result.rows.map((r: any) => r.sale_price || 0)),
       minPricePerSqm: Math.round(Math.min(...result.rows.map((r: any) => (r.sale_price || 0) / (r.gfa || r.plot_size || 1)))),
       maxPricePerSqm: Math.round(Math.max(...result.rows.map((r: any) => (r.sale_price || 0) / (r.gfa || r.plot_size || 1)))),
+      // Evidence quality breakdown per RICS guidance
+      evidenceQuality: {
+        verifiedSales: result.rows.filter((r: any) => r.evidence_type === 'verified_sale').length,
+        delistedInferred: result.rows.filter((r: any) => r.evidence_type === 'delisted_inferred').length,
+        contributed: result.rows.filter((r: any) => r.evidence_type === 'contributed').length,
+        activeListings: result.rows.filter((r: any) => r.evidence_type === 'listing').length,
+        // Average evidence weight (1.0 = all verified, 0.6 = all listings)
+        avgWeight: Math.round(result.rows.reduce((sum: number, r: any) => sum + (r.evidence_weight || 0.6), 0) / comparablesFound * 100) / 100,
+        // RICS compliance: prefer verified/delisted over listing prices
+        qualityRating: (() => {
+          const verified = result.rows.filter((r: any) => r.evidence_type === 'verified_sale').length;
+          const delisted = result.rows.filter((r: any) => r.evidence_type === 'delisted_inferred').length;
+          const transactionBased = verified + delisted;
+          const ratio = transactionBased / comparablesFound;
+          if (ratio >= 0.75) return 'excellent';
+          if (ratio >= 0.50) return 'good';
+          if (ratio >= 0.25) return 'fair';
+          return 'limited';
+        })(),
+      },
     } : null;
 
     res.json({
@@ -1196,6 +1275,15 @@ router.post('/:id/comparables/search', validateUUID('id'), async (req: Request, 
         hasGap,
         gapSeverity,
         aggregates,
+        // Currency conversion info
+        currencyConversion: {
+          targetCurrency: 'GHS',
+          fxRateUsed: result.rows[0]?.fx_rate_used || 15.5,
+          fxRateDate: new Date().toISOString().split('T')[0],
+          usdCount: result.rows.filter((r: any) => r.price_currency === 'USD').length,
+          ghsCount: result.rows.filter((r: any) => r.price_currency === 'GHS').length,
+          note: 'All prices converted to GHS for uniform comparison'
+        },
         gapAnalysis: hasGap ? {
           required: minRequired,
           found: comparablesFound,
@@ -1355,12 +1443,13 @@ router.get('/market/:region/indices', async (req: Request, res: Response) => {
     const months = parseInt(req.query.months as string) || 24;
 
     // Query database for market index history
+    // Table is valuation_market_indices (from migration 014)
     const result = await query(`
       SELECT 
         id, region, property_type, index_type, 
         index_value, base_value, base_period, current_period,
         created_at
-      FROM market_indices
+      FROM valuation_market_indices
       WHERE region = $1 
         AND (property_type = $2 OR property_type IS NULL)
         AND current_period >= NOW() - INTERVAL '${months} months'
@@ -2472,8 +2561,9 @@ router.get('/:id/reconciliation', validateUUID('id'), async (req: Request, res: 
       'SELECT * FROM valuation_reconciliations WHERE valuation_id = $1 ORDER BY created_at DESC LIMIT 1',
       [req.params.id]
     );
+    // Return empty data for new valuations (not an error condition)
     if (result.rows.length === 0) {
-      return res.status(404).json({ error: 'Reconciliation not found' });
+      return res.json({ success: true, data: null, message: 'No reconciliation data yet' });
     }
     res.json({ success: true, data: result.rows[0] });
   } catch (error: any) {
@@ -2838,5 +2928,963 @@ router.put('/:id/property', validateUUID('id'), async (req: Request, res: Respon
     });
   }
 });
+
+// =====================================================
+// VALUATION METHOD INPUT ENDPOINTS
+// These store user inputs for each valuation method
+// =====================================================
+
+/**
+ * Get method inputs for a valuation
+ * GET /api/v1/valuations/:id/:methodType
+ * methodType: cost-approach, income-approach, drc-method, profits-method, residual-method
+ */
+router.get('/:id/cost-approach', validateUUID('id'), async (req: Request, res: Response) => {
+  return getMethodInputs(req, res, 'cost_approach');
+});
+
+router.get('/:id/income-approach', validateUUID('id'), async (req: Request, res: Response) => {
+  return getMethodInputs(req, res, 'income_approach');
+});
+
+router.get('/:id/drc-method', validateUUID('id'), async (req: Request, res: Response) => {
+  return getMethodInputs(req, res, 'drc_method');
+});
+
+router.get('/:id/profits-method', validateUUID('id'), async (req: Request, res: Response) => {
+  return getMethodInputs(req, res, 'profits_method');
+});
+
+router.get('/:id/residual-method', validateUUID('id'), async (req: Request, res: Response) => {
+  return getMethodInputs(req, res, 'residual_method');
+});
+
+/**
+ * Get sales comparison approach data for a valuation
+ * GET /api/v1/valuations/:id/sales-comparison
+ * 
+ * Returns basket data, comparables, adjustments, and indicated value
+ */
+router.get('/:id/sales-comparison', validateUUID('id'), async (req: Request, res: Response) => {
+  const valuationId = req.params.id;
+  
+  try {
+    // Get the primary basket for this valuation
+    const basketResult = await query(
+      `SELECT * FROM valuation_comparable_baskets 
+       WHERE valuation_id = $1 AND is_primary = true
+       ORDER BY created_at DESC LIMIT 1`,
+      [valuationId]
+    );
+    
+    if (basketResult.rows.length === 0) {
+      return res.json({
+        success: true,
+        data: null,
+        message: 'No sales comparison data for this valuation yet',
+      });
+    }
+    
+    const basket = basketResult.rows[0];
+    
+    // Get comparables with full property details and adjustments
+    const comparablesResult = await query(
+      `SELECT 
+        vc.id AS comparable_id,
+        vc.similarity_score,
+        vc.adjustments,
+        vc.adjusted_price,
+        vc.weight,
+        vc.notes,
+        p.id,
+        p.reference_number,
+        p.title,
+        p.address_street,
+        p.address_city,
+        p.address_district AS neighborhood,
+        p.region,
+        p.latitude,
+        p.longitude,
+        p.property_type,
+        p.bedrooms,
+        p.bathrooms,
+        p.built_area_sqm AS gfa,
+        p.total_area_sqm AS plot_size,
+        p.year_built,
+        p.condition,
+        COALESCE(p.inferred_sale_price, p.price) AS sale_price,
+        p.price AS asking_price,
+        p.price_currency,
+        COALESCE(p.delisted_at, p.last_seen_at, p.created_at) AS sale_date,
+        COALESCE(p.evidence_type, 'listing') AS evidence_type,
+        p.is_delisted,
+        p.inferred_sale_price,
+        CASE 
+          WHEN p.evidence_type = 'verified_sale' THEN 1.0
+          WHEN p.evidence_type = 'delisted_inferred' THEN 0.85
+          WHEN p.evidence_type = 'contributed' THEN 0.75
+          ELSE 0.6
+        END AS evidence_weight
+       FROM valuation_comparables vc
+       LEFT JOIN properties p ON vc.comparable_property_id = p.id
+       WHERE vc.basket_id = $1
+       ORDER BY vc.weight DESC, vc.similarity_score DESC`,
+      [basket.id]
+    );
+    
+    // Get method inputs if saved
+    const inputsResult = await query(
+      `SELECT * FROM valuation_method_inputs 
+       WHERE valuation_id = $1 AND method_type = 'sales_comparison'`,
+      [valuationId]
+    );
+    
+    const methodInputs = inputsResult.rows.length > 0 ? inputsResult.rows[0] : null;
+    
+    // Calculate evidence quality summary
+    const comparables = comparablesResult.rows;
+    const evidenceQuality = comparables.length > 0 ? {
+      verifiedSales: comparables.filter((c: any) => c.evidence_type === 'verified_sale').length,
+      delistedInferred: comparables.filter((c: any) => c.evidence_type === 'delisted_inferred').length,
+      contributed: comparables.filter((c: any) => c.evidence_type === 'contributed').length,
+      activeListings: comparables.filter((c: any) => c.evidence_type === 'listing').length,
+      avgWeight: comparables.reduce((sum: number, c: any) => sum + (c.evidence_weight || 0.6), 0) / comparables.length,
+      qualityRating: (() => {
+        const verified = comparables.filter((c: any) => c.evidence_type === 'verified_sale').length;
+        const delisted = comparables.filter((c: any) => c.evidence_type === 'delisted_inferred').length;
+        const transactionBased = verified + delisted;
+        const ratio = transactionBased / comparables.length;
+        if (ratio >= 0.75) return 'excellent';
+        if (ratio >= 0.50) return 'good';
+        if (ratio >= 0.25) return 'fair';
+        return 'limited';
+      })(),
+    } : null;
+    
+    res.json({
+      success: true,
+      data: {
+        basket: {
+          id: basket.id,
+          basket_name: basket.basket_name,
+          indicated_value: basket.indicated_value,
+          avg_price_per_sqm: basket.avg_price_per_sqm,
+          created_at: basket.created_at,
+          updated_at: basket.updated_at,
+        },
+        comparables: comparables,
+        comparables_count: comparables.length,
+        method_inputs: methodInputs ? {
+          ...methodInputs.inputs,
+          calculated_value: methodInputs.calculated_value,
+          confidence_score: methodInputs.confidence_score,
+        } : null,
+        evidence_quality: evidenceQuality,
+        // RICS compliance indicators
+        rics_compliance: {
+          minimum_comparables_met: comparables.length >= 3,
+          has_transaction_evidence: comparables.some((c: any) => 
+            c.evidence_type === 'verified_sale' || c.evidence_type === 'delisted_inferred'
+          ),
+          evidence_quality_rating: evidenceQuality?.qualityRating || 'unknown',
+          requires_disclosure: evidenceQuality?.qualityRating === 'limited' || comparables.length < 3,
+        },
+      },
+    });
+  } catch (error: any) {
+    logger.error('Failed to get sales comparison data', { valuationId, error: error.message });
+    res.status(500).json({
+      success: false,
+      error: 'Failed to get sales comparison data',
+      message: error.message,
+    });
+  }
+});
+
+/**
+ * Save method inputs for a valuation
+ * POST /api/v1/valuations/:id/:methodType
+ */
+router.post('/:id/cost-approach', validateUUID('id'), async (req: Request, res: Response) => {
+  return saveMethodInputs(req, res, 'cost_approach');
+});
+
+router.post('/:id/income-approach', validateUUID('id'), async (req: Request, res: Response) => {
+  return saveMethodInputs(req, res, 'income_approach');
+});
+
+router.post('/:id/drc-method', validateUUID('id'), async (req: Request, res: Response) => {
+  return saveMethodInputs(req, res, 'drc_method');
+});
+
+router.post('/:id/profits-method', validateUUID('id'), async (req: Request, res: Response) => {
+  return saveMethodInputs(req, res, 'profits_method');
+});
+
+router.post('/:id/residual-method', validateUUID('id'), async (req: Request, res: Response) => {
+  return saveMethodInputs(req, res, 'residual_method');
+});
+
+/**
+ * Save sales comparison approach data for a valuation
+ * POST /api/v1/valuations/:id/sales-comparison
+ * 
+ * Saves basket, comparables, adjustments, and calculates indicated value
+ */
+router.post('/:id/sales-comparison', validateUUID('id'), async (req: Request, res: Response) => {
+  const valuationId = req.params.id;
+  const userId = (req as any).user?.id;
+  
+  try {
+    const {
+      comparables,
+      adjustments,
+      indicated_value,
+      avg_price_per_sqm,
+      reconciliation_notes,
+      weighting_rationale,
+    } = req.body;
+    
+    // Validate minimum comparables for RICS compliance
+    if (!comparables || comparables.length < 3) {
+      return res.status(400).json({
+        success: false,
+        error: 'RICS compliance requires at least 3 comparables',
+        message: 'Please select at least 3 comparable properties',
+      });
+    }
+    
+    // Create or update primary basket
+    const basketResult = await query(
+      `INSERT INTO valuation_comparable_baskets 
+        (valuation_id, basket_name, is_primary, indicated_value, avg_price_per_sqm, created_by, created_at)
+       VALUES ($1, 'Primary Basket', true, $2, $3, $4, NOW())
+       ON CONFLICT (valuation_id, basket_name) 
+       DO UPDATE SET 
+         indicated_value = EXCLUDED.indicated_value, 
+         avg_price_per_sqm = EXCLUDED.avg_price_per_sqm, 
+         updated_at = NOW()
+       RETURNING *`,
+      [valuationId, indicated_value, avg_price_per_sqm, userId]
+    );
+    
+    const basketId = basketResult.rows[0]?.id;
+    
+    // Clear existing comparables
+    await query('DELETE FROM valuation_comparables WHERE basket_id = $1', [basketId]);
+    
+    // Insert new comparables with adjustments
+    for (const comp of comparables) {
+      await query(
+        `INSERT INTO valuation_comparables 
+          (valuation_id, basket_id, comparable_property_id, similarity_score, 
+           adjustments, adjusted_price, weight, notes)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+        [
+          valuationId,
+          basketId,
+          comp.property_id || comp.id,
+          comp.similarity_score || 80,
+          JSON.stringify(comp.adjustments || {}),
+          comp.adjusted_price || comp.sale_price || comp.price,
+          comp.weight || 1.0,
+          comp.notes || null,
+        ]
+      );
+    }
+    
+    // Calculate evidence quality
+    const evidenceQuality = {
+      verifiedSales: comparables.filter((c: any) => c.evidence_type === 'verified_sale').length,
+      delistedInferred: comparables.filter((c: any) => c.evidence_type === 'delisted_inferred').length,
+      contributed: comparables.filter((c: any) => c.evidence_type === 'contributed').length,
+      activeListings: comparables.filter((c: any) => c.evidence_type === 'listing').length,
+    };
+    
+    // Save method inputs for audit trail
+    await query(
+      `INSERT INTO valuation_method_inputs 
+        (valuation_id, method_type, inputs, calculated_value, confidence_score, status, created_by)
+       VALUES ($1, 'sales_comparison', $2, $3, $4, 'completed', $5)
+       ON CONFLICT (valuation_id, method_type) 
+       DO UPDATE SET 
+         inputs = EXCLUDED.inputs,
+         calculated_value = EXCLUDED.calculated_value,
+         confidence_score = EXCLUDED.confidence_score,
+         updated_at = NOW()
+       RETURNING *`,
+      [
+        valuationId,
+        JSON.stringify({
+          comparables_count: comparables.length,
+          adjustments: adjustments || {},
+          reconciliation_notes,
+          weighting_rationale,
+          evidence_quality: evidenceQuality,
+          avg_price_per_sqm,
+        }),
+        indicated_value,
+        // Confidence based on evidence quality
+        Math.min(0.95, 0.5 + 
+          (evidenceQuality.verifiedSales * 0.15) + 
+          (evidenceQuality.delistedInferred * 0.10) +
+          (evidenceQuality.contributed * 0.05) +
+          (Math.min(comparables.length, 5) * 0.03)
+        ),
+        userId,
+      ]
+    );
+    
+    res.json({
+      success: true,
+      data: {
+        basket_id: basketId,
+        indicated_value,
+        avg_price_per_sqm,
+        comparables_count: comparables.length,
+        evidence_quality: evidenceQuality,
+        rics_compliance: {
+          minimum_comparables_met: true,
+          has_transaction_evidence: 
+            evidenceQuality.verifiedSales > 0 || evidenceQuality.delistedInferred > 0,
+        },
+      },
+    });
+  } catch (error: any) {
+    logger.error('Failed to save sales comparison data', { valuationId, error: error.message });
+    res.status(500).json({
+      success: false,
+      error: 'Failed to save sales comparison data',
+      message: error.message,
+    });
+  }
+});
+
+/**
+ * Auto-calculate sales comparison adjustments using Python valuation engine
+ * POST /api/v1/valuations/:id/sales-comparison/auto-calculate
+ * 
+ * Calls the Python valuation service to calculate:
+ * - Physical adjustments (GFA, bedrooms, age, condition, etc.)
+ * - Location adjustments (neighborhood premiums, view, accessibility)
+ * - Time adjustments (market appreciation since listing)
+ * - Listing adjustments (asking-to-achieved discount)
+ * - Ghana-specific adjustments (tenure risk, neighborhood premiums)
+ * 
+ * Returns calculated adjustments for frontend display.
+ */
+router.post('/:id/sales-comparison/auto-calculate', validateUUID('id'), async (req: Request, res: Response) => {
+  const valuationId = req.params.id;
+  
+  try {
+    const { subject_property, comparables, options } = req.body;
+    
+    // Validate input
+    if (!subject_property) {
+      return res.status(400).json({
+        success: false,
+        error: 'subject_property is required',
+      });
+    }
+    
+    if (!comparables || !Array.isArray(comparables) || comparables.length === 0) {
+      return res.status(400).json({
+        success: false,
+        error: 'comparables array is required and must not be empty',
+      });
+    }
+    
+    // Check if Python service is available
+    const pythonAvailable = await pythonClient.isAvailable();
+    
+    if (!pythonAvailable) {
+      // Fallback to TypeScript calculation
+      logger.warn('Python service not available, using TypeScript fallback for auto-calculate');
+      
+      const adjustedComparables = comparables.map((comp: any) => {
+        const adjustments: Record<string, number> = {};
+        
+        // Physical adjustments
+        if (subject_property.gfa && comp.gfa) {
+          const gfaDiff = (subject_property.gfa - comp.gfa) / comp.gfa;
+          adjustments.gfa = Math.max(-25, Math.min(25, gfaDiff * 100));
+        }
+        
+        if (subject_property.bedrooms && comp.bedrooms) {
+          adjustments.bedrooms = (subject_property.bedrooms - comp.bedrooms) * 2.5;
+        }
+        
+        if (subject_property.bathrooms && comp.bathrooms) {
+          adjustments.bathrooms = (subject_property.bathrooms - comp.bathrooms) * 2;
+        }
+        
+        // Age adjustment (0.5% per year)
+        const subjectAge = subject_property.age || (subject_property.year_built ? new Date().getFullYear() - subject_property.year_built : 0);
+        const compAge = comp.age || (comp.year_built ? new Date().getFullYear() - comp.year_built : 0);
+        if (subjectAge && compAge) {
+          adjustments.age = (compAge - subjectAge) * 0.5;
+        }
+        
+        // Condition adjustment (5% per level)
+        const conditionRatings: Record<string, number> = { excellent: 4, good: 3, fair: 2, poor: 1 };
+        const subjectCondition = conditionRatings[subject_property.condition || 'good'] || 3;
+        const compCondition = conditionRatings[comp.condition || 'good'] || 3;
+        adjustments.condition = (subjectCondition - compCondition) * 5;
+        
+        // Listing adjustment (asking-to-achieved)
+        const evidenceType = comp.evidence_type || 'listing';
+        if (evidenceType === 'listing' || evidenceType === 'asking_price') {
+          const qualityDiscounts: Record<string, number> = {
+            luxury: -20, high: -15, standard: -12, basic: -8
+          };
+          adjustments.listing_adjustment = qualityDiscounts[comp.quality_rating || 'standard'] || -12;
+        } else {
+          adjustments.listing_adjustment = 0;
+        }
+        
+        // Ghana-specific tenure adjustment
+        const tenureRisks: Record<string, number> = {
+          freehold: 0, leasehold_99: -3, government_lease: -5,
+          leasehold_50_99: -8, customary_freehold: -10, stool_land_documented: -12,
+          leasehold_under_50: -15, family_land_documented: -18,
+          stool_land_undocumented: -25, family_land_undocumented: -30
+        };
+        const subjectTenure = tenureRisks[subject_property.tenure_type || 'freehold'] || 0;
+        const compTenure = tenureRisks[comp.tenure_type || 'freehold'] || 0;
+        adjustments.tenure = subjectTenure - compTenure;
+        
+        // Time adjustment (0.5% per month, ~6% annual)
+        if (comp.sale_date) {
+          const saleDate = new Date(comp.sale_date);
+          const monthsSince = (Date.now() - saleDate.getTime()) / (1000 * 60 * 60 * 24 * 30);
+          adjustments.time = Math.min(15, monthsSince * 0.5);
+        }
+        
+        // Calculate total adjustment
+        const totalAdjustment = Object.values(adjustments).reduce((sum, adj) => sum + adj, 0);
+        const adjustedPrice = comp.sale_price * (1 + totalAdjustment / 100);
+        
+        return {
+          ...comp,
+          adjustments,
+          total_adjustment_pct: totalAdjustment,
+          adjusted_price: adjustedPrice,
+          adjusted_price_per_sqm: comp.gfa ? adjustedPrice / comp.gfa : null,
+          calculation_source: 'typescript_fallback',
+        };
+      });
+      
+      // Calculate indicated value
+      const totalWeight = adjustedComparables.length;
+      const indicatedValue = adjustedComparables.reduce(
+        (sum: number, c: any) => sum + c.adjusted_price, 
+        0
+      ) / totalWeight;
+      
+      return res.json({
+        success: true,
+        data: {
+          valuation_id: valuationId,
+          comparables: adjustedComparables,
+          indicated_value: indicatedValue,
+          avg_adjustment_pct: adjustedComparables.reduce(
+            (sum: number, c: any) => sum + Math.abs(c.total_adjustment_pct), 
+            0
+          ) / adjustedComparables.length,
+          calculation_source: 'typescript_fallback',
+          python_available: false,
+          message: 'Calculated using TypeScript fallback (Python service unavailable)',
+        },
+      });
+    }
+    
+    // Convert subject property to Python format
+    const pythonSubject = {
+      id: valuationId,
+      property_type: subject_property.property_type || 'residential',
+      region: subject_property.region || 'greater_accra',
+      address_city: subject_property.city,
+      address_street: subject_property.address,
+      latitude: subject_property.latitude,
+      longitude: subject_property.longitude,
+      land_area_sqm: subject_property.plot_size,
+      building_size_sqm: subject_property.gfa,
+      bedrooms: subject_property.bedrooms,
+      bathrooms: subject_property.bathrooms,
+      year_built: subject_property.year_built,
+      condition: subject_property.condition,
+      current_price_ghs: subject_property.price,
+    };
+    
+    // Call Python sales comparison service
+    const pythonResult = await pythonClient.salesComparison(pythonSubject, {
+      comparables: comparables.map((c: any) => ({
+        id: c.id,
+        property_type: c.property_type || 'residential',
+        region: c.region || 'greater_accra',
+        address_city: c.city,
+        address_street: c.address,
+        latitude: c.latitude,
+        longitude: c.longitude,
+        land_area_sqm: c.plot_size,
+        building_size_sqm: c.gfa,
+        bedrooms: c.bedrooms,
+        bathrooms: c.bathrooms,
+        year_built: c.year_built,
+        condition: c.condition,
+        current_price_ghs: c.sale_price || c.price,
+        sale_date: c.sale_date,
+        evidence_type: c.evidence_type,
+        tenure_type: c.tenure_type,
+        neighborhood: c.neighborhood,
+      })),
+      include_ghana_adjustments: options?.include_ghana_adjustments ?? true,
+      include_tenure_risk: options?.include_tenure_risk ?? true,
+      include_neighborhood_premiums: options?.include_neighborhood_premiums ?? true,
+    });
+    
+    if (!pythonResult.success) {
+      throw new Error(pythonResult.details?.error || 'Python calculation failed');
+    }
+    
+    // Map Python result back to frontend format
+    const adjustedComparables = comparables.map((comp: any, index: number) => {
+      const pythonComp = pythonResult.details?.comparables?.[index] || {};
+      
+      return {
+        ...comp,
+        adjustments: pythonComp.adjustments || {},
+        total_adjustment_pct: pythonComp.total_adjustment_percentage || 0,
+        adjusted_price: pythonComp.adjusted_value || comp.sale_price,
+        adjusted_price_per_sqm: comp.gfa ? (pythonComp.adjusted_value || comp.sale_price) / comp.gfa : null,
+        similarity_score: pythonComp.similarity_score || 0.8,
+        weight: pythonComp.weight || 1.0,
+        calculation_source: 'python_valuation_engine',
+      };
+    });
+    
+    res.json({
+      success: true,
+      data: {
+        valuation_id: valuationId,
+        comparables: adjustedComparables,
+        indicated_value: pythonResult.estimated_value,
+        confidence_score: pythonResult.confidence_score,
+        confidence_level: pythonResult.confidence_level,
+        value_range: pythonResult.value_range,
+        avg_adjustment_pct: pythonResult.details?.average_adjustment_pct || 0,
+        calculation_source: 'python_valuation_engine',
+        python_available: true,
+        methodology_notes: pythonResult.details?.methodology_notes,
+        assumptions: pythonResult.assumptions,
+        limitations: pythonResult.limitations,
+        ghana_adjustments_applied: {
+          tenure_risk: options?.include_tenure_risk ?? true,
+          neighborhood_premiums: options?.include_neighborhood_premiums ?? true,
+        },
+      },
+    });
+  } catch (error: any) {
+    logger.error('Failed to auto-calculate sales comparison', { valuationId, error: error.message });
+    res.status(500).json({
+      success: false,
+      error: 'Failed to auto-calculate sales comparison',
+      message: error.message,
+    });
+  }
+});
+
+// =====================================================
+// LAND VALUE ROUTES (2-Method Reconciliation: Residual + Comparable)
+// =====================================================
+
+/**
+ * Get land value for a valuation
+ * GET /api/v1/valuations/:id/land-value
+ * 
+ * Returns the calculated land value from valuation_method_inputs
+ * if previously calculated, otherwise returns null.
+ */
+router.get('/:id/land-value', validateUUID('id'), async (req: Request, res: Response) => {
+  const valuationId = req.params.id;
+  
+  try {
+    const result = await query(
+      `SELECT * FROM valuation_method_inputs 
+       WHERE valuation_id = $1 AND method_type = 'land_value'`,
+      [valuationId]
+    );
+
+    if (result.rows.length === 0) {
+      return res.json({
+        success: true,
+        data: null,
+        message: 'No land value calculated for this valuation yet',
+      });
+    }
+
+    const row = result.rows[0];
+    
+    res.json({
+      success: true,
+      data: {
+        id: row.id,
+        valuation_id: row.valuation_id,
+        method_type: row.method_type,
+        ...row.inputs,
+        calculated_value: row.calculated_value,
+        calculation_result: row.calculation_result,
+        confidence_score: row.confidence_score,
+        status: row.status,
+        updated_at: row.updated_at,
+      },
+    });
+  } catch (error: any) {
+    logger.error('Failed to get land value', { valuationId, error: error.message });
+    res.status(500).json({
+      error: 'Internal Server Error',
+      message: 'Failed to retrieve land value',
+    });
+  }
+});
+
+/**
+ * Calculate land value for a valuation
+ * POST /api/v1/valuations/:id/land-value/calculate
+ * 
+ * Calls the Python valuation engine to calculate land value
+ * using Residual + Comparable methods with comp-strength-based weighting.
+ * 
+ * If user_entered_value is provided, it is a 100% OVERRIDE.
+ * 
+ * Request body:
+ * {
+ *   user_entered_value?: number  // Optional: User override (100% bypass)
+ *   user_justification?: string  // Required if user_entered_value provided
+ *   force_recalculate?: boolean  // Force recalculation even if cached
+ * }
+ */
+router.post(
+  '/:id/land-value/calculate', 
+  validateUUID('id'), 
+  validate(landValueCalculateRequestSchema, 'body'),
+  async (req: Request, res: Response) => {
+  const valuationId = req.params.id;
+  const { user_entered_value, user_justification, force_recalculate } = req.body;
+  
+  try {
+    // Get valuation with property details
+    const valuationResult = await query(
+      `SELECT v.*, p.* 
+       FROM valuations v
+       JOIN properties p ON p.id = v.property_id
+       WHERE v.id = $1`,
+      [valuationId]
+    );
+    
+    if (valuationResult.rows.length === 0) {
+      return res.status(404).json({
+        error: 'Not Found',
+        message: 'Valuation not found',
+      });
+    }
+    
+    const row = valuationResult.rows[0];
+    
+    // Build property input for Python service
+    const propertyInput = {
+      id: row.property_id,
+      property_type: row.property_type || 'residential',
+      region: row.region || 'greater_accra',
+      address_city: row.address_city,
+      address_street: row.address_street,
+      latitude: row.latitude,
+      longitude: row.longitude,
+      land_area_sqm: row.land_area_sqm || row.land_size_sqm,
+      building_size_sqm: row.building_size_sqm || row.built_area_sqm || row.total_area_sqm,
+      bedrooms: row.bedrooms,
+      bathrooms: row.bathrooms,
+      year_built: row.year_built,
+      condition: row.condition || 'good',
+    };
+    
+    // Call Python land value service
+    const landValueResult = await pythonClient.getLandValue({
+      property: propertyInput,
+      valuation_id: valuationId,
+      user_entered_value: user_entered_value,
+      user_justification: user_justification,
+      force_recalculate: force_recalculate || false,
+    });
+    
+    if (!landValueResult.success) {
+      return res.status(400).json({
+        error: 'Calculation Error',
+        message: landValueResult.error || 'Failed to calculate land value',
+      });
+    }
+    
+    // Store in valuation_method_inputs
+    const inputs = {
+      user_entered_value,
+      user_justification,
+      property_id: row.property_id,
+      land_area_sqm: propertyInput.land_area_sqm,
+    };
+    
+    const saveResult = await query(
+      `INSERT INTO valuation_method_inputs 
+         (valuation_id, method_type, inputs, calculated_value, calculation_result, confidence_score, status)
+       VALUES ($1, 'land_value', $2, $3, $4, $5, 'calculated')
+       ON CONFLICT (valuation_id, method_type) 
+       DO UPDATE SET
+         inputs = EXCLUDED.inputs,
+         calculated_value = EXCLUDED.calculated_value,
+         calculation_result = EXCLUDED.calculation_result,
+         confidence_score = EXCLUDED.confidence_score,
+         status = EXCLUDED.status,
+         updated_at = NOW()
+       RETURNING *`,
+      [
+        valuationId,
+        JSON.stringify(inputs),
+        landValueResult.final_land_value,
+        JSON.stringify(landValueResult),
+        landValueResult.confidence_score,
+      ]
+    );
+    
+    const savedRow = saveResult.rows[0];
+    
+    logger.info('Land value calculated and saved', {
+      valuationId,
+      landValue: landValueResult.final_land_value,
+      isUserOverride: landValueResult.is_user_override,
+      comparableStrength: landValueResult.comparable_strength,
+    });
+    
+    res.json({
+      success: true,
+      data: {
+        id: savedRow.id,
+        valuation_id: savedRow.valuation_id,
+        method_type: savedRow.method_type,
+        ...landValueResult,
+        stored_at: savedRow.updated_at,
+      },
+      message: landValueResult.is_user_override 
+        ? 'User-entered land value saved successfully'
+        : 'Land value calculated and saved successfully',
+    });
+  } catch (error: any) {
+    logger.error('Failed to calculate land value', { valuationId, error: error.message });
+    res.status(500).json({
+      error: 'Internal Server Error',
+      message: 'Failed to calculate land value',
+    });
+  }
+});
+
+/**
+ * Get land comparables for a valuation
+ * GET /api/v1/valuations/:id/land-value/comparables
+ * 
+ * Returns land comparable sales without full reconciliation.
+ * Useful for displaying comparables to the user before calculating.
+ * 
+ * Query params:
+ *   max_distance_km?: number (default: 10)
+ *   max_results?: number (default: 10)
+ */
+router.get(
+  '/:id/land-value/comparables', 
+  validateUUID('id'), 
+  validate(landComparablesQuerySchema, 'query'),
+  async (req: Request, res: Response) => {
+  const valuationId = req.params.id;
+  // Validated by Zod middleware - defaults applied
+  const max_distance_km = Number(req.query.max_distance_km) || 10;
+  const max_results = Number(req.query.max_results) || 10;
+  
+  try {
+    // Get valuation with property details
+    const valuationResult = await query(
+      `SELECT v.*, p.* 
+       FROM valuations v
+       JOIN properties p ON p.id = v.property_id
+       WHERE v.id = $1`,
+      [valuationId]
+    );
+    
+    if (valuationResult.rows.length === 0) {
+      return res.status(404).json({
+        error: 'Not Found',
+        message: 'Valuation not found',
+      });
+    }
+    
+    const row = valuationResult.rows[0];
+    
+    // Build property input
+    const propertyInput = {
+      id: row.property_id,
+      property_type: row.property_type || 'residential',
+      region: row.region || 'greater_accra',
+      address_city: row.address_city,
+      address_street: row.address_street,
+      latitude: row.latitude,
+      longitude: row.longitude,
+      land_area_sqm: row.land_area_sqm || row.land_size_sqm,
+      building_size_sqm: row.building_size_sqm || row.built_area_sqm,
+    };
+    
+    // Call Python comparables service
+    const comparablesResult = await pythonClient.getLandComparables(propertyInput, {
+      max_distance_km: max_distance_km,
+      max_results: max_results,
+    });
+    
+    res.json({
+      success: true,
+      data: comparablesResult,
+    });
+  } catch (error: any) {
+    logger.error('Failed to get land comparables', { valuationId, error: error.message });
+    res.status(500).json({
+      error: 'Internal Server Error',
+      message: 'Failed to retrieve land comparables',
+    });
+  }
+});
+
+/**
+ * Save/update land value inputs (without recalculating)
+ * POST /api/v1/valuations/:id/land-value
+ * 
+ * Stores inputs and optionally calculation results without calling Python service.
+ * Useful for saving user edits or restoring from saved state.
+ */
+router.post('/:id/land-value', validateUUID('id'), async (req: Request, res: Response) => {
+  return saveMethodInputs(req, res, 'land_value');
+});
+
+/**
+ * Helper: Get method inputs
+ */
+async function getMethodInputs(req: Request, res: Response, methodType: string) {
+  const valuationId = req.params.id;
+  
+  try {
+    const result = await query(
+      `SELECT * FROM valuation_method_inputs 
+       WHERE valuation_id = $1 AND method_type = $2`,
+      [valuationId, methodType]
+    );
+
+    if (result.rows.length === 0) {
+      return res.json({
+        success: true,
+        data: null,
+        message: `No ${methodType} inputs found for this valuation`,
+      });
+    }
+
+    const row = result.rows[0];
+    
+    // Return inputs merged with calculation results for frontend convenience
+    res.json({
+      success: true,
+      data: {
+        id: row.id,
+        valuation_id: row.valuation_id,
+        method_type: row.method_type,
+        ...row.inputs,
+        calculated_value: row.calculated_value,
+        calculation_result: row.calculation_result,
+        confidence_score: row.confidence_score,
+        status: row.status,
+        updated_at: row.updated_at,
+      },
+    });
+  } catch (error: any) {
+    logger.error(`Failed to get ${methodType} inputs`, { valuationId, error: error.message });
+    res.status(500).json({
+      error: 'Internal Server Error',
+      message: `Failed to retrieve ${methodType} inputs`,
+    });
+  }
+}
+
+/**
+ * Helper: Save method inputs (UPSERT)
+ */
+async function saveMethodInputs(req: Request, res: Response, methodType: string) {
+  const valuationId = req.params.id;
+  const inputs = req.body;
+  
+  // Extract special fields from inputs
+  const { 
+    calculated_value, 
+    calculation_result, 
+    confidence_score, 
+    status,
+    id, // Ignore if passed
+    valuation_id, // Ignore if passed
+    method_type, // Ignore if passed
+    ...inputsOnly 
+  } = inputs;
+  
+  try {
+    const result = await query(
+      `INSERT INTO valuation_method_inputs 
+         (valuation_id, method_type, inputs, calculated_value, calculation_result, confidence_score, status)
+       VALUES ($1, $2, $3, $4, $5, $6, $7)
+       ON CONFLICT (valuation_id, method_type) 
+       DO UPDATE SET
+         inputs = EXCLUDED.inputs,
+         calculated_value = COALESCE(EXCLUDED.calculated_value, valuation_method_inputs.calculated_value),
+         calculation_result = COALESCE(EXCLUDED.calculation_result, valuation_method_inputs.calculation_result),
+         confidence_score = COALESCE(EXCLUDED.confidence_score, valuation_method_inputs.confidence_score),
+         status = COALESCE(EXCLUDED.status, valuation_method_inputs.status),
+         updated_at = NOW()
+       RETURNING *`,
+      [
+        valuationId, 
+        methodType, 
+        JSON.stringify(inputsOnly),
+        calculated_value || null,
+        calculation_result ? JSON.stringify(calculation_result) : null,
+        confidence_score || null,
+        status || 'draft',
+      ]
+    );
+
+    const row = result.rows[0];
+    
+    logger.info(`${methodType} inputs saved`, { valuationId, methodType });
+
+    res.json({
+      success: true,
+      data: {
+        id: row.id,
+        valuation_id: row.valuation_id,
+        method_type: row.method_type,
+        ...row.inputs,
+        calculated_value: row.calculated_value,
+        calculation_result: row.calculation_result,
+        confidence_score: row.confidence_score,
+        status: row.status,
+        updated_at: row.updated_at,
+      },
+      message: `${methodType} inputs saved successfully`,
+    });
+  } catch (error: any) {
+    logger.error(`Failed to save ${methodType} inputs`, { valuationId, error: error.message });
+    res.status(500).json({
+      error: 'Internal Server Error',
+      message: `Failed to save ${methodType} inputs`,
+    });
+  }
+}
 
 export default router;

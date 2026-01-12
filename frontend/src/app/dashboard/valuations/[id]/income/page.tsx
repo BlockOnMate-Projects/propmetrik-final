@@ -296,7 +296,21 @@ export default function IncomeApproachPage() {
         current_step: 6,
       })
 
-      router.push(`/dashboard/valuations/${valuationId}/reconciliation`)
+      // Navigate to next step based on selected methods
+      const selectedMethods = (valuation as any)?.selectedMethods || valuation?.methods_applied || []
+      const hasDRC = selectedMethods.includes('drc_method')
+      const hasProfits = selectedMethods.includes('profits_method')
+      const hasResidual = selectedMethods.includes('residual_method')
+      
+      if (hasDRC) {
+        router.push(`/dashboard/valuations/${valuationId}/drc`)
+      } else if (hasProfits) {
+        router.push(`/dashboard/valuations/${valuationId}/profits`)
+      } else if (hasResidual) {
+        router.push(`/dashboard/valuations/${valuationId}/residual`)
+      } else {
+        router.push(`/dashboard/valuations/${valuationId}/reconciliation`)
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to save')
     } finally {
@@ -308,17 +322,28 @@ export default function IncomeApproachPage() {
   const getBackPath = () => {
     const selectedMethods = (valuation as any)?.selectedMethods || valuation?.methods_applied || []
     const hasCostApproach = selectedMethods.includes('cost_approach')
+    const hasSalesComparison = selectedMethods.includes('sales_comparison')
     if (hasCostApproach) {
       return `/dashboard/valuations/${valuationId}/cost`
     }
-    // If no cost approach, go back to market
-    return `/dashboard/valuations/${valuationId}/market`
+    if (hasSalesComparison) {
+      return `/dashboard/valuations/${valuationId}/market`
+    }
+    // If income only, go back to comparables (Step 4)
+    return `/dashboard/valuations/${valuationId}/comparables`
   }
   
   const getBackLabel = () => {
     const selectedMethods = (valuation as any)?.selectedMethods || valuation?.methods_applied || []
     const hasCostApproach = selectedMethods.includes('cost_approach')
-    return hasCostApproach ? '← BACK TO COST APPROACH' : '← BACK TO MARKET DATA'
+    const hasSalesComparison = selectedMethods.includes('sales_comparison')
+    if (hasCostApproach) {
+      return '← BACK TO COST APPROACH'
+    }
+    if (hasSalesComparison) {
+      return '← BACK TO MARKET DATA'
+    }
+    return '← BACK TO COMPARABLES'
   }
 
   if (loading) {
@@ -336,7 +361,7 @@ export default function IncomeApproachPage() {
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-4">
           <Link
-            href={`/dashboard/valuations/${valuationId}/cost`}
+            href={getBackPath()}
             className="p-2 hover:bg-zinc-800 transition-colors"
           >
             <ArrowLeft className="w-4 h-4 text-zinc-400" />

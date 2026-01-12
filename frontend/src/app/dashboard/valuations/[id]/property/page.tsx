@@ -14,8 +14,6 @@ import {
 import { valuationsApi, floorPlanApi } from '@/lib/valuation-api'
 import type { Valuation, FloorPlan, FloorPlanRoom, RoomType } from '@/types/valuation'
 import type { PropertyMeasurements, RoomMeasurement } from '@/components/valuation/FloorPlanBuilder'
-import ComprehensivePropertyForm from '@/components/forms/ComprehensivePropertyForm'
-import { type ComprehensivePropertyData } from '@/types/comprehensiveProperty'
 import {
   ArrowLeft,
   ArrowRight,
@@ -81,9 +79,6 @@ export default function PropertySetupPage() {
   const [showFloorPlanBuilder, setShowFloorPlanBuilder] = useState(false)
   const [currentMeasurements, setCurrentMeasurements] = useState<PropertyMeasurements | null>(null)
 
-  // Property details form - comprehensive data
-  const [propertyDetails, setPropertyDetails] = useState<Partial<ComprehensivePropertyData>>({})
-
   // Fetch valuation data
   useEffect(() => {
     async function fetchData() {
@@ -96,37 +91,6 @@ export default function PropertySetupPage() {
         if (!valuationRes.data) throw new Error('Valuation not found')
 
         setValuation(valuationRes.data as Valuation)
-
-        // Pre-fill property details from comprehensive data or existing format
-        const property = valuationRes.data.property
-        if (property) {
-          // Map existing property data to comprehensive format
-          setPropertyDetails({
-            address: property.address_street || property.address || '',
-            city: property.address_city || property.city || '',
-            region: property.region || 'greater_accra',
-            digital_address: property.digital_address || '',
-            property_type: property.property_type || 'house',
-            
-            // Physical characteristics
-            gfa: property.grossFloorArea || property.built_area_sqm || property.gfa || undefined,
-            plot_size: property.plotSize || property.plot_size || property.land_area_sqm || undefined,
-            land_area: property.landArea || property.land_area_sqm || undefined,
-            bedrooms: property.bedrooms || undefined,
-            bathrooms: property.bathrooms || undefined,
-            total_floors: property.total_floors || property.floors || undefined,
-            parking_spaces: property.parking_spaces || undefined,
-            year_built: property.year_built || property.yearBuilt || undefined,
-            age: property.year_built ? new Date().getFullYear() - property.year_built : undefined,
-            
-            // Quality & Condition  
-            quality_rating: property.quality || property.quality_rating || 'standard',
-            condition: property.condition || 'good',
-            
-            // Use comprehensive data if available, otherwise defaults
-            ...(property.comprehensive_data || {})
-          })
-        }
 
         // Fetch existing floor plans from backend
         const floorPlansRes = await floorPlanApi.getByValuation(valuationId)
@@ -218,40 +182,6 @@ export default function PropertySetupPage() {
       setSaving(true)
       setError(null)
 
-      // Save comprehensive property data first
-      if (propertyDetails && Object.keys(propertyDetails).length > 0) {
-        // Map comprehensive data to backend format
-        const propertyUpdateData = {
-          // Basic information
-          address_street: propertyDetails.address,
-          address_city: propertyDetails.city,
-          region: propertyDetails.region,
-          digital_address: propertyDetails.digital_address,
-          property_type: propertyDetails.property_type,
-          
-          // Physical characteristics
-          built_area_sqm: propertyDetails.gfa,
-          plot_size: propertyDetails.plot_size,
-          land_area_sqm: propertyDetails.land_area,
-          bedrooms: propertyDetails.bedrooms,
-          bathrooms: propertyDetails.bathrooms,
-          total_floors: propertyDetails.total_floors,
-          floor_number: propertyDetails.floor_number,
-          parking_spaces: propertyDetails.parking_spaces,
-          year_built: propertyDetails.year_built,
-          
-          // Quality & Condition
-          quality: propertyDetails.quality_rating,
-          condition: propertyDetails.condition,
-          
-          // Store comprehensive data for future reference
-          comprehensive_data: propertyDetails
-        }
-
-        // Update property data via valuation endpoint
-        await valuationsApi.updateProperty(valuationId, propertyUpdateData)
-      }
-
       // Save floor plans to backend
       for (const floorPlan of floorPlans) {
         // Only save if there's canvas data (floor plan was drawn)
@@ -299,7 +229,8 @@ export default function PropertySetupPage() {
     )
   }
 
-  const property = valuation.property
+  // Cast property to any to handle both camelCase (from backend) and snake_case field names
+  const property = valuation.property as any
 
   // Floor plan builder modal
   if (showFloorPlanBuilder) {
@@ -405,20 +336,22 @@ export default function PropertySetupPage() {
 
       {/* Main Content Grid */}
       <div className="grid grid-cols-3 gap-4">
-        {/* Property Summary */}
-        <TerminalPanel title="PROPERTY DETAILS" className="col-span-1">
+        {/* Property Summary - Subject Property Info from Step 1 */}
+        <TerminalPanel title="SUBJECT PROPERTY" className="col-span-1">
           <div className="space-y-4">
             <div>
               <div className="font-mono text-[10px] text-zinc-500 mb-1">ADDRESS</div>
-              <div className="font-mono text-sm text-white">{property?.address || '—'}</div>
+              <div className="font-mono text-sm text-white">{property?.address || property?.address_street || '—'}</div>
             </div>
             <div>
               <div className="font-mono text-[10px] text-zinc-500 mb-1">LOCATION</div>
-              <div className="font-mono text-xs text-zinc-400">{property?.city}, {property?.region}</div>
+              <div className="font-mono text-xs text-zinc-400">
+                {property?.city || property?.address_city || '—'}, {(property?.region || '')?.replace('_', ' ').toUpperCase() || '—'}
+              </div>
             </div>
             <div>
               <div className="font-mono text-[10px] text-zinc-500 mb-1">TYPE</div>
-              <PropertyTypeBadge type={property?.property_type || 'residential'} />
+              <PropertyTypeBadge type={property?.propertyType || property?.property_type || 'residential'} />
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div>
@@ -428,6 +361,16 @@ export default function PropertySetupPage() {
               <div>
                 <div className="font-mono text-[10px] text-zinc-500 mb-1">BATHROOMS</div>
                 <div className="font-mono text-lg text-white">{property?.bathrooms || '—'}</div>
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <div className="font-mono text-[10px] text-zinc-500 mb-1">YEAR BUILT</div>
+                <div className="font-mono text-sm text-white">{property?.yearBuilt || property?.year_built || '—'}</div>
+              </div>
+              <div>
+                <div className="font-mono text-[10px] text-zinc-500 mb-1">FLOORS</div>
+                <div className="font-mono text-sm text-white">{property?.floors || property?.total_floors || floorPlans.length}</div>
               </div>
             </div>
           </div>
@@ -453,7 +396,7 @@ export default function PropertySetupPage() {
             </div>
             <div className="p-4 bg-zinc-800/30 border border-zinc-700">
               <div className="font-mono text-[10px] text-zinc-500 mb-1">PLOT SIZE</div>
-              <div className="font-mono text-2xl text-white">{property?.plot_size?.toLocaleString() || '—'}</div>
+              <div className="font-mono text-2xl text-white">{(property?.plotSize || property?.plot_size || property?.landArea || property?.land_area)?.toLocaleString() || '—'}</div>
               <div className="font-mono text-[10px] text-zinc-500">sqm</div>
             </div>
           </div>
@@ -560,25 +503,13 @@ export default function PropertySetupPage() {
         ))}
       </TerminalPanel>
 
-      {/* Comprehensive Property Details */}
-      <TerminalPanel title="COMPREHENSIVE PROPERTY DETAILS" className="mt-4">
-        <ComprehensivePropertyForm
-          data={propertyDetails}
-          onChange={setPropertyDetails}
-          mode="subject"
-          showLocationFields={true}
-          showTransactionFields={false}
-          className=""
-        />
-      </TerminalPanel>
-
       {/* Navigation */}
       <div className="mt-6 flex justify-between">
         <Link
           href={`/dashboard/valuations/${valuationId}`}
           className="px-6 py-3 bg-zinc-800 text-zinc-400 font-mono text-sm hover:text-white transition-colors"
         >
-          ← BACK TO OVERVIEW
+          ← BACK TO VALUATION
         </Link>
         <button
           onClick={handleSaveAndContinue}

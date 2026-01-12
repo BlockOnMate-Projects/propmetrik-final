@@ -37,11 +37,36 @@ export const CONDITIONS = [
 ]
 
 export const TENURE_TYPES = [
-  { value: 'freehold', label: 'Freehold', description: 'Outright ownership of property and land' },
-  { value: 'leasehold', label: 'Leasehold', description: 'Lease agreement for specific period' },
-  { value: 'customary', label: 'Customary', description: 'Traditional family/customary land' },
-  { value: 'government', label: 'Government Lease', description: 'Lease from government authority' },
+  // Low Risk
+  { value: 'freehold', label: 'Freehold (Registered)', description: 'Outright ownership registered at Lands Commission', riskAdjustment: 0, riskLevel: 'low' },
+  { value: 'leasehold_99', label: 'Leasehold (99+ years)', description: 'Long leasehold with substantial remaining term', riskAdjustment: -3, riskLevel: 'low' },
+  { value: 'government_lease', label: 'Government Lease', description: 'Lease from Lands Commission', riskAdjustment: -5, riskLevel: 'low' },
+  
+  // Medium Risk
+  { value: 'leasehold_50_99', label: 'Leasehold (50-99 years)', description: 'Medium-term leasehold', riskAdjustment: -8, riskLevel: 'medium' },
+  { value: 'customary_freehold', label: 'Customary Freehold', description: 'Customary grant converted to freehold', riskAdjustment: -10, riskLevel: 'medium' },
+  { value: 'stool_land_documented', label: 'Stool Land (Documented)', description: 'Traditional stool land with documentation', riskAdjustment: -12, riskLevel: 'medium' },
+  
+  // High Risk
+  { value: 'leasehold_under_50', label: 'Leasehold (Under 50 years)', description: 'Short remaining term, affects financing', riskAdjustment: -15, riskLevel: 'medium-high' },
+  { value: 'family_land_documented', label: 'Family Land (Documented)', description: 'Family-owned land with documentation', riskAdjustment: -18, riskLevel: 'high' },
+  
+  // Very High Risk
+  { value: 'stool_land_undocumented', label: 'Stool Land (Undocumented)', description: 'Traditional stool land without documentation', riskAdjustment: -25, riskLevel: 'high' },
+  { value: 'family_land_undocumented', label: 'Family Land (Undocumented)', description: 'Family land without proper documentation', riskAdjustment: -30, riskLevel: 'very_high' },
 ]
+
+// Helper function to get tenure risk adjustment
+export const getTenureRiskAdjustment = (tenureType: string): number => {
+  const tenure = TENURE_TYPES.find(t => t.value === tenureType);
+  return tenure?.riskAdjustment ?? 0;
+};
+
+// Helper function to get tenure risk level
+export const getTenureRiskLevel = (tenureType: string): string => {
+  const tenure = TENURE_TYPES.find(t => t.value === tenureType);
+  return tenure?.riskLevel ?? 'medium';
+};
 
 export const VIEW_QUALITIES = [
   { value: 'premium', label: 'Premium View', description: 'Ocean, city skyline, or exceptional vista' },

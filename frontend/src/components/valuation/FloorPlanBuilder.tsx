@@ -113,7 +113,7 @@ export interface PropertyMeasurements {
 
 interface FloorPlanBuilderProps {
   onMeasurementsChange?: (measurements: PropertyMeasurements) => void;
-  initialFloorPlan?: string;
+  initialFloorPlan?: string | object;
   readonly?: boolean;
   width?: number;
   height?: number;
@@ -604,6 +604,12 @@ export default function FloorPlanBuilder({
     const handleKeyPress = (e: KeyboardEvent) => {
       if (readonly) return;
       
+      // Don't intercept keyboard events when focused on input elements
+      const target = e.target as HTMLElement;
+      if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.tagName === 'SELECT' || target.isContentEditable) {
+        return;
+      }
+      
       switch (e.key.toLowerCase()) {
         case 'r':
           if (!e.ctrlKey && !e.altKey) {
@@ -974,11 +980,14 @@ export default function FloorPlanBuilder({
     return JSON.stringify(floorPlanData);
   };
 
-  const loadFloorPlan = (floorPlanJson: string) => {
+  const loadFloorPlan = (floorPlanJson: string | object) => {
     if (!fabricCanvasRef.current) return;
 
     try {
-      const floorPlanData = JSON.parse(floorPlanJson);
+      // Handle both string (from file import) and object (from database JSONB)
+      const floorPlanData = typeof floorPlanJson === 'string' 
+        ? JSON.parse(floorPlanJson) 
+        : floorPlanJson;
 
       fabricCanvasRef.current.loadFromJSON(floorPlanData.canvasData, () => {
         setRooms(floorPlanData.rooms || []);

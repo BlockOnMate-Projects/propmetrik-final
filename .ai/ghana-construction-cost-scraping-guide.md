@@ -3,6 +3,44 @@
 ## Overview
 This guide provides comprehensive instructions for automatically scraping construction material and labor costs from Ghana Statistical Service and related agencies.
 
+---
+
+## 📊 MARKET DATA INTEGRATION STATUS
+
+> **Last Updated**: January 10, 2026  
+> This section tracks which external market data sources are already integrated in PropMetrik Data Hub vs. need implementation.
+
+### ✅ ALREADY INTEGRATED (Use existing Data Hub services)
+
+| Source | Data Available | Update Frequency | Service Location |
+|--------|---------------|------------------|------------------|
+| **Bank of Ghana (BOG)** | USD/GBP/EUR exchange rates, Policy/Prime/Lending rates, CPI, GDP, CIEA Index | Monthly | `economicDataScraper.ts` |
+| **World Bank WDI API** | Inflation rate, GDP growth, Unemployment, Lending rate, GDP per capita | Quarterly | `wdiDataService.ts` |
+| **ForexRate-API** | Real-time USD/GBP/EUR/CNY/NGN to GHS | Daily (5-min cache) | `forexService.ts` |
+| **Yahoo Finance** | Exchange rates (fallback) | Daily | `forexService.ts` |
+
+### ❌ NOT YET IMPLEMENTED (Build these scrapers)
+
+| Source | Data Needed | Priority | Notes |
+|--------|-------------|----------|-------|
+| **NPA (National Petroleum Authority)** | Diesel, Petrol, LPG prices | 🔴 HIGH | Affects transport costs |
+| **World Bank Commodity Prices API** | Steel, Cement, Timber prices | 🔴 HIGH | Material cost inputs |
+| **GSS PBCI Scraper** | Prime Building Cost Index | 🟡 MEDIUM | Validation/calibration |
+| **GSS StatsBank API** | Regional CPI, Economic indicators | 🟡 MEDIUM | Regional adjustments |
+| **GSS Labor Force Survey** | Minimum wage, Labor statistics | 🟡 MEDIUM | Labor cost inputs |
+| **GREDA** | Construction cost benchmarks | 🟢 LOW | Industry validation |
+
+### 🔄 INFRASTRUCTURE READY (Tables exist, need data population)
+
+| Table | Purpose | Status |
+|-------|---------|--------|
+| `partner_api_endpoints` | API pull configurations | Schema ready, needs endpoints |
+| `api_pull_jobs` | Scheduled data fetching | Schema ready, needs jobs |
+| `economic_data_sync_log` | Sync tracking | ✅ Active |
+| `economic_data_source_health` | Source monitoring | ✅ Active |
+
+---
+
 ## Data Acquisition Strategy
 
 ### 1. Primary Source: Proprietary Construction Cost Methodology
@@ -11,10 +49,10 @@ This guide provides comprehensive instructions for automatically scraping constr
 **Coverage**: National with regional adjustments
 
 #### Key Components:
-- **Material Cost Calculation**: Using exchange rates, commodity prices, and transport costs
-- **Labor Cost Calculation**: Based on official wage data with skill premiums
-- **Regional Adjustments**: CPI-based and economic indicator adjustments
-- **Data-Driven Weights**: Extracted from official PBCI methodology documents
+- **Material Cost Calculation**: Using exchange rates ✅, commodity prices ❌, and transport costs ❌
+- **Labor Cost Calculation**: Based on official wage data ❌ with skill premiums
+- **Regional Adjustments**: CPI-based ✅ and economic indicator adjustments ✅
+- **Data-Driven Weights**: Extracted from official PBCI methodology documents ❌
 
 ### 2. Fallback Source: Ghana Statistical Service (GSS) Web Scraping
 **Website**: https://www.statsghana.gov.gh/
@@ -31,29 +69,33 @@ Microdata: https://microdata.statsghana.gov.gh/
 
 ### 2. Key Construction Cost Indicators
 
-#### A. Prime Building Cost Index (PBCI)
+#### A. Prime Building Cost Index (PBCI) ❌ NOT INTEGRATED
 - **URL Pattern**: `https://www.statsghana.gov.gh/headlines.php?slidelocks=*`
 - **Update Frequency**: Monthly (typically mid-month)
 - **Data Format**: PDF reports, HTML bulletins
 - **Regional Coverage**: ⚠️ **NATIONAL LEVEL ONLY** (no regional breakdown found)
+- **Implementation Status**: ❌ Need to build `gssPbciScraper.ts`
 
-#### B. Producer Price Index (PPI)
+#### B. Producer Price Index (PPI) ❌ NOT INTEGRATED
 - **URL**: `https://www.statsghana.gov.gh/gssmain/storage/img/marqueeupdater/PPI_*.pdf`
 - **Update Frequency**: Monthly
 - **Relevance**: Construction materials pricing trends
+- **Implementation Status**: ❌ Need to build PDF scraper
 
-#### C. Consumer Price Index (CPI) 
+#### C. Consumer Price Index (CPI) ✅ PARTIALLY INTEGRATED
 - **URL**: `https://www.statsghana.gov.gh/gssmain/storage/img/marqueeupdater/*CPI-Bulletin.pdf`
 - **Update Frequency**: Monthly
 - **Relevance**: General inflation affecting construction costs
+- **Implementation Status**: ✅ National CPI via BOG scraper, ❌ Regional CPI needs implementation
 
-### 3. StatsBank Macroeconomic Data
+### 3. StatsBank Macroeconomic Data ❌ NOT INTEGRATED
 **Base URL**: `https://statsbank.statsghana.gov.gh/pxweb/en/Macroeconomic%20Indicators/`
+**Implementation Status**: ❌ Need to build StatsBank API client
 
 #### Available Categories:
 ```
 /Prices and Inflation/          # Core construction cost data
-/Real Sector (GDP)/            # Construction sector contribution
+/Real Sector (GDP)/            # ✅ GDP available via WDI
 /External Sector/              # Import prices for materials
 /Monthly Indicator (MIEG)/     # Recent economic performance
 ```
@@ -89,11 +131,11 @@ from typing import Dict, Any, Optional
 class ProprietaryConstructionCostCalculator:
     def __init__(self):
         self.economic_data_sources = {
-            'exchange_rate': 'Bank of Ghana API',
-            'fuel_prices': 'National Petroleum Authority',
-            'commodity_prices': 'World Bank Commodity API',
-            'minimum_wage': 'Ghana Statistical Service',
-            'regional_cpi': 'GSS Regional Data'
+            'exchange_rate': 'Bank of Ghana API',              # ✅ INTEGRATED - economicDataScraper.ts, forexService.ts
+            'fuel_prices': 'National Petroleum Authority',     # ❌ NOT INTEGRATED - need npaScraper.ts
+            'commodity_prices': 'World Bank Commodity API',    # ❌ NOT INTEGRATED - need commodityPriceService.ts
+            'minimum_wage': 'Ghana Statistical Service',       # ❌ NOT INTEGRATED - need gssLaborScraper.ts
+            'regional_cpi': 'GSS Regional Data'                # ❌ NOT INTEGRATED - need gssRegionalCpiScraper.ts
         }
         self.material_weights = None  # Will be loaded from data-driven analysis
         self.labor_composition = None  # Will be loaded from industry data
@@ -865,17 +907,17 @@ def monitor_scraping_health():
 ## Summary
 
 ### **Primary Methodology: World Development Indicators (WDI) Integration**
-- ✅ **World Bank WDI API as primary source** (economic indicators, construction sector data)
+- ✅ **World Bank WDI API as primary source** ✅ INTEGRATED via `wdiDataService.ts`
 - ✅ **Eliminates 80%+ of PDF scraping complexity** (no more GSS quarterly report parsing)
-- ✅ **Real-time economic data integration** (CPI, exchange rates, GDP indicators)
+- ✅ **Real-time economic data integration** ✅ CPI via BOG, exchange rates via ForexRate-API
 - ✅ **Standardized international methodology** (comparable across countries)
 - ✅ **Monthly automated updates** with clean API access
-- ✅ **Regional cost variations** based on economic factors + minimal targeted scraping
+- ⚠️ **Regional cost variations** ❌ Regional CPI scraper NOT YET IMPLEMENTED
 
 ### **Minimal Targeted Scraping (Fallback Only)**
-- ✅ **Simple HTML table scraping** (regional CPI from GSS when needed)
-- ✅ **Current exchange rates** (Bank of Ghana - simple webpage)
-- ✅ **Current fuel prices** (NPA - simple webpage, not PDF)
+- ❌ **Simple HTML table scraping** (regional CPI from GSS) - NOT YET IMPLEMENTED
+- ✅ **Current exchange rates** ✅ INTEGRATED via `economicDataScraper.ts`
+- ❌ **Current fuel prices** (NPA) - NOT YET IMPLEMENTED, need `npaScraper.ts`
 - ⚠️ **No PDF parsing required** - eliminated complex document processing
 - ❌ **No GSS quarterly reports scraping** - replaced with WDI industry employment data
 
@@ -886,7 +928,7 @@ def monitor_scraping_health():
 - **Data freshness**: Near real-time via API vs 1-2 month lag from PDFs
 - **Scraping complexity**: Reduced by 80%+ (only simple webpage scraping when needed)
 
-### **Available WDI Indicators for Ghana:**
+### **Available WDI Indicators for Ghana:** ✅ ALL INTEGRATED via `wdiDataService.ts`
 - **Economic**: FP.CPI.TOTL (CPI), PA.NUS.FCRF (Exchange rates), NY.GDP.DEFL.ZS (GDP deflator)
 - **Labor**: SL.IND.EMPL.ZS (Industry employment %), SL.UEM.TOTL.ZS (Unemployment rate)
 - **Construction**: NV.IND.CONS.ZS (Construction % GDP), NV.IND.CONS.CD (Construction value USD)
@@ -900,6 +942,12 @@ def monitor_scraping_health():
 - **Consistent methodology**: Standardized across different time periods
 
 **Recommended deployment**: Use WDI as primary data source with minimal targeted scraping (only simple HTML tables) for regional adjustments, ensuring robust construction cost monitoring with minimal complexity.
+
+### **🔴 CRITICAL GAPS TO FILL BEFORE AUTOMATED COST CALCULATION:**
+1. ❌ `npaScraper.ts` - NPA fuel prices (affects transport costs)
+2. ❌ `commodityPriceService.ts` - World Bank Commodity API (steel, cement, timber)
+3. ❌ `gssRegionalCpiScraper.ts` - Regional CPI variations
+4. ❌ `gssLaborScraper.ts` - Minimum wage & labor statistics
 
 ## Regional Cost Adjustment Methodologies
 
@@ -2288,3 +2336,2292 @@ def validate_labor_index_quality(labor_indices):
 ```
 
 This implementation extracts **real wage data** from existing GSS sources rather than using hardcoded assumptions, providing data-driven labor cost indices for construction cost calculations.
+
+---
+
+# Part 2: Multiplier Calculation Methodology
+
+> **Purpose**: This section defines how collected market data is transformed into calculated multipliers for valuation models. Multipliers should be **calculated fields** derived from real market data, not hardcoded static values.
+
+---
+
+## Industry Standard: Calculated vs Static Multipliers
+
+In professional valuation practice, multipliers are computed using:
+
+1. **Index-based calculations** (comparing current prices to baseline periods)
+2. **Market-derived rates** (extracted from comparable transactions)
+3. **Statistical analysis** (regression coefficients from market data)
+
+Static multipliers are only acceptable as **initial seed values** until sufficient market data exists.
+
+---
+
+## 1. Construction Cost Multipliers
+
+### 1.1 Quality Level Multiplier
+
+**Industry Standard Formula:**
+
+$$\text{Quality Multiplier}_q = \frac{\text{Avg Cost/sqm for Quality Level } q}{\text{Avg Cost/sqm for Standard Quality}}$$
+
+**Data Required:**
+- `material_prices` table: prices by material and quality specification
+- `construction_cost_indices` table: tracked indices over time
+- Survey data: actual construction costs by quality tier
+
+**Example Calculation:**
+```sql
+-- Calculate quality multipliers from actual construction data
+SELECT 
+  quality_level,
+  AVG(actual_cost_per_sqm) / 
+    (SELECT AVG(actual_cost_per_sqm) FROM completed_projects WHERE quality_level = 'standard')
+  AS calculated_multiplier
+FROM completed_projects
+WHERE survey_date >= NOW() - INTERVAL '12 months'
+GROUP BY quality_level;
+```
+
+**Current Implementation Status:** ❌ Static → Should be calculated from `completed_projects` or `construction_surveys` table
+
+---
+
+### 1.2 Regional Cost Multiplier
+
+**Industry Standard Formula (Relative Location Index):**
+
+$$\text{Region Multiplier}_r = \frac{\sum_{i=1}^{n} (P_{i,r} \times W_i)}{\sum_{i=1}^{n} (P_{i,\text{base}} \times W_i)}$$
+
+Where:
+- $P_{i,r}$ = Price of material $i$ in region $r$
+- $P_{i,\text{base}}$ = Price of material $i$ in base region (Kumasi Metro)
+- $W_i$ = Weight of material $i$ in construction cost basket
+
+**Data Required:**
+- `material_prices` table: prices by region ✅ PARTIAL (Greater Accra only)
+- `labor_rates` table: labor costs by region ✅ PARTIAL (Greater Accra only)
+- `material_category_weights` table: weighted basket composition ✅ COMPLETE
+
+**Example Calculation:**
+```sql
+-- Calculate regional multiplier from actual price data
+WITH base_region AS (
+  SELECT 
+    material_category,
+    AVG(price_ghs) as base_price
+  FROM material_prices
+  WHERE region = 'kumasi_metro'
+    AND survey_date >= NOW() - INTERVAL '4 weeks'
+  GROUP BY material_category
+),
+regional_prices AS (
+  SELECT 
+    mp.region,
+    mp.material_category,
+    AVG(mp.price_ghs) as regional_price,
+    mcw.weight
+  FROM material_prices mp
+  JOIN material_category_weights mcw ON mp.material_category::text = mcw.category::text
+  WHERE mp.survey_date >= NOW() - INTERVAL '4 weeks'
+  GROUP BY mp.region, mp.material_category, mcw.weight
+)
+SELECT 
+  rp.region,
+  SUM(rp.regional_price * rp.weight) / SUM(br.base_price * rp.weight) as calculated_multiplier
+FROM regional_prices rp
+JOIN base_region br ON rp.material_category = br.material_category
+GROUP BY rp.region;
+```
+
+**Current Implementation Status:** ❌ Static → Should be calculated from `material_prices` and `labor_rates`
+
+---
+
+### 1.3 Construction Cost Index (Inflation Adjustment)
+
+**Industry Standard Formula (Laspeyres Price Index):**
+
+$$\text{Index}_t = \frac{\sum_{i=1}^{n} (P_{i,t} \times Q_{i,0})}{\sum_{i=1}^{n} (P_{i,0} \times Q_{i,0})} \times 100$$
+
+Where:
+- $P_{i,t}$ = Current price of item $i$
+- $P_{i,0}$ = Base period price of item $i$
+- $Q_{i,0}$ = Base period quantity weight for item $i$
+
+**Already Implemented:** ✅ `calculateCurrentIndices()` in `constructionCostService.ts`
+
+---
+
+## 2. Sales Comparison Approach Adjustments
+
+### 2.1 Location Adjustment
+
+**Industry Standard Formula:**
+
+$$\text{Location Adj} = (\text{Subject Location Score} - \text{Comp Location Score}) \times \text{Price Sensitivity Factor}$$
+
+**Data Required:**
+- `property_transactions` table: sale prices with location data
+- `location_scores` table: infrastructure, amenity, accessibility scores
+- Hedonic regression coefficients from sales data
+
+**Calculation Method:**
+```typescript
+interface LocationAdjustmentInputs {
+  subjectLocationScore: number;      // 1-100 composite score
+  comparableLocationScore: number;
+  basePrice: number;
+  locationPriceSensitivity: number;  // % price change per point
+}
+
+function calculateLocationAdjustment(inputs: LocationAdjustmentInputs): number {
+  const scoreDifference = inputs.subjectLocationScore - inputs.comparableLocationScore;
+  return inputs.basePrice * (scoreDifference * inputs.locationPriceSensitivity / 100);
+}
+```
+
+**Price Sensitivity Derivation:**
+```sql
+-- Derive location sensitivity from regression on sales data
+SELECT 
+  REGR_SLOPE(sale_price, location_score) / AVG(sale_price) as price_sensitivity_per_point
+FROM property_transactions
+WHERE transaction_date >= NOW() - INTERVAL '24 months'
+  AND property_type = 'residential';
+```
+
+---
+
+### 2.2 Size Adjustment
+
+**Industry Standard Formula:**
+
+$$\text{Size Adj} = \left(\frac{\text{Subject Size}}{\text{Comp Size}}\right)^\beta - 1$$
+
+Where $\beta$ is typically 0.8-0.9 (reflecting diminishing marginal value of size)
+
+**Data Required:**
+- `property_transactions` with `building_size_sqm` and `sale_price`
+- Regression analysis to derive $\beta$ coefficient
+
+**Calculation:**
+```sql
+-- Derive size elasticity from market data
+SELECT 
+  REGR_SLOPE(LN(sale_price), LN(building_size_sqm)) as size_elasticity_beta
+FROM property_transactions
+WHERE transaction_date >= NOW() - INTERVAL '24 months'
+  AND building_size_sqm > 0;
+```
+
+---
+
+### 2.3 Time Adjustment (Market Movement)
+
+**Industry Standard Formula:**
+
+$$\text{Time Adj} = (1 + r)^{m/12} - 1$$
+
+Where:
+- $r$ = Annual market price change rate
+- $m$ = Months between sale and valuation date
+
+**Data Required:**
+- `property_transactions` table with sale dates
+- `price_indices` table tracking market movement
+
+**Calculation:**
+```sql
+-- Calculate monthly appreciation rate from repeat sales or index
+WITH monthly_indices AS (
+  SELECT 
+    DATE_TRUNC('month', survey_date) as month,
+    AVG(index_value) as month_index
+  FROM construction_cost_indices
+  GROUP BY DATE_TRUNC('month', survey_date)
+  ORDER BY month
+)
+SELECT 
+  (POWER(
+    (SELECT month_index FROM monthly_indices ORDER BY month DESC LIMIT 1) /
+    (SELECT month_index FROM monthly_indices ORDER BY month ASC LIMIT 1),
+    12.0 / COUNT(*)
+  ) - 1) as annual_appreciation_rate
+FROM monthly_indices;
+```
+
+---
+
+### 2.4 Condition Adjustment
+
+**Industry Standard Formula:**
+
+$$\text{Condition Adj} = (\text{Condition Score Diff}) \times \text{Repair Cost Factor}$$
+
+| Condition | Score | Typical Adjustment |
+|-----------|-------|-------------------|
+| Excellent | 5 | +8% to +15% |
+| Good | 4 | +3% to +8% |
+| Average | 3 | Base (0%) |
+| Fair | 2 | -5% to -15% |
+| Poor | 1 | -15% to -30% |
+
+**Data Required:**
+- Property condition assessments
+- Repair/renovation cost database
+- Transaction data with condition ratings
+
+---
+
+## 3. Income Approach Multipliers
+
+### 3.1 Capitalization Rate (Cap Rate)
+
+**Industry Standard Formula (Market Extraction):**
+
+$$\text{Cap Rate} = \frac{\text{Net Operating Income}}{\text{Sale Price}}$$
+
+**Built-up Method:**
+
+$$\text{Cap Rate} = R_f + RP_{RE} + RP_{Loc} + RP_{Prop} + RP_{Mgmt}$$
+
+Where:
+- $R_f$ = Risk-free rate (Ghana T-bill: ~19%) ✅ Available via BOG scraper
+- $RP_{RE}$ = Real estate risk premium (~4%)
+- $RP_{Loc}$ = Location risk premium (0-5%)
+- $RP_{Prop}$ = Property-specific risk (0-3%)
+- $RP_{Mgmt}$ = Management intensity (~2%)
+
+**Data Required:**
+- `property_transactions` with NOI data ❌ NOT IMPLEMENTED
+- `economic_indicators` table: T-bill rates, inflation ✅ AVAILABLE
+- Location risk scores
+
+**Should be Calculated:**
+```sql
+-- Extract cap rates from investment sales
+SELECT 
+  property_type,
+  region,
+  AVG(net_operating_income / sale_price) as market_cap_rate,
+  STDDEV(net_operating_income / sale_price) as cap_rate_std
+FROM property_transactions
+WHERE transaction_type = 'investment_sale'
+  AND net_operating_income > 0
+  AND transaction_date >= NOW() - INTERVAL '24 months'
+GROUP BY property_type, region;
+```
+
+---
+
+### 3.2 Gross Rent Multiplier (GRM)
+
+**Industry Standard Formula:**
+
+$$\text{GRM} = \frac{\text{Sale Price}}{\text{Annual Gross Rent}}$$
+
+**Data Required:**
+- `property_transactions` with rental income data ❌ NOT IMPLEMENTED
+- `rental_listings` table for market rents
+
+---
+
+### 3.3 Expense Ratios
+
+**Industry Standard (by Property Type):**
+
+| Property Type | Operating Expense Ratio |
+|--------------|------------------------|
+| Residential (owner-managed) | 25-35% |
+| Residential (professionally managed) | 35-45% |
+| Office | 35-45% |
+| Retail | 25-40% |
+| Industrial | 20-30% |
+
+**Should be Calculated:**
+```sql
+-- Extract expense ratios from operating properties
+SELECT 
+  property_type,
+  AVG(total_operating_expenses / gross_income) as avg_expense_ratio
+FROM property_operations
+WHERE fiscal_year >= EXTRACT(YEAR FROM NOW()) - 2
+GROUP BY property_type;
+```
+
+---
+
+## 4. Cost Approach Multipliers
+
+### 4.1 Depreciation Rate
+
+**Industry Standard Formula (Age-Life Method):**
+
+$$\text{Physical Depreciation} = \frac{\text{Effective Age}}{\text{Economic Life}}$$
+
+**Economic Life by Construction Type:**
+
+| Construction | Economic Life | Annual Depreciation |
+|--------------|---------------|-------------------|
+| Reinforced Concrete | 60-80 years | 1.25-1.67% |
+| Concrete Block | 50-60 years | 1.67-2.0% |
+| Block & Mortar | 40-50 years | 2.0-2.5% |
+| Mud Brick (improved) | 25-40 years | 2.5-4.0% |
+
+**Effective Age Calculation:**
+```typescript
+// Effective age considers maintenance and upgrades
+function calculateEffectiveAge(
+  actualAge: number,
+  conditionRating: 1 | 2 | 3 | 4 | 5,
+  majorRenovations: { year: number; scope: 'minor' | 'major' | 'complete' }[]
+): number {
+  let effectiveAge = actualAge;
+  
+  // Condition adjustment
+  const conditionFactor = { 1: 1.3, 2: 1.15, 3: 1.0, 4: 0.85, 5: 0.7 }[conditionRating];
+  effectiveAge *= conditionFactor;
+  
+  // Renovation resets
+  for (const reno of majorRenovations) {
+    const yearsAgo = new Date().getFullYear() - reno.year;
+    const resetFactor = { minor: 0.1, major: 0.3, complete: 0.6 }[reno.scope];
+    effectiveAge -= (actualAge - yearsAgo) * resetFactor;
+  }
+  
+  return Math.max(0, effectiveAge);
+}
+```
+
+---
+
+### 4.2 Soft Cost Percentage
+
+**Industry Standard (Ghana Market):**
+
+| Cost Component | Percentage of Hard Costs |
+|----------------|-------------------------|
+| Professional Fees | 6-10% |
+| Permits & Approvals | 2-4% |
+| Financing Costs | 3-5% |
+| Contingency | 5-10% |
+| **Total Soft Costs** | **16-29%** |
+
+**Should Use:**
+- Market survey of professional fees
+- Historical permit fee data
+- Current lending rates ✅ Available via BOG scraper
+
+---
+
+## 5. DRC Method Multipliers
+
+### 5.1 Obsolescence Factors
+
+**Functional Obsolescence:**
+
+$$\text{Func Obs} = \text{Cost to Cure} + \text{Capitalized Income Loss}$$
+
+**External Obsolescence:**
+
+| Factor | Impact Range |
+|--------|-------------|
+| Infrastructure Decline | 0-5% |
+| Neighborhood Deterioration | 0-10% |
+| Market/Economic Downturn | 0-8% |
+| Environmental Issues | 0-15% |
+| **Maximum Combined** | **25%** |
+
+---
+
+## 6. Residual Method Parameters
+
+### 6.1 Developer Profit Margin
+
+**Industry Standard:**
+
+$$\text{Developer Profit} = 15\% \text{ to } 25\% \text{ of GDV}$$
+
+**Risk-Adjusted Formula:**
+
+$$\text{Profit Margin} = \text{Base Return} + \text{Planning Risk} + \text{Market Risk} + \text{Funding Risk}$$
+
+| Project Type | Typical Profit on GDV |
+|-------------|----------------------|
+| Residential (pre-sold) | 12-18% |
+| Residential (speculative) | 18-25% |
+| Commercial | 15-22% |
+| Mixed-Use | 18-25% |
+
+---
+
+## 7. Database Schema for Calculated Multipliers
+
+To support calculated multipliers, these tables are required:
+
+```sql
+-- Completed projects for cost benchmarking
+CREATE TABLE completed_projects (
+  id SERIAL PRIMARY KEY,
+  project_name VARCHAR(255),
+  property_type VARCHAR(50),
+  quality_level VARCHAR(50),
+  region VARCHAR(50),
+  building_size_sqm DECIMAL(12,2),
+  actual_cost_ghs DECIMAL(14,2),
+  actual_cost_per_sqm DECIMAL(10,2) GENERATED ALWAYS AS (actual_cost_ghs / NULLIF(building_size_sqm, 0)) STORED,
+  completion_date DATE,
+  data_source VARCHAR(100),
+  verified BOOLEAN DEFAULT FALSE,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Property transactions with full valuation data
+CREATE TABLE property_transactions_enhanced (
+  id SERIAL PRIMARY KEY,
+  property_id UUID,
+  transaction_type VARCHAR(50), -- 'sale', 'investment_sale', 'auction'
+  sale_price DECIMAL(14,2),
+  transaction_date DATE,
+  property_type VARCHAR(50),
+  region VARCHAR(50),
+  building_size_sqm DECIMAL(12,2),
+  land_size_sqm DECIMAL(12,2),
+  condition_rating INTEGER CHECK (condition_rating BETWEEN 1 AND 5),
+  location_score INTEGER CHECK (location_score BETWEEN 1 AND 100),
+  net_operating_income DECIMAL(14,2),
+  gross_rent DECIMAL(14,2),
+  cap_rate DECIMAL(6,4) GENERATED ALWAYS AS (net_operating_income / NULLIF(sale_price, 0)) STORED,
+  grm DECIMAL(8,2) GENERATED ALWAYS AS (sale_price / NULLIF(gross_rent, 0)) STORED,
+  price_per_sqm DECIMAL(10,2) GENERATED ALWAYS AS (sale_price / NULLIF(building_size_sqm, 0)) STORED,
+  verified BOOLEAN DEFAULT FALSE,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Market-derived multipliers (auto-calculated nightly)
+CREATE TABLE calculated_multipliers (
+  id SERIAL PRIMARY KEY,
+  multiplier_type VARCHAR(50), -- 'quality', 'region', 'condition', 'time'
+  category VARCHAR(50),
+  value DECIMAL(8,4),
+  confidence DECIMAL(4,3),
+  sample_size INTEGER,
+  calculation_date DATE,
+  valid_from DATE,
+  valid_to DATE,
+  methodology TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+```
+
+---
+
+## 8. Implementation Roadmap
+
+### Phase 1: Data Collection (Current State)
+- ✅ Material prices by region (Greater Accra only)
+- ✅ Labor rates by region (Greater Accra only)
+- ✅ Construction cost indices calculation
+- ✅ Material category weights (PBCI methodology)
+- ⬜ Completed project costs
+- ⬜ Property transaction data with full attributes
+
+### Phase 2: Calculated Multipliers (Next)
+- ⬜ Nightly job to recalculate regional multipliers from `material_prices` + `labor_rates`
+- ⬜ Weekly job to update quality multipliers from `completed_projects`
+- ⬜ Monthly cap rate extraction from transactions
+- ⬜ Quarterly depreciation rate analysis
+
+### Phase 3: Full AVM Integration
+- ⬜ Use calculated multipliers in valuation models
+- ⬜ Confidence scoring based on data quality
+- ⬜ Fallback hierarchy: calculated → survey → static seed
+
+---
+
+## 9. Multiplier Implementation Status Summary
+
+| Multiplier | Current State | Target State | Data Source | Status |
+|-----------|---------------|--------------|-------------|--------|
+| Quality Multiplier | Static (DB-editable) | Calculated | `completed_projects` | ❌ Table not created |
+| Region Multiplier | Static (DB-editable) | Calculated | `material_prices`, `labor_rates` | ⚠️ Partial data (Accra only) |
+| Time Adjustment | Calculated ✅ | Calculated | `construction_cost_indices` | ✅ Implemented |
+| Cap Rate | Not implemented | Calculated | `property_transactions` | ❌ Table enhancement needed |
+| GRM | Not implemented | Calculated | `property_transactions` | ❌ Table enhancement needed |
+| Depreciation | Static | Calculated | `property_condition_surveys` | ❌ Not implemented |
+| Location Adj | Not implemented | Calculated | `property_transactions` + regression | ❌ Not implemented |
+
+### Fallback Hierarchy (Target)
+```typescript
+async function getMultiplier(type: string, key: string): Promise<{ 
+  value: number; 
+  source: 'calculated' | 'survey' | 'static';
+  confidence: number;
+}> {
+  // 1. Try calculated from recent data
+  const calculated = await getCalculatedMultiplier(type, key);
+  if (calculated && calculated.confidence > 0.7) {
+    return { value: calculated.value, source: 'calculated', confidence: calculated.confidence };
+  }
+  
+  // 2. Fall back to survey data
+  const survey = await getSurveyMultiplier(type, key);
+  if (survey) {
+    return { value: survey.value, source: 'survey', confidence: 0.5 };
+  }
+  
+  // 3. Fall back to static seed values
+  const static_seed = await getStaticMultiplier(type, key);
+  return { value: static_seed.value, source: 'static', confidence: 0.3 };
+}
+```
+
+The current static multipliers serve as **valid seed values** until sufficient transaction and survey data accumulates to enable fully calculated adjustments.
+
+---
+
+# Part 3: Phased Implementation Strategy
+
+> **Purpose**: Step-by-step implementation plan that builds on existing PropMetrik Data Hub architecture.
+
+---
+
+## Architecture Reference
+
+### Existing Services to Extend
+
+| Service | Path | What to Extend |
+|---------|------|----------------|
+| `constructionCostService.ts` | `backend/src/services/` | Add multiplier calculation methods |
+| `economicDataService.ts` | `backend/services/data-hub/services/` | Reference for new scrapers |
+| `wdiDataService.ts` | `backend/services/data-hub/scrapers/` | Already fetches economic indicators |
+| `forexService.ts` | `backend/services/data-hub/scrapers/` | Already fetches exchange rates |
+| `bogScraper.ts` | `backend/services/data-hub/scrapers/` | Pattern for new scrapers |
+
+### Existing Schedulers
+
+| Scheduler | Path | Pattern |
+|-----------|------|---------|
+| `economicDataScheduler.ts` | `backend/services/data-hub/schedulers/` | Add new sync jobs here |
+| `dataSourceScheduler.ts` | `backend/services/data-hub/schedulers/` | Generic sync pattern |
+
+### Database Connection Pattern
+```typescript
+import { query, transaction } from '../../database';
+```
+
+---
+
+## Phase 1: Database Schema & Missing Tables (Week 1)
+
+### 1.1 Objective
+Create missing database tables required for calculated multipliers.
+
+### 1.2 Migration File
+**File**: `backend/database/migrations/021_calculated_multipliers.sql`
+
+```sql
+-- =====================================================
+-- Migration: 021_calculated_multipliers.sql
+-- Purpose: Tables for data-driven multiplier calculation
+-- =====================================================
+
+-- 1. Completed projects for quality multiplier calculation
+CREATE TABLE IF NOT EXISTS completed_projects (
+  id SERIAL PRIMARY KEY,
+  project_name VARCHAR(255),
+  property_type VARCHAR(50) NOT NULL,
+  quality_level VARCHAR(50) NOT NULL,
+  region VARCHAR(50) NOT NULL,
+  building_size_sqm DECIMAL(12,2) NOT NULL,
+  actual_cost_ghs DECIMAL(14,2) NOT NULL,
+  actual_cost_per_sqm DECIMAL(10,2) GENERATED ALWAYS AS (
+    actual_cost_ghs / NULLIF(building_size_sqm, 0)
+  ) STORED,
+  completion_date DATE NOT NULL,
+  data_source VARCHAR(100),
+  verified BOOLEAN DEFAULT FALSE,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- 2. Calculated multipliers audit table
+CREATE TABLE IF NOT EXISTS calculated_multipliers (
+  id SERIAL PRIMARY KEY,
+  multiplier_type VARCHAR(50) NOT NULL, -- 'quality', 'region', 'condition', 'time'
+  category VARCHAR(50) NOT NULL,
+  value DECIMAL(8,4) NOT NULL,
+  confidence DECIMAL(4,3),
+  sample_size INTEGER,
+  calculation_date DATE NOT NULL,
+  valid_from DATE NOT NULL,
+  valid_to DATE,
+  methodology TEXT,
+  source VARCHAR(50) DEFAULT 'calculated', -- 'calculated', 'survey', 'static'
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- 3. Enhance property_transactions if not already done
+ALTER TABLE property_transactions 
+  ADD COLUMN IF NOT EXISTS condition_rating INTEGER CHECK (condition_rating BETWEEN 1 AND 5),
+  ADD COLUMN IF NOT EXISTS location_score INTEGER CHECK (location_score BETWEEN 1 AND 100),
+  ADD COLUMN IF NOT EXISTS net_operating_income DECIMAL(14,2),
+  ADD COLUMN IF NOT EXISTS gross_rent DECIMAL(14,2);
+
+-- 4. Indexes for performance
+CREATE INDEX IF NOT EXISTS idx_completed_projects_region ON completed_projects(region);
+CREATE INDEX IF NOT EXISTS idx_completed_projects_quality ON completed_projects(quality_level);
+CREATE INDEX IF NOT EXISTS idx_calculated_multipliers_type ON calculated_multipliers(multiplier_type, category);
+CREATE INDEX IF NOT EXISTS idx_calculated_multipliers_valid ON calculated_multipliers(valid_from, valid_to);
+
+-- 5. Update trigger
+CREATE OR REPLACE FUNCTION update_timestamp()
+RETURNS TRIGGER AS $$
+BEGIN
+  NEW.updated_at = NOW();
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER update_completed_projects_timestamp
+  BEFORE UPDATE ON completed_projects
+  FOR EACH ROW EXECUTE FUNCTION update_timestamp();
+```
+
+### 1.3 Verification
+```bash
+cd backend && source .env && psql "$DATABASE_URL" -f database/migrations/021_calculated_multipliers.sql
+```
+
+### 1.4 Deliverables
+- [ ] Migration file created
+- [ ] Tables created in database
+- [ ] Indexes verified
+
+---
+
+## Phase 2: NPA Fuel Price Scraper (Week 2)
+
+### 2.1 Objective
+Build scraper for National Petroleum Authority fuel prices (affects transport cost calculation).
+
+### 2.2 Files to Create
+
+**File 1**: `backend/services/data-hub/scrapers/npaScraper.ts`
+
+```typescript
+/**
+ * NPA Fuel Price Scraper
+ * Scrapes fuel prices from National Petroleum Authority website
+ * Used for transport cost component in construction cost calculation
+ */
+import axios from 'axios';
+import * as cheerio from 'cheerio';
+import { logger } from '../../../src/utils/logger';
+import type { SyncResult } from '../types';
+
+export interface FuelPrice {
+  fuel_type: 'diesel' | 'petrol' | 'lpg';
+  price_ghs: number;
+  effective_date: Date;
+  source: string;
+}
+
+export class NPAScraper {
+  private readonly baseUrl = 'https://npa.gov.gh';
+  private readonly pricesUrl = 'https://npa.gov.gh/fuel-prices';
+
+  async fetchCurrentPrices(): Promise<FuelPrice[]> {
+    try {
+      const response = await axios.get(this.pricesUrl, {
+        timeout: 30000,
+        headers: { 'User-Agent': 'PropMetrik-DataHub/1.0' }
+      });
+
+      const $ = cheerio.load(response.data);
+      const prices: FuelPrice[] = [];
+
+      // Parse fuel price table - adjust selectors based on actual NPA website
+      $('table.fuel-prices tr, .price-table tr').each((_, row) => {
+        const cells = $(row).find('td');
+        if (cells.length >= 2) {
+          const fuelType = $(cells[0]).text().trim().toLowerCase();
+          const priceText = $(cells[1]).text().replace(/[^0-9.]/g, '');
+          const price = parseFloat(priceText);
+
+          if (!isNaN(price) && price > 0) {
+            let normalizedType: FuelPrice['fuel_type'] | null = null;
+            if (fuelType.includes('diesel')) normalizedType = 'diesel';
+            else if (fuelType.includes('petrol') || fuelType.includes('gasoline')) normalizedType = 'petrol';
+            else if (fuelType.includes('lpg') || fuelType.includes('gas')) normalizedType = 'lpg';
+
+            if (normalizedType) {
+              prices.push({
+                fuel_type: normalizedType,
+                price_ghs: price,
+                effective_date: new Date(),
+                source: 'npa.gov.gh'
+              });
+            }
+          }
+        }
+      });
+
+      logger.info('NPA fuel prices fetched', { count: prices.length });
+      return prices;
+    } catch (error) {
+      logger.error('NPA scraping failed', { error: error instanceof Error ? error.message : 'Unknown' });
+      throw error;
+    }
+  }
+
+  async syncLatest(): Promise<SyncResult> {
+    const started_at = new Date();
+    try {
+      const prices = await this.fetchCurrentPrices();
+      // TODO: Save to database in Phase 3
+      
+      return {
+        source: 'npa',
+        status: prices.length > 0 ? 'success' : 'partial',
+        started_at,
+        completed_at: new Date(),
+        records_fetched: prices.length,
+        records_saved: prices.length,
+        records_failed: 0,
+        errors: [],
+        metadata: { prices }
+      };
+    } catch (error) {
+      return {
+        source: 'npa',
+        status: 'failed',
+        started_at,
+        completed_at: new Date(),
+        records_fetched: 0,
+        records_saved: 0,
+        records_failed: 1,
+        errors: [{ code: 'SCRAPE_FAILED', message: error instanceof Error ? error.message : 'Unknown' }],
+        metadata: {}
+      };
+    }
+  }
+}
+
+export const npaScraper = new NPAScraper();
+```
+
+### 2.3 Register in Sync Service
+**File**: `backend/services/data-hub/services/syncService.ts` (add to existing)
+
+```typescript
+import { npaScraper } from '../scrapers/npaScraper';
+
+// Add to SyncService class:
+async syncNPA(): Promise<SyncResult> {
+  return npaScraper.syncLatest();
+}
+
+// Add case in syncSource():
+case 'npa':
+  return this.syncNPA();
+```
+
+### 2.4 Deliverables
+- [ ] `npaScraper.ts` created
+- [ ] Registered in `syncService.ts`
+- [ ] Manual test: `npaScraper.syncLatest()`
+
+---
+
+## Phase 2B: Local Material Price Scraper (Week 2) 🔴 HIGH PRIORITY
+
+### 2B.1 Objective
+Scrape/collect actual Ghana hardware store prices to populate `material_prices` table beyond Greater Accra.
+
+### 2B.2 Data Sources
+
+| Source | Type | Coverage | Priority |
+|--------|------|----------|----------|
+| **Melcom Ghana** | E-commerce scraping | National | 🔴 HIGH |
+| **Regimanuel Gray** | B2B supplier list | Accra/Kumasi | 🔴 HIGH |
+| **Jumia Ghana** | E-commerce API | National | 🟡 MEDIUM |
+| **Partner Hardware Stores** | Manual CSV upload | Regional | 🟡 MEDIUM |
+
+### 2B.3 Files to Create
+
+**File 1**: `backend/services/data-hub/scrapers/localMaterialScraper.ts`
+
+```typescript
+/**
+ * Local Material Price Scraper
+ * Collects construction material prices from Ghana retailers
+ * Populates material_prices table with regional data
+ */
+import axios from 'axios';
+import * as cheerio from 'cheerio';
+import { query } from '../../../src/database';
+import { logger } from '../../../src/utils/logger';
+import type { SyncResult } from '../types';
+
+// Material mapping: local names → standardized categories
+const MATERIAL_MAPPINGS = {
+  'cement': { category: 'cement', standard_name: 'Portland Cement 50kg' },
+  'ghacem': { category: 'cement', standard_name: 'GHACEM Cement 50kg' },
+  'diamond cement': { category: 'cement', standard_name: 'Diamond Cement 50kg' },
+  'iron rod': { category: 'steel', standard_name: 'Steel Reinforcement Bar' },
+  'roofing sheet': { category: 'roofing', standard_name: 'Roofing Sheet' },
+  'block': { category: 'blocks', standard_name: 'Concrete Block 6"' },
+};
+
+export class LocalMaterialScraper {
+  
+  /**
+   * Scrape Melcom Ghana (major hardware retailer)
+   * URL: https://melcom.com/building-materials
+   */
+  async scrapeMelcom(): Promise<MaterialPrice[]> {
+    const url = 'https://melcom.com/building-materials';
+    try {
+      const response = await axios.get(url, {
+        timeout: 30000,
+        headers: { 'User-Agent': 'PropMetrik-DataHub/1.0' }
+      });
+      const $ = cheerio.load(response.data);
+      const prices: MaterialPrice[] = [];
+      
+      // Scrape product listings
+      $('.product-item').each((i, el) => {
+        const name = $(el).find('.product-name').text().trim();
+        const priceText = $(el).find('.price').text().trim();
+        const price = parseFloat(priceText.replace(/[^\d.]/g, ''));
+        
+        // Map to standard material category
+        const mapping = this.findMaterialMapping(name);
+        if (mapping && price > 0) {
+          prices.push({
+            category: mapping.category,
+            material_name: mapping.standard_name,
+            specification: name,
+            price_ghs: price,
+            unit: 'unit',
+            region: 'greater_accra', // Melcom prices typically Accra-based
+            source_type: 'scraped',
+            source_reference: 'melcom.com',
+            effective_date: new Date()
+          });
+        }
+      });
+      
+      return prices;
+    } catch (error) {
+      logger.error('Melcom scrape failed', { error });
+      return [];
+    }
+  }
+
+  /**
+   * Import from partner CSV uploads
+   * Partners upload regional price surveys via admin portal
+   */
+  async importPartnerPrices(csvPath: string, region: string): Promise<MaterialPrice[]> {
+    // CSV format: material_name,specification,price_ghs,unit,supplier_name
+    const prices: MaterialPrice[] = [];
+    // Implementation: Parse CSV and validate against material mappings
+    return prices;
+  }
+
+  /**
+   * Sync all sources and save to material_prices
+   */
+  async syncLatest(): Promise<SyncResult> {
+    const started_at = new Date();
+    let totalFetched = 0;
+    let totalSaved = 0;
+    const errors: any[] = [];
+
+    try {
+      // 1. Scrape Melcom
+      const melcomPrices = await this.scrapeMelcom();
+      totalFetched += melcomPrices.length;
+      
+      // 2. Save to database (upsert pattern)
+      for (const price of melcomPrices) {
+        try {
+          await query(`
+            INSERT INTO material_prices (
+              category, material_name, specification, price_ghs, unit,
+              region, source_type, source_reference, effective_date
+            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+            ON CONFLICT (material_name, region, effective_date) 
+            DO UPDATE SET price_ghs = EXCLUDED.price_ghs, updated_at = NOW()
+          `, [
+            price.category, price.material_name, price.specification,
+            price.price_ghs, price.unit, price.region,
+            price.source_type, price.source_reference, price.effective_date
+          ]);
+          totalSaved++;
+        } catch (err) {
+          errors.push({ material: price.material_name, error: err });
+        }
+      }
+
+      return {
+        status: errors.length === 0 ? 'success' : 'partial',
+        started_at,
+        completed_at: new Date(),
+        records_fetched: totalFetched,
+        records_saved: totalSaved,
+        records_failed: errors.length,
+        errors,
+        metadata: { sources: ['melcom'] }
+      };
+    } catch (error) {
+      return {
+        status: 'error',
+        started_at,
+        completed_at: new Date(),
+        records_fetched: 0,
+        records_saved: 0,
+        records_failed: 1,
+        errors: [{ code: 'SYNC_FAILED', message: error instanceof Error ? error.message : 'Unknown' }],
+        metadata: {}
+      };
+    }
+  }
+
+  private findMaterialMapping(name: string): { category: string; standard_name: string } | null {
+    const lowerName = name.toLowerCase();
+    for (const [key, value] of Object.entries(MATERIAL_MAPPINGS)) {
+      if (lowerName.includes(key)) return value;
+    }
+    return null;
+  }
+}
+
+interface MaterialPrice {
+  category: string;
+  material_name: string;
+  specification: string;
+  price_ghs: number;
+  unit: string;
+  region: string;
+  source_type: string;
+  source_reference: string;
+  effective_date: Date;
+}
+
+export const localMaterialScraper = new LocalMaterialScraper();
+```
+
+### 2B.4 Admin CSV Upload Endpoint
+**File**: `backend/src/routes/admin/material-upload.ts`
+
+```typescript
+/**
+ * Admin endpoint for partner material price CSV uploads
+ * Partners submit regional price surveys monthly
+ */
+import { Router } from 'express';
+import multer from 'multer';
+import { parse } from 'csv-parse';
+import { query } from '../../database';
+import { authMiddleware, requireRole } from '../../middleware/auth';
+
+const router = Router();
+const upload = multer({ dest: 'uploads/temp/' });
+
+router.post('/materials/upload',
+  authMiddleware,
+  requireRole(['admin', 'data_partner']),
+  upload.single('file'),
+  async (req, res) => {
+    const { region } = req.body;
+    const file = req.file;
+    
+    if (!file || !region) {
+      return res.status(400).json({ error: 'File and region required' });
+    }
+
+    // Parse and validate CSV, then bulk insert
+    // Implementation details...
+    
+    res.json({ success: true, records_imported: 0 });
+  }
+);
+
+export default router;
+```
+
+### 2B.5 Deliverables
+- [ ] `localMaterialScraper.ts` created
+- [ ] Melcom scraper working (or alternative retailer)
+- [ ] CSV upload endpoint for partners
+- [ ] Regional price coverage expanded beyond Greater Accra
+
+---
+
+## Phase 2C: GSS Labor Survey Service (Week 2-3) 🔴 HIGH PRIORITY
+
+### 2C.1 Objective
+Fetch and process labor wage data from Ghana Statistical Service to populate `labor_rates` table.
+
+### 2C.2 Data Sources
+
+| Source | Data | Update Frequency | Priority |
+|--------|------|------------------|----------|
+| **GSS Labor Force Survey** | Sector wages, occupation wages | Annual | 🔴 HIGH |
+| **Fair Wages Commission** | National minimum wage | Annual | 🔴 HIGH |
+| **GSS Quarterly Labour Stats** | Employment indices | Quarterly | 🟡 MEDIUM |
+
+### 2C.3 Files to Create
+
+**File**: `backend/services/data-hub/scrapers/gssLaborService.ts`
+
+```typescript
+/**
+ * GSS Labor Data Service
+ * Fetches labor wage data from Ghana Statistical Service
+ * Populates labor_rates table with official wage data
+ */
+import axios from 'axios';
+import * as cheerio from 'cheerio';
+import { query } from '../../../src/database';
+import { logger } from '../../../src/utils/logger';
+import type { SyncResult } from '../types';
+
+// Ghana minimum wage history (Fair Wages Commission)
+const MINIMUM_WAGE_HISTORY = {
+  2024: 18.15,  // GHS per day
+  2025: 20.00,  // Projected based on ~10% annual increase
+  2026: 22.00,  // Projected
+};
+
+// Construction sector wage multipliers (from GSS Labor Survey)
+const CONSTRUCTION_WAGE_MULTIPLIERS = {
+  'unskilled_laborer': 1.0,       // Base = minimum wage
+  'semi_skilled': 1.5,            // 50% above minimum
+  'skilled_tradesman': 2.5,       // Mason, carpenter, etc.
+  'specialist': 4.0,              // Electrician, plumber
+  'foreman': 5.0,                 // Site supervision
+  'project_manager': 8.0,         // Senior management
+};
+
+export class GSSLaborService {
+  private readonly gssUrl = 'https://statsghana.gov.gh';
+  private readonly statsBankUrl = 'https://statsbank.statsghana.gov.gh';
+
+  /**
+   * Get current national minimum wage
+   */
+  getCurrentMinimumWage(): number {
+    const year = new Date().getFullYear();
+    return MINIMUM_WAGE_HISTORY[year] || MINIMUM_WAGE_HISTORY[2026];
+  }
+
+  /**
+   * Calculate construction labor rates from minimum wage
+   * Using GSS Labor Survey sector multipliers
+   */
+  calculateConstructionLaborRates(): LaborRate[] {
+    const minWage = this.getCurrentMinimumWage();
+    const today = new Date();
+    
+    const rates: LaborRate[] = [
+      // Masonry
+      { category: 'masonry', role_name: 'Block Mason', skill_level: 'journeyman', 
+        daily_rate: minWage * 2.5, region: 'national_average' },
+      { category: 'masonry', role_name: 'Block Mason Helper', skill_level: 'apprentice',
+        daily_rate: minWage * 1.2, region: 'national_average' },
+      
+      // Carpentry
+      { category: 'carpentry', role_name: 'General Carpenter', skill_level: 'journeyman',
+        daily_rate: minWage * 2.8, region: 'national_average' },
+      { category: 'carpentry', role_name: 'Formwork Carpenter', skill_level: 'master',
+        daily_rate: minWage * 3.2, region: 'national_average' },
+      
+      // Electrical
+      { category: 'electrical', role_name: 'Licensed Electrician', skill_level: 'master',
+        daily_rate: minWage * 4.0, region: 'national_average' },
+      { category: 'electrical', role_name: 'Electrical Helper', skill_level: 'apprentice',
+        daily_rate: minWage * 1.5, region: 'national_average' },
+      
+      // Plumbing
+      { category: 'plumbing', role_name: 'Licensed Plumber', skill_level: 'master',
+        daily_rate: minWage * 4.0, region: 'national_average' },
+      
+      // General Labor
+      { category: 'general_labor', role_name: 'General Laborer', skill_level: 'unskilled',
+        daily_rate: minWage * 1.0, region: 'national_average' },
+      
+      // Site Supervision
+      { category: 'supervision', role_name: 'Site Foreman', skill_level: 'master',
+        daily_rate: minWage * 5.0, region: 'national_average' },
+      { category: 'supervision', role_name: 'Project Supervisor', skill_level: 'master',
+        daily_rate: minWage * 6.5, region: 'national_average' },
+    ];
+
+    // Apply regional adjustments
+    const regionalRates: LaborRate[] = [];
+    const regions = ['greater_accra', 'ashanti', 'western', 'central', 'eastern', 
+                     'northern', 'volta', 'upper_east', 'upper_west', 'bono'];
+    const regionMultipliers = {
+      'greater_accra': 1.15,  // 15% above national
+      'ashanti': 1.05,        // 5% above national
+      'western': 1.00,        // National average
+      'central': 0.95,        // 5% below
+      'eastern': 0.95,
+      'northern': 0.85,       // 15% below
+      'volta': 0.90,
+      'upper_east': 0.80,
+      'upper_west': 0.80,
+      'bono': 0.95,
+    };
+
+    for (const rate of rates) {
+      for (const region of regions) {
+        const multiplier = regionMultipliers[region] || 1.0;
+        regionalRates.push({
+          ...rate,
+          region,
+          daily_rate: Math.round(rate.daily_rate * multiplier * 100) / 100
+        });
+      }
+    }
+
+    return regionalRates;
+  }
+
+  /**
+   * Sync labor rates to database
+   * Replaces existing data with freshly calculated rates
+   */
+  async syncLatest(): Promise<SyncResult> {
+    const started_at = new Date();
+    
+    try {
+      const rates = this.calculateConstructionLaborRates();
+      
+      // Clear old scraped/calculated data (keep manual entries)
+      await query(`
+        DELETE FROM labor_rates 
+        WHERE source_type IN ('calculated', 'gss_survey')
+          AND effective_date < CURRENT_DATE - INTERVAL '30 days'
+      `);
+
+      // Insert fresh calculated rates
+      let saved = 0;
+      for (const rate of rates) {
+        await query(`
+          INSERT INTO labor_rates (
+            category, role_name, skill_level, daily_rate_ghs, region,
+            source_type, source_reference, effective_date
+          ) VALUES ($1, $2, $3, $4, $5, 'calculated', 'GSS Labor Survey + Minimum Wage', CURRENT_DATE)
+          ON CONFLICT (role_name, region, effective_date)
+          DO UPDATE SET daily_rate_ghs = EXCLUDED.daily_rate_ghs, updated_at = NOW()
+        `, [rate.category, rate.role_name, rate.skill_level, rate.daily_rate, rate.region]);
+        saved++;
+      }
+
+      logger.info('GSS Labor sync completed', { rates_saved: saved });
+      
+      return {
+        status: 'success',
+        started_at,
+        completed_at: new Date(),
+        records_fetched: rates.length,
+        records_saved: saved,
+        records_failed: 0,
+        errors: [],
+        metadata: { 
+          minimum_wage: this.getCurrentMinimumWage(),
+          regions_covered: 10
+        }
+      };
+    } catch (error) {
+      logger.error('GSS Labor sync failed', { error });
+      return {
+        status: 'error',
+        started_at,
+        completed_at: new Date(),
+        records_fetched: 0,
+        records_saved: 0,
+        records_failed: 1,
+        errors: [{ code: 'SYNC_FAILED', message: error instanceof Error ? error.message : 'Unknown' }],
+        metadata: {}
+      };
+    }
+  }
+}
+
+interface LaborRate {
+  category: string;
+  role_name: string;
+  skill_level: string;
+  daily_rate: number;
+  region: string;
+}
+
+export const gssLaborService = new GSSLaborService();
+```
+
+### 2C.4 Deliverables
+- [ ] `gssLaborService.ts` created
+- [ ] Minimum wage tracking implemented
+- [ ] Regional labor rate calculation working
+- [ ] `labor_rates` table populated for all 10 regions
+
+---
+
+## Phase 3: World Bank Commodity Prices (Week 2-3)
+
+### 3.1 Objective
+Fetch international commodity prices (steel, cement, timber) for material cost inputs.
+
+### 3.2 Files to Create
+
+**File**: `backend/services/data-hub/scrapers/commodityPriceService.ts`
+
+```typescript
+/**
+ * World Bank Commodity Price Service
+ * Fetches global commodity prices for construction materials
+ * API: https://api.worldbank.org/v2/country/all/indicator/
+ */
+import axios from 'axios';
+import { logger } from '../../../src/utils/logger';
+import type { SyncResult } from '../types';
+
+// World Bank commodity indicators relevant to construction
+const COMMODITY_INDICATORS = {
+  // Metals
+  iron_ore: 'IRON_ORE',      // Iron ore price (proxy for steel)
+  aluminum: 'ALUMINUM',       // Aluminum price
+  
+  // For timber, use general commodity index as proxy
+  commodity_index: 'COMMODITY_INDEX'
+};
+
+export interface CommodityPrice {
+  commodity: string;
+  price_usd: number;
+  unit: string;
+  period: string;
+  source: string;
+}
+
+export class CommodityPriceService {
+  private readonly baseUrl = 'https://api.worldbank.org/v2';
+  
+  // World Bank Pink Sheet data (monthly commodity prices)
+  private readonly pinkSheetUrl = 'https://thedocs.worldbank.org/en/doc/5d903e848db1d1b83e0ec8f744e55570-0350012021/related/CMO-Historical-Data-Monthly.xlsx';
+
+  async fetchLatestPrices(): Promise<CommodityPrice[]> {
+    try {
+      // Use World Bank API for latest commodity prices
+      const response = await axios.get(
+        `${this.baseUrl}/commodities?format=json&per_page=50`,
+        { timeout: 30000 }
+      );
+
+      const prices: CommodityPrice[] = [];
+      
+      // Parse response - adjust based on actual API structure
+      if (response.data && Array.isArray(response.data)) {
+        for (const item of response.data) {
+          if (item.commodity && item.price) {
+            prices.push({
+              commodity: item.commodity,
+              price_usd: parseFloat(item.price),
+              unit: item.unit || 'USD',
+              period: item.period || new Date().toISOString().slice(0, 7),
+              source: 'worldbank_commodities'
+            });
+          }
+        }
+      }
+
+      logger.info('Commodity prices fetched', { count: prices.length });
+      return prices;
+    } catch (error) {
+      logger.error('Commodity price fetch failed', { 
+        error: error instanceof Error ? error.message : 'Unknown' 
+      });
+      throw error;
+    }
+  }
+
+  async syncLatest(): Promise<SyncResult> {
+    const started_at = new Date();
+    try {
+      const prices = await this.fetchLatestPrices();
+      
+      return {
+        source: 'worldbank_commodities',
+        status: prices.length > 0 ? 'success' : 'partial',
+        started_at,
+        completed_at: new Date(),
+        records_fetched: prices.length,
+        records_saved: prices.length,
+        records_failed: 0,
+        errors: [],
+        metadata: { prices }
+      };
+    } catch (error) {
+      return {
+        source: 'worldbank_commodities',
+        status: 'failed',
+        started_at,
+        completed_at: new Date(),
+        records_fetched: 0,
+        records_saved: 0,
+        records_failed: 1,
+        errors: [{ code: 'FETCH_FAILED', message: error instanceof Error ? error.message : 'Unknown' }],
+        metadata: {}
+      };
+    }
+  }
+}
+
+export const commodityPriceService = new CommodityPriceService();
+```
+
+### 3.3 Deliverables
+- [ ] `commodityPriceService.ts` created
+- [ ] Registered in `syncService.ts`
+- [ ] Add to scheduler (monthly sync)
+
+---
+
+## Phase 4: Regional Multiplier Calculator (Week 3-4)
+
+### 4.1 Objective
+Calculate regional multipliers from existing `material_prices` and `labor_rates` tables.
+
+### 4.2 Files to Create/Modify
+
+**File**: `backend/src/services/multiplierCalculationService.ts`
+
+```typescript
+/**
+ * Multiplier Calculation Service
+ * Calculates data-driven multipliers from market data
+ * Builds on existing constructionCostService.ts
+ */
+import { query, transaction } from '../database';
+import { logger } from '../utils/logger';
+
+export interface CalculatedMultiplier {
+  multiplier_type: string;
+  category: string;
+  value: number;
+  confidence: number;
+  sample_size: number;
+  source: 'calculated' | 'survey' | 'static';
+}
+
+export class MultiplierCalculationService {
+  private readonly BASE_REGION = 'kumasi_metro';
+
+  /**
+   * Calculate regional multipliers from material_prices + labor_rates
+   * Formula: Region_Multiplier = Σ(P_region × W) / Σ(P_base × W)
+   */
+  async calculateRegionalMultipliers(): Promise<CalculatedMultiplier[]> {
+    const sql = `
+      WITH base_region AS (
+        SELECT 
+          material_category,
+          AVG(price_ghs) as base_price
+        FROM material_prices
+        WHERE region = $1
+          AND survey_date >= NOW() - INTERVAL '8 weeks'
+        GROUP BY material_category
+      ),
+      regional_prices AS (
+        SELECT 
+          mp.region,
+          mp.material_category,
+          AVG(mp.price_ghs) as regional_price,
+          mcw.weight
+        FROM material_prices mp
+        JOIN material_category_weights mcw ON mp.material_category::text = mcw.category::text
+        WHERE mp.survey_date >= NOW() - INTERVAL '8 weeks'
+        GROUP BY mp.region, mp.material_category, mcw.weight
+      ),
+      calculated AS (
+        SELECT 
+          rp.region,
+          SUM(rp.regional_price * rp.weight) / NULLIF(SUM(br.base_price * rp.weight), 0) as multiplier,
+          COUNT(DISTINCT rp.material_category) as sample_size
+        FROM regional_prices rp
+        JOIN base_region br ON rp.material_category = br.material_category
+        GROUP BY rp.region
+      )
+      SELECT 
+        region,
+        COALESCE(multiplier, 1.0) as multiplier,
+        sample_size,
+        CASE 
+          WHEN sample_size >= 8 THEN 0.9
+          WHEN sample_size >= 5 THEN 0.7
+          WHEN sample_size >= 3 THEN 0.5
+          ELSE 0.3
+        END as confidence
+      FROM calculated
+    `;
+
+    try {
+      const result = await query<{
+        region: string;
+        multiplier: number;
+        sample_size: number;
+        confidence: number;
+      }>(sql, [this.BASE_REGION]);
+
+      const multipliers: CalculatedMultiplier[] = result.rows.map(row => ({
+        multiplier_type: 'region',
+        category: row.region,
+        value: parseFloat(row.multiplier.toFixed(4)),
+        confidence: row.confidence,
+        sample_size: row.sample_size,
+        source: 'calculated'
+      }));
+
+      logger.info('Regional multipliers calculated', { count: multipliers.length });
+      return multipliers;
+    } catch (error) {
+      logger.error('Regional multiplier calculation failed', { error });
+      throw error;
+    }
+  }
+
+  /**
+   * Save calculated multipliers to database
+   */
+  async saveMultipliers(multipliers: CalculatedMultiplier[]): Promise<void> {
+    const sql = `
+      INSERT INTO calculated_multipliers 
+        (multiplier_type, category, value, confidence, sample_size, calculation_date, valid_from, source)
+      VALUES ($1, $2, $3, $4, $5, CURRENT_DATE, CURRENT_DATE, $6)
+    `;
+
+    await transaction(async (client) => {
+      for (const m of multipliers) {
+        await client.query(sql, [
+          m.multiplier_type,
+          m.category,
+          m.value,
+          m.confidence,
+          m.sample_size,
+          m.source
+        ]);
+      }
+    });
+
+    logger.info('Multipliers saved', { count: multipliers.length });
+  }
+
+  /**
+   * Get multiplier with fallback hierarchy: calculated → static
+   */
+  async getMultiplier(type: string, category: string): Promise<CalculatedMultiplier> {
+    // Try calculated first
+    const calculatedSql = `
+      SELECT value, confidence, sample_size, 'calculated' as source
+      FROM calculated_multipliers
+      WHERE multiplier_type = $1 AND category = $2
+        AND valid_from <= CURRENT_DATE
+        AND (valid_to IS NULL OR valid_to >= CURRENT_DATE)
+      ORDER BY calculation_date DESC
+      LIMIT 1
+    `;
+
+    const calculated = await query<CalculatedMultiplier>(calculatedSql, [type, category]);
+    
+    if (calculated.rows.length > 0 && calculated.rows[0].confidence >= 0.5) {
+      return calculated.rows[0];
+    }
+
+    // Fall back to static from region_multipliers table
+    if (type === 'region') {
+      const staticSql = `
+        SELECT location_factor as value, 0.3 as confidence, 0 as sample_size, 'static' as source
+        FROM region_multipliers
+        WHERE region_code = $1
+      `;
+      const staticResult = await query<CalculatedMultiplier>(staticSql, [category]);
+      if (staticResult.rows.length > 0) {
+        return { ...staticResult.rows[0], multiplier_type: type, category };
+      }
+    }
+
+    // Ultimate fallback
+    return {
+      multiplier_type: type,
+      category,
+      value: 1.0,
+      confidence: 0.1,
+      sample_size: 0,
+      source: 'static'
+    };
+  }
+}
+
+export const multiplierCalculationService = new MultiplierCalculationService();
+```
+
+### 4.3 Deliverables
+- [ ] `multiplierCalculationService.ts` created
+- [ ] Unit tests written
+- [ ] Regional multiplier calculation verified
+
+---
+
+## Phase 4B: Completed Projects Admin Interface (Week 4) 🟡 MEDIUM PRIORITY
+
+### 4B.1 Objective
+Create admin interface for entering actual construction project costs to populate `completed_projects` table. This is the primary data source for **quality multiplier** calculation.
+
+### 4B.2 Data Entry Requirements
+
+| Field | Required | Source |
+|-------|----------|--------|
+| `property_type` | ✅ | Select: residential/commercial/industrial |
+| `quality_level` | ✅ | Select: basic/standard/premium/luxury |
+| `region` | ✅ | Select: All 10 regions |
+| `building_size_sqm` | ✅ | Numeric input |
+| `actual_cost_ghs` | ✅ | Numeric input |
+| `completion_date` | ✅ | Date picker |
+| `project_name` | ❌ | Optional text |
+| `data_source` | ✅ | Select: contractor_survey/bank_valuation/permit_data/partner |
+
+### 4B.3 Files to Create
+
+**File 1**: `backend/src/routes/admin/completed-projects.ts`
+
+```typescript
+/**
+ * Admin API for Completed Projects CRUD
+ * Used to collect actual construction costs for quality multiplier calculation
+ */
+import { Router } from 'express';
+import { query } from '../../database';
+import { authMiddleware, requireRole } from '../../middleware/auth';
+import { logger } from '../../utils/logger';
+
+const router = Router();
+
+// List completed projects with filters
+router.get('/', authMiddleware, requireRole(['admin', 'valuator']), async (req, res) => {
+  const { region, property_type, quality_level, from_date, to_date, limit = 50 } = req.query;
+  
+  let sql = `
+    SELECT *, 
+           actual_cost_per_sqm,
+           (SELECT AVG(actual_cost_per_sqm) FROM completed_projects 
+            WHERE quality_level = cp.quality_level) as avg_for_quality
+    FROM completed_projects cp
+    WHERE 1=1
+  `;
+  const params: any[] = [];
+  
+  if (region) { params.push(region); sql += ` AND region = $${params.length}`; }
+  if (property_type) { params.push(property_type); sql += ` AND property_type = $${params.length}`; }
+  if (quality_level) { params.push(quality_level); sql += ` AND quality_level = $${params.length}`; }
+  if (from_date) { params.push(from_date); sql += ` AND completion_date >= $${params.length}`; }
+  if (to_date) { params.push(to_date); sql += ` AND completion_date <= $${params.length}`; }
+  
+  params.push(limit);
+  sql += ` ORDER BY completion_date DESC LIMIT $${params.length}`;
+
+  const result = await query(sql, params);
+  res.json({ projects: result.rows, total: result.rows.length });
+});
+
+// Create new completed project
+router.post('/', authMiddleware, requireRole(['admin', 'data_partner']), async (req, res) => {
+  const { 
+    project_name, property_type, quality_level, region,
+    building_size_sqm, actual_cost_ghs, completion_date, data_source 
+  } = req.body;
+
+  // Validation
+  if (!property_type || !quality_level || !region || !building_size_sqm || !actual_cost_ghs || !completion_date) {
+    return res.status(400).json({ error: 'Missing required fields' });
+  }
+
+  // Sanity check: cost per sqm should be reasonable (GHS 1,000 - 50,000)
+  const costPerSqm = actual_cost_ghs / building_size_sqm;
+  if (costPerSqm < 1000 || costPerSqm > 50000) {
+    logger.warn('Unusual cost per sqm submitted', { costPerSqm, project_name });
+    // Don't reject, but flag for review
+  }
+
+  const result = await query(`
+    INSERT INTO completed_projects (
+      project_name, property_type, quality_level, region,
+      building_size_sqm, actual_cost_ghs, completion_date, data_source, verified
+    ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, FALSE)
+    RETURNING *
+  `, [project_name, property_type, quality_level, region, 
+      building_size_sqm, actual_cost_ghs, completion_date, data_source]);
+
+  logger.info('Completed project added', { id: result.rows[0].id, region, quality_level });
+  res.status(201).json({ project: result.rows[0] });
+});
+
+// Bulk import from CSV
+router.post('/bulk-import', authMiddleware, requireRole(['admin']), async (req, res) => {
+  const { projects } = req.body; // Array of project objects
+  
+  let imported = 0;
+  let failed = 0;
+  
+  for (const project of projects) {
+    try {
+      await query(`
+        INSERT INTO completed_projects (
+          project_name, property_type, quality_level, region,
+          building_size_sqm, actual_cost_ghs, completion_date, data_source
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+      `, [project.project_name, project.property_type, project.quality_level, project.region,
+          project.building_size_sqm, project.actual_cost_ghs, project.completion_date, project.data_source]);
+      imported++;
+    } catch (err) {
+      failed++;
+    }
+  }
+
+  res.json({ imported, failed });
+});
+
+// Mark as verified (after QS review)
+router.patch('/:id/verify', authMiddleware, requireRole(['admin']), async (req, res) => {
+  const { id } = req.params;
+  
+  await query(`UPDATE completed_projects SET verified = TRUE, updated_at = NOW() WHERE id = $1`, [id]);
+  res.json({ success: true });
+});
+
+export default router;
+```
+
+### 4B.4 Frontend Component
+**File**: `frontend/src/components/admin/CompletedProjectsForm.tsx`
+
+```typescript
+// React component for data entry
+// Fields: property_type, quality_level, region, building_size_sqm, actual_cost_ghs, completion_date
+// Shows calculated cost_per_sqm in real-time
+// Displays comparison to average for selected quality level
+```
+
+### 4B.5 Data Collection Strategy
+
+| Source | Method | Volume Target |
+|--------|--------|---------------|
+| **Partner QS firms** | Monthly bulk CSV upload | 20-50 projects/month |
+| **Bank valuations** | API pull from partner banks | 10-30 projects/month |
+| **Building permits** | Scrape from Assemblies (future) | Variable |
+| **Manual entry** | Admin portal | Ad-hoc |
+
+### 4B.6 Deliverables
+- [ ] `completed-projects.ts` API routes created
+- [ ] Frontend data entry form created
+- [ ] Bulk import working
+- [ ] At least 50 seed projects entered per region
+
+---
+
+## Phase 4C: Base Cost Auto-Calculation Service (Week 4-5) 🔴 HIGH PRIORITY
+
+### 4C.1 Objective
+Create service that automatically recalculates `base_costs_per_sqm` from material prices, labor rates, and completed project data. **This replaces manual admin entry of base costs.**
+
+### 4C.2 Calculation Methodology
+
+**Base Cost Formula:**
+
+$$\text{Base Cost/sqm} = (\text{Material Cost Component}) + (\text{Labor Cost Component}) + (\text{Overhead})$$
+
+Where:
+- **Material Cost Component** = Σ(Material Price × Quantity per sqm × Weight)
+- **Labor Cost Component** = Σ(Labor Rate × Person-days per sqm)
+- **Overhead** = 15-25% of (Material + Labor)
+
+### 4C.3 Files to Create
+
+**File**: `backend/src/services/baseCostCalculationService.ts`
+
+```typescript
+/**
+ * Base Cost Calculation Service
+ * Automatically calculates base_costs_per_sqm from material_prices + labor_rates
+ * Replaces manual admin entry with data-driven calculation
+ */
+import { query, transaction } from '../database';
+import { logger } from '../utils/logger';
+
+// Standard material quantities per sqm (from QS takeoff standards)
+const MATERIAL_QUANTITIES_PER_SQM = {
+  residential: {
+    basic: {
+      cement: { qty: 0.8, unit: 'bag' },      // ~40kg/sqm in blocks + plaster
+      steel: { qty: 12, unit: 'kg' },          // Light reinforcement
+      blocks: { qty: 12, unit: 'piece' },      // 6" blocks
+      sand: { qty: 0.05, unit: 'm3' },
+      aggregate: { qty: 0.03, unit: 'm3' },
+      roofing: { qty: 1.2, unit: 'sqm' },      // Roof area ratio
+    },
+    standard: {
+      cement: { qty: 1.0, unit: 'bag' },
+      steel: { qty: 18, unit: 'kg' },
+      blocks: { qty: 14, unit: 'piece' },
+      sand: { qty: 0.06, unit: 'm3' },
+      aggregate: { qty: 0.04, unit: 'm3' },
+      roofing: { qty: 1.3, unit: 'sqm' },
+    },
+    premium: {
+      cement: { qty: 1.3, unit: 'bag' },
+      steel: { qty: 25, unit: 'kg' },
+      blocks: { qty: 16, unit: 'piece' },
+      sand: { qty: 0.07, unit: 'm3' },
+      aggregate: { qty: 0.05, unit: 'm3' },
+      roofing: { qty: 1.4, unit: 'sqm' },
+    },
+    luxury: {
+      cement: { qty: 1.6, unit: 'bag' },
+      steel: { qty: 35, unit: 'kg' },
+      blocks: { qty: 18, unit: 'piece' },
+      sand: { qty: 0.08, unit: 'm3' },
+      aggregate: { qty: 0.06, unit: 'm3' },
+      roofing: { qty: 1.5, unit: 'sqm' },
+    }
+  }
+};
+
+// Labor person-days per sqm by quality level
+const LABOR_DAYS_PER_SQM = {
+  basic: { skilled: 0.8, unskilled: 1.2 },
+  standard: { skilled: 1.2, unskilled: 1.5 },
+  premium: { skilled: 1.8, unskilled: 2.0 },
+  luxury: { skilled: 2.5, unskilled: 2.5 },
+};
+
+// Overhead percentages
+const OVERHEAD_RATES = {
+  basic: 0.15,     // 15% overhead
+  standard: 0.18,  // 18% overhead
+  premium: 0.22,   // 22% overhead
+  luxury: 0.25,    // 25% overhead
+};
+
+export class BaseCostCalculationService {
+  
+  /**
+   * Calculate base cost for a specific property type and quality level
+   * Uses current material prices and labor rates from database
+   */
+  async calculateBaseCost(
+    propertyType: string, 
+    qualityLevel: string, 
+    region: string = 'greater_accra'
+  ): Promise<{ cost_ghs: number; breakdown: CostBreakdown; confidence: number }> {
+    
+    // 1. Get current material prices for region
+    const materialPrices = await this.getCurrentMaterialPrices(region);
+    
+    // 2. Get current labor rates for region
+    const laborRates = await this.getCurrentLaborRates(region);
+    
+    // 3. Get material quantities for this quality level
+    const quantities = MATERIAL_QUANTITIES_PER_SQM[propertyType]?.[qualityLevel] 
+      || MATERIAL_QUANTITIES_PER_SQM.residential[qualityLevel];
+    
+    // 4. Calculate material cost per sqm
+    let materialCost = 0;
+    const materialBreakdown: Record<string, number> = {};
+    
+    for (const [material, spec] of Object.entries(quantities)) {
+      const price = materialPrices[material];
+      if (price) {
+        const cost = price * spec.qty;
+        materialCost += cost;
+        materialBreakdown[material] = cost;
+      }
+    }
+    
+    // 5. Calculate labor cost per sqm
+    const laborSpec = LABOR_DAYS_PER_SQM[qualityLevel] || LABOR_DAYS_PER_SQM.standard;
+    const skilledRate = laborRates.skilled || 180;  // Default GHS 180/day
+    const unskilledRate = laborRates.unskilled || 50;  // Default GHS 50/day
+    
+    const laborCost = (laborSpec.skilled * skilledRate) + (laborSpec.unskilled * unskilledRate);
+    
+    // 6. Calculate overhead
+    const overhead = (materialCost + laborCost) * (OVERHEAD_RATES[qualityLevel] || 0.18);
+    
+    // 7. Total base cost
+    const totalCost = materialCost + laborCost + overhead;
+    
+    // 8. Determine confidence based on data freshness
+    const confidence = await this.calculateConfidence(region);
+    
+    return {
+      cost_ghs: Math.round(totalCost * 100) / 100,
+      breakdown: {
+        material_cost: materialCost,
+        labor_cost: laborCost,
+        overhead: overhead,
+        material_breakdown: materialBreakdown
+      },
+      confidence
+    };
+  }
+
+  /**
+   * Get current material prices for region
+   */
+  private async getCurrentMaterialPrices(region: string): Promise<Record<string, number>> {
+    const result = await query(`
+      SELECT 
+        LOWER(category::text) as material,
+        AVG(price_ghs) as avg_price
+      FROM material_prices
+      WHERE region = $1
+        AND effective_date >= CURRENT_DATE - INTERVAL '30 days'
+      GROUP BY category
+    `, [region]);
+    
+    const prices: Record<string, number> = {};
+    for (const row of result.rows) {
+      prices[row.material] = parseFloat(row.avg_price);
+    }
+    return prices;
+  }
+
+  /**
+   * Get current labor rates for region
+   */
+  private async getCurrentLaborRates(region: string): Promise<{ skilled: number; unskilled: number }> {
+    const result = await query(`
+      SELECT 
+        CASE WHEN skill_level IN ('master', 'journeyman') THEN 'skilled' ELSE 'unskilled' END as skill_type,
+        AVG(daily_rate_ghs) as avg_rate
+      FROM labor_rates
+      WHERE region = $1
+        AND effective_date >= CURRENT_DATE - INTERVAL '30 days'
+      GROUP BY skill_type
+    `, [region]);
+    
+    const rates = { skilled: 180, unskilled: 50 }; // Defaults
+    for (const row of result.rows) {
+      if (row.skill_type === 'skilled') rates.skilled = parseFloat(row.avg_rate);
+      if (row.skill_type === 'unskilled') rates.unskilled = parseFloat(row.avg_rate);
+    }
+    return rates;
+  }
+
+  /**
+   * Calculate confidence based on data freshness and coverage
+   */
+  private async calculateConfidence(region: string): Promise<number> {
+    const result = await query(`
+      SELECT 
+        COUNT(DISTINCT category) as material_categories,
+        MAX(effective_date) as latest_material_date
+      FROM material_prices
+      WHERE region = $1
+        AND effective_date >= CURRENT_DATE - INTERVAL '30 days'
+    `, [region]);
+    
+    const categories = result.rows[0]?.material_categories || 0;
+    const idealCategories = 6; // cement, steel, blocks, sand, aggregate, roofing
+    
+    // Confidence = (categories covered / ideal) * recency factor
+    const coverage = Math.min(categories / idealCategories, 1);
+    const recency = result.rows[0]?.latest_material_date ? 0.9 : 0.5;
+    
+    return Math.round(coverage * recency * 100) / 100;
+  }
+
+  /**
+   * Recalculate all base costs and update database
+   * Called nightly by scheduler
+   */
+  async recalculateAllBaseCosts(): Promise<{ updated: number; errors: string[] }> {
+    const propertyTypes = ['residential', 'commercial', 'industrial'];
+    const qualityLevels = ['basic', 'standard', 'premium', 'luxury'];
+    
+    let updated = 0;
+    const errors: string[] = [];
+    
+    for (const propertyType of propertyTypes) {
+      for (const qualityLevel of qualityLevels) {
+        try {
+          // Calculate new base cost (using Greater Accra as reference)
+          const result = await this.calculateBaseCost(propertyType, qualityLevel, 'greater_accra');
+          
+          // Update or insert into base_costs_per_sqm
+          await query(`
+            INSERT INTO base_costs_per_sqm (property_type, quality_level, cost_ghs, effective_date, notes)
+            VALUES ($1, $2, $3, CURRENT_DATE, $4)
+            ON CONFLICT (property_type, quality_level)
+            DO UPDATE SET 
+              cost_ghs = EXCLUDED.cost_ghs,
+              effective_date = EXCLUDED.effective_date,
+              notes = EXCLUDED.notes,
+              updated_at = NOW()
+          `, [
+            propertyType, 
+            qualityLevel, 
+            result.cost_ghs,
+            `Auto-calculated. Confidence: ${result.confidence}. Breakdown: Material=${result.breakdown.material_cost.toFixed(0)}, Labor=${result.breakdown.labor_cost.toFixed(0)}, Overhead=${result.breakdown.overhead.toFixed(0)}`
+          ]);
+          
+          updated++;
+          logger.info('Base cost updated', { propertyType, qualityLevel, cost: result.cost_ghs });
+          
+        } catch (error) {
+          const msg = `Failed to calculate ${propertyType}/${qualityLevel}: ${error}`;
+          errors.push(msg);
+          logger.error(msg);
+        }
+      }
+    }
+    
+    return { updated, errors };
+  }
+
+  /**
+   * Compare calculated costs with completed project actual costs
+   * For calibration and validation
+   */
+  async validateAgainstActual(): Promise<ValidationResult[]> {
+    const result = await query(`
+      SELECT 
+        property_type,
+        quality_level,
+        AVG(actual_cost_per_sqm) as avg_actual_cost,
+        COUNT(*) as sample_size,
+        STDDEV(actual_cost_per_sqm) as std_dev
+      FROM completed_projects
+      WHERE verified = TRUE
+        AND completion_date >= CURRENT_DATE - INTERVAL '12 months'
+      GROUP BY property_type, quality_level
+    `);
+    
+    const validations: ValidationResult[] = [];
+    
+    for (const row of result.rows) {
+      const calculated = await this.calculateBaseCost(row.property_type, row.quality_level);
+      const variance = ((calculated.cost_ghs - row.avg_actual_cost) / row.avg_actual_cost) * 100;
+      
+      validations.push({
+        property_type: row.property_type,
+        quality_level: row.quality_level,
+        calculated_cost: calculated.cost_ghs,
+        actual_avg_cost: parseFloat(row.avg_actual_cost),
+        variance_percent: variance,
+        sample_size: row.sample_size,
+        within_tolerance: Math.abs(variance) <= 10 // ±10% acceptable
+      });
+    }
+    
+    return validations;
+  }
+}
+
+interface CostBreakdown {
+  material_cost: number;
+  labor_cost: number;
+  overhead: number;
+  material_breakdown: Record<string, number>;
+}
+
+interface ValidationResult {
+  property_type: string;
+  quality_level: string;
+  calculated_cost: number;
+  actual_avg_cost: number;
+  variance_percent: number;
+  sample_size: number;
+  within_tolerance: boolean;
+}
+
+export const baseCostCalculationService = new BaseCostCalculationService();
+```
+
+### 4C.4 Add to Scheduler (Nightly Recalculation)
+
+**Add to**: `backend/services/data-hub/schedulers/economicDataScheduler.ts`
+
+```typescript
+import { baseCostCalculationService } from '../../../src/services/baseCostCalculationService';
+
+// Base Cost Recalculation - Nightly at 3 AM (after multiplier calculation)
+this.baseCostJob = cron.schedule(
+  config.baseCostCalcCron || '0 3 * * *',
+  () => this.runBaseCostRecalculation(),
+  { timezone: config.timezone }
+);
+
+private async runBaseCostRecalculation(): Promise<void> {
+  logger.info('Starting nightly base cost recalculation');
+  try {
+    const result = await baseCostCalculationService.recalculateAllBaseCosts();
+    logger.info('Base cost recalculation completed', result);
+    
+    // Also validate against actual costs if we have data
+    const validations = await baseCostCalculationService.validateAgainstActual();
+    const outOfTolerance = validations.filter(v => !v.within_tolerance);
+    if (outOfTolerance.length > 0) {
+      logger.warn('Some calculated costs are out of tolerance vs actuals', { outOfTolerance });
+    }
+  } catch (error) {
+    logger.error('Base cost recalculation failed', { error });
+  }
+}
+```
+
+### 4C.5 Deliverables
+- [ ] `baseCostCalculationService.ts` created
+- [ ] Material quantity tables defined (from QS standards)
+- [ ] Nightly recalculation job added to scheduler
+- [ ] Validation against `completed_projects` working
+- [ ] Current static `base_costs_per_sqm` data replaced with calculated values
+
+---
+
+## Phase 5: Scheduler Integration (Week 4)
+
+### 5.1 Objective
+Add scheduled jobs for new scrapers and multiplier recalculation.
+
+### 5.2 Update Scheduler
+
+**File**: `backend/services/data-hub/schedulers/economicDataScheduler.ts` (modify)
+
+Add these jobs:
+
+```typescript
+// Add imports
+import { npaScraper } from '../scrapers/npaScraper';
+import { commodityPriceService } from '../scrapers/commodityPriceService';
+import { multiplierCalculationService } from '../../../src/services/multiplierCalculationService';
+
+// Add to constructor - new cron jobs:
+
+// NPA Fuel Prices - Weekly on Monday at 6 AM
+this.npaJob = cron.schedule(
+  config.npaSyncCron || '0 6 * * 1',
+  () => this.runNPASync(),
+  { timezone: config.timezone }
+);
+
+// Commodity Prices - Monthly on 5th at 7 AM
+this.commodityJob = cron.schedule(
+  config.commoditySyncCron || '0 7 5 * *',
+  () => this.runCommoditySync(),
+  { timezone: config.timezone }
+);
+
+// Multiplier Recalculation - Nightly at 2 AM
+this.multiplierJob = cron.schedule(
+  config.multiplierCalcCron || '0 2 * * *',
+  () => this.runMultiplierCalculation(),
+  { timezone: config.timezone }
+);
+
+// Add methods:
+private async runNPASync(): Promise<void> {
+  logger.info('Starting NPA fuel price sync');
+  const result = await npaScraper.syncLatest();
+  logger.info('NPA sync completed', { status: result.status });
+}
+
+private async runCommoditySync(): Promise<void> {
+  logger.info('Starting commodity price sync');
+  const result = await commodityPriceService.syncLatest();
+  logger.info('Commodity sync completed', { status: result.status });
+}
+
+private async runMultiplierCalculation(): Promise<void> {
+  logger.info('Starting nightly multiplier recalculation');
+  try {
+    const regional = await multiplierCalculationService.calculateRegionalMultipliers();
+    await multiplierCalculationService.saveMultipliers(regional);
+    logger.info('Multiplier calculation completed', { regional: regional.length });
+  } catch (error) {
+    logger.error('Multiplier calculation failed', { error });
+  }
+}
+```
+
+### 5.3 Deliverables
+- [ ] NPA weekly sync job added
+- [ ] Commodity monthly sync job added
+- [ ] Nightly multiplier recalculation job added
+- [ ] Scheduler tested
+
+---
+
+## Phase 6: Integrate with Valuation Engine (Week 5)
+
+### 6.1 Objective
+Update `constructionCostService.ts` to use calculated multipliers instead of static.
+
+### 6.2 Modify Existing Service
+
+**File**: `backend/src/services/constructionCostService.ts` (modify `estimateConstructionCost`)
+
+```typescript
+import { multiplierCalculationService } from './multiplierCalculationService';
+
+// Replace static REGION_MULTIPLIERS lookup with:
+async estimateConstructionCost(
+  propertyType: string,
+  qualityLevel: string,
+  region: string,
+  builtAreaSqm: number,
+  numFloors: number = 1
+): Promise<ConstructionEstimate> {
+  
+  // Get calculated regional multiplier (with fallback)
+  const regionalMultiplier = await multiplierCalculationService.getMultiplier('region', region);
+  
+  // Get base cost from database
+  const baseCosts = await this.getBaseCosts();
+  const baseCost = baseCosts.find(c => 
+    c.property_type === propertyType && c.quality_tier === qualityLevel
+  );
+  
+  if (!baseCost) {
+    throw new Error(`No base cost found for ${propertyType}/${qualityLevel}`);
+  }
+
+  // Calculate with data-driven multiplier
+  const adjustedCostPerSqm = baseCost.base_cost_per_sqm * regionalMultiplier.value;
+  const totalCost = adjustedCostPerSqm * builtAreaSqm * (1 + (numFloors - 1) * 0.05);
+
+  return {
+    property_type: propertyType,
+    quality_level: qualityLevel,
+    region,
+    built_area_sqm: builtAreaSqm,
+    num_floors: numFloors,
+    base_cost_per_sqm: baseCost.base_cost_per_sqm,
+    regional_multiplier: regionalMultiplier.value,
+    regional_multiplier_source: regionalMultiplier.source,
+    regional_multiplier_confidence: regionalMultiplier.confidence,
+    adjusted_cost_per_sqm: adjustedCostPerSqm,
+    total_estimated_cost: totalCost,
+    calculation_date: new Date()
+  };
+}
+```
+
+### 6.3 Deliverables
+- [ ] `constructionCostService.ts` updated
+- [ ] Valuation now uses calculated multipliers
+- [ ] Fallback to static works correctly
+
+---
+
+## Phase 7: API Endpoints & Frontend (Week 5-6)
+
+### 7.1 Objective
+Expose multiplier data and confidence scores to frontend.
+
+### 7.2 New Endpoints
+
+**File**: `backend/src/routes/constructionCostRoutes.ts` (add)
+
+```typescript
+// GET /api/construction/multipliers
+router.get('/multipliers', async (req, res) => {
+  const { type } = req.query;
+  const multipliers = await multiplierCalculationService.getAllMultipliers(type as string);
+  res.json({
+    success: true,
+    data: multipliers,
+    meta: {
+      source_breakdown: {
+        calculated: multipliers.filter(m => m.source === 'calculated').length,
+        static: multipliers.filter(m => m.source === 'static').length
+      }
+    }
+  });
+});
+
+// GET /api/construction/multipliers/:type/:category
+router.get('/multipliers/:type/:category', async (req, res) => {
+  const { type, category } = req.params;
+  const multiplier = await multiplierCalculationService.getMultiplier(type, category);
+  res.json({ success: true, data: multiplier });
+});
+
+// POST /api/construction/multipliers/recalculate (admin only)
+router.post('/multipliers/recalculate', requireAdmin, async (req, res) => {
+  const regional = await multiplierCalculationService.calculateRegionalMultipliers();
+  await multiplierCalculationService.saveMultipliers(regional);
+  res.json({ 
+    success: true, 
+    message: 'Multipliers recalculated',
+    data: { regional_count: regional.length }
+  });
+});
+```
+
+### 7.3 Deliverables
+- [ ] API endpoints created
+- [ ] Swagger documentation updated
+- [ ] Frontend displays multiplier source/confidence
+
+---
+
+## Implementation Summary
+
+| Phase | Duration | Key Deliverables | Dependencies |
+|-------|----------|------------------|--------------|
+| **1** | Week 1 | Database tables | None |
+| **2** | Week 2 | NPA scraper | Phase 1 |
+| **3** | Week 2-3 | Commodity prices | Phase 1 |
+| **4** | Week 3-4 | Multiplier calculator | Phase 1, material_prices data |
+| **5** | Week 4 | Scheduler jobs | Phases 2-4 |
+| **6** | Week 5 | Valuation integration | Phase 4 |
+| **7** | Week 5-6 | API & Frontend | Phase 6 |
+
+### Data Flow After Implementation
+
+```
+┌──────────────────┐     ┌──────────────────┐     ┌──────────────────┐
+│  External APIs   │     │  Scrapers        │     │  Database        │
+│  - NPA           │────▶│  - npaScraper    │────▶│  - fuel_prices   │
+│  - World Bank    │     │  - commoditySvc  │     │  - commodity_    │
+│  - WDI (exists)  │     │  - bogScraper ✅ │     │    prices        │
+│  - BOG (exists)  │     │  - wdiClient ✅  │     │  - material_     │
+└──────────────────┘     └──────────────────┘     │    prices ✅     │
+                                                  └────────┬─────────┘
+                                                           │
+                         ┌─────────────────────────────────▼─────────┐
+                         │  MultiplierCalculationService             │
+                         │  - calculateRegionalMultipliers()         │
+                         │  - calculateQualityMultipliers() (future) │
+                         │  - getMultiplier() with fallback          │
+                         └─────────────────────────────────┬─────────┘
+                                                           │
+                         ┌─────────────────────────────────▼─────────┐
+                         │  ConstructionCostService                  │
+                         │  - estimateConstructionCost()             │
+                         │  - calculateDepreciatedReplacementCost()  │
+                         └─────────────────────────────────┬─────────┘
+                                                           │
+                         ┌─────────────────────────────────▼─────────┐
+                         │  Valuation Engine / Frontend              │
+                         │  - Shows multiplier value + confidence    │
+                         │  - Indicates calculated vs static source  │
+                         └───────────────────────────────────────────┘
+```

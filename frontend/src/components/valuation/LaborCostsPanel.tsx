@@ -191,10 +191,10 @@ export function LaborCostsPanel({
 
   // Calculate statistics
   const avgRate = laborRates.length > 0 
-    ? laborRates.reduce((sum, l) => sum + l.rate_ghs, 0) / laborRates.length
+    ? laborRates.reduce((sum, l) => sum + (l.rate_ghs ?? 0), 0) / laborRates.length
     : 0
   const baseLaborRate = 120 // Base 2020 average
-  const laborFactor = avgRate > 0 ? avgRate / baseLaborRate : 1
+  const laborFactor = avgRate > 0 && !isNaN(avgRate) ? avgRate / baseLaborRate : 1
   const skilledRates = laborRates.filter(r => r.labor_category !== 'general_laborer')
   const unskilledRates = laborRates.filter(r => r.labor_category === 'general_laborer')
 
@@ -281,7 +281,7 @@ export function LaborCostsPanel({
                             <TrendIndicator change={rate.rate_change_percent} />
                             <div className="text-right">
                               <span className="font-mono text-sm text-white">
-                                ₵{rate.rate_ghs.toLocaleString()}
+                                ₵{(rate.rate_ghs ?? 0).toLocaleString()}
                               </span>
                               <span className="font-mono text-[9px] text-zinc-500 ml-1">/day</span>
                             </div>
@@ -319,7 +319,7 @@ export function LaborCostsPanel({
                             <TrendIndicator change={rate.rate_change_percent} />
                             <div className="text-right">
                               <span className="font-mono text-sm text-white">
-                                ₵{rate.rate_ghs.toLocaleString()}
+                                ₵{(rate.rate_ghs ?? 0).toLocaleString()}
                               </span>
                               <span className="font-mono text-[9px] text-zinc-500 ml-1">/day</span>
                             </div>

@@ -2,45 +2,40 @@ import Redis from 'ioredis';
 import { config } from '../config';
 import { logger } from '../utils/logger';
 
-// Redis connection options
-const redisOptions = {
-  host: config.redis.host,
-  port: config.redis.port,
-  username: config.redis.username,
-  password: config.redis.password,
-  retryStrategy: (times: number) => {
-    const delay = Math.min(times * 50, 2000);
-    return delay;
-  },
-  maxRetriesPerRequest: 3,
-  enableReadyCheck: false, // Disabled due to limited Redis ACL permissions
-  lazyConnect: true,
+// Helper to create Redis client with shared options
+const createRedisClient = (name: string, db: number, keyPrefix: string) => {
+  const options = {
+    retryStrategy: (times: number) => {
+      const delay = Math.min(times * 50, 2000);
+      return delay;
+    },
+    maxRetriesPerRequest: 3,
+    enableReadyCheck: false, // Disabled due to limited Redis ACL permissions
+    lazyConnect: true,
+    db,
+    keyPrefix,
+  };
+
+  if (config.redis.url) {
+    logger.debug(`Initializing Redis ${name} client using URL`);
+    return new Redis(config.redis.url, options);
+  }
+
+  logger.debug(`Initializing Redis ${name} client using host/port`);
+  return new Redis({
+    ...options,
+    host: config.redis.host,
+    port: config.redis.port,
+    username: config.redis.username,
+    password: config.redis.password,
+  });
 };
 
 // Create Redis clients for different purposes
-export const redisAuth = new Redis({
-  ...redisOptions,
-  db: config.redis.databases.auth,
-  keyPrefix: 'propmetrik:auth:',
-});
-
-export const redisCache = new Redis({
-  ...redisOptions,
-  db: config.redis.databases.cache,
-  keyPrefix: 'propmetrik:cache:',
-});
-
-export const redisQueue = new Redis({
-  ...redisOptions,
-  db: config.redis.databases.queue,
-  keyPrefix: 'propmetrik:queue:',
-});
-
-export const redisPubSub = new Redis({
-  ...redisOptions,
-  db: config.redis.databases.pubsub,
-  keyPrefix: 'propmetrik:pubsub:',
-});
+export const redisAuth = createRedisClient('auth', config.redis.databases.auth, 'propmetrik:auth:');
+export const redisCache = createRedisClient('cache', config.redis.databases.cache, 'propmetrik:cache:');
+export const redisQueue = createRedisClient('queue', config.redis.databases.queue, 'propmetrik:queue:');
+export const redisPubSub = createRedisClient('pubsub', config.redis.databases.pubsub, 'propmetrik:pubsub:');
 
 // Event handlers for all clients
 const clients = [
@@ -246,13 +241,17 @@ export async function checkHealth(): Promise<{
 
   for (const { name, client } of clients) {
     try {
-      await client.ping();
+      const result = await client.ping();
+      logger.debug(`Redis ${name} ping result: ${result}`);
       databases[name] = true;
       connectedClients.push(name);
-    } catch {
+    } catch (err) {
+      logger.error(`Redis ${name} ping failed`, { error: (err as Error).message });
       databases[name] = false;
     }
   }
+
+  logger.debug('Redis health check result', { databases, connected: Object.values(databases).every(Boolean) });
 
   return {
     connected: Object.values(databases).every(Boolean),
