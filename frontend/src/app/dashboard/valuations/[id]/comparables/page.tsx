@@ -85,7 +85,10 @@ interface ComparableResult {
   floors?: number
   amenities?: string[]
   sale_price: number
+  asking_price_ghs?: number
+  price_original?: number
   price_currency?: string
+  fx_rate_used?: number
   sale_date?: string
   listing_type?: string
   data_source?: string
@@ -115,6 +118,14 @@ interface SearchMeta {
     maxPrice: number
     minPricePerSqm: number
     maxPricePerSqm: number
+  }
+  currencyConversion?: {
+    targetCurrency: string
+    fxRateUsed: number
+    fxRateDate: string
+    usdCount: number
+    ghsCount: number
+    note: string
   }
   gapAnalysis?: {
     required: number
@@ -182,6 +193,10 @@ function ComparablesPageContent() {
   const [submitting, setSubmitting] = useState(false)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  
+  // Selected methods from valuation
+  const [selectedMethods, setSelectedMethods] = useState<string[]>([])
+  const [primaryMethod, setPrimaryMethod] = useState<string | null>(null)
 
   // Load valuation and initial search
   useEffect(() => {
@@ -198,6 +213,12 @@ function ComparablesPageContent() {
         
         const valuation = valuationRes.data
         const property = valuation.property || {}
+        
+        // Extract selected methods from valuation
+        const methods = (valuation as any).selectedMethods || valuation.methods_applied || []
+        const primary = (valuation as any).primaryMethod || (methods.length > 0 ? methods[0] : null)
+        setSelectedMethods(methods)
+        setPrimaryMethod(primary)
         
         setSubjectProperty({
           id: valuation.property_id || property.id,
@@ -290,9 +311,32 @@ function ComparablesPageContent() {
     )
   }
 
+  // Check which methods are selected
+  const hasSalesComparison = selectedMethods.includes('sales_comparison')
+  const hasCostApproach = selectedMethods.includes('cost_approach')
+  const hasIncomeApproach = selectedMethods.includes('income_approach')
+  const hasDRC = selectedMethods.includes('drc_method')
+  const hasProfits = selectedMethods.includes('profits_method')
+  const hasResidual = selectedMethods.includes('residual_method')
+  
+  // Minimum comparables required (3 for sales comparison, 0 otherwise but still useful)
+  const minComparablesRequired = hasSalesComparison ? 3 : 0
+  const canProceed = selectedComparables.length >= minComparablesRequired
+
+  // Determine next step based on selected methods (in workflow order)
+  const getNextStep = () => {
+    if (hasSalesComparison) return { path: 'market', label: 'MARKET ANALYSIS' }
+    if (hasCostApproach) return { path: 'cost', label: 'COST APPROACH' }
+    if (hasIncomeApproach) return { path: 'income', label: 'INCOME APPROACH' }
+    if (hasDRC) return { path: 'drc', label: 'DRC METHOD' }
+    if (hasProfits) return { path: 'profits', label: 'PROFITS METHOD' }
+    if (hasResidual) return { path: 'residual', label: 'RESIDUAL METHOD' }
+    return { path: 'reconciliation', label: 'RECONCILIATION' }
+  }
+
   // Save selected comparables to basket and proceed
   const saveAndProceed = async () => {
-    if (selectedComparables.length < 3) {
+    if (hasSalesComparison && selectedComparables.length < 3) {
       alert('Please select at least 3 comparable properties for a reliable valuation (RICS requirement)')
       return
     }
@@ -300,36 +344,39 @@ function ComparablesPageContent() {
     try {
       setSaving(true)
       
-      // Create or get existing basket
-      let basketId: string
-      const basketsRes = await comparableBasketApi.getByValuation(valuationId)
-      
-      if (basketsRes.success && basketsRes.data.length > 0) {
-        basketId = basketsRes.data[0].id
-      } else {
-        const createRes = await comparableBasketApi.create(valuationId, {
-          basket_name: 'Primary Basket',
-          is_primary: true,
-          search_criteria: searchFilters,
-        })
-        if (!createRes.success) {
-          throw new Error(createRes.error || 'Failed to create basket')
+      // Create or get existing basket (if we have comparables)
+      if (selectedComparables.length > 0) {
+        let basketId: string
+        const basketsRes = await comparableBasketApi.getByValuation(valuationId)
+        
+        if (basketsRes.success && basketsRes.data.length > 0) {
+          basketId = basketsRes.data[0].id
+        } else {
+          const createRes = await comparableBasketApi.create(valuationId, {
+            basket_name: 'Primary Basket',
+            is_primary: true,
+            search_criteria: searchFilters,
+          })
+          if (!createRes.success) {
+            throw new Error(createRes.error || 'Failed to create basket')
+          }
+          basketId = createRes.data.id
         }
-        basketId = createRes.data.id
+        
+        // Add selected comparables to basket
+        for (const propertyId of selectedComparables) {
+          const comp = searchResults.find(r => r.id === propertyId)
+          await comparableBasketApi.addComparable(basketId, {
+            property_id: propertyId,
+            similarity_score: comp?.similarity_score || 0,
+            weight: 1.0,
+          })
+        }
       }
       
-      // Add selected comparables to basket
-      for (const propertyId of selectedComparables) {
-        const comp = searchResults.find(r => r.id === propertyId)
-        await comparableBasketApi.addComparable(basketId, {
-          property_id: propertyId,
-          similarity_score: comp?.similarity_score || 0,
-          weight: 1.0,
-        })
-      }
-      
-      // Navigate to market analysis
-      router.push(`/dashboard/valuations/${valuationId}/market`)
+      // Navigate to next step
+      const nextStep = getNextStep()
+      router.push(`/dashboard/valuations/${valuationId}/${nextStep.path}`)
       
     } catch (err) {
       console.error('Failed to save basket:', err)
@@ -437,17 +484,21 @@ function ComparablesPageContent() {
             <div className="h-6 w-px bg-zinc-800" />
             <div>
               <h1 className="font-mono text-2xl text-white">COMPARABLE SEARCH</h1>
-              <p className="font-mono text-xs text-zinc-500">Step 4: Select comparables for Sales Comparison Approach</p>
+              <p className="font-mono text-xs text-zinc-500">
+                Step 4: {hasSalesComparison 
+                  ? 'Select comparables for Sales Comparison Approach' 
+                  : 'Optional - Select reference comparables for valuation'}
+              </p>
             </div>
           </div>
           
           <div className="flex items-center gap-3">
             <span className="font-mono text-sm text-zinc-500">
-              {selectedComparables.length} / 3+ SELECTED
+              {selectedComparables.length} / {hasSalesComparison ? '3+' : '0+'} SELECTED
             </span>
             <button
               onClick={saveAndProceed}
-              disabled={selectedComparables.length < 3 || saving}
+              disabled={!canProceed || saving}
               className="flex items-center gap-2 px-4 py-2 bg-amber-500 text-black font-mono text-sm font-bold hover:bg-amber-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {saving ? (
@@ -457,7 +508,7 @@ function ComparablesPageContent() {
                 </>
               ) : (
                 <>
-                  CONTINUE TO ANALYSIS
+                  CONTINUE TO {getNextStep().label}
                   <ArrowLeft className="w-4 h-4 rotate-180" />
                 </>
               )}
@@ -736,6 +787,16 @@ function ComparablesPageContent() {
               </div>
             )}
 
+            {/* Currency Conversion Info */}
+            {searchMeta?.currencyConversion && searchMeta.currencyConversion.usdCount > 0 && (
+              <div className="flex items-center gap-3 mb-4 p-3 bg-blue-500/10 border border-blue-500/20 rounded">
+                <Info className="w-4 h-4 text-blue-400" />
+                <span className="font-mono text-[11px] text-blue-300">
+                  {searchMeta.currencyConversion.usdCount} USD listings converted to GHS @ {searchMeta.currencyConversion.fxRateUsed?.toFixed(2)} rate
+                </span>
+              </div>
+            )}
+
             {/* Comparable Cards */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               {searching && searchResults.length === 0 ? (
@@ -784,10 +845,15 @@ function ComparablesPageContent() {
                           </div>
                           <div className="text-right">
                             <div className="font-mono text-lg text-amber-400 font-bold">
-                              {formatCurrency(result.sale_price)}
+                              GHS {formatCurrency(result.sale_price)}
                             </div>
+                            {result.price_currency === 'USD' && result.price_original && (
+                              <div className="font-mono text-[10px] text-zinc-500">
+                                (${formatCurrency(result.price_original)} USD)
+                              </div>
+                            )}
                             <div className="font-mono text-xs text-zinc-500">
-                              {result.gfa ? formatCurrency(result.sale_price / result.gfa) + '/sqm' : ''}
+                              {result.gfa ? 'GHS ' + formatCurrency(result.sale_price / result.gfa) + '/sqm' : ''}
                             </div>
                           </div>
                         </div>

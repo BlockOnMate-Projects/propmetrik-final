@@ -41,6 +41,14 @@ export type {
   ComparableWithAdjustments,
 } from './AdjustmentGrid';
 
+// Listing Adjustment Panel (RICS/GhIS compliant asking-to-achieved adjustment)
+export { ListingAdjustmentPanel, generateListingDisclosure } from './ListingAdjustmentPanel';
+export type {
+  EvidenceType as ListingEvidenceType,
+  MarketConditions,
+  ListingAdjustmentConfig,
+} from './ListingAdjustmentPanel';
+
 // Cost Approach Components
 export { ConstructionCostPanel } from './ConstructionCostPanel';
 export type { ConstructionCostData } from './ConstructionCostPanel';
@@ -53,5 +61,36 @@ export type {
   LaborCost,
 } from './EditableConstructionCostPanel';
 
+// Land Value Panel (multi-method reconciliation)
+export { LandValuePanel } from './LandValuePanel';
+export type {
+  LandValueMethodDetail,
+  LandComparableSummary,
+  LandValueResult,
+} from './LandValuePanel';
+
 // Labor Costs Panel
 export { LaborCostsPanel } from './LaborCostsPanel';
+
+// Depreciation Breakdown Panel (D6)
+export { DepreciationBreakdownPanel } from './DepreciationBreakdownPanel';
+export type {
+  PhysicalDepreciationData,
+  FunctionalObsolescenceItem,
+  FunctionalObsolescenceData,
+  ExternalObsolescenceData,
+  DepreciationBreakdownData,
+} from './DepreciationBreakdownPanel';
+
+// Depreciation Override Dialog (D7)
+export { DepreciationOverrideDialog } from './DepreciationOverrideDialog';
+export type {
+  DepreciationComponent,
+  EvidenceType,
+  OverrideFormData,
+  OverrideValidationResult,
+} from './DepreciationOverrideDialog';
+
+// Combined Depreciation Panel with Override Capability
+export { DepreciationPanelWithOverrides } from './DepreciationPanelWithOverrides';
+export type { DepreciationOverrideState } from './DepreciationPanelWithOverrides';

@@ -199,6 +199,96 @@ export interface MarketConditionsRequest {
   as_of_date?: string;
 }
 
+// ============================================================================
+// LAND VALUE TYPES
+// ============================================================================
+
+/**
+ * Land value method result details
+ */
+export interface LandValueMethodDetail {
+  value: number;
+  value_per_sqm: number;
+  confidence: number;
+  weight: number;
+  weighted_contribution: number;
+  method_specific: Record<string, any>;
+}
+
+/**
+ * Comparable land sale summary
+ */
+export interface LandComparableSummary {
+  id: string;
+  distance_km: number;
+  sale_date: string;
+  sale_price_per_sqm: number;
+  adjusted_price_per_sqm: number;
+  similarity_score: number;
+  adjustment_factor: number;
+}
+
+/**
+ * Request for land value calculation
+ */
+export interface LandValueRequest {
+  property: PythonPropertyInput;
+  valuation_id: string;
+  valuation_date?: string;
+  user_entered_value?: number;
+  user_justification?: string;
+  force_recalculate?: boolean;
+}
+
+/**
+ * Response from land value calculation
+ */
+export interface LandValueResponse {
+  success: boolean;
+  final_land_value: number;
+  final_land_value_per_sqm: number;
+  land_area_sqm: number;
+  confidence_score: number;
+  primary_method: string;
+  
+  // User override info
+  is_user_override: boolean;
+  user_justification?: string;
+  
+  // Method details (only present if not user override)
+  methods?: {
+    residual?: LandValueMethodDetail;
+    comparable?: LandValueMethodDetail;
+  };
+  
+  // Comparable details (if comparable method used)
+  comparables_summary?: {
+    count_found: number;
+    count_used: number;
+    strength: 'weak' | 'balanced' | 'strong';
+    top_comparables: LandComparableSummary[];
+  };
+  
+  // Reconciliation details
+  reconciliation?: {
+    method_weights: Record<string, number>;
+    weight_justification: string;
+    value_spread_pct: number;
+    outlier_flags: string[];
+  };
+  
+  // Comparable strength for weighting
+  comparable_strength: 'weak' | 'balanced' | 'strong';
+  
+  // Disclosure (RICS compliance)
+  disclosure_required: boolean;
+  disclosure_text: string;
+  
+  // Metadata
+  cached: boolean;
+  error?: string;
+}
+
 /**
  * Market conditions response
  */
@@ -373,6 +463,46 @@ export class PythonClient {
   async drcMethod(property: PythonPropertyInput, options?: Record<string, any>): Promise<ValuationMethodResponse> {
     const request: ValuationMethodRequest = { property, options };
     const response = await this.client.post<ValuationMethodResponse>('/api/v1/methods/drc', request);
+    return response.data;
+  }
+
+  /**
+   * Calculate Land Value (reconciled from Residual + Comparable methods)
+   * 
+   * IMPORTANT: If user_entered_value is provided, it is a 100% OVERRIDE
+   * that bypasses the valuation methods entirely.
+   * 
+   * Weight Distribution (per GhIS/RICS):
+   *   | Comparable Strength | Residual | Comparable |
+   *   |---------------------|----------|------------|
+   *   | Weak                | 70%      | 30%        |
+   *   | Balanced            | 50%      | 50%        |
+   *   | Strong              | 30%      | 70%        |
+   */
+  async getLandValue(request: LandValueRequest): Promise<LandValueResponse> {
+    const response = await this.client.post<LandValueResponse>('/api/v1/methods/land-value', request);
+    return response.data;
+  }
+
+  /**
+   * Get land comparables only (without full reconciliation)
+   * Useful for displaying comparables before calculating land value
+   */
+  async getLandComparables(
+    property: PythonPropertyInput,
+    options?: { max_distance_km?: number; max_results?: number }
+  ): Promise<{
+    success: boolean;
+    comparables: LandComparableSummary[];
+    strength: 'weak' | 'balanced' | 'strong';
+    count: number;
+    search_radius_km: number;
+    error?: string;
+  }> {
+    const response = await this.client.post('/api/v1/methods/land-value/comparables', {
+      property,
+      options,
+    });
     return response.data;
   }
 

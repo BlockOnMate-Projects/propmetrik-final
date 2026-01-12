@@ -14,8 +14,13 @@ import { config } from '../config';
 import { logger } from '../utils/logger';
 
 // S3/MinIO client configuration
+const protocol = config.minio.useSSL ? 'https' : 'http';
+const portSuffix = config.minio.port && config.minio.port !== 80 && config.minio.port !== 443
+  ? `:${config.minio.port}`
+  : '';
+
 export const s3Client = new S3Client({
-  endpoint: `https://${config.minio.endpoint}`,
+  endpoint: `${protocol}://${config.minio.endpoint}${portSuffix}`,
   region: 'us-east-1', // MinIO ignores this but it's required
   credentials: {
     accessKeyId: config.minio.accessKey,
@@ -61,11 +66,11 @@ export async function bucketExists(bucketName: string): Promise<boolean> {
 export async function createBucketIfNotExists(bucketName: string): Promise<boolean> {
   try {
     const exists = await bucketExists(bucketName);
-    
+
     if (!exists) {
       await s3Client.send(new CreateBucketCommand({ Bucket: bucketName }));
       logger.info(`Created MinIO bucket: ${bucketName}`);
-      
+
       // Apply CORS configuration (optional - some MinIO setups don't support this)
       try {
         await s3Client.send(
@@ -78,10 +83,10 @@ export async function createBucketIfNotExists(bucketName: string): Promise<boole
       } catch (corsError: any) {
         logger.warn(`Could not apply CORS to bucket ${bucketName}: ${corsError.message}`);
       }
-      
+
       return true;
     }
-    
+
     logger.debug(`MinIO bucket already exists: ${bucketName}`);
     return false;
   } catch (error) {
@@ -97,11 +102,11 @@ export async function createBucketIfNotExists(bucketName: string): Promise<boole
  */
 export async function initializeBuckets(): Promise<void> {
   const bucketList = Object.values(buckets);
-  
+
   for (const bucket of bucketList) {
     await createBucketIfNotExists(bucket);
   }
-  
+
   logger.info('All MinIO buckets initialized');
 }
 
@@ -124,9 +129,9 @@ export async function uploadFile(
   });
 
   const response = await s3Client.send(command);
-  
+
   logger.debug(`Uploaded file to MinIO`, { bucket, key });
-  
+
   return {
     bucket,
     key,
@@ -147,9 +152,9 @@ export async function getFile(
   });
 
   const response = await s3Client.send(command);
-  
+
   const body = await response.Body?.transformToByteArray();
-  
+
   return {
     body: body || new Uint8Array(),
     contentType: response.ContentType,
@@ -185,7 +190,7 @@ export async function listFiles(
   });
 
   const response = await s3Client.send(command);
-  
+
   return (response.Contents || []).map((item) => ({
     key: item.Key || '',
     size: item.Size || 0,
@@ -262,7 +267,7 @@ export async function checkHealth(): Promise<{
   buckets: Record<string, { exists: boolean; objectCount?: number }>;
 }> {
   const bucketStatus: Record<string, { exists: boolean; objectCount?: number }> = {};
-  
+
   try {
     for (const [name, bucketName] of Object.entries(buckets)) {
       try {

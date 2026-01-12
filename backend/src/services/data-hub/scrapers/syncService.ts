@@ -10,6 +10,9 @@ import { logger } from '../../../utils/logger';
 import { bogScraper, BOGScraper } from './bogScraper';
 import { wdiClient, WDIClient } from './wdiClient';
 import { fxFeedService, FXFeedService } from './fxFeedService';
+import { npaScraper, NPAScraper } from './npaScraper';
+import { localMaterialScraper, LocalMaterialScraper } from './localMaterialScraper';
+import { gssLaborService, GSSLaborService } from './gssLaborService';
 import { syncLogRepository, SyncLogRepository } from './syncLogRepository';
 import { SyncResult, SyncError } from './types';
 
@@ -17,7 +20,7 @@ import { SyncResult, SyncError } from './types';
 // TYPES
 // =====================================================
 
-export type SyncSource = 'bog' | 'wdi' | 'fx' | 'all';
+export type SyncSource = 'bog' | 'wdi' | 'fx' | 'npa' | 'local_materials' | 'gss_labor' | 'construction_all' | 'all';
 export type SyncType = 'full' | 'latest' | 'manual';
 
 export interface SyncOptions {
@@ -51,6 +54,9 @@ export class EconomicDataSyncService {
   private readonly bogScraper: BOGScraper;
   private readonly wdiClient: WDIClient;
   private readonly fxService: FXFeedService;
+  private readonly npaScraper: NPAScraper;
+  private readonly materialScraper: LocalMaterialScraper;
+  private readonly laborService: GSSLaborService;
   private readonly syncLog: SyncLogRepository;
   private runningJobs: Map<string, boolean>;
 
@@ -58,11 +64,17 @@ export class EconomicDataSyncService {
     bogScraperInstance?: BOGScraper,
     wdiClientInstance?: WDIClient,
     fxServiceInstance?: FXFeedService,
+    npaScraperInstance?: NPAScraper,
+    materialScraperInstance?: LocalMaterialScraper,
+    laborServiceInstance?: GSSLaborService,
     syncLogInstance?: SyncLogRepository
   ) {
     this.bogScraper = bogScraperInstance || bogScraper;
     this.wdiClient = wdiClientInstance || wdiClient;
     this.fxService = fxServiceInstance || fxFeedService;
+    this.npaScraper = npaScraperInstance || npaScraper;
+    this.materialScraper = materialScraperInstance || localMaterialScraper;
+    this.laborService = laborServiceInstance || gssLaborService;
     this.syncLog = syncLogInstance || syncLogRepository;
     this.runningJobs = new Map();
   }
@@ -262,6 +274,189 @@ export class EconomicDataSyncService {
   }
 
   /**
+   * Run NPA fuel price sync
+   */
+  async syncNPA(triggeredBy: string = 'manual'): Promise<SyncResult> {
+    const source = 'NPA Fuel Prices';
+    
+    if (this.isSourceSyncing(source)) {
+      return {
+        source,
+        status: 'failed',
+        started_at: new Date(),
+        completed_at: new Date(),
+        records_fetched: 0,
+        records_saved: 0,
+        records_failed: 0,
+        errors: [{ code: 'ALREADY_RUNNING', message: 'Sync already in progress', timestamp: new Date() }],
+        metadata: {},
+      };
+    }
+
+    this.runningJobs.set(source, true);
+    let syncId: string | undefined;
+
+    try {
+      syncId = await this.syncLog.startSync(source, 'scheduled', triggeredBy);
+      
+      logger.info('Starting NPA fuel price sync', { triggeredBy, syncId });
+      
+      const result = await this.npaScraper.syncLatest();
+      
+      await this.syncLog.completeSync(syncId, result);
+      
+      return result;
+    } catch (error) {
+      const errorResult: SyncResult = {
+        source,
+        status: 'failed',
+        started_at: new Date(),
+        completed_at: new Date(),
+        records_fetched: 0,
+        records_saved: 0,
+        records_failed: 0,
+        errors: [{
+          code: 'SYNC_ERROR',
+          message: error instanceof Error ? error.message : 'Unknown error',
+          timestamp: new Date(),
+        }],
+        metadata: {},
+      };
+
+      if (syncId) {
+        await this.syncLog.completeSync(syncId, errorResult);
+      }
+
+      logger.error('NPA sync failed', { error });
+      return errorResult;
+    } finally {
+      this.runningJobs.set(source, false);
+    }
+  }
+
+  /**
+   * Run Local Material Prices sync
+   */
+  async syncLocalMaterials(triggeredBy: string = 'manual'): Promise<SyncResult> {
+    const source = 'Local Material Prices';
+    
+    if (this.isSourceSyncing(source)) {
+      return {
+        source,
+        status: 'failed',
+        started_at: new Date(),
+        completed_at: new Date(),
+        records_fetched: 0,
+        records_saved: 0,
+        records_failed: 0,
+        errors: [{ code: 'ALREADY_RUNNING', message: 'Sync already in progress', timestamp: new Date() }],
+        metadata: {},
+      };
+    }
+
+    this.runningJobs.set(source, true);
+    let syncId: string | undefined;
+
+    try {
+      syncId = await this.syncLog.startSync(source, 'scheduled', triggeredBy);
+      
+      logger.info('Starting local material price sync', { triggeredBy, syncId });
+      
+      const result = await this.materialScraper.syncLatest();
+      
+      await this.syncLog.completeSync(syncId, result);
+      
+      return result;
+    } catch (error) {
+      const errorResult: SyncResult = {
+        source,
+        status: 'failed',
+        started_at: new Date(),
+        completed_at: new Date(),
+        records_fetched: 0,
+        records_saved: 0,
+        records_failed: 0,
+        errors: [{
+          code: 'SYNC_ERROR',
+          message: error instanceof Error ? error.message : 'Unknown error',
+          timestamp: new Date(),
+        }],
+        metadata: {},
+      };
+
+      if (syncId) {
+        await this.syncLog.completeSync(syncId, errorResult);
+      }
+
+      logger.error('Local material sync failed', { error });
+      return errorResult;
+    } finally {
+      this.runningJobs.set(source, false);
+    }
+  }
+
+  /**
+   * Run GSS Labor Rates sync
+   */
+  async syncGSSLabor(triggeredBy: string = 'manual'): Promise<SyncResult> {
+    const source = 'GSS Labor Rates';
+    
+    if (this.isSourceSyncing(source)) {
+      return {
+        source,
+        status: 'failed',
+        started_at: new Date(),
+        completed_at: new Date(),
+        records_fetched: 0,
+        records_saved: 0,
+        records_failed: 0,
+        errors: [{ code: 'ALREADY_RUNNING', message: 'Sync already in progress', timestamp: new Date() }],
+        metadata: {},
+      };
+    }
+
+    this.runningJobs.set(source, true);
+    let syncId: string | undefined;
+
+    try {
+      syncId = await this.syncLog.startSync(source, 'scheduled', triggeredBy);
+      
+      logger.info('Starting GSS labor rates sync', { triggeredBy, syncId });
+      
+      const result = await this.laborService.syncLatest();
+      
+      await this.syncLog.completeSync(syncId, result);
+      
+      return result;
+    } catch (error) {
+      const errorResult: SyncResult = {
+        source,
+        status: 'failed',
+        started_at: new Date(),
+        completed_at: new Date(),
+        records_fetched: 0,
+        records_saved: 0,
+        records_failed: 0,
+        errors: [{
+          code: 'SYNC_ERROR',
+          message: error instanceof Error ? error.message : 'Unknown error',
+          timestamp: new Date(),
+        }],
+        metadata: {},
+      };
+
+      if (syncId) {
+        await this.syncLog.completeSync(syncId, errorResult);
+      }
+
+      logger.error('GSS labor sync failed', { error });
+      return errorResult;
+    } finally {
+      this.runningJobs.set(source, false);
+    }
+  }
+
+  /**
    * Run sync for specified source(s)
    */
   async sync(options: SyncOptions): Promise<SyncResult | SyncResult[]> {
@@ -277,14 +472,35 @@ export class EconomicDataSyncService {
       case 'fx':
         return this.syncFX(triggeredBy);
       
+      case 'npa':
+        return this.syncNPA(triggeredBy);
+      
+      case 'local_materials':
+        return this.syncLocalMaterials(triggeredBy);
+      
+      case 'gss_labor':
+        return this.syncGSSLabor(triggeredBy);
+      
+      case 'construction_all':
+        // Run all construction-related syncs in parallel
+        const [npaResult, materialsResult, laborResult] = await Promise.all([
+          this.syncNPA(triggeredBy),
+          this.syncLocalMaterials(triggeredBy),
+          this.syncGSSLabor(triggeredBy),
+        ]);
+        return [npaResult, materialsResult, laborResult];
+      
       case 'all':
         // Run all syncs in parallel
-        const [bogResult, wdiResult, fxResult] = await Promise.all([
+        const [bogResult, wdiResult, fxResult, npaResultAll, materialsResultAll, laborResultAll] = await Promise.all([
           this.syncBOG(type, triggeredBy),
           this.syncWDI(type, triggeredBy),
           this.syncFX(triggeredBy),
+          this.syncNPA(triggeredBy),
+          this.syncLocalMaterials(triggeredBy),
+          this.syncGSSLabor(triggeredBy),
         ]);
-        return [bogResult, wdiResult, fxResult];
+        return [bogResult, wdiResult, fxResult, npaResultAll, materialsResultAll, laborResultAll];
       
       default:
         throw new Error(`Unknown source: ${source}`);
@@ -295,7 +511,14 @@ export class EconomicDataSyncService {
    * Get sync status for all sources
    */
   async getStatus(): Promise<SyncStatus[]> {
-    const sources = ['Bank of Ghana', 'World Bank WDI', 'ExchangeRate-API'];
+    const sources = [
+      'Bank of Ghana', 
+      'World Bank WDI', 
+      'ExchangeRate-API',
+      'NPA Fuel Prices',
+      'Local Material Prices',
+      'GSS Labor Rates'
+    ];
     const statuses: SyncStatus[] = [];
 
     for (const source of sources) {
@@ -415,6 +638,9 @@ export class EconomicDataSyncService {
     return {
       bog: true, // BOG is web scraping, always "available"
       wdi: true, // WDI API is generally reliable
+      npa: true, // NPA is web scraping
+      local_materials: true, // Web scraping / fallback
+      gss_labor: true, // Calculated from minimum wage
       ...fxHealth,
     };
   }

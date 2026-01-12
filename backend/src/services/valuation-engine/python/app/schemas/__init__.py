@@ -50,6 +50,29 @@ from .market_data import (
     MarketDataRequest,
 )
 
+from .land_comparable import (
+    # Enums
+    LandZoning,
+    LandTenureType as LandComparableTenureType,  # Alias to avoid conflict with property LandTenureType
+    RoadAccessType,
+    Topography,
+    LandShape,
+    LandAdjustmentType,
+    OutlierDetectionMethod,
+    ConfidenceLevel as LandConfidenceLevel,  # Alias to avoid conflict with valuation ConfidenceLevel
+    # Characteristics and Scoring
+    LandCharacteristics,
+    LandComparableScore,
+    LandAdjustment,
+    OutlierInfo,
+    LandComparableAnalysis,
+    # Search and Results
+    LandComparableSearchCriteria,
+    LandComparableBasket,
+    LandComparableSalesResult,
+    LandValueReconciliationResult,
+)
+
 __all__ = [
     # Property schemas
     "Property",
@@ -93,4 +116,23 @@ __all__ = [
     "EconomicIndicator",
     "RegionalMarketData",
     "MarketDataRequest",
+    
+    # Land comparable schemas
+    "LandZoning",
+    "LandComparableTenureType",
+    "RoadAccessType",
+    "Topography",
+    "LandShape",
+    "LandAdjustmentType",
+    "OutlierDetectionMethod",
+    "LandConfidenceLevel",
+    "LandCharacteristics",
+    "LandComparableScore",
+    "LandAdjustment",
+    "OutlierInfo",
+    "LandComparableAnalysis",
+    "LandComparableSearchCriteria",
+    "LandComparableBasket",
+    "LandComparableSalesResult",
+    "LandValueReconciliationResult",
 ]

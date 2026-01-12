@@ -6,8 +6,8 @@ import { Providers } from '@/components/providers'
 const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
-  title: 'PropMetrik Data Hub',
-  description: 'Data management and ETL pipeline dashboard for PropMetrik',
+  title: 'PropMetrik - Real Estate Analytics & Valuations',
+  description: 'AI-powered Real Estate Valuation, Property Management, Analytics and Deal Management Platform',
 }
 
 export default function RootLayout({

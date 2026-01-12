@@ -3,12 +3,13 @@ Residual Method Service
 
 Implements the Residual Method for development land valuation.
 Calculates land value by working backwards from completed development value.
+Uses live Data Hub API for construction costs.
 
 Formula: Land Value = GDV - Development Costs - Developer's Profit
 
 Key Features:
 - Gross Development Value (GDV) estimation
-- Construction cost calculation
+- Construction cost calculation (from live API)
 - Professional fees and contingencies
 - Finance costs modeling
 - Developer's profit margin
@@ -26,6 +27,7 @@ from ..models.schemas import (
     RegionCode, PropertyType
 )
 from ..adapters.market_data import MarketDataAdapter
+from ..adapters.data_hub_api_adapter import get_data_hub_adapter
 
 logger = logging.getLogger(__name__)
 
@@ -183,10 +185,11 @@ class DevelopmentAssumptions:
 
 
 class ResidualMethodService:
-    """Residual Method Valuation Service"""
+    """Residual Method Valuation Service - uses live Data Hub API"""
 
-    def __init__(self, market_adapter: MarketDataAdapter):
+    def __init__(self, market_adapter: MarketDataAdapter = None):
         self.market_adapter = market_adapter
+        self.data_hub = get_data_hub_adapter()  # Live API adapter
 
     async def calculate(
         self,
@@ -327,13 +330,30 @@ class ResidualMethodService:
         property_data: PropertyForValuation, 
         assumptions: DevelopmentAssumptions
     ) -> float:
-        """Calculate total construction cost"""
+        """Calculate total construction cost using live Data Hub API"""
         property_type = property_data.property_type.value
+        region_str = property_data.region.value if hasattr(property_data.region, 'value') else str(property_data.region)
         
-        # Base construction cost per sqm
+        # Try to get construction cost from live API
+        try:
+            base_cost_data = await self.data_hub.get_base_cost_per_sqm(
+                property_type=property_type,
+                quality_level="standard",
+                region=region_str
+            )
+            
+            if base_cost_data and base_cost_data.get("adjusted_cost", 0) > 0:
+                adjusted_cost = base_cost_data["adjusted_cost"]
+                logger.info(f"Using live construction cost from API: {adjusted_cost} GHS/sqm")
+                return assumptions.gross_floor_area * adjusted_cost
+                
+        except Exception as e:
+            logger.warning(f"Failed to get construction cost from API: {e}")
+        
+        # Fallback to static costs
         base_cost = CONSTRUCTION_COSTS_PER_SQM.get(property_type, 4500)
         
-        # Regional adjustment
+        # Regional adjustment (fallback)
         regional_multipliers = {
             RegionCode.GREATER_ACCRA: 1.15,
             RegionCode.KUMASI_METRO: 1.00,

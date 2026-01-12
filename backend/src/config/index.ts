@@ -32,10 +32,10 @@ export const config = {
   // Database - PostgreSQL with PostGIS
   database: {
     url: process.env.DATABASE_URL!,
-    host: process.env.DB_HOST || 'pg.cedynhq.com',
-    port: parseInt(process.env.DB_PORT || '5433', 10),
-    name: process.env.DB_NAME || 'propmetrik',
-    user: process.env.DB_USER || 'propmetrik_user',
+    host: process.env.DB_HOST,
+    port: parseInt(process.env.DB_PORT || '5432', 10),
+    name: process.env.DB_NAME,
+    user: process.env.DB_USER,
     password: process.env.DB_PASSWORD!,
     ssl: process.env.DB_SSL === 'true',
     pool: {
@@ -47,31 +47,33 @@ export const config = {
   // Redis
   redis: {
     url: process.env.REDIS_URL!,
-    host: process.env.REDIS_HOST || 'redis.cedynhq.com',
+    host: process.env.REDIS_HOST,
     port: parseInt(process.env.REDIS_PORT || '6379', 10),
     username: process.env.REDIS_USERNAME,
     password: process.env.REDIS_PASSWORD,
     databases: {
+      // Use DB 0 for all - managed Redis restricts SELECT command
+      // Key prefixes in redis.ts (propmetrik:auth:, propmetrik:cache:, etc.) ensure no collisions
       auth: parseInt(process.env.REDIS_DB_AUTH || '0', 10),
-      cache: parseInt(process.env.REDIS_DB_CACHE || '1', 10),
-      queue: parseInt(process.env.REDIS_DB_QUEUE || '2', 10),
-      pubsub: parseInt(process.env.REDIS_DB_PUBSUB || '3', 10),
+      cache: parseInt(process.env.REDIS_DB_CACHE || '0', 10),
+      queue: parseInt(process.env.REDIS_DB_QUEUE || '0', 10),
+      pubsub: parseInt(process.env.REDIS_DB_PUBSUB || '0', 10),
     },
   },
 
   // OpenSearch
   opensearch: {
-    url: process.env.OPENSEARCH_URL || 'https://opensearch.cedynhq.com',
-    username: process.env.OPENSEARCH_USERNAME || 'propmetrik_user',
+    url: process.env.OPENSEARCH_URL,
+    username: process.env.OPENSEARCH_USERNAME,
     password: process.env.OPENSEARCH_PASSWORD!,
     indexPrefix: process.env.OPENSEARCH_INDEX_PREFIX || 'propmetrik_',
   },
 
   // MinIO / S3
   minio: {
-    endpoint: process.env.MINIO_ENDPOINT || 's3.cedynhq.com',
-    port: parseInt(process.env.MINIO_PORT || '443', 10),
-    useSSL: process.env.MINIO_USE_SSL !== 'false',
+    endpoint: process.env.MINIO_ENDPOINT,
+    port: parseInt(process.env.MINIO_PORT || '9000', 10),
+    useSSL: process.env.MINIO_USE_SSL === 'true',
     accessKey: process.env.MINIO_ACCESS_KEY!,
     secretKey: process.env.MINIO_SECRET_KEY!,
     buckets: {
@@ -89,11 +91,11 @@ export const config = {
 
   // Keycloak Authentication
   keycloak: {
-    url: process.env.KEYCLOAK_URL || 'https://sso.cedynhq.com',
-    realm: process.env.KEYCLOAK_REALM || 'propmetrik',
-    clientId: process.env.KEYCLOAK_CLIENT_ID || 'propmetrik-api',
+    url: process.env.KEYCLOAK_URL,
+    realm: process.env.KEYCLOAK_REALM,
+    clientId: process.env.KEYCLOAK_CLIENT_ID,
     clientSecret: process.env.KEYCLOAK_CLIENT_SECRET,
-    adminClientId: process.env.KEYCLOAK_ADMIN_CLIENT_ID || 'admin-cli',
+    adminClientId: process.env.KEYCLOAK_ADMIN_CLIENT_ID,
     adminSecret: process.env.KEYCLOAK_ADMIN_SECRET,
   },
 

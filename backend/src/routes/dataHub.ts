@@ -5,10 +5,10 @@
 
 import { Router, Request, Response } from 'express';
 import { asyncHandler } from '../middleware/errorHandler';
-import { 
-  dataSourceService, 
-  etlJobService, 
-  contributionService, 
+import {
+  dataSourceService,
+  etlJobService,
+  contributionService,
   contributorProfileService,
   geocodingService,
   dataHubQueueManager,
@@ -23,6 +23,7 @@ import {
 import { economicDataService, EconomicIndicatorType } from '../services/data-hub/economicDataService';
 import { constructionCostService, MaterialCategory, LaborCategory } from '../services/data-hub/constructionCostService';
 import { logger } from '../utils/logger';
+import { query } from '../database';
 
 const router = Router();
 
@@ -376,7 +377,7 @@ router.post('/contributions/:id/approve', asyncHandler(async (req: Request, res:
   const reviewerId = req.body.reviewer_id || 'system';
 
   const contribution = await contributionService.approve(
-    req.params.id, 
+    req.params.id,
     reviewerId,
     req.body.credits_awarded
   );
@@ -943,7 +944,7 @@ router.post('/construction/labor', asyncHandler(async (req: Request, res: Respon
  * POST /data-hub/construction/estimate
  */
 router.post('/construction/estimate', asyncHandler(async (req: Request, res: Response) => {
-  const { 
+  const {
     property_type = 'residential',
     quality_level = 'standard',
     region = 'greater_accra',
@@ -1050,7 +1051,7 @@ router.post('/construction/seed', asyncHandler(async (req: Request, res: Respons
 // Economic Data Sync (Scrapers)
 // ============================================
 
-import { 
+import {
   economicDataSyncService,
   SyncSource,
   SyncType,
@@ -1272,7 +1273,7 @@ router.post('/scheduler/stop', asyncHandler(async (req: Request, res: Response) 
  */
 router.post('/scheduler/trigger/:source', asyncHandler(async (req: Request, res: Response) => {
   const rawSource = req.params.source.toUpperCase();
-  
+
   // Normalize 'ALL' to 'all' for consistency
   const source = rawSource === 'ALL' ? 'all' : rawSource as SyncSource | 'all';
 
@@ -1404,5 +1405,356 @@ router.get('/monitoring/metrics', asyncHandler(async (req: Request, res: Respons
     },
   });
 }));
+
+// ============================================
+// Valuation Configuration (Admin)
+// ============================================
+
+/**
+ * Get material category weights
+ * GET /data-hub/valuation-config/material-weights
+ */
+router.get('/valuation-config/material-weights', asyncHandler(async (req: Request, res: Response) => {
+  const result = await constructionCostService.getMaterialWeights();
+
+  res.json({
+    success: true,
+    data: result,
+    count: result.length,
+  });
+}));
+
+/**
+ * Update material category weight
+ * PUT /data-hub/valuation-config/material-weights/:category
+ */
+router.put('/valuation-config/material-weights/:category', asyncHandler(async (req: Request, res: Response) => {
+  const { category } = req.params;
+  const { weight, updated_by } = req.body;
+
+  if (weight === undefined) {
+    res.status(400).json({
+      success: false,
+      error: 'Weight is required',
+    });
+    return;
+  }
+
+  await constructionCostService.updateMaterialWeight(category, weight, updated_by);
+
+  res.json({
+    success: true,
+    message: `Material weight for ${category} updated`,
+  });
+}));
+
+/**
+ * Get regional location factors
+ * GET /data-hub/valuation-config/regional-factors
+ */
+router.get('/valuation-config/regional-factors', asyncHandler(async (req: Request, res: Response) => {
+  const result = await constructionCostService.getRegionalFactors();
+
+  res.json({
+    success: true,
+    data: result,
+    count: result.length,
+  });
+}));
+
+/**
+ * Get single regional factor
+ * GET /data-hub/valuation-config/regional-factors/:regionCode
+ */
+router.get('/valuation-config/regional-factors/:regionCode', asyncHandler(async (req: Request, res: Response) => {
+  const { regionCode } = req.params;
+  const result = await constructionCostService.getRegionalFactor(regionCode);
+
+  if (!result) {
+    res.status(404).json({
+      success: false,
+      error: `Regional factor for ${regionCode} not found`,
+    });
+    return;
+  }
+
+  res.json({
+    success: true,
+    data: result,
+  });
+}));
+
+/**
+ * Update regional location factor
+ * PUT /data-hub/valuation-config/regional-factors/:regionCode
+ */
+router.put('/valuation-config/regional-factors/:regionCode', asyncHandler(async (req: Request, res: Response) => {
+  const { regionCode } = req.params;
+  const { location_factor, updated_by } = req.body;
+
+  if (location_factor === undefined) {
+    res.status(400).json({
+      success: false,
+      error: 'Location factor is required',
+    });
+    return;
+  }
+
+  await constructionCostService.updateRegionalFactor(regionCode, location_factor, updated_by);
+
+  res.json({
+    success: true,
+    message: `Regional factor for ${regionCode} updated`,
+  });
+}));
+
+/**
+ * Get base construction costs
+ * GET /data-hub/valuation-config/base-costs
+ */
+router.get('/valuation-config/base-costs', asyncHandler(async (req: Request, res: Response) => {
+  const result = await constructionCostService.getBaseCosts();
+
+  res.json({
+    success: true,
+    data: result,
+    count: result.length,
+  });
+}));
+
+/**
+ * Update base construction cost
+ * PUT /data-hub/valuation-config/base-costs/:qualityTier
+ */
+router.put('/valuation-config/base-costs/:qualityTier', asyncHandler(async (req: Request, res: Response) => {
+  const { qualityTier } = req.params;
+  const { base_cost_per_sqm, updated_by } = req.body;
+
+  if (base_cost_per_sqm === undefined) {
+    res.status(400).json({
+      success: false,
+      error: 'Base cost per sqm is required',
+    });
+    return;
+  }
+
+  await constructionCostService.updateBaseCost(qualityTier, base_cost_per_sqm, updated_by);
+
+  res.json({
+    success: true,
+    message: `Base cost for ${qualityTier} updated`,
+  });
+}));
+
+// ============================================
+// Data Quality Statistics
+// ============================================
+
+/**
+ * Get comprehensive data quality statistics
+ * GET /data-hub/quality/stats
+ * 
+ * Returns metrics for data quality dashboard:
+ * - Total properties by source
+ * - Geocoding coverage percentage
+ * - Price data coverage percentage
+ * - Average data age by source
+ * - Evidence type distribution
+ * - Weekly trends
+ */
+router.get('/quality/stats', asyncHandler(async (req: Request, res: Response) => {
+  // Total properties by source
+  const sourceStatsResult = await query(`
+    SELECT 
+      data_source,
+      COUNT(*) as total,
+      COUNT(CASE WHEN latitude IS NOT NULL AND longitude IS NOT NULL THEN 1 END) as geocoded,
+      COUNT(CASE WHEN price IS NOT NULL AND price > 0 THEN 1 END) as with_price,
+      COUNT(CASE WHEN listing_status = 'delisted' THEN 1 END) as delisted,
+      AVG(EXTRACT(EPOCH FROM (NOW() - scraped_at)) / 86400)::numeric(10,1) as avg_age_days,
+      AVG(CASE WHEN completeness_score IS NOT NULL THEN completeness_score ELSE 0 END)::numeric(5,2) as avg_completeness,
+      MAX(scraped_at) as last_scraped
+    FROM properties
+    WHERE created_at >= NOW() - INTERVAL '1 year'
+    GROUP BY data_source
+    ORDER BY total DESC
+  `);
+
+  // Overall statistics
+  const overallStatsResult = await query(`
+    SELECT 
+      COUNT(*) as total_properties,
+      COUNT(CASE WHEN latitude IS NOT NULL AND longitude IS NOT NULL THEN 1 END) as geocoded_properties,
+      COUNT(CASE WHEN price IS NOT NULL AND price > 0 THEN 1 END) as with_price,
+      COUNT(CASE WHEN listing_status = 'delisted' THEN 1 END) as delisted_properties,
+      COUNT(CASE WHEN evidence_type IS NOT NULL THEN 1 END) as with_evidence_type,
+      COUNT(CASE WHEN digital_address IS NOT NULL THEN 1 END) as with_digital_address,
+      COUNT(CASE WHEN building_size_sqm IS NOT NULL OR land_size_sqm IS NOT NULL THEN 1 END) as with_size_data,
+      COUNT(CASE WHEN images IS NOT NULL AND array_length(images, 1) > 0 THEN 1 END) as with_images,
+      AVG(completeness_score)::numeric(5,2) as avg_completeness_score
+    FROM properties
+    WHERE created_at >= NOW() - INTERVAL '1 year'
+  `);
+
+  // Evidence type distribution
+  const evidenceDistributionResult = await query(`
+    SELECT 
+      COALESCE(evidence_type, 'unclassified') as evidence_type,
+      COUNT(*) as count
+    FROM properties
+    WHERE created_at >= NOW() - INTERVAL '1 year'
+    GROUP BY evidence_type
+    ORDER BY count DESC
+  `);
+
+  // Property type distribution
+  const propertyTypeDistributionResult = await query(`
+    SELECT 
+      COALESCE(property_type, 'unknown') as property_type,
+      COUNT(*) as count
+    FROM properties
+    WHERE created_at >= NOW() - INTERVAL '1 year'
+    GROUP BY property_type
+    ORDER BY count DESC
+    LIMIT 10
+  `);
+
+  // Region distribution
+  const regionDistributionResult = await query(`
+    SELECT 
+      COALESCE(region, 'unknown') as region,
+      COUNT(*) as count,
+      COUNT(CASE WHEN latitude IS NOT NULL THEN 1 END) as geocoded
+    FROM properties
+    WHERE created_at >= NOW() - INTERVAL '1 year'
+    GROUP BY region
+    ORDER BY count DESC
+  `);
+
+  // Weekly trends (last 12 weeks)
+  const weeklyTrendsResult = await query(`
+    SELECT 
+      DATE_TRUNC('week', created_at) as week,
+      COUNT(*) as new_properties,
+      COUNT(CASE WHEN latitude IS NOT NULL THEN 1 END) as geocoded,
+      COUNT(CASE WHEN price IS NOT NULL THEN 1 END) as with_price,
+      AVG(completeness_score)::numeric(5,2) as avg_completeness
+    FROM properties
+    WHERE created_at >= NOW() - INTERVAL '12 weeks'
+    GROUP BY DATE_TRUNC('week', created_at)
+    ORDER BY week DESC
+  `);
+
+  // Calculate percentages
+  const overall = overallStatsResult.rows[0] || {};
+  const total = parseInt(overall.total_properties) || 1;
+
+  res.json({
+    success: true,
+    data: {
+      overview: {
+        total_properties: parseInt(overall.total_properties) || 0,
+        geocoding_coverage: ((parseInt(overall.geocoded_properties) || 0) / total * 100).toFixed(1),
+        price_coverage: ((parseInt(overall.with_price) || 0) / total * 100).toFixed(1),
+        delisted_count: parseInt(overall.delisted_properties) || 0,
+        with_evidence_type: parseInt(overall.with_evidence_type) || 0,
+        with_digital_address: parseInt(overall.with_digital_address) || 0,
+        with_size_data: parseInt(overall.with_size_data) || 0,
+        with_images: parseInt(overall.with_images) || 0,
+        avg_completeness_score: parseFloat(overall.avg_completeness_score) || 0,
+      },
+      by_source: sourceStatsResult.rows.map(row => ({
+        source: row.data_source || 'unknown',
+        total: parseInt(row.total),
+        geocoded: parseInt(row.geocoded),
+        geocoding_pct: ((parseInt(row.geocoded) / parseInt(row.total)) * 100).toFixed(1),
+        with_price: parseInt(row.with_price),
+        price_pct: ((parseInt(row.with_price) / parseInt(row.total)) * 100).toFixed(1),
+        delisted: parseInt(row.delisted),
+        avg_age_days: parseFloat(row.avg_age_days) || 0,
+        avg_completeness: parseFloat(row.avg_completeness) || 0,
+        last_scraped: row.last_scraped,
+      })),
+      evidence_distribution: evidenceDistributionResult.rows.map(row => ({
+        type: row.evidence_type,
+        count: parseInt(row.count),
+      })),
+      property_type_distribution: propertyTypeDistributionResult.rows.map(row => ({
+        type: row.property_type,
+        count: parseInt(row.count),
+      })),
+      region_distribution: regionDistributionResult.rows.map(row => ({
+        region: row.region,
+        count: parseInt(row.count),
+        geocoded: parseInt(row.geocoded),
+        geocoding_pct: ((parseInt(row.geocoded) / parseInt(row.count)) * 100).toFixed(1),
+      })),
+      weekly_trends: weeklyTrendsResult.rows.map(row => ({
+        week: row.week,
+        new_properties: parseInt(row.new_properties),
+        geocoded: parseInt(row.geocoded),
+        with_price: parseInt(row.with_price),
+        avg_completeness: parseFloat(row.avg_completeness) || 0,
+      })),
+    },
+  });
+}));
+
+/**
+ * Get geocoding coverage statistics
+ * GET /data-hub/quality/geocoding
+ */
+router.get('/quality/geocoding', asyncHandler(async (req: Request, res: Response) => {
+  const result = await query(`
+    SELECT 
+      data_source,
+      region,
+      COUNT(*) as total,
+      COUNT(CASE WHEN latitude IS NOT NULL AND longitude IS NOT NULL THEN 1 END) as geocoded,
+      COUNT(CASE WHEN digital_address IS NOT NULL THEN 1 END) as with_gps_code,
+      COUNT(CASE WHEN coordinates_source = 'ghanapost_gps' THEN 1 END) as geocoded_via_gps,
+      COUNT(CASE WHEN coordinates_source = 'geocoded' THEN 1 END) as geocoded_via_api,
+      COUNT(CASE WHEN coordinates_source = 'original' THEN 1 END) as original_coords
+    FROM properties
+    WHERE created_at >= NOW() - INTERVAL '1 year'
+    GROUP BY data_source, region
+    ORDER BY data_source, region
+  `);
+
+  // Aggregate by source
+  const bySource: Record<string, any> = {};
+  result.rows.forEach(row => {
+    const source = row.data_source || 'unknown';
+    if (!bySource[source]) {
+      bySource[source] = {
+        total: 0,
+        geocoded: 0,
+        with_gps_code: 0,
+        geocoded_via_gps: 0,
+        geocoded_via_api: 0,
+        original_coords: 0,
+      };
+    }
+    bySource[source].total += parseInt(row.total);
+    bySource[source].geocoded += parseInt(row.geocoded);
+    bySource[source].with_gps_code += parseInt(row.with_gps_code);
+    bySource[source].geocoded_via_gps += parseInt(row.geocoded_via_gps);
+    bySource[source].geocoded_via_api += parseInt(row.geocoded_via_api);
+    bySource[source].original_coords += parseInt(row.original_coords);
+  });
+
+  res.json({
+    success: true,
+    data: {
+      by_source: Object.entries(bySource).map(([source, stats]: [string, any]) => ({
+        source,
+        ...stats,
+        geocoding_pct: ((stats.geocoded / stats.total) * 100).toFixed(1),
+      })),
+      by_source_and_region: result.rows,
+    },
+  });
+}));
+
 
 export default router;

@@ -674,11 +674,15 @@ class PostgresPipeline:
                 external_source,
                 metadata,
                 created_at,
-                updated_at
+                updated_at,
+                first_seen_at,
+                last_seen_at,
+                evidence_type
             ) VALUES (
                 %s, %s, %s, %s, %s, %s, %s, %s, %s, %s,
                 %s, %s, %s, %s, %s, %s, %s, %s, %s, %s,
-                %s, %s, %s, %s, %s, %s, NOW(), NOW()
+                %s, %s, %s, %s, %s, %s, NOW(), NOW(),
+                NOW(), NOW(), 'listing'
             )
         """, (
             ref_number,
@@ -716,7 +720,7 @@ class PostgresPipeline:
         ))
     
     def _update_property(self, cursor, property_id: str, region: str, item):
-        """Update existing property record."""
+        """Update existing property record and track last_seen_at for delisting detection."""
         
         # Parse price
         price = item.get('price')
@@ -726,6 +730,8 @@ class PostgresPipeline:
             except (ValueError, TypeError):
                 price = None
         
+        # Update property with last_seen_at for delisting tracking
+        # Note: The database trigger will also update last_seen_at and handle un-delisting
         cursor.execute("""
             UPDATE properties SET
                 title = COALESCE(%s, title),
@@ -740,7 +746,13 @@ class PostgresPipeline:
                 bathrooms = COALESCE(%s, bathrooms),
                 image_urls = COALESCE(%s, image_urls),
                 completeness_score = COALESCE(%s, completeness_score),
-                updated_at = NOW()
+                updated_at = NOW(),
+                last_seen_at = NOW(),
+                -- If property was previously delisted, un-delist it since we see it again
+                is_delisted = CASE WHEN is_delisted = TRUE THEN FALSE ELSE is_delisted END,
+                delisted_at = CASE WHEN is_delisted = TRUE THEN NULL ELSE delisted_at END,
+                evidence_type = CASE WHEN is_delisted = TRUE THEN 'listing' ELSE evidence_type END,
+                inferred_sale_price = CASE WHEN is_delisted = TRUE THEN NULL ELSE inferred_sale_price END
             WHERE id = %s AND region = %s
         """, (
             item.get('title'),

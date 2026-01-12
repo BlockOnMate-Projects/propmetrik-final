@@ -59,6 +59,11 @@ export interface ComparableProperty {
   sale_date: string;
   transaction_type?: 'sale' | 'listing' | 'verified_sale';
   
+  // Evidence Type (RICS/GhIS compliant)
+  evidence_type?: 'verified_sale' | 'achieved_price' | 'asking_price' | 'listing';
+  listing_adjustment?: number; // Asking-to-achieved adjustment percentage
+  days_on_market?: number;
+  
   // Physical Characteristics
   property_type: string;
   gfa: number;
@@ -656,7 +661,7 @@ export function ComparableDetailCard({
               
               <StatRow
                 icon={<Calendar className="w-3 h-3" />}
-                label="Sale Date"
+                label="Listing Date"
                 value={new Date(comparable.sale_date).toLocaleDateString('en-GB', { 
                   day: '2-digit', 
                   month: 'short', 

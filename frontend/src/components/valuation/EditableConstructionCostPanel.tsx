@@ -16,7 +16,7 @@
  * Formula: Cost_per_sqm = Base × (Index/100) × (Avg_Material_Index/100) × (Labor_Rate/Base_Labor) × Location_Factor
  */
 
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import {
   RefreshCw,
   ChevronDown,
@@ -50,6 +50,17 @@ import type { RegionCode } from '@/types/data-hub';
 // TYPES
 // =====================================================
 
+// Material price from database - actual prices not indices
+export interface MaterialPriceItem {
+  category: string;
+  name: string;
+  price_ghs: number;
+  original_price_ghs: number; // For tracking overrides
+  unit: string;
+  change_yoy: number;
+  last_updated?: string;
+}
+
 export interface MaterialIndex {
   name: string;
   index: number;
@@ -59,8 +70,10 @@ export interface MaterialIndex {
 }
 
 export interface LaborCost {
-  type: 'skilled' | 'unskilled';
+  category: string;
+  skill_level: string;
   daily_rate: number;
+  original_rate: number; // For tracking overrides
   change_yoy: number;
   last_updated?: string;
 }
@@ -83,10 +96,13 @@ export interface ConstructionCostEditableData {
   effective_date: string;
   location_factor: number;
 
-  // Base costs by quality tier (GHS per sqm) - these are BASE 2020 values
+  // Base costs by quality tier (GHS per sqm)
   base_costs_2020: Record<string, number>;
 
-  // Material indices (editable)
+  // Material prices (editable) - actual prices from database
+  material_prices: MaterialPriceItem[];
+  
+  // Legacy support
   material_indices: MaterialIndex[];
 
   // Labor costs (editable)
@@ -99,6 +115,9 @@ export interface ConstructionCostEditableData {
   construction_cost_index: number;
   index_change_yoy: number;
   index_base_year: number;
+
+  // Effective construction cost per sqm (calculated)
+  effective_cost_per_sqm: number;
 
   // Source info
   source: string;
@@ -113,6 +132,8 @@ interface EditableConstructionCostPanelProps {
   onSave?: (data: ConstructionCostEditableData, overrides?: OverrideRecord[]) => Promise<void>;
   collapsed?: boolean;
   className?: string;
+  constructionQuality?: string;
+  onConstructionQualityChange?: (quality: string) => void;
 }
 
 // =====================================================
@@ -270,6 +291,37 @@ function FormulaTooltip() {
 // MAIN COMPONENT
 // =====================================================
 
+// Default material weights for construction cost calculation
+// These map material price categories to their relative weight in total construction cost
+const DEFAULT_MATERIAL_WEIGHTS: Record<string, number> = {
+  cement: 0.25,
+  sand: 0.08,
+  aggregate: 0.08,
+  steel: 0.15,
+  timber: 0.08,
+  roofing: 0.12,
+  paint: 0.06,
+  plumbing: 0.08,
+  electrical: 0.06,
+  tiles: 0.04,
+};
+
+// Normalize category name for weight lookup
+function normalizeCategoryForWeight(category: string): string {
+  const normalized = category.toLowerCase().replace(/[^a-z]/g, '');
+  // Handle common variations
+  if (normalized.includes('cement') || normalized.includes('block')) return 'cement';
+  if (normalized.includes('sand') || normalized.includes('aggregate')) return 'sand';
+  if (normalized.includes('steel') || normalized.includes('iron') || normalized.includes('rebar')) return 'steel';
+  if (normalized.includes('timber') || normalized.includes('wood') || normalized.includes('lumber')) return 'timber';
+  if (normalized.includes('roof') || normalized.includes('sheet') || normalized.includes('zinc')) return 'roofing';
+  if (normalized.includes('paint') || normalized.includes('finish')) return 'paint';
+  if (normalized.includes('plumb') || normalized.includes('pipe') || normalized.includes('fitting')) return 'plumbing';
+  if (normalized.includes('electr') || normalized.includes('wire') || normalized.includes('cable')) return 'electrical';
+  if (normalized.includes('tile') || normalized.includes('ceramic')) return 'tiles';
+  return normalized;
+}
+
 export function EditableConstructionCostPanel({
   region,
   qualityTier,
@@ -278,6 +330,8 @@ export function EditableConstructionCostPanel({
   onSave,
   collapsed: initialCollapsed = false,
   className,
+  constructionQuality = "Standard",
+  onConstructionQualityChange = () => {},
 }: EditableConstructionCostPanelProps) {
   // State
   const [collapsed, setCollapsed] = useState(initialCollapsed);
@@ -285,7 +339,6 @@ export function EditableConstructionCostPanel({
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [dataSource, setDataSource] = useState<'database' | 'fallback'>('database');
   const [lastFetchedAt, setLastFetchedAt] = useState<string | null>(null);
 
   // Override tracking state
@@ -300,20 +353,18 @@ export function EditableConstructionCostPanel({
     value_unit?: string;
   }>>([]);
 
-  // Data state - initialize with empty arrays, will be populated from database
-  const [materialIndices, setMaterialIndices] = useState<MaterialIndex[]>([]);
+  // Data state - actual material prices from database
+  const [materialPrices, setMaterialPrices] = useState<MaterialPriceItem[]>([]);
   const [laborCosts, setLaborCosts] = useState<LaborCost[]>([]);
   const [baseCosts2020, setBaseCosts2020] = useState<Record<string, number>>({});
-  const [materialWeights, setMaterialWeights] = useState<Record<string, number>>({});
   const [regionalFactors, setRegionalFactors] = useState<Record<string, { name: string; factor: number }>>({});
 
-  // Original values for reset
-  const [originalMaterials, setOriginalMaterials] = useState<MaterialIndex[]>([]);
-  const [originalLabor, setOriginalLabor] = useState<LaborCost[]>([]);
+  // Original values for reset (tracking user overrides)
+  const [originalMaterialPrices, setOriginalMaterialPrices] = useState<MaterialPriceItem[]>([]);
+  const [originalLaborCosts, setOriginalLaborCosts] = useState<LaborCost[]>([]);
 
   // Derived values - get regional info from fetched data or default to 1.0
   const regionalInfo = regionalFactors[region] || { name: region, factor: 1.0 };
-  const baseLaborRate = 120; // Base 2020 average labor rate
 
   // Fetch construction cost data from database
   const fetchConstructionData = useCallback(async () => {
@@ -322,26 +373,17 @@ export function EditableConstructionCostPanel({
 
     try {
       // Map property region to construction cost API cluster
-      // Ghana has 16 administrative regions mapped to 5 construction cost clusters
       const apiRegion = mapPropertyRegionToConstructionCluster(region);
 
       // Fetch all data in parallel: materials, labor rates, config from database
-      const [materialsResponse, laborResponse, weightsResponse, regionalsResponse, baseCostsResponse] = await Promise.all([
+      // Note: For labor rates, we fetch ALL rates (no region filter) to ensure we get data
+      // The Data Hub imports labor data which may not be tagged by region
+      const [materialsResponse, laborResponse, regionalsResponse, baseCostsResponse] = await Promise.all([
         constructionApi.getMaterials({ region: apiRegion }),
-        constructionApi.getLaborRates({ region: apiRegion }),
-        valuationConfigApi.getMaterialWeights(),
+        constructionApi.getLaborRates({}), // Fetch all labor rates - don't filter by region
         valuationConfigApi.getRegionalFactors(),
         valuationConfigApi.getBaseCosts(),
       ]);
-
-      // Process material weights from database
-      let fetchedWeights: Record<string, number> = {};
-      if (weightsResponse.success && weightsResponse.data && weightsResponse.data.length > 0) {
-        weightsResponse.data.forEach((w: { category: string; weight: number }) => {
-          fetchedWeights[w.category] = w.weight;
-        });
-        setMaterialWeights(fetchedWeights);
-      }
 
       // Process regional factors from database
       if (regionalsResponse.success && regionalsResponse.data && regionalsResponse.data.length > 0) {
@@ -361,110 +403,88 @@ export function EditableConstructionCostPanel({
         setBaseCosts2020(costs);
       }
 
-      // Transform material prices to MaterialIndex format
+      // Process actual material prices from database
       if (materialsResponse.success && materialsResponse.data && materialsResponse.data.length > 0) {
-        // Group materials by category and calculate indices
-        const categoryMap = new Map<string, { totalPrice: number; count: number; lastUpdated: string }>();
-
-        materialsResponse.data.forEach((material) => {
+        // Group materials by category and get representative prices
+        const categoryPrices = new Map<string, MaterialPriceItem>();
+        
+        materialsResponse.data.forEach((material: any) => {
           const category = material.material_category;
-          const existing = categoryMap.get(category);
-          if (existing) {
-            existing.totalPrice += material.price_ghs;
-            existing.count += 1;
-            if (new Date(material.survey_date) > new Date(existing.lastUpdated)) {
-              existing.lastUpdated = material.survey_date?.toString() || new Date().toISOString();
-            }
-          } else {
-            categoryMap.set(category, {
-              totalPrice: material.price_ghs,
-              count: 1,
-              lastUpdated: material.survey_date?.toString() || new Date().toISOString(),
+          const existing = categoryPrices.get(category);
+          
+          // Use most recently updated price for each category
+          if (!existing || new Date(material.survey_date) > new Date(existing.last_updated || '')) {
+            categoryPrices.set(category, {
+              category: category,
+              name: material.material_name,
+              price_ghs: parseFloat(material.price_ghs) || 0,
+              original_price_ghs: parseFloat(material.price_ghs) || 0,
+              unit: material.unit || 'unit',
+              change_yoy: parseFloat(material.price_change_percent) || 0,
+              last_updated: material.survey_date?.toString().split('T')[0] || new Date().toISOString().split('T')[0],
             });
           }
         });
 
-        // Convert to MaterialIndex array with calculated indices
-        const materialIndicesFromDb: MaterialIndex[] = [];
-        categoryMap.forEach((value, category) => {
-          const avgPrice = value.totalPrice / value.count;
-          // Calculate index relative to base (100 = 2020 baseline)
-          // Use a safe fallback if avgPrice is 0 or NaN
-          const basePrice = avgPrice > 0 ? avgPrice * 0.7 : 100; // Assume ~30% increase since 2020
-          const index = basePrice > 0 ? (avgPrice / basePrice) * 100 : 100;
-          const materialData = materialsResponse.data?.find((m: any) => m.material_category === category);
-
-          materialIndicesFromDb.push({
-            name: category,
-            index: isNaN(index) ? 100 : Math.round(index * 10) / 10,
-            change_yoy: materialData?.price_change_percent ?? 0,
-            weight: fetchedWeights[category] || 0.05,
-            last_updated: value.lastUpdated.split('T')[0],
-          });
-        });
-
-        if (materialIndicesFromDb.length > 0) {
-          setMaterialIndices(materialIndicesFromDb);
-          setOriginalMaterials(materialIndicesFromDb);
+        const pricesArray = Array.from(categoryPrices.values());
+        if (pricesArray.length > 0) {
+          setMaterialPrices(pricesArray);
+          setOriginalMaterialPrices(pricesArray.map(p => ({ ...p })));
         }
       }
 
-      // Transform labor rates to LaborCost format
+      // Process labor rates from database  
       if (laborResponse.success && laborResponse.data && laborResponse.data.length > 0) {
-        const skillLevelMap = new Map<'skilled' | 'unskilled', { rate: number; count: number; change: number; lastUpdated: string }>();
-
-        laborResponse.data.forEach((labor) => {
-          // Skip records with no rate or category
-          if (!labor.rate_ghs || !labor.labor_category) return;
-
-          // Map labor categories to skilled/unskilled
-          const type: 'skilled' | 'unskilled' =
-            ['mason', 'carpenter', 'plumber', 'electrician', 'painter', 'welder', 'tiler', 'steel_fixer'].includes(labor.labor_category)
-              ? 'skilled'
-              : 'unskilled';
-
-          const existing = skillLevelMap.get(type);
-          if (existing) {
-            existing.rate += labor.rate_ghs;
-            existing.count += 1;
-            existing.change = Math.max(existing.change, labor.rate_change_percent || 0);
-            if (new Date(labor.survey_date) > new Date(existing.lastUpdated)) {
-              existing.lastUpdated = labor.survey_date?.toString() || new Date().toISOString();
-            }
-          } else {
-            skillLevelMap.set(type, {
-              rate: labor.rate_ghs,
-              count: 1,
-              change: labor.rate_change_percent || 0,
-              lastUpdated: labor.survey_date?.toString() || new Date().toISOString(),
+        console.log('Raw labor response data:', laborResponse.data);
+        
+        // Get unique labor categories with their rates
+        const laborByCategory = new Map<string, LaborCost>();
+        
+        laborResponse.data.forEach((labor: any) => {
+          // API returns daily_rate_ghs (not rate_ghs) - check for valid data
+          const dailyRate = labor.daily_rate_ghs || labor.rate_ghs;
+          if (dailyRate === undefined || dailyRate === null || !labor.labor_category) {
+            console.log('Skipping invalid labor entry:', labor);
+            return;
+          }
+          
+          const key = `${labor.labor_category}-${labor.skill_level || 'journeyman'}`;
+          const existing = laborByCategory.get(key);
+          
+          // Use survey_date or effective_date for comparison
+          const laborDate = labor.survey_date || labor.effective_date;
+          const existingDate = existing?.last_updated;
+          
+          if (!existing || (laborDate && existingDate && new Date(laborDate) > new Date(existingDate))) {
+            laborByCategory.set(key, {
+              category: labor.labor_category,
+              skill_level: labor.skill_level || 'journeyman',
+              daily_rate: parseFloat(String(dailyRate)) || 0,
+              original_rate: parseFloat(String(dailyRate)) || 0,
+              change_yoy: parseFloat(String(labor.rate_change_percent || 0)),
+              last_updated: (laborDate || new Date().toISOString()).toString().split('T')[0],
             });
           }
         });
 
-        const laborCostsFromDb: LaborCost[] = [];
-        skillLevelMap.forEach((value, type) => {
-          const avgRate = value.count > 0 ? Math.round(value.rate / value.count) : 0;
-          laborCostsFromDb.push({
-            type,
-            daily_rate: avgRate,
-            change_yoy: value.change,
-            last_updated: value.lastUpdated.split('T')[0],
-          });
-        });
-
-        if (laborCostsFromDb.length > 0) {
-          setLaborCosts(laborCostsFromDb);
-          setOriginalLabor(laborCostsFromDb);
+        const laborArray = Array.from(laborByCategory.values());
+        console.log('Processed labor array:', laborArray);
+        if (laborArray.length > 0) {
+          setLaborCosts(laborArray);
+          setOriginalLaborCosts(laborArray.map(l => ({ ...l })));
+          console.log(`Labor data loaded: ${laborArray.length} rates from database`);
+        } else {
+          console.log('No labor rates found after processing database response');
         }
+      } else {
+        console.log('Labor API response empty or failed:', laborResponse);
       }
 
-      setDataSource('database');
       setLastFetchedAt(new Date().toISOString());
 
     } catch (err) {
       console.error('Failed to fetch construction data from database:', err);
-      setError('Using fallback data - database unavailable');
-      setDataSource('fallback');
+      setError('Failed to load data from database');
     } finally {
       setLoading(false);
     }
@@ -493,93 +513,148 @@ export function EditableConstructionCostPanel({
     fetchExistingOverrides();
   }, [valuationId]);
 
-  // Calculate weighted average material index
-  const avgMaterialIndex = useMemo(() => {
-    if (materialIndices.length === 0) return 100; // Default to base index
-    const totalWeight = materialIndices.reduce((sum, m) => sum + (m.weight || 0), 0);
-    if (totalWeight === 0) return 100;
-    const weightedSum = materialIndices.reduce((sum, m) => sum + (m.index || 100) * (m.weight || 0), 0);
-    const result = weightedSum / totalWeight;
-    return isNaN(result) ? 100 : result;
-  }, [materialIndices]);
+  // Calculate effective construction cost based on selected quality tier
+  const effectiveConstructionCost = useMemo(() => {
+    // For custom quality, default to Standard tier unless user has actually edited material prices
+    if (constructionQuality === 'Custom' || constructionQuality === 'custom') {
+      // Check if user has actually edited any material prices by comparing with originals
+      const hasUserEdits = materialPrices.some((currentPrice, index) => {
+        const originalPrice = originalMaterialPrices[index];
+        return originalPrice && Math.abs(currentPrice.price_ghs - originalPrice.original_price_ghs) > 0.01;
+      });
+      
+      console.log('Custom tier calculation:', {
+        hasUserEdits,
+        currentPricesCount: materialPrices.length,
+        originalPricesCount: originalMaterialPrices.length,
+        materialPricesSum: materialPrices.reduce((sum, m) => sum + (m.price_ghs || 0), 0),
+        standardBaseCost: baseCosts2020['standard'],
+        regionalFactor: regionalInfo.factor
+      });
+      
+      if (hasUserEdits) {
+        // User has made edits, use sum of current material prices
+        const customCost = materialPrices.reduce((sum, m) => sum + (m.price_ghs || 0), 0);
+        console.log('Using custom material prices sum (user edited):', customCost);
+        return customCost;
+      }
+      
+      // No user edits, use Standard tier cost as default for Custom
+      const standardBaseCost = baseCosts2020['standard'] || 5000;
+      const standardCost = Math.round(standardBaseCost * regionalInfo.factor);
+      console.log('Using Standard tier default for Custom (no user edits):', standardCost);
+      return standardCost;
+    }
+    
+    // For all other tiers, use their respective base costs
+    const tierKey = constructionQuality?.toLowerCase() || qualityTier?.toLowerCase() || 'standard';
+    const baseCost = baseCosts2020[tierKey] || baseCosts2020['standard'] || 5000;
+    return Math.round(baseCost * regionalInfo.factor);
+  }, [materialPrices, originalMaterialPrices, constructionQuality, qualityTier, baseCosts2020, regionalInfo.factor]);
 
-  // Calculate labor factor (average of skilled and unskilled vs base)
-  const laborFactor = useMemo(() => {
-    if (laborCosts.length === 0) return 1;
-    const avgCurrent = laborCosts.reduce((sum, l) => sum + (l.daily_rate || 0), 0) / laborCosts.length;
-    const result = avgCurrent / baseLaborRate;
-    return isNaN(result) || result === 0 ? 1 : result;
+  // Calculate average YoY change from material prices
+  const avgPriceChangeYoy = useMemo(() => {
+    if (materialPrices.length === 0) return 0;
+    const total = materialPrices.reduce((sum, m) => sum + (m.change_yoy || 0), 0);
+    return total / materialPrices.length;
+  }, [materialPrices]);
+
+  // Calculate average labor rate
+  const avgLaborRate = useMemo(() => {
+    if (laborCosts.length === 0) return 0;
+    return laborCosts.reduce((sum, l) => sum + (l.daily_rate || 0), 0) / laborCosts.length;
   }, [laborCosts]);
 
-  // Calculate construction cost index
-  const constructionCostIndex = useMemo(() => {
-    return isNaN(avgMaterialIndex) ? 100 : avgMaterialIndex;
-  }, [avgMaterialIndex]);
-
-  // Calculate YoY change for index
-  const indexChangeYoy = useMemo(() => {
-    if (materialIndices.length === 0) return 0;
-    const totalWeight = materialIndices.reduce((sum, m) => sum + (m.weight || 0), 0);
-    if (totalWeight === 0) return 0;
-    const result = materialIndices.reduce((sum, m) => sum + (m.change_yoy || 0) * (m.weight || 0), 0) / totalWeight;
-    return isNaN(result) ? 0 : result;
-  }, [materialIndices]);
-
-  // Calculate adjusted costs per sqm for each tier
+  // Calculate adjusted costs per sqm for each tier (from base costs)
   const adjustedCosts = useMemo(() => {
     const result: Record<string, number> = {};
-    const indexFactor = constructionCostIndex / 100;
-
     for (const [tier, baseCost] of Object.entries(baseCosts2020)) {
-      result[tier] = Math.round(
-        baseCost * indexFactor * laborFactor * regionalInfo.factor
-      );
+      result[tier] = Math.round(baseCost * regionalInfo.factor);
     }
-
     return result;
-  }, [baseCosts2020, constructionCostIndex, laborFactor, regionalInfo.factor]);
+  }, [baseCosts2020, regionalInfo.factor]);
 
-  // Build full data object
+  // Build full data object for parent component
   const buildDataObject = useCallback((): ConstructionCostEditableData => {
+    // Convert material prices to legacy MaterialIndex format for compatibility
+    const materialIndices: MaterialIndex[] = materialPrices.map(m => ({
+      name: m.category,
+      index: 100, // Base index
+      change_yoy: m.change_yoy,
+      weight: DEFAULT_MATERIAL_WEIGHTS[normalizeCategoryForWeight(m.category)] || 0.05,
+      last_updated: m.last_updated,
+    }));
+
     return {
       region,
       region_name: regionalInfo.name,
       effective_date: new Date().toISOString(),
       location_factor: regionalInfo.factor,
       base_costs_2020: baseCosts2020,
+      material_prices: materialPrices,
       material_indices: materialIndices,
       labor_costs: laborCosts,
-      base_labor_rate: baseLaborRate,
-      construction_cost_index: constructionCostIndex,
-      index_change_yoy: indexChangeYoy,
+      base_labor_rate: avgLaborRate,
+      construction_cost_index: 100,
+      index_change_yoy: avgPriceChangeYoy,
       index_base_year: 2020,
-      source: dataSource === 'database' ? 'Ghana Statistical Service, GREDA (Database)' : 'Fallback Data',
+      effective_cost_per_sqm: effectiveConstructionCost,
+      source: 'Ghana Statistical Service, GREDA (Database)',
       last_updated: lastFetchedAt || new Date().toISOString(),
     };
-  }, [region, regionalInfo, baseCosts2020, materialIndices, laborCosts, constructionCostIndex, indexChangeYoy, dataSource, lastFetchedAt]);
+  }, [region, regionalInfo, baseCosts2020, materialPrices, laborCosts, avgLaborRate, avgPriceChangeYoy, lastFetchedAt, effectiveConstructionCost]);
 
-  // Notify parent of data changes
+  // Track previous values to prevent unnecessary updates
+  const prevEffectiveCostRef = useRef<number | null>(null);
+  const prevMaterialCountRef = useRef<number>(0);
+  const prevLaborCountRef = useRef<number>(0);
+  
+  // Use ref to store onDataChange to avoid re-triggering effect when callback reference changes
+  const onDataChangeRef = useRef(onDataChange);
   useEffect(() => {
-    onDataChange?.(buildDataObject());
-  }, [buildDataObject, onDataChange]);
+    onDataChangeRef.current = onDataChange;
+  }, [onDataChange]);
 
-  // Update material index and track as pending override
-  const handleMaterialChange = (name: string, field: 'index' | 'change_yoy', value: number) => {
+  // Notify parent of data changes - only when meaningful data changes
+  useEffect(() => {
+    // Skip during initial loading
+    if (loading) return;
+    
+    // Only call onDataChange if meaningful data has actually changed
+    const currentEffectiveCost = effectiveConstructionCost;
+    const currentMaterialCount = materialPrices.length;
+    const currentLaborCount = laborCosts.length;
+    
+    const hasChanged = 
+      prevEffectiveCostRef.current !== currentEffectiveCost ||
+      prevMaterialCountRef.current !== currentMaterialCount ||
+      prevLaborCountRef.current !== currentLaborCount;
+    
+    if (hasChanged && onDataChangeRef.current) {
+      prevEffectiveCostRef.current = currentEffectiveCost;
+      prevMaterialCountRef.current = currentMaterialCount;
+      prevLaborCountRef.current = currentLaborCount;
+      onDataChangeRef.current(buildDataObject());
+    }
+  }, [effectiveConstructionCost, materialPrices.length, laborCosts.length, buildDataObject, loading]);
+
+  // Update material price and track as pending override
+  const handleMaterialPriceChange = (category: string, newPrice: number) => {
     // Find original value
-    const original = originalMaterials.find(m => m.name === name);
-    const originalValue = original ? original[field] : value;
+    const original = originalMaterialPrices.find(m => m.category === category);
+    const originalValue = original?.original_price_ghs || newPrice;
 
     // Track as pending override if value differs from original
-    if (value !== originalValue) {
+    if (newPrice !== originalValue) {
       setPendingOverrides(prev => {
-        const fieldPath = `material_indices.${name}.${field}`;
+        const fieldPath = `material_prices.${category}.price_ghs`;
         const existing = prev.findIndex(o => o.field_path === fieldPath);
         const newOverride = {
           field_path: fieldPath,
-          field_label: `${name.charAt(0).toUpperCase() + name.slice(1)} ${field === 'index' ? 'Index' : 'YoY Change'}`,
+          field_label: `${category} Price`,
           system_default_value: originalValue,
-          user_override_value: value,
-          value_unit: field === 'index' ? 'index' : '%',
+          user_override_value: newPrice,
+          value_unit: 'GHS',
         };
         if (existing >= 0) {
           const updated = [...prev];
@@ -588,31 +663,34 @@ export function EditableConstructionCostPanel({
         }
         return [...prev, newOverride];
       });
+      
+      // Set construction quality to "Custom" when user edits prices
+      onConstructionQualityChange("Custom");
     }
 
-    setMaterialIndices(prev => prev.map(m =>
-      m.name === name
-        ? { ...m, [field]: value, last_updated: new Date().toISOString().split('T')[0] }
+    setMaterialPrices(prev => prev.map(m =>
+      m.category === category
+        ? { ...m, price_ghs: newPrice }
         : m
     ));
   };
 
-  // Update labor cost and track as pending override
-  const handleLaborChange = (type: 'skilled' | 'unskilled', value: number) => {
+  // Update labor rate and track as pending override
+  const handleLaborRateChange = (category: string, skillLevel: string, newRate: number) => {
     // Find original value
-    const original = originalLabor.find(l => l.type === type);
-    const originalValue = original ? original.daily_rate : value;
+    const original = originalLaborCosts.find(l => l.category === category && l.skill_level === skillLevel);
+    const originalValue = original?.original_rate || newRate;
 
     // Track as pending override if value differs from original
-    if (value !== originalValue) {
+    if (newRate !== originalValue) {
       setPendingOverrides(prev => {
-        const fieldPath = `labor_costs.${type}.daily_rate`;
+        const fieldPath = `labor_costs.${category}.${skillLevel}.daily_rate`;
         const existing = prev.findIndex(o => o.field_path === fieldPath);
         const newOverride = {
           field_path: fieldPath,
-          field_label: `${type.charAt(0).toUpperCase() + type.slice(1)} Labor Daily Rate`,
+          field_label: `${category} (${skillLevel}) Daily Rate`,
           system_default_value: originalValue,
-          user_override_value: value,
+          user_override_value: newRate,
           value_unit: 'GHS/day',
         };
         if (existing >= 0) {
@@ -622,19 +700,22 @@ export function EditableConstructionCostPanel({
         }
         return [...prev, newOverride];
       });
+      
+      // Set construction quality to "Custom" when user edits labor rates
+      onConstructionQualityChange("Custom");
     }
 
     setLaborCosts(prev => prev.map(l =>
-      l.type === type
-        ? { ...l, daily_rate: value, last_updated: new Date().toISOString().split('T')[0] }
+      l.category === category && l.skill_level === skillLevel
+        ? { ...l, daily_rate: newRate }
         : l
     ));
   };
 
   // Start editing
   const startEditing = () => {
-    setOriginalMaterials([...materialIndices]);
-    setOriginalLabor([...laborCosts]);
+    setOriginalMaterialPrices(materialPrices.map(m => ({ ...m })));
+    setOriginalLaborCosts(laborCosts.map(l => ({ ...l })));
     setPendingOverrides([]);
     setOverrideReason('');
     setIsEditing(true);
@@ -642,8 +723,8 @@ export function EditableConstructionCostPanel({
 
   // Cancel editing
   const cancelEditing = () => {
-    setMaterialIndices(originalMaterials);
-    setLaborCosts(originalLabor);
+    setMaterialPrices(originalMaterialPrices.map(m => ({ ...m })));
+    setLaborCosts(originalLaborCosts.map(l => ({ ...l })));
     setPendingOverrides([]);
     setOverrideReason('');
     setIsEditing(false);
@@ -758,18 +839,18 @@ export function EditableConstructionCostPanel({
     <TerminalPanel
       title={`CONSTRUCTION COSTS: ${regionalInfo.name.toUpperCase()}`}
       className={className}
-      status={dataSource === 'database' ? 'live' : 'error'}
+      status={error ? 'error' : 'live'}
       timestamp={lastFetchedAt ? formatDate(lastFetchedAt) : formatDate(new Date().toISOString())}
       action={
         <div className="flex items-center gap-2">
           {/* Data source indicator */}
           <span className={cn(
             "px-1.5 py-0.5 font-mono text-[9px] rounded",
-            dataSource === 'database'
-              ? "bg-green-500/20 text-green-400"
-              : "bg-yellow-500/20 text-yellow-400"
+            error
+              ? "bg-red-500/20 text-red-400"
+              : "bg-green-500/20 text-green-400"
           )}>
-            {dataSource === 'database' ? 'DB' : 'FALLBACK'}
+            {error ? 'ERROR' : 'DB'}
           </span>
 
           {/* Refresh button */}
@@ -960,83 +1041,37 @@ export function EditableConstructionCostPanel({
               </span>
             </div>
             <div className="flex items-center gap-2">
-              <span className="font-mono text-[10px] text-zinc-500">INDEX:</span>
-              <span className="font-mono text-sm text-white">{constructionCostIndex.toFixed(1)}</span>
-              <TrendIndicator change={indexChangeYoy} />
+              <span className="font-mono text-[10px] text-zinc-500">MATERIALS:</span>
+              <span className="font-mono text-sm text-white">{materialPrices.length} items</span>
+              <TrendIndicator change={avgPriceChangeYoy} />
             </div>
           </div>
         </div>
       ) : (
         <div className="space-y-4">
-          {/* Construction Cost Index Summary */}
+          {/* Construction Cost Summary */}
           <div className="flex items-center justify-between p-3 bg-amber-500/10 border border-amber-500/30">
             <div>
-              <div className="font-mono text-[10px] text-amber-500 uppercase">Construction Cost Index</div>
+              <div className="font-mono text-[10px] text-amber-500 uppercase">Material Prices</div>
               <div className="font-mono text-2xl text-white font-bold">
-                {constructionCostIndex.toFixed(1)}
+                {materialPrices.length} items
               </div>
               <div className="font-mono text-[9px] text-zinc-500">
-                Base: 2020 = 100
+                From database
               </div>
             </div>
             <div className="text-right">
-              <TrendIndicator change={indexChangeYoy} />
-              <div className="font-mono text-[9px] text-zinc-500 mt-1">Year-over-year</div>
+              <TrendIndicator change={avgPriceChangeYoy} />
+              <div className="font-mono text-[9px] text-zinc-500 mt-1">Avg. Year-over-year</div>
             </div>
           </div>
 
-          {/* Base Costs by Quality Tier (Calculated/Read-only) */}
-          <div className="border border-zinc-800 p-3">
-            <div className="flex items-center gap-2 mb-3">
-              <Building2 className="w-3 h-3 text-amber-500" />
-              <span className="font-mono text-[10px] text-amber-500 uppercase tracking-wider">
-                Base Construction Costs (per sqm)
-              </span>
-              <span className="font-mono text-[9px] text-zinc-500 ml-auto">Calculated</span>
-            </div>
-
-            <div className="grid grid-cols-5 gap-2">
-              {Object.entries(adjustedCosts).map(([tier, cost]) => (
-                <div
-                  key={tier}
-                  className={cn(
-                    'p-3 border transition-all',
-                    qualityTier === tier
-                      ? 'border-amber-500 bg-amber-500/10'
-                      : 'border-zinc-800 bg-zinc-800/30'
-                  )}
-                >
-                  <div className="font-mono text-[10px] text-zinc-500 uppercase mb-1">
-                    {tierLabels[tier]}
-                  </div>
-                  <div className="font-mono text-lg text-white font-bold">
-                    ₵{cost.toLocaleString()}
-                  </div>
-                  <div className="font-mono text-[9px] text-zinc-500">
-                    per sqm (adjusted)
-                  </div>
-                  <div className="font-mono text-[9px] text-zinc-600 mt-1">
-                    Base: ₵{baseCosts2020[tier as keyof typeof baseCosts2020].toLocaleString()}/sqm
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            <div className="mt-3 flex items-center gap-2 p-2 bg-zinc-800/30">
-              <MapPin className="w-3 h-3 text-amber-500" />
-              <span className="font-mono text-[10px] text-zinc-400">
-                Location Factor: <span className="text-white font-bold">{regionalInfo.factor.toFixed(2)}</span>
-                {' '}({regionalInfo.name} adjustment applied)
-              </span>
-            </div>
-          </div>
-
-          {/* Material Indices (Editable) */}
+          {/* Material Prices (Editable) */}
           <div className="border border-zinc-800 p-3">
             <div className="flex items-center gap-2 mb-3">
               <Layers className="w-3 h-3 text-amber-500" />
               <span className="font-mono text-[10px] text-amber-500 uppercase tracking-wider">
-                Material Price Indices (Base: 100)
+                Material Prices (Current Market)
               </span>
               {isEditing && (
                 <span className="ml-auto px-2 py-0.5 bg-amber-500/20 text-amber-500 font-mono text-[9px]">
@@ -1045,74 +1080,145 @@ export function EditableConstructionCostPanel({
               )}
             </div>
 
-            <div className="grid grid-cols-2 gap-x-6 gap-y-2">
-              {materialIndices.map((material) => (
-                <div
-                  key={material.name}
-                  className="flex items-center justify-between py-1 border-b border-zinc-800/30 last:border-0"
-                >
-                  <div className="flex items-center gap-2">
-                    <span className="font-mono text-[10px] text-zinc-400 capitalize w-20">
-                      {material.name}
-                    </span>
-                    <LastUpdatedBadge date={material.last_updated} />
+            {materialPrices.length > 0 ? (
+              <>
+                <div className="grid grid-cols-2 gap-x-6 gap-y-2">
+                  {materialPrices.map((material) => (
+                    <div
+                      key={material.category}
+                      className="flex items-center justify-between py-1 border-b border-zinc-800/30 last:border-0"
+                    >
+                      <div className="flex items-center gap-2">
+                        <span className="font-mono text-[10px] text-zinc-400 capitalize w-20">
+                          {material.category}
+                        </span>
+                        <LastUpdatedBadge date={material.last_updated} />
+                      </div>
+                      <div className="flex items-center gap-3">
+                        {isEditing ? (
+                          <EditableNumberInput
+                            value={material.price_ghs}
+                            onChange={(val) => handleMaterialPriceChange(material.category, val)}
+                            min={0}
+                            step={1}
+                            prefix="₵"
+                          />
+                        ) : (
+                          <span className="font-mono text-xs text-white">
+                            ₵{material.price_ghs.toLocaleString()}/{material.unit}
+                          </span>
+                        )}
+                        <TrendIndicator change={material.change_yoy} />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="mt-3 pt-2 border-t border-zinc-800">
+                  <div className="flex items-center justify-between">
+                    <span className="font-mono text-[10px] text-zinc-500">Effective Cost/sqm:</span>
+                    <span className="font-mono text-sm text-amber-500 font-bold">₵{effectiveConstructionCost.toFixed(2)}</span>
                   </div>
-                  <div className="flex items-center gap-3">
-                    {isEditing ? (
-                      <EditableNumberInput
-                        value={material.index}
-                        onChange={(val) => handleMaterialChange(material.name, 'index', val)}
-                        min={50}
-                        max={300}
-                        step={0.1}
-                      />
-                    ) : (
-                      <span className="font-mono text-xs text-white">{material.index.toFixed(1)}</span>
-                    )}
-                    <TrendIndicator change={material.change_yoy} />
+                  <div className="mt-1">
+                    <span className="font-mono text-[9px] text-zinc-500">
+                      {(constructionQuality === 'Custom' || constructionQuality === 'custom') 
+                        ? (materialPrices.some((currentPrice, index) => {
+                            const originalPrice = originalMaterialPrices[index];
+                            return originalPrice && Math.abs(currentPrice.price_ghs - originalPrice.original_price_ghs) > 0.01;
+                          }) 
+                           ? 'Based on your custom material prices' 
+                           : 'Using Standard tier (edit material prices to customize)')
+                        : `${constructionQuality || qualityTier || 'Standard'} tier + regional factor`}
+                    </span>
                   </div>
                 </div>
-              ))}
+              </>
+            ) : (
+              <div className="py-4 text-center">
+                <span className="font-mono text-[10px] text-zinc-500">
+                  No material prices available for this region
+                </span>
+              </div>
+            )}
+          </div>
+
+          {/* Labor Rates (Editable) */}
+          <div className="border border-zinc-800 p-3">
+            <div className="flex items-center gap-2 mb-3">
+              <Hammer className="w-3 h-3 text-amber-500" />
+              <span className="font-mono text-[10px] text-amber-500 uppercase tracking-wider">
+                Labor Rates (Daily)
+              </span>
+              {isEditing && (
+                <span className="ml-auto px-2 py-0.5 bg-amber-500/20 text-amber-500 font-mono text-[9px]">
+                  EDITING
+                </span>
+              )}
             </div>
 
-            <div className="mt-3 pt-2 border-t border-zinc-800">
-              <div className="flex items-center justify-between">
-                <span className="font-mono text-[10px] text-zinc-500">Weighted Average Index:</span>
-                <span className="font-mono text-sm text-amber-500 font-bold">{avgMaterialIndex.toFixed(1)}</span>
+            {laborCosts.length > 0 ? (
+              <div className="grid grid-cols-2 gap-x-6 gap-y-2">
+                {laborCosts.map((labor) => (
+                  <div
+                    key={`${labor.category}-${labor.skill_level}`}
+                    className="flex items-center justify-between py-1 border-b border-zinc-800/30 last:border-0"
+                  >
+                    <div className="flex items-center gap-2">
+                      <span className="font-mono text-[10px] text-zinc-400 capitalize w-24">
+                        {labor.category}
+                      </span>
+                      <span className="font-mono text-[9px] text-zinc-500 capitalize">
+                        ({labor.skill_level})
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      {isEditing ? (
+                        <EditableNumberInput
+                          value={labor.daily_rate}
+                          onChange={(val) => handleLaborRateChange(labor.category, labor.skill_level, val)}
+                          min={0}
+                          step={5}
+                          prefix="₵"
+                          suffix="/day"
+                        />
+                      ) : (
+                        <span className="font-mono text-xs text-white">
+                          ₵{labor.daily_rate.toLocaleString()}/day
+                        </span>
+                      )}
+                      <TrendIndicator change={labor.change_yoy} />
+                    </div>
+                  </div>
+                ))}
               </div>
-            </div>
+            ) : (
+              <div className="py-4 text-center">
+                <span className="font-mono text-[10px] text-zinc-500">
+                  No labor rates available for this region
+                </span>
+              </div>
+            )}
           </div>
 
           {/* Inflation Warning */}
-          {indexChangeYoy > 10 && (
+          {avgPriceChangeYoy > 10 && (
             <div className="p-2 bg-yellow-500/10 border border-yellow-500/30">
               <div className="flex items-start gap-2">
                 <AlertTriangle className="w-3 h-3 text-yellow-500 mt-0.5 flex-shrink-0" />
                 <span className="font-mono text-[10px] text-yellow-400">
-                  High construction cost inflation detected ({indexChangeYoy.toFixed(1)}% YoY).
+                  High construction cost inflation detected ({avgPriceChangeYoy.toFixed(1)}% YoY).
                   Consider applying an inflation adjustment to historical cost data.
                 </span>
               </div>
             </div>
           )}
 
-          {/* Editing Notice */}
-          {isEditing && (
-            <div className="p-2 bg-amber-500/10 border border-amber-500/30">
-              <div className="flex items-start gap-2">
-                <Info className="w-3 h-3 text-amber-500 mt-0.5 flex-shrink-0" />
-                <span className="font-mono text-[10px] text-amber-400">
-                  Adjustments are for this valuation only. Database values are managed by admin via Data Hub
-                  and updated bi-weekly.
-                </span>
-              </div>
-            </div>
-          )}
+
 
           {/* Source Info */}
           <div className="flex items-center justify-between pt-2 border-t border-zinc-800">
             <span className="font-mono text-[9px] text-zinc-500">
-              Source: {dataSource === 'database' ? 'Ghana Statistical Service, GREDA (Database)' : 'Fallback Data'}
+              Source: Ghana Statistical Service, GREDA (Database)
             </span>
             <span className="font-mono text-[9px] text-zinc-500">
               Last Updated: {lastFetchedAt ? formatDate(lastFetchedAt) : 'N/A'}

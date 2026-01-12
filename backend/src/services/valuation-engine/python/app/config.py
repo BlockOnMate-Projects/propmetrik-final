@@ -34,6 +34,13 @@ class Settings(BaseSettings):
     api_port: int = Field(8001, env='API_PORT')  # Changed to 8001
     api_workers: int = Field(4, env='API_WORKERS')
     
+    # TypeScript Backend Data Hub API (for live construction/labor/economic data)
+    data_hub_api_url: str = Field(
+        "http://localhost:4000/api/data-hub", 
+        alias='DATA_HUB_API_URL'
+    )
+    data_hub_api_timeout: int = Field(30, env='DATA_HUB_API_TIMEOUT')
+    
     # Security Configuration
     secret_key: str = Field("dev-secret-key-change-in-production", env='SECRET_KEY')
     access_token_expire_minutes: int = Field(30, env='ACCESS_TOKEN_EXPIRE_MINUTES')

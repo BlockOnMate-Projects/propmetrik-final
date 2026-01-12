@@ -26,6 +26,89 @@ import {
 } from 'lucide-react';
 import { TerminalPanel } from '@/components/ui/terminal';
 import { cn } from '@/lib/utils';
+import { getTenureRiskAdjustment, TENURE_TYPES } from '@/types/comprehensiveProperty';
+
+// =====================================================
+// GHANA-SPECIFIC NEIGHBORHOOD PREMIUMS
+// Loaded from database, but cached here for fast access
+// =====================================================
+
+export const NEIGHBORHOOD_PREMIUMS: Record<string, number> = {
+  // Prime+ (30%+ premium)
+  'airport_residential': 1.30,
+  'airport residential': 1.30,
+  'cantonments': 1.28,
+  'ridge': 1.25,
+  
+  // Prime (15-25% premium)
+  'roman_ridge': 1.22,
+  'roman ridge': 1.22,
+  'east_legon': 1.20,
+  'east legon': 1.20,
+  'labone': 1.18,
+  'osu': 1.15,
+  'switchback_road': 1.18,
+  'switchback road': 1.18,
+  'ringway_estates': 1.15,
+  'ringway estates': 1.15,
+  
+  // Prime Minus (5-15% premium)
+  'dzorwulu': 1.12,
+  'abelemkpe': 1.10,
+  'north_ridge': 1.12,
+  'north ridge': 1.12,
+  'tesano': 1.08,
+  'adjiringanor': 1.10,
+  'asylum_down': 1.05,
+  'asylum down': 1.05,
+  
+  // Secondary (Baseline ±5%)
+  'achimota': 1.00,
+  'dansoman': 0.98,
+  'spintex': 1.02,
+  'spintex_road': 1.02,
+  'spintex road': 1.02,
+  'sakumono': 0.98,
+  'teshie': 0.95,
+  'nungua': 0.95,
+  'adenta': 0.95,
+  'madina': 0.92,
+  'dome': 0.95,
+  
+  // Tertiary (10-20% discount)
+  'tema': 0.90,
+  'tema_community_1': 0.90,
+  'kasoa': 0.82,
+  'ashaiman': 0.80,
+  'lashibi': 0.88,
+  'agbogba': 0.88,
+  'pokuase': 0.85,
+};
+
+/**
+ * Get neighborhood premium factor
+ * Returns 1.0 (neutral) if not found
+ */
+export const getNeighborhoodPremium = (neighborhood: string): number => {
+  if (!neighborhood) return 1.0;
+  const normalized = neighborhood.toLowerCase().trim();
+  return NEIGHBORHOOD_PREMIUMS[normalized] ?? 1.0;
+};
+
+/**
+ * Calculate neighborhood adjustment percentage between two neighborhoods
+ */
+export const calculateNeighborhoodAdjustment = (subjectNeighborhood: string, compNeighborhood: string): number => {
+  const subjectPremium = getNeighborhoodPremium(subjectNeighborhood);
+  const compPremium = getNeighborhoodPremium(compNeighborhood);
+  
+  // Adjustment = (subject_premium / comp_premium - 1) * 100
+  // If subject is in better neighborhood, positive adjustment
+  const adjustment = ((subjectPremium / compPremium) - 1) * 100;
+  
+  // Cap at ±30%
+  return Math.max(-30, Math.min(30, adjustment));
+};
 
 // =====================================================
 // TYPES
@@ -47,6 +130,7 @@ export interface SubjectProperty {
   floor_number?: number;
   
   // Location
+  neighborhood?: string; // Actual neighborhood name for premium lookup
   neighborhood_rating?: string;
   view_quality?: string;
   accessibility_rating?: string;
@@ -66,9 +150,20 @@ export interface ComparableWithAdjustments {
   address?: string;
   full_address?: string;
   
-  // Transaction
-  sale_price: number;
+  // Evidence type tracking (RICS/GhIS compliance)
+  evidence_type?: 'verified_sale' | 'achieved_price' | 'asking_price' | 'listing';
+  listing_adjustment?: number; // Asking-to-achieved adjustment percentage
+  days_on_market?: number;
+  
+  // Transaction - prices normalized to GHS
+  sale_price: number;  // Price in GHS (converted if originally USD)
   sale_date: string;
+  
+  // Currency conversion info
+  price_original?: number;  // Original price in source currency
+  price_currency?: string;  // Original currency (GHS or USD)
+  asking_price_ghs?: number;  // Asking price converted to GHS
+  fx_rate_used?: number;  // FX rate used for conversion
   
   // Physical
   gfa: number;
@@ -82,6 +177,7 @@ export interface ComparableWithAdjustments {
   floor_number?: number;
   
   // Location
+  neighborhood?: string; // Actual neighborhood name for premium lookup
   neighborhood_rating?: string;
   view_quality?: string;
   accessibility_rating?: string;
@@ -145,20 +241,93 @@ interface AdjustmentGridProps {
 
 const ADJUSTMENT_CATEGORIES: AdjustmentCategory[] = [
   {
+    id: 'listing_adjustment',
+    label: 'Listing Evidence Adjustment',
+    description: 'Adjustment for asking price to estimated achieved price (RICS/GhIS compliant)',
+    items: [
+      {
+        id: 'listing_type',
+        label: 'Evidence Type',
+        getSubjectValue: () => '—',
+        getCompValue: (c) => (c as any).evidence_type || 'asking_price',
+        formatValue: (v) => {
+          const types: Record<string, string> = {
+            'verified_sale': 'Verified Sale',
+            'achieved_price': 'Achieved Price', 
+            'asking_price': 'Asking Price',
+            'listing': 'Listing',
+          };
+          return types[v] || 'Asking Price';
+        },
+      },
+      {
+        id: 'listing_adjustment',
+        label: 'Asking-to-Achieved Adj.',
+        unit: '%',
+        maxAdjustment: 30,
+        getSubjectValue: () => '—',
+        getCompValue: (c) => {
+          // Show the current listing adjustment if set
+          const adj = (c as any).listing_adjustment;
+          return adj !== undefined && adj !== null ? `${adj}%` : 'Not Set';
+        },
+        autoCalculate: (_, c) => {
+          // Auto-calculate based on evidence type and property type
+          const evidenceType = (c as any).evidence_type || 'asking_price';
+          if (evidenceType === 'verified_sale' || evidenceType === 'achieved_price') {
+            return 0; // No adjustment needed for verified sales
+          }
+          
+          // Default adjustments based on typical Ghana market conditions
+          // Luxury/High-end: typically 15-25% negotiation
+          // Standard: typically 10-15% negotiation
+          // Basic: typically 5-10% negotiation
+          const qualityRating = c.quality_rating || 'standard';
+          const baseAdjustments: Record<string, number> = {
+            'luxury': -20,
+            'high': -15,
+            'standard': -12,
+            'basic': -8,
+            'substandard': -5,
+          };
+          
+          return baseAdjustments[qualityRating] || -12; // Default -12% for unknown
+        },
+      },
+      {
+        id: 'listing_days_on_market',
+        label: 'Days on Market',
+        unit: 'days',
+        maxAdjustment: 10,
+        getSubjectValue: () => '—',
+        getCompValue: (c) => (c as any).days_on_market || '—',
+        autoCalculate: (_, c) => {
+          // Properties on market longer typically have more room for negotiation
+          const days = (c as any).days_on_market;
+          if (!days) return 0;
+          if (days > 180) return -5; // Long time on market = more negotiation room
+          if (days > 90) return -3;
+          if (days < 30) return 2; // Quick sales often closer to asking
+          return 0;
+        },
+      },
+    ],
+  },
+  {
     id: 'transaction',
     label: 'Transaction',
     description: 'Sale price and date information',
     items: [
       {
         id: 'sale_price',
-        label: 'Sale Price',
+        label: 'Asking Price', // Changed from 'Sale Price' to 'Asking Price' per RICS terminology
         getSubjectValue: () => '—',
         getCompValue: (c) => c.sale_price,
         formatValue: (v) => typeof v === 'number' ? `₵${v.toLocaleString()}` : v,
       },
       {
         id: 'sale_date',
-        label: 'Sale Date',
+        label: 'Listing Date', // Changed from 'Sale Date' to 'Listing Date'
         getSubjectValue: () => '—',
         getCompValue: (c) => c.sale_date,
         formatValue: (v) => v ? new Date(v).toLocaleDateString('en-GB', { month: 'short', year: '2-digit' }) : '—',
@@ -280,18 +449,39 @@ const ADJUSTMENT_CATEGORIES: AdjustmentCategory[] = [
   },
   {
     id: 'location',
-    label: 'Location',
-    description: 'Neighborhood, view, and accessibility factors',
+    label: 'Location (Ghana Premiums)',
+    description: 'Neighborhood premiums, view, and accessibility - uses Ghana market data',
     items: [
       {
-        id: 'neighborhood',
-        label: 'Neighborhood',
+        id: 'neighborhood_premium',
+        label: 'Neighborhood Premium',
+        unit: '%',
+        maxAdjustment: 35,
+        getSubjectValue: (s) => {
+          const premium = getNeighborhoodPremium(s.neighborhood || '');
+          return premium !== 1.0 ? `${((premium - 1) * 100).toFixed(0)}%` : '0% (Baseline)';
+        },
+        getCompValue: (c) => {
+          const premium = getNeighborhoodPremium((c as any).neighborhood || '');
+          return premium !== 1.0 ? `${((premium - 1) * 100).toFixed(0)}%` : '0% (Baseline)';
+        },
+        autoCalculate: (s, c) => {
+          // Use Ghana neighborhood premium lookup
+          const subjectNeighborhood = s.neighborhood || '';
+          const compNeighborhood = (c as any).neighborhood || '';
+          return calculateNeighborhoodAdjustment(subjectNeighborhood, compNeighborhood);
+        },
+      },
+      {
+        id: 'neighborhood_rating',
+        label: 'Neighborhood Rating',
         unit: 'rating',
         maxAdjustment: 25,
         getSubjectValue: (s) => s.neighborhood_rating,
         getCompValue: (c) => c.neighborhood_rating,
         formatValue: (v) => v ? v.replace(/_/g, ' ').split(' ').map((w: string) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ') : '—',
         autoCalculate: (s, c) => {
+          // Fallback if neighborhood names not available
           const ratings: Record<string, number> = { prime_plus: 5, prime: 4, prime_minus: 3, secondary: 2, tertiary: 1 };
           const subjectRating = ratings[s.neighborhood_rating || 'secondary'] || 2;
           const compRating = ratings[c.neighborhood_rating || 'secondary'] || 2;
@@ -328,22 +518,32 @@ const ADJUSTMENT_CATEGORIES: AdjustmentCategory[] = [
   },
   {
     id: 'legal_economic',
-    label: 'Legal / Economic',
-    description: 'Tenure, financing, and sale conditions',
+    label: 'Legal / Economic (Ghana Title Risk)',
+    description: 'Tenure risk, financing, and sale conditions - Ghana-specific adjustments per GhIS guidance',
     items: [
       {
         id: 'tenure',
         label: 'Tenure Type',
         unit: 'category',
-        maxAdjustment: 10,
+        maxAdjustment: 30,
         getSubjectValue: (s) => s.tenure_type,
         getCompValue: (c) => c.tenure_type,
-        formatValue: (v) => v ? v.replace(/_/g, ' ').split(' ').map((w: string) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ') : '—',
+        formatValue: (v) => {
+          // Use Ghana tenure labels
+          const tenure = TENURE_TYPES.find(t => t.value === v);
+          return tenure?.label || (v ? v.replace(/_/g, ' ').split(' ').map((w: string) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ') : '—');
+        },
         autoCalculate: (s, c) => {
-          const ratings: Record<string, number> = { freehold: 4, leasehold: 3, stool_land: 2, state_land: 1 };
-          const subjectRating = ratings[s.tenure_type || 'freehold'] || 4;
-          const compRating = ratings[c.tenure_type || 'freehold'] || 4;
-          return (subjectRating - compRating) * 3;
+          // Use Ghana-specific tenure risk adjustments
+          // Adjustment = subject_risk - comp_risk
+          // If subject has better tenure, positive adjustment (comp needs to be adjusted UP)
+          // If subject has worse tenure, negative adjustment
+          const subjectRisk = getTenureRiskAdjustment(s.tenure_type || 'freehold');
+          const compRisk = getTenureRiskAdjustment(c.tenure_type || 'freehold');
+          
+          // The adjustment is the difference in risk
+          // If comp has -15% risk and subject has 0% risk, adjustment = 0 - (-15) = +15%
+          return subjectRisk - compRisk;
         },
       },
       {

@@ -155,13 +155,14 @@ class FloorPlanService {
   // --------------------------------------------------------------------------
 
   /**
-   * Create a new floor plan
+   * Create a new floor plan (or update if exists for same valuation_id + floor_number)
    */
   async create(input: CreateFloorPlanInput): Promise<FloorPlan> {
     const id = uuidv4();
     const rooms = this.extractRoomsFromCanvas(input.canvas_json, input.scale_pixels_per_meter || 20);
     const measurements = this.calculateMeasurements(rooms);
     
+    // Use UPSERT to handle duplicate (valuation_id, floor_number) constraint
     const query = `
       INSERT INTO valuation_floor_plans (
         id, valuation_id, property_id, canvas_json, canvas_version,
@@ -172,6 +173,20 @@ class FloorPlanService {
       ) VALUES (
         $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16
       )
+      ON CONFLICT (valuation_id, floor_number) 
+      DO UPDATE SET
+        canvas_json = EXCLUDED.canvas_json,
+        canvas_version = EXCLUDED.canvas_version,
+        scale_pixels_per_meter = EXCLUDED.scale_pixels_per_meter,
+        calibration_reference = EXCLUDED.calibration_reference,
+        gross_building_area_sqm = EXCLUDED.gross_building_area_sqm,
+        net_usable_area_sqm = EXCLUDED.net_usable_area_sqm,
+        efficiency_ratio = EXCLUDED.efficiency_ratio,
+        rooms = EXCLUDED.rooms,
+        floor_label = EXCLUDED.floor_label,
+        has_scale_reference = EXCLUDED.has_scale_reference,
+        measurement_confidence = EXCLUDED.measurement_confidence,
+        updated_at = NOW()
       RETURNING *
     `;
     
@@ -197,8 +212,9 @@ class FloorPlanService {
     const result = await pool.query(query, values);
     const floorPlan = this.mapRowToFloorPlan(result.rows[0]);
     
-    // Insert individual rooms for querying
-    await this.insertRooms(id, rooms);
+    // Insert individual rooms for querying (delete existing first for upsert case)
+    await pool.query('DELETE FROM valuation_floor_plan_rooms WHERE floor_plan_id = $1', [floorPlan.id]);
+    await this.insertRooms(floorPlan.id, rooms);
     
     return floorPlan;
   }

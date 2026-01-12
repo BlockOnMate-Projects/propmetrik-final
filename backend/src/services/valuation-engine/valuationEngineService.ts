@@ -35,6 +35,8 @@ import {
   ValuationFilters,
 } from './types';
 import { PythonClient } from './pythonClient';
+import { economicDataService } from '../data-hub/economicDataService';
+import { constructionCostService } from '../data-hub/constructionCostService';
 
 // Initialize Python client for valuation method calculations
 const pythonClient = new PythonClient();
@@ -149,16 +151,8 @@ class ValuationEngineService {
             price_index_change_yoy: 0.05,
           };
       
-      // Economic factors (could also come from Python service in future)
-      const economicFactors: EconomicFactors = { 
-        inflation_rate: 0.12, 
-        interest_rate_policy: 0.27, // Bank of Ghana policy rate
-        mortgage_rate_avg: 0.32,
-        exchange_rate_usd: 15.5, // GHS per USD
-        gdp_growth: 0.032,
-        construction_cost_index: 110,
-        snapshot_date: new Date(),
-      };
+      // 3b. Get economic factors from live data service
+      const economicFactors = await this.getEconomicFactors(property.region);
 
       // 4. Determine applicable methods
       const applicableMethods = this.determineApplicableMethods(
@@ -383,6 +377,56 @@ class ValuationEngineService {
     } catch (error: any) {
       logger.error(`Error executing method ${method}:`, { error: error.message });
       return null;
+    }
+  }
+
+  /**
+   * Get economic factors from live data service with fallback to defaults
+   * Uses economicDataService for real-time BOG rates, exchange rates, and CPI
+   */
+  private async getEconomicFactors(region?: string): Promise<EconomicFactors> {
+    try {
+      // Fetch latest economic snapshot from database
+      const snapshot = await economicDataService.getLatestSnapshot();
+      
+      // Get latest construction cost index
+      const constructionIndex = await constructionCostService.getLatestConstructionIndex(
+        (region || 'greater_accra') as any
+      );
+      
+      const factors: EconomicFactors = {
+        inflation_rate: snapshot.inflation_rate ?? 0.12,
+        interest_rate_policy: snapshot.interest_rate_policy ?? 0.27,
+        mortgage_rate_avg: snapshot.mortgage_rate_avg ?? 0.32,
+        exchange_rate_usd: snapshot.exchange_rate_usd ?? 15.5,
+        gdp_growth: snapshot.gdp_growth ?? 0.032,
+        construction_cost_index: constructionIndex?.index_value ?? 110,
+        snapshot_date: snapshot.date || new Date(),
+      };
+      
+      logger.debug('Loaded live economic factors', {
+        inflation: factors.inflation_rate,
+        policy_rate: factors.interest_rate_policy,
+        usd_rate: factors.exchange_rate_usd,
+        construction_index: factors.construction_cost_index,
+      });
+      
+      return factors;
+    } catch (error: any) {
+      logger.warn('Failed to load live economic factors, using defaults', { 
+        error: error.message 
+      });
+      
+      // Fallback to sensible defaults
+      return {
+        inflation_rate: 0.12,
+        interest_rate_policy: 0.27,
+        mortgage_rate_avg: 0.32,
+        exchange_rate_usd: 15.5,
+        gdp_growth: 0.032,
+        construction_cost_index: 110,
+        snapshot_date: new Date(),
+      };
     }
   }
 

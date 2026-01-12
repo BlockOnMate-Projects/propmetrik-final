@@ -1,4 +1,3 @@
-# Price Multipliers & Adjustment Factors in Real Estate Valuation
 
 ## Industry Standard: Calculated vs Static Multipliers
 
