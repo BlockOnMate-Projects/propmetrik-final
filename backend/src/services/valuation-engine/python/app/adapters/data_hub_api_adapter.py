@@ -113,13 +113,13 @@ class DataHubAPIAdapter:
             # Normalize region
             normalized_region = self._normalize_region(region)
             
-            # Fetch base costs
+            # Fetch base costs (using snake_case params to match TypeScript API)
             base_cost_result = await self.client.post("/construction/estimate", {
-                "propertyType": property_type,
-                "qualityLevel": quality_level,
+                "property_type": property_type,
+                "quality_level": quality_level,
                 "region": normalized_region,
-                "builtAreaSqm": 1,  # Get per-sqm cost
-                "numFloors": 1
+                "built_area_sqm": 1,  # Get per-sqm cost
+                "num_floors": 1
             })
             
             if not base_cost_result.get("success"):
@@ -127,26 +127,30 @@ class DataHubAPIAdapter:
                 return None
             
             estimate = base_cost_result.get("data", {})
+            estimates = estimate.get("estimates", {})
             
             # Fetch all quality tier costs
             quality_costs = {}
             for tier in ["basic", "standard", "premium", "luxury"]:
                 tier_result = await self.client.post("/construction/estimate", {
-                    "propertyType": property_type,
-                    "qualityLevel": tier,
+                    "property_type": property_type,
+                    "quality_level": tier,
                     "region": normalized_region,
-                    "builtAreaSqm": 1,
-                    "numFloors": 1
+                    "built_area_sqm": 1,
+                    "num_floors": 1
                 })
                 if tier_result.get("success") and tier_result.get("data"):
-                    quality_costs[tier] = tier_result["data"].get("baseCostPerSqm", 0)
+                    tier_estimates = tier_result["data"].get("estimates", {})
+                    quality_costs[tier] = tier_estimates.get("cost_per_sqm", 0)
+            
+            regional_multiplier = estimate.get("regional_multiplier", {})
             
             # Build ConstructionCosts object
             return ConstructionCosts(
                 region=normalized_region,
                 effective_date=date.today(),
                 cost_per_sqm_basic=quality_costs.get("basic", 2000),
-                cost_per_sqm_standard=quality_costs.get("standard", 4500),
+                cost_per_sqm_standard=quality_costs.get("standard", estimates.get("cost_per_sqm", 4500)),
                 cost_per_sqm_premium=quality_costs.get("premium", 7000),
                 cost_per_sqm_luxury=quality_costs.get("luxury", 12000),
                 skilled_labor_rate_per_day=0,  # Will be fetched separately
@@ -154,7 +158,7 @@ class DataHubAPIAdapter:
                 utilities_connection_cost=5000.0,
                 site_preparation_cost_per_sqm=50.0,
                 data_source="PropMetrik Data Hub API",
-                regional_multiplier=estimate.get("regionalMultiplier", 1.0),
+                regional_multiplier=regional_multiplier.get("value", 1.0),
                 material_costs={}
             )
             
@@ -172,21 +176,23 @@ class DataHubAPIAdapter:
         try:
             normalized_region = self._normalize_region(region)
             
+            # Use snake_case to match TypeScript API expectations
             result = await self.client.post("/construction/estimate", {
-                "propertyType": property_type,
-                "qualityLevel": quality_level,
+                "property_type": property_type,
+                "quality_level": quality_level,
                 "region": normalized_region,
-                "builtAreaSqm": 1,
-                "numFloors": 1
+                "built_area_sqm": 1,
+                "num_floors": 1
             })
             
             if result.get("success") and result.get("data"):
                 data = result["data"]
+                estimates = data.get("estimates", {})
                 return {
-                    "cost_ghs": data.get("baseCostPerSqm", 0),
-                    "regional_multiplier": data.get("regionalMultiplier", 1.0),
-                    "adjusted_cost": data.get("adjustedCostPerSqm", 0),
-                    "source": data.get("source", "calculated"),
+                    "cost_ghs": estimates.get("cost_per_sqm", 0),
+                    "regional_multiplier": data.get("regional_multiplier", {}).get("value", 1.0),
+                    "adjusted_cost": estimates.get("cost_per_sqm", 0),
+                    "source": data.get("data_source", "calculated"),
                     "property_type": property_type,
                     "quality_level": quality_level,
                     "region": normalized_region
@@ -202,21 +208,22 @@ class DataHubAPIAdapter:
         try:
             normalized_region = self._normalize_region(region)
             
-            # Use construction estimate endpoint to get multiplier
+            # Use construction estimate endpoint to get multiplier (snake_case params)
             result = await self.client.post("/construction/estimate", {
-                "propertyType": "residential",
-                "qualityLevel": "standard",
+                "property_type": "residential",
+                "quality_level": "standard",
                 "region": normalized_region,
-                "builtAreaSqm": 1,
-                "numFloors": 1
+                "built_area_sqm": 1,
+                "num_floors": 1
             })
             
             if result.get("success") and result.get("data"):
+                regional_data = result["data"].get("regional_multiplier", {})
                 return {
                     "region": normalized_region,
-                    "value": result["data"].get("regionalMultiplier", 1.0),
-                    "source": result["data"].get("source", "calculated"),
-                    "confidence": 0.9 if result["data"].get("source") == "calculated" else 0.6
+                    "value": regional_data.get("value", 1.0),
+                    "source": regional_data.get("source", "calculated"),
+                    "confidence": regional_data.get("confidence", 0.9)
                 }
             
             return {

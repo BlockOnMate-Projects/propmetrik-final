@@ -232,10 +232,30 @@ class LandComparableSalesService:
         
         # Step 1: Build search criteria
         search_criteria = self._build_search_criteria(subject_property)
+        active_criteria = search_criteria  # Track active criteria
         
-        # Step 2: Fetch land comparables from database
+        # Step 2: Fetch land comparables from database (with auto-relaxing criteria)
         try:
             comparable_properties = await self.market_data.get_land_comparables(search_criteria)
+            
+            # RETRY LOGIC: If insufficient comparables, relax criteria
+            if len(comparable_properties) < self.MIN_COMPARABLES:
+                logger.info(f"Initial search found only {len(comparable_properties)}. Relaxing criteria.")
+                
+                # Relaxed criteria: Double distance, 3 years age, double size tolerance
+                # Use a specific relaxed criteria object to avoid modifying the original if it's reused
+                relaxed_criteria = self._build_search_criteria(subject_property)
+                relaxed_criteria.max_distance_km = 25.0
+                relaxed_criteria.max_age_days = 1095  # 3 years
+                relaxed_criteria.size_tolerance_pct = 1.0  # +/- 100%
+                
+                # Update active criteria for scoring
+                active_criteria = relaxed_criteria
+                
+                # Retry search
+                comparable_properties = await self.market_data.get_land_comparables(relaxed_criteria)
+                logger.info(f"Relaxed search found {len(comparable_properties)} comparables")
+                
         except Exception as e:
             logger.error(f"Error fetching land comparables: {e}")
             return LandComparableSalesResult(
@@ -258,7 +278,7 @@ class LandComparableSalesService:
         analyses: List[LandComparableAnalysis] = []
         for comp in comparable_properties:
             try:
-                analysis = self._analyze_comparable(subject_property, comp, valuation_date)
+                analysis = self._analyze_comparable(subject_property, comp, valuation_date, criteria=active_criteria)
                 if analysis and analysis.score.overall_score >= self.MIN_SCORE_THRESHOLD:
                     analyses.append(analysis)
             except Exception as e:
@@ -398,9 +418,14 @@ class LandComparableSalesService:
         self,
         subject: Property,
         comparable: Property,
-        valuation_date: date
+        valuation_date: date,
+        criteria: Optional[LandComparableSearchCriteria] = None
     ) -> Optional[LandComparableAnalysis]:
         """Analyze a single land comparable: score, adjust, and package results"""
+        
+        # Get active limits (from criteria or defaults)
+        max_dist = criteria.max_distance_km if criteria else self.MAX_DISTANCE_KM
+        max_age = criteria.max_age_days if criteria else self.MAX_AGE_DAYS
         
         # Basic validation
         if not comparable.specifications.land_size_sqm or comparable.specifications.land_size_sqm <= 0:
@@ -410,13 +435,13 @@ class LandComparableSalesService:
         
         # Calculate distance
         distance_km = self._calculate_distance(subject, comparable)
-        if distance_km is None or distance_km > self.MAX_DISTANCE_KM:
+        if distance_km is None or distance_km > max_dist:
             return None
         
         # Calculate days since sale
         sale_date = comparable.financials.price_date or valuation_date
         days_since_sale = (valuation_date - sale_date).days
-        if days_since_sale > self.MAX_AGE_DAYS:
+        if days_since_sale > max_age:
             return None
         
         # Original values
@@ -428,7 +453,7 @@ class LandComparableSalesService:
         characteristics = self._extract_characteristics(comparable)
         
         # Calculate score
-        score = self._calculate_score(subject, comparable, distance_km, days_since_sale)
+        score = self._calculate_score(subject, comparable, distance_km, days_since_sale, criteria)
         
         # Calculate adjustments
         adjustments = self._calculate_adjustments(
@@ -473,12 +498,17 @@ class LandComparableSalesService:
         subject: Property,
         comparable: Property,
         distance_km: float,
-        days_since_sale: int
+        days_since_sale: int,
+        criteria: Optional[LandComparableSearchCriteria] = None
     ) -> LandComparableScore:
         """Calculate 6-factor weighted score for land comparable"""
         
+        # Get active limits for scoring normalization
+        max_dist = criteria.max_distance_km if criteria else self.MAX_DISTANCE_KM
+        max_age = criteria.max_age_days if criteria else self.MAX_AGE_DAYS
+        
         # 1. Location score (distance-based)
-        location_score = max(0, 1.0 - (distance_km / self.MAX_DISTANCE_KM))
+        location_score = max(0, 1.0 - (distance_km / max_dist))
         
         # 2. Size score (land area similarity)
         subject_area = subject.specifications.land_size_sqm or 1
@@ -497,7 +527,7 @@ class LandComparableSalesService:
         infrastructure_score = self._calculate_infrastructure_score(subject, comparable)
         
         # 5. Time score (recency)
-        time_score = max(0, 1.0 - (days_since_sale / self.MAX_AGE_DAYS))
+        time_score = max(0, 1.0 - (days_since_sale / max_age))
         
         # 6. Data quality score
         if hasattr(comparable, 'data_quality') and comparable.data_quality:
@@ -1070,8 +1100,15 @@ class LandComparableSalesService:
     ) -> Optional[float]:
         """Calculate distance between two properties using Haversine formula"""
         
-        if not subject.location.coordinates or not comparable.location.coordinates:
-            return None
+        # If subject has no coordinates, we can't calculate distance
+        # Return 0 to indicate "unknown distance" - allows regional fallback
+        if not subject.location.coordinates:
+            # No subject coordinates - allow by returning 0 (treat as same location)
+            return 0.0
+        
+        if not comparable.location.coordinates:
+            # Comparable has no coordinates - return moderate distance
+            return 5.0  # Default to 5km (within typical search radius)
         
         lat1, lon1 = subject.location.coordinates
         lat2, lon2 = comparable.location.coordinates

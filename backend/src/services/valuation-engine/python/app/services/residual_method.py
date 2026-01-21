@@ -40,6 +40,22 @@ SALE_PRICES_PER_SQM: Dict[str, Dict[RegionCode, float]] = {
         RegionCode.WESTERN_CLUSTER: 5000,
         RegionCode.NORTHERN_CLUSTER: 3000,
     },
+    "land": {
+        # For land, assume residential development (house prices)
+        RegionCode.GREATER_ACCRA: 8500,
+        RegionCode.KUMASI_METRO: 5500,
+        RegionCode.EASTERN: 4000,
+        RegionCode.WESTERN_CLUSTER: 5000,
+        RegionCode.NORTHERN_CLUSTER: 3000,
+    },
+    "land_residential": {
+        # For residential land, assume house development
+        RegionCode.GREATER_ACCRA: 8500,
+        RegionCode.KUMASI_METRO: 5500,
+        RegionCode.EASTERN: 4000,
+        RegionCode.WESTERN_CLUSTER: 5000,
+        RegionCode.NORTHERN_CLUSTER: 3000,
+    },
     "apartment": {
         RegionCode.GREATER_ACCRA: 9500,
         RegionCode.KUMASI_METRO: 6000,
@@ -80,6 +96,8 @@ SALE_PRICES_PER_SQM: Dict[str, Dict[RegionCode, float]] = {
 # Construction costs per sqm by property type (GHS)
 CONSTRUCTION_COSTS_PER_SQM: Dict[str, float] = {
     "house": 4500,
+    "land": 4500,  # Assume house development on land
+    "land_residential": 4500,  # Assume house development on residential land
     "apartment": 5000,
     "townhouse": 4800,
     "commercial": 5500,
@@ -117,6 +135,8 @@ FINANCE = {
 # Development timelines (months)
 DEVELOPMENT_TIMELINES: Dict[str, Dict[str, int]] = {
     "house": {"construction": 18, "sales": 6},
+    "land": {"construction": 18, "sales": 6},  # Assume house development
+    "land_residential": {"construction": 18, "sales": 6},  # Assume house development
     "apartment": {"construction": 24, "sales": 12},
     "townhouse": {"construction": 20, "sales": 8},
     "commercial": {"construction": 18, "sales": 12},
@@ -137,6 +157,8 @@ DEVELOPER_PROFIT_MARGINS: Dict[RegionCode, float] = {
 # Plot coverage ratios
 PLOT_COVERAGE: Dict[str, float] = {
     "house": 0.40,
+    "land": 0.40,  # Assume house development
+    "land_residential": 0.40,  # Assume house development
     "apartment": 0.45,
     "townhouse": 0.50,
     "commercial": 0.60,
@@ -148,6 +170,8 @@ PLOT_COVERAGE: Dict[str, float] = {
 # Floor Area Ratios (FAR)
 FLOOR_AREA_RATIOS: Dict[str, float] = {
     "house": 0.8,  # Single story typically
+    "land": 0.8,  # Assume house development
+    "land_residential": 0.8,  # Assume house development
     "apartment": 3.0,  # Multi-story
     "townhouse": 1.5,
     "commercial": 4.0,
@@ -204,12 +228,15 @@ class ResidualMethodService:
         try:
             # 1. Determine development assumptions
             assumptions = self._determine_development_assumptions(property_data)
+            logger.debug(f"Development assumptions: GFA={assumptions.gross_floor_area}sqm, NSA={assumptions.net_sellable_area}sqm")
 
             # 2. Calculate Gross Development Value (GDV)
             gdv = self._calculate_gdv(property_data, assumptions)
+            logger.debug(f"Calculated GDV: {gdv:,.0f} GHS")
 
             # 3. Calculate construction costs
             construction_cost = await self._calculate_construction_cost(property_data, assumptions)
+            logger.debug(f"Construction cost: {construction_cost:,.0f} GHS")
 
             # 4. Calculate professional fees
             professional_fees = construction_cost * PROFESSIONAL_FEES["total"]
@@ -229,6 +256,8 @@ class ResidualMethodService:
 
             # 8. Calculate residual land value
             residual_land_value = gdv - construction_cost - professional_fees - other_costs - finance_costs - developer_profit
+            
+            logger.info(f"Residual calculation: GDV={gdv:,.0f}, Construction={construction_cost:,.0f}, Fees={professional_fees:,.0f}, Other={other_costs:,.0f}, Finance={finance_costs:,.0f}, Profit={developer_profit:,.0f} => Residual={residual_land_value:,.0f}")
 
             # 9. Calculate land value metrics
             land_area = (
@@ -289,7 +318,8 @@ class ResidualMethodService:
         """Determine development assumptions based on property"""
         assumptions = DevelopmentAssumptions()
         
-        property_type = property_data.property_type.value
+        # Handle both enum and string property_type
+        property_type = property_data.property_type.value if hasattr(property_data.property_type, 'value') else str(property_data.property_type)
         land_area = (
             property_data.land_area_sqm or
             (property_data.plot_size_acres * 4046.86 if property_data.plot_size_acres else None) or
@@ -314,7 +344,8 @@ class ResidualMethodService:
 
     def _calculate_gdv(self, property_data: PropertyForValuation, assumptions: DevelopmentAssumptions) -> float:
         """Calculate Gross Development Value"""
-        property_type = property_data.property_type.value
+        # Handle both enum and string property_type
+        property_type = property_data.property_type.value if hasattr(property_data.property_type, 'value') else str(property_data.property_type)
         region = property_data.region
 
         if property_type in SALE_PRICES_PER_SQM and region in SALE_PRICES_PER_SQM[property_type]:
@@ -331,7 +362,8 @@ class ResidualMethodService:
         assumptions: DevelopmentAssumptions
     ) -> float:
         """Calculate total construction cost using live Data Hub API"""
-        property_type = property_data.property_type.value
+        # Handle both enum and string property_type
+        property_type = property_data.property_type.value if hasattr(property_data.property_type, 'value') else str(property_data.property_type)
         region_str = property_data.region.value if hasattr(property_data.region, 'value') else str(property_data.region)
         
         # Try to get construction cost from live API
@@ -419,8 +451,15 @@ class ResidualMethodService:
             confidence_factors.append(0.4)
 
         # 2. Property type suitability
-        suitable_types = [PropertyType.LAND, PropertyType.RESIDENTIAL_LAND, PropertyType.COMMERCIAL_LAND]
-        if property_data.property_type in suitable_types:
+        # PropertyType in models.schemas only has LAND, not LAND_RESIDENTIAL etc.
+        suitable_types = [PropertyType.LAND]
+        suitable_type_strings = ["land", "land_residential", "land_commercial", "land_industrial", "land_agricultural"]
+        type_is_suitable = (
+            property_data.property_type in suitable_types or
+            property_data.property_type in suitable_type_strings or
+            (hasattr(property_data.property_type, 'value') and property_data.property_type.value in suitable_type_strings)
+        )
+        if type_is_suitable:
             confidence_factors.append(0.9)
         else:
             confidence_factors.append(0.6)
@@ -442,9 +481,13 @@ class ResidualMethodService:
     def _calculate_weight(self, property_data: PropertyForValuation) -> float:
         """Calculate method weight for hybrid valuation"""
         # Residual method is most suitable for land and development properties
-        if property_data.property_type in [PropertyType.LAND, PropertyType.RESIDENTIAL_LAND, PropertyType.COMMERCIAL_LAND]:
+        land_types = ["land", "land_residential", "land_commercial", "land_industrial", "land_agricultural"]
+        prop_type = property_data.property_type
+        prop_type_str = prop_type.value if hasattr(prop_type, 'value') else str(prop_type)
+        
+        if prop_type_str in land_types or prop_type == PropertyType.LAND:
             return 0.7
-        elif property_data.property_type in [PropertyType.MIXED_USE]:
+        elif prop_type_str == "mixed_use" or prop_type == PropertyType.MIXED_USE:
             return 0.3
         else:
             return 0.1

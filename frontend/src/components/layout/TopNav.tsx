@@ -10,9 +10,9 @@ const navigation: { name: string; href: string; key: string; badge?: string }[] 
   { name: 'OVERVIEW', href: '/dashboard', key: '1' },
   { name: 'VALUATIONS', href: '/dashboard/valuations', key: '2' },
   { name: 'DEALS', href: '/dashboard/deals', key: '3' },
-  { name: 'PROPERTIES', href: '/dashboard/properties', key: '4' },
-  { name: 'DATA HUB', href: '/dashboard/data-hub', key: '5' },
-  { name: 'ANALYTICS', href: '/dashboard/analytics', key: '6' },
+  { name: 'DATA HUB', href: '/dashboard/data-hub', key: '4' },
+  { name: 'ANALYTICS', href: '/dashboard/analytics', key: '5' },
+  { name: 'MANAGEMENT', href: '/dashboard/property-management', key: '6' },
 ]
 
 function Clock() {

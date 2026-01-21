@@ -59,9 +59,8 @@ import {
   ComparableDetailCard,
   AdjustmentGrid,
   EditableConstructionCostPanel,
-  LaborCostsPanel,
   GapAnalysisAlert, 
-  ContributionDialog, 
+  ContributionDialog,
   type GapAnalysis, 
   type ContributionPrompt,
   type ComparableWithAdjustments,
@@ -73,9 +72,6 @@ import {
 // =====================================================
 // TYPES
 // =====================================================
-
-type ViewMode = 'cards' | 'grid' | 'compact'
-type WeightingMethod = 'quality_weighted' | 'simple_average' | 'median' | 'manual'
 
 // =====================================================
 // MAIN COMPONENT
@@ -98,11 +94,6 @@ export default function MarketDataPage() {
 
   // Market context
   const [marketContext, setMarketContext] = useState<MarketContextData | null>(null)
-  
-  // View options
-  const [viewMode, setViewMode] = useState<ViewMode>('grid')
-  const [weightingMethod, setWeightingMethod] = useState<WeightingMethod>('quality_weighted')
-  const [showWeights, setShowWeights] = useState(false)
 
   // Search filters
   const [searchRadius, setSearchRadius] = useState(3) // km
@@ -123,38 +114,138 @@ export default function MarketDataPage() {
   // DATA FETCHING
   // =====================================================
 
-  // Fetch valuation and existing basket
+  // Fetch valuation and existing comparables
   useEffect(() => {
     async function fetchData() {
       try {
         setLoading(true)
         setError(null)
 
-        const [valuationRes, basketRes] = await Promise.all([
-          valuationsApi.getById(valuationId),
-          comparablesApi.getBasket(valuationId),
-        ])
-
+        // First get valuation data
+        const valuationRes = await valuationsApi.getById(valuationId)
+        
         if (valuationRes.error) throw new Error(valuationRes.error)
         if (!valuationRes.data) throw new Error('Valuation not found')
 
         setValuation(valuationRes.data as unknown as Valuation)
 
-        if (basketRes.data) {
-          setBasket(basketRes.data as unknown as ComparableBasket)
-          // Load existing comparables with adjustments
-          if ((basketRes.data as any).comparables) {
+        // Try to get comparables from basket, fallback to direct API
+        try {
+          const basketRes = await comparablesApi.getBasket(valuationId)
+          
+          if (basketRes.data && (basketRes.data as any).comparables?.length > 0) {
+            setBasket(basketRes.data as unknown as ComparableBasket)
+            
+            // Currency conversion helper
+            const convertToGHS = (price: number, currency: string) => {
+              if (currency === 'USD') {
+                return price * 15.7 // USD to GHS conversion
+              }
+              return price
+            }
+            
+            // GFA fallback helper
+            const getGFA = (comp: any) => {
+              const gfa = comp.gfa || comp.built_area_sqm || comp.building_size_sqm || comp.total_area_sqm
+              if (!gfa || gfa === 0) {
+                // Use reasonable default based on bedrooms
+                const bedrooms = comp.bedrooms || 3
+                return bedrooms * 65 // ~65 sqm per bedroom average
+              }
+              return parseFloat(gfa)
+            }
+            
+            // Load existing comparables with adjustments
             setSelectedComparables(
-              (basketRes.data as any).comparables.map((comp: any) => ({
-                ...comp,
-                adjustments: comp.adjustments || {},
-                totalAdjustment: comp.total_adjustment || 0,
-                adjustedPrice: comp.adjusted_value || comp.sale_price,
-                adjustedPricePerSqm: comp.adjusted_price_per_sqm || (comp.sale_price / (comp.gfa || 1)),
-                weight: comp.weight || 0.25,
-              }))
+              (basketRes.data as any).comparables.map((comp: any) => {
+                const originalPrice = parseFloat(comp.sale_price || comp.price || 0)
+                const currency = comp.price_currency || comp.currency || 'GHS'
+                const convertedPrice = convertToGHS(originalPrice, currency)
+                const gfaValue = getGFA(comp)
+                
+                return {
+                  ...comp,
+                  // Price fields
+                  sale_price: convertedPrice,
+                  asking_price_ghs: comp.asking_price_ghs || comp.asking_price || convertedPrice,
+                  price_original: originalPrice,
+                  price_currency: currency,
+                  fx_rate_used: currency === 'USD' ? 15.7 : 1,
+                  
+                  // Size fields  
+                  gfa: gfaValue,
+                built_area_sqm: comp.built_area_sqm || comp.gfa || comp.building_size_sqm,
+                plot_size: comp.plot_size || comp.land_area_sqm || comp.plot_area,
+                
+                // Property details
+                bedrooms: comp.bedrooms || comp.bedroom_count,
+                bathrooms: comp.bathrooms || comp.bathroom_count,
+                year_built: comp.year_built || comp.construction_year,
+                condition: comp.condition || comp.property_condition || 'good',
+                quality_rating: comp.quality_rating || comp.quality_tier || 'standard',
+                property_type: comp.property_type || comp.type,
+                
+                // Location
+                address_street: comp.address_street || comp.address || comp.street_address,
+                address_city: comp.address_city || comp.city,
+                neighborhood: comp.neighborhood || comp.area,
+                region: comp.region,
+                
+                // Transaction details
+                sale_date: comp.sale_date || comp.transaction_date || new Date().toISOString(),
+                listing_type: comp.listing_type || comp.transaction_type || 'sale',
+                data_source: comp.data_source || comp.source || 'database',
+                
+                // Evidence and verification
+                evidence_type: comp.evidence_type || (comp.data_source === 'contribution' ? 'Verified Sale' : 'Listing'),
+                asking_to_achieved_adj: comp.asking_to_achieved_adj || 'Not Set',
+                days_on_market: comp.days_on_market || comp.marketing_period,
+                
+                // Features
+                parking_spaces: comp.parking_spaces || comp.garage_spaces || 0,
+                floor_number: comp.floor_number || comp.floor,
+                amenities: comp.amenities || [],
+                
+                  // Adjustments and calculations
+                  adjustments: comp.adjustments ? (typeof comp.adjustments === 'string' ? JSON.parse(comp.adjustments) : comp.adjustments) : {},
+                  totalAdjustment: comp.total_adjustment || 0,
+                  adjustedPrice: comp.adjusted_price || comp.adjusted_value || convertedPrice,
+                  adjustedPricePerSqm: comp.adjusted_price_per_sqm || ((comp.adjusted_price || convertedPrice) / gfaValue),
+                  weight: comp.weight || (1 / ((basketRes.data as any).comparables?.length || 1)),
+                  isLocked: false,
+                }
+              })
             )
+          } else {
+            // No basket - try fetching selected comparables from valuation
+            const comparablesRes = await comparablesApi.getByValuation(valuationId)
+            if (comparablesRes.data && comparablesRes.data.length > 0) {
+              setSelectedComparables(
+                comparablesRes.data.map((comp: any) => ({
+                  ...comp,
+                  // Enhanced field mapping for better data display
+                  sale_price: comp.sale_price || comp.price || comp.asking_price_ghs || 0,
+                  asking_price_ghs: comp.asking_price_ghs || comp.asking_price || comp.price || comp.sale_price,
+                  price_currency: comp.price_currency || 'GHS',
+                  fx_rate_used: comp.fx_rate_used || 1,
+                  gfa: comp.gfa || comp.built_area_sqm || comp.building_size_sqm || comp.total_area_sqm || 0,
+                  evidence_type: comp.evidence_type || (comp.data_source === 'contribution' ? 'Verified Sale' : 'Listing'),
+                  condition: comp.condition || 'good',
+                  quality_rating: comp.quality_rating || 'standard',
+                  sale_date: comp.sale_date || comp.transaction_date || new Date().toISOString(),
+                  adjustments: {},
+                  totalAdjustment: 0,
+                  adjustedPrice: comp.sale_price || comp.price || 0,
+                  adjustedPricePerSqm: (comp.sale_price || comp.price || 0) / (comp.gfa || comp.built_area_sqm || 1),
+                  weight: 1 / comparablesRes.data.length,
+                  isLocked: false,
+                }))
+              )
+            }
           }
+        } catch (basketErr) {
+          console.warn('Failed to load basket, continuing without comparables:', basketErr)
+          // Page will show "no comparables" message
         }
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to load data')
@@ -165,6 +256,94 @@ export default function MarketDataPage() {
 
     fetchData()
   }, [valuationId])
+
+  // Auto-calculate adjustments for all comparables when loaded
+  // This runs every time valuation and comparables are available
+  useEffect(() => {
+    // Run when we have valuation, comparables, and not loading
+    if (!valuation?.property || selectedComparables.length === 0 || loading) return
+    
+    console.log('Auto-calculating adjustments for all comparables...')
+    
+    const subject = valuation.property as any
+    
+    setSelectedComparables(prev => 
+      prev.map(comp => {
+        if (comp.isLocked) return comp
+        
+        // Skip if this comparable already has significant adjustments (user has edited)
+        const hasUserAdjustments = comp.adjustments && Object.values(comp.adjustments).some(val => Math.abs(val || 0) > 0.1)
+        if (hasUserAdjustments) return comp
+        
+        // Auto-calculate adjustments based on subject vs comparable
+        const autoAdjustments: Record<string, number> = {}
+        
+        // Size adjustment (max ±25%)
+        if (subject.gfa && comp.gfa) {
+          const sizeDiff = (subject.gfa - comp.gfa) / comp.gfa * 100
+          autoAdjustments.gfa = Math.max(-25, Math.min(25, sizeDiff))
+        }
+        
+        // Age adjustment (0.5% per year)
+        const subjectAge = subject.age || (subject.year_built ? new Date().getFullYear() - subject.year_built : 0)
+        const compAge = comp.age || (comp.year_built ? new Date().getFullYear() - comp.year_built : 0)
+        if (subjectAge && compAge) {
+          autoAdjustments.age = (compAge - subjectAge) * 0.5
+        }
+        
+        // Time adjustment (0.5% per month based on market appreciation)
+        const saleDate = new Date(comp.sale_date)
+        const now = new Date()
+        const months = (now.getTime() - saleDate.getTime()) / (1000 * 60 * 60 * 24 * 30)
+        const annualAppreciation = marketContext?.market?.price_index_change_yoy || 6
+        autoAdjustments.time = Math.min(15, months * (annualAppreciation / 12))
+        
+        // Bedroom adjustment (2.5% per bedroom)
+        if (subject.bedrooms && comp.bedrooms) {
+          autoAdjustments.bedrooms = (subject.bedrooms - comp.bedrooms) * 2.5
+        }
+        
+        // Bathroom adjustment (2% per bathroom)
+        if (subject.bathrooms && comp.bathrooms) {
+          autoAdjustments.bathrooms = (subject.bathrooms - comp.bathrooms) * 2
+        }
+        
+        // Condition adjustment (5% per level)
+        const conditionLevels: Record<string, number> = { excellent: 4, good: 3, fair: 2, poor: 1 }
+        const subjectCondition = conditionLevels[subject.condition || 'good'] || 3
+        const compCondition = conditionLevels[comp.condition || 'good'] || 3
+        autoAdjustments.condition = (subjectCondition - compCondition) * 5
+        
+        // Quality adjustment (5% per level)
+        const qualityLevels: Record<string, number> = { luxury: 5, high: 4, standard: 3, basic: 2, substandard: 1 }
+        const subjectQuality = qualityLevels[subject.quality_rating || 'standard'] || 3
+        const compQuality = qualityLevels[comp.quality_rating || 'standard'] || 3
+        autoAdjustments.quality = (subjectQuality - compQuality) * 5
+        
+        // Floor level adjustment (2% per floor)
+        if (subject.floor_number && comp.floor_number) {
+          autoAdjustments.floor_level = (subject.floor_number - comp.floor_number) * 2
+        }
+        
+        // Parking adjustment (0.5% per space)
+        if (subject.parking_spaces !== undefined && comp.parking_spaces !== undefined) {
+          autoAdjustments.parking = ((subject.parking_spaces || 0) - (comp.parking_spaces || 0)) * 0.5
+        }
+        
+        const totalAdjustment = Object.values(autoAdjustments).reduce((sum, v) => sum + (v || 0), 0)
+        const adjustedPrice = (comp.sale_price || 0) * (1 + totalAdjustment / 100)
+        const adjustedPricePerSqm = adjustedPrice / (comp.gfa || 1)
+        
+        return {
+          ...comp,
+          adjustments: autoAdjustments,
+          totalAdjustment,
+          adjustedPrice,
+          adjustedPricePerSqm,
+        }
+      })
+    )
+  }, [valuation, selectedComparables.length, loading, marketContext])
 
   // =====================================================
   // SEARCH & SELECTION
@@ -319,13 +498,9 @@ export default function MarketDataPage() {
   // Update weight for a comparable
   const handleWeightChange = useCallback((compId: string, weight: number) => {
     setSelectedComparables(prev =>
-      prev.map(comp => comp.id === compId ? { ...comp, weight } : comp)
+      prev.map(comp => comp.id === compId ? { ...comp, weight: weight / 100 } : comp) // Convert percentage to decimal
     )
-    // Switch to manual weighting if user changes weights
-    if (weightingMethod !== 'manual') {
-      setWeightingMethod('manual')
-    }
-  }, [weightingMethod])
+  }, [])
 
   // Toggle lock on comparable
   const handleLockToggle = useCallback((compId: string) => {
@@ -443,63 +618,62 @@ export default function MarketDataPage() {
     return Math.max(0, Math.min(100, score))
   }, [])
 
-  // Calculate indicated value based on weighting method
+  // Calculate indicated value using Python valuation service
   const calculateIndicatedValue = useMemo(() => {
-    if (selectedComparables.length === 0) return null
-
-    const subjectGFA = (valuation?.property as any)?.gfa || (valuation?.property as any)?.plot_size || 200
-
-    switch (weightingMethod) {
-      case 'simple_average': {
-        const avgPricePerSqm = selectedComparables.reduce((sum, c) => 
-          sum + (c.adjustedPricePerSqm || 0), 0) / selectedComparables.length
-        return avgPricePerSqm * subjectGFA
-      }
-      
-      case 'median': {
-        const sortedPrices = selectedComparables
-          .map(c => c.adjustedPricePerSqm || 0)
-          .sort((a, b) => a - b)
-        const mid = Math.floor(sortedPrices.length / 2)
-        const medianPrice = sortedPrices.length % 2 === 0
-          ? (sortedPrices[mid - 1] + sortedPrices[mid]) / 2
-          : sortedPrices[mid]
-        return medianPrice * subjectGFA
-      }
-      
-      case 'quality_weighted': {
-        const qualityScores = selectedComparables.map(c => calculateQualityScore(c))
-        const totalScore = qualityScores.reduce((sum, s) => sum + s, 0)
-        
-        let weightedSum = 0
-        selectedComparables.forEach((comp, i) => {
-          const weight = totalScore > 0 ? qualityScores[i] / totalScore : 1 / selectedComparables.length
-          weightedSum += (comp.adjustedPricePerSqm || 0) * weight
-        })
-        return weightedSum * subjectGFA
-      }
-      
-      case 'manual': {
-        const totalWeight = selectedComparables.reduce((sum, c) => sum + (c.weight || 0), 0)
-        let weightedSum = 0
-        selectedComparables.forEach(comp => {
-          const weight = totalWeight > 0 ? (comp.weight || 0) / totalWeight : 1 / selectedComparables.length
-          weightedSum += (comp.adjustedPricePerSqm || 0) * weight
-        })
-        return weightedSum * subjectGFA
-      }
-      
-      default:
-        return null
+    // Return null - we'll fetch this from the Python service instead
+    return null
+  }, [])
+  
+  // Fetch sales comparison result from Python service
+  const [pythonValuationResult, setPythonValuationResult] = useState<any>(null)
+  const [isCalculating, setIsCalculating] = useState(false)
+  
+  // Run Python valuation when comparables are loaded
+  useEffect(() => {
+    if (selectedComparables.length > 0 && valuation && !isCalculating) {
+      runPythonValuation()
     }
-  }, [selectedComparables, weightingMethod, valuation, calculateQualityScore])
+  }, [selectedComparables.length, valuation?.id])
+  
+  const runPythonValuation = async () => {
+    if (!valuation?.id) return
+    
+    setIsCalculating(true)
+    try {
+      // Note: Next.js rewrites /api/* to /api/v1/*, so we use /api/ (not /api/v1/)
+      const response = await fetch(`/api/valuations/${valuation.id}/run-python`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          methods: ['sales_comparison'],
+          include_comparables: true
+        })
+      })
+      
+      if (response.ok) {
+        const result = await response.json()
+        setPythonValuationResult(result.data)
+        console.log('Python valuation result:', result.data)
+      } else {
+        console.error('Failed to run Python valuation:', response.statusText)
+      }
+    } catch (error) {
+      console.error('Error calling Python valuation service:', error)
+    } finally {
+      setIsCalculating(false)
+    }
+  }
 
   // Calculate confidence based on number and quality of comparables
   const calculateConfidence = useCallback(() => {
     const count = selectedComparables.length
+    if (count === 0) return 0
+    
     const avgAdjustment = selectedComparables.reduce(
       (sum, c) => sum + Math.abs(c.totalAdjustment || 0), 0
-    ) / (count || 1)
+    ) / count
 
     // Base confidence on count (max at 5+ comps)
     const countScore = Math.min(count / 5, 1) * 0.4
@@ -510,10 +684,10 @@ export default function MarketDataPage() {
     // Bonus for quality scores
     const avgQuality = selectedComparables.reduce(
       (sum, c) => sum + calculateQualityScore(c), 0
-    ) / (count || 1)
+    ) / count
     const qualityScore = (avgQuality / 100) * 0.3
 
-    return countScore + adjustmentScore + qualityScore
+    return Math.min(1, countScore + adjustmentScore + qualityScore)
   }, [selectedComparables, calculateQualityScore])
 
   // Value range calculation
@@ -564,30 +738,67 @@ export default function MarketDataPage() {
       setSaving(true)
       setError(null)
 
+      // Get value from Python RICS result
+      const ricsValue = pythonValuationResult?.estimated_value || pythonValuationResult?.rics_result?.estimated_value || 0
+      const ricsConfidence = pythonValuationResult?.confidence_score || pythonValuationResult?.rics_result?.confidence_score || 0.7
+
+      // Validate we have a calculated value
+      if (ricsValue === 0 && selectedComparables.length > 0) {
+        // Try running Python valuation if not done yet
+        await runPythonValuation()
+        // Wait a moment for state update
+        await new Promise(resolve => setTimeout(resolve, 500))
+      }
+
+      // Re-read value after potential recalculation
+      const finalValue = pythonValuationResult?.estimated_value || pythonValuationResult?.rics_result?.estimated_value || ricsValue
+      
+      if (finalValue === 0 && selectedComparables.length > 0) {
+        setError('Valuation calculation is still in progress. Please wait and try again.')
+        setSaving(false)
+        return
+      }
+
       await comparablesApi.saveBasket(valuationId, {
         comparables: selectedComparables,
-        indicatedValue: calculateIndicatedValue,
+        indicatedValue: finalValue || ricsValue,
         avgPricePerSqm:
           selectedComparables.reduce((sum, c) => sum + (c.adjustedPricePerSqm || 0), 0) /
           (selectedComparables.length || 1),
       })
 
-      // Update valuation method result
+      const confidenceValue = ricsConfidence
+      const indicatedValue = ricsValue
+      
+      // Get value range from Python RICS result or calculate from comparables
+      const ricsValueRange = pythonValuationResult?.value_range || pythonValuationResult?.rics_result?.value_range || valueRange
+
+      // Update valuation method result and summary fields
       await valuationsApi.update(valuationId, {
         method_results: {
           ...(valuation?.method_results || {}),
           sales_comparison: {
-            value: calculateIndicatedValue || 0,
-            confidence: calculateConfidence(),
+            value: indicatedValue,
+            value_ghs: indicatedValue, // Also include as value_ghs for reconciliation page compatibility
+            confidence: confidenceValue,
+            confidence_score: confidenceValue, // Also include as confidence_score
             comparablesCount: selectedComparables.length,
             avgAdjustment:
               selectedComparables.reduce((sum, c) => sum + Math.abs(c.totalAdjustment || 0), 0) /
               (selectedComparables.length || 1),
-            weightingMethod,
-            valueRange,
+            method: 'rics_sales_comparison',
+            valueRange: ricsValueRange,
           },
         },
         current_step: 4,
+        // Also update summary fields on the main valuation record
+        sales_comparison_value: indicatedValue,
+        sales_comparison_confidence: confidenceValue,
+        confidence_score: confidenceValue, // Update main confidence score
+        // Update main estimated_value and value_range for reconciliation
+        estimated_value: indicatedValue,
+        value_range_low: ricsValueRange?.min || (indicatedValue * 0.9),
+        value_range_high: ricsValueRange?.max || (indicatedValue * 1.1),
       })
 
       // Navigate to next step based on selected methods
@@ -602,7 +813,8 @@ export default function MarketDataPage() {
       if (hasCostApproach) {
         router.push(`/dashboard/valuations/${valuationId}/cost`)
       } else if (hasIncomeApproach) {
-        router.push(`/dashboard/valuations/${valuationId}/income`)
+        // Route to rental-market first for rental comparable analysis
+        router.push(`/dashboard/valuations/${valuationId}/rental-market`)
       } else if (hasDRC) {
         router.push(`/dashboard/valuations/${valuationId}/drc`)
       } else if (hasProfits) {
@@ -694,30 +906,7 @@ export default function MarketDataPage() {
             </p>
           </div>
         </div>
-        
-        <div className="flex items-center gap-3">
-          {/* View mode toggle */}
-          <div className="flex items-center gap-1 bg-zinc-800 p-1">
-            <button
-              onClick={() => setViewMode('grid')}
-              className={`px-2 py-1 font-mono text-[10px] ${viewMode === 'grid' ? 'bg-amber-500 text-black' : 'text-zinc-400 hover:text-white'}`}
-            >
-              GRID
-            </button>
-            <button
-              onClick={() => setViewMode('cards')}
-              className={`px-2 py-1 font-mono text-[10px] ${viewMode === 'cards' ? 'bg-amber-500 text-black' : 'text-zinc-400 hover:text-white'}`}
-            >
-              CARDS
-            </button>
-            <button
-              onClick={() => setViewMode('compact')}
-              className={`px-2 py-1 font-mono text-[10px] ${viewMode === 'compact' ? 'bg-amber-500 text-black' : 'text-zinc-400 hover:text-white'}`}
-            >
-              COMPACT
-            </button>
-          </div>
-        </div>
+
       </div>
 
       {error && (
@@ -745,10 +934,10 @@ export default function MarketDataPage() {
         />
       )}
 
-      {/* ===== 3-COLUMN REFERENCE DATA GRID: Market | Construction | Labour ===== */}
-      <div className="grid grid-cols-3 gap-4 mb-6" style={{ height: '600px' }}>
+      {/* ===== 2-COLUMN REFERENCE DATA GRID: Market | Construction ===== */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
         {/* Column 1: Market Context */}
-        <div className="overflow-y-auto border border-zinc-800 bg-black/30 rounded">
+        <div className="border border-zinc-800 bg-black/30 rounded overflow-hidden">
           <MarketContextPanel
             region={region}
             propertyType={valuation?.property?.property_type}
@@ -757,30 +946,22 @@ export default function MarketDataPage() {
           />
         </div>
 
-        {/* Column 2: Construction Costs */}
-        <div className="overflow-y-auto border border-zinc-800 bg-black/30 rounded">
+        {/* Column 2: Construction Costs (for reference, based on selected region) */}
+        <div className="border border-zinc-800 bg-black/30 rounded overflow-hidden">
           <EditableConstructionCostPanel
             region={region}
             qualityTier={subjectProperty.quality_rating}
             onDataChange={setConstructionCosts}
             onSave={async (data) => {
-              const response = await fetch('/api/v1/data-hub/economic/construction-costs', {
+              const response = await fetch('/api/data-hub/economic/construction-costs', {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(data),
+                body: JSON.stringify({ ...data, region }),
               });
               if (!response.ok) {
                 throw new Error('Failed to save construction costs');
               }
             }}
-            collapsed={false}
-          />
-        </div>
-
-        {/* Column 3: Labour Costs */}
-        <div className="overflow-y-auto border border-zinc-800 bg-black/30 rounded">
-          <LaborCostsPanel
-            region={region}
             collapsed={false}
           />
         </div>
@@ -845,7 +1026,7 @@ export default function MarketDataPage() {
                   Go to Comparable Search to select properties →
                 </Link>
               </div>
-            ) : viewMode === 'grid' ? (
+            ) : (
               // Full Adjustment Grid View
               <AdjustmentGrid
                 subject={subjectProperty}
@@ -854,114 +1035,26 @@ export default function MarketDataPage() {
                 onWeightChange={handleWeightChange}
                 onLockToggle={handleLockToggle}
                 onAutoCalculate={handleAutoCalculate}
-                showWeights={showWeights || weightingMethod === 'manual'}
+                showWeights={false}
               />
-            ) : viewMode === 'cards' ? (
-              // Card View - 2 columns grid
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                {selectedComparables.map((comp) => (
-                  <ComparableDetailCard
-                    key={comp.id}
-                    comparable={comp as any}
-                    adjustments={comp.adjustments}
-                    subjectProperty={subjectProperty as any}
-                    isSelected={true}
-                    onRemove={() => removeComparable(comp.id)}
-                    onAdjustmentChange={(cat, val) => handleAdjustmentChange(comp.id, cat, val)}
-                    onExpand={() => {}}
-                  />
-                ))}
-              </div>
-            ) : (
-              // Compact Table View
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead>
-                    <tr className="text-[10px] font-mono text-zinc-500 border-b border-zinc-800">
-                      <th className="text-left pb-2 px-2">PROPERTY</th>
-                      <th className="text-right pb-2 px-2">ASKING PRICE</th>
-                      <th className="text-right pb-2 px-2">₵/SQM</th>
-                      <th className="text-right pb-2 px-2">ADJ %</th>
-                      <th className="text-right pb-2 px-2">ADJ VALUE</th>
-                      <th className="w-8"></th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {selectedComparables.map((comp) => (
-                      <tr key={comp.id} className="border-b border-zinc-800/50">
-                        <td className="py-2 px-2">
-                          <div className="font-mono text-xs text-white">
-                            {(comp as any).full_address || (comp as any).address || '—'}
-                          </div>
-                          <div className="font-mono text-[10px] text-zinc-500">
-                            {comp.gfa} sqm • {new Date(comp.sale_date).toLocaleDateString('en-GB', { month: 'short', year: '2-digit' })}
-                          </div>
-                        </td>
-                        <td className="py-2 px-2 text-right font-mono text-xs text-zinc-400">
-                          <div>₵{(comp.sale_price || 0).toLocaleString()}</div>
-                          {comp.price_currency === 'USD' && comp.price_original && (
-                            <div className="text-[9px] text-zinc-600">(${comp.price_original.toLocaleString()} USD)</div>
-                          )}
-                        </td>
-                        <td className="py-2 px-2 text-right font-mono text-xs text-zinc-400">
-                          ₵{Math.round((comp.sale_price || 0) / (comp.gfa || 1)).toLocaleString()}
-                        </td>
-                        <td className={`py-2 px-2 text-right font-mono text-xs font-bold ${
-                          (comp.totalAdjustment || 0) > 0 ? 'text-green-400' : 
-                          (comp.totalAdjustment || 0) < 0 ? 'text-red-400' : 'text-zinc-400'
-                        }`}>
-                          {(comp.totalAdjustment || 0) > 0 ? '+' : ''}{(comp.totalAdjustment || 0).toFixed(1)}%
-                        </td>
-                        <td className="py-2 px-2 text-right font-mono text-sm text-amber-400">
-                          ₵{Math.round(comp.adjustedPrice || 0).toLocaleString()}
-                        </td>
-                        <td className="py-2">
-                          <button
-                            onClick={() => removeComparable(comp.id)}
-                            className="p-1 text-zinc-500 hover:text-red-400"
-                          >
-                            <X className="w-3 h-3" />
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
             )}
           </TerminalPanel>
 
           {/* Value Reconciliation */}
           <TerminalPanel title="VALUE RECONCILIATION">
-            {/* Weighting Method Selection */}
+            {/* RICS Method Indicator */}
             <div className="flex items-center gap-4 mb-4">
-              <span className="font-mono text-[10px] text-zinc-500">WEIGHTING METHOD:</span>
-              <div className="flex gap-1">
-                {(['quality_weighted', 'simple_average', 'median', 'manual'] as WeightingMethod[]).map((method) => (
-                  <button
-                    key={method}
-                    onClick={() => setWeightingMethod(method)}
-                    className={`px-2 py-1 font-mono text-[10px] border transition-colors ${
-                      weightingMethod === method 
-                        ? 'border-amber-500 bg-amber-500/20 text-amber-500' 
-                        : 'border-zinc-700 text-zinc-400 hover:border-zinc-600'
-                    }`}
-                  >
-                    {method.replace('_', ' ').toUpperCase()}
-                  </button>
-                ))}
+              <span className="font-mono text-[10px] text-zinc-500">METHOD:</span>
+              <div className="flex items-center gap-2">
+                <span className="px-2 py-1 font-mono text-[10px] border border-amber-500 bg-amber-500/20 text-amber-500">
+                  RICS SALES COMPARISON
+                </span>
+                {isCalculating && (
+                  <span className="font-mono text-[10px] text-amber-400 animate-pulse">
+                    CALCULATING...
+                  </span>
+                )}
               </div>
-              {weightingMethod === 'manual' && (
-                <button
-                  onClick={() => setShowWeights(!showWeights)}
-                  className={`px-2 py-1 font-mono text-[10px] flex items-center gap-1 border transition-colors ${
-                    showWeights ? 'border-green-500 text-green-500' : 'border-zinc-700 text-zinc-400'
-                  }`}
-                >
-                  <Scale className="w-3 h-3" />
-                  {showWeights ? 'HIDE WEIGHTS' : 'SHOW WEIGHTS'}
-                </button>
-              )}
             </div>
             
             {/* Value Display */}
@@ -969,19 +1062,16 @@ export default function MarketDataPage() {
               <div className="p-4 bg-zinc-800/30 text-center">
                 <div className="font-mono text-[10px] text-zinc-500 mb-1">VALUE RANGE</div>
                 <div className="font-mono text-sm text-white">
-                  {valueRange ? (
-                    <>₵{Math.round(valueRange.min).toLocaleString()} - ₵{Math.round(valueRange.max).toLocaleString()}</>
+                  {pythonValuationResult?.sales_comparison?.value_range ? (
+                    <>₵{Math.round(pythonValuationResult.sales_comparison.value_range.low).toLocaleString()} - ₵{Math.round(pythonValuationResult.sales_comparison.value_range.high).toLocaleString()}</>
                   ) : '—'}
                 </div>
               </div>
               <div className="p-4 bg-zinc-800/30 text-center">
-                <div className="font-mono text-[10px] text-zinc-500 mb-1">AVG ADJUSTED ₵/SQM</div>
+                <div className="font-mono text-[10px] text-zinc-500 mb-1">IMPLIED ₵/SQM</div>
                 <div className="font-mono text-xl text-white">
-                  ₵{selectedComparables.length > 0
-                    ? Math.round(
-                        selectedComparables.reduce((sum, c) => sum + (c.adjustedPricePerSqm || 0), 0) /
-                          selectedComparables.length
-                      ).toLocaleString()
+                  ₵{pythonValuationResult?.sales_comparison?.estimated_value && subjectProperty.gfa
+                    ? Math.round(pythonValuationResult.sales_comparison.estimated_value / subjectProperty.gfa).toLocaleString()
                     : '—'}
                 </div>
               </div>
@@ -992,10 +1082,23 @@ export default function MarketDataPage() {
                 </div>
               </div>
               <div className="p-4 bg-green-900/20 border border-green-800 text-center">
-                <div className="font-mono text-[10px] text-green-400 mb-1">INDICATED VALUE</div>
-                <div className="font-mono text-2xl text-green-400 font-bold">
-                  ₵{calculateIndicatedValue ? Math.round(calculateIndicatedValue).toLocaleString() : '—'}
+                <div className="font-mono text-[10px] text-green-400 mb-1">
+                  {isCalculating ? 'CALCULATING...' : 'INDICATED VALUE'}
                 </div>
+                <div className="font-mono text-2xl text-green-400 font-bold">
+                  {isCalculating ? (
+                    <div className="animate-pulse">...</div>
+                  ) : (
+                    <>₵{pythonValuationResult?.sales_comparison?.estimated_value 
+                      ? Math.round(pythonValuationResult.sales_comparison.estimated_value).toLocaleString() 
+                      : '—'}</>
+                  )}
+                </div>
+                {pythonValuationResult?.sales_comparison?.confidence_level && (
+                  <div className="font-mono text-[9px] text-green-400 mt-1 opacity-75">
+                    {pythonValuationResult.sales_comparison.confidence_level.toUpperCase()} CONFIDENCE
+                  </div>
+                )}
               </div>
             </div>
 

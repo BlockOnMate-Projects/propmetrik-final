@@ -32,20 +32,56 @@ import {
   Edit,
   Save,
   Search,
+  Banknote,
+  Factory,
+  Landmark,
+  HardHat,
 } from 'lucide-react'
 
-// Valuation workflow steps
-const WORKFLOW_STEPS = [
+// Core workflow steps (always shown)
+const CORE_STEPS = [
   { id: 1, label: 'Property Setup', icon: Home, path: 'property' },
   { id: 2, label: 'HBU Analysis', icon: TrendingUp, path: 'hbu' },
   { id: 3, label: 'Method Selection', icon: Calculator, path: 'methods' },
-  { id: 4, label: 'Comparable Search', icon: Search, path: 'comparables' },
-  { id: 5, label: 'Market Analysis', icon: DollarSign, path: 'market' },
-  { id: 6, label: 'Cost Inputs', icon: Building, path: 'cost' },
-  { id: 7, label: 'Income Analysis', icon: FileText, path: 'income' },
-  { id: 8, label: 'Reconciliation', icon: Scale, path: 'reconciliation' },
-  { id: 9, label: 'Report', icon: CheckCircle2, path: 'report' },
 ]
+
+// Method-specific steps - only shown when that method is selected
+const METHOD_STEPS: Record<string, { id: number; label: string; icon: any; path: string }[]> = {
+  sales_comparison: [
+    { id: 4, label: 'Comparable Search', icon: Search, path: 'comparables' },
+    { id: 5, label: 'Market Analysis', icon: DollarSign, path: 'market' },
+  ],
+  cost_approach: [
+    { id: 4, label: 'Cost Inputs', icon: Building, path: 'cost' },
+  ],
+  income_approach: [
+    { id: 4, label: 'Rental Market', icon: Banknote, path: 'rental-market' },
+    { id: 5, label: 'Income Analysis', icon: FileText, path: 'income' },
+  ],
+  profits_method: [
+    { id: 4, label: 'Profits Analysis', icon: Factory, path: 'profits' },
+  ],
+  drc_method: [
+    { id: 4, label: 'DRC Analysis', icon: Landmark, path: 'drc' },
+  ],
+  residual_method: [
+    { id: 4, label: 'Residual Analysis', icon: HardHat, path: 'residual' },
+  ],
+}
+
+// Final steps (always shown)
+const FINAL_STEPS = [
+  { id: 98, label: 'Reconciliation', icon: Scale, path: 'reconciliation' },
+  { id: 99, label: 'Report', icon: CheckCircle2, path: 'report' },
+]
+
+// Format region name to be more readable (e.g., "greater_accra" -> "Greater Accra")
+const formatRegion = (region: string | undefined): string => {
+  if (!region) return '';
+  return region
+    .replace(/_/g, ' ')
+    .replace(/\b\w/g, (char) => char.toUpperCase());
+};
 
 export default function ValuationDetailPage() {
   const params = useParams()
@@ -64,10 +100,7 @@ export default function ValuationDetailPage() {
   // Handle edit button click
   const handleEdit = () => {
     // Navigate to property setup page for editing
-    const step = WORKFLOW_STEPS.find(s => s.id === 1) // Property Setup step
-    if (step) {
-      router.push(`/dashboard/valuations/${valuationId}/${step.path}?edit=true`)
-    }
+    router.push(`/dashboard/valuations/${valuationId}/property?edit=true`)
   }
 
   // Handle save progress button click  
@@ -135,24 +168,71 @@ export default function ValuationDetailPage() {
 
   // Navigate to step
   const goToStep = (stepId: number) => {
-    const step = WORKFLOW_STEPS.find(s => s.id === stepId)
+    const steps = getWorkflowSteps()
+    let step = steps.find(s => s.id === stepId)
+    
+    // If step not found (current_step exceeds max), go to the last step or reconciliation
+    if (!step) {
+      // Find reconciliation or the last step
+      step = steps.find(s => s.path === 'reconciliation') || steps[steps.length - 1]
+    }
+    
     if (step) {
       router.push(`/dashboard/valuations/${valuationId}/${step.path}`)
     }
   }
+  
+  // Build dynamic workflow steps based on selected methods
+  const getWorkflowSteps = () => {
+    const selectedMethods = (valuation as any)?.selectedMethods || valuation?.methods_applied || []
+    
+    // Start with core steps
+    const steps = [...CORE_STEPS]
+    
+    // Add method-specific steps based on what's selected
+    let stepId = 4
+    selectedMethods.forEach((method: string) => {
+      const methodSteps = METHOD_STEPS[method]
+      if (methodSteps) {
+        methodSteps.forEach(step => {
+          // Check if this path already exists (avoid duplicates)
+          if (!steps.some(s => s.path === step.path)) {
+            steps.push({ ...step, id: stepId++ })
+          }
+        })
+      }
+    })
+    
+    // If no methods selected yet, show a placeholder
+    if (selectedMethods.length === 0) {
+      steps.push({ id: 4, label: 'Select Methods', icon: Calculator, path: 'methods' })
+    }
+    
+    // Add final steps with adjusted IDs
+    FINAL_STEPS.forEach(step => {
+      steps.push({ ...step, id: stepId++ })
+    })
+    
+    return steps
+  }
 
-  // Calculate workflow progress
-  const getStepStatus = (stepId: number): 'completed' | 'current' | 'upcoming' | 'error' => {
+  // Calculate workflow progress - now uses path-based comparison
+  const getStepStatus = (stepId: number, stepPath: string): 'completed' | 'current' | 'upcoming' | 'error' => {
     const currentStep = valuation?.current_step || 1
-    if (stepId < currentStep) return 'completed'
-    if (stepId === currentStep) return 'current'
+    const steps = getWorkflowSteps()
+    const stepIndex = steps.findIndex(s => s.id === stepId)
+    const currentStepIndex = Math.min(currentStep - 1, steps.length - 1)
+    
+    if (stepIndex < currentStepIndex) return 'completed'
+    if (stepIndex === currentStepIndex) return 'current'
     return 'upcoming'
   }
 
-  const workflowSteps = WORKFLOW_STEPS.map(step => ({
+  const workflowSteps = getWorkflowSteps().map(step => ({
     id: step.id,
     label: step.label,
-    status: getStepStatus(step.id),
+    path: step.path,
+    status: getStepStatus(step.id, step.path),
   }))
 
   if (loading) {
@@ -233,9 +313,9 @@ export default function ValuationDetailPage() {
       {/* Workflow Progress */}
       <TerminalPanel title="VALUATION WORKFLOW" className="mb-6">
         <div className="flex items-center justify-between">
-          {WORKFLOW_STEPS.map((step, i) => {
+          {getWorkflowSteps().map((step, i) => {
             const StepIcon = step.icon
-            const status = getStepStatus(step.id)
+            const status = getStepStatus(step.id, step.path)
             const isActive = step.id === activeStep
             const isCompleted = status === 'completed'
             const isCurrent = status === 'current'
@@ -274,7 +354,7 @@ export default function ValuationDetailPage() {
                     </div>
                   </div>
                 </button>
-                {i < WORKFLOW_STEPS.length - 1 && (
+                {i < getWorkflowSteps().length - 1 && (
                   <div className={`w-12 h-0.5 mx-1 ${
                     isCompleted ? 'bg-green-500' : 'bg-zinc-700'
                   }`} />
@@ -292,17 +372,30 @@ export default function ValuationDetailPage() {
           <div className="grid grid-cols-3 gap-6">
             <div>
               <div className="font-mono text-[10px] text-zinc-500 mb-1">ADDRESS</div>
-              <div className="font-mono text-sm text-white">{property?.address || property?.location || '—'}</div>
-              <div className="font-mono text-xs text-zinc-400">{property?.city && property?.region ? `${property.city}, ${property.region}` : (property?.city || property?.region || '')}</div>
+              <div className="font-mono text-sm text-white">{property?.address || property?.address_street || property?.location || '—'}</div>
+              <div className="font-mono text-xs text-zinc-400">
+                {property?.city || property?.address_city ? (
+                  <>
+                    {property?.city || property?.address_city}
+                    {property?.region ? `, ${formatRegion(property.region)}` : ''}
+                  </>
+                ) : (
+                  formatRegion(property?.region) || ''
+                )}
+              </div>
             </div>
             <div>
               <div className="font-mono text-[10px] text-zinc-500 mb-1">TYPE</div>
-              <PropertyTypeBadge type={property?.property_type || 'residential'} />
+              <PropertyTypeBadge type={property?.property_type || (property as any)?.propertyType || 'residential'} />
             </div>
             <div>
               <div className="font-mono text-[10px] text-zinc-500 mb-1">SIZE</div>
               <div className="font-mono text-lg text-white">
-                {property?.land_area_sqm || property?.plot_size ? `${(property.land_area_sqm || property.plot_size)?.toLocaleString()} sqm` : '—'}
+                {(() => {
+                  const prop = property as any
+                  const size = prop?.land_area_sqm || prop?.landArea || prop?.plot_size || prop?.plotSize
+                  return size ? `${size.toLocaleString()} sqm` : '—'
+                })()}
               </div>
             </div>
             <div>
@@ -315,7 +408,7 @@ export default function ValuationDetailPage() {
             </div>
             <div>
               <div className="font-mono text-[10px] text-zinc-500 mb-1">YEAR BUILT</div>
-              <div className="font-mono text-lg text-white">{property?.year_built || '—'}</div>
+              <div className="font-mono text-lg text-white">{property?.year_built || (property as any)?.yearBuilt || '—'}</div>
             </div>
           </div>
         </TerminalPanel>
@@ -396,16 +489,26 @@ export default function ValuationDetailPage() {
       {floorPlans.length > 0 && (
         <TerminalPanel title="FLOOR PLANS" className="mt-4">
           <div className="grid grid-cols-4 gap-4">
-            {floorPlans.map((plan) => (
-              <div key={plan.id} className="p-3 bg-zinc-800/30 border border-zinc-700">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="font-mono text-xs text-white">{plan.floorNumber === 0 ? 'Ground Floor' : `Floor ${plan.floorNumber}`}</span>
-                  <Maximize className="w-3 h-3 text-zinc-500" />
+            {floorPlans.map((plan: any) => {
+              // Handle both camelCase and snake_case field names from API
+              const floorNumber = plan.floorNumber ?? plan.floor_number ?? 0;
+              const floorLabel = plan.floorLabel || plan.floor_label || (floorNumber === 0 ? 'Ground Floor' : `Floor ${floorNumber}`);
+              const totalArea = plan.totalArea ?? plan.total_area ?? plan.gross_building_area_sqm ?? 0;
+              const rooms = plan.rooms || [];
+
+              return (
+                <div key={plan.id} className="p-3 bg-zinc-800/30 border border-zinc-700">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="font-mono text-xs text-white">{floorLabel}</span>
+                    <Maximize className="w-3 h-3 text-zinc-500" />
+                  </div>
+                  <div className="font-mono text-lg text-amber-400">
+                    {totalArea > 0 ? `${totalArea.toLocaleString()} sqm` : '—'}
+                  </div>
+                  <div className="font-mono text-[10px] text-zinc-500">{rooms.length} rooms</div>
                 </div>
-                <div className="font-mono text-lg text-amber-400">{plan.totalArea?.toLocaleString()} sqm</div>
-                <div className="font-mono text-[10px] text-zinc-500">{plan.rooms?.length || 0} rooms</div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </TerminalPanel>
       )}
@@ -414,37 +517,55 @@ export default function ValuationDetailPage() {
       {hbuAnalysis && (
         <TerminalPanel title="HIGHEST & BEST USE" className="mt-4">
           <div className="grid grid-cols-4 gap-4">
-            <div className="p-3 bg-zinc-800/30 border border-zinc-700">
-              <div className="font-mono text-[10px] text-zinc-500 mb-1">LEGALLY PERMISSIBLE</div>
-              <div className={`font-mono text-sm ${hbuAnalysis.legallyPermissible ? 'text-green-400' : 'text-red-400'}`}>
-                {hbuAnalysis.legallyPermissible ? '✓ PASS' : '✗ FAIL'}
-              </div>
-            </div>
-            <div className="p-3 bg-zinc-800/30 border border-zinc-700">
-              <div className="font-mono text-[10px] text-zinc-500 mb-1">PHYSICALLY POSSIBLE</div>
-              <div className={`font-mono text-sm ${hbuAnalysis.physicallyPossible ? 'text-green-400' : 'text-red-400'}`}>
-                {hbuAnalysis.physicallyPossible ? '✓ PASS' : '✗ FAIL'}
-              </div>
-            </div>
-            <div className="p-3 bg-zinc-800/30 border border-zinc-700">
-              <div className="font-mono text-[10px] text-zinc-500 mb-1">FINANCIALLY FEASIBLE</div>
-              <div className={`font-mono text-sm ${hbuAnalysis.financiallyFeasible ? 'text-green-400' : 'text-red-400'}`}>
-                {hbuAnalysis.financiallyFeasible ? '✓ PASS' : '✗ FAIL'}
-              </div>
-            </div>
-            <div className="p-3 bg-zinc-800/30 border border-zinc-700">
-              <div className="font-mono text-[10px] text-zinc-500 mb-1">MAXIMALLY PRODUCTIVE</div>
-              <div className={`font-mono text-sm ${hbuAnalysis.maximallyProductive ? 'text-green-400' : 'text-red-400'}`}>
-                {hbuAnalysis.maximallyProductive ? '✓ PASS' : '✗ FAIL'}
-              </div>
-            </div>
+            {(() => {
+              // Handle both camelCase and snake_case field names from API
+              const hbu = hbuAnalysis as any;
+              const legallyPermissible = hbu.legallyPermissible ?? hbu.legal_test_passed ?? false;
+              const physicallyPossible = hbu.physicallyPossible ?? hbu.physical_test_passed ?? false;
+              const financiallyFeasible = hbu.financiallyFeasible ?? hbu.financial_test_passed ?? false;
+              const maximallyProductive = hbu.maximallyProductive ?? hbu.productivity_test_passed ?? false;
+              const recommendedUse = hbu.recommendedUse ?? hbu.hbu_conclusion ?? hbu.hbu_as_improved ?? hbu.hbu_as_vacant ?? null;
+
+              return (
+                <>
+                  <div className="p-3 bg-zinc-800/30 border border-zinc-700">
+                    <div className="font-mono text-[10px] text-zinc-500 mb-1">LEGALLY PERMISSIBLE</div>
+                    <div className={`font-mono text-sm ${legallyPermissible ? 'text-green-400' : 'text-red-400'}`}>
+                      {legallyPermissible ? '✓ PASS' : '✗ FAIL'}
+                    </div>
+                  </div>
+                  <div className="p-3 bg-zinc-800/30 border border-zinc-700">
+                    <div className="font-mono text-[10px] text-zinc-500 mb-1">PHYSICALLY POSSIBLE</div>
+                    <div className={`font-mono text-sm ${physicallyPossible ? 'text-green-400' : 'text-red-400'}`}>
+                      {physicallyPossible ? '✓ PASS' : '✗ FAIL'}
+                    </div>
+                  </div>
+                  <div className="p-3 bg-zinc-800/30 border border-zinc-700">
+                    <div className="font-mono text-[10px] text-zinc-500 mb-1">FINANCIALLY FEASIBLE</div>
+                    <div className={`font-mono text-sm ${financiallyFeasible ? 'text-green-400' : 'text-red-400'}`}>
+                      {financiallyFeasible ? '✓ PASS' : '✗ FAIL'}
+                    </div>
+                  </div>
+                  <div className="p-3 bg-zinc-800/30 border border-zinc-700">
+                    <div className="font-mono text-[10px] text-zinc-500 mb-1">MAXIMALLY PRODUCTIVE</div>
+                    <div className={`font-mono text-sm ${maximallyProductive ? 'text-green-400' : 'text-red-400'}`}>
+                      {maximallyProductive ? '✓ PASS' : '✗ FAIL'}
+                    </div>
+                  </div>
+                </>
+              );
+            })()}
           </div>
-          {hbuAnalysis.recommendedUse && (
-            <div className="mt-4 pt-4 border-t border-zinc-800">
-              <div className="font-mono text-[10px] text-zinc-500 mb-1">RECOMMENDED USE</div>
-              <div className="font-mono text-sm text-amber-400">{hbuAnalysis.recommendedUse}</div>
-            </div>
-          )}
+          {(() => {
+            const hbu = hbuAnalysis as any;
+            const recommendedUse = hbu.recommendedUse ?? hbu.hbu_conclusion ?? hbu.hbu_as_improved ?? hbu.hbu_as_vacant ?? null;
+            return recommendedUse && recommendedUse !== 'Pending Analysis' ? (
+              <div className="mt-4 pt-4 border-t border-zinc-800">
+                <div className="font-mono text-[10px] text-zinc-500 mb-1">RECOMMENDED USE</div>
+                <div className="font-mono text-sm text-amber-400">{recommendedUse}</div>
+              </div>
+            ) : null;
+          })()}
         </TerminalPanel>
       )}
 

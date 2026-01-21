@@ -3,9 +3,9 @@ Application Configuration
 Environment-based configuration with Ghana-specific defaults
 """
 
-from pydantic import Field, PostgresDsn
-from pydantic_settings import BaseSettings
-from typing import Dict, Optional, List
+from pydantic import Field, PostgresDsn, field_validator
+from pydantic_settings import BaseSettings, SettingsConfigDict
+from typing import Dict, Optional, List, Union, Any
 import os
 
 try:
@@ -16,6 +16,15 @@ except ImportError:
 
 class Settings(BaseSettings):
     """Application settings with Ghana-specific defaults"""
+    
+    # Configure .env file loading
+    # Look for .env in current dir, or in the backend root
+    model_config = SettingsConfigDict(
+        env_file=['.env', '../../../../.env', '../../../../../.env'],
+        env_file_encoding='utf-8',
+        extra='ignore',
+        case_sensitive=False
+    )
     
     # Database Configuration - uses DATABASE_URL from .env (same as TypeScript backend)
     database_url: str = Field(
@@ -36,7 +45,7 @@ class Settings(BaseSettings):
     
     # TypeScript Backend Data Hub API (for live construction/labor/economic data)
     data_hub_api_url: str = Field(
-        "http://localhost:4000/api/data-hub", 
+        "http://localhost:4000/api/v1/data-hub", 
         alias='DATA_HUB_API_URL'
     )
     data_hub_api_timeout: int = Field(30, env='DATA_HUB_API_TIMEOUT')
@@ -47,10 +56,23 @@ class Settings(BaseSettings):
     api_debug: bool = Field(False, env='API_DEBUG')
     
     # CORS Configuration
-    cors_origins: List[str] = Field(
-        ["http://localhost:3000", "http://localhost:3001"], 
+    cors_origins: Union[str, List[str]] = Field(
+        default=["http://localhost:3000", "http://localhost:3001"], 
         env='CORS_ORIGINS'
     )
+    
+    @field_validator('cors_origins')
+    @classmethod
+    def assemble_cors_origins(cls, v: Union[str, List[str]]) -> List[str]:
+        if isinstance(v, str) and not v.startswith("["):
+            return [i.strip() for i in v.split(",")]
+        elif isinstance(v, str):
+            import json
+            try:
+                return json.loads(v)
+            except json.JSONDecodeError:
+                return [i.strip() for i in v.split(",")]
+        return v
     
     # Ghana Market Configuration
     default_comparable_radius_km: float = Field(5.0, env='DEFAULT_COMPARABLE_RADIUS_KM')
@@ -123,23 +145,9 @@ class Settings(BaseSettings):
     enable_test_routes: bool = Field(False, env='ENABLE_TEST_ROUTES')
     mock_external_services: bool = Field(False, env='MOCK_EXTERNAL_SERVICES')
     
-    class Config:
-        env_file = ".env"
-        case_sensitive = False
-        
-        # Environment variable parsing for complex types
-        @classmethod
-        def parse_env_var(cls, field_name: str, raw_val: str) -> any:
-            if field_name in ['cors_origins']:
-                return raw_val.split(',') if raw_val else []
-            elif field_name in ['regional_multipliers', 'default_method_weights', 'land_tenure_multipliers']:
-                # Parse JSON-like string for dict fields
-                import json
-                try:
-                    return json.loads(raw_val)
-                except (json.JSONDecodeError, TypeError):
-                    return cls.__fields__[field_name].default
-            return raw_val
+    # Custom parsers for environment variables
+    # Note: simple comma-separated list parsing for cors_origins handled by Pydantic V2 if valid JSON or via validation if needed.
+    # Complex parsing logic from Pydantic V1 Config.parse_env_var is removed for V2 compatibility.
     
     def get_regional_multiplier(self, region: GhanaRegion) -> float:
         """Get pricing multiplier for a specific region"""

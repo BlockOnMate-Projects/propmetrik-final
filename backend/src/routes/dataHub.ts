@@ -5,6 +5,7 @@
 
 import { Router, Request, Response } from 'express';
 import { asyncHandler } from '../middleware/errorHandler';
+import { authenticate, requireOrganization } from '../middleware/auth';
 import {
   dataSourceService,
   etlJobService,
@@ -13,6 +14,10 @@ import {
   geocodingService,
   dataHubQueueManager,
   DataHubQueueManager,
+  dataHubAnalyticsService,
+  dataHubPerformanceService,
+  spiderManagementService,
+  DataCatalogService,
   DataSourceTier,
   EtlJobType,
   EtlJobStatus,
@@ -20,6 +25,11 @@ import {
   ValidationStatus,
   RegionCode,
 } from '../services/data-hub';
+import { dataQualityService } from '../services/data-hub/dataQualityService';
+import { systemSettingsService } from '../services/data-hub/systemSettingsService';
+import { systemHealthService } from '../services/data-hub/systemHealthService';
+import { dataLineageService } from '../services/data-hub/dataLineageService';
+import { dataInsightsService } from '../services/data-hub/dataInsightsService';
 import { economicDataService, EconomicIndicatorType } from '../services/data-hub/economicDataService';
 import { constructionCostService, MaterialCategory, LaborCategory } from '../services/data-hub/constructionCostService';
 import { logger } from '../utils/logger';
@@ -315,6 +325,7 @@ router.get('/contributions', asyncHandler(async (req: Request, res: Response) =>
     contribution_type: req.query.contribution_type as ContributionType | undefined,
     validation_status: req.query.validation_status as ValidationStatus | undefined,
     property_region: req.query.property_region as RegionCode | undefined,
+    source_context: req.query.source_context as string | undefined,
     page: parseInt(req.query.page as string, 10) || 1,
     limit: Math.min(parseInt(req.query.limit as string, 10) || 20, 100),
   };
@@ -326,6 +337,106 @@ router.get('/contributions', asyncHandler(async (req: Request, res: Response) =>
     data: result.data,
     meta: result.meta,
   });
+}));
+
+/**
+ * Get contribution stats
+ * GET /data-hub/contributions/stats
+ */
+router.get('/contributions/stats', asyncHandler(async (req: Request, res: Response) => {
+  const stats = await contributionService.getStats();
+  res.json({
+    success: true,
+    data: stats,
+  });
+}));
+
+
+
+// =====================================================
+// DATA QUALITY ROUTES
+// =====================================================
+
+router.get('/quality/trends', asyncHandler(async (req: Request, res: Response) => {
+  const trends = await dataQualityService.getQualityTrends(parseInt(req.query.days as string) || 30);
+  res.json({ success: true, data: trends });
+}));
+
+router.get('/quality/validation', asyncHandler(async (req: Request, res: Response) => {
+  const results = await dataQualityService.getValidationResults();
+  res.json({ success: true, data: results });
+}));
+
+router.get('/quality/completeness', asyncHandler(async (req: Request, res: Response) => {
+  const completeness = await dataQualityService.getFieldCompleteness();
+  res.json({ success: true, data: completeness });
+}));
+
+router.get('/quality/anomalies', asyncHandler(async (req: Request, res: Response) => {
+  const anomalies = await dataQualityService.getAnomalies(parseInt(req.query.limit as string) || 10);
+  res.json({ success: true, data: anomalies });
+}));
+
+router.get('/quality/profiles', asyncHandler(async (req: Request, res: Response) => {
+  const profiles = await dataQualityService.getDataProfiles();
+  res.json({ success: true, data: profiles });
+}));
+
+// =====================================================
+// DATA LINEAGE ROUTES
+// =====================================================
+
+router.get('/lineage/flow', asyncHandler(async (req: Request, res: Response) => {
+  const flow = await dataLineageService.getLineageFlow();
+  res.json({ success: true, data: flow });
+}));
+
+router.get('/lineage/audit', asyncHandler(async (req: Request, res: Response) => {
+  const logs = await dataLineageService.getAuditLog(parseInt(req.query.limit as string) || 50);
+  res.json({ success: true, data: logs });
+}));
+
+// =====================================================
+// DATA INSIGHTS ROUTES
+// =====================================================
+
+router.get('/insights', asyncHandler(async (req: Request, res: Response) => {
+  const activeInsights = await dataInsightsService.getActiveInsights();
+  const predictions = await dataInsightsService.getPredictions();
+
+  // Combine for now as the frontend expects separate but we can just send everything or 
+  // create dedicated endpoints if the frontend is strict.
+  // The frontend calls specific endpoints? No, the frontend mocks it currently.
+  // Let's assume the frontend will be updated to call this.
+
+  res.json({
+    success: true,
+    data: {
+      insights: activeInsights,
+      predictions: predictions
+    }
+  });
+}));
+
+// =====================================================
+// SYSTEM SETTINGS ROUTES
+// =====================================================
+
+router.get('/settings', asyncHandler(async (req: Request, res: Response) => {
+  const settings = await systemSettingsService.getAll();
+  res.json({ success: true, data: settings });
+}));
+
+router.put('/settings', asyncHandler(async (req: Request, res: Response) => {
+  await systemSettingsService.updateBatch(req.body, (req as any).user?.id || 'system');
+  res.json({ success: true, message: 'Settings updated' });
+}));
+
+
+
+router.get('/quality/profiles', asyncHandler(async (req: Request, res: Response) => {
+  const profiles = await dataQualityService.getDataProfiles();
+  res.json({ success: true, data: profiles });
 }));
 
 /**
@@ -749,6 +860,97 @@ router.get('/economic/exchange-rate/:currency', asyncHandler(async (req: Request
     success: true,
     data: rate,
   });
+}));
+
+/**
+ * Get historical exchange rate for a specific date (RICS VPS 3 compliant)
+ * 
+ * This endpoint supports fetching exchange rates as of a specific valuation date,
+ * which is critical for RICS Red Book and GhIS compliant retrospective valuations.
+ * 
+ * @example GET /data-hub/economic/exchange-rate/USD/historical?date=2025-06-15
+ * 
+ * GET /data-hub/economic/exchange-rate/:currency/historical
+ */
+router.get('/economic/exchange-rate/:currency/historical', asyncHandler(async (req: Request, res: Response) => {
+  const fromCurrency = req.params.currency.toUpperCase();
+  const toCurrency = (req.query.to as string)?.toUpperCase() || 'GHS';
+  const dateParam = req.query.date as string;
+
+  // Validate date parameter
+  if (!dateParam) {
+    res.status(400).json({
+      success: false,
+      error: 'date query parameter is required (format: YYYY-MM-DD)',
+      example: '/data-hub/economic/exchange-rate/USD/historical?date=2025-06-15',
+    });
+    return;
+  }
+
+  const asOfDate = new Date(dateParam);
+
+  // Validate date format
+  if (isNaN(asOfDate.getTime())) {
+    res.status(400).json({
+      success: false,
+      error: 'Invalid date format. Use ISO 8601 format: YYYY-MM-DD',
+      received: dateParam,
+    });
+    return;
+  }
+
+  // Validate date is not too far in the future (max 3 months per RICS VPS 3)
+  const maxFutureDate = new Date();
+  maxFutureDate.setMonth(maxFutureDate.getMonth() + 3);
+  if (asOfDate > maxFutureDate) {
+    res.status(400).json({
+      success: false,
+      error: 'Date cannot be more than 3 months in the future per RICS VPS 3 guidelines',
+      received: dateParam,
+      maxAllowed: maxFutureDate.toISOString().split('T')[0],
+    });
+    return;
+  }
+
+  // Validate date is not too far in the past (practical limit: 10 years)
+  const minDate = new Date();
+  minDate.setFullYear(minDate.getFullYear() - 10);
+  if (asOfDate < minDate) {
+    res.status(400).json({
+      success: false,
+      error: 'Historical rates are only available for the last 10 years',
+      received: dateParam,
+      minAllowed: minDate.toISOString().split('T')[0],
+    });
+    return;
+  }
+
+  try {
+    const rate = await economicDataService.getExchangeRateForDate(fromCurrency, toCurrency, asOfDate);
+
+    res.json({
+      success: true,
+      data: {
+        ...rate,
+        requested_date: dateParam,
+        is_retrospective: asOfDate < new Date(),
+        rics_compliant: true,
+      },
+      metadata: {
+        note: 'Exchange rate as of the specified valuation date per RICS VPS 3',
+        source_priority: ['Database Cache', 'Yahoo Finance Historical', 'Fallback'],
+      },
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: error instanceof Error ? error.message : 'Failed to fetch historical exchange rate',
+      requested: {
+        currency: fromCurrency,
+        date: dateParam,
+      },
+    });
+  }
 }));
 
 /**
@@ -1756,5 +1958,118 @@ router.get('/quality/geocoding', asyncHandler(async (req: Request, res: Response
   });
 }));
 
+// ============================================
+// Data Hub Analytics
+// ============================================
+
+router.get('/analytics/volume', asyncHandler(async (req: Request, res: Response) => {
+  const stats = await dataHubAnalyticsService.getVolumeByTier();
+  res.json({ success: true, data: stats });
+}));
+
+router.get('/analytics/trends', asyncHandler(async (req: Request, res: Response) => {
+  const range = (req.query.range as any) || '24h';
+  const trends = await dataHubAnalyticsService.getVolumeTrends(range);
+  res.json({ success: true, data: trends });
+}));
+
+router.get('/analytics/geographic', asyncHandler(async (req: Request, res: Response) => {
+  const dist = await dataHubAnalyticsService.getGeographicDistribution();
+  res.json({ success: true, data: dist });
+}));
+
+router.get('/analytics/performance', asyncHandler(async (req: Request, res: Response) => {
+  const perf = await dataHubAnalyticsService.getSourcePerformance();
+  res.json({ success: true, data: perf });
+}));
+
+router.get('/analytics/temporal', asyncHandler(async (req: Request, res: Response) => {
+  const patterns = await dataHubAnalyticsService.getTemporalPatterns();
+  res.json({ success: true, data: patterns });
+}));
+
+// ============================================
+// Data Hub Performance
+// ============================================
+
+router.get('/performance/ingestion', asyncHandler(async (req: Request, res: Response) => {
+  const speed = await dataHubPerformanceService.getIngestionSpeed();
+  res.json({ success: true, data: speed });
+}));
+
+router.get('/performance/processing', asyncHandler(async (req: Request, res: Response) => {
+  const times = await dataHubPerformanceService.getProcessingTime();
+  res.json({ success: true, data: times });
+}));
+
+router.get('/performance/queues', asyncHandler(async (req: Request, res: Response) => {
+  const queues = await dataHubPerformanceService.getQueueDepth();
+  res.json({ success: true, data: queues });
+}));
+
+router.get('/performance/resources', asyncHandler(async (req: Request, res: Response) => {
+  const resources = await dataHubPerformanceService.getResourceUtilization();
+  res.json({ success: true, data: resources });
+}));
+
+router.get('/performance/sla', asyncHandler(async (req: Request, res: Response) => {
+  const sla = await dataHubPerformanceService.getSlaMetrics();
+  res.json({ success: true, data: sla });
+}));
+
+router.get('/performance/bottlenecks', asyncHandler(async (req: Request, res: Response) => {
+  const alertList = await dataHubPerformanceService.getBottlenecks();
+  res.json({ success: true, data: alertList });
+}));
+
+// ============================================
+// Spider Management
+// ============================================
+
+router.get('/spiders', asyncHandler(async (req: Request, res: Response) => {
+  const spiders = await spiderManagementService.listSpiders();
+  res.json({ success: true, data: spiders });
+}));
+
+router.post('/spiders/:id/start', asyncHandler(async (req: Request, res: Response) => {
+  const success = await spiderManagementService.startSpider(req.params.id);
+  res.json({ success });
+}));
+
+router.post('/spiders/:id/stop', asyncHandler(async (req: Request, res: Response) => {
+  const success = await spiderManagementService.stopSpider(req.params.id);
+  res.json({ success });
+}));
+
+
+// ============================================
+// Data Catalog
+// ============================================
+
+router.get('/catalog/entries', asyncHandler(async (req: Request, res: Response) => {
+  const entries = await DataCatalogService.listEntries();
+  res.json({ success: true, data: entries });
+}));
+
+router.get('/catalog/entries/:id/schema', asyncHandler(async (req: Request, res: Response) => {
+  const fields = await DataCatalogService.getSchema(req.params.id);
+  res.json({ success: true, data: fields });
+}));
+
+// ============================================
+// SYSTEM HEALTH ROUTES
+// ============================================
+
+router.get(
+  '/system/health',
+  asyncHandler(async (req: Request, res: Response) => {
+    const health = await systemHealthService.getSystemHealth();
+    res.json({
+      success: true,
+      data: health
+    });
+  })
+);
 
 export default router;
+

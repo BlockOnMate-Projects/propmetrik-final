@@ -60,7 +60,7 @@ export class EtlJobService {
     }
 
     const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
-    
+
     const validSortColumns = ['created_at', 'started_at', 'completed_at', 'status', 'job_type'];
     const safeSortBy = validSortColumns.includes(sortBy) ? sortBy : 'created_at';
     const safeSortOrder = sortOrder === 'asc' ? 'ASC' : 'DESC';
@@ -132,10 +132,10 @@ export class EtlJobService {
       ]
     );
 
-    logger.info('Created ETL job', { 
-      id: result.rows[0].id, 
-      job_type, 
-      source_id 
+    logger.info('Created ETL job', {
+      id: result.rows[0].id,
+      job_type,
+      source_id
     });
 
     return result.rows[0];
@@ -210,7 +210,7 @@ export class EtlJobService {
    * Complete an ETL job successfully
    */
   async complete(
-    id: string, 
+    id: string,
     stats: {
       records_processed: number;
       records_successful: number;
@@ -228,8 +228,8 @@ export class EtlJobService {
     }
 
     const duration = Math.floor((Date.now() - new Date(job.started_at).getTime()) / 1000);
-    const progressPct = stats.records_processed > 0 
-      ? 100 
+    const progressPct = stats.records_processed > 0
+      ? 100
       : (job.records_total > 0 ? (stats.records_processed / job.records_total) * 100 : 0);
 
     const result = await query<EtlJob>(
@@ -258,10 +258,10 @@ export class EtlJobService {
     );
 
     if (result.rows[0]) {
-      logger.info('Completed ETL job', { 
-        id, 
+      logger.info('Completed ETL job', {
+        id,
         duration,
-        ...stats 
+        ...stats
       });
     }
 
@@ -277,7 +277,7 @@ export class EtlJobService {
       return null;
     }
 
-    const duration = job.started_at 
+    const duration = job.started_at
       ? Math.floor((Date.now() - new Date(job.started_at).getTime()) / 1000)
       : 0;
 
@@ -307,11 +307,11 @@ export class EtlJobService {
     );
 
     if (result.rows[0]) {
-      logger.error('ETL job failed', { 
-        id, 
+      logger.error('ETL job failed', {
+        id,
         error,
         retry: canRetry,
-        retryCount: job.retry_count 
+        retryCount: job.retry_count
       });
     }
 
@@ -381,7 +381,7 @@ export class EtlJobService {
     }
   ): Promise<EtlJobLog[]> {
     const { level, limit = 100, offset = 0 } = options || {};
-    
+
     let sql = 'SELECT * FROM etl_job_logs WHERE job_id = $1';
     const params: unknown[] = [jobId];
 
@@ -460,6 +460,12 @@ export class EtlJobService {
    */
   async getStats(options?: { from_date?: Date; to_date?: Date }): Promise<{
     total: number;
+    running: number;
+    pending: number;
+    queued: number;
+    completed: number;
+    failed: number;
+    completed_today: number;
     by_status: Record<string, number>;
     by_type: Record<string, number>;
     avg_duration: number;
@@ -480,14 +486,22 @@ export class EtlJobService {
 
     const result = await query<{
       total: string;
+      running: string;
+      pending: string;
+      queued: string;
       completed: string;
       failed: string;
+      completed_today: string;
       avg_duration: string;
     }>(
       `SELECT 
          COUNT(*) as total,
+         SUM(CASE WHEN status = 'running' THEN 1 ELSE 0 END) as running,
+         SUM(CASE WHEN status = 'pending' THEN 1 ELSE 0 END) as pending,
+         SUM(CASE WHEN status = 'queued' THEN 1 ELSE 0 END) as queued,
          SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END) as completed,
          SUM(CASE WHEN status = 'failed' THEN 1 ELSE 0 END) as failed,
+         SUM(CASE WHEN status = 'completed' AND completed_at >= CURRENT_DATE THEN 1 ELSE 0 END) as completed_today,
          AVG(duration_seconds) FILTER (WHERE status = 'completed') as avg_duration
        FROM etl_jobs${whereClause}`,
       params
@@ -504,12 +518,22 @@ export class EtlJobService {
     );
 
     const row = result.rows[0];
-    const total = parseInt(row.total, 10);
-    const completed = parseInt(row.completed, 10);
-    const failed = parseInt(row.failed, 10);
+    const total = parseInt(row.total || '0', 10);
+    const running = parseInt(row.running || '0', 10);
+    const pending = parseInt(row.pending || '0', 10);
+    const queued = parseInt(row.queued || '0', 10);
+    const completed = parseInt(row.completed || '0', 10);
+    const failed = parseInt(row.failed || '0', 10);
+    const completed_today = parseInt(row.completed_today || '0', 10);
 
     return {
       total,
+      running,
+      pending,
+      queued,
+      completed,
+      failed,
+      completed_today,
       by_status: statusResult.rows.reduce((acc, r) => {
         acc[r.status] = parseInt(r.count, 10);
         return acc;
@@ -519,7 +543,7 @@ export class EtlJobService {
         return acc;
       }, {} as Record<string, number>),
       avg_duration: parseFloat(row.avg_duration || '0'),
-      success_rate: total > 0 ? (completed / (completed + failed)) * 100 : 0,
+      success_rate: total > 0 ? (completed / Math.max(1, completed + failed)) * 100 : 0,
     };
   }
 

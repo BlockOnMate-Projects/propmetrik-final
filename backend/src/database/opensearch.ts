@@ -6,8 +6,8 @@ import { logger } from '../utils/logger';
 const clientOptions: ClientOptions = {
   node: config.opensearch.url,
   auth: {
-    username: config.opensearch.username,
-    password: config.opensearch.password,
+    username: config.opensearch.username || '',
+    password: config.opensearch.password || '',
   },
   ssl: {
     rejectUnauthorized: false, // For self-signed certs in development

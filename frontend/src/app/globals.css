@@ -56,6 +56,32 @@
   background: hsl(var(--muted-foreground) / 0.5);
 }
 
+/* Fix Radix Select dropdown text color */
+[data-radix-select-viewport] {
+  background-color: #27272a !important;
+}
+
+[data-radix-select-viewport] [role="option"] {
+  color: #ffffff !important;
+}
+
+[data-radix-select-viewport] [role="option"]:hover,
+[data-radix-select-viewport] [role="option"][data-highlighted] {
+  background-color: #3f3f46 !important;
+  color: #ffffff !important;
+}
+
+[data-radix-select-content] {
+  background-color: #27272a !important;
+  color: #ffffff !important;
+}
+
+/* Force all text inside select items to be white */
+[data-radix-select-viewport] [role="option"] span,
+[data-radix-select-viewport] [role="option"] * {
+  color: #ffffff !important;
+}
+
 /* Status indicator animations */
 @keyframes pulse-status {
   0%, 100% {

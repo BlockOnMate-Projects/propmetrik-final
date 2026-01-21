@@ -41,6 +41,7 @@ export class ContributionService {
       contribution_type,
       validation_status,
       property_region,
+      source_context,
       from_date,
       to_date,
     } = filters;
@@ -66,6 +67,10 @@ export class ContributionService {
       conditions.push(`property_region = $${paramIndex++}`);
       params.push(property_region);
     }
+    if (source_context) {
+      conditions.push(`source_context = $${paramIndex++}`);
+      params.push(source_context);
+    }
     if (from_date) {
       conditions.push(`created_at >= $${paramIndex++}`);
       params.push(from_date);
@@ -76,7 +81,7 @@ export class ContributionService {
     }
 
     const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
-    
+
     const validSortColumns = ['created_at', 'validation_status', 'contribution_type', 'trust_score'];
     const safeSortBy = validSortColumns.includes(sortBy) ? sortBy : 'created_at';
     const safeSortOrder = sortOrder === 'asc' ? 'ASC' : 'DESC';
@@ -126,11 +131,10 @@ export class ContributionService {
   async create(input: CreateContributionInput): Promise<Contribution> {
     const dataHash = this.hashData(input.data);
 
-    // Check for duplicate contribution
     const existing = await query<{ id: string }>(
       `SELECT id FROM contributions 
        WHERE data_hash = $1 
-         AND contributor_id = $2 
+         AND (contributor_id = $2 OR (contributor_id IS NULL AND $2 IS NULL))
          AND created_at > NOW() - INTERVAL '24 hours'`,
       [dataHash, input.contributor_id]
     );
@@ -161,17 +165,19 @@ export class ContributionService {
       ]
     );
 
-    // Update contributor profile pending count
-    await query(
-      `UPDATE contributor_profiles 
-       SET pending_contributions = pending_contributions + 1,
-           last_contribution_at = NOW()
-       WHERE user_id = $1`,
-      [input.contributor_id]
-    );
+    // Update contributor profile pending count if contributor exists
+    if (input.contributor_id) {
+      await query(
+        `UPDATE contributor_profiles 
+         SET pending_contributions = pending_contributions + 1,
+             last_contribution_at = NOW()
+         WHERE user_id = $1`,
+        [input.contributor_id]
+      );
+    }
 
-    logger.info('Created contribution', { 
-      id: result.rows[0].id, 
+    logger.info('Created contribution', {
+      id: result.rows[0].id,
       type: input.contribution_type,
       contributor_id: input.contributor_id,
     });
@@ -233,10 +239,10 @@ export class ContributionService {
    * Approve a contribution
    */
   async approve(
-    id: string, 
-    validatorId: string, 
-    options?: { 
-      notes?: string; 
+    id: string,
+    validatorId: string,
+    options?: {
+      notes?: string;
       quality_score?: number;
       credits?: number;
     }
@@ -284,9 +290,9 @@ export class ContributionService {
           $1, $2, credits_balance, 'contribution_reward', $3, $4
          FROM contributor_profiles WHERE user_id = $1`,
         [
-          contribution.contributor_id, 
-          creditsToAward, 
-          id, 
+          contribution.contributor_id,
+          creditsToAward,
+          id,
           `Reward for ${contribution.contribution_type} contribution`
         ]
       );
@@ -306,10 +312,10 @@ export class ContributionService {
         [id, validatorId, contribution.validation_status, options?.quality_score]
       );
 
-      logger.info('Approved contribution', { 
-        id, 
+      logger.info('Approved contribution', {
+        id,
         contributor_id: contribution.contributor_id,
-        credits: creditsToAward 
+        credits: creditsToAward
       });
 
       return result.rows[0];
@@ -320,8 +326,8 @@ export class ContributionService {
    * Reject a contribution
    */
   async reject(
-    id: string, 
-    validatorId: string, 
+    id: string,
+    validatorId: string,
     reason: string
   ): Promise<Contribution | null> {
     const contribution = await this.findById(id);
@@ -361,10 +367,10 @@ export class ContributionService {
         [id, validatorId, contribution.validation_status, reason]
       );
 
-      logger.info('Rejected contribution', { 
-        id, 
+      logger.info('Rejected contribution', {
+        id,
         contributor_id: contribution.contributor_id,
-        reason 
+        reason
       });
 
       return result.rows[0];
@@ -390,7 +396,7 @@ export class ContributionService {
     // Check data completeness
     const requiredFields = this.getRequiredFields(contribution.contribution_type);
     const missingFields = requiredFields.filter(field => !contribution.data[field]);
-    
+
     if (missingFields.length > 0) {
       reasons.push(`Missing required fields: ${missingFields.join(', ')}`);
       score -= 0.1 * missingFields.length;
@@ -539,6 +545,52 @@ export class ContributionService {
       }, {} as Record<string, number>),
     };
   }
+
+  /**
+   * Get global contribution statistics for the dashboard
+   */
+  async getStats(): Promise<{
+    pending: number;
+    approvedToday: number;
+    totalApproved: number;
+    rejectionRate: number;
+    activeContributors: number;
+    activeContributorsChange: number;
+  }> {
+    const statsResult = await query<{
+      pending: string;
+      approved_today: string;
+      total_approved: string;
+      total_rejected: string;
+      total_processed_last_30: string;
+      rejected_last_30: string;
+      active_contributors: string;
+    }>(`
+      SELECT
+        COUNT(CASE WHEN validation_status = 'pending' THEN 1 END) as pending,
+        COUNT(CASE WHEN validation_status = 'approved' AND validated_at >= CURRENT_DATE THEN 1 END) as approved_today,
+        COUNT(CASE WHEN validation_status = 'approved' THEN 1 END) as total_approved,
+        COUNT(CASE WHEN validation_status = 'rejected' THEN 1 END) as total_rejected,
+        COUNT(CASE WHEN validation_status IN ('approved', 'rejected') AND validated_at >= NOW() - INTERVAL '30 days' THEN 1 END) as total_processed_last_30,
+        COUNT(CASE WHEN validation_status = 'rejected' AND validated_at >= NOW() - INTERVAL '30 days' THEN 1 END) as rejected_last_30,
+        COUNT(DISTINCT contributor_id) FILTER (WHERE created_at >= DATE_TRUNC('month', CURRENT_DATE)) as active_contributors
+      FROM contributions
+    `);
+
+    const row = statsResult.rows[0];
+    const totalLast30 = parseInt(row.total_processed_last_30 || '0', 10);
+    const rejectedLast30 = parseInt(row.rejected_last_30 || '0', 10);
+    const rejectionRate = totalLast30 > 0 ? rejectedLast30 / totalLast30 : 0;
+
+    return {
+      pending: parseInt(row.pending || '0', 10),
+      approvedToday: parseInt(row.approved_today || '0', 10),
+      totalApproved: parseInt(row.total_approved || '0', 10),
+      rejectionRate: rejectionRate,
+      activeContributors: parseInt(row.active_contributors || '0', 10),
+      activeContributorsChange: 0, // Placeholder
+    };
+  }
 }
 
 // =====================================================
@@ -562,7 +614,7 @@ export class ContributorProfileService {
    */
   async getOrCreate(input: CreateContributorProfileInput): Promise<ContributorProfile> {
     let profile = await this.findByUserId(input.user_id);
-    
+
     if (!profile) {
       const result = await query<ContributorProfile>(
         `INSERT INTO contributor_profiles (
@@ -624,7 +676,7 @@ export class ContributorProfileService {
    * Verify a professional contributor
    */
   async verifyProfessional(
-    userId: string, 
+    userId: string,
     licenseNumber: string,
     professionalType: string
   ): Promise<ContributorProfile | null> {
@@ -655,7 +707,7 @@ export class ContributorProfileService {
     period?: 'week' | 'month' | 'all';
   }): Promise<Array<ContributorProfile & { rank: number }>> {
     const { region, limit = 10, period = 'all' } = options || {};
-    
+
     let sql = `
       SELECT cp.*, RANK() OVER (ORDER BY cp.reputation_score DESC, cp.accepted_contributions DESC) as rank
       FROM contributor_profiles cp
@@ -683,7 +735,7 @@ export class ContributorProfileService {
     params.push(limit);
 
     const result = await query<ContributorProfile & { rank: string }>(sql, params);
-    
+
     return result.rows.map(row => ({
       ...row,
       rank: parseInt(row.rank, 10),
@@ -708,8 +760,8 @@ export class ContributorProfileService {
    * Spend credits
    */
   async spendCredits(
-    userId: string, 
-    amount: number, 
+    userId: string,
+    amount: number,
     reason: string
   ): Promise<{ success: boolean; balance: number }> {
     const profile = await this.findByUserId(userId);

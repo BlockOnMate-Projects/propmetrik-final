@@ -81,6 +81,7 @@ class ReconciliationResult:
     confidence_score: float = 0.0
     methods_used: List[str] = None
     methods_failed: List[str] = None
+    zero_value_methods: List[str] = None
     method_weights: Dict[str, float] = None
     method_values: Dict[str, float] = None
     method_confidences: Dict[str, float] = None
@@ -94,6 +95,8 @@ class ReconciliationResult:
             self.methods_used = []
         if self.methods_failed is None:
             self.methods_failed = []
+        if self.zero_value_methods is None:
+            self.zero_value_methods = []
         if self.method_weights is None:
             self.method_weights = {}
         if self.method_values is None:
@@ -111,6 +114,7 @@ class ReconciliationResult:
             'confidence_score': round(self.confidence_score, 4),
             'methods_used': self.methods_used,
             'methods_failed': self.methods_failed,
+            'zero_value_methods': self.zero_value_methods,
             'method_weights': {k: round(v, 4) for k, v in self.method_weights.items()},
             'method_values': {k: round(v, 2) for k, v in self.method_values.items()},
             'method_confidences': {k: round(v, 4) for k, v in self.method_confidences.items()},
@@ -230,15 +234,20 @@ class LandValueReconciliationService:
         # Identify successful and failed methods
         successful_methods: Dict[str, Dict[str, Any]] = {}
         failed_methods: Dict[str, Dict[str, Any]] = {}
+        zero_value_methods: Dict[str, Dict[str, Any]] = {}  # Methods that worked but returned 0
         
         for method in valuation_methods:
             result = method_results.get(method, {'success': False, 'error': 'Method not provided'})
-            if result.get('success', False) and result.get('indicated_value', 0) > 0:
-                successful_methods[method] = result
+            if result.get('success', False):
+                if result.get('indicated_value', 0) > 0:
+                    successful_methods[method] = result
+                else:
+                    # Method succeeded but value is 0 (e.g., development not viable)
+                    zero_value_methods[method] = result
             else:
                 failed_methods[method] = result
         
-        logger.info(f"Successful methods: {list(successful_methods.keys())}, Failed: {list(failed_methods.keys())}")
+        logger.info(f"Successful methods: {list(successful_methods.keys())}, Zero-value: {list(zero_value_methods.keys())}, Failed: {list(failed_methods.keys())}")
         
         # Check if any methods succeeded
         if not successful_methods:
@@ -339,6 +348,7 @@ class LandValueReconciliationService:
             confidence_score=overall_confidence,
             methods_used=list(successful_methods.keys()),
             methods_failed=list(failed_methods.keys()) + ([excluded_method] if excluded_method else []),
+            zero_value_methods=list(zero_value_methods.keys()),
             method_weights=active_weights,
             method_values=method_values,
             method_confidences=method_confidences,
@@ -548,6 +558,15 @@ class LandValueReconciliationService:
             failed_names = [m.replace('_', ' ').title() for m in result.methods_failed]
             parts.append(f"Note: {', '.join(failed_names)} method(s) could not be applied due to insufficient data.")
         
+        # Zero-value methods (developed but not viable)
+        if result.zero_value_methods:
+            if 'residual_gdv' in result.zero_value_methods:
+                 parts.append("The Residual Land Value method indicated that the proposed development is not economically viable (negative residual value), and was excluded from the final land value calculation.")
+            else:
+                 zero_names = [m.replace('_', ' ').title() for m in result.zero_value_methods]
+                 parts.append(f"Note: {', '.join(zero_names)} method(s) returned zero or negative values and were excluded from the final reconciled value.")
+        
+        # 
         # Divergence disclosure (for 2-method system)
         outlier_info = result.outlier_info or {}
         if outlier_info.get('significant_divergence'):

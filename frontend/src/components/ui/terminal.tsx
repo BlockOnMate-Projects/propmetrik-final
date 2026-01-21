@@ -26,7 +26,7 @@ import {
 // =====================================================
 
 interface PanelProps {
-  title: string;
+  title: React.ReactNode;
   children: React.ReactNode;
   className?: string;
   action?: React.ReactNode;
@@ -719,6 +719,9 @@ const methodLabels: Record<string, string> = {
   residual_method: 'RESIDUAL',
   profits_method: 'PROFITS',
   drc_method: 'DRC',
+  // Income sub-methods for reconciliation
+  direct_capitalisation: 'DIRECT CAP',
+  dcf_analysis: 'DCF',
 };
 
 export function MethodBadge({ method, isPrimary }: MethodBadgeProps) {
@@ -731,5 +734,326 @@ export function MethodBadge({ method, isPrimary }: MethodBadgeProps) {
     )}>
       {methodLabels[method] || method.toUpperCase()}
     </span>
+  );
+}
+
+// =====================================================
+// DATA METRIC CARD (for Data Hub Analytics)
+// =====================================================
+
+interface DataMetricCardProps {
+  title: string;
+  value: string | number;
+  subtitle?: string;
+  trend?: number;
+  trendLabel?: string;
+  sparklineData?: number[];
+  icon?: React.ComponentType<{ className?: string }>;
+  color?: 'blue' | 'green' | 'amber' | 'red' | 'purple';
+  status?: 'live' | 'loading' | 'error';
+}
+
+export function DataMetricCard({
+  title,
+  value,
+  subtitle,
+  trend,
+  trendLabel,
+  sparklineData,
+  icon: Icon,
+  color = 'blue',
+  status
+}: DataMetricCardProps) {
+  const colorClasses = {
+    blue: 'text-blue-400',
+    green: 'text-green-400',
+    amber: 'text-amber-400',
+    red: 'text-red-400',
+    purple: 'text-purple-400',
+  };
+
+  return (
+    <div className="border border-zinc-800 bg-zinc-900/50 p-4">
+      <div className="flex items-start justify-between mb-3">
+        <div className="flex items-center gap-2">
+          {Icon && <Icon className={cn('w-4 h-4', colorClasses[color])} />}
+          <span className="font-mono text-[10px] text-zinc-500 uppercase">{title}</span>
+        </div>
+        {status && (
+          <div className="flex items-center gap-1">
+            {status === 'live' && (
+              <>
+                <span className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse" />
+                <span className="font-mono text-[9px] text-green-500">LIVE</span>
+              </>
+            )}
+            {status === 'loading' && <Loader2 className="w-3 h-3 text-amber-500 animate-spin" />}
+            {status === 'error' && <span className="w-1.5 h-1.5 bg-red-500 rounded-full" />}
+          </div>
+        )}
+      </div>
+      
+      <div className={cn('font-mono text-3xl mb-1', colorClasses[color])}>
+        {typeof value === 'number' ? value.toLocaleString() : value}
+      </div>
+      
+      {subtitle && (
+        <div className="font-mono text-[10px] text-zinc-500 mb-2">{subtitle}</div>
+      )}
+      
+      <div className="flex items-center justify-between">
+        {trend !== undefined && (
+          <div className={cn(
+            'font-mono text-[10px] flex items-center gap-1',
+            trend > 0 ? 'text-green-400' : trend < 0 ? 'text-red-400' : 'text-zinc-500'
+          )}>
+            {trend > 0 ? <TrendingUp className="w-3 h-3" /> : 
+             trend < 0 ? <TrendingDown className="w-3 h-3" /> : 
+             <Minus className="w-3 h-3" />}
+            <span>{trend > 0 ? '+' : ''}{trend}%</span>
+            {trendLabel && <span className="text-zinc-500">{trendLabel}</span>}
+          </div>
+        )}
+        
+        {sparklineData && sparklineData.length > 0 && (
+          <div className="ml-auto">
+            <Sparkline data={sparklineData} width={60} height={20} />
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// =====================================================
+// TIER BADGE (for 5-Tier Data Architecture)
+// =====================================================
+
+type DataTier = 'tier1_government' | 'tier2_financial' | 'tier3_partners' | 'tier4_contributions' | 'tier5_public_web';
+
+interface TierBadgeProps {
+  tier: DataTier | string;
+  showLabel?: boolean;
+}
+
+const tierConfig: Record<string, { bg: string; text: string; label: string; short: string }> = {
+  tier1_government: { bg: 'bg-blue-900/50', text: 'text-blue-400', label: 'GOVERNMENT', short: 'T1' },
+  tier2_financial: { bg: 'bg-green-900/50', text: 'text-green-400', label: 'FINANCIAL', short: 'T2' },
+  tier3_partners: { bg: 'bg-purple-900/50', text: 'text-purple-400', label: 'PARTNERS', short: 'T3' },
+  tier4_contributions: { bg: 'bg-yellow-900/50', text: 'text-yellow-400', label: 'CONTRIBUTIONS', short: 'T4' },
+  tier5_public_web: { bg: 'bg-orange-900/50', text: 'text-orange-400', label: 'WEB SCRAPED', short: 'T5' },
+};
+
+export function TierBadge({ tier, showLabel = true }: TierBadgeProps) {
+  const config = tierConfig[tier] || { bg: 'bg-zinc-800', text: 'text-zinc-400', label: tier.toUpperCase(), short: 'T?' };
+
+  return (
+    <span className={cn(
+      'inline-flex items-center px-1.5 py-0.5 font-mono text-[10px]',
+      config.bg,
+      config.text
+    )}>
+      {showLabel ? config.label : config.short}
+    </span>
+  );
+}
+
+// =====================================================
+// LIVE DATA FEED (Real-time Activity Stream)
+// =====================================================
+
+interface DataFeedItem {
+  id: string;
+  timestamp: Date | string;
+  type: 'ingestion' | 'job' | 'error' | 'success' | 'warning';
+  source?: string;
+  message: string;
+  metadata?: Record<string, unknown>;
+}
+
+interface LiveDataFeedProps {
+  items: DataFeedItem[];
+  maxItems?: number;
+  autoScroll?: boolean;
+}
+
+export function LiveDataFeed({ items, maxItems = 10, autoScroll = true }: LiveDataFeedProps) {
+  const displayItems = items.slice(0, maxItems);
+
+  const getTypeColor = (type: DataFeedItem['type']) => {
+    switch (type) {
+      case 'success': return 'text-green-400';
+      case 'error': return 'text-red-400';
+      case 'warning': return 'text-yellow-400';
+      case 'ingestion': return 'text-blue-400';
+      case 'job': return 'text-purple-400';
+      default: return 'text-zinc-400';
+    }
+  };
+
+  const getTypeIcon = (type: DataFeedItem['type']) => {
+    switch (type) {
+      case 'success': return '✓';
+      case 'error': return '✗';
+      case 'warning': return '⚠';
+      case 'ingestion': return '↓';
+      case 'job': return '⚙';
+      default: return '•';
+    }
+  };
+
+  return (
+    <div className="space-y-1 font-mono text-xs">
+      {displayItems.map((item) => (
+        <div key={item.id} className="flex items-start gap-2 py-1 border-b border-zinc-800/50">
+          <span className={cn('flex-shrink-0', getTypeColor(item.type))}>
+            {getTypeIcon(item.type)}
+          </span>
+          <span className="text-zinc-500 text-[10px] flex-shrink-0 w-16">
+            {new Date(item.timestamp).toLocaleTimeString('en-US', { 
+              hour: '2-digit', 
+              minute: '2-digit',
+              second: '2-digit',
+              hour12: false 
+            })}
+          </span>
+          {item.source && (
+            <span className="text-zinc-600 text-[10px] flex-shrink-0">
+              [{item.source}]
+            </span>
+          )}
+          <span className="text-zinc-300 text-[10px] flex-1 truncate">
+            {item.message}
+          </span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// =====================================================
+// DATA QUALITY INDICATOR
+// =====================================================
+
+interface DataQualityIndicatorProps {
+  score: number; // 0-100
+  label?: string;
+  showBreakdown?: boolean;
+  breakdown?: {
+    completeness?: number;
+    accuracy?: number;
+    timeliness?: number;
+    consistency?: number;
+  };
+}
+
+export function DataQualityIndicator({ 
+  score, 
+  label = 'Data Quality', 
+  showBreakdown = false,
+  breakdown 
+}: DataQualityIndicatorProps) {
+  const getQualityColor = (val: number) => {
+    if (val >= 90) return { bg: 'bg-green-500', text: 'text-green-400', label: 'EXCELLENT' };
+    if (val >= 75) return { bg: 'bg-blue-500', text: 'text-blue-400', label: 'GOOD' };
+    if (val >= 60) return { bg: 'bg-yellow-500', text: 'text-yellow-400', label: 'FAIR' };
+    if (val >= 40) return { bg: 'bg-orange-500', text: 'text-orange-400', label: 'POOR' };
+    return { bg: 'bg-red-500', text: 'text-red-400', label: 'CRITICAL' };
+  };
+
+  const quality = getQualityColor(score);
+
+  return (
+    <div className="space-y-3">
+      <div>
+        <div className="flex items-center justify-between mb-2">
+          <span className="font-mono text-[10px] text-zinc-500 uppercase">{label}</span>
+          <span className={cn('font-mono text-xs font-bold', quality.text)}>
+            {quality.label}
+          </span>
+        </div>
+        <div className="flex items-center gap-3">
+          <div className="flex-1 h-2 bg-zinc-800 overflow-hidden">
+            <div 
+              className={cn('h-full transition-all', quality.bg)}
+              style={{ width: `${score}%` }}
+            />
+          </div>
+          <span className="font-mono text-sm text-white w-12 text-right">
+            {score.toFixed(0)}%
+          </span>
+        </div>
+      </div>
+
+      {showBreakdown && breakdown && (
+        <div className="grid grid-cols-2 gap-2 pt-2 border-t border-zinc-800">
+          {breakdown.completeness !== undefined && (
+            <div>
+              <div className="font-mono text-[9px] text-zinc-500 mb-1">COMPLETENESS</div>
+              <ConfidenceBar score={breakdown.completeness} size="sm" />
+            </div>
+          )}
+          {breakdown.accuracy !== undefined && (
+            <div>
+              <div className="font-mono text-[9px] text-zinc-500 mb-1">ACCURACY</div>
+              <ConfidenceBar score={breakdown.accuracy} size="sm" />
+            </div>
+          )}
+          {breakdown.timeliness !== undefined && (
+            <div>
+              <div className="font-mono text-[9px] text-zinc-500 mb-1">TIMELINESS</div>
+              <ConfidenceBar score={breakdown.timeliness} size="sm" />
+            </div>
+          )}
+          {breakdown.consistency !== undefined && (
+            <div>
+              <div className="font-mono text-[9px] text-zinc-500 mb-1">CONSISTENCY</div>
+              <ConfidenceBar score={breakdown.consistency} size="sm" />
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// =====================================================
+// ANALYTICS CHART WRAPPER (Bloomberg-styled Recharts)
+// =====================================================
+
+interface AnalyticsChartProps {
+  title: string;
+  children: React.ReactNode;
+  height?: number;
+  actions?: React.ReactNode;
+  timeRange?: string;
+}
+
+export function AnalyticsChart({ 
+  title, 
+  children, 
+  height = 300, 
+  actions,
+  timeRange 
+}: AnalyticsChartProps) {
+  return (
+    <div className="border border-zinc-800 bg-zinc-900/50">
+      <div className="flex items-center justify-between px-3 py-2 border-b border-zinc-800">
+        <div className="flex items-center gap-3">
+          <span className="font-mono text-[10px] text-amber-500 uppercase tracking-wider">
+            {title}
+          </span>
+          {timeRange && (
+            <span className="font-mono text-[9px] text-zinc-500">
+              {timeRange}
+            </span>
+          )}
+        </div>
+        {actions && <div className="flex items-center gap-2">{actions}</div>}
+      </div>
+      <div className="p-4" style={{ height }}>
+        {children}
+      </div>
+    </div>
   );
 }

@@ -839,6 +839,21 @@ export interface IncomeApproachData {
   grm_value?: number;
   income_streams: any[];
   expense_breakdown: Record<string, any>;
+  // Phase 5.5: Rental analysis metadata for disclosure
+  rental_analysis?: {
+    source: 'market' | 'manual';
+    methodology: 'median' | 'weighted_average' | 'manual' | '';
+    confidence: number;
+    comparables_count: number;
+    estimated_at: string | null;
+    comparables?: Array<{
+      id: string;
+      address: string;
+      rent: number;
+      bedrooms: number;
+      distance_km: number;
+    }>;
+  } | null;
 }
 
 // =====================================================

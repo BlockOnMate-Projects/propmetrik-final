@@ -519,6 +519,7 @@ export interface ContributionFilters extends PaginationParams {
   contribution_type?: ContributionType;
   validation_status?: ValidationStatus;
   property_region?: RegionCode;
+  source_context?: string;
   from_date?: Date;
   to_date?: Date;
 }

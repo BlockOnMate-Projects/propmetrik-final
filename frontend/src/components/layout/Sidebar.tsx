@@ -29,42 +29,42 @@ import { useState } from 'react'
 const navigation = [
   {
     name: 'Overview',
-    href: '/data-hub',
+    href: '/dashboard/data-hub',
     icon: LayoutDashboard,
   },
   {
     name: 'Data Sources',
-    href: '/data-hub/sources',
+    href: '/dashboard/data-hub/sources',
     icon: Database,
   },
   {
     name: 'ETL Jobs',
-    href: '/data-hub/jobs',
+    href: '/dashboard/data-hub/jobs',
     icon: GitBranch,
   },
   {
     name: 'Contributions',
-    href: '/data-hub/contributions',
+    href: '/dashboard/data-hub/contributions',
     icon: Users,
   },
   {
     name: 'Economic Data',
-    href: '/data-hub/economic',
+    href: '/dashboard/data-hub/economic',
     icon: TrendingUp,
   },
   {
     name: 'Construction Costs',
-    href: '/data-hub/construction',
+    href: '/dashboard/data-hub/construction',
     icon: HardHat,
   },
   {
     name: 'Spiders',
-    href: '/data-hub/spiders',
+    href: '/dashboard/data-hub/spiders',
     icon: Bug,
   },
   {
     name: 'Tier Ingestion',
-    href: '/data-hub/ingestion',
+    href: '/dashboard/data-hub/ingestion',
     icon: Layers,
   },
 ]
@@ -72,12 +72,12 @@ const navigation = [
 const bottomNavigation = [
   {
     name: 'Queue Status',
-    href: '/data-hub/queues',
+    href: '/dashboard/data-hub/queues',
     icon: Server,
   },
   {
     name: 'Settings',
-    href: '/data-hub/settings',
+    href: '/dashboard/data-hub/settings',
     icon: Settings,
   },
 ]
@@ -96,7 +96,7 @@ export function Sidebar() {
       >
         {/* Logo */}
         <div className="flex h-16 items-center border-b px-4">
-          <Link href="/data-hub" className="flex items-center gap-2">
+          <Link href="/dashboard/data-hub" className="flex items-center gap-2">
             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary">
               <Database className="h-5 w-5 text-primary-foreground" />
             </div>

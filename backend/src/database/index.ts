@@ -43,10 +43,14 @@ export async function query<T extends QueryResultRow = QueryResultRow>(
       rows: result.rowCount,
     });
     return result;
-  } catch (error) {
+  } catch (error: any) {
     logger.error('Query error', {
-      text: text.substring(0, 100),
+      text: text.substring(0, 500),
       error: error instanceof Error ? error.message : 'Unknown error',
+      code: error?.code,
+      detail: error?.detail,
+      hint: error?.hint,
+      position: error?.position,
     });
     throw error;
   }

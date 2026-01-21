@@ -613,11 +613,29 @@ interface AgencyDataAPI {
 - Property price trends and negotiation patterns
 - Diaspora property investment interests
 
-**Implementation Approach:**
-- Deploy ethical web scraping using facebook-scraper library
-- Target high-activity Ghana property groups and marketplace
-- Implement respectful rate limiting and data collection practices
 - Focus on public posts and marketplace listings
+
+#### 4. Internal Property Management (High Trust)
+**Data Access:**
+- Verified property characteristics (beds, baths, area)
+- Physical condition and amenities
+- Quality-checked location data (Ghana Post GPS)
+- Professional-grade photos and documents
+
+**Implementation Approach:**
+- See [pm-data.md](file:///Users/kobby/github/Cedyn%20Group/propmetrik/.ai/pm-data.md) for full specification.
+- Direct async sync from PM database to Data Hub global index.
+- Highest base trust score for user-generated content (0.85).
+- Integrated with contribution credit system to incentivize professional maintenance.
+
+**Technical Integration:**
+```typescript
+interface InternalPMSyncAPI {
+  syncPropertyUpdate(propertyId: string): Promise<SyncResult>;
+  validateInternalData(contributionId: string): Promise<ValidationResult>;
+  awardContributionCredits(userId: string, credits: number): Promise<void>;
+}
+```
 - Establish automated daily data collection workflows
 
 **Technical Integration:**
@@ -7667,8 +7685,8 @@ Phase 3 has been successfully completed with all Valuation Engine components dep
 | Item | Priority | Status | Notes |
 |------|----------|--------|-------|
 | **Fabric.js Floor Plan Builder** | HIGH | ✅ COMPLETED | Interactive floor plan creation at `frontend/src/components/valuation/FloorPlanBuilder.tsx` |
-| **ML Model Serving Infrastructure** | HIGH | ✅ COMPLETED | FastAPI service at `backend/services/ml-serving/main.py` with TypeScript client |
-| **ML Training Pipeline** | HIGH | ✅ COMPLETED | Ensemble training at `backend/services/ml-serving/training/train_pipeline.py` |
+| **ML Model Serving Infrastructure** | HIGH | ✅ COMPLETED | FastAPI service at `backend/shared-services/ml-serving/main.py` with TypeScript client |
+| **ML Training Pipeline** | HIGH | ✅ COMPLETED | Ensemble training at `backend/shared-services/ml-serving/training/train_pipeline.py` |
 | **Contribution Workflow in Valuation** | MEDIUM | ✅ COMPLETED | Gap detection + contribution service at `backend/src/services/valuation-engine/contributionWorkflowService.ts` |
 | **Scheduled Sync Jobs** | Low | Pending | Cron/Airflow for automated BOG/WDI/FX syncs |
 
@@ -7701,7 +7719,7 @@ The following additional Phase 3 components have been implemented:
 
 ##### 2. ML Model Serving Infrastructure (Backend + Python)
 
-**Location:** `backend/services/ml-serving/`
+**Location:** `backend/shared-services/ml-serving/`
 
 **Features:**
 - FastAPI-based REST API for model predictions
@@ -7725,14 +7743,14 @@ The following additional Phase 3 components have been implemented:
 | `/models/{version}/metrics` | GET | Get model metrics |
 
 **Files Created:**
-- `backend/services/ml-serving/main.py` - FastAPI application
-- `backend/services/ml-serving/requirements.txt` - Python dependencies
-- `backend/services/ml-serving/Dockerfile` - Container definition
+- `backend/shared-services/ml-serving/main.py` - FastAPI application
+- `backend/shared-services/ml-serving/requirements.txt` - Python dependencies
+- `backend/shared-services/ml-serving/Dockerfile` - Container definition
 - `backend/src/services/valuation-engine/mlServingClient.ts` - TypeScript client
 
 ##### 3. ML Model Training Pipeline (Python)
 
-**Location:** `backend/services/ml-serving/training/`
+**Location:** `backend/shared-services/ml-serving/training/`
 
 **Features:**
 - Complete training pipeline with data loading from PostgreSQL
@@ -7748,8 +7766,8 @@ The following additional Phase 3 components have been implemented:
 - Command-line interface for training
 
 **Files Created:**
-- `backend/services/ml-serving/training/train_pipeline.py` - Training pipeline
-- `backend/services/ml-serving/training/requirements.txt` - Training dependencies
+- `backend/shared-services/ml-serving/training/train_pipeline.py` - Training pipeline
+- `backend/shared-services/ml-serving/training/requirements.txt` - Training dependencies
 
 ##### 4. Contribution Workflow in Valuation (Full Stack)
 

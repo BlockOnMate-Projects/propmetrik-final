@@ -57,6 +57,36 @@ export interface MarketSnapshotJobData extends BaseJobData {
   period?: 'daily' | 'weekly' | 'monthly';
 }
 
+export interface CrmPropertySyncJobData extends BaseJobData {
+  crmPropertyId: string;
+  organizationId: string;
+  triggerSource: 'auto' | 'manual' | 'deal_closure' | 'update';
+  triggeredBy?: string;
+}
+
+export interface CrmTransactionSyncJobData extends BaseJobData {
+  dealId: string;
+  organizationId: string;
+  crmPropertyId?: string;
+  transactionType: string;
+  transactionDate: string;
+  transactionPrice: number;
+  priceCurrency: string;
+  triggeredBy?: string;  // User ID who triggered the sync
+  propertySnapshot: {
+    property_type: string;
+    region: string;
+    city: string;
+    bedrooms?: number;
+    bathrooms?: number;
+    total_area_sqm?: number;
+    land_area_sqm?: number;
+    latitude?: number;
+    longitude?: number;
+    digital_address?: string;
+  };
+}
+
 // Union type for all job data
 export type JobData =
   | DataIngestionJobData
@@ -64,7 +94,9 @@ export type JobData =
   | DeduplicationJobData
   | EnrichmentJobData
   | QualityScoringJobData
-  | MarketSnapshotJobData;
+  | MarketSnapshotJobData
+  | CrmPropertySyncJobData
+  | CrmTransactionSyncJobData;
 
 // Job result type
 export interface JobResult {
@@ -117,6 +149,8 @@ class DataHubQueueManager {
     QUALITY_SCORING: 'quality-scoring',
     MARKET_SNAPSHOT: 'market-snapshot',
     CLEANUP: 'cleanup',
+    CRM_PROPERTY_SYNC: 'crm-property-sync',
+    CRM_TRANSACTION_SYNC: 'crm-transaction-sync',
   } as const;
 
   /**
@@ -181,8 +215,8 @@ class DataHubQueueManager {
       this.registerProcessors();
 
       this.initialized = true;
-      logger.info('Data Hub job queues initialized with processors', { 
-        queues: Object.values(DataHubQueueManager.QUEUES) 
+      logger.info('Data Hub job queues initialized with processors', {
+        queues: Object.values(DataHubQueueManager.QUEUES)
       });
     } catch (error) {
       logger.error('Failed to initialize Data Hub queues with processors', {
@@ -249,6 +283,22 @@ class DataHubQueueManager {
       1,
       async (job: Job<BaseJobData>) => {
         return this.processCleanup(job);
+      }
+    );
+
+    // CRM Property Sync Queue
+    this.getQueue(DataHubQueueManager.QUEUES.CRM_PROPERTY_SYNC)?.process(
+      3,
+      async (job: Job<CrmPropertySyncJobData>) => {
+        return this.processCrmPropertySync(job);
+      }
+    );
+
+    // CRM Transaction Sync Queue
+    this.getQueue(DataHubQueueManager.QUEUES.CRM_TRANSACTION_SYNC)?.process(
+      2,
+      async (job: Job<CrmTransactionSyncJobData>) => {
+        return this.processCrmTransactionSync(job);
       }
     );
   }
@@ -460,10 +510,10 @@ class DataHubQueueManager {
 
     try {
       // Get properties to check for duplicates
-      const whereClause = propertyIds?.length 
-        ? `WHERE id = ANY($1::uuid[])` 
+      const whereClause = propertyIds?.length
+        ? `WHERE id = ANY($1::uuid[])`
         : '';
-      
+
       const properties = await query<{ id: string; address: string; latitude: number; longitude: number }>(
         `SELECT id, address, latitude, longitude 
          FROM properties 
@@ -550,8 +600,8 @@ class DataHubQueueManager {
                        region = COALESCE(region, $5),
                        updated_at = NOW()
                      WHERE id = $6`,
-                    [result.latitude, result.longitude, result.neighborhood, 
-                     result.district, result.region, propertyId]
+                    [result.latitude, result.longitude, result.neighborhood,
+                    result.district, result.region, propertyId]
                   );
                 }
               }
@@ -771,6 +821,103 @@ class DataHubQueueManager {
     }
   }
 
+  /**
+   * Process CRM property sync job
+   */
+  private async processCrmPropertySync(job: Job<CrmPropertySyncJobData>): Promise<JobResult> {
+    const startTime = Date.now();
+    const { crmPropertyId, triggeredBy, triggerSource } = job.data;
+
+    try {
+      // Import dynamically to avoid circular dependencies
+      const { crmPropertySyncService } = await import('../crm-deal-management/crmPropertySyncService');
+      
+      const result = await crmPropertySyncService.syncToDataHub(
+        crmPropertyId,
+        triggeredBy,
+        triggerSource
+      );
+
+      return {
+        success: result.success,
+        processedCount: result.success ? 1 : 0,
+        errorCount: result.success ? 0 : 1,
+        duration: Date.now() - startTime,
+        message: result.success 
+          ? `Property synced: ${result.action}` 
+          : `Sync failed: ${result.error}`,
+        data: {
+          action: result.action,
+          datahub_property_id: result.datahub_property_id,
+          contribution_id: result.contribution_id,
+          error: result.error,
+        },
+      };
+    } catch (error: any) {
+      logger.error('CRM property sync job failed', { 
+        crmPropertyId, 
+        error: error.message 
+      });
+      
+      return {
+        success: false,
+        errorCount: 1,
+        duration: Date.now() - startTime,
+        message: error.message,
+      };
+    }
+  }
+
+  /**
+   * Process CRM transaction sync job
+   */
+  private async processCrmTransactionSync(job: Job<CrmTransactionSyncJobData>): Promise<JobResult> {
+    const startTime = Date.now();
+    const { dealId, crmPropertyId, transactionType, transactionDate, transactionPrice, priceCurrency, propertySnapshot } = job.data;
+
+    try {
+      // Import dynamically to avoid circular dependencies
+      const { crmPropertySyncService } = await import('../crm-deal-management/crmPropertySyncService');
+      
+      const result = await crmPropertySyncService.syncDealTransaction({
+        deal_id: dealId,
+        crm_property_id: crmPropertyId,
+        transaction_type: transactionType,
+        transaction_date: new Date(transactionDate),
+        transaction_price: transactionPrice,
+        price_currency: priceCurrency,
+        property_snapshot: propertySnapshot,
+        created_by: job.data.triggeredBy,
+      });
+
+      return {
+        success: result.success,
+        processedCount: result.success ? 1 : 0,
+        errorCount: result.success ? 0 : 1,
+        duration: Date.now() - startTime,
+        message: result.success 
+          ? `Transaction synced successfully` 
+          : `Transaction sync failed: ${result.error}`,
+        data: {
+          contribution_id: result.contribution_id,
+          error: result.error,
+        },
+      };
+    } catch (error: any) {
+      logger.error('CRM transaction sync job failed', { 
+        dealId, 
+        error: error.message 
+      });
+      
+      return {
+        success: false,
+        errorCount: 1,
+        duration: Date.now() - startTime,
+        message: error.message,
+      };
+    }
+  }
+
   // ============================================
   // Queue Status & Management
   // ============================================
@@ -785,11 +932,25 @@ class DataHubQueueManager {
     failed: number;
     delayed: number;
   }>> {
+    // If BULL is not available, we fall back to database stats from etlJobService
     if (!this.isAvailable()) {
-      // Return empty stats in stub mode
+      const etlStats = await etlJobService.getStats();
       const stubStats: Record<string, { waiting: number; active: number; completed: number; failed: number; delayed: number }> = {};
+
+      // Map global database stats to a "virtual" ingestion queue for display purposes
+      stubStats[DataHubQueueManager.QUEUES.DATA_INGESTION] = {
+        waiting: etlStats.queued + etlStats.pending,
+        active: etlStats.running,
+        completed: etlStats.completed,
+        failed: etlStats.failed,
+        delayed: 0
+      };
+
+      // Fill other queues with zeros
       for (const name of Object.values(DataHubQueueManager.QUEUES)) {
-        stubStats[name] = { waiting: 0, active: 0, completed: 0, failed: 0, delayed: 0 };
+        if (!stubStats[name]) {
+          stubStats[name] = { waiting: 0, active: 0, completed: 0, failed: 0, delayed: 0 };
+        }
       }
       return stubStats;
     }
@@ -802,9 +963,15 @@ class DataHubQueueManager {
       delayed: number;
     }> = {};
 
-    for (const [name, queue] of this.queues) {
+    for (const [name, queue] of this.queues.entries()) {
       const counts = await queue.getJobCounts();
-      stats[name] = counts;
+      stats[name] = {
+        waiting: counts.waiting,
+        active: counts.active,
+        completed: counts.completed,
+        failed: counts.failed,
+        delayed: counts.delayed,
+      };
     }
 
     return stats;
@@ -835,7 +1002,7 @@ class DataHubQueueManager {
    */
   async shutdown(): Promise<void> {
     logger.info('Shutting down Data Hub queues...');
-    
+
     for (const [name, queue] of this.queues) {
       await queue.close();
       logger.debug(`Queue ${name} closed`);

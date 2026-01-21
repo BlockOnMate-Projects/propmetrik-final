@@ -14,20 +14,33 @@ import { config } from '../config';
 import { logger } from '../utils/logger';
 
 // S3/MinIO client configuration
+const minioEndpoint = config.minio.endpoint;
+const minioConfigured = !!(minioEndpoint && config.minio.accessKey && config.minio.secretKey);
+
 const protocol = config.minio.useSSL ? 'https' : 'http';
 const portSuffix = config.minio.port && config.minio.port !== 80 && config.minio.port !== 443
   ? `:${config.minio.port}`
   : '';
 
-export const s3Client = new S3Client({
-  endpoint: `${protocol}://${config.minio.endpoint}${portSuffix}`,
+// Only create client if MinIO is configured
+export const s3Client = minioConfigured ? new S3Client({
+  endpoint: `${protocol}://${minioEndpoint}${portSuffix}`,
   region: 'us-east-1', // MinIO ignores this but it's required
   credentials: {
     accessKeyId: config.minio.accessKey,
     secretAccessKey: config.minio.secretKey,
   },
   forcePathStyle: true, // Required for MinIO
-});
+}) : null as unknown as S3Client;
+
+// Log warning if MinIO not configured
+if (!minioConfigured) {
+  logger.warn('MinIO not fully configured - file storage will be unavailable', {
+    hasEndpoint: !!minioEndpoint,
+    hasAccessKey: !!config.minio.accessKey,
+    hasSecretKey: !!config.minio.secretKey,
+  });
+}
 
 // Bucket names
 export const buckets = config.minio.buckets;

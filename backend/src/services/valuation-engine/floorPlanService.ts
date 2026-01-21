@@ -8,10 +8,13 @@
  * - Room breakdown analysis
  * - Ghana Building Code validation
  * - Multi-floor support
+ * - Floor plan image storage for report appendices
  */
 
 import { pool } from '../../database';
 import { v4 as uuidv4 } from 'uuid';
+import { uploadFile, getPresignedDownloadUrl, buckets } from '../../database/minio';
+import { logger } from '../../utils/logger';
 
 // ============================================================================
 // TYPES
@@ -87,6 +90,11 @@ export interface FloorPlan {
   locked_by?: string;
   has_scale_reference: boolean;
   measurement_confidence: MeasurementConfidence;
+  // Image storage for report appendices
+  image_url?: string;
+  image_generated_at?: Date;
+  image_width?: number;
+  image_height?: number;
   created_by?: string;
   created_at: Date;
   updated_at: Date;
@@ -311,6 +319,54 @@ class FloorPlanService {
   }
 
   /**
+   * Recalculate rooms from existing canvas data
+   * This is useful when the room extraction logic has been updated
+   */
+  async recalculate(id: string): Promise<FloorPlan | null> {
+    const existing = await this.getById(id);
+    if (!existing) return null;
+    if (existing.is_locked) {
+      throw new Error('Floor plan is locked and cannot be modified');
+    }
+
+    // Re-extract rooms from existing canvas
+    const rooms = this.extractRoomsFromCanvas(
+      existing.canvas_json, 
+      existing.scale_pixels_per_meter
+    );
+    const measurements = this.calculateMeasurements(rooms);
+
+    const query = `
+      UPDATE valuation_floor_plans SET
+        gross_building_area_sqm = $2,
+        net_usable_area_sqm = $3,
+        efficiency_ratio = $4,
+        rooms = $5,
+        updated_at = NOW()
+      WHERE id = $1
+      RETURNING *
+    `;
+
+    const values = [
+      id,
+      measurements.grossArea,
+      measurements.netUsableArea,
+      measurements.efficiencyRatio,
+      JSON.stringify(rooms)
+    ];
+
+    const result = await pool.query(query, values);
+    
+    if (result.rows.length === 0) return null;
+    
+    // Update rooms table
+    await this.deleteRooms(id);
+    await this.insertRooms(id, rooms);
+    
+    return this.mapRowToFloorPlan(result.rows[0]);
+  }
+
+  /**
    * Delete a floor plan
    */
   async delete(id: string): Promise<boolean> {
@@ -367,26 +423,98 @@ class FloorPlanService {
 
   /**
    * Extract room data from Fabric.js canvas JSON
+   * Supports both legacy Fabric.js format and new Professional Floor Plan Builder format
    */
   extractRoomsFromCanvas(canvas: FloorPlanCanvas, scalePixelsPerMeter: number): Room[] {
     const rooms: Room[] = [];
     
-    // Safety check: ensure canvas.objects is iterable
-    if (!canvas?.objects || !Array.isArray(canvas.objects)) {
+    // NEW FORMAT: Professional Floor Plan Builder sends rooms directly in the canvas JSON
+    // Format: { version: "2.0", rooms: [{id, name, type, area, perimeter, ...}], walls: [...], ... }
+    const canvasAny = canvas as any;
+    if (canvasAny?.rooms && Array.isArray(canvasAny.rooms) && canvasAny.rooms.length > 0) {
+      logger.debug('Extracting rooms from Professional Floor Plan Builder format', { 
+        roomCount: canvasAny.rooms.length 
+      });
+      
+      for (const room of canvasAny.rooms) {
+        const roomType = this.normalizeRoomType(room.type);
+        const standards = this.getGhanaBuildingStandard(roomType);
+        const meetsMinimum = standards ? (room.area || 0) >= standards.minimum_area_sqm : true;
+        
+        // Generate UUID if room.id is not a valid UUID format
+        const isValidUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(room.id || '');
+        const roomId = isValidUUID ? room.id : uuidv4();
+        
+        rooms.push({
+          id: roomId,
+          name: room.name || 'Room',
+          type: roomType,
+          area_sqm: Math.round((room.area || 0) * 100) / 100,
+          perimeter_m: Math.round((room.perimeter || 0) * 100) / 100,
+          vertices: room.polygon || [],
+          length_m: undefined, // Calculated from polygon if needed
+          width_m: undefined,
+          meets_minimum_size: meetsMinimum,
+          minimum_size_sqm: standards?.minimum_area_sqm || 0,
+          validation_notes: meetsMinimum ? undefined : `Below minimum size of ${standards?.minimum_area_sqm}sqm`,
+          fill_color: room.fillColor || '#E8F5E9',
+        });
+      }
+      
       return rooms;
     }
     
-    for (const obj of canvas.objects) {
-      if (obj.type === 'polygon' && obj.roomType) {
-        const room = this.extractRoomFromPolygon(obj, scalePixelsPerMeter);
+    // LEGACY FORMAT: Fabric.js objects array
+    // Safety check: ensure canvas.objects is iterable
+    // Handle both direct objects and nested canvasData structure
+    let objects = canvas?.objects;
+    if (!objects && (canvas as any)?.canvasData?.objects) {
+      objects = (canvas as any).canvasData.objects;
+    }
+    
+    if (!objects || !Array.isArray(objects)) {
+      return rooms;
+    }
+    
+    // First pass: collect all text labels that might be room labels
+    const textLabels: Map<string, { text: string; left: number; top: number }> = new Map();
+    for (const obj of objects) {
+      if (obj.type === 'text' && obj.text) {
+        const key = `${Math.round(obj.left || 0)}_${Math.round(obj.top || 0)}`;
+        textLabels.set(key, { text: obj.text, left: obj.left || 0, top: obj.top || 0 });
+      }
+    }
+    
+    for (const obj of objects) {
+      // Extract polygons - either with explicit roomType OR any polygon (treat as room)
+      if (obj.type === 'polygon') {
+        // Check if polygon has roomType OR if it's a reasonably sized shape (likely a room)
+        const hasRoomType = !!obj.roomType;
+        const hasReasonableSize = (obj.width || 0) > 50 && (obj.height || 0) > 50;
+        
+        if (hasRoomType || hasReasonableSize) {
+          // Try to find an associated text label for this polygon
+          const roomLabel = this.findNearestTextLabel(obj, textLabels);
+          const room = this.extractRoomFromPolygon(obj, scalePixelsPerMeter, undefined, roomLabel);
+          if (room) rooms.push(room);
+        }
+      }
+      // Also check for rect objects (rectangles are commonly used for rooms)
+      if (obj.type === 'rect' && (obj.width || 0) > 50 && (obj.height || 0) > 50) {
+        const roomLabel = this.findNearestTextLabel(obj, textLabels);
+        const room = this.extractRoomFromRect(obj, scalePixelsPerMeter, roomLabel);
         if (room) rooms.push(room);
       }
       // Also check for groups containing room polygons
       if (obj.type === 'group' && obj.objects) {
         for (const groupObj of obj.objects) {
-          if (groupObj.type === 'polygon' && groupObj.roomType) {
-            const room = this.extractRoomFromPolygon(groupObj, scalePixelsPerMeter, obj);
-            if (room) rooms.push(room);
+          if (groupObj.type === 'polygon') {
+            const hasRoomType = !!groupObj.roomType;
+            const hasReasonableSize = (groupObj.width || 0) > 50 && (groupObj.height || 0) > 50;
+            if (hasRoomType || hasReasonableSize) {
+              const room = this.extractRoomFromPolygon(groupObj, scalePixelsPerMeter, obj);
+              if (room) rooms.push(room);
+            }
           }
         }
       }
@@ -396,16 +524,138 @@ class FloorPlanService {
   }
 
   /**
+   * Find the nearest text label to a shape (for associating room names)
+   */
+  private findNearestTextLabel(
+    shape: FabricObject, 
+    textLabels: Map<string, { text: string; left: number; top: number }>
+  ): string | undefined {
+    const shapeCenter = {
+      x: (shape.left || 0) + ((shape.width || 0) * (shape.scaleX || 1)) / 2,
+      y: (shape.top || 0) + ((shape.height || 0) * (shape.scaleY || 1)) / 2
+    };
+    
+    let nearestLabel: string | undefined;
+    let nearestDistance = Infinity;
+    
+    for (const [, label] of textLabels) {
+      const distance = Math.sqrt(
+        Math.pow(label.left - shapeCenter.x, 2) + 
+        Math.pow(label.top - shapeCenter.y, 2)
+      );
+      
+      // Only consider labels within the shape bounds (roughly)
+      const maxDistance = Math.max(shape.width || 0, shape.height || 0);
+      if (distance < nearestDistance && distance < maxDistance) {
+        nearestDistance = distance;
+        nearestLabel = label.text;
+      }
+    }
+    
+    return nearestLabel;
+  }
+
+  /**
+   * Extract room data from a rectangle object
+   */
+  private extractRoomFromRect(
+    rect: FabricObject, 
+    scale: number,
+    labelText?: string
+  ): Room | null {
+    const width = ((rect.width || 0) * (rect.scaleX || 1)) / scale;
+    const height = ((rect.height || 0) * (rect.scaleY || 1)) / scale;
+    const areaMeters = width * height;
+    const perimeterMeters = 2 * (width + height);
+    
+    if (areaMeters < 1) return null; // Too small to be a room
+    
+    // Parse room name and type from label if available
+    let roomName = rect.name || labelText?.split('\n')[0] || 'Room';
+    let roomType: RoomType = (rect.roomType as RoomType) || this.inferRoomTypeFromName(roomName);
+    
+    const standards = this.getGhanaBuildingStandard(roomType);
+    const meetsMinimum = standards ? areaMeters >= standards.minimum_area_sqm : true;
+    
+    return {
+      id: rect.id || uuidv4(),
+      name: roomName,
+      type: roomType,
+      area_sqm: Math.round(areaMeters * 100) / 100,
+      perimeter_m: Math.round(perimeterMeters * 100) / 100,
+      vertices: [],
+      length_m: Math.round(Math.max(width, height) * 100) / 100,
+      width_m: Math.round(Math.min(width, height) * 100) / 100,
+      meets_minimum_size: meetsMinimum,
+      minimum_size_sqm: standards?.minimum_area_sqm || 0,
+      fill_color: rect.fill || '#E5E7EB'
+    };
+  }
+
+  /**
+   * Infer room type from room name
+   */
+  private inferRoomTypeFromName(name: string): RoomType {
+    const nameLower = name.toLowerCase();
+    if (nameLower.includes('bedroom') || nameLower.includes('bed')) return 'bedroom';
+    if (nameLower.includes('living') || nameLower.includes('lounge')) return 'living';
+    if (nameLower.includes('kitchen')) return 'kitchen';
+    if (nameLower.includes('bathroom') || nameLower.includes('bath')) return 'bathroom';
+    if (nameLower.includes('toilet') || nameLower.includes('wc')) return 'bathroom';
+    if (nameLower.includes('dining')) return 'dining';
+    if (nameLower.includes('store') || nameLower.includes('storage')) return 'storage';
+    if (nameLower.includes('garage')) return 'garage';
+    if (nameLower.includes('balcony')) return 'porch';
+    if (nameLower.includes('porch')) return 'porch';
+    if (nameLower.includes('laundry')) return 'laundry';
+    if (nameLower.includes('office') || nameLower.includes('study')) return 'office';
+    if (nameLower.includes('corridor') || nameLower.includes('hall')) return 'corridor';
+    return 'other';
+  }
+
+  /**
    * Extract room data from a polygon object
    */
   private extractRoomFromPolygon(
     polygon: FabricObject, 
     scale: number,
-    parent?: FabricObject
+    parent?: FabricObject,
+    labelText?: string
   ): Room | null {
-    if (!polygon.points || polygon.points.length < 3) return null;
+    // For polygons without points, calculate area from bounding box
+    if (!polygon.points || polygon.points.length < 3) {
+      // Fall back to bounding box calculation
+      const width = ((polygon.width || 0) * (polygon.scaleX || 1)) / scale;
+      const height = ((polygon.height || 0) * (polygon.scaleY || 1)) / scale;
+      const areaMeters = width * height;
+      
+      if (areaMeters < 1) return null; // Too small
+      
+      // Parse room name from label or polygon name
+      let roomName = polygon.name || labelText?.split('\n')[0] || 'Room';
+      let roomType: RoomType = (polygon.roomType as RoomType) || this.inferRoomTypeFromName(roomName);
+      
+      const standards = this.getGhanaBuildingStandard(roomType);
+      const meetsMinimum = standards ? areaMeters >= standards.minimum_area_sqm : true;
+      
+      return {
+        id: polygon.id || uuidv4(),
+        name: roomName,
+        type: roomType,
+        area_sqm: Math.round(areaMeters * 100) / 100,
+        perimeter_m: Math.round(2 * (width + height) * 100) / 100,
+        vertices: [],
+        length_m: Math.round(Math.max(width, height) * 100) / 100,
+        width_m: Math.round(Math.min(width, height) * 100) / 100,
+        meets_minimum_size: meetsMinimum,
+        minimum_size_sqm: standards?.minimum_area_sqm || 0,
+        fill_color: polygon.fill || '#E5E7EB'
+      };
+    }
     
-    const roomType = this.normalizeRoomType(polygon.roomType || 'other');
+    // Parse room name from label or polygon name
+    let roomName = polygon.name || labelText?.split('\n')[0] || 'Room';
+    const roomType = this.normalizeRoomType(polygon.roomType || this.inferRoomTypeFromName(roomName));
     const standards = this.getGhanaBuildingStandard(roomType);
     
     // Convert points to meters
@@ -644,12 +894,39 @@ class FloorPlanService {
   // --------------------------------------------------------------------------
 
   private normalizeRoomType(type: string): RoomType {
-    const normalized = type.toLowerCase().replace(/[^a-z]/g, '');
-    const validTypes: RoomType[] = [
-      'bedroom', 'bathroom', 'kitchen', 'living', 'dining',
-      'storage', 'corridor', 'porch', 'garage', 'laundry', 'office'
-    ];
-    return validTypes.includes(normalized as RoomType) ? normalized as RoomType : 'other';
+    if (!type) return 'other';
+    
+    const normalized = type.toLowerCase().replace(/[_-]/g, ' ').trim();
+    
+    // Map frontend room types to backend room types
+    const typeMap: Record<string, RoomType> = {
+      'bedroom': 'bedroom',
+      'small bedroom': 'bedroom',
+      'standard bedroom': 'bedroom',
+      'master bedroom': 'bedroom',
+      'bathroom': 'bathroom',
+      'small bathroom': 'bathroom',
+      'master bathroom': 'bathroom',
+      'kitchen': 'kitchen',
+      'living': 'living',
+      'living room': 'living',
+      'livingroom': 'living',
+      'dining': 'dining',
+      'dining room': 'dining',
+      'storage': 'storage',
+      'storage room': 'storage',
+      'corridor': 'corridor',
+      'hallway': 'corridor',
+      'porch': 'porch',
+      'balcony': 'porch',
+      'garage': 'garage',
+      'laundry': 'laundry',
+      'laundry room': 'laundry',
+      'office': 'office',
+      'study': 'office',
+    };
+    
+    return typeMap[normalized] || 'other';
   }
 
   private mapRowToFloorPlan(row: any): FloorPlan {
@@ -674,6 +951,11 @@ class FloorPlanService {
       locked_by: row.locked_by,
       has_scale_reference: row.has_scale_reference,
       measurement_confidence: row.measurement_confidence,
+      // Image storage for report appendices
+      image_url: row.image_url,
+      image_generated_at: row.image_generated_at ? new Date(row.image_generated_at) : undefined,
+      image_width: row.image_width ? parseInt(row.image_width) : undefined,
+      image_height: row.image_height ? parseInt(row.image_height) : undefined,
       created_by: row.created_by,
       created_at: new Date(row.created_at),
       updated_at: new Date(row.updated_at)
@@ -714,6 +996,460 @@ class FloorPlanService {
 
   private async deleteRooms(floorPlanId: string): Promise<void> {
     await pool.query('DELETE FROM valuation_floor_plan_rooms WHERE floor_plan_id = $1', [floorPlanId]);
+  }
+
+  // --------------------------------------------------------------------------
+  // GEOMETRY VERSIONING METHODS (Phase 1 Enhancement)
+  // --------------------------------------------------------------------------
+
+  /**
+   * Create a new geometry version
+   * Used when Blender generates new geometry (Phase 2)
+   */
+  async createGeometryVersion(input: {
+    valuation_id: string;
+    floor_plan_id?: string;
+    blender_output: Record<string, unknown>;
+    fabric_projection: Record<string, unknown>;
+    measurements: Record<string, unknown>;
+    validation_result?: Record<string, unknown>;
+    created_by?: string;
+  }): Promise<{ id: string; version_number: number }> {
+    // Get next version number
+    const versionResult = await pool.query(
+      `SELECT COALESCE(MAX(version_number), 0) + 1 as next_version 
+       FROM valuation_floor_plan_geometry_versions 
+       WHERE valuation_id = $1`,
+      [input.valuation_id]
+    );
+    const versionNumber = versionResult.rows[0].next_version;
+
+    // Create hash of geometry for deduplication
+    const crypto = await import('crypto');
+    const geometryHash = crypto
+      .createHash('sha256')
+      .update(JSON.stringify(input.blender_output))
+      .digest('hex')
+      .substring(0, 64);
+
+    const query = `
+      INSERT INTO valuation_floor_plan_geometry_versions (
+        valuation_id, floor_plan_id, version_number, geometry_hash,
+        blender_output, fabric_projection, measurements, validation_result,
+        status, created_by
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'draft', $9)
+      RETURNING id, version_number
+    `;
+
+    const result = await pool.query(query, [
+      input.valuation_id,
+      input.floor_plan_id || null,
+      versionNumber,
+      geometryHash,
+      JSON.stringify(input.blender_output),
+      JSON.stringify(input.fabric_projection),
+      JSON.stringify(input.measurements),
+      input.validation_result ? JSON.stringify(input.validation_result) : null,
+      input.created_by || null,
+    ]);
+
+    return {
+      id: result.rows[0].id,
+      version_number: result.rows[0].version_number,
+    };
+  }
+
+  /**
+   * Get the current (latest valid) geometry version
+   */
+  async getCurrentGeometryVersion(valuationId: string): Promise<any | null> {
+    const result = await pool.query(
+      `SELECT * FROM valuation_floor_plan_geometry_versions
+       WHERE valuation_id = $1 
+         AND superseded_at IS NULL
+         AND status IN ('validated', 'approved', 'locked')
+       ORDER BY version_number DESC
+       LIMIT 1`,
+      [valuationId]
+    );
+    
+    if (result.rows.length === 0) return null;
+    return result.rows[0];
+  }
+
+  /**
+   * Validate and approve a geometry version
+   */
+  async approveGeometryVersion(versionId: string, userId?: string): Promise<boolean> {
+    // Get the version
+    const versionResult = await pool.query(
+      'SELECT * FROM valuation_floor_plan_geometry_versions WHERE id = $1',
+      [versionId]
+    );
+    
+    if (versionResult.rows.length === 0) return false;
+    
+    const version = versionResult.rows[0];
+    
+    // Supersede any existing approved versions
+    await pool.query(
+      `UPDATE valuation_floor_plan_geometry_versions
+       SET superseded_at = NOW(), superseded_by = $2
+       WHERE valuation_id = $1 AND status = 'approved' AND id != $2`,
+      [version.valuation_id, versionId]
+    );
+
+    // Approve this version
+    await pool.query(
+      `UPDATE valuation_floor_plan_geometry_versions
+       SET status = 'approved'
+       WHERE id = $1`,
+      [versionId]
+    );
+
+    // Log to audit trail
+    await this.logAuditEntry({
+      valuation_id: version.valuation_id,
+      geometry_version_id: versionId,
+      action: 'approve_geometry',
+      actor_id: userId,
+      actor_type: 'user',
+    });
+
+    return true;
+  }
+
+  // --------------------------------------------------------------------------
+  // AUDIT LOG METHODS (Phase 1 Enhancement)
+  // --------------------------------------------------------------------------
+
+  /**
+   * Log an entry to the audit trail
+   */
+  async logAuditEntry(entry: {
+    valuation_id: string;
+    floor_plan_id?: string;
+    geometry_version_id?: string;
+    design_intent_id?: string;
+    action: string;
+    actor_id?: string;
+    actor_type: 'user' | 'system' | 'llm' | 'blender';
+    adjustment_deltas?: Record<string, unknown>;
+    previous_state?: Record<string, unknown>;
+    new_state?: Record<string, unknown>;
+    justification?: string;
+    validation_passed?: boolean;
+    ip_address?: string;
+    user_agent?: string;
+  }): Promise<string> {
+    const query = `
+      INSERT INTO valuation_floor_plan_audit_log (
+        valuation_id, floor_plan_id, geometry_version_id, design_intent_id,
+        action, actor_id, actor_type, adjustment_deltas,
+        previous_state, new_state, justification, validation_passed,
+        ip_address, user_agent
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+      RETURNING id
+    `;
+
+    const result = await pool.query(query, [
+      entry.valuation_id,
+      entry.floor_plan_id || null,
+      entry.geometry_version_id || null,
+      entry.design_intent_id || null,
+      entry.action,
+      entry.actor_id || null,
+      entry.actor_type,
+      entry.adjustment_deltas ? JSON.stringify(entry.adjustment_deltas) : null,
+      entry.previous_state ? JSON.stringify(entry.previous_state) : null,
+      entry.new_state ? JSON.stringify(entry.new_state) : null,
+      entry.justification || null,
+      entry.validation_passed,
+      entry.ip_address || null,
+      entry.user_agent || null,
+    ]);
+
+    return result.rows[0].id;
+  }
+
+  /**
+   * Get audit history for a floor plan
+   */
+  async getAuditHistory(valuationId: string, options?: {
+    limit?: number;
+    offset?: number;
+    actions?: string[];
+  }): Promise<{ entries: any[]; total: number }> {
+    let sql = `
+      SELECT * FROM valuation_floor_plan_audit_log
+      WHERE valuation_id = $1
+    `;
+    const params: any[] = [valuationId];
+
+    if (options?.actions && options.actions.length > 0) {
+      sql += ` AND action = ANY($${params.length + 1})`;
+      params.push(options.actions);
+    }
+
+    // Get total count
+    const countResult = await pool.query(
+      sql.replace('SELECT *', 'SELECT COUNT(*)'),
+      params
+    );
+    const total = parseInt(countResult.rows[0].count, 10);
+
+    // Add pagination
+    sql += ` ORDER BY timestamp DESC`;
+    sql += ` LIMIT $${params.length + 1} OFFSET $${params.length + 2}`;
+    params.push(options?.limit || 20);
+    params.push(options?.offset || 0);
+
+    const result = await pool.query(sql, params);
+
+    return {
+      entries: result.rows,
+      total,
+    };
+  }
+
+  // --------------------------------------------------------------------------
+  // DESIGN INTENT METHODS (Phase 1 Enhancement)
+  // --------------------------------------------------------------------------
+
+  /**
+   * Save a design intent from LLM
+   */
+  async saveDesignIntent(input: {
+    valuation_id: string;
+    llm_model: string;
+    llm_request_id?: string;
+    input_features: Record<string, unknown>;
+    layout_strategy: Record<string, unknown>;
+    room_program: Record<string, unknown>[];
+    assumptions: Record<string, unknown>[];
+    alternatives?: Record<string, unknown>[];
+    created_by?: string;
+  }): Promise<string> {
+    const query = `
+      INSERT INTO valuation_floor_plan_design_intents (
+        valuation_id, llm_model, llm_request_id,
+        input_features, layout_strategy, room_program, assumptions, alternatives,
+        status, created_by
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'generated', $9)
+      RETURNING id
+    `;
+
+    const result = await pool.query(query, [
+      input.valuation_id,
+      input.llm_model,
+      input.llm_request_id || null,
+      JSON.stringify(input.input_features),
+      JSON.stringify(input.layout_strategy),
+      JSON.stringify(input.room_program),
+      JSON.stringify(input.assumptions),
+      input.alternatives ? JSON.stringify(input.alternatives) : null,
+      input.created_by || null,
+    ]);
+
+    return result.rows[0].id;
+  }
+
+  /**
+   * Get design intents for a valuation
+   */
+  async getDesignIntents(valuationId: string, status?: string): Promise<any[]> {
+    let sql = `
+      SELECT * FROM valuation_floor_plan_design_intents
+      WHERE valuation_id = $1
+    `;
+    const params: any[] = [valuationId];
+
+    if (status) {
+      sql += ` AND status = $2`;
+      params.push(status);
+    }
+
+    sql += ` ORDER BY created_at DESC`;
+
+    const result = await pool.query(sql, params);
+    return result.rows;
+  }
+
+  /**
+   * Apply a design intent (mark as applied and link to geometry version)
+   */
+  async applyDesignIntent(intentId: string, geometryVersionId: string): Promise<boolean> {
+    const result = await pool.query(
+      `UPDATE valuation_floor_plan_design_intents
+       SET status = 'applied', 
+           applied_at = NOW(),
+           applied_geometry_version_id = $2
+       WHERE id = $1
+       RETURNING valuation_id`,
+      [intentId, geometryVersionId]
+    );
+
+    if (result.rows.length === 0) return false;
+
+    // Log to audit trail
+    await this.logAuditEntry({
+      valuation_id: result.rows[0].valuation_id,
+      design_intent_id: intentId,
+      geometry_version_id: geometryVersionId,
+      action: 'apply_design_intent',
+      actor_type: 'system',
+    });
+
+    return true;
+  }
+
+  // --------------------------------------------------------------------------
+  // IMAGE STORAGE FOR REPORT APPENDICES
+  // --------------------------------------------------------------------------
+
+  /**
+   * Save floor plan image (PNG) to MinIO storage
+   * @param planId - Floor plan ID
+   * @param imageDataUrl - Base64 data URL (e.g., "data:image/png;base64,...")
+   * @param width - Image width in pixels
+   * @param height - Image height in pixels
+   * @returns Updated floor plan with image_url
+   */
+  async saveImage(
+    planId: string, 
+    imageDataUrl: string,
+    width?: number,
+    height?: number
+  ): Promise<FloorPlan | null> {
+    const floorPlan = await this.getById(planId);
+    if (!floorPlan) {
+      logger.error('Floor plan not found for image save', { planId });
+      return null;
+    }
+
+    // Extract base64 data from data URL
+    const matches = imageDataUrl.match(/^data:image\/(\w+);base64,(.+)$/);
+    if (!matches) {
+      throw new Error('Invalid image data URL format');
+    }
+
+    const imageFormat = matches[1]; // png, jpeg, etc.
+    const base64Data = matches[2];
+    const imageBuffer = Buffer.from(base64Data, 'base64');
+
+    // Generate storage key: floor-plans/{valuation_id}/floor-{floor_number}.png
+    const objectKey = `floor-plans/${floorPlan.valuation_id}/floor-${floorPlan.floor_number}.${imageFormat}`;
+    const bucket = buckets.uploads || 'propmetrik-uploads';
+
+    try {
+      // Upload to MinIO
+      await uploadFile(
+        bucket,
+        objectKey,
+        imageBuffer,
+        `image/${imageFormat}`,
+        {
+          'x-amz-meta-floor-plan-id': planId,
+          'x-amz-meta-valuation-id': floorPlan.valuation_id,
+          'x-amz-meta-floor-number': String(floorPlan.floor_number),
+        }
+      );
+
+      const imageUrl = `minio://${bucket}/${objectKey}`;
+      
+      logger.info('Floor plan image saved to MinIO', { 
+        planId, 
+        imageUrl,
+        size: imageBuffer.length,
+        width,
+        height
+      });
+
+      // Update database with image URL
+      const query = `
+        UPDATE valuation_floor_plans SET
+          image_url = $2,
+          image_generated_at = NOW(),
+          image_width = $3,
+          image_height = $4,
+          updated_at = NOW()
+        WHERE id = $1
+        RETURNING *
+      `;
+
+      const result = await pool.query(query, [planId, imageUrl, width || null, height || null]);
+      
+      if (result.rows.length === 0) {
+        throw new Error('Failed to update floor plan with image URL');
+      }
+
+      return this.mapRowToFloorPlan(result.rows[0]);
+    } catch (error: any) {
+      logger.error('Failed to save floor plan image', { 
+        planId, 
+        error: error.message 
+      });
+      throw error;
+    }
+  }
+
+  /**
+   * Get presigned URL for floor plan image
+   * @param planId - Floor plan ID
+   * @param expiresInSeconds - URL expiry time (default 1 hour)
+   * @returns Presigned download URL or null if no image
+   */
+  async getImageUrl(planId: string, expiresInSeconds: number = 3600): Promise<string | null> {
+    const floorPlan = await this.getById(planId);
+    if (!floorPlan || !floorPlan.image_url) {
+      return null;
+    }
+
+    // Parse minio:// URL
+    const match = floorPlan.image_url.match(/^minio:\/\/([^/]+)\/(.+)$/);
+    if (!match) {
+      logger.warn('Invalid image URL format', { imageUrl: floorPlan.image_url });
+      return null;
+    }
+
+    const [, bucket, key] = match;
+    
+    try {
+      return await getPresignedDownloadUrl(bucket, key, expiresInSeconds);
+    } catch (error: any) {
+      logger.error('Failed to generate presigned URL for floor plan image', {
+        planId,
+        error: error.message
+      });
+      return null;
+    }
+  }
+
+  /**
+   * Get all floor plan images for a valuation with presigned URLs
+   * @param valuationId - Valuation ID
+   * @returns Array of floor plans with presigned image URLs
+   */
+  async getImagesForValuation(valuationId: string): Promise<Array<{
+    planId: string;
+    floorNumber: number;
+    floorLabel: string;
+    imageUrl: string | null;
+    grossBuildingAreaSqm: number | null;
+  }>> {
+    const floorPlans = await this.getByValuationId(valuationId);
+    
+    const results = await Promise.all(
+      floorPlans.map(async (fp) => ({
+        planId: fp.id,
+        floorNumber: fp.floor_number,
+        floorLabel: fp.floor_label,
+        imageUrl: fp.image_url ? await this.getImageUrl(fp.id) : null,
+        grossBuildingAreaSqm: fp.gross_building_area_sqm || null,
+      }))
+    );
+
+    return results;
   }
 }
 

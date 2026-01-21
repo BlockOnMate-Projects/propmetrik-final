@@ -376,26 +376,35 @@ export default function MethodSelectionPage() {
       }
 
       // Update valuation with method selection
-      await valuationsApi.update(valuationId, {
-        selectedMethods,
-        primaryMethod,
-        methodWeights,
+      // Use snake_case field names to match backend API expectations
+      const updateResult = await valuationsApi.update(valuationId, {
+        methods_applied: selectedMethods,
+        primary_method: primaryMethod,
+        method_weights: methodWeights,
         current_step: 3, // Methods is step 3
       })
 
+      // Check if update failed
+      if (updateResult.error) {
+        throw new Error(updateResult.error)
+      }
+
       // Determine next step based on selected methods
       // Sales Comparison requires comparables, so always go to comparables first
+      // Income Approach benefits from rental comparables, so go to rental-market first
       // Other methods can benefit from comparables but don't require them
       const hasSalesComparison = selectedMethods.includes('sales_comparison')
+      const hasIncomeApproach = selectedMethods.includes('income_approach')
       
       if (hasSalesComparison) {
         // Sales Comparison needs comparables - go to Comparables page
         router.push(`/dashboard/valuations/${valuationId}/comparables`)
       } else {
-        // No Sales Comparison - route directly to first selected method
+        // No Sales Comparison - route based on selected methods
+        // If income approach is selected, go to rental-market first
         const methodRoutes: Record<string, string> = {
           'cost_approach': 'cost',
-          'income_approach': 'income',
+          'income_approach': 'rental-market', // Route to rental market first, then income
           'drc_method': 'drc',
           'profits_method': 'profits',
           'residual_method': 'residual',

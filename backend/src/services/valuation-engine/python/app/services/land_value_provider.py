@@ -396,7 +396,7 @@ class LandValueProvider:
                     'comparables_found': result.comparables_found,
                     'outliers_excluded': result.outliers_excluded,
                     'methodology_notes': result.methodology_notes,
-                    'basket': result.basket.to_dict() if result.basket else None
+                    'basket': result.basket.model_dump() if result.basket else None
                 }
             else:
                 return {
@@ -448,19 +448,27 @@ class LandValueProvider:
             
             result = await self.residual_service.calculate(property_for_val, options)
             
-            if result.confidence > 0 and result.value > 0:
+            # Residual method can return 0 or negative if development is not viable
+            # This is a valid result - it means land has no development value at current costs
+            if result.confidence > 0:
+                residual_value = result.value
+                gdv = result.details.get('calculation', {}).get('gross_development_value', 0)
+                total_costs = result.details.get('calculation', {}).get('total_costs', 0)
+                
                 return {
                     'success': True,
-                    'indicated_value': result.value,
+                    'indicated_value': max(0, residual_value),  # Floor at 0 - land can't be negative
                     'confidence_score': min(result.confidence, 1.0),  # Cap at 1.0
-                    'gdv': result.details.get('calculation', {}).get('gross_development_value', 0),
-                    'total_costs': result.details.get('calculation', {}).get('total_costs', 0),
+                    'gdv': gdv,
+                    'total_costs': total_costs,
                     'value_per_sqm': result.details.get('calculation', {}).get('land_value_per_sqm', 0),
-                    'details': result.details
+                    'details': result.details,
+                    'development_viable': residual_value > 0,
+                    'note': 'Development not economically viable at current costs' if residual_value <= 0 else None
                 }
             return {
                     'success': False,
-                    'error': result.details.get('error', 'Residual method returned no value')
+                    'error': result.details.get('error', 'Residual method returned no result')
                 }
                 
         except Exception as e:

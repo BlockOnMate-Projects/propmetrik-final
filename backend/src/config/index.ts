@@ -69,20 +69,43 @@ export const config = {
     indexPrefix: process.env.OPENSEARCH_INDEX_PREFIX || 'propmetrik_',
   },
 
-  // MinIO / S3
-  minio: {
-    endpoint: process.env.MINIO_ENDPOINT,
-    port: parseInt(process.env.MINIO_PORT || '9000', 10),
-    useSSL: process.env.MINIO_USE_SSL === 'true',
-    accessKey: process.env.MINIO_ACCESS_KEY!,
-    secretKey: process.env.MINIO_SECRET_KEY!,
-    buckets: {
-      properties: process.env.MINIO_BUCKET_PROPERTIES || 'propmetrik-properties',
-      documents: process.env.MINIO_BUCKET_DOCUMENTS || 'propmetrik-documents',
-      media: process.env.MINIO_BUCKET_MEDIA || 'propmetrik-media',
-      uploads: process.env.MINIO_BUCKET_UPLOADS || 'propmetrik-uploads',
-    },
-  },
+  // MinIO / S3 - Parse URL if provided, otherwise use individual env vars
+  minio: (() => {
+    const minioUrl = process.env.MINIO_URL;
+    let endpoint = process.env.MINIO_ENDPOINT;
+    let port = parseInt(process.env.MINIO_PORT || '443', 10);
+    let useSSL = process.env.MINIO_USE_SSL === 'true';
+    let accessKey = process.env.MINIO_ACCESS_KEY || '';
+    let secretKey = process.env.MINIO_SECRET_KEY || '';
+
+    // Parse MINIO_URL if provided: https://user:pass@host or http://user:pass@host:port
+    if (minioUrl) {
+      try {
+        const url = new URL(minioUrl);
+        useSSL = url.protocol === 'https:';
+        endpoint = url.hostname;
+        port = url.port ? parseInt(url.port, 10) : (useSSL ? 443 : 80);
+        accessKey = decodeURIComponent(url.username) || accessKey;
+        secretKey = decodeURIComponent(url.password) || secretKey;
+      } catch (e) {
+        console.warn('Failed to parse MINIO_URL, falling back to individual env vars');
+      }
+    }
+
+    return {
+      endpoint,
+      port,
+      useSSL,
+      accessKey,
+      secretKey,
+      buckets: {
+        properties: process.env.MINIO_BUCKET_PROPERTIES || 'propmetrik-properties',
+        documents: process.env.MINIO_BUCKET_DOCUMENTS || 'propmetrik-documents',
+        media: process.env.MINIO_BUCKET_MEDIA || 'propmetrik-media',
+        uploads: process.env.MINIO_BUCKET_UPLOADS || 'propmetrik-uploads',
+      },
+    };
+  })(),
 
   // ClickHouse Analytics
   clickhouse: {
@@ -128,15 +151,73 @@ export const config = {
 
   // CORS
   cors: {
-    origins: (process.env.CORS_ORIGINS || 'http://localhost:3000').split(','),
+    origins: (process.env.CORS_ORIGINS || 'http://localhost:3000,http://localhost:3001').split(','),
     credentials: true,
+  },
+
+  // External APIs - Mapping
+  mapbox: {
+    accessToken: process.env.MAPBOX_ACCESS_TOKEN || '',
+  },
+
+  // Ghana Post GPS - Self-hosted Docker
+  ghanaPostGps: {
+    apiUrl: process.env.GHANA_POST_GPS_API_URL || 'http://localhost:8585',
+    fallbackUrl: process.env.GHANA_POST_GPS_FALLBACK_URL || 'https://ghanapostgps.sperixlabs.org/api',
+  },
+
+  // WhatsApp Business Cloud API
+  whatsapp: {
+    enabled: !!process.env.WHATSAPP_ACCESS_TOKEN,
+    apiVersion: process.env.WHATSAPP_API_VERSION || 'v18.0',
+    phoneNumberId: process.env.WHATSAPP_PHONE_NUMBER_ID || '',
+    businessAccountId: process.env.WHATSAPP_BUSINESS_ACCOUNT_ID || '',
+    accessToken: process.env.WHATSAPP_ACCESS_TOKEN || '',
+    webhookVerifyToken: process.env.WHATSAPP_WEBHOOK_VERIFY_TOKEN || 'propmetrik_webhook_2024',
+    apiBaseUrl: 'https://graph.facebook.com',
+  },
+
+  // Google Calendar API
+  google: {
+    enabled: !!process.env.GOOGLE_CLIENT_ID,
+    clientId: process.env.GOOGLE_CLIENT_ID || '',
+    clientSecret: process.env.GOOGLE_CLIENT_SECRET || '',
+    calendarApiKey: process.env.GOOGLE_CALENDAR_API_KEY || '',
+    redirectUri: process.env.GOOGLE_REDIRECT_URI || 'http://localhost:4000/api/v1/auth/google/callback',
+    scopes: [
+      'https://www.googleapis.com/auth/calendar.events',
+      'https://www.googleapis.com/auth/calendar.readonly',
+    ],
+  },
+
+  // Paystack Payments
+  paystack: {
+    enabled: !!process.env.PAYSTACK_SECRET_KEY,
+    secretKey: process.env.PAYSTACK_SECRET_KEY || '',
+    publicKey: process.env.PAYSTACK_PUBLIC_KEY || '',
+    apiBaseUrl: 'https://api.paystack.co',
   },
 
   // Ghana Regional Configuration
   regions: {
     GREATER_ACCRA: 'greater_accra',
-    KUMASI_METRO: 'kumasi_metro',
+    ASHANTI: 'ashanti',
     EASTERN: 'eastern',
+    CENTRAL: 'central',
+    WESTERN: 'western',
+    VOLTA: 'volta',
+    NORTHERN: 'northern',
+    UPPER_EAST: 'upper_east',
+    UPPER_WEST: 'upper_west',
+    BONO: 'bono',
+    BONO_EAST: 'bono_east',
+    AHAFO: 'ahafo',
+    SAVANNAH: 'savannah',
+    NORTH_EAST: 'north_east',
+    OTI: 'oti',
+    WESTERN_NORTH: 'western_north',
+    // Legacy / Clusters
+    KUMASI_METRO: 'kumasi_metro',
     WESTERN_CLUSTER: 'western_cluster',
     NORTHERN_CLUSTER: 'northern_cluster',
   } as const,

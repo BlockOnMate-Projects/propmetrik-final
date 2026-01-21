@@ -133,6 +133,11 @@ export async function rateLimiter(
   if (config.env === 'test') {
     return next();
   }
+  
+  // Skip rate limiting in development environment
+  if (config.env === 'development') {
+    return next();
+  }
 
   const limiter = selectRateLimiter(req);
   const key = getRateLimiterKey(req);

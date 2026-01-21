@@ -11,6 +11,10 @@ export { DataSourceService, dataSourceService } from './dataSourceService';
 export { EtlJobService, etlJobService } from './etlJobService';
 export { ContributionService, contributionService, ContributorProfileService, contributorProfileService } from './contributionService';
 export { GeocodingService, geocodingService } from './geocodingService';
+export { DataHubAnalyticsService, dataHubAnalyticsService } from './analyticsService';
+export { DataHubPerformanceService, dataHubPerformanceService } from './performanceService';
+export { SpiderManagementService, spiderManagementService } from './spiderManagementService';
+export { DataCatalogService } from './dataCatalogService';
 
 // ETL Pipeline Services
 export {
@@ -44,7 +48,7 @@ export {
 } from './etl';
 
 // Job Queue
-export { 
+export {
   DataHubQueueManager,
   dataHubQueueManager,
   type DataIngestionJobData,
@@ -57,8 +61,8 @@ export {
 } from './jobQueue';
 
 // Tier 4: Economic Data and Construction Costs
-export { 
-  EconomicDataService, 
+export {
+  EconomicDataService,
   economicDataService,
   type EconomicIndicatorType,
   type EconomicIndicator,
@@ -93,6 +97,7 @@ export {
   type AlertSeverity,
   type DataFreshnessCheck,
   type SourceHealthReport,
-  type MonitoringReport,
   type Alert,
 } from './monitoring';
+
+export { SystemHealthService, systemHealthService } from './systemHealthService';

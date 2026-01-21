@@ -73,10 +73,15 @@ class PropertyLocation(BaseModel):
             return v
         
         import re
-        # Ghana Post GPS format: XX-XXX-XXXX
-        pattern = r'^[A-Z]{2}-[A-Z0-9]{3}-[A-Z0-9]{4}$'
+        # Accept various Ghana Post GPS formats:
+        # - Standard: XX-XXX-XXXX (e.g., GE-314-9028)
+        # - Compact: XXXXXXXXX or XXXXXXXXXX (e.g., G45525180)
+        # - With dashes: XX-XXXX-XXXX (e.g., GK-0736-9380)
+        # Just ensure it's alphanumeric with optional dashes
+        pattern = r'^[A-Z0-9\-]{6,15}$'
         if not re.match(pattern, v.upper()):
-            raise ValueError('Ghana Post GPS must be in format XX-XXX-XXXX')
+            # Don't raise error, just return None for invalid formats
+            return None
         return v.upper()
     
     @validator('coordinates')

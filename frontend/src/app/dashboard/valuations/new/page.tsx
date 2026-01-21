@@ -86,9 +86,9 @@ export default function NewValuationPage() {
 
       try {
         setSearching(true)
-        // Use public properties endpoint with search
+        // Use properties endpoint with search (Next.js rewrites /api/* to /api/v1/*)
         const response = await fetch(
-          `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000'}/api/public/properties?search=${encodeURIComponent(searchQuery)}&limit=10`
+          `/api/properties?search=${encodeURIComponent(searchQuery)}&limit=10`
         )
         const data = await response.json()
         if (data.data) {
@@ -141,6 +141,11 @@ export default function NewValuationPage() {
           year_built: newProperty.year_built || null,
           total_floors: newProperty.total_floors || null,
           parking_spaces: newProperty.parking_spaces || null,
+          owner_name: newProperty.owner_name || null,
+          owner_email: newProperty.owner_email || null,
+          owner_phone: newProperty.owner_phone || null,
+          owner_address: newProperty.owner_address || null,
+          owner_contact_preference: newProperty.owner_contact_preference || null,
           // Store comprehensive data in metadata
           comprehensive_data: newProperty
         }
@@ -152,6 +157,11 @@ export default function NewValuationPage() {
           property: propertyData,
           valuation_type: 'professional',
           valuation_purpose: valuationPurpose,
+          valuation_date: newProperty.valuation_date || null,
+          inspection_date: newProperty.inspection_date || null,
+          instruction_date: newProperty.instruction_date || null,
+          report_date: newProperty.report_date || null,
+          is_retrospective: newProperty.is_retrospective || false,
         });
         
         console.log('Valuation response:', valuationResponse);
