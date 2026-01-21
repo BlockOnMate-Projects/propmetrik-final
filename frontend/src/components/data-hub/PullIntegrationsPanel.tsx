@@ -52,8 +52,14 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
 import { cn } from '@/lib/utils'
 import { formatDistanceToNow } from 'date-fns'
-import { toast } from 'sonner'
+// import { toast } from 'sonner'
 import { MetricCard } from '@/components/layout'
+
+// Placeholder for toast since sonner is missing
+const toast = {
+  success: (msg: string) => console.log('SUCCESS:', msg),
+  error: (msg: string) => console.error('ERROR:', msg),
+}
 
 // Re-export types for component (these should match the standalone page)
 interface PartnerEndpoint {
@@ -188,7 +194,7 @@ function FrequencyBadge({ frequency }: { frequency: string }) {
     weekly: 'bg-yellow-100 text-yellow-700',
     monthly: 'bg-purple-100 text-purple-700'
   }
-  
+
   return (
     <Badge className={cn('text-xs', colors[frequency as keyof typeof colors] || 'bg-gray-100 text-gray-700')}>
       {frequency}
@@ -196,11 +202,11 @@ function FrequencyBadge({ frequency }: { frequency: string }) {
   )
 }
 
-function AuthMethodFields({ 
-  authMethod, 
-  formData, 
-  onChange 
-}: { 
+function AuthMethodFields({
+  authMethod,
+  formData,
+  onChange
+}: {
   authMethod: string
   formData: any
   onChange: (field: string, value: string) => void
@@ -211,8 +217,8 @@ function AuthMethodFields({
         <>
           <div>
             <label className="text-sm font-medium">Client ID *</label>
-            <Input 
-              placeholder="OAuth2 Client ID" 
+            <Input
+              placeholder="OAuth2 Client ID"
               value={formData.oauth2_client_id}
               onChange={(e) => onChange('oauth2_client_id', e.target.value)}
               required
@@ -220,9 +226,9 @@ function AuthMethodFields({
           </div>
           <div>
             <label className="text-sm font-medium">Client Secret *</label>
-            <Input 
+            <Input
               type="password"
-              placeholder="OAuth2 Client Secret" 
+              placeholder="OAuth2 Client Secret"
               value={formData.oauth2_client_secret}
               onChange={(e) => onChange('oauth2_client_secret', e.target.value)}
               required
@@ -230,8 +236,8 @@ function AuthMethodFields({
           </div>
           <div>
             <label className="text-sm font-medium">Authorization URL *</label>
-            <Input 
-              placeholder="https://api.example.com/oauth/authorize" 
+            <Input
+              placeholder="https://api.example.com/oauth/authorize"
               value={formData.oauth2_auth_url}
               onChange={(e) => onChange('oauth2_auth_url', e.target.value)}
               required
@@ -239,8 +245,8 @@ function AuthMethodFields({
           </div>
           <div>
             <label className="text-sm font-medium">Token URL *</label>
-            <Input 
-              placeholder="https://api.example.com/oauth/token" 
+            <Input
+              placeholder="https://api.example.com/oauth/token"
               value={formData.oauth2_token_url}
               onChange={(e) => onChange('oauth2_token_url', e.target.value)}
               required
@@ -248,8 +254,8 @@ function AuthMethodFields({
           </div>
           <div className="col-span-2">
             <label className="text-sm font-medium">Scopes</label>
-            <Input 
-              placeholder="read:data write:data (space-separated)" 
+            <Input
+              placeholder="read:data write:data (space-separated)"
               value={formData.oauth2_scopes}
               onChange={(e) => onChange('oauth2_scopes', e.target.value)}
             />
@@ -259,14 +265,14 @@ function AuthMethodFields({
           </div>
         </>
       )
-    
+
     case 'bearer':
       return (
         <div className="col-span-2">
           <label className="text-sm font-medium">Bearer Token *</label>
-          <Input 
+          <Input
             type="password"
-            placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..." 
+            placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
             value={formData.bearer_token}
             onChange={(e) => onChange('bearer_token', e.target.value)}
             required
@@ -276,14 +282,14 @@ function AuthMethodFields({
           </p>
         </div>
       )
-    
+
     case 'basic':
       return (
         <>
           <div>
             <label className="text-sm font-medium">Username *</label>
-            <Input 
-              placeholder="API Username" 
+            <Input
+              placeholder="API Username"
               value={formData.basic_username}
               onChange={(e) => onChange('basic_username', e.target.value)}
               required
@@ -291,9 +297,9 @@ function AuthMethodFields({
           </div>
           <div>
             <label className="text-sm font-medium">Password *</label>
-            <Input 
+            <Input
               type="password"
-              placeholder="API Password" 
+              placeholder="API Password"
               value={formData.basic_password}
               onChange={(e) => onChange('basic_password', e.target.value)}
               required
@@ -301,15 +307,15 @@ function AuthMethodFields({
           </div>
         </>
       )
-    
+
     case 'api_key':
       return (
         <>
           <div>
             <label className="text-sm font-medium">API Key *</label>
-            <Input 
+            <Input
               type="password"
-              placeholder="Your API Key" 
+              placeholder="Your API Key"
               value={formData.api_key}
               onChange={(e) => onChange('api_key', e.target.value)}
               required
@@ -317,16 +323,16 @@ function AuthMethodFields({
           </div>
           <div>
             <label className="text-sm font-medium">API Secret</label>
-            <Input 
+            <Input
               type="password"
-              placeholder="API Secret (if required)" 
+              placeholder="API Secret (if required)"
               value={formData.api_secret}
               onChange={(e) => onChange('api_secret', e.target.value)}
             />
           </div>
           <div className="col-span-2">
             <label className="text-sm font-medium">Header Name</label>
-            <Select 
+            <Select
               value={formData.api_key_header}
               onValueChange={(value) => onChange('api_key_header', value)}
             >
@@ -347,13 +353,13 @@ function AuthMethodFields({
           </div>
         </>
       )
-    
+
     case 'mtls':
       return (
         <>
           <div className="col-span-2">
             <label className="text-sm font-medium">Client Certificate *</label>
-            <textarea 
+            <textarea
               className="w-full h-24 text-xs font-mono border rounded p-2"
               placeholder="-----BEGIN CERTIFICATE-----
 MIICXjCCAUYCAQAwDQYJKoZIhvcNAQEFBQAwEzERMA8GA1UEAwwIVGVzdCBDQTAe
@@ -366,7 +372,7 @@ MIICXjCCAUYCAQAwDQYJKoZIhvcNAQEFBQAwEzERMA8GA1UEAwwIVGVzdCBDQTAe
           </div>
           <div className="col-span-2">
             <label className="text-sm font-medium">Private Key *</label>
-            <textarea 
+            <textarea
               className="w-full h-24 text-xs font-mono border rounded p-2"
               placeholder="-----BEGIN PRIVATE KEY-----
 MIIEvwIBADANBgkqhkiG9w0BAQEFAASCBKkwggSlAgEAAoIBAQC7VJTUt9Us8cKB
@@ -379,7 +385,7 @@ MIIEvwIBADANBgkqhkiG9w0BAQEFAASCBKkwggSlAgEAAoIBAQC7VJTUt9Us8cKB
           </div>
         </>
       )
-    
+
     default:
       return (
         <div className="col-span-2 text-center text-muted-foreground py-8">
@@ -567,7 +573,7 @@ export function PullIntegrationsPanel() {
                           {endpoint.total_records.toLocaleString()}
                         </TableCell>
                         <TableCell className="text-sm">
-                          {endpoint.last_pull_at 
+                          {endpoint.last_pull_at
                             ? formatDistanceToNow(new Date(endpoint.last_pull_at), { addSuffix: true })
                             : 'Never'
                           }
@@ -764,8 +770,8 @@ export function PullIntegrationsPanel() {
             {/* Basic Information */}
             <div>
               <label className="text-sm font-medium">Source Name *</label>
-              <Input 
-                placeholder="e.g., Ghana Revenue Authority" 
+              <Input
+                placeholder="e.g., Ghana Revenue Authority"
                 value={endpointFormData.source_name}
                 onChange={(e) => setEndpointFormData(prev => ({ ...prev, source_name: e.target.value }))}
                 required
@@ -773,8 +779,8 @@ export function PullIntegrationsPanel() {
             </div>
             <div>
               <label className="text-sm font-medium">Endpoint Name *</label>
-              <Input 
-                placeholder="e.g., Tax Assessment API" 
+              <Input
+                placeholder="e.g., Tax Assessment API"
                 value={endpointFormData.endpoint_name}
                 onChange={(e) => setEndpointFormData(prev => ({ ...prev, endpoint_name: e.target.value }))}
                 required
@@ -782,18 +788,18 @@ export function PullIntegrationsPanel() {
             </div>
             <div className="col-span-2">
               <label className="text-sm font-medium">Endpoint URL *</label>
-              <Input 
-                placeholder="https://api.example.com/v1/data" 
+              <Input
+                placeholder="https://api.example.com/v1/data"
                 value={endpointFormData.endpoint_url}
                 onChange={(e) => setEndpointFormData(prev => ({ ...prev, endpoint_url: e.target.value }))}
                 required
               />
             </div>
-            
+
             {/* Dataset and Frequency */}
             <div>
               <label className="text-sm font-medium">Dataset Type *</label>
-              <Select 
+              <Select
                 value={endpointFormData.dataset_type}
                 onValueChange={(value) => setEndpointFormData(prev => ({ ...prev, dataset_type: value }))}
               >
@@ -812,7 +818,7 @@ export function PullIntegrationsPanel() {
             </div>
             <div>
               <label className="text-sm font-medium">Pull Frequency *</label>
-              <Select 
+              <Select
                 value={endpointFormData.pull_frequency}
                 onValueChange={(value) => setEndpointFormData(prev => ({ ...prev, pull_frequency: value }))}
               >
@@ -831,7 +837,7 @@ export function PullIntegrationsPanel() {
             {/* Authentication Method */}
             <div className="col-span-2">
               <label className="text-sm font-medium">Authentication Method *</label>
-              <Select 
+              <Select
                 value={selectedAuthMethod}
                 onValueChange={(value) => {
                   setSelectedAuthMethod(value)
@@ -855,7 +861,7 @@ export function PullIntegrationsPanel() {
             <div className="col-span-2 border-t pt-4">
               <h3 className="font-medium mb-4">Authentication Configuration</h3>
               <div className="grid grid-cols-2 gap-4">
-                <AuthMethodFields 
+                <AuthMethodFields
                   authMethod={selectedAuthMethod}
                   formData={endpointFormData}
                   onChange={(field, value) => setEndpointFormData(prev => ({ ...prev, [field]: value }))}
@@ -863,7 +869,7 @@ export function PullIntegrationsPanel() {
               </div>
             </div>
           </div>
-          
+
           <DialogFooter className="flex justify-between">
             <div className="text-xs text-muted-foreground">
               * Required fields
@@ -872,12 +878,12 @@ export function PullIntegrationsPanel() {
               <Button variant="outline" onClick={() => setShowAddEndpointDialog(false)}>
                 Cancel
               </Button>
-              <Button 
+              <Button
                 onClick={() => {
                   // Validate required fields
                   const requiredFields = ['source_name', 'endpoint_name', 'endpoint_url', 'dataset_type', 'pull_frequency', 'auth_method']
                   const missingFields = requiredFields.filter(field => !endpointFormData[field as keyof typeof endpointFormData])
-                  
+
                   if (missingFields.length > 0) {
                     toast.error(`Please fill in required fields: ${missingFields.join(', ')}`)
                     return
@@ -887,8 +893,8 @@ export function PullIntegrationsPanel() {
                   let authValid = true
                   switch (selectedAuthMethod) {
                     case 'oauth2':
-                      if (!endpointFormData.oauth2_client_id || !endpointFormData.oauth2_client_secret || 
-                          !endpointFormData.oauth2_auth_url || !endpointFormData.oauth2_token_url) {
+                      if (!endpointFormData.oauth2_client_id || !endpointFormData.oauth2_client_secret ||
+                        !endpointFormData.oauth2_auth_url || !endpointFormData.oauth2_token_url) {
                         toast.error('OAuth2 requires Client ID, Client Secret, Auth URL, and Token URL')
                         authValid = false
                       }

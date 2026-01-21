@@ -37,6 +37,7 @@ import {
 import { PythonClient } from './pythonClient';
 import { economicDataService } from '../data-hub/economicDataService';
 import { constructionCostService } from '../data-hub/constructionCostService';
+import { capRateService } from './CapRateService';
 
 // Initialize Python client for valuation method calculations
 const pythonClient = new PythonClient();
@@ -105,9 +106,9 @@ class ValuationEngineService {
   ): Promise<ValuationResult> {
     const startTime = Date.now();
     const opts = { ...DEFAULT_OPTIONS, ...options };
-    
-    logger.info('Starting valuation', { 
-      propertyId: input.property_id, 
+
+    logger.info('Starting valuation', {
+      propertyId: input.property_id,
       type: input.valuation_type || 'avm',
       purpose: input.valuation_purpose || 'sale'
     });
@@ -123,9 +124,9 @@ class ValuationEngineService {
       if (!opts.force_recalculate) {
         const cached = await this.getCachedValuation(input.property_id);
         if (cached && this.isValuationValid(cached)) {
-          logger.info('Returning cached valuation', { 
-            propertyId: input.property_id, 
-            cacheAge: Date.now() - new Date(cached.effective_date).getTime() 
+          logger.info('Returning cached valuation', {
+            propertyId: input.property_id,
+            cacheAge: Date.now() - new Date(cached.effective_date).getTime()
           });
           return cached;
         }
@@ -137,33 +138,33 @@ class ValuationEngineService {
         region: property.region || 'Greater Accra',
         property_type: property.property_type,
       });
-      
+
       // Use Python service results for market conditions
-      const marketConditions: MarketConditions = marketConditionsResponse.success 
+      const marketConditions: MarketConditions = marketConditionsResponse.success
         ? PythonClient.toMarketConditions(marketConditionsResponse)
         : {
-            trend: 'stable',
-            trend_strength: 0.5,
-            activity_level: 'moderate',
-            days_on_market_avg: 90,
-            supply_demand_ratio: 0.5,
-            price_index: 100,
-            price_index_change_yoy: 0.05,
-          };
-      
+          trend: 'stable',
+          trend_strength: 0.5,
+          activity_level: 'moderate',
+          days_on_market_avg: 90,
+          supply_demand_ratio: 0.5,
+          price_index: 100,
+          price_index_change_yoy: 0.05,
+        };
+
       // 3b. Get economic factors from live data service
       const economicFactors = await this.getEconomicFactors(property.region);
 
       // 4. Determine applicable methods
       const applicableMethods = this.determineApplicableMethods(
-        property, 
+        property,
         input.valuation_purpose || 'sale',
         opts.methods
       );
 
       // 5. Execute each applicable method
       const methodResults: MethodResult[] = [];
-      
+
       for (const method of applicableMethods) {
         try {
           const result = await this.executeMethod(method, property, opts, marketConditions);
@@ -171,9 +172,9 @@ class ValuationEngineService {
             methodResults.push(result);
           }
         } catch (err: any) {
-          logger.warn(`Method ${method} failed`, { 
-            propertyId: input.property_id, 
-            error: err.message 
+          logger.warn(`Method ${method} failed`, {
+            propertyId: input.property_id,
+            error: err.message
           });
         }
       }
@@ -207,7 +208,7 @@ class ValuationEngineService {
             source_reliability: 0.8,
           },
         });
-        
+
         // Map Python response to expected format
         confidenceResult = {
           score: confidenceResponse.confidence_score || 0.75,
@@ -241,19 +242,19 @@ class ValuationEngineService {
       await this.cacheValuation(savedValuation);
 
       const duration = Date.now() - startTime;
-      logger.info('Valuation completed', { 
-        propertyId: input.property_id, 
+      logger.info('Valuation completed', {
+        propertyId: input.property_id,
         valuationId: savedValuation.id,
         estimatedValue: savedValuation.estimated_value,
         confidence: savedValuation.confidence_score,
-        duration 
+        duration
       });
 
       return savedValuation;
 
     } catch (error: any) {
-      logger.error('Valuation failed', { 
-        propertyId: input.property_id, 
+      logger.error('Valuation failed', {
+        propertyId: input.property_id,
         error: error.message,
         stack: error.stack
       });
@@ -318,7 +319,7 @@ class ValuationEngineService {
     // Adjust based on purpose
     if (purpose === 'mortgage' || purpose === 'insurance') {
       // Banks prefer sales comparison and cost approach
-      methods = methods.filter(m => 
+      methods = methods.filter(m =>
         ['sales_comparison', 'cost_approach'].includes(m)
       );
     } else if (purpose === 'investment' || purpose === 'rental') {
@@ -343,6 +344,7 @@ class ValuationEngineService {
 
   /**
    * Execute a specific valuation method via Python service
+   * For income_approach, uses CapRateService with RICS-compliant fallback hierarchy
    */
   private async executeMethod(
     method: ValuationMethod,
@@ -351,31 +353,156 @@ class ValuationEngineService {
     marketConditions: MarketConditions
   ): Promise<MethodResult | null> {
     try {
-      logger.debug(`Executing method ${method} via Python service`);
-      
+      logger.debug(`Executing method ${method}`);
+
+      // Special handling for income_approach using CapRateService
+      if (method === 'income_approach') {
+        return await this.executeIncomeApproach(property, options, marketConditions);
+      }
+
       // Convert property to Python input format
       const pythonProperty = PythonClient.toPropertyInput(property);
-      
+
       // Call Python service for the specific method
       const pythonResponse = await pythonClient.executeMethod(method, pythonProperty, {
         max_comparable_distance_km: options.max_comparable_distance_km,
         max_comparable_age_days: options.max_comparable_age_days,
         min_comparables: options.min_comparables,
       });
-      
+
       if (!pythonResponse.success) {
         logger.warn(`Method ${method} failed in Python service`);
         return null;
       }
-      
+
       // Convert to TypeScript MethodResult format with weights
       const result = PythonClient.toMethodResult(pythonResponse);
       result.weight = this.getMethodWeight(method, property.property_type);
-      
+
       return result;
-      
+
     } catch (error: any) {
       logger.error(`Error executing method ${method}:`, { error: error.message });
+      return null;
+    }
+  }
+
+  /**
+   * Execute income approach valuation using CapRateService.
+   * Implements RICS-compliant cap rate selection with fallback hierarchy:
+   *   1. Market extraction (transactions) - Category A
+   *   2. Partner/bank data - Category A  
+   *   3. Listing-derived - Category B
+   *   4. Survey/default - Category C
+   */
+  private async executeIncomeApproach(
+    property: PropertyForValuation,
+    options: ValuationOptions,
+    marketConditions: MarketConditions
+  ): Promise<MethodResult | null> {
+    try {
+      logger.debug('Executing income approach with CapRateService', {
+        propertyId: property.id,
+        region: property.region,
+        propertyType: property.property_type
+      });
+
+      // Get total area for NOI estimation
+      const totalAreaSqm = property.total_area_sqm ||
+        property.built_area_sqm ||
+        property.building_size_sqm ||
+        property.land_area_sqm ||
+        0;
+
+      if (totalAreaSqm <= 0) {
+        logger.warn('Income approach requires area data', { propertyId: property.id });
+        return null;
+      }
+
+      // Perform income approach valuation using CapRateService
+      const incomeResult = await capRateService.performIncomeApproachValuation({
+        propertyId: property.id,
+        region: property.region || 'greater_accra',
+        propertyType: property.property_type || 'residential_house',
+        propertySubtype: property.property_sub_type || undefined,
+        totalAreaSqm
+      });
+
+      // Calculate confidence level based on RICS compliance
+      let confidence: number;
+      switch (incomeResult.ricsCompliance.overallQuality) {
+        case 'compliant':
+          confidence = 0.85;
+          break;
+        case 'acceptable':
+          confidence = 0.70;
+          break;
+        case 'limited':
+          confidence = 0.55;
+          break;
+        default:
+          confidence = 0.40;
+      }
+
+      // Build method result
+      const methodResult: MethodResult = {
+        method: 'income_approach',
+        value: incomeResult.indicatedValue,
+        confidence,
+        weight: this.getMethodWeight('income_approach', property.property_type),
+        details: {
+          noi: {
+            grossPotentialRent: incomeResult.noi.grossPotentialRent,
+            vacancyRate: incomeResult.noi.vacancyRate,
+            effectiveGrossIncome: incomeResult.noi.effectiveGrossIncome,
+            operatingExpenses: incomeResult.noi.operatingExpenses,
+            operatingExpenseRatio: incomeResult.noi.operatingExpenseRatio,
+            netOperatingIncome: incomeResult.noi.netOperatingIncome,
+            noiPerSqm: incomeResult.noi.noiPerSqm,
+            methodology: incomeResult.noi.methodology,
+            evidenceCount: incomeResult.noi.evidenceCount
+          },
+          capRate: {
+            baseCapRate: incomeResult.capRate.baseCapRate,
+            adjustedCapRate: incomeResult.capRate.adjustedCapRate,
+            adjustments: incomeResult.capRate.adjustments,
+            methodology: incomeResult.capRate.methodology,
+            dataQuality: incomeResult.capRate.dataQuality,
+            justification: incomeResult.capRate.justification
+          },
+          valueRange: incomeResult.valueRange,
+          ricsCompliance: incomeResult.ricsCompliance,
+          adjustments: incomeResult.capRate.adjustments.map(adj => ({
+            type: adj.factor,
+            amount: adj.adjustment,
+            reason: adj.reason
+          })),
+          comparables_used: incomeResult.noi.evidenceCount,
+          data_quality: incomeResult.capRate.dataQuality === 'high' ? 0.9
+            : incomeResult.capRate.dataQuality === 'moderate' ? 0.7
+              : 0.5,
+          warnings: [
+            ...incomeResult.capRate.warnings,
+            ...incomeResult.ricsCompliance.notes
+          ].filter(w => w)
+        }
+      };
+
+      logger.info('Income approach completed via CapRateService', {
+        propertyId: property.id,
+        indicatedValue: incomeResult.indicatedValue,
+        capRate: incomeResult.capRate.adjustedCapRate,
+        noi: incomeResult.noi.netOperatingIncome,
+        ricsQuality: incomeResult.ricsCompliance.overallQuality
+      });
+
+      return methodResult;
+
+    } catch (error: any) {
+      logger.error('Income approach execution failed', {
+        propertyId: property.id,
+        error: error.message
+      });
       return null;
     }
   }
@@ -388,12 +515,12 @@ class ValuationEngineService {
     try {
       // Fetch latest economic snapshot from database
       const snapshot = await economicDataService.getLatestSnapshot();
-      
+
       // Get latest construction cost index
       const constructionIndex = await constructionCostService.getLatestConstructionIndex(
         (region || 'greater_accra') as any
       );
-      
+
       const factors: EconomicFactors = {
         inflation_rate: snapshot.inflation_rate ?? 0.12,
         interest_rate_policy: snapshot.interest_rate_policy ?? 0.27,
@@ -403,20 +530,20 @@ class ValuationEngineService {
         construction_cost_index: constructionIndex?.index_value ?? 110,
         snapshot_date: snapshot.date || new Date(),
       };
-      
+
       logger.debug('Loaded live economic factors', {
         inflation: factors.inflation_rate,
         policy_rate: factors.interest_rate_policy,
         usd_rate: factors.exchange_rate_usd,
         construction_index: factors.construction_cost_index,
       });
-      
+
       return factors;
     } catch (error: any) {
-      logger.warn('Failed to load live economic factors, using defaults', { 
-        error: error.message 
+      logger.warn('Failed to load live economic factors, using defaults', {
+        error: error.message
       });
-      
+
       // Fallback to sensible defaults
       return {
         inflation_rate: 0.12,
@@ -505,9 +632,9 @@ class ValuationEngineService {
     methodResults: MethodResult[],
     property: PropertyForValuation,
     purpose: ValuationPurpose
-  ): { 
-    estimated_value: number; 
-    value_range_low: number; 
+  ): {
+    estimated_value: number;
+    value_range_low: number;
     value_range_high: number;
     primary_method: ValuationMethod;
     comparables_count: number;
@@ -530,7 +657,7 @@ class ValuationEngineService {
 
     // Normalize weights based on confidence
     const totalWeight = methodResults.reduce((sum, r) => sum + (r.weight * r.confidence), 0);
-    
+
     // Calculate weighted average
     let weightedSum = 0;
     let highestWeight = 0;
@@ -540,7 +667,7 @@ class ValuationEngineService {
     for (const result of methodResults) {
       const normalizedWeight = (result.weight * result.confidence) / totalWeight;
       weightedSum += result.value * normalizedWeight;
-      
+
       if (result.weight * result.confidence > highestWeight) {
         highestWeight = result.weight * result.confidence;
         primaryMethod = result.method;
@@ -569,7 +696,7 @@ class ValuationEngineService {
     // Higher confidence = narrower range
     // Confidence 1.0 = ±5%, 0.5 = ±15%, 0.0 = ±25%
     const spreadPercent = 0.25 - (0.20 * confidence);
-    
+
     return {
       low: Math.round(value * (1 - spreadPercent)),
       high: Math.round(value * (1 + spreadPercent)),
@@ -593,7 +720,7 @@ class ValuationEngineService {
       const result = methodResults.find(r => r.method === method);
       return result ? result.value : null;
     };
-    
+
     const getMethodConfidence = (method: ValuationMethod): number | null => {
       const result = methodResults.find(r => r.method === method);
       return result ? result.confidence : null;
@@ -616,21 +743,21 @@ class ValuationEngineService {
       property_id: input.property_id,
       valuation_type: input.valuation_type || 'avm',
       valuation_purpose: input.valuation_purpose || 'sale',
-      
+
       estimated_value: hybridResult.estimated_value,
       value_range_low: hybridResult.value_range_low,
       value_range_high: hybridResult.value_range_high,
       value_per_sqm: valuePerSqm,
       value_currency: 'GHS',
-      
+
       confidence_score: confidenceResult.score,
       confidence_level: confidenceResult.level,
       data_quality_score: confidenceResult.dataQuality,
       comparable_quality_score: null, // TODO: Calculate from comparables
-      
+
       methods_used: methodResults,
       primary_method: hybridResult.primary_method,
-      
+
       sales_comparison_value: getMethodValue('sales_comparison'),
       sales_comparison_confidence: getMethodConfidence('sales_comparison'),
       cost_approach_value: getMethodValue('cost_approach'),
@@ -643,17 +770,17 @@ class ValuationEngineService {
       profits_confidence: getMethodConfidence('profits_method'),
       drc_value: getMethodValue('drc_method'),
       drc_confidence: getMethodConfidence('drc_method'),
-      
+
       comparables_count: hybridResult.comparables_count,
       comparables: [], // Populated by sales comparison service
-      
+
       market_conditions: marketConditions,
       economic_factors: economicFactors,
       adjustments_summary: adjustmentsSummary,
-      
+
       effective_date: effectiveDate,
       expiry_date: expiryDate,
-      
+
       status: 'completed',
     };
   }
@@ -690,7 +817,7 @@ class ValuationEngineService {
     property: PropertyForValuation
   ): Promise<ValuationResult> {
     const client = await getClient();
-    
+
     try {
       await client.query('BEGIN');
 
@@ -987,23 +1114,33 @@ class ValuationEngineService {
    */
   private mapRowToValuation(row: any): ValuationResult {
     // Build property object if property data is present (from JOIN)
+    // Include both camelCase and snake_case fields for frontend compatibility
     const property = row.prop_id ? {
       id: row.prop_id,
       reference_number: row.prop_reference_number,
       title: row.prop_title,
       address: row.prop_address,
+      address_street: row.prop_address,
       city: row.prop_city,
+      address_city: row.prop_city,
       district: row.prop_district,
+      address_district: row.prop_district,
       region: row.prop_region,
       digitalAddress: row.prop_digital_address,
+      digital_address: row.prop_digital_address,
       propertyType: row.prop_property_type,
+      property_type: row.prop_property_type,
       bedrooms: row.prop_bedrooms,
       bathrooms: row.prop_bathrooms,
       landArea: row.prop_land_area ? parseFloat(row.prop_land_area) : null,
+      land_area_sqm: row.prop_land_area ? parseFloat(row.prop_land_area) : null,
       plotSize: row.prop_land_area ? parseFloat(row.prop_land_area) : null,
+      plot_size: row.prop_land_area ? parseFloat(row.prop_land_area) : null,
       builtArea: row.prop_built_area ? parseFloat(row.prop_built_area) : null,
+      building_area_sqm: row.prop_built_area ? parseFloat(row.prop_built_area) : null,
       grossFloorArea: row.prop_built_area ? parseFloat(row.prop_built_area) : null,
       yearBuilt: row.prop_year_built,
+      year_built: row.prop_year_built,
       condition: row.prop_condition,
     } : null;
 
@@ -1013,7 +1150,10 @@ class ValuationEngineService {
       property,  // Include property data
       valuation_type: row.valuation_type,
       valuation_purpose: row.valuation_purpose,
+      current_step: row.current_step || 1,
+      status: row.status,
       estimated_value: parseFloat(row.estimated_value),
+      final_value_ghs: parseFloat(row.estimated_value), // Map for frontend compatibility
       value_range_low: parseFloat(row.value_range_low),
       value_range_high: parseFloat(row.value_range_high),
       value_per_sqm: row.value_per_sqm ? parseFloat(row.value_per_sqm) : null,
@@ -1023,6 +1163,9 @@ class ValuationEngineService {
       data_quality_score: parseFloat(row.data_quality_score),
       comparable_quality_score: row.comparable_quality_score ? parseFloat(row.comparable_quality_score) : null,
       methods_used: row.methods_used || [],
+      methods_applied: row.methods_applied || [],  // Selected methods from method selection step
+      method_weights: row.method_weights || {},    // Method weights from method selection step
+      method_results: row.method_results || {},    // Results from each method
       primary_method: row.primary_method,
       sales_comparison_value: row.sales_comparison_value ? parseFloat(row.sales_comparison_value) : null,
       sales_comparison_confidence: row.sales_comparison_confidence ? parseFloat(row.sales_comparison_confidence) : null,
@@ -1041,9 +1184,11 @@ class ValuationEngineService {
       market_conditions: row.market_conditions || {},
       economic_factors: row.economic_factors || {},
       adjustments_summary: row.adjustments_summary || {},
+      rental_market_analysis: row.rental_market_analysis || null,  // Rental comparable analysis data
       effective_date: row.effective_date,
       expiry_date: row.expiry_date,
-      status: row.status,
+      created_at: row.created_at,
+      updated_at: row.updated_at,
     };
   }
 }

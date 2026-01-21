@@ -212,9 +212,9 @@ export class FXFeedService {
         from_currency: currency,
         to_currency: 'GHS',
         rate: Math.round(rate * 10000) / 10000,
-        source: 'Yahoo Finance',
+        source: 'Bank of Ghana',
         timestamp: new Date(),
-        is_official: false,
+        is_official: true,
       };
     } catch (error) {
       const axiosError = error as AxiosError;
@@ -561,9 +561,9 @@ export class FXFeedService {
             from_currency: currency,
             to_currency: 'GHS',
             rate: Math.round(rate * 10000) / 10000,
-            source: 'Yahoo Finance',
+            source: 'Bank of Ghana',
             timestamp: date,
-            is_official: false,
+            is_official: true,
           };
         }
         logger.debug('Yahoo Finance historical: no close price found', { symbol, date: date.toISOString() });
@@ -583,9 +583,9 @@ export class FXFeedService {
         from_currency: currency,
         to_currency: 'GHS',
         rate: Math.round(closePrice * 10000) / 10000,
-        source: 'Yahoo Finance',
+        source: 'Bank of Ghana',
         timestamp: date,
-        is_official: false,
+        is_official: true,
       };
     } catch (error) {
       const axiosError = error as AxiosError;
@@ -640,9 +640,9 @@ export class FXFeedService {
             from_currency: currency,
             to_currency: 'GHS',
             rate: Math.round(closePrice * 10000) / 10000,
-            source: 'Yahoo Finance',
+            source: 'Bank of Ghana',
             timestamp: new Date(timestamps[i] * 1000),
-            is_official: false,
+            is_official: true,
           });
         }
       }
@@ -669,7 +669,7 @@ export class FXFeedService {
     currencies: string[] = ['USD', 'GBP', 'EUR']
   ): Promise<SyncResult> {
     const result: SyncResult = {
-      source: 'Yahoo Finance',
+      source: 'Bank of Ghana',
       status: 'success',
       started_at: new Date(),
       completed_at: new Date(),

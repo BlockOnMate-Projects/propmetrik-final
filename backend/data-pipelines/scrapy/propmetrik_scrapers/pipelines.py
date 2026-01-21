@@ -10,11 +10,11 @@ import json
 import re
 from datetime import datetime
 from decimal import Decimal
-from typing import Optional, Dict, Any, List
+from typing import Optional, List
 from urllib.parse import urlparse
 
 import psycopg2
-from psycopg2.extras import RealDictCursor, execute_values
+from psycopg2.extras import RealDictCursor
 from opensearchpy import OpenSearch, helpers
 from scrapy.exceptions import DropItem
 import redis
@@ -512,32 +512,47 @@ class PostgresPipeline:
     """
     Stores items in PostgreSQL database.
     Uses DATABASE_URL for connection string consistency with backend.
+    Now includes multi-source tracking integration.
     """
     
-    def __init__(self, database_url: str):
+    def __init__(self, database_url: str, enable_multi_source_tracking: bool = True):
         self.database_url = database_url
+        self.enable_multi_source_tracking = enable_multi_source_tracking
         self.conn = None
         self.items_saved = 0
         self.items_updated = 0
+        self.sources_tracked = 0
+        self._multi_source_tracker = None
     
     @classmethod
     def from_crawler(cls, crawler):
         database_url = crawler.settings.get('DATABASE_URL')
         if not database_url:
             raise ValueError("DATABASE_URL not configured in settings")
-        return cls(database_url)
+        enable_tracking = crawler.settings.getbool('ENABLE_MULTI_SOURCE_TRACKING', True)
+        return cls(database_url, enable_tracking)
     
     def open_spider(self, spider):
         """Open database connection."""
         self.conn = psycopg2.connect(self.database_url)
         self.conn.autocommit = False
         logger.info("PostgreSQL connection opened")
+        
+        # Initialize multi-source tracker if enabled
+        if self.enable_multi_source_tracking:
+            try:
+                from .multi_source_tracker import MultiSourceTracker
+                self._multi_source_tracker = MultiSourceTracker(self.conn)
+                logger.info("Multi-source tracking enabled")
+            except ImportError as e:
+                logger.warning(f"Multi-source tracking unavailable: {e}")
+                self._multi_source_tracker = None
     
     def close_spider(self, spider):
         """Close database connection."""
         if self.conn:
             self.conn.close()
-            logger.info(f"PostgreSQL: {self.items_saved} items saved, {self.items_updated} items updated")
+            logger.info(f"PostgreSQL: {self.items_saved} items saved, {self.items_updated} items updated, {self.sources_tracked} sources tracked")
     
     # Region name to enum mapping for Ghana
     REGION_ENUM_MAP = {
@@ -595,7 +610,7 @@ class PostgresPipeline:
         return 'residential_house'
 
     def process_item(self, item, spider):
-        """Save item to PostgreSQL."""
+        """Save item to PostgreSQL and track multi-source contributions."""
         
         try:
             with self.conn.cursor(cursor_factory=RealDictCursor) as cur:
@@ -606,17 +621,35 @@ class PostgresPipeline:
                 """, (item.get('source_id'), item.get('source_slug')))
                 
                 existing = cur.fetchone()
+                property_id = None
                 
                 if existing:
                     # Update existing property
+                    property_id = existing['id']
                     self._update_property(cur, existing['id'], existing['region'], item)
                     self.items_updated += 1
                 else:
                     # Insert new property
-                    self._insert_property(cur, item)
+                    property_id = self._insert_property(cur, item)
                     self.items_saved += 1
                 
                 self.conn.commit()
+                
+                # Track multi-source contribution if enabled and we have a property_id
+                if self._multi_source_tracker and property_id:
+                    try:
+                        source_type = self._get_source_type(item.get('source_slug'))
+                        self._multi_source_tracker.track_contribution(
+                            property_id=str(property_id),
+                            source_slug=item.get('source_slug', 'unknown'),
+                            source_type=source_type,
+                            item_data=dict(item),
+                            source_url=item.get('source_url')
+                        )
+                        self.sources_tracked += 1
+                    except Exception as e:
+                        logger.warning(f"Multi-source tracking failed: {e}")
+                        # Don't fail the pipeline, just log the error
                 
         except Exception as e:
             self.conn.rollback()
@@ -624,6 +657,88 @@ class PostgresPipeline:
             raise
         
         return item
+    
+    def _get_source_type(self, source_slug: str) -> str:
+        """Determine source type tier based on source slug."""
+        # Tier mapping for known sources
+        source_tiers = {
+            # Tier 1 - Government
+            'lands-commission': 'tier1_government',
+            'gra': 'tier1_government',
+            'ama': 'tier1_government',
+            # Tier 2 - Financial
+            'ecobank': 'tier2_financial',
+            'gcb': 'tier2_financial',
+            'stanbic': 'tier2_financial',
+            'absa': 'tier2_financial',
+            'fidelity': 'tier2_financial',
+            'zenith': 'tier2_financial',
+            # Tier 3 - Partners
+            'agency-network': 'tier3_partner',
+            'broll': 'tier3_partner',
+            'devtraco': 'tier3_partner',
+            'kpone-associates': 'tier3_partner',
+            # Tier 5 - Web scraped
+            'meqasa': 'tier5_web',
+            'gpc': 'tier5_web',
+            'jiji': 'tier5_web',
+            'tonaton': 'tier5_web',
+            'housemaster': 'tier5_web',
+            'realtor': 'tier5_web',
+        }
+        return source_tiers.get(source_slug, 'tier5_web')
+    
+    def _get_evidence_type(self, source_slug: str, item: dict) -> tuple:
+        """
+        Determine evidence_type and transaction classification based on source tier.
+        Returns: (evidence_type, is_transaction_record, transaction_confidence, transaction_source)
+        
+        RICS/GhIS Compliant Evidence Classification:
+        - Tier 1 (Government): Verified transactions from Lands Commission
+        - Tier 2 (Financial): Bank valuations and collateral records
+        - Tier 3 (Partners): Agent-confirmed transactions
+        - Tier 5 (Web): Listings (asking prices only)
+        """
+        source_tier = self._get_source_type(source_slug)
+        
+        # Check if we have explicit sold_price data
+        has_sold_data = item.get('sold_price') is not None and item.get('sold_at') is not None
+        
+        if has_sold_data:
+            return ('verified_sale', True, 0.95, source_slug)
+        
+        # Map source tier to evidence classification
+        evidence_mapping = {
+            'tier1_government': {
+                'evidence_type': 'government_record',
+                'is_transaction': True,
+                'confidence': 0.98,
+            },
+            'tier2_financial': {
+                'evidence_type': 'bank_valuation',
+                'is_transaction': True,
+                'confidence': 0.90,
+            },
+            'tier3_partner': {
+                'evidence_type': 'partner_transaction',
+                'is_transaction': False,  # Set to True when confirmed
+                'confidence': 0.78,
+            },
+            'tier5_web': {
+                'evidence_type': 'listing',
+                'is_transaction': False,
+                'confidence': 0.65,
+            },
+        }
+        
+        mapping = evidence_mapping.get(source_tier, evidence_mapping['tier5_web'])
+        
+        return (
+            mapping['evidence_type'],
+            mapping['is_transaction'],
+            mapping['confidence'],
+            source_slug
+        )
     
     def _insert_property(self, cursor, item):
         """Insert new property record matching the actual database schema."""
@@ -644,6 +759,20 @@ class PostgresPipeline:
                 price = float(price)
             except (ValueError, TypeError):
                 price = None
+        
+        # Get source tier and data_source value
+        source_slug = item.get('source_slug', 'web')
+        source_tier = self._get_source_type(source_slug)
+        
+        # Get evidence classification based on source tier
+        evidence_type, is_transaction, transaction_confidence, transaction_source = \
+            self._get_evidence_type(source_slug, item)
+        
+        # Calculate transaction_value for tier 1/2 sources
+        transaction_value = None
+        if is_transaction:
+            # For government/bank sources, price IS the transaction value
+            transaction_value = price
         
         cursor.execute("""
             INSERT INTO properties (
@@ -677,13 +806,21 @@ class PostgresPipeline:
                 updated_at,
                 first_seen_at,
                 last_seen_at,
-                evidence_type
+                evidence_type,
+                is_transaction_record,
+                transaction_value,
+                transaction_date,
+                transaction_source,
+                transaction_confidence
             ) VALUES (
                 %s, %s, %s, %s, %s, %s, %s, %s, %s, %s,
                 %s, %s, %s, %s, %s, %s, %s, %s, %s, %s,
                 %s, %s, %s, %s, %s, %s, NOW(), NOW(),
-                NOW(), NOW(), 'listing'
+                NOW(), NOW(), %s, %s, %s, 
+                CASE WHEN %s THEN CURRENT_DATE ELSE NULL END,
+                %s, %s
             )
+            RETURNING id
         """, (
             ref_number,
             region_enum,
@@ -701,7 +838,7 @@ class PostgresPipeline:
             price,
             item.get('currency', 'GHS'),
             'active',  # Default status for scraped listings
-            'tier5_web',  # Data source for scraped data
+            source_tier,  # Use proper tier instead of hardcoded 'tier5_web'
             item.get('data_quality_score') or item.get('completeness_score') or 0.5,
             item.get('images', [None])[0] if item.get('images') else None,
             json.dumps(item.get('images', [])),
@@ -717,7 +854,17 @@ class PostgresPipeline:
                 'raw_data': item.get('raw_data', {}),
                 'scraped_at': item.get('scraped_at'),
             }),
+            evidence_type,
+            is_transaction,
+            transaction_value,
+            is_transaction,  # Used in CASE statement for transaction_date
+            transaction_source,
+            transaction_confidence,
         ))
+        
+        # Return the inserted property ID
+        result = cursor.fetchone()
+        return result['id'] if result else None
     
     def _update_property(self, cursor, property_id: str, region: str, item):
         """Update existing property record and track last_seen_at for delisting detection."""

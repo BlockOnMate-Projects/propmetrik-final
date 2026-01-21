@@ -94,3 +94,34 @@ export type {
 // Combined Depreciation Panel with Override Capability
 export { DepreciationPanelWithOverrides } from './DepreciationPanelWithOverrides';
 export type { DepreciationOverrideState } from './DepreciationPanelWithOverrides';
+
+// Rental Market Analysis Panel (Income Approach Phase 5.2)
+export { RentalMarketPanel } from './RentalMarketPanel';
+export type { 
+  RentalMarketPanelProps,
+  RentEstimateOutput,
+} from './RentalMarketPanel';
+
+// Rental Adjustment Grid (Income Approach Phase 5.3)
+export { RentalAdjustmentGrid, RENTAL_ADJUSTMENT_CATEGORIES } from './RentalAdjustmentGrid';
+export type {
+  RentalSubjectProperty,
+  RentalComparableWithAdjustments,
+  RentalAdjustmentGridProps,
+} from './RentalAdjustmentGrid';
+
+// Floor Plan Design Intent Components (Phase 3)
+export { AssumptionReview } from './AssumptionReview';
+export type {
+  SurfacedAssumption,
+  AssumptionOverride,
+  AssumptionReviewProps,
+} from './AssumptionReview';
+
+export { LayoutAlternatives } from './LayoutAlternatives';
+export type {
+  LayoutStrategy,
+  RoomProgram,
+  LayoutAlternative,
+  LayoutAlternativesProps,
+} from './LayoutAlternatives';

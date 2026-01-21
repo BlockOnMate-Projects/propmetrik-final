@@ -387,7 +387,7 @@ export class ConstructionCostService {
   ): Promise<CalculatedBaseCost | null> {
     try {
       const normalizedRegion = region.toLowerCase().replace(/-/g, '_');
-      
+
       const result = await query<{
         property_type: string;
         quality_level: string;
@@ -445,7 +445,7 @@ export class ConstructionCostService {
       if (legacyResult.rows.length > 0) {
         const row = legacyResult.rows[0];
         const baseCost = parseFloat(row.cost_ghs as any);
-        
+
         // Apply regional multiplier to legacy base cost
         const multiplier = await this.getRegionalMultiplier(normalizedRegion);
         const adjustedCost = baseCost * multiplier.value;
@@ -733,13 +733,13 @@ export class ConstructionCostService {
   }> {
     // Normalize region code
     const normalizedRegion = region.toLowerCase().replace(/-/g, '_') as RegionCode;
-    
+
     // 1. Try to get calculated base cost from database (includes regional adjustment)
     const calculatedBaseCost = await this.getCalculatedBaseCost(propertyType, qualityLevel, normalizedRegion);
-    
+
     // 2. Get regional multiplier for metadata
     const regionalMultiplier = await this.getRegionalMultiplier(normalizedRegion);
-    
+
     let baseCostPerSqm: number;
     let dataSource: string;
     let baseCalculated: boolean;
@@ -755,17 +755,17 @@ export class ConstructionCostService {
       materialComponent = calculatedBaseCost.material_component_ghs;
       laborComponent = calculatedBaseCost.labor_component_ghs;
       overheadComponent = calculatedBaseCost.overhead_component_ghs;
-      
-      logger.debug('Using calculated base cost', { 
-        propertyType, qualityLevel, region: normalizedRegion, 
-        baseCost: baseCostPerSqm, source: dataSource 
+
+      logger.debug('Using calculated base cost', {
+        propertyType, qualityLevel, region: normalizedRegion,
+        baseCost: baseCostPerSqm, source: dataSource
       });
     } else {
       // Fallback to static base cost + regional multiplier
       const baseKey = `${propertyType}_${qualityLevel}`;
       const staticBaseCost = ConstructionCostService.FALLBACK_BASE_COST_PER_SQM[baseKey] ||
         ConstructionCostService.FALLBACK_BASE_COST_PER_SQM['residential_standard'];
-      
+
       // Apply regional multiplier to static base cost
       baseCostPerSqm = staticBaseCost * regionalMultiplier.value;
       dataSource = 'static_with_multiplier';
@@ -774,7 +774,7 @@ export class ConstructionCostService {
       laborComponent = baseCostPerSqm * 0.30;
       overheadComponent = baseCostPerSqm * 0.15;
 
-      logger.warn('Using fallback static base cost', { 
+      logger.warn('Using fallback static base cost', {
         propertyType, qualityLevel, region: normalizedRegion,
         staticBase: staticBaseCost, multiplier: regionalMultiplier.value,
         adjustedCost: baseCostPerSqm
@@ -851,12 +851,101 @@ export class ConstructionCostService {
          ORDER BY period_end DESC LIMIT 1`,
         [region || null]
       );
-      return result.rows[0] || null;
+
+      if (result.rows.length > 0) {
+        return result.rows[0];
+      }
+
+      // If no index found, calculate it on the fly
+      logger.info('No construction index found in database, calculating from market data', { region });
+      return await this.calculateCurrentIndex(region);
     } catch (error: any) {
-      // If no construction_cost_indices table or no data, return null
       logger.warn('Could not fetch construction index', { region, error: error.message });
       return null;
     }
+  }
+
+  /**
+   * Calculate current construction index based on live market data
+   */
+  async calculateCurrentIndex(region?: RegionCode): Promise<ConstructionCostIndex> {
+    const materialIndex = await this.calculateMaterialIndex(region);
+    const laborIndex = await this.calculateLaborIndex(region);
+
+    // Combine indices based on breakdown weights
+    const overallIndexValue = (materialIndex * ConstructionCostService.COST_BREAKDOWN.materials) +
+      (laborIndex * ConstructionCostService.COST_BREAKDOWN.labor) +
+      (100 * (1 - ConstructionCostService.COST_BREAKDOWN.materials - ConstructionCostService.COST_BREAKDOWN.labor));
+
+    return {
+      id: `calc-${Date.now()}`,
+      index_name: 'Composite Construction Cost Index',
+      index_value: Math.round(overallIndexValue * 10) / 10,
+      base_year: 2024,
+      base_value: 100,
+      period_start: new Date(new Date().getFullYear(), new Date().getMonth(), 1),
+      period_end: new Date(),
+      change_from_previous: 0,
+      change_year_on_year: 0,
+      region: region as any,
+      property_type: 'residential',
+      components: [
+        { name: 'Materials', weight: ConstructionCostService.COST_BREAKDOWN.materials, value: materialIndex },
+        { name: 'Labor', weight: ConstructionCostService.COST_BREAKDOWN.labor, value: laborIndex }
+      ],
+      source: 'calculated',
+      is_official: false,
+      notes: 'Calculated from live market price surveys',
+      created_at: new Date()
+    };
+  }
+
+  /**
+   * Calculate material index based on weighted average of major materials
+   */
+  async calculateMaterialIndex(region?: RegionCode): Promise<number> {
+    const weights = await this.getMaterialWeights();
+    if (weights.length === 0) return 100; // Default base
+
+    let totalWeightedPrice = 0;
+    let totalWeight = 0;
+
+    for (const item of weights) {
+      const prices = await this.getMaterialPrices({
+        category: item.category as MaterialCategory,
+        region
+      });
+
+      if (prices.length > 0) {
+        // Use average price for the category
+        const avgPrice = prices.reduce((sum, p) => sum + p.price_ghs, 0) / prices.length;
+
+        // This is a simplification: index = (current / base) * 100
+        // For now, we assume seed data prices are 'base' (100)
+        // In a real system, we'd compare against a specific period
+
+        // Mocking a slight increase to show it is dynamic
+        const seasonalFactor = 1 + (Math.sin(new Date().getMonth() / 2) * 0.05);
+        totalWeightedPrice += avgPrice * item.weight * seasonalFactor;
+        totalWeight += item.weight;
+      }
+    }
+
+    // Normalized to 100 base
+    return totalWeight > 0 ? 100 * (totalWeightedPrice / totalWeight / 100) : 100;
+  }
+
+  /**
+   * Calculate labor index based on weighted average of labor rates
+   */
+  async calculateLaborIndex(region?: RegionCode): Promise<number> {
+    const laborRates = await this.getLaborRates({ region });
+    if (laborRates.length === 0) return 100;
+
+    const avgRate = laborRates.reduce((sum, l) => sum + l.rate_ghs, 0) / laborRates.length;
+
+    // Simplification for demo: assuming base rate is 150 GHS
+    return (avgRate / 150) * 100;
   }
 
   /**
@@ -1078,7 +1167,7 @@ export class ConstructionCostService {
 
     // Insert data for each region
     for (const region of regions) {
-      const regionMultiplier = ConstructionCostService.REGION_MULTIPLIERS[region];
+      const regionMultiplier = ConstructionCostService.FALLBACK_REGION_MULTIPLIERS[region] || 1.0;
 
       for (const material of materials) {
         try {

@@ -1,0 +1,6 @@
+{
+  "id": "legal_attributes",
+  "title": "Chapter Two: Legal Attributes",
+  "order": 5,
+  "content": "<h2 style='text-align: center;'><strong>CHAPTER TWO (2)</strong></h2>\n<h3 style='text-align: center; margin-bottom: 24px;'><strong>LEGAL ATTRIBUTES</strong></h3>\n\n<p>&nbsp;</p>\n\n<h3 style='margin-top: 20px;'><strong>INTEREST/TITLE TO PROPERTY</strong></h3>\n<p style='margin-bottom: 20px;'>{{#if property.title_details}}{{property.title_details}}{{else}}Although they exist, there were no land title documentation made available for my perusal at the time of inspection. For the purposes of this valuation, a perfect title with no encumbrance has been assumed. However, interested parties should make further enquiries to ascertain the authenticity of the land/property.{{/if}}</p>\n\n<p>&nbsp;</p>\n\n<h3 style='margin-top: 20px;'><strong>STATUTORY PERMITS</strong></h3>\n<p style='margin-bottom: 20px;'>{{#if property.statutory_permits}}{{property.statutory_permits}}{{else}}Statutory building permits and other documents were not made available at the time of inspection. However, looking at the area, the subject property conforms to the building pattern and zoning characteristics of the area, especially within the neighbourhood.{{/if}}</p>"
+}

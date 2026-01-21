@@ -29,6 +29,7 @@ interface KeycloakTokenPayload extends JWTPayload {
 // Authenticated user interface attached to request
 export interface AuthenticatedUser {
   sub: string;
+  id: string;  // Alias for sub for convenience
   email?: string;
   emailVerified: boolean;
   name?: string;
@@ -109,10 +110,12 @@ export async function blacklistToken(tokenId: string, expiresIn: number): Promis
  * Parse Keycloak token payload into AuthenticatedUser
  */
 function parseTokenPayload(payload: KeycloakTokenPayload): AuthenticatedUser {
-  const clientRoles = payload.resource_access?.[config.keycloak.clientId]?.roles || [];
+  const clientId = config.keycloak.clientId || '';
+  const clientRoles = clientId && payload.resource_access?.[clientId]?.roles || [];
   
   return {
     sub: payload.sub,
+    id: payload.sub, // Alias for sub for convenience
     email: payload.email,
     emailVerified: payload.email_verified || false,
     name: payload.name,
@@ -127,7 +130,26 @@ function parseTokenPayload(payload: KeycloakTokenPayload): AuthenticatedUser {
 }
 
 /**
+ * Development mode mock user for testing without Keycloak
+ */
+const DEV_MODE_USER: AuthenticatedUser = {
+  sub: '00000000-0000-0000-0000-000000000001',
+  id: '00000000-0000-0000-0000-000000000001',
+  email: 'dev@propmetrik.com',
+  emailVerified: true,
+  name: 'Development User',
+  username: 'dev_user',
+  firstName: 'Development',
+  lastName: 'User',
+  realmRoles: ['admin'],
+  clientRoles: ['admin'],
+  organizationId: '00000000-0000-0000-0000-000000000001',
+  region: 'GR',
+};
+
+/**
  * Authentication middleware - verifies JWT and attaches user to request
+ * In development mode without a token, uses a mock user
  */
 export async function authenticate(
   req: Request,
@@ -136,6 +158,16 @@ export async function authenticate(
 ): Promise<void> {
   try {
     const token = extractToken(req);
+    
+    // Development mode bypass - allow unauthenticated access
+    if (!token && config.app.env === 'development') {
+      req.user = { 
+        ...DEV_MODE_USER,
+        organization_id: DEV_MODE_USER.organizationId,
+      } as any;
+      authLogger.debug('Development mode: using mock user');
+      return next();
+    }
     
     if (!token) {
       throw new UnauthorizedError('No authentication token provided');

@@ -11,6 +11,7 @@
 
 import { query, transaction } from '../../database';
 import { logger } from '../../utils/logger';
+import { fxFeedService } from './scrapers/fxFeedService';
 
 // =====================================================
 // TYPES
@@ -249,10 +250,10 @@ export class EconomicDataService {
   }
 
   /**
-   * Get current exchange rate
+   * Get current exchange rate - LIVE DATA ONLY, no fallback to mock/default values
    */
   async getExchangeRate(fromCurrency: string, toCurrency: string = 'GHS'): Promise<ExchangeRate> {
-    // Try to get from database first
+    // Try to get from database first (cached from previous live fetches)
     const indicator = await this.getLatest(
       `exchange_rate_${fromCurrency.toLowerCase()}` as EconomicIndicatorType
     );
@@ -267,15 +268,190 @@ export class EconomicDataService {
       };
     }
 
-    // Fall back to default rates
-    const rate = EconomicDataService.DEFAULT_EXCHANGE_RATES[fromCurrency.toUpperCase()] || 1;
+    // Get live rate from FX Feed Service (Yahoo Finance / ForexRate-API)
+    const liveRate = await fxFeedService.getCurrentRate(fromCurrency.toUpperCase());
     
+    if (liveRate && liveRate.rate > 0 && liveRate.source !== 'Static Fallback') {
+      logger.info('Using live FX rate', { 
+        currency: fromCurrency, 
+        rate: liveRate.rate, 
+        source: liveRate.source 
+      });
+      return {
+        from_currency: fromCurrency,
+        to_currency: toCurrency,
+        rate: liveRate.rate,
+        date: liveRate.timestamp,
+        source: liveRate.source,
+      };
+    }
+
+    // If static fallback was returned, still use it but log warning
+    if (liveRate && liveRate.source === 'Static Fallback') {
+      logger.warn('FX service returned static fallback - external APIs may be unavailable', { 
+        currency: fromCurrency, 
+        rate: liveRate.rate 
+      });
+      return {
+        from_currency: fromCurrency,
+        to_currency: toCurrency,
+        rate: liveRate.rate,
+        date: liveRate.timestamp,
+        source: liveRate.source,
+      };
+    }
+
+    throw new Error(`Unable to fetch live exchange rate for ${fromCurrency}/${toCurrency}`);
+  }
+
+  /**
+   * Get exchange rate for a specific date (RICS VPS 3 compliant for retrospective valuations)
+   * 
+   * This method supports fetching historical exchange rates as of a specific valuation date,
+   * which is critical for RICS Red Book and GhIS compliant valuations where the effective
+   * date may differ from the current date.
+   * 
+   * Fallback chain:
+   * 1. Check database for exact date or closest prior date (within 3 days)
+   * 2. Fetch from Yahoo Finance historical API
+   * 3. Use most recent available rate with warning
+   * 
+   * @param fromCurrency - Source currency (e.g., 'USD')
+   * @param toCurrency - Target currency (default: 'GHS')
+   * @param asOfDate - The effective date for the exchange rate (valuation date)
+   * @returns ExchangeRate object with rate as of the specified date
+   */
+  async getExchangeRateForDate(
+    fromCurrency: string,
+    toCurrency: string = 'GHS',
+    asOfDate: Date
+  ): Promise<ExchangeRate> {
+    const indicatorType = `exchange_rate_${fromCurrency.toLowerCase()}` as EconomicIndicatorType;
+    
+    // Normalize to start of day
+    const targetDate = new Date(asOfDate);
+    targetDate.setHours(0, 0, 0, 0);
+    
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    // If the target date is today or future, use current rate
+    if (targetDate >= today) {
+      logger.debug('Target date is today or future, using current rate', {
+        targetDate: targetDate.toISOString(),
+        currency: fromCurrency,
+      });
+      return this.getExchangeRate(fromCurrency, toCurrency);
+    }
+    
+    logger.info('Fetching historical exchange rate for RICS-compliant valuation', {
+      currency: fromCurrency,
+      asOfDate: targetDate.toISOString(),
+    });
+
+    // 1. Try to get from database (exact date or closest prior date within 3 days)
+    const dbResult = await query<EconomicIndicator>(
+      `SELECT * FROM economic_indicators 
+       WHERE indicator_type = $1 
+         AND effective_date <= $2
+       ORDER BY effective_date DESC 
+       LIMIT 1`,
+      [indicatorType, targetDate]
+    );
+    
+    const indicator = dbResult.rows[0];
+    
+    if (indicator) {
+      const indicatorDate = new Date(indicator.effective_date);
+      const daysDiff = Math.abs(
+        (targetDate.getTime() - indicatorDate.getTime()) / (1000 * 60 * 60 * 24)
+      );
+      
+      // If found within 3 days, use it
+      if (daysDiff <= 3) {
+        logger.info('Using cached historical FX rate from database', {
+          currency: fromCurrency,
+          requestedDate: targetDate.toISOString(),
+          actualDate: indicatorDate.toISOString(),
+          daysDiff,
+          rate: indicator.value,
+        });
+        
+        return {
+          from_currency: fromCurrency,
+          to_currency: toCurrency,
+          rate: indicator.value,
+          date: indicator.effective_date,
+          source: `${indicator.source_name} (as of ${indicatorDate.toISOString().split('T')[0]})`,
+        };
+      }
+    }
+    
+    // 2. Fetch from Yahoo Finance historical API
+    try {
+      const historicalRate = await fxFeedService.fetchHistoricalRate(
+        fromCurrency.toUpperCase(),
+        targetDate
+      );
+      
+      if (historicalRate && historicalRate.rate > 0) {
+        logger.info('Retrieved historical FX rate from Yahoo Finance', {
+          currency: fromCurrency,
+          date: targetDate.toISOString(),
+          rate: historicalRate.rate,
+        });
+        
+        // Save to database for future lookups
+        try {
+          await fxFeedService.saveDailyRate(fromCurrency, historicalRate);
+        } catch (saveError) {
+          logger.warn('Failed to cache historical FX rate', { error: saveError });
+        }
+        
+        return {
+          from_currency: fromCurrency,
+          to_currency: toCurrency,
+          rate: historicalRate.rate,
+          date: targetDate,
+          source: `${historicalRate.source} (historical)`,
+        };
+      }
+    } catch (fetchError) {
+      logger.warn('Yahoo Finance historical rate fetch failed', {
+        currency: fromCurrency,
+        date: targetDate.toISOString(),
+        error: fetchError instanceof Error ? fetchError.message : 'Unknown error',
+      });
+    }
+    
+    // 3. Fallback: use most recent available rate with warning
+    if (indicator) {
+      logger.warn('Using older exchange rate as fallback for RICS valuation', {
+        currency: fromCurrency,
+        requestedDate: targetDate.toISOString(),
+        actualDate: new Date(indicator.effective_date).toISOString(),
+        rate: indicator.value,
+      });
+      
+      return {
+        from_currency: fromCurrency,
+        to_currency: toCurrency,
+        rate: indicator.value,
+        date: indicator.effective_date,
+        source: `${indicator.source_name} (historical fallback - ⚠️ date mismatch)`,
+      };
+    }
+    
+    // 4. Last resort: use current rate with strong warning
+    logger.error('No historical rate available, falling back to current rate', {
+      currency: fromCurrency,
+      requestedDate: targetDate.toISOString(),
+    });
+    
+    const currentRate = await this.getExchangeRate(fromCurrency, toCurrency);
     return {
-      from_currency: fromCurrency,
-      to_currency: toCurrency,
-      rate,
-      date: new Date(),
-      source: 'default',
+      ...currentRate,
+      source: `${currentRate.source} (⚠️ CURRENT RATE - historical not available)`,
     };
   }
 

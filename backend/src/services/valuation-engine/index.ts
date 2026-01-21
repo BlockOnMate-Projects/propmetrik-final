@@ -35,8 +35,8 @@
 export { valuationEngineService, default as valuationEngine } from './valuationEngineService';
 
 // Python client for valuation method calculations
-export { 
-  PythonClient, 
+export {
+  PythonClient,
   pythonClient,
   type PythonPropertyInput,
   type ValuationMethodRequest,
@@ -56,22 +56,121 @@ export {
 // Report generation (TypeScript)
 export { valuationReportService } from './valuationReportService';
 
+// Report management (Phase 1 API)
+export {
+  ReportService,
+  reportService,
+  type ReportStatus,
+  type ReportTemplate,
+  type PhotoCategory,
+  type AuditAction,
+  type ReportOptions,
+  type CreateReportInput,
+  type UpdateReportInput,
+  type ValuationReport,
+  type ReportPhoto,
+  type ReportWithValuer,
+  type ReportListFilters,
+  type PaginatedReports,
+} from './reportService';
+
+// Report data collection (Phase 2)
+export {
+  reportDataService,
+  type ReportCoverData,
+  type ReportTransmittalData,
+  type ReportCertificationData,
+  type ReportDisclaimersData,
+  type PropertyLegalData,
+  type PropertyConstructionData,
+  type PropertyExternalsData,
+  type PropertyRiskAssessmentData,
+  type InspectionData,
+  type EngagementData,
+} from './reportDataService';
+
+// Document generation (Phase 2 - DOCX)
+export {
+  docGenerationService,
+  type DocxGenerationOptions,
+  type GeneratedReport,
+  type ReportSectionData,
+} from './docGenerationService';
+
+// =====================================================
+// DOCUMENT SERVICES (Phase 3 & 4)
+// Moved from /services/document for consolidation
+// =====================================================
+
+// Image processing (Phase 3)
+export {
+  imageProcessingService,
+  type ProcessedImage,
+  type ImageMetadata
+} from './imageProcessingService';
+
+// Approval workflow (Phase 4)
+export {
+  approvalService,
+  type ApprovalRequest,
+  type ApprovalResult,
+  type Valuer,
+  type ValuerCredentials
+} from './approvalService';
+
+// PDF generation (Phase 4)
+export {
+  pdfGenerationService,
+  type PdfGenerationOptions,
+  type PdfGenerationResult,
+  type VerificationData
+} from './pdfGenerationService';
+
+// Audit logging (Phase 4)
+export {
+  auditLogService,
+  type AuditLogEntry,
+  type AuditLogInput,
+  type AuditSummary,
+  type PaginatedAuditLog
+} from './auditLogService';
+
 // =====================================================
 // SUPPORTING SERVICES (TypeScript)
 // =====================================================
 
+// Cap rate service for income approach
+export {
+  CapRateService,
+  capRateService,
+  type MarketCapRateBenchmark,
+  type PropertyCapRateEstimate,
+  type CapRateAdjustment,
+  type NOICalculation,
+  type IncomeApproachInputs,
+  type IncomeApproachResult,
+  type ListingDerivedCapRate,
+  type CapRateMethodology,
+} from './CapRateService';
+
 // Contribution workflow
-export { 
+export {
   GapDetectionService,
   ContributionService,
-  gapDetectionService, 
-  contributionService 
+  gapDetectionService,
+  contributionService
 } from './contributionWorkflowService';
 
 // Gap analysis services
 export { floorPlanService } from './floorPlanService';
 export { hbuAnalysisService } from './hbuAnalysisService';
 export { overrideTrackingService } from './overrideTrackingService';
+
+// =====================================================
+// GEOMETRY SERVICES
+// =====================================================
+
+export * from './geometry';
 
 // =====================================================
 // TYPES

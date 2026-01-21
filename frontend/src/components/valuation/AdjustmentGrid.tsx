@@ -964,35 +964,15 @@ export function AdjustmentGrid({
         </table>
       </div>
       
-      {/* Auto-calculate Actions */}
-      {!readOnly && onAutoCalculate && (
-        <div className="mt-3 pt-3 border-t border-zinc-800 flex items-center justify-between">
-          <div className="flex items-center gap-2 text-zinc-500">
-            <Info className="w-3 h-3" />
-            <span className="font-mono text-[10px]">
-              Adjustments are pre-calculated. Click any cell to override.
-            </span>
-          </div>
-          <div className="flex items-center gap-2">
-            {comparables.map((comp, idx) => (
-              <button
-                key={comp.id}
-                onClick={() => onAutoCalculate(comp.id)}
-                disabled={comp.isLocked}
-                className={cn(
-                  'px-2 py-1 font-mono text-[10px] flex items-center gap-1 transition-colors',
-                  comp.isLocked 
-                    ? 'bg-zinc-800 text-zinc-600 cursor-not-allowed'
-                    : 'bg-zinc-800 text-zinc-400 hover:text-amber-400 hover:bg-zinc-700'
-                )}
-              >
-                <Calculator className="w-3 h-3" />
-                Auto C{idx + 1}
-              </button>
-            ))}
-          </div>
+      {/* Info Banner - Adjustments are automatic */}
+      <div className="mt-3 pt-3 border-t border-zinc-800">
+        <div className="flex items-center gap-2 text-zinc-500">
+          <Info className="w-3 h-3" />
+          <span className="font-mono text-[10px]">
+            Adjustments are automatically calculated based on property differences. Click any cell to override.
+          </span>
         </div>
-      )}
+      </div>
     </TerminalPanel>
   );
 }

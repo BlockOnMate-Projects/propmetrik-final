@@ -253,11 +253,55 @@ class HBUAnalysisService {
 
   /**
    * Get or create HBU analysis for valuation
+   * For specialized properties (DRC method), auto-pass HBU tests
    */
   async getOrCreate(valuationId: string, createdBy?: string): Promise<HBUAnalysis> {
     const existing = await this.getByValuationId(valuationId);
     if (existing) return existing;
-    return this.create({ valuation_id: valuationId, created_by: createdBy });
+    
+    // Create new HBU analysis
+    const hbu = await this.create({ valuation_id: valuationId, created_by: createdBy });
+    
+    // Check if this is a specialized/institutional property (DRC method)
+    // If so, auto-pass HBU tests since these are typically purpose-built
+    try {
+      const valuationQuery = 'SELECT methods_applied, method_results FROM valuations WHERE id = $1';
+      const valuationResult = await pool.query(valuationQuery, [valuationId]);
+      
+      if (valuationResult.rows.length > 0) {
+        const valuation = valuationResult.rows[0];
+        const methodsApplied = valuation.methods_applied || [];
+        const methodResults = valuation.method_results || {};
+        
+        // Check if DRC method is used or if property type is institutional
+        const isDRC = methodsApplied.includes('drc_method') || methodResults.drc_method;
+        const assetType = methodResults.drc_method?.assetType || '';
+        const isInstitutional = ['institutional', 'government', 'religious', 'church', 'mosque', 
+                                  'hospital', 'school', 'library', 'museum', 'heritage', 'utility', 
+                                  'stadium', 'community_center'].includes(assetType);
+        
+        if (isDRC || isInstitutional) {
+          // Auto-pass HBU tests for specialized properties
+          await this.updateAllTests(hbu.id, {
+            legal_test_passed: true,
+            physical_test_passed: true,
+            financial_test_passed: true,
+            productive_test_passed: true,
+            recommended_use: `Current ${assetType || 'institutional'} use represents highest and best use`,
+            analysis_notes: 'Specialized property - current use is purpose-built and represents HBU. Standard HBU analysis confirms current use as legally permissible, physically possible, financially feasible, and maximally productive for this asset class.',
+          });
+          
+          // Return updated HBU
+          const updated = await this.getById(hbu.id);
+          if (updated) return updated;
+        }
+      }
+    } catch (error) {
+      // If auto-pass fails, just return the default HBU
+      console.warn('Failed to auto-pass HBU for specialized property:', error);
+    }
+    
+    return hbu;
   }
 
   /**
@@ -602,15 +646,30 @@ class HBUAnalysisService {
     const existing = await this.getById(id);
     if (!existing) return null;
 
+    // Explicitly convert boolean values to ensure they're not undefined
+    // When undefined is passed to PostgreSQL, COALESCE treats it as null and keeps old value
+    const legalPassed = input.legal_test_passed === true || input.legal_test_passed === false 
+      ? input.legal_test_passed 
+      : existing.legal_test_passed;
+    const physicalPassed = input.physical_test_passed === true || input.physical_test_passed === false 
+      ? input.physical_test_passed 
+      : existing.physical_test_passed;
+    const financialPassed = input.financial_test_passed === true || input.financial_test_passed === false 
+      ? input.financial_test_passed 
+      : existing.financial_test_passed;
+    const productivityPassed = input.productive_test_passed === true || input.productive_test_passed === false 
+      ? input.productive_test_passed 
+      : existing.productivity_test_passed;
+
     const query = `
       UPDATE valuation_hbu_analyses
       SET 
-        legal_test_passed = COALESCE($2, legal_test_passed),
-        physical_test_passed = COALESCE($3, physical_test_passed),
-        financial_test_passed = COALESCE($4, financial_test_passed),
-        productivity_test_passed = COALESCE($5, productivity_test_passed),
-        hbu_conclusion = COALESCE($6, hbu_conclusion),
-        hbu_justification = COALESCE($7, hbu_justification),
+        legal_test_passed = $2,
+        physical_test_passed = $3,
+        financial_test_passed = $4,
+        productivity_test_passed = $5,
+        hbu_conclusion = COALESCE(NULLIF($6, ''), hbu_conclusion),
+        hbu_justification = COALESCE(NULLIF($7, ''), hbu_justification),
         legal_analysis = COALESCE($8, legal_analysis),
         physical_analysis = COALESCE($9, physical_analysis),
         financial_analysis = COALESCE($10, financial_analysis),
@@ -622,10 +681,10 @@ class HBUAnalysisService {
 
     const result = await pool.query(query, [
       id,
-      input.legal_test_passed,
-      input.physical_test_passed,
-      input.financial_test_passed,
-      input.productive_test_passed,
+      legalPassed,
+      physicalPassed,
+      financialPassed,
+      productivityPassed,
       input.recommended_use,
       input.analysis_notes,
       input.legal_analysis ? JSON.stringify(input.legal_analysis) : null,

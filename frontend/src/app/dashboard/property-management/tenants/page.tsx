@@ -1,0 +1,795 @@
+'use client'
+
+import React, { useEffect, useState, useMemo } from 'react'
+import { useRouter } from 'next/navigation'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Badge } from '@/components/ui/badge'
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
+import { Avatar, AvatarFallback } from '@/components/ui/avatar'
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuSeparator,
+    DropdownMenuTrigger
+} from '@/components/ui/dropdown-menu'
+import {
+    Sheet,
+    SheetContent,
+    SheetHeader,
+    SheetTitle,
+    SheetDescription
+} from '@/components/ui/sheet'
+import {
+    Dialog,
+    DialogContent,
+    DialogHeader,
+    DialogTitle,
+    DialogDescription,
+    DialogFooter
+} from '@/components/ui/dialog'
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle
+} from '@/components/ui/alert-dialog'
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue
+} from '@/components/ui/select'
+import { Label } from '@/components/ui/label'
+import { Textarea } from '@/components/ui/textarea'
+import Link from 'next/link'
+import {
+    Users,
+    Search,
+    Filter,
+    Plus,
+    Home,
+    CheckCircle2,
+    AlertCircle,
+    Loader2,
+    Phone,
+    Mail,
+    MoreHorizontal,
+    Eye,
+    FileText,
+    MessageSquare,
+    Trash2,
+    Clock,
+    Building2,
+    Calendar,
+    CreditCard,
+    UserCheck,
+    UserX,
+    Send,
+    X,
+    AlertTriangle
+} from 'lucide-react'
+import { propertyManagementApi } from '@/lib/property-management-api'
+import { Tenant, TenantStatus, Tenancy } from '@/types/property-management'
+import { format } from 'date-fns'
+
+export default function TenantsPage() {
+    const router = useRouter()
+    const [tenants, setTenants] = useState<Tenant[]>([])
+    const [tenancies, setTenancies] = useState<Tenancy[]>([])
+    const [isLoading, setIsLoading] = useState(true)
+    const [error, setError] = useState<string | null>(null)
+    const [searchQuery, setSearchQuery] = useState('')
+    
+    // Filter state
+    const [isFilterOpen, setIsFilterOpen] = useState(false)
+    const [statusFilter, setStatusFilter] = useState<string>('all')
+    
+    // View details state
+    const [selectedTenant, setSelectedTenant] = useState<Tenant | null>(null)
+    const [isDetailsOpen, setIsDetailsOpen] = useState(false)
+    const [tenantTenancies, setTenantTenancies] = useState<Tenancy[]>([])
+    const [isLoadingDetails, setIsLoadingDetails] = useState(false)
+    
+    // Delete state
+    const [tenantToDelete, setTenantToDelete] = useState<Tenant | null>(null)
+    const [isDeleting, setIsDeleting] = useState(false)
+    
+    // Message dialog state
+    const [isMessageDialogOpen, setIsMessageDialogOpen] = useState(false)
+    const [messageRecipient, setMessageRecipient] = useState<Tenant | null>(null)
+    const [messageContent, setMessageContent] = useState('')
+    const [isSendingMessage, setIsSendingMessage] = useState(false)
+
+    useEffect(() => {
+        const loadData = async () => {
+            try {
+                setIsLoading(true)
+                const [tenantsRes, tenanciesRes] = await Promise.all([
+                    propertyManagementApi.getTenants({ limit: 100 }),
+                    propertyManagementApi.getTenancies({ limit: 100 })
+                ])
+                const tenantsData = Array.isArray(tenantsRes) ? tenantsRes : tenantsRes.data || []
+                const tenanciesData = Array.isArray(tenanciesRes) ? tenanciesRes : tenanciesRes.data || []
+                setTenants(tenantsData)
+                setTenancies(tenanciesData)
+            } catch (err) {
+                console.error('Failed to load tenants:', err)
+                setError('Failed to load tenants. Please try again.')
+            } finally {
+                setIsLoading(false)
+            }
+        }
+        loadData()
+    }, [])
+
+    // Filtered tenants
+    const filteredTenants = useMemo(() => {
+        return tenants.filter(tenant => {
+            // Search filter
+            const matchesSearch = searchQuery === '' || 
+                tenant.fullName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                tenant.email?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                tenant.phonePrimary?.includes(searchQuery)
+            
+            // Status filter
+            const matchesStatus = statusFilter === 'all' || tenant.status === statusFilter
+            
+            return matchesSearch && matchesStatus
+        })
+    }, [tenants, searchQuery, statusFilter])
+
+    // Stats
+    const stats = useMemo(() => {
+        const activeTenants = tenants.filter(t => t.status === TenantStatus.ACTIVE).length
+        const pendingTenants = tenants.filter(t => t.status === TenantStatus.PENDING_VERIFICATION).length
+        const inactiveTenants = tenants.filter(t => t.status === TenantStatus.INACTIVE).length
+        const activeTenancies = tenancies.filter(t => t.status === 'active').length
+        const occupancyRate = tenancies.length > 0 ? Math.round((activeTenancies / tenancies.length) * 100) : 0
+        
+        return {
+            total: tenants.length,
+            active: activeTenants,
+            pending: pendingTenants,
+            inactive: inactiveTenants,
+            occupancy: occupancyRate
+        }
+    }, [tenants, tenancies])
+
+    // Get tenant's active tenancy
+    const getTenantTenancy = (tenantId: string) => {
+        return tenancies.find(t => t.tenantId === tenantId && t.status === 'active')
+    }
+
+    // Get initials from name
+    const getInitials = (name: string) => {
+        return name
+            .split(' ')
+            .map(part => part.charAt(0))
+            .join('')
+            .toUpperCase()
+            .substring(0, 2)
+    }
+
+    // View tenant details - navigate to tenant dashboard page
+    const handleViewDetails = (tenant: Tenant) => {
+        if (!tenant?.id) {
+            console.error('Tenant ID is undefined', tenant)
+            return
+        }
+        router.push(`/dashboard/property-management/tenants/${tenant.id}`)
+    }
+
+    // Delete tenant
+    const handleDeleteTenant = async () => {
+        if (!tenantToDelete) return
+        
+        try {
+            setIsDeleting(true)
+            // Note: You may need to add deleteTenant to the API
+            // await propertyManagementApi.deleteTenant(tenantToDelete.id)
+            setTenants(prev => prev.filter(t => t.id !== tenantToDelete.id))
+            setTenantToDelete(null)
+        } catch (err) {
+            console.error('Failed to delete tenant:', err)
+        } finally {
+            setIsDeleting(false)
+        }
+    }
+
+    // Send message
+    const handleSendMessage = async () => {
+        if (!messageRecipient || !messageContent.trim()) return
+        
+        try {
+            setIsSendingMessage(true)
+            // Implement message sending logic here
+            // await propertyManagementApi.sendMessage(messageRecipient.id, messageContent)
+            console.log('Sending message to:', messageRecipient.fullName, messageContent)
+            setIsMessageDialogOpen(false)
+            setMessageContent('')
+            setMessageRecipient(null)
+        } catch (err) {
+            console.error('Failed to send message:', err)
+        } finally {
+            setIsSendingMessage(false)
+        }
+    }
+
+    const openMessageDialog = (tenant: Tenant) => {
+        setMessageRecipient(tenant)
+        setIsMessageDialogOpen(true)
+    }
+
+    const clearFilters = () => {
+        setStatusFilter('all')
+        setSearchQuery('')
+    }
+
+    const getStatusColor = (status: string) => {
+        switch (status) {
+            case 'active': return 'border-green-900 text-green-500 bg-green-900/10'
+            case 'inactive': return 'border-zinc-700 text-zinc-400 bg-zinc-800/20'
+            case 'pending_verification': return 'border-amber-900 text-amber-500 bg-amber-900/10'
+            case 'blacklisted': return 'border-red-900 text-red-500 bg-red-900/10'
+            default: return 'border-zinc-700 text-zinc-400'
+        }
+    }
+
+    return (
+        <div className="space-y-6">
+            {/* Page Header */}
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                <div>
+                    <h1 className="text-2xl font-bold tracking-tight text-white font-mono uppercase">Tenant Directory</h1>
+                    <p className="text-sm text-zinc-500 font-mono">Manage residential and commercial tenants across your portfolio</p>
+                </div>
+                <div className="flex items-center gap-2">
+                    <Button 
+                        variant="outline" 
+                        className="border-zinc-800 text-zinc-400 hover:text-amber-500 hover:border-amber-900 bg-black font-mono text-xs uppercase"
+                        onClick={() => setIsFilterOpen(true)}
+                    >
+                        <Filter className="mr-2 h-3 w-3" />
+                        Filter
+                        {statusFilter !== 'all' && (
+                            <Badge className="ml-2 bg-amber-600 text-black text-[9px]">1</Badge>
+                        )}
+                    </Button>
+                    <Link href="/dashboard/property-management/tenants/new">
+                        <Button className="bg-amber-600 hover:bg-amber-500 text-black font-bold font-mono text-xs uppercase">
+                            <Plus className="mr-2 h-3 w-3" />
+                            Add Tenant
+                        </Button>
+                    </Link>
+                </div>
+            </div>
+
+            {/* Stats Cards */}
+            <div className="grid gap-4 md:grid-cols-4">
+                <Card className="bg-black border border-zinc-800">
+                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                        <CardTitle className="text-xs font-mono uppercase tracking-wider text-amber-500">Total Tenants</CardTitle>
+                        <Users className="h-4 w-4 text-amber-600" />
+                    </CardHeader>
+                    <CardContent>
+                        <div className="text-2xl font-bold text-white font-mono">{isLoading ? '-' : stats.total}</div>
+                        <p className="text-[10px] text-zinc-500 font-mono mt-1">Across all properties</p>
+                    </CardContent>
+                </Card>
+                <Card className="bg-black border border-zinc-800">
+                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                        <CardTitle className="text-xs font-mono uppercase tracking-wider text-green-500">Active</CardTitle>
+                        <CheckCircle2 className="h-4 w-4 text-green-600" />
+                    </CardHeader>
+                    <CardContent>
+                        <div className="text-2xl font-bold text-white font-mono">{isLoading ? '-' : stats.active}</div>
+                        <p className="text-[10px] text-zinc-500 font-mono mt-1">With active leases</p>
+                    </CardContent>
+                </Card>
+                <Card className="bg-black border border-zinc-800">
+                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                        <CardTitle className="text-xs font-mono uppercase tracking-wider text-amber-500">Pending</CardTitle>
+                        <Clock className="h-4 w-4 text-amber-600" />
+                    </CardHeader>
+                    <CardContent>
+                        <div className="text-2xl font-bold text-white font-mono">{isLoading ? '-' : stats.pending}</div>
+                        <p className="text-[10px] text-zinc-500 font-mono mt-1">Awaiting verification</p>
+                    </CardContent>
+                </Card>
+                <Card className="bg-black border border-zinc-800">
+                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                        <CardTitle className="text-xs font-mono uppercase tracking-wider text-zinc-500">Occupancy Rate</CardTitle>
+                        <Home className="h-4 w-4 text-zinc-600" />
+                    </CardHeader>
+                    <CardContent>
+                        <div className="text-2xl font-bold text-white font-mono">{isLoading ? '-' : `${stats.occupancy}%`}</div>
+                        <p className="text-[10px] text-zinc-500 font-mono mt-1">Portfolio occupancy</p>
+                    </CardContent>
+                </Card>
+            </div>
+
+            {/* Tenant List */}
+            <Card className="bg-zinc-900 border-zinc-800">
+                <CardHeader>
+                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                        <div>
+                            <CardTitle className="text-sm font-mono uppercase text-amber-500">Tenants</CardTitle>
+                            <CardDescription className="text-xs font-mono text-zinc-500 mt-1">
+                                {filteredTenants.length} of {tenants.length} tenants
+                            </CardDescription>
+                        </div>
+                        <div className="relative w-full sm:w-72">
+                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-500" />
+                            <Input 
+                                placeholder="Search by name, email, or phone..." 
+                                className="pl-9 bg-black border-zinc-800 text-zinc-300 focus:border-amber-500 font-mono text-xs h-9"
+                                value={searchQuery}
+                                onChange={(e) => setSearchQuery(e.target.value)}
+                            />
+                            {searchQuery && (
+                                <button 
+                                    onClick={() => setSearchQuery('')}
+                                    className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-white"
+                                >
+                                    <X className="h-3 w-3" />
+                                </button>
+                            )}
+                        </div>
+                    </div>
+                </CardHeader>
+                <CardContent>
+                    {error && (
+                        <div className="p-4 bg-red-950/20 border border-red-900 rounded-lg mb-4">
+                            <p className="text-red-500 text-sm font-mono">{error}</p>
+                        </div>
+                    )}
+
+                    {isLoading ? (
+                        <div className="flex flex-col items-center justify-center py-12">
+                            <Loader2 className="h-8 w-8 text-amber-600 animate-spin" />
+                            <p className="text-zinc-500 font-mono text-xs mt-4 uppercase">Loading tenant registry...</p>
+                        </div>
+                    ) : (
+                        <div className="space-y-3">
+                            {filteredTenants.map((tenant) => {
+                                const activeTenancy = getTenantTenancy(tenant.id)
+                                
+                                return (
+                                    <div 
+                                        key={tenant.id} 
+                                        className="flex items-center justify-between p-4 border border-zinc-800 bg-zinc-950/50 rounded-lg hover:bg-zinc-900 hover:border-zinc-700 transition-all group cursor-pointer"
+                                        onClick={() => handleViewDetails(tenant)}
+                                    >
+                                        <div className="flex items-center gap-4">
+                                            <Avatar className="h-12 w-12 border-2 border-zinc-800 group-hover:border-amber-600/50 transition-colors">
+                                                <AvatarFallback className="bg-zinc-900 text-amber-500 font-mono font-bold text-sm">
+                                                    {getInitials(tenant.fullName)}
+                                                </AvatarFallback>
+                                            </Avatar>
+                                            <div className="space-y-1">
+                                                <div className="font-medium text-white font-mono group-hover:text-amber-500 transition-colors">
+                                                    {tenant.fullName}
+                                                </div>
+                                                <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] text-zinc-500 font-mono">
+                                                    {tenant.email && (
+                                                        <span className="flex items-center gap-1.5">
+                                                            <Mail className="h-3 w-3 text-zinc-600" /> 
+                                                            {tenant.email}
+                                                        </span>
+                                                    )}
+                                                    <span className="flex items-center gap-1.5">
+                                                        <Phone className="h-3 w-3 text-zinc-600" /> 
+                                                        {tenant.phonePrimary}
+                                                    </span>
+                                                    {activeTenancy && (
+                                                        <span className="flex items-center gap-1.5 text-amber-600">
+                                                            <Building2 className="h-3 w-3" /> 
+                                                            {activeTenancy.property?.title || 'Active Lease'}
+                                                        </span>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        </div>
+                                        
+                                        <div className="flex items-center gap-3">
+                                            <Badge
+                                                variant="outline"
+                                                className={`text-[10px] font-mono uppercase ${getStatusColor(tenant.status)}`}
+                                            >
+                                                {tenant.status.replace('_', ' ')}
+                                            </Badge>
+                                            
+                                            <DropdownMenu>
+                                                <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+                                                    <Button 
+                                                        variant="ghost" 
+                                                        className="h-8 w-8 p-0 text-zinc-500 hover:text-white hover:bg-zinc-800"
+                                                    >
+                                                        <MoreHorizontal className="h-4 w-4" />
+                                                    </Button>
+                                                </DropdownMenuTrigger>
+                                                <DropdownMenuContent align="end" className="bg-zinc-950 border-zinc-800 w-48" onClick={(e) => e.stopPropagation()}>
+                                                    <DropdownMenuItem 
+                                                        className="text-zinc-300 hover:text-white focus:text-white focus:bg-zinc-800 font-mono text-xs cursor-pointer"
+                                                        onClick={(e) => {
+                                                            e.stopPropagation()
+                                                            handleViewDetails(tenant)
+                                                        }}
+                                                    >
+                                                        <Eye className="h-3 w-3 mr-2" />
+                                                        View Details
+                                                    </DropdownMenuItem>
+                                                    <DropdownMenuItem 
+                                                        className="text-zinc-300 hover:text-white focus:text-white focus:bg-zinc-800 font-mono text-xs cursor-pointer"
+                                                        onClick={(e) => {
+                                                            e.stopPropagation()
+                                                            openMessageDialog(tenant)
+                                                        }}
+                                                    >
+                                                        <MessageSquare className="h-3 w-3 mr-2" />
+                                                        Send Message
+                                                    </DropdownMenuItem>
+                                                    <DropdownMenuSeparator className="bg-zinc-800" />
+                                                    {activeTenancy && (
+                                                        <DropdownMenuItem 
+                                                            className="text-zinc-300 hover:text-white focus:text-white focus:bg-zinc-800 font-mono text-xs cursor-pointer"
+                                                            onClick={(e) => {
+                                                                e.stopPropagation()
+                                                                router.push(`/dashboard/property-management/e-sign/${activeTenancy.id}`)
+                                                            }}
+                                                        >
+                                                            <FileText className="h-3 w-3 mr-2" />
+                                                            Generate Lease
+                                                        </DropdownMenuItem>
+                                                    )}
+                                                    {activeTenancy && (
+                                                        <DropdownMenuItem 
+                                                            className="text-zinc-300 hover:text-white focus:text-white focus:bg-zinc-800 font-mono text-xs cursor-pointer"
+                                                            onClick={(e) => {
+                                                                e.stopPropagation()
+                                                                router.push(`/dashboard/property-management/leases/${activeTenancy.id}`)
+                                                            }}
+                                                        >
+                                                            <Eye className="h-3 w-3 mr-2" />
+                                                            View Lease
+                                                        </DropdownMenuItem>
+                                                    )}
+                                                    <DropdownMenuItem className="text-zinc-300 hover:text-white focus:text-white focus:bg-zinc-800 font-mono text-xs cursor-pointer">
+                                                        <CreditCard className="h-3 w-3 mr-2" />
+                                                        Payment History
+                                                    </DropdownMenuItem>
+                                                    <DropdownMenuSeparator className="bg-zinc-800" />
+                                                    <DropdownMenuItem 
+                                                        className="text-red-500 hover:text-red-400 focus:text-red-400 focus:bg-red-950/30 font-mono text-xs cursor-pointer"
+                                                        onClick={() => setTenantToDelete(tenant)}
+                                                    >
+                                                        <Trash2 className="h-3 w-3 mr-2" />
+                                                        Remove Tenant
+                                                    </DropdownMenuItem>
+                                                </DropdownMenuContent>
+                                            </DropdownMenu>
+                                        </div>
+                                    </div>
+                                )
+                            })}
+                            
+                            {filteredTenants.length === 0 && !isLoading && (
+                                <div className="text-center py-12 border border-dashed border-zinc-800 rounded-lg">
+                                    <Users className="h-12 w-12 text-zinc-800 mx-auto mb-4" />
+                                    <p className="text-zinc-500 font-mono text-sm">No tenants found</p>
+                                    {(searchQuery || statusFilter !== 'all') && (
+                                        <Button 
+                                            variant="link" 
+                                            className="text-amber-500 font-mono text-xs mt-2"
+                                            onClick={clearFilters}
+                                        >
+                                            Clear filters
+                                        </Button>
+                                    )}
+                                </div>
+                            )}
+                        </div>
+                    )}
+                </CardContent>
+            </Card>
+
+            {/* Filter Sheet */}
+            <Sheet open={isFilterOpen} onOpenChange={setIsFilterOpen}>
+                <SheetContent className="bg-zinc-950 border-zinc-800 w-80">
+                    <SheetHeader>
+                        <SheetTitle className="text-amber-500 font-mono uppercase">Filter Tenants</SheetTitle>
+                        <SheetDescription className="text-zinc-500 font-mono text-xs">
+                            Narrow down tenant list
+                        </SheetDescription>
+                    </SheetHeader>
+                    <div className="space-y-6 mt-6">
+                        <div className="space-y-2">
+                            <Label className="text-[10px] font-mono uppercase text-zinc-500">Status</Label>
+                            <Select value={statusFilter} onValueChange={setStatusFilter}>
+                                <SelectTrigger className="bg-black border-zinc-800 text-white font-mono">
+                                    <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent className="bg-zinc-950 border-zinc-800">
+                                    <SelectItem value="all">All Statuses</SelectItem>
+                                    <SelectItem value="active">Active</SelectItem>
+                                    <SelectItem value="inactive">Inactive</SelectItem>
+                                    <SelectItem value="pending_verification">Pending Verification</SelectItem>
+                                    <SelectItem value="blacklisted">Blacklisted</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
+                        
+                        <div className="flex gap-2 pt-4">
+                            <Button 
+                                variant="outline" 
+                                className="flex-1 border-zinc-800 text-zinc-400 font-mono text-xs"
+                                onClick={clearFilters}
+                            >
+                                Clear All
+                            </Button>
+                            <Button 
+                                className="flex-1 bg-amber-600 hover:bg-amber-500 text-black font-mono text-xs"
+                                onClick={() => setIsFilterOpen(false)}
+                            >
+                                Apply Filters
+                            </Button>
+                        </div>
+                    </div>
+                </SheetContent>
+            </Sheet>
+
+            {/* Tenant Details Sheet */}
+            <Sheet open={isDetailsOpen} onOpenChange={setIsDetailsOpen}>
+                <SheetContent className="bg-zinc-950 border-zinc-800 w-full sm:max-w-lg overflow-y-auto">
+                    {selectedTenant && (
+                        <>
+                            <SheetHeader>
+                                <div className="flex items-center gap-4">
+                                    <Avatar className="h-16 w-16 border-2 border-amber-600">
+                                        <AvatarFallback className="bg-zinc-900 text-amber-500 font-mono font-bold text-xl">
+                                            {getInitials(selectedTenant.fullName)}
+                                        </AvatarFallback>
+                                    </Avatar>
+                                    <div>
+                                        <SheetTitle className="text-white font-mono text-lg">{selectedTenant.fullName}</SheetTitle>
+                                        <Badge className={`mt-1 text-[10px] font-mono uppercase ${getStatusColor(selectedTenant.status)}`}>
+                                            {selectedTenant.status.replace('_', ' ')}
+                                        </Badge>
+                                    </div>
+                                </div>
+                            </SheetHeader>
+                            
+                            <div className="space-y-6 mt-8">
+                                {/* Contact Information */}
+                                <div className="space-y-4">
+                                    <h3 className="text-xs font-mono text-amber-500 uppercase">Contact Information</h3>
+                                    <div className="grid gap-3">
+                                        <div className="flex items-center gap-3 p-3 bg-zinc-900 rounded-lg border border-zinc-800">
+                                            <Mail className="h-4 w-4 text-zinc-500" />
+                                            <div>
+                                                <p className="text-[10px] text-zinc-500 font-mono uppercase">Email</p>
+                                                <p className="text-sm text-white font-mono">{selectedTenant.email || 'Not provided'}</p>
+                                            </div>
+                                        </div>
+                                        <div className="flex items-center gap-3 p-3 bg-zinc-900 rounded-lg border border-zinc-800">
+                                            <Phone className="h-4 w-4 text-zinc-500" />
+                                            <div>
+                                                <p className="text-[10px] text-zinc-500 font-mono uppercase">Phone</p>
+                                                <p className="text-sm text-white font-mono">{selectedTenant.phonePrimary}</p>
+                                            </div>
+                                        </div>
+                                        {selectedTenant.ghanaCardNumber && (
+                                            <div className="flex items-center gap-3 p-3 bg-zinc-900 rounded-lg border border-zinc-800">
+                                                <UserCheck className="h-4 w-4 text-zinc-500" />
+                                                <div>
+                                                    <p className="text-[10px] text-zinc-500 font-mono uppercase">Ghana Card</p>
+                                                    <p className="text-sm text-white font-mono">{selectedTenant.ghanaCardNumber}</p>
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+
+                                {/* Tenancies */}
+                                <div className="space-y-4">
+                                    <h3 className="text-xs font-mono text-amber-500 uppercase">Lease History</h3>
+                                    {isLoadingDetails ? (
+                                        <div className="flex justify-center py-8">
+                                            <Loader2 className="h-6 w-6 text-amber-600 animate-spin" />
+                                        </div>
+                                    ) : tenantTenancies.length > 0 ? (
+                                        <div className="space-y-3">
+                                            {tenantTenancies.map((tenancy) => (
+                                                <div key={tenancy.id} className="p-4 bg-zinc-900 rounded-lg border border-zinc-800">
+                                                    <div className="flex items-start justify-between mb-3">
+                                                        <div>
+                                                            <p className="text-sm text-white font-mono">{tenancy.property?.title || 'Property'}</p>
+                                                            <p className="text-[10px] text-zinc-500 font-mono mt-1">REF: {tenancy.referenceNumber}</p>
+                                                        </div>
+                                                        <Badge className={`text-[9px] font-mono uppercase ${
+                                                            tenancy.status === 'active' ? 'bg-green-900/20 text-green-500 border-green-900' :
+                                                            tenancy.status === 'expired' ? 'bg-red-900/20 text-red-500 border-red-900' :
+                                                            'bg-zinc-800 text-zinc-400 border-zinc-700'
+                                                        }`}>
+                                                            {tenancy.status}
+                                                        </Badge>
+                                                    </div>
+                                                    <div className="grid grid-cols-2 gap-3 text-[11px]">
+                                                        <div>
+                                                            <p className="text-zinc-500 font-mono">Start Date</p>
+                                                            <p className="text-white font-mono">{format(new Date(tenancy.leaseStartDate), 'dd MMM yyyy')}</p>
+                                                        </div>
+                                                        <div>
+                                                            <p className="text-zinc-500 font-mono">End Date</p>
+                                                            <p className="text-white font-mono">{format(new Date(tenancy.leaseEndDate), 'dd MMM yyyy')}</p>
+                                                        </div>
+                                                        <div>
+                                                            <p className="text-zinc-500 font-mono">Monthly Rent</p>
+                                                            <p className="text-white font-mono">{tenancy.rentCurrency} {tenancy.monthlyRent?.toLocaleString()}</p>
+                                                        </div>
+                                                        <div>
+                                                            <p className="text-zinc-500 font-mono">Frequency</p>
+                                                            <p className="text-white font-mono capitalize">{tenancy.paymentFreq || 'Monthly'}</p>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    ) : (
+                                        <div className="text-center py-8 border border-dashed border-zinc-800 rounded-lg">
+                                            <FileText className="h-8 w-8 text-zinc-800 mx-auto mb-2" />
+                                            <p className="text-zinc-500 font-mono text-xs">No lease history</p>
+                                        </div>
+                                    )}
+                                </div>
+
+                                {/* Quick Actions */}
+                                <div className="space-y-3 pt-4 border-t border-zinc-800">
+                                    <h3 className="text-xs font-mono text-amber-500 uppercase">Quick Actions</h3>
+                                    <div className="grid grid-cols-2 gap-3">
+                                        <Button 
+                                            variant="outline" 
+                                            className="border-zinc-800 text-zinc-400 hover:text-white font-mono text-xs"
+                                            onClick={() => {
+                                                setIsDetailsOpen(false)
+                                                openMessageDialog(selectedTenant)
+                                            }}
+                                        >
+                                            <MessageSquare className="h-3 w-3 mr-2" />
+                                            Message
+                                        </Button>
+                                        <Button 
+                                            variant="outline" 
+                                            className="border-zinc-800 text-zinc-400 hover:text-white font-mono text-xs"
+                                        >
+                                            <FileText className="h-3 w-3 mr-2" />
+                                            New Lease
+                                        </Button>
+                                        <Button 
+                                            variant="outline" 
+                                            className="border-zinc-800 text-zinc-400 hover:text-white font-mono text-xs"
+                                        >
+                                            <CreditCard className="h-3 w-3 mr-2" />
+                                            Payments
+                                        </Button>
+                                        <Button 
+                                            variant="outline" 
+                                            className="border-red-900 text-red-500 hover:bg-red-950/30 font-mono text-xs"
+                                            onClick={() => {
+                                                setIsDetailsOpen(false)
+                                                setTenantToDelete(selectedTenant)
+                                            }}
+                                        >
+                                            <UserX className="h-3 w-3 mr-2" />
+                                            Remove
+                                        </Button>
+                                    </div>
+                                </div>
+                            </div>
+                        </>
+                    )}
+                </SheetContent>
+            </Sheet>
+
+            {/* Send Message Dialog */}
+            <Dialog open={isMessageDialogOpen} onOpenChange={setIsMessageDialogOpen}>
+                <DialogContent className="bg-zinc-950 border-zinc-800">
+                    <DialogHeader>
+                        <DialogTitle className="text-amber-500 font-mono uppercase">Send Message</DialogTitle>
+                        <DialogDescription className="text-zinc-500 font-mono text-xs">
+                            Send a message to {messageRecipient?.fullName}
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-4 py-4">
+                        <div className="flex items-center gap-3 p-3 bg-zinc-900 rounded-lg border border-zinc-800">
+                            <Avatar className="h-10 w-10 border border-zinc-700">
+                                <AvatarFallback className="bg-zinc-800 text-amber-500 font-mono text-sm">
+                                    {messageRecipient ? getInitials(messageRecipient.fullName) : ''}
+                                </AvatarFallback>
+                            </Avatar>
+                            <div>
+                                <p className="text-sm text-white font-mono">{messageRecipient?.fullName}</p>
+                                <p className="text-[10px] text-zinc-500 font-mono">{messageRecipient?.email || messageRecipient?.phonePrimary}</p>
+                            </div>
+                        </div>
+                        <div className="space-y-2">
+                            <Label className="text-[10px] font-mono uppercase text-zinc-500">Message</Label>
+                            <Textarea
+                                placeholder="Type your message..."
+                                className="bg-black border-zinc-800 text-white font-mono text-sm resize-none min-h-[120px]"
+                                value={messageContent}
+                                onChange={(e) => setMessageContent(e.target.value)}
+                            />
+                        </div>
+                    </div>
+                    <DialogFooter>
+                        <Button
+                            variant="outline"
+                            className="border-zinc-800 text-zinc-400 font-mono text-xs"
+                            onClick={() => setIsMessageDialogOpen(false)}
+                        >
+                            Cancel
+                        </Button>
+                        <Button
+                            className="bg-amber-600 hover:bg-amber-500 text-black font-mono text-xs"
+                            disabled={isSendingMessage || !messageContent.trim()}
+                            onClick={handleSendMessage}
+                        >
+                            {isSendingMessage ? (
+                                <Loader2 className="h-3 w-3 mr-2 animate-spin" />
+                            ) : (
+                                <Send className="h-3 w-3 mr-2" />
+                            )}
+                            Send Message
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            {/* Delete Confirmation Dialog */}
+            <AlertDialog open={!!tenantToDelete} onOpenChange={() => setTenantToDelete(null)}>
+                <AlertDialogContent className="bg-zinc-950 border-zinc-800">
+                    <AlertDialogHeader>
+                        <AlertDialogTitle className="text-white font-mono uppercase flex items-center gap-2">
+                            <AlertTriangle className="h-5 w-5 text-red-500" />
+                            Remove Tenant
+                        </AlertDialogTitle>
+                        <AlertDialogDescription className="text-zinc-400 font-mono text-xs">
+                            Are you sure you want to remove <span className="text-amber-500">{tenantToDelete?.fullName}</span> from your tenant directory? 
+                            This action will also terminate any active leases associated with this tenant.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel className="bg-zinc-900 border-zinc-800 text-zinc-400 hover:bg-zinc-800 hover:text-white font-mono text-xs uppercase">
+                            Cancel
+                        </AlertDialogCancel>
+                        <AlertDialogAction
+                            onClick={handleDeleteTenant}
+                            disabled={isDeleting}
+                            className="bg-red-600 hover:bg-red-500 text-white font-mono text-xs uppercase"
+                        >
+                            {isDeleting ? (
+                                <>
+                                    <Loader2 className="h-3 w-3 mr-2 animate-spin" />
+                                    Removing...
+                                </>
+                            ) : (
+                                <>
+                                    <Trash2 className="h-3 w-3 mr-2" />
+                                    Remove Tenant
+                                </>
+                            )}
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
+        </div>
+    )
+}

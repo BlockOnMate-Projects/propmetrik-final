@@ -46,12 +46,22 @@ except ImportError:
     sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
     from app.config import settings
 
-# Configure logging
+# Configure logging (before imports that may log)
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 )
 logger = logging.getLogger(__name__)
+
+# Import land value services for real comparable-based calculation
+try:
+    from .adapters.data_hub_adapter import PostgreSQLMarketDataAdapter
+    from .services.land_value_provider import LandValueProvider
+    from .schemas import Property, PropertyLocation, PropertySpecifications, PropertyDataQuality, GhanaRegion, PropertyType
+    HAS_LAND_SERVICES = True
+except ImportError as e:
+    HAS_LAND_SERVICES = False
+    logger.warning(f"Land value services not available - using fallback calculations. Error: {e}")
 
 # ============================================================================
 # DATABASE CONNECTION (Optional - can run standalone)
@@ -71,6 +81,24 @@ async def get_db_pool():
     """Get database connection pool"""
     global db_pool
     return db_pool
+
+
+async def get_land_value_provider():
+    """
+    Get LandValueProvider with database adapter.
+    
+    Returns None if database is not connected or services not available.
+    """
+    global db_pool
+    if not db_pool or not HAS_LAND_SERVICES:
+        return None
+    
+    try:
+        adapter = PostgreSQLMarketDataAdapter(db_pool)
+        return LandValueProvider(adapter)
+    except Exception as e:
+        logger.warning(f"Could not create LandValueProvider: {e}")
+        return None
 
 
 @asynccontextmanager
@@ -153,6 +181,82 @@ class PropertyInput(BaseModel):
     
     class Config:
         extra = "allow"
+
+
+# ============================================================================
+# COMPARABLE INPUT SCHEMA (for basket-based RICS calculation)
+# ============================================================================
+
+class ComparableInput(BaseModel):
+    """Comparable property from basket for RICS Sales Comparison"""
+    id: str
+    price: float = Field(..., gt=0, description="Sale/listing price")
+    price_currency: str = Field(default="GHS", description="Currency (GHS, USD)")
+    bedrooms: Optional[int] = None
+    bathrooms: Optional[int] = None
+    gfa_sqm: Optional[float] = Field(None, description="Gross Floor Area in sqm")
+    land_area_sqm: Optional[float] = None
+    year_built: Optional[int] = None
+    condition: Optional[str] = Field(default="good")
+    region: Optional[str] = None
+    address_city: Optional[str] = None
+    address_district: Optional[str] = None
+    property_type: Optional[str] = None
+    evidence_type: Optional[str] = Field(default="listing", description="sale, listing, offer")
+    transaction_date: Optional[str] = None
+    distance_km: Optional[float] = None
+    weight: Optional[float] = Field(default=1.0, ge=0, le=1)
+    
+    # Pre-calculated adjustments from frontend (optional)
+    adjustments: Optional[Dict[str, float]] = Field(default_factory=dict)
+    
+    class Config:
+        extra = "allow"
+
+
+class RICSSalesComparisonRequest(BaseModel):
+    """Request for RICS-compliant Sales Comparison using basket comparables"""
+    property: PropertyInput
+    comparables: List[ComparableInput] = Field(..., min_items=1)
+    valuation_date: Optional[str] = None
+    usd_to_ghs_rate: float = Field(default=16.0, description="Exchange rate USD to GHS")
+    options: Optional[Dict[str, Any]] = Field(default_factory=dict)
+    
+    class Config:
+        extra = "allow"
+
+
+class ComparableAnalysis(BaseModel):
+    """Analysis result for a single comparable"""
+    id: str
+    original_price_ghs: float
+    adjusted_price_ghs: float
+    adjustments_applied: Dict[str, float]
+    total_adjustment_percent: float
+    weight: float
+    weighted_value: float
+    confidence_contribution: float
+
+
+class RICSSalesComparisonResponse(BaseModel):
+    """Response from RICS Sales Comparison calculation"""
+    success: bool
+    method: str = "sales_comparison_rics"
+    estimated_value: float
+    confidence_score: float
+    confidence_level: str
+    value_range: Dict[str, float]
+    
+    # RICS-specific details
+    comparables_analyzed: List[ComparableAnalysis]
+    adjustment_grid: Dict[str, Dict[str, float]]
+    methodology_notes: List[str]
+    
+    # Standard fields
+    details: Dict[str, Any]
+    assumptions: List[str]
+    limitations: List[str]
+    calculation_time_ms: float
 
 
 class ValuationMethodRequest(BaseModel):
@@ -495,6 +599,245 @@ async def calculate_sales_comparison(request: ValuationMethodRequest):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+# ============================================================================
+# RICS-COMPLIANT SALES COMPARISON (Uses actual basket comparables)
+# ============================================================================
+
+@app.post("/api/v1/methods/sales-comparison-rics", response_model=RICSSalesComparisonResponse)
+async def calculate_sales_comparison_rics(request: RICSSalesComparisonRequest):
+    """
+    RICS-Compliant Sales Comparison Approach
+    
+    Performs valuation using actual comparable properties from the valuation basket.
+    Follows RICS Valuation Global Standards methodology:
+    - Adjustments applied to TOTAL PRICE (not per sqm)
+    - Size adjustments capped at ±25%
+    - Weighted average of adjusted comparables
+    - Confidence based on adjustment magnitudes and data quality
+    
+    Reference: RICS Valuation Global Standards (Red Book), GhIS Standards
+    """
+    start_time = datetime.now()
+    prop = request.property
+    comparables = request.comparables
+    usd_rate = request.usd_to_ghs_rate
+    
+    try:
+        if not comparables:
+            raise HTTPException(status_code=400, detail="At least one comparable required")
+        
+        # Subject property characteristics
+        subject_beds = prop.bedrooms or 3
+        subject_baths = prop.bathrooms or 2
+        subject_gfa = prop.building_size_sqm or prop.land_area_sqm or 200
+        subject_year = prop.year_built or (datetime.now().year - 10)
+        subject_age = datetime.now().year - subject_year
+        
+        analyzed_comparables: List[ComparableAnalysis] = []
+        adjustment_grid: Dict[str, Dict[str, float]] = {}
+        total_weighted_value = 0.0
+        total_weight = 0.0
+        
+        for comp in comparables:
+            # Convert price to GHS
+            price_ghs = comp.price
+            if comp.price_currency == "USD":
+                price_ghs = comp.price * usd_rate
+            
+            # Get comparable characteristics
+            comp_beds = comp.bedrooms or subject_beds
+            comp_baths = comp.bathrooms or subject_baths
+            comp_gfa = comp.gfa_sqm or comp.land_area_sqm or subject_gfa
+            comp_year = comp.year_built or subject_year
+            comp_age = datetime.now().year - comp_year
+            
+            # ================================================================
+            # RICS ADJUSTMENT METHODOLOGY
+            # Adjustments are applied to TOTAL PRICE, not price per unit
+            # ================================================================
+            
+            adjustments: Dict[str, float] = {}
+            
+            # 1. SIZE ADJUSTMENT (per RICS: typically 10-15% impact, capped at ±25%)
+            # If subject is larger than comp, comp price should be adjusted UP
+            size_diff_pct = (subject_gfa - comp_gfa) / comp_gfa if comp_gfa > 0 else 0
+            # Cap size difference at ±25%
+            size_diff_pct = max(-0.25, min(0.25, size_diff_pct))
+            # Size factor: 15% price impact for each 100% size difference
+            size_adj = size_diff_pct * 0.15
+            adjustments["size"] = round(size_adj * 100, 1)  # As percentage
+            
+            # 2. BEDROOM ADJUSTMENT (typically GHS 50,000-100,000 per bedroom in Ghana)
+            bed_diff = subject_beds - comp_beds
+            bedroom_value = 75000  # GHS per bedroom differential
+            bed_adj_amount = bed_diff * bedroom_value
+            bed_adj_pct = bed_adj_amount / price_ghs if price_ghs > 0 else 0
+            adjustments["bedrooms"] = round(bed_adj_pct * 100, 1)
+            
+            # 3. BATHROOM ADJUSTMENT (typically GHS 30,000-50,000 per bathroom)
+            bath_diff = subject_baths - comp_baths
+            bathroom_value = 40000  # GHS per bathroom differential
+            bath_adj_amount = bath_diff * bathroom_value
+            bath_adj_pct = bath_adj_amount / price_ghs if price_ghs > 0 else 0
+            adjustments["bathrooms"] = round(bath_adj_pct * 100, 1)
+            
+            # 4. AGE/CONDITION ADJUSTMENT (typically 1-2% per year difference)
+            age_diff = subject_age - comp_age  # Positive = subject is older
+            age_adj = -age_diff * 0.015  # 1.5% per year (older = lower value)
+            age_adj = max(-0.20, min(0.20, age_adj))  # Cap at ±20%
+            adjustments["age_condition"] = round(age_adj * 100, 1)
+            
+            # 5. EVIDENCE TYPE ADJUSTMENT
+            # Listings typically 5-10% above transaction prices
+            if comp.evidence_type == "listing":
+                adjustments["evidence_type"] = -5.0  # Adjust down 5%
+            elif comp.evidence_type == "offer":
+                adjustments["evidence_type"] = -2.0  # Adjust down 2%
+            else:
+                adjustments["evidence_type"] = 0.0  # Transaction = no adjustment
+            
+            # 6. LOCATION ADJUSTMENT (if different districts)
+            location_adj = 0.0
+            if comp.address_district and hasattr(prop, 'address_city'):
+                # Premium areas in Greater Accra
+                premium_areas = ["east legon", "cantonments", "airport residential", "ridge", "labone"]
+                standard_areas = ["tema", "spintex", "achimota", "dansoman"]
+                
+                comp_district = (comp.address_district or "").lower()
+                subject_city = (prop.address_city or "").lower()
+                
+                comp_premium = any(area in comp_district for area in premium_areas)
+                subject_premium = any(area in subject_city for area in premium_areas)
+                
+                if subject_premium and not comp_premium:
+                    location_adj = 15.0  # Subject in premium area
+                elif not subject_premium and comp_premium:
+                    location_adj = -15.0  # Comp in premium area
+            adjustments["location"] = location_adj
+            
+            # CALCULATE TOTAL ADJUSTMENT
+            total_adj_pct = sum(adjustments.values()) / 100
+            
+            # Apply adjustment to total price
+            adjusted_price = price_ghs * (1 + total_adj_pct)
+            
+            # Weight (use provided weight or default)
+            weight = comp.weight or 1.0
+            
+            # Store in grid
+            adjustment_grid[comp.id] = {
+                "original_price_ghs": round(price_ghs, 2),
+                **{k: v for k, v in adjustments.items()},
+                "total_adjustment": round(total_adj_pct * 100, 1),
+                "adjusted_price_ghs": round(adjusted_price, 2),
+                "weight": weight
+            }
+            
+            # Confidence contribution based on adjustment magnitude
+            adj_magnitude = abs(total_adj_pct)
+            if adj_magnitude < 0.10:
+                conf_contribution = 0.95  # Excellent comparable
+            elif adj_magnitude < 0.20:
+                conf_contribution = 0.85  # Good comparable
+            elif adj_magnitude < 0.30:
+                conf_contribution = 0.70  # Fair comparable
+            else:
+                conf_contribution = 0.50  # Marginal comparable
+            
+            analyzed_comparables.append(ComparableAnalysis(
+                id=comp.id,
+                original_price_ghs=round(price_ghs, 2),
+                adjusted_price_ghs=round(adjusted_price, 2),
+                adjustments_applied=adjustments,
+                total_adjustment_percent=round(total_adj_pct * 100, 1),
+                weight=weight,
+                weighted_value=round(adjusted_price * weight, 2),
+                confidence_contribution=conf_contribution
+            ))
+            
+            total_weighted_value += adjusted_price * weight
+            total_weight += weight
+        
+        # Calculate weighted average
+        if total_weight > 0:
+            estimated_value = total_weighted_value / total_weight
+        else:
+            estimated_value = sum(c.adjusted_price_ghs for c in analyzed_comparables) / len(analyzed_comparables)
+        
+        # Calculate value range from adjusted prices
+        adjusted_prices = [c.adjusted_price_ghs for c in analyzed_comparables]
+        value_low = min(adjusted_prices)
+        value_high = max(adjusted_prices)
+        
+        # Calculate confidence score
+        avg_conf = sum(c.confidence_contribution for c in analyzed_comparables) / len(analyzed_comparables)
+        count_bonus = min(len(comparables) / 5, 0.1)  # Bonus for more comparables, max 10%
+        confidence = min(avg_conf + count_bonus, 0.95)
+        
+        calc_time = (datetime.now() - start_time).total_seconds() * 1000
+        
+        return RICSSalesComparisonResponse(
+            success=True,
+            method="sales_comparison_rics",
+            estimated_value=round(estimated_value, 2),
+            confidence_score=round(confidence, 2),
+            confidence_level=_get_confidence_level(confidence),
+            value_range={
+                "low": round(value_low, 2),
+                "high": round(value_high, 2),
+                "most_probable": round(estimated_value, 2)
+            },
+            comparables_analyzed=analyzed_comparables,
+            adjustment_grid=adjustment_grid,
+            methodology_notes=[
+                "RICS Valuation Global Standards methodology applied",
+                "Adjustments calculated on total price, not per-unit basis",
+                "Size adjustments capped at ±25% per RICS guidelines",
+                f"USD to GHS exchange rate: {usd_rate}",
+                f"Total comparables analyzed: {len(comparables)}",
+                f"Weighted average calculation used with {round(total_weight, 2)} total weight"
+            ],
+            details={
+                "subject_property": {
+                    "bedrooms": subject_beds,
+                    "bathrooms": subject_baths,
+                    "gfa_sqm": subject_gfa,
+                    "year_built": subject_year,
+                    "age_years": subject_age
+                },
+                "comparables_count": len(comparables),
+                "exchange_rate": usd_rate,
+                "weighted_average": round(estimated_value, 2),
+                "simple_average": round(sum(adjusted_prices) / len(adjusted_prices), 2),
+                "price_range": {
+                    "min": round(min(adjusted_prices), 2),
+                    "max": round(max(adjusted_prices), 2),
+                    "spread": round(max(adjusted_prices) - min(adjusted_prices), 2)
+                }
+            },
+            assumptions=[
+                "All comparables are valid market transactions or listings",
+                "Property condition as stated in the data",
+                "No material changes in market conditions since comparable dates",
+                "Subject property has no hidden defects or encumbrances",
+                "Adjustments based on Ghana market norms and RICS standards"
+            ],
+            limitations=[
+                "Valuation subject to physical inspection verification",
+                "Listing prices may differ from actual transaction prices",
+                "Limited comparable data may affect accuracy",
+                "Market conditions may have changed since valuation date"
+            ],
+            calculation_time_ms=calc_time
+        )
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"RICS Sales comparison failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @app.post("/api/v1/methods/cost-approach", response_model=ValuationMethodResponse)
 async def calculate_cost_approach(request: ValuationMethodRequest):
     """
@@ -590,6 +933,7 @@ async def calculate_income_approach(request: ValuationMethodRequest):
     """
     start_time = datetime.now()
     prop = request.property
+    opts = request.options or {}
     
     try:
         region = _normalize_region(prop.region)
@@ -601,25 +945,54 @@ async def calculate_income_approach(request: ValuationMethodRequest):
         monthly_rent_per_sqm = rental_rates.get(region, rental_rates["greater_accra"])
         
         # Use provided rent or calculate market rent
-        if prop.monthly_rent_ghs:
-            annual_rent = prop.monthly_rent_ghs * 12
+        # Check for monthly_rent in options first (from frontend), then property
+        monthly_rent = opts.get("monthly_rent") or prop.monthly_rent_ghs
+        if monthly_rent:
+            annual_rent = monthly_rent * 12
         else:
             annual_rent = building_sqm * monthly_rent_per_sqm * 12
         
-        # Calculate NOI (assume 30% expenses)
-        expense_ratio = 0.30
-        noi = annual_rent * (1 - expense_ratio)
+        # Get expense ratio from options or use default
+        expense_ratio = opts.get("operating_expenses")
+        if expense_ratio is not None and expense_ratio > 0:
+            # Convert from percentage to decimal if needed
+            expense_ratio = expense_ratio / 100 if expense_ratio > 1 else expense_ratio
+        else:
+            expense_ratio = 0.30
         
-        # Get cap rate
-        cap_rates = CAP_RATES.get(prop_type, CAP_RATES["residential"])
-        cap_rate = cap_rates.get(region, cap_rates["greater_accra"]) / 100
+        # Get vacancy rate from options or use default
+        vacancy_rate = opts.get("vacancy_rate")
+        if vacancy_rate is not None and vacancy_rate > 0:
+            vacancy_rate = vacancy_rate / 100 if vacancy_rate > 1 else vacancy_rate
+        else:
+            vacancy_rate = 0.05
+        
+        # Calculate effective gross income after vacancy
+        effective_gross_income = annual_rent * (1 - vacancy_rate)
+        
+        # Calculate NOI
+        noi = effective_gross_income * (1 - expense_ratio)
+        
+        # Get cap rate: use provided cap_rate from options, or fall back to defaults
+        cap_rate = opts.get("cap_rate")
+        cap_rate_source = "user_provided"
+        if cap_rate is not None and cap_rate > 0:
+            # Convert from percentage to decimal if needed (e.g., 6.5 -> 0.065)
+            cap_rate = cap_rate / 100 if cap_rate > 1 else cap_rate
+        else:
+            # Fall back to hardcoded rates
+            cap_rates = CAP_RATES.get(prop_type, CAP_RATES["residential"])
+            cap_rate = cap_rates.get(region, cap_rates["greater_accra"]) / 100
+            cap_rate_source = "market_default"
         
         # Calculate value
-        value = noi / cap_rate
+        value = noi / cap_rate if cap_rate > 0 else 0
         
         confidence = 0.72
-        if prop.monthly_rent_ghs:
+        if monthly_rent:
             confidence = 0.82
+        if cap_rate_source == "user_provided":
+            confidence = min(confidence + 0.05, 0.90)  # Boost confidence when user provides cap rate
         
         calc_time = (datetime.now() - start_time).total_seconds() * 1000
         
@@ -635,16 +1008,20 @@ async def calculate_income_approach(request: ValuationMethodRequest):
             },
             details={
                 "gross_annual_income": round(annual_rent, 2),
-                "expense_ratio": expense_ratio,
+                "vacancy_rate": round(vacancy_rate * 100, 2),
+                "effective_gross_income": round(effective_gross_income, 2),
+                "expense_ratio": round(expense_ratio * 100, 2),
                 "net_operating_income": round(noi, 2),
                 "cap_rate_pct": round(cap_rate * 100, 2),
+                "cap_rate_source": cap_rate_source,
                 "monthly_rent_per_sqm": monthly_rent_per_sqm,
                 "gross_rent_multiplier": round(value / annual_rent, 2) if annual_rent > 0 else 0,
             },
             assumptions=[
-                "Market rental rates applied",
-                f"Expense ratio: {expense_ratio * 100}%",
-                f"Capitalization rate: {cap_rate * 100}% for {region}",
+                f"{'User-provided' if monthly_rent else 'Market'} rental rate applied",
+                f"Vacancy rate: {vacancy_rate * 100:.1f}%",
+                f"Expense ratio: {expense_ratio * 100:.1f}%",
+                f"Capitalization rate: {cap_rate * 100:.2f}% ({cap_rate_source})",
                 "Property is rentable and income-producing",
             ],
             limitations=[
@@ -826,9 +1203,33 @@ async def calculate_drc_method(request: ValuationMethodRequest):
     
     Values specialized properties with no market (schools, hospitals, religious).
     Based on cost to reproduce with appropriate depreciation.
+    
+    Uses integrated depreciation services:
+    - PhysicalDepreciationCalculator: Modified Age-Life with condition adjustment
+    - FunctionalObsolescenceCalculator: Auto-detection from property specs
+    - ExternalObsolescenceCalculator: Environmental/locational factors
+    - DepreciationReconciliationService: Age-based caps and validation
     """
+    from .services import (
+        PhysicalDepreciationCalculator,
+        FunctionalObsolescenceCalculator,
+        ExternalObsolescenceCalculator,
+        DepreciationReconciliationService,
+        ConstructionType,
+    )
+    from .schemas.property import (
+        Property, 
+        PropertyType, 
+        PropertyCondition,
+        PropertyLocation,
+        PropertySpecifications,
+        PropertyDataQuality,
+        GhanaRegion,
+    )
+    
     start_time = datetime.now()
     prop = request.property
+    opts = request.options or {}
     
     try:
         region = _normalize_region(prop.region)
@@ -836,30 +1237,222 @@ async def calculate_drc_method(request: ValuationMethodRequest):
         land_sqm = prop.land_area_sqm or 1000
         year_built = prop.year_built or datetime.now().year - 20
         
-        # Specialized buildings have higher construction costs
-        costs = CONSTRUCTION_COSTS.get(region, CONSTRUCTION_COSTS["greater_accra"])
-        cost_per_sqm = costs["premium"] * 1.2  # Premium + specialist factor
+        # Get replacement cost (from options or calculate)
+        replacement_cost_per_sqm = opts.get("replacement_cost_per_sqm")
+        if not replacement_cost_per_sqm:
+            costs = CONSTRUCTION_COSTS.get(region, CONSTRUCTION_COSTS["greater_accra"])
+            replacement_cost_per_sqm = costs["premium"] * 1.2  # Premium + specialist factor
         
         # Gross Replacement Cost (GRC)
-        grc = building_sqm * cost_per_sqm
+        grc = building_sqm * replacement_cost_per_sqm
         
-        # Calculate depreciation
-        age = datetime.now().year - year_built
-        physical_depreciation = _calculate_depreciation(age, prop.condition or "good")
-        functional_obsolescence = 0.05  # Assume 5%
-        total_depreciation = min(0.80, physical_depreciation + functional_obsolescence)
+        # MEA Factor (Modern Equivalent Asset)
+        mea_factor = opts.get("mea_factor", 0.95)
+        mea_adjusted_grc = grc * mea_factor
+        
+        # Useful life (from options or default by asset type)
+        useful_life = opts.get("useful_life", 60)
+        
+        # ========================================
+        # DEPRECIATION CALCULATION (Using Services)
+        # ========================================
+        
+        # Map condition string to enum
+        condition_map = {
+            "new": PropertyCondition.EXCELLENT,
+            "excellent": PropertyCondition.EXCELLENT,
+            "good": PropertyCondition.GOOD,
+            "fair": PropertyCondition.FAIR,
+            "average": PropertyCondition.FAIR,
+            "poor": PropertyCondition.POOR,
+            "very_poor": PropertyCondition.RENOVATION_NEEDED,  # Map to RENOVATION_NEEDED
+        }
+        condition_str = (prop.condition or "good").lower()
+        condition_enum = condition_map.get(condition_str, PropertyCondition.GOOD)
+        
+        # Map region to GhanaRegion enum (use available values)
+        region_map = {
+            "greater_accra": GhanaRegion.GREATER_ACCRA,
+            "ashanti": GhanaRegion.KUMASI_METRO,  # Ashanti -> Kumasi Metro
+            "kumasi": GhanaRegion.KUMASI_METRO,
+            "western": GhanaRegion.WESTERN_CLUSTER,
+            "eastern": GhanaRegion.EASTERN,
+            "central": GhanaRegion.WESTERN_CLUSTER,  # Map to cluster
+            "volta": GhanaRegion.EASTERN,  # Map to Eastern cluster
+            "northern": GhanaRegion.NORTHERN_CLUSTER,
+            "upper_east": GhanaRegion.NORTHERN_CLUSTER,
+            "upper_west": GhanaRegion.NORTHERN_CLUSTER,
+            "bono": GhanaRegion.KUMASI_METRO,  # Map to Kumasi cluster
+        }
+        region_enum = region_map.get(region, GhanaRegion.GREATER_ACCRA)
+        
+        # Create Property schema for depreciation calculators
+        # Map asset type to PropertyType
+        asset_type_to_property_type = {
+            "institutional": PropertyType.INSTITUTIONAL_SCHOOL,
+            "government": PropertyType.COMMERCIAL_OFFICE,
+            "religious": PropertyType.INSTITUTIONAL_RELIGIOUS,
+            "church": PropertyType.INSTITUTIONAL_RELIGIOUS,
+            "mosque": PropertyType.INSTITUTIONAL_RELIGIOUS,
+            "hospital": PropertyType.INSTITUTIONAL_HOSPITAL,
+            "school": PropertyType.INSTITUTIONAL_SCHOOL,
+            "community_center": PropertyType.OTHER,
+            "library": PropertyType.OTHER,
+            "museum": PropertyType.OTHER,
+            "heritage": PropertyType.OTHER,
+            "utility": PropertyType.INDUSTRIAL_FACTORY,
+            "stadium": PropertyType.OTHER,
+        }
+        property_type_enum = asset_type_to_property_type.get(
+            prop.property_type, PropertyType.OTHER
+        )
+        
+        property_schema = Property(
+            id=prop.id or "temp-drc",
+            property_type=property_type_enum,
+            location=PropertyLocation(
+                region=region_enum,
+                district=getattr(prop, 'address_city', None) or "Accra Metro",  # district field
+                neighborhood=getattr(prop, 'address_street', None),  # neighborhood field
+                address_raw=getattr(prop, 'address_street', None) or "No address provided",  # address_raw field
+                address_city=getattr(prop, 'address_city', None) or "Accra",  # address_city field
+            ),
+            specifications=PropertySpecifications(
+                built_area_sqm=building_sqm if building_sqm > 0 else None,
+                land_size_sqm=land_sqm if land_sqm > 0 else None,
+                year_built=year_built if year_built else None,
+                bedrooms=getattr(prop, 'bedrooms', None),
+                bathrooms=getattr(prop, 'bathrooms', None),
+                condition=condition_enum,  # Add condition for depreciation calculator
+            ),
+            data_quality=PropertyDataQuality(
+                data_quality_score=0.8,
+                source_reliability_score=0.8,
+                completeness_score=0.7,
+                accuracy_score=0.8,
+                freshness_score=0.9,
+                sources=["user_input"],
+            ),
+        )
+        
+        # Infer construction type based on region/property type
+        construction_type = ConstructionType.SANDCRETE_BLOCK  # Default for Ghana
+        if region in ["greater_accra", "ashanti"]:
+            construction_type = ConstructionType.CONCRETE_BLOCK
+        
+        # Check for depreciation overrides from frontend
+        depreciation_overrides = opts.get("depreciation_overrides", {})
+        physical_override = depreciation_overrides.get("physical")
+        functional_override = depreciation_overrides.get("functional")
+        external_override = depreciation_overrides.get("external")
+        
+        # 1. PHYSICAL DEPRECIATION
+        physical_calculator = PhysicalDepreciationCalculator()
+        physical_result = physical_calculator.calculate(
+            property_data=property_schema,
+            valuation_date=date.today(),
+            construction_type=construction_type,
+        )
+        
+        # Use override if provided, otherwise use calculated
+        if physical_override is not None and physical_override >= 0:
+            physical_rate = float(physical_override)
+            physical_source = "user_override"
+        else:
+            # For DRC, adjust physical depreciation to use asset-specific useful life
+            effective_age = physical_result.effective_age
+            physical_rate = min(effective_age / useful_life, 0.95)
+            physical_source = "calculated"
+        
+        physical_depreciation = mea_adjusted_grc * physical_rate
+        
+        # 2. FUNCTIONAL OBSOLESCENCE
+        functional_calculator = FunctionalObsolescenceCalculator()
+        functional_result = functional_calculator.calculate(property_data=property_schema)
+        
+        if functional_override is not None and functional_override >= 0:
+            functional_rate = float(functional_override)
+            functional_source = "user_override"
+        else:
+            functional_rate = functional_result.depreciation_rate
+            functional_source = "calculated"
+        
+        functional_obsolescence = mea_adjusted_grc * functional_rate
+        
+        # 3. EXTERNAL OBSOLESCENCE
+        external_calculator = ExternalObsolescenceCalculator()
+        external_result = external_calculator.calculate(
+            property_data=property_schema,
+            location_data={},
+            market_data={},
+        )
+        
+        if external_override is not None and external_override >= 0:
+            external_rate = float(external_override)
+            external_source = "user_override"
+        else:
+            external_rate = external_result.depreciation_rate
+            external_source = "calculated"
+        
+        external_obsolescence = mea_adjusted_grc * external_rate
+        
+        # 4. TOTAL DEPRECIATION with age-based cap
+        reconciliation_service = DepreciationReconciliationService()
+        property_age = datetime.now().year - year_built
+        
+        total_result = reconciliation_service.reconcile(
+            physical=physical_result,
+            functional=functional_result,
+            external=external_result,
+            property_age=property_age,
+            rcn=mea_adjusted_grc,
+        )
+        
+        # If any overrides were used, recalculate total
+        # Calculate age-based max rate first
+        max_rates = {
+            (0, 5): 0.15, (5, 15): 0.35, (15, 30): 0.55,
+            (30, 50): 0.75, (50, 999): 0.90
+        }
+        max_rate = 0.90
+        for (min_age, max_age), cap in max_rates.items():
+            if min_age <= property_age < max_age:
+                max_rate = cap
+                break
+        
+        if physical_override is not None or functional_override is not None or external_override is not None:
+            raw_total_rate = physical_rate + functional_rate + external_rate
+            total_depreciation_rate = min(raw_total_rate, max_rate)
+            was_capped = total_depreciation_rate < raw_total_rate
+        else:
+            total_depreciation_rate = total_result.total_rate
+            was_capped = total_result.was_capped
+        
+        total_depreciation = mea_adjusted_grc * total_depreciation_rate
         
         # Depreciated Replacement Cost
-        drc_building = grc * (1 - total_depreciation)
+        drc_building = mea_adjusted_grc - total_depreciation
         
-        # Land value
-        land_values = LAND_VALUES.get(region, LAND_VALUES["greater_accra"])
-        land_value = land_sqm * land_values["standard"]
+        # ========================================
+        # LAND VALUE (from Land Value System)
+        # ========================================
+        passed_land_value = opts.get("land_value")
+        land_value_source = "land_value_system" if passed_land_value and passed_land_value > 0 else "calculated"
         
-        # Total DRC
+        if passed_land_value and passed_land_value > 0:
+            land_value = float(passed_land_value)
+        else:
+            land_values = LAND_VALUES.get(region, LAND_VALUES["greater_accra"])
+            land_value = land_sqm * land_values["standard"]
+        
+        # Total DRC Value
         total_drc = drc_building + land_value
         
-        confidence = 0.58  # Lower confidence for specialized properties
+        # Confidence based on data quality
+        confidence = 0.62 if physical_source == "calculated" else 0.55
+        if was_capped:
+            confidence -= 0.05
+        
         calc_time = (datetime.now() - start_time).total_seconds() * 1000
         
         return ValuationMethodResponse(
@@ -873,32 +1466,80 @@ async def calculate_drc_method(request: ValuationMethodRequest):
                 "high": round(total_drc * 1.15, 2),
             },
             details={
+                # Building Cost Details
                 "gross_replacement_cost": round(grc, 2),
-                "physical_depreciation_pct": round(physical_depreciation * 100, 1),
-                "functional_obsolescence_pct": round(functional_obsolescence * 100, 1),
-                "total_depreciation_pct": round(total_depreciation * 100, 1),
+                "replacement_cost_per_sqm": replacement_cost_per_sqm,
+                "mea_factor": mea_factor,
+                "mea_adjusted_grc": round(mea_adjusted_grc, 2),
+                "building_size_sqm": building_sqm,
+                
+                # Depreciation Breakdown
+                "depreciation": {
+                    "physical": {
+                        "rate": round(physical_rate * 100, 2),
+                        "amount": round(physical_depreciation, 2),
+                        "source": physical_source,
+                        "effective_age": physical_result.effective_age,
+                        "economic_life": physical_result.economic_life,
+                        "remaining_life": physical_result.remaining_life,
+                        "method": physical_result.method,
+                    },
+                    "functional": {
+                        "rate": round(functional_rate * 100, 2),
+                        "amount": round(functional_obsolescence, 2),
+                        "source": functional_source,
+                        "items_detected": len(functional_result.items_detected),
+                        "curable_rate": round(functional_result.curable_rate * 100, 2),
+                        "incurable_rate": round(functional_result.incurable_rate * 100, 2),
+                    },
+                    "external": {
+                        "rate": round(external_rate * 100, 2),
+                        "amount": round(external_obsolescence, 2),
+                        "source": external_source,
+                    },
+                    "total": {
+                        "rate": round(total_depreciation_rate * 100, 2),
+                        "amount": round(total_depreciation, 2),
+                        "was_capped": was_capped,
+                        "age_based_max": round(max_rate * 100, 1) if max_rate else 90.0,
+                    },
+                },
+                
+                # Building Value
                 "depreciated_building_value": round(drc_building, 2),
+                
+                # Land Value
                 "land_value": round(land_value, 2),
-                "cost_per_sqm": cost_per_sqm,
-                "building_age_years": age,
+                "land_value_source": land_value_source,
+                "land_area_sqm": land_sqm,
+                
+                # Property Info
+                "building_age_years": property_age,
+                "useful_life_years": useful_life,
+                "construction_type": construction_type.value,
+                "condition": condition_str,
             },
             assumptions=[
                 "Specialized property with limited market",
                 "Modern equivalent asset approach",
-                f"Building age: {age} years",
-                "Functional adequacy of current design",
+                f"Building age: {property_age} years",
+                f"Useful life: {useful_life} years",
+                f"Physical depreciation: {physical_source}",
+                f"Functional obsolescence: {functional_source}",
+                f"Land value: {land_value_source}",
             ],
             limitations=[
                 "No direct market comparisons available",
                 "Specialist construction costs estimated",
-                "Functional obsolescence may vary",
                 "Value to a specific owner only",
-            ],
+            ] + (["Depreciation was capped due to age-based limits"] if was_capped else []),
             calculation_time_ms=calc_time
         )
         
     except Exception as e:
         logger.error(f"DRC method failed: {e}")
+        import traceback
+        traceback.print_exc()
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -968,164 +1609,123 @@ async def calculate_land_value(request: LandValueRequest):
         region = _normalize_region(prop.region)
         
         # ========================================
-        # METHOD A: Residual Land Value (GDV-based)
+        # TRY REAL COMPARABLE-BASED CALCULATION
+        # ========================================
+        land_value_provider = await get_land_value_provider()
+        
+        if land_value_provider and HAS_LAND_SERVICES:
+            try:
+                # Convert PropertyInput to Property schema for LandValueProvider
+                property_for_valuation = Property(
+                    id=prop.id,
+                    property_type=PropertyType.LAND_RESIDENTIAL,  # Default for land
+                    location=PropertyLocation(
+                        region=GhanaRegion(region) if region in [r.value for r in GhanaRegion] else GhanaRegion.GREATER_ACCRA,
+                        district=prop.address_city or "Unknown",
+                        address_raw=prop.address_street or prop.address_city or "Unknown",
+                        address_city=prop.address_city or "Unknown",
+                        coordinates=(prop.latitude, prop.longitude) if prop.latitude and prop.longitude else None
+                    ),
+                    specifications=PropertySpecifications(
+                        land_size_sqm=land_sqm,
+                        land_tenure=None  # Could be extended
+                    ),
+                    data_quality=PropertyDataQuality(
+                        data_quality_score=0.8,
+                        source_reliability_score=0.8,
+                        completeness_score=0.8,
+                        accuracy_score=0.8,
+                        freshness_score=0.8
+                    )
+                )
+                
+                # Parse valuation date
+                valuation_date = None
+                if request.valuation_date:
+                    try:
+                        valuation_date = date.fromisoformat(request.valuation_date)
+                    except ValueError:
+                        valuation_date = date.today()
+                
+                # Get land value from provider (uses real comparables from database)
+                result = await land_value_provider.get_land_value(
+                    property=property_for_valuation,
+                    valuation_id=request.valuation_id,
+                    valuation_date=valuation_date,
+                    user_entered_value=request.user_entered_value,
+                    user_justification=request.user_justification,
+                    force_recalculate=request.force_recalculate
+                )
+                
+                if result.success:
+                    logger.info(f"Land value calculated using real comparables: GHS {result.final_land_value:,.0f}")
+                    
+                    # Convert LandValueResult to LandValueResponse
+                    calc_time = (datetime.now() - start_time).total_seconds() * 1000
+                    
+                    return LandValueResponse(
+                        success=True,
+                        final_land_value=result.final_land_value,
+                        final_land_value_per_sqm=result.final_land_value_per_sqm,
+                        land_area_sqm=result.land_area_sqm,
+                        confidence_score=result.confidence_score,
+                        primary_method=result.primary_method,
+                        is_user_override=result.is_user_override,
+                        user_justification=result.user_justification if result.is_user_override else None,
+                        methods={
+                            k: LandValueMethodDetail(
+                                value=v.get('indicated_value', v.get('value', 0)),
+                                value_per_sqm=v.get('indicated_value', 0) / land_sqm if land_sqm > 0 and 'indicated_value' in v else 0,
+                                confidence=v.get('confidence', 0.5),
+                                weight=v.get('weight', 0.5),
+                                weighted_contribution=v.get('weighted_contribution', 0),
+                                method_specific=v
+                            ) for k, v in result.methods.items()
+                        } if result.methods else None,
+                        reconciliation=result.reconciliation,
+                        comparable_strength=result.comparable_strength,
+                        disclosure_required=result.disclosure_required,
+                        disclosure_text=result.disclosure_text,
+                        cached=result.cached
+                    )
+                else:
+                    logger.warning(f"LandValueProvider failed: {result.error}, falling back to hardcoded")
+                    
+
+            except Exception as provider_error:
+                logger.warning(f"LandValueProvider error: {provider_error}, falling back to hardcoded")
+        
+        # ========================================
+        # ERROR Handling for Enterprise Compliance (No Hardcoded Fallbacks)
         # ========================================
         
-        # Assume typical residential development
-        buildable_sqm = land_sqm * 0.40  # 40% plot coverage
-        floors = 2  # Typical 2-story
-        total_buildable = buildable_sqm * floors
-        
-        # Get construction costs for region
-        costs = CONSTRUCTION_COSTS.get(region, CONSTRUCTION_COSTS["greater_accra"])
-        sale_price_per_sqm = costs["standard"] * 1.5  # Completed value
-        
-        # Gross Development Value (GDV)
-        gdv = total_buildable * sale_price_per_sqm
-        
-        # Development costs
-        construction_cost = total_buildable * costs["standard"]
-        professional_fees = construction_cost * 0.10
-        marketing_costs = gdv * 0.03
-        finance_costs = construction_cost * 0.08
-        developer_profit = gdv * 0.20
-        
-        total_costs = construction_cost + professional_fees + marketing_costs + finance_costs + developer_profit
-        residual_land_value = max(0, gdv - total_costs)
-        residual_per_sqm = residual_land_value / land_sqm if land_sqm > 0 else 0
-        residual_confidence = 0.62  # Moderate confidence for residual
-        
-        # ========================================
-        # METHOD B: Comparable Land Sales
-        # ========================================
-        
-        # Get land values for region (simulated comparable analysis)
-        land_values = LAND_VALUES.get(region, LAND_VALUES["greater_accra"])
-        
-        # Determine land grade based on property characteristics
-        if prop.latitude and prop.longitude:
-            # Simplified location scoring (would use real geospatial analysis)
-            land_grade = "standard"
-        else:
-            land_grade = "emerging"  # Unknown location = conservative
-        
-        comparable_per_sqm = land_values[land_grade]
-        comparable_land_value = comparable_per_sqm * land_sqm
-        
-        # Simulate comparable strength (would come from actual comparable search)
-        # In production, this would be based on actual comparable count and quality
-        comparable_count = 5  # Simulated
-        if comparable_count >= 8:
-            comparable_strength = "strong"
-            comparable_confidence = 0.85
-        elif comparable_count >= 4:
-            comparable_strength = "balanced"
-            comparable_confidence = 0.72
-        else:
-            comparable_strength = "weak"
-            comparable_confidence = 0.55
-        
-        # ========================================
-        # RECONCILIATION: Weighted Average
-        # ========================================
-        
-        # Weight tables per GhIS/RICS guidance
-        weight_table = {
-            "weak": {"residual": 0.70, "comparable": 0.30},
-            "balanced": {"residual": 0.50, "comparable": 0.50},
-            "strong": {"residual": 0.30, "comparable": 0.70},
-        }
-        
-        weights = weight_table[comparable_strength]
-        
-        # Calculate weighted values
-        residual_weighted = residual_land_value * weights["residual"]
-        comparable_weighted = comparable_land_value * weights["comparable"]
-        
-        final_land_value = residual_weighted + comparable_weighted
-        final_per_sqm = final_land_value / land_sqm if land_sqm > 0 else 0
-        
-        # Combined confidence
-        combined_confidence = (
-            residual_confidence * weights["residual"] +
-            comparable_confidence * weights["comparable"]
-        )
-        
-        # Determine primary method
-        primary_method = "comparable" if weights["comparable"] >= weights["residual"] else "residual"
-        
-        # Check for value divergence
-        if residual_land_value > 0 and comparable_land_value > 0:
-            spread = abs(residual_land_value - comparable_land_value) / max(residual_land_value, comparable_land_value)
-            disclosure_required = spread > 0.25  # >25% divergence
-        else:
-            spread = 0
-            disclosure_required = False
-        
-        # Build method details
-        methods = {
-            "residual": LandValueMethodDetail(
-                value=round(residual_land_value, 2),
-                value_per_sqm=round(residual_per_sqm, 2),
-                confidence=residual_confidence,
-                weight=weights["residual"],
-                weighted_contribution=round(residual_weighted, 2),
-                method_specific={
-                    "gdv": round(gdv, 2),
-                    "total_costs": round(total_costs, 2),
-                    "total_buildable_sqm": round(total_buildable, 2),
-                    "developer_profit_pct": 0.20,
-                }
-            ),
-            "comparable": LandValueMethodDetail(
-                value=round(comparable_land_value, 2),
-                value_per_sqm=round(comparable_per_sqm, 2),
-                confidence=comparable_confidence,
-                weight=weights["comparable"],
-                weighted_contribution=round(comparable_weighted, 2),
-                method_specific={
-                    "comparable_count": comparable_count,
-                    "land_grade": land_grade,
-                    "search_radius_km": 5.0,
-                }
-            ),
-        }
-        
-        # Build disclosure text
-        disclosure_parts = []
-        if disclosure_required:
-            disclosure_parts.append(
-                f"Note: Land value methods showed {spread*100:.0f}% divergence. "
-                f"Residual: GHS {residual_land_value:,.0f}, Comparable: GHS {comparable_land_value:,.0f}."
+        if not land_value_provider:
+            err_msg = "Land valuation service unavailable and fallback logic has been disabled for compliance."
+            logger.error(err_msg)
+            return LandValueResponse(
+                success=False, 
+                final_land_value=0, final_land_value_per_sqm=0, land_area_sqm=0, 
+                confidence_score=0, primary_method="none", error=err_msg
             )
-        disclosure_parts.append(
-            f"Land value of GHS {final_land_value:,.0f} derived from {comparable_strength} comparable evidence "
-            f"({weights['residual']*100:.0f}% Residual / {weights['comparable']*100:.0f}% Comparable weighting)."
-        )
+
+        # Note: If LandValueProvider was called above but returned success=False (in the try/except block),
+        # the code falls through to here. We must RETURN failure instead of executing fallback logic.
         
-        calc_time = (datetime.now() - start_time).total_seconds() * 1000
-        
+        logger.warning(f"LandValueProvider failed to determine value for region: {region}. Skipping fallback calculation.")
         return LandValueResponse(
-            success=True,
-            final_land_value=round(final_land_value, 2),
-            final_land_value_per_sqm=round(final_per_sqm, 2),
+            success=False,
+            final_land_value=0,
+            final_land_value_per_sqm=0,
             land_area_sqm=land_sqm,
-            confidence_score=round(combined_confidence, 4),
-            primary_method=primary_method,
-            is_user_override=False,
-            methods=methods,
-            reconciliation={
-                "method_weights": weights,
-                "weight_justification": f"Based on {comparable_strength} comparable evidence strength",
-                "value_spread_pct": round(spread * 100, 1),
-                "outlier_flags": ["high_divergence"] if disclosure_required else [],
-            },
-            comparable_strength=comparable_strength,
-            disclosure_required=disclosure_required,
-            disclosure_text=" ".join(disclosure_parts),
+            confidence_score=0,
+            primary_method="none",
+            error="Insufficient market data to determine land value compliant with RICS standards.",
+            disclosure_required=False,
+            disclosure_text="",
             cached=False
         )
-        
+
+
     except Exception as e:
         logger.error(f"Land value calculation failed: {e}")
         raise HTTPException(status_code=500, detail=str(e))
@@ -1148,8 +1748,91 @@ async def get_land_comparables(request: LandComparablesRequest):
         max_distance = options.get("max_distance_km", 10.0)
         max_results = options.get("max_results", 10)
         
-        # Simulated comparables (in production, would come from database)
-        # This provides structure for when real data is available
+        # ========================================
+        # TRY REAL DATABASE COMPARABLES
+        # ========================================
+        global db_pool
+        if db_pool and HAS_LAND_SERVICES:
+            try:
+                adapter = PostgreSQLMarketDataAdapter(db_pool)
+                
+                # Import search criteria
+                from .schemas.land_comparable import LandComparableSearchCriteria
+                
+                search_criteria = LandComparableSearchCriteria(
+                    target_property_id=prop.id,
+                    target_region=region,
+                    target_coordinates=(prop.latitude, prop.longitude) if prop.latitude and prop.longitude else None,
+                    target_land_area_sqm=land_sqm,
+                    max_distance_km=max_distance,
+                    size_tolerance_pct=0.5,  # 50% size tolerance for land
+                    max_results=max_results
+                )
+                
+                # Fetch real comparables
+                real_comparables = await adapter.get_land_comparables(search_criteria)
+                
+                if real_comparables and len(real_comparables) > 0:
+                    logger.info(f"Found {len(real_comparables)} real land comparables from database")
+                    
+                    comparables = []
+                    for i, comp in enumerate(real_comparables[:max_results]):
+                        comp_land_size = comp.specifications.land_size_sqm or 500
+                        comp_price_per_sqm = comp.financials.current_price_ghs / comp_land_size if comp.financials and comp.financials.current_price_ghs else 0
+                        
+                        # Calculate distance if coordinates available
+                        distance = 0.0
+                        if prop.latitude and prop.longitude and comp.location.coordinates:
+                            from math import radians, sin, cos, sqrt, asin
+                            lat1, lon1 = radians(prop.latitude), radians(prop.longitude)
+                            lat2, lon2 = radians(comp.location.coordinates[0]), radians(comp.location.coordinates[1])
+                            dlat = lat2 - lat1
+                            dlon = lon2 - lon1
+                            a = sin(dlat/2)**2 + cos(lat1) * cos(lat2) * sin(dlon/2)**2
+                            distance = 6371 * 2 * asin(sqrt(a))
+                        
+                        # Calculate size adjustment
+                        size_ratio = land_sqm / comp_land_size if comp_land_size > 0 else 1.0
+                        size_adj = 1.0 + (1.0 - size_ratio) * 0.15
+                        adjusted_price = comp_price_per_sqm * size_adj
+                        
+                        # Calculate similarity
+                        similarity = max(0.4, 1.0 - (distance * 0.05) - abs(1.0 - size_ratio) * 0.1)
+                        
+                        comparables.append(LandComparableSummary(
+                            id=comp.id,
+                            distance_km=round(distance, 1),
+                            sale_date=comp.financials.price_date.isoformat() if comp.financials and comp.financials.price_date else None,
+                            sale_price_per_sqm=round(comp_price_per_sqm, 2),
+                            adjusted_price_per_sqm=round(adjusted_price, 2),
+                            similarity_score=round(similarity, 3),
+                            adjustment_factor=round(size_adj, 3),
+                        ))
+                    
+                    comp_count = len(comparables)
+                    if comp_count >= 5:
+                        strength = "strong"
+                    elif comp_count >= 3:
+                        strength = "balanced"
+                    else:
+                        strength = "weak"
+                    
+                    return LandComparablesResponse(
+                        success=True,
+                        comparables=comparables,
+                        strength=strength,
+                        count=comp_count,
+                        search_radius_km=max_distance,
+                    )
+                    
+            except Exception as db_error:
+                logger.warning(f"Database comparables failed: {db_error}, using fallback")
+        
+        # ========================================
+        # FALLBACK: Simulated Comparables
+        # ========================================
+        logger.info(f"Using fallback land comparables for region: {region}")
+        
         land_values = LAND_VALUES.get(region, LAND_VALUES["greater_accra"])
         
         # Generate synthetic comparables for demo
@@ -1772,9 +2455,9 @@ async def calculate_depreciation(request: DepreciationCalculateRequest):
     Uses RICS/GhIS compliant methodology with age-based caps.
     """
     from .services import (
-        calculate_physical_depreciation,
-        calculate_functional_obsolescence,
-        calculate_external_obsolescence,
+        PhysicalDepreciationCalculator as calculate_physical_depreciation,
+        FunctionalObsolescenceCalculator as calculate_functional_obsolescence,
+        ExternalObsolescenceCalculator as calculate_external_obsolescence,
         DepreciationReconciliationService,
     )
     from .schemas.property import (

@@ -152,17 +152,43 @@ export default function HBUAnalysisPage() {
         if (hbuRes.data) {
           // Restore HBU state - the API may return additional fields not in the type
           const data = hbuRes.data as any
-          if (data.tests) {
-            setTests(data.tests as unknown as HBUTestState[])
-          }
+          
+          // Restore test passed states from API response
+          // The API stores individual test results as *_test_passed flags
+          setTests(prevTests => prevTests.map(test => {
+            let passed = test.passed;
+            if (test.id === 'legally_permissible') {
+              passed = data.legal_test_passed ?? data.legallyPermissible ?? null;
+            } else if (test.id === 'physically_possible') {
+              passed = data.physical_test_passed ?? data.physicallyPossible ?? null;
+            } else if (test.id === 'financially_feasible') {
+              passed = data.financial_test_passed ?? data.financiallyFeasible ?? null;
+            } else if (test.id === 'maximally_productive') {
+              passed = data.productivity_test_passed ?? data.maximallyProductive ?? null;
+            }
+            
+            // Also try to restore factors from *_analysis fields
+            let factors = test.factors;
+            const analysisKey = test.id === 'legally_permissible' ? 'legal_analysis' 
+              : test.id === 'physically_possible' ? 'physical_analysis'
+              : test.id === 'financially_feasible' ? 'financial_analysis'
+              : 'productivity_analysis';
+            
+            if (data[analysisKey]?.factors) {
+              factors = data[analysisKey].factors;
+            }
+            
+            return { ...test, passed, factors };
+          }));
+          
           if (data.scenarios) {
             setScenarios(data.scenarios as unknown as UseScenarioState[])
           }
-          if (data.recommendedUse) {
-            setRecommendedUse(data.recommendedUse)
+          if (data.recommendedUse || data.hbu_conclusion) {
+            setRecommendedUse(data.recommendedUse || data.hbu_conclusion || '')
           }
-          if (data.analysisNotes) {
-            setAnalysisNotes(data.analysisNotes)
+          if (data.analysisNotes || data.hbu_justification) {
+            setAnalysisNotes(data.analysisNotes || data.hbu_justification || '')
           }
         }
       } catch (err) {
@@ -253,14 +279,19 @@ export default function HBUAnalysisPage() {
   const someTestsPassed = tests.some(t => t.passed === true)
   const hbuScore = tests.filter(t => t.passed === true).length / tests.length
 
-  // Save and continue
-  const handleSaveAndContinue = async () => {
+  // Save HBU without navigating
+  const handleSave = async () => {
     try {
       setSaving(true)
       setError(null)
 
+      console.log('Saving HBU with recommendedUse:', recommendedUse)
+
+      // Clean tests data - remove React components (icons) before sending to API
+      const cleanedTests = tests.map(({ icon, ...rest }) => rest)
+
       // Save HBU analysis
-      await hbuApi.create({
+      const result = await hbuApi.create({
         valuationId,
         legallyPermissible: tests.find(t => t.id === 'legally_permissible')?.passed || false,
         physicallyPossible: tests.find(t => t.id === 'physically_possible')?.passed || false,
@@ -268,9 +299,54 @@ export default function HBUAnalysisPage() {
         maximallyProductive: tests.find(t => t.id === 'maximally_productive')?.passed || false,
         recommendedUse,
         analysisNotes,
-        tests: tests as unknown as HBUTest[],
+        tests: cleanedTests as unknown as HBUTest[],
         scenarios: scenarios as unknown as UseScenario[],
       })
+
+      console.log('HBU save result:', result)
+      
+      if (!result.success) {
+        throw new Error(result.error || 'Failed to save HBU')
+      }
+
+      alert('HBU saved successfully!')
+    } catch (err) {
+      console.error('HBU save error:', err)
+      setError(err instanceof Error ? err.message : 'Failed to save HBU analysis')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  // Save and continue
+  const handleSaveAndContinue = async () => {
+    try {
+      setSaving(true)
+      setError(null)
+
+      console.log('Saving HBU with recommendedUse:', recommendedUse)
+
+      // Clean tests data - remove React components (icons) before sending to API
+      const cleanedTests = tests.map(({ icon, ...rest }) => rest)
+
+      // Save HBU analysis
+      const result = await hbuApi.create({
+        valuationId,
+        legallyPermissible: tests.find(t => t.id === 'legally_permissible')?.passed || false,
+        physicallyPossible: tests.find(t => t.id === 'physically_possible')?.passed || false,
+        financiallyFeasible: tests.find(t => t.id === 'financially_feasible')?.passed || false,
+        maximallyProductive: tests.find(t => t.id === 'maximally_productive')?.passed || false,
+        recommendedUse,
+        analysisNotes,
+        tests: cleanedTests as unknown as HBUTest[],
+        scenarios: scenarios as unknown as UseScenario[],
+      })
+
+      console.log('HBU save result:', result)
+      
+      if (!result.success) {
+        throw new Error(result.error || 'Failed to save HBU')
+      }
 
       // Update valuation progress
       await valuationsApi.update(valuationId, {
@@ -280,6 +356,7 @@ export default function HBUAnalysisPage() {
       // Navigate to next step
       router.push(`/dashboard/valuations/${valuationId}/methods`)
     } catch (err) {
+      console.error('HBU save error:', err)
       setError(err instanceof Error ? err.message : 'Failed to save HBU analysis')
     } finally {
       setSaving(false)
@@ -624,8 +701,57 @@ export default function HBUAnalysisPage() {
         )}
       </TerminalPanel>
 
+      {/* HBU Conclusion */}
+      <TerminalPanel title="HIGHEST AND BEST USE CONCLUSION" className="mt-4">
+        <div className="space-y-4">
+          <div>
+            <div className="font-mono text-[10px] text-zinc-500 mb-2">SELECT HBU CONCLUSION</div>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+              {[
+                'Current residential use',
+                'Current commercial use',
+                'Residential development',
+                'Commercial development',
+                'Mixed-use development',
+                'Industrial use',
+                'Vacant land (hold)',
+                'Redevelopment',
+              ].map((option) => (
+                <button
+                  key={option}
+                  onClick={() => setRecommendedUse(option)}
+                  className={`px-3 py-2 font-mono text-xs border transition-colors ${
+                    recommendedUse === option
+                      ? 'border-amber-500 bg-amber-500/20 text-amber-400'
+                      : 'border-zinc-700 text-zinc-400 hover:border-zinc-500 hover:text-white'
+                  }`}
+                >
+                  {option}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div>
+            <div className="font-mono text-[10px] text-zinc-500 mb-2">OR ENTER CUSTOM CONCLUSION</div>
+            <input
+              type="text"
+              value={recommendedUse}
+              onChange={(e) => setRecommendedUse(e.target.value)}
+              placeholder="e.g., Current use as a 4-bedroom residential property"
+              className="w-full px-3 py-2 bg-zinc-900 border border-zinc-800 text-white font-mono text-sm placeholder-zinc-600 focus:outline-none focus:border-amber-500/50"
+            />
+          </div>
+          {recommendedUse && (
+            <div className="p-3 bg-amber-500/10 border border-amber-500/30">
+              <div className="font-mono text-[10px] text-amber-500 mb-1">SELECTED HBU</div>
+              <div className="font-mono text-sm text-amber-400">{recommendedUse}</div>
+            </div>
+          )}
+        </div>
+      </TerminalPanel>
+
       {/* Analysis Notes */}
-      <TerminalPanel title="ANALYSIS NOTES" className="mt-4">
+      <TerminalPanel title="ANALYSIS NOTES / JUSTIFICATION" className="mt-4">
         <textarea
           value={analysisNotes}
           onChange={(e) => setAnalysisNotes(e.target.value)}
@@ -643,23 +769,42 @@ export default function HBUAnalysisPage() {
         >
           ← BACK TO PROPERTY SETUP
         </Link>
-        <button
-          onClick={handleSaveAndContinue}
-          disabled={saving}
-          className="flex items-center gap-2 px-6 py-3 bg-amber-500 text-black font-mono text-sm font-bold hover:bg-amber-400 transition-colors disabled:opacity-50"
-        >
-          {saving ? (
-            <>
-              <Loader2 className="w-4 h-4 animate-spin" />
-              SAVING...
-            </>
-          ) : (
-            <>
-              CONTINUE TO METHOD SELECTION
-              <ArrowRight className="w-4 h-4" />
-            </>
-          )}
-        </button>
+        <div className="flex gap-3">
+          <button
+            onClick={handleSave}
+            disabled={saving}
+            className="flex items-center gap-2 px-6 py-3 bg-zinc-700 text-white font-mono text-sm font-bold hover:bg-zinc-600 transition-colors disabled:opacity-50"
+          >
+            {saving ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin" />
+                SAVING...
+              </>
+            ) : (
+              <>
+                <Save className="w-4 h-4" />
+                SAVE
+              </>
+            )}
+          </button>
+          <button
+            onClick={handleSaveAndContinue}
+            disabled={saving}
+            className="flex items-center gap-2 px-6 py-3 bg-amber-500 text-black font-mono text-sm font-bold hover:bg-amber-400 transition-colors disabled:opacity-50"
+          >
+            {saving ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin" />
+                SAVING...
+              </>
+            ) : (
+              <>
+                CONTINUE TO METHOD SELECTION
+                <ArrowRight className="w-4 h-4" />
+              </>
+            )}
+          </button>
+        </div>
       </div>
     </div>
   )

@@ -21,7 +21,16 @@ import propertyRoutes from './routes/publicProperties';
 import { ingestionRouter } from './routes/ingestion';
 import contributionRoutes from './routes/contributions';
 import pullIntegrationRoutes from './routes/pullIntegrations';
-
+import reportRoutes from './routes/reports';
+import valuersRoutes from './routes/valuers';
+import propertyManagementRoutes from './routes/propertyManagement';
+import eSignRoutes from './routes/eSign';
+import crmRoutes from './routes/crm';
+import webhooksRoutes from './routes/webhooks';
+import authIntegrationsRoutes from './routes/auth-integrations';
+import messagingRoutes from './routes/messaging';
+import projectRoutes from './routes/projects';
+import workflowRoutes from './routes/workflows';
 
 // Import Data Hub queue manager
 import { dataHubQueueManager } from './services/data-hub';
@@ -43,7 +52,7 @@ app.use(cors({
   origin: config.cors.origins,
   credentials: config.cors.credentials,
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Request-ID'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Request-ID', 'X-User-Id', 'X-Organization-Id'],
   exposedHeaders: ['X-Request-ID', 'X-RateLimit-Limit', 'X-RateLimit-Remaining'],
 }));
 
@@ -83,14 +92,31 @@ app.use(rateLimiter);
 app.use('/health', healthRoutes);
 app.use('/api/v1/data-hub', dataHubRoutes);
 app.use('/api/v1/valuations', valuationRoutes);
+app.use('/api/valuations', valuationRoutes);  // Also mount for frontend compatibility
 app.use('/api/v1/properties', propertyRoutes);
+app.use('/api/public/properties', propertyRoutes);  // Also mount at public path for frontend compatibility
 app.use('/api/v1/ingestion', ingestionRouter);
 app.use('/api/v1/contributions', contributionRoutes);
 app.use('/api/v1/pull-integrations', pullIntegrationRoutes);
+app.use('/api/v1/reports', reportRoutes);
+app.use('/api/reports', reportRoutes);  // Also mount for frontend compatibility
+app.use('/api/v1/valuers', valuersRoutes);
+app.use('/api/valuers', valuersRoutes);  // Also mount for frontend compatibility
+app.use('/api/v1/pm', propertyManagementRoutes);
+app.use('/api/v1/esign', eSignRoutes);
+app.use('/api/v1/crm', crmRoutes);
+app.use('/api/crm', crmRoutes);  // Also mount for frontend compatibility
+app.use('/api/v1/webhooks', webhooksRoutes);
+app.use('/api/v1/auth', authIntegrationsRoutes);
+app.use('/api/v1/messaging', messagingRoutes);
+app.use('/api/messaging', messagingRoutes);  // Also mount for frontend compatibility
+app.use('/api/v1/projects', projectRoutes);
+app.use('/api/projects', projectRoutes);  // Also mount for frontend compatibility
+app.use('/api/v1/workflows', workflowRoutes);
+app.use('/api/workflows', workflowRoutes);  // Also mount for frontend compatibility
 
 
 // TODO: Add more route modules as they are created
-// app.use('/api/v1/auth', authRoutes);
 // app.use('/api/v1/users', userRoutes);
 // app.use('/api/v1/search', searchRoutes);
 

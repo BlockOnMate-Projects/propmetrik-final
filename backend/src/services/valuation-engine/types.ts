@@ -186,8 +186,13 @@ export interface ValuationResult {
   valuation_type: ValuationType;
   valuation_purpose: ValuationPurpose;
   
+  // Workflow
+  current_step?: number;
+  status: ValuationStatus;
+  
   // Core Results
   estimated_value: number;
+  final_value_ghs?: number;  // Alias for frontend compatibility
   value_range_low: number;
   value_range_high: number;
   value_per_sqm: number | null;
@@ -201,6 +206,9 @@ export interface ValuationResult {
   
   // Methods
   methods_used: MethodResult[];
+  methods_applied?: string[];          // Selected methods from method selection step
+  method_weights?: Record<string, number>;  // Weights assigned to each method
+  method_results?: Record<string, any>;     // Results from each method execution
   primary_method: ValuationMethod;
   
   // Individual Method Values
@@ -226,12 +234,14 @@ export interface ValuationResult {
   economic_factors: EconomicFactors;
   adjustments_summary: AdjustmentsSummary;
   
+  // Rental Analysis (for Income Approach)
+  rental_market_analysis?: any;
+  
   // Dates
   effective_date: Date;
   expiry_date: Date;
-  
-  // Status
-  status: ValuationStatus;
+  created_at?: Date;
+  updated_at?: Date;
 }
 
 export interface CreateValuationInput {

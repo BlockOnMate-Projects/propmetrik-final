@@ -257,7 +257,9 @@ export default function ReconciliationPage() {
           setReconciliationId(reconRes.data.id)
           if (reconRes.data.weights) setWeights(reconRes.data.weights)
           if (reconRes.data.reconciliation_narrative) setReconciliationNotes(reconRes.data.reconciliation_narrative)
-          if (reconRes.data.special_assumptions) setAdjustmentRationale(reconRes.data.special_assumptions.join('\n'))
+          if (reconRes.data.special_assumptions && Array.isArray(reconRes.data.special_assumptions)) {
+            setAdjustmentRationale(reconRes.data.special_assumptions.join('\n'))
+          }
         }
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to load valuation')

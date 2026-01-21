@@ -20,7 +20,7 @@ import {
   MethodBadge,
   ConfidenceBar,
 } from '@/components/ui/terminal'
-import { valuationsApi } from '@/lib/valuation-api'
+import { valuationsApi, pythonMethodsApi } from '@/lib/valuation-api'
 import type { Valuation } from '@/types/valuation'
 import {
   ArrowLeft,
@@ -36,7 +36,14 @@ import {
   Hotel,
   Utensils,
   Stethoscope,
+  HelpCircle,
 } from 'lucide-react'
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip'
 
 // Property types for Profits Method
 const PROPERTY_TYPES = [
@@ -92,6 +99,26 @@ const OPERATING_COSTS: Record<string, { label: string; value: number }[]> = {
   ],
 }
 
+// GhIS/RICS-aligned tooltips for Profits Method concepts
+const PROFITS_TOOLTIPS = {
+  propertyType: 'Select the trading property type. Each type has different revenue profiles, operating cost structures, and capitalization rates based on Ghana market data.',
+  unitCount: 'The primary revenue-generating units for this property type (e.g., rooms for hotels, beds for hospitals, students for schools).',
+  revenuePerUnit: 'Estimated annual revenue per unit based on market analysis. Default values are derived from Ghana hospitality and trading property benchmarks.',
+  occupancyRate: 'Average utilization rate of revenue-generating units. This adjusts Potential Gross Revenue to reflect realistic income expectations.',
+  pgr: 'Potential Gross Revenue (PGR): Maximum theoretical income assuming 100% occupancy and full utilization of all units.',
+  egr: 'Effective Gross Revenue (EGR): Actual expected income after accounting for vacancy, collection losses, and normal occupancy patterns.',
+  operatingCosts: 'Operating expenses as a percentage of Effective Gross Revenue. Includes all costs necessary to operate the trading business.',
+  costOfSales: 'Direct costs associated with generating revenue (e.g., food costs for restaurants, fuel costs for petrol stations).',
+  staffCosts: 'Personnel expenses including wages, salaries, benefits, and related employment costs.',
+  utilities: 'Electricity, water, gas, and other utility expenses necessary for property operations.',
+  maintenance: 'Routine repairs, maintenance, and upkeep of property and equipment.',
+  adminMarketing: 'Administrative overhead, marketing, advertising, and management expenses.',
+  mop: 'Maintainable Operating Profit (MOP): The sustainable annual net profit that a Reasonably Efficient Operator (REO) would achieve, excluding extraordinary items.',
+  capRate: 'Capitalization Rate: The rate of return used to convert MOP into capital value. Lower rates indicate lower risk and higher values. Based on Ghana trading property market yields.',
+  yearssPurchase: 'Years Purchase (YP): The multiplier applied to MOP to derive capital value. Calculated as 1 ÷ Cap Rate.',
+  capitalValue: 'The estimated market value of the property based on its income-generating potential, calculated as MOP ÷ Cap Rate.',
+}
+
 // Capitalization rates by property type
 const CAP_RATES: Record<string, number> = {
   hotel: 10,
@@ -110,6 +137,7 @@ export default function ProfitsMethodPage() {
   const [valuation, setValuation] = useState<Valuation | null>(null)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
+  const [calculating, setCalculating] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   // Property details
@@ -128,7 +156,10 @@ export default function ProfitsMethodPage() {
   const [capRate, setCapRate] = useState(10)
   const [useCustomCapRate, setUseCustomCapRate] = useState(false)
 
-  // Calculations
+  // Python calculation results
+  const [pythonResult, setPythonResult] = useState<any>(null)
+
+  // Local calculations (fallback/display while calculating)
   const potentialGrossRevenue = unitCount * revenuePerUnit
   const effectiveGrossRevenue = potentialGrossRevenue * (occupancyRate / 100)
 
@@ -141,10 +172,13 @@ export default function ProfitsMethodPage() {
   const netOperatingIncome = effectiveGrossRevenue - totalOperatingCostAmount
 
   // Maintainable Operating Profit (MOP)
-  const mop = netOperatingIncome
+  const mop = pythonResult?.details?.maintainable_profit ?? netOperatingIncome
 
-  // Capital Value
-  const capitalValue = mop / (capRate / 100)
+  // Capital Value - prefer Python result
+  const capitalValue = pythonResult?.estimated_value ?? (mop / (capRate / 100))
+
+  // Confidence from Python
+  const confidenceScore = pythonResult?.confidence_score ?? 0.5
 
   // Fetch valuation
   useEffect(() => {
@@ -171,6 +205,48 @@ export default function ProfitsMethodPage() {
     fetchData()
   }, [valuationId])
 
+  // Calculate via Python service when inputs change
+  useEffect(() => {
+    const calculateProfits = async () => {
+      if (!valuation?.property || unitCount <= 0) return
+      
+      setCalculating(true)
+      try {
+        const prop = valuation.property
+        const result = await pythonMethodsApi.calculateProfits(
+          {
+            id: prop.id,
+            property_type: propertyType,
+            region: prop.region || 'greater_accra',
+            building_size_sqm: prop.building_area_sqm || (prop as any).gfa,
+            bedrooms: prop.bedrooms,
+          },
+          {
+            unit_count: unitCount,
+            revenue_per_unit: revenuePerUnit,
+            occupancy_rate: occupancyRate,
+            cap_rate: capRate,
+            operating_cost_overrides: operatingCostOverrides,
+            trading_property_type: propertyType,
+          }
+        )
+        
+        if (result.success && result.data) {
+          setPythonResult(result.data)
+        }
+      } catch (err) {
+        console.error('Python calculation error:', err)
+        // Keep using local calculation on error
+      } finally {
+        setCalculating(false)
+      }
+    }
+
+    // Debounce calculation
+    const timer = setTimeout(calculateProfits, 500)
+    return () => clearTimeout(timer)
+  }, [valuation, propertyType, unitCount, revenuePerUnit, occupancyRate, capRate, operatingCostOverrides])
+
   // Update defaults when property type changes
   useEffect(() => {
     if (!useCustomRevenue) {
@@ -191,21 +267,32 @@ export default function ProfitsMethodPage() {
       setSaving(true)
       setError(null)
 
+      // Use Python result if available, otherwise use local calculation
+      const finalValue = pythonResult?.estimated_value ?? capitalValue
+      const finalConfidence = pythonResult?.confidence_score ?? 0.5
+
       await valuationsApi.update(valuationId, {
         method_results: {
           ...(valuation?.method_results || {}),
           profits_method: {
-            value: capitalValue,
-            confidence: calculateConfidence(),
-            potentialGrossRevenue,
-            effectiveGrossRevenue,
-            occupancyRate,
-            totalOperatingCostPercent,
-            netOperatingIncome,
-            mop,
-            capRate,
-            propertyType,
-            unitCount,
+            value: finalValue,
+            confidence: finalConfidence,
+            confidence_level: pythonResult?.confidence_level ?? 'medium',
+            value_range: pythonResult?.value_range ?? { low: finalValue * 0.8, high: finalValue * 1.2 },
+            details: pythonResult?.details ?? {
+              potentialGrossRevenue,
+              effectiveGrossRevenue,
+              occupancyRate,
+              totalOperatingCostPercent,
+              netOperatingIncome,
+              mop,
+              capRate,
+              propertyType,
+              unitCount,
+            },
+            assumptions: pythonResult?.assumptions ?? [],
+            limitations: pythonResult?.limitations ?? [],
+            calculated_by: pythonResult ? 'python_rics_engine' : 'frontend_fallback',
           },
         },
         current_step: 7,
@@ -225,15 +312,6 @@ export default function ProfitsMethodPage() {
     } finally {
       setSaving(false)
     }
-  }
-
-  const calculateConfidence = () => {
-    let score = 0.4
-    if (unitCount > 0) score += 0.15
-    if (occupancyRate > 50) score += 0.15
-    if (netOperatingIncome > 0) score += 0.15
-    if (capRate >= 7 && capRate <= 15) score += 0.15
-    return Math.min(score, 1)
   }
 
   // Determine back navigation
@@ -267,6 +345,7 @@ export default function ProfitsMethodPage() {
   }
 
   return (
+    <TooltipProvider>
     <div className="min-h-screen bg-black text-white p-4 pb-10">
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
@@ -283,7 +362,8 @@ export default function ProfitsMethodPage() {
           </div>
         </div>
         <div className="flex items-center gap-3">
-          <ConfidenceBar score={calculateConfidence() * 100} />
+          {calculating && <Loader2 className="w-4 h-4 text-amber-500 animate-spin" />}
+          <ConfidenceBar score={confidenceScore * 100} />
         </div>
       </div>
 
@@ -294,6 +374,17 @@ export default function ProfitsMethodPage() {
         <div className="lg:col-span-2 space-y-4">
           {/* Property Type Selection */}
           <TerminalPanel title="TRADING PROPERTY TYPE">
+            <div className="flex items-center gap-2 px-4 pt-3 pb-0">
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <HelpCircle className="w-3 h-3 text-zinc-500 hover:text-amber-400 cursor-help" />
+                </TooltipTrigger>
+                <TooltipContent className="max-w-xs bg-zinc-900 border border-zinc-700">
+                  <p className="text-xs font-mono">{PROFITS_TOOLTIPS.propertyType}</p>
+                </TooltipContent>
+              </Tooltip>
+              <span className="font-mono text-[10px] text-zinc-500">Select property type for appropriate cost ratios</span>
+            </div>
             <div className="grid grid-cols-3 md:grid-cols-6 gap-2 p-4">
               {PROPERTY_TYPES.map(type => {
                 const Icon = type.icon
@@ -320,9 +411,19 @@ export default function ProfitsMethodPage() {
             <div className="p-4 space-y-4">
               <div className="grid grid-cols-3 gap-4">
                 <div>
-                  <label className="font-mono text-[10px] text-zinc-500 block mb-1">
-                    NUMBER OF {currentTypeInfo?.metric?.toUpperCase() || 'UNITS'}
-                  </label>
+                  <div className="flex items-center gap-1 mb-1">
+                    <label className="font-mono text-[10px] text-zinc-500">
+                      NUMBER OF {currentTypeInfo?.metric?.toUpperCase() || 'UNITS'}
+                    </label>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <HelpCircle className="w-3 h-3 text-zinc-500 hover:text-amber-400 cursor-help" />
+                      </TooltipTrigger>
+                      <TooltipContent className="max-w-xs bg-zinc-900 border border-zinc-700">
+                        <p className="text-xs font-mono">{PROFITS_TOOLTIPS.unitCount}</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </div>
                   <input
                     type="number"
                     value={unitCount}
@@ -331,9 +432,19 @@ export default function ProfitsMethodPage() {
                   />
                 </div>
                 <div>
-                  <label className="font-mono text-[10px] text-zinc-500 block mb-1">
-                    REVENUE PER {currentTypeInfo?.metric?.toUpperCase() || 'UNIT'}/YEAR (GH₵)
-                  </label>
+                  <div className="flex items-center gap-1 mb-1">
+                    <label className="font-mono text-[10px] text-zinc-500">
+                      REVENUE PER {currentTypeInfo?.metric?.toUpperCase() || 'UNIT'}/YEAR (GH₵)
+                    </label>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <HelpCircle className="w-3 h-3 text-zinc-500 hover:text-amber-400 cursor-help" />
+                      </TooltipTrigger>
+                      <TooltipContent className="max-w-xs bg-zinc-900 border border-zinc-700">
+                        <p className="text-xs font-mono">{PROFITS_TOOLTIPS.revenuePerUnit}</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </div>
                   <input
                     type="number"
                     value={revenuePerUnit}
@@ -345,7 +456,17 @@ export default function ProfitsMethodPage() {
                   />
                 </div>
                 <div>
-                  <label className="font-mono text-[10px] text-zinc-500 block mb-1">OCCUPANCY RATE %</label>
+                  <div className="flex items-center gap-1 mb-1">
+                    <label className="font-mono text-[10px] text-zinc-500">OCCUPANCY RATE %</label>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <HelpCircle className="w-3 h-3 text-zinc-500 hover:text-amber-400 cursor-help" />
+                      </TooltipTrigger>
+                      <TooltipContent className="max-w-xs bg-zinc-900 border border-zinc-700">
+                        <p className="text-xs font-mono">{PROFITS_TOOLTIPS.occupancyRate}</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </div>
                   <input
                     type="number"
                     value={occupancyRate}
@@ -357,13 +478,33 @@ export default function ProfitsMethodPage() {
 
               <div className="grid grid-cols-2 gap-4 p-3 bg-zinc-900 border border-zinc-700">
                 <div>
-                  <span className="font-mono text-xs text-zinc-500">Potential Gross Revenue</span>
+                  <div className="flex items-center gap-1">
+                    <span className="font-mono text-xs text-zinc-500">Potential Gross Revenue</span>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <HelpCircle className="w-3 h-3 text-zinc-500 hover:text-amber-400 cursor-help" />
+                      </TooltipTrigger>
+                      <TooltipContent className="max-w-xs bg-zinc-900 border border-zinc-700">
+                        <p className="text-xs font-mono">{PROFITS_TOOLTIPS.pgr}</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </div>
                   <div className="font-mono text-lg text-white">
                     GH₵ {potentialGrossRevenue.toLocaleString()}
                   </div>
                 </div>
                 <div>
-                  <span className="font-mono text-xs text-zinc-500">Effective Gross Revenue</span>
+                  <div className="flex items-center gap-1">
+                    <span className="font-mono text-xs text-zinc-500">Effective Gross Revenue</span>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <HelpCircle className="w-3 h-3 text-zinc-500 hover:text-amber-400 cursor-help" />
+                      </TooltipTrigger>
+                      <TooltipContent className="max-w-xs bg-zinc-900 border border-zinc-700">
+                        <p className="text-xs font-mono">{PROFITS_TOOLTIPS.egr}</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </div>
                   <div className="font-mono text-lg text-green-400">
                     GH₵ {effectiveGrossRevenue.toLocaleString()}
                   </div>
@@ -374,6 +515,17 @@ export default function ProfitsMethodPage() {
 
           {/* Operating Costs */}
           <TerminalPanel title="OPERATING COSTS">
+            <div className="flex items-center gap-2 px-4 pt-3 pb-0">
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <HelpCircle className="w-3 h-3 text-zinc-500 hover:text-amber-400 cursor-help" />
+                </TooltipTrigger>
+                <TooltipContent className="max-w-xs bg-zinc-900 border border-zinc-700">
+                  <p className="text-xs font-mono">{PROFITS_TOOLTIPS.operatingCosts}</p>
+                </TooltipContent>
+              </Tooltip>
+              <span className="font-mono text-[10px] text-zinc-500">Adjust cost percentages based on actual property operations</span>
+            </div>
             <div className="p-4 space-y-3">
               {operatingCosts.map(cost => (
                 <div key={cost.label} className="flex items-center gap-4">
@@ -414,7 +566,17 @@ export default function ProfitsMethodPage() {
           <TerminalPanel title="MAINTAINABLE OPERATING PROFIT">
             <div className="p-4">
               <div className="flex items-center justify-between p-4 bg-green-500/20 border border-green-500/30 mb-4">
-                <span className="font-mono text-sm text-green-400">Annual MOP</span>
+                <div className="flex items-center gap-2">
+                  <span className="font-mono text-sm text-green-400">Annual MOP</span>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <HelpCircle className="w-3 h-3 text-green-400/60 hover:text-green-400 cursor-help" />
+                    </TooltipTrigger>
+                    <TooltipContent className="max-w-xs bg-zinc-900 border border-zinc-700">
+                      <p className="text-xs font-mono">{PROFITS_TOOLTIPS.mop}</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </div>
                 <span className="font-mono text-2xl text-green-400 font-bold">
                   GH₵ {mop.toLocaleString()}
                 </span>
@@ -432,7 +594,17 @@ export default function ProfitsMethodPage() {
           <TerminalPanel title="CAPITALIZATION">
             <div className="p-4 space-y-4">
               <div className="flex items-center gap-4">
-                <label className="font-mono text-xs text-zinc-400">Cap Rate:</label>
+                <div className="flex items-center gap-1">
+                  <label className="font-mono text-xs text-zinc-400">Cap Rate:</label>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <HelpCircle className="w-3 h-3 text-zinc-500 hover:text-amber-400 cursor-help" />
+                    </TooltipTrigger>
+                    <TooltipContent className="max-w-xs bg-zinc-900 border border-zinc-700">
+                      <p className="text-xs font-mono">{PROFITS_TOOLTIPS.capRate}</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </div>
                 <input
                   type="range"
                   min="5"
@@ -471,13 +643,33 @@ export default function ProfitsMethodPage() {
                 </span>
               </div>
               <div className="flex justify-between py-2 border-b border-zinc-800">
-                <span className="font-mono text-xs text-zinc-500">Years Purchase (1/cap rate)</span>
+                <div className="flex items-center gap-1">
+                  <span className="font-mono text-xs text-zinc-500">Years Purchase (1/cap rate)</span>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <HelpCircle className="w-3 h-3 text-zinc-500 hover:text-amber-400 cursor-help" />
+                    </TooltipTrigger>
+                    <TooltipContent className="max-w-xs bg-zinc-900 border border-zinc-700">
+                      <p className="text-xs font-mono">{PROFITS_TOOLTIPS.yearssPurchase}</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </div>
                 <span className="font-mono text-sm text-white">
                   {(100 / capRate).toFixed(2)} YP
                 </span>
               </div>
               <div className="flex justify-between py-3 bg-amber-500/20 -mx-4 px-4">
-                <span className="font-mono text-sm text-amber-400 font-bold">CAPITAL VALUE</span>
+                <div className="flex items-center gap-2">
+                  <span className="font-mono text-sm text-amber-400 font-bold">CAPITAL VALUE</span>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <HelpCircle className="w-3 h-3 text-amber-400/60 hover:text-amber-400 cursor-help" />
+                    </TooltipTrigger>
+                    <TooltipContent className="max-w-xs bg-zinc-900 border border-zinc-700">
+                      <p className="text-xs font-mono">{PROFITS_TOOLTIPS.capitalValue}</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </div>
                 <span className="font-mono text-xl text-amber-400 font-bold">
                   GH₵ {capitalValue.toLocaleString()}
                 </span>
@@ -533,5 +725,6 @@ export default function ProfitsMethodPage() {
         </button>
       </div>
     </div>
+    </TooltipProvider>
   )
 }

@@ -792,7 +792,7 @@ function ComparablesPageContent() {
               <div className="flex items-center gap-3 mb-4 p-3 bg-blue-500/10 border border-blue-500/20 rounded">
                 <Info className="w-4 h-4 text-blue-400" />
                 <span className="font-mono text-[11px] text-blue-300">
-                  {searchMeta.currencyConversion.usdCount} USD listings converted to GHS @ {searchMeta.currencyConversion.fxRateUsed?.toFixed(2)} rate
+                  {searchMeta.currencyConversion.usdCount} USD listings converted to GHS @ {parseFloat(searchMeta.currencyConversion.fxRateUsed || '0').toFixed(2)} rate
                 </span>
               </div>
             )}
@@ -845,15 +845,15 @@ function ComparablesPageContent() {
                           </div>
                           <div className="text-right">
                             <div className="font-mono text-lg text-amber-400 font-bold">
-                              GHS {formatCurrency(result.sale_price)}
+                              {formatCurrency(result.sale_price)}
                             </div>
                             {result.price_currency === 'USD' && result.price_original && (
                               <div className="font-mono text-[10px] text-zinc-500">
-                                (${formatCurrency(result.price_original)} USD)
+                                (${result.price_original?.toLocaleString()} USD)
                               </div>
                             )}
                             <div className="font-mono text-xs text-zinc-500">
-                              {result.gfa ? 'GHS ' + formatCurrency(result.sale_price / result.gfa) + '/sqm' : ''}
+                              {result.gfa ? formatCurrency(result.sale_price / result.gfa) + '/sqm' : ''}
                             </div>
                           </div>
                         </div>

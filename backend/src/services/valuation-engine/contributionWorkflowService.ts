@@ -15,14 +15,15 @@
  */
 
 import { Pool } from 'pg';
-import { pool } from '../../database';
+import { query, transaction, pool } from '../../database';
+import { logger } from '../../utils/logger';
 import {
   PropertyForValuation,
   ComparableProperty,
   ValuationResult,
+  ConfidenceLevel,
   RegionCode,
-  PropertyType,
-  ConfidenceLevel
+  PropertyType
 } from './types';
 
 // =====================================================
@@ -193,10 +194,10 @@ export class GapDetectionService {
   ): Promise<GapAnalysis> {
     const requiredComparables = MIN_COMPARABLES_FOR_CONFIDENCE[targetConfidence];
     const availableComparables = comparables.length;
-    
+
     const gapReasons: GapReason[] = [];
     const missingDataPoints: MissingDataPoint[] = [];
-    
+
     // Check comparable count
     if (availableComparables < requiredComparables) {
       gapReasons.push({
@@ -239,7 +240,7 @@ export class GapDetectionService {
     const gapSeverity = this.calculateGapSeverity(gapScore);
 
     // Generate contribution prompt if there's a gap
-    const contributionPrompt = gapSeverity !== 'none' 
+    const contributionPrompt = gapSeverity !== 'none'
       ? await this.generateContributionPrompt(property, gapReasons, missingDataPoints)
       : null;
 
@@ -262,7 +263,7 @@ export class GapDetectionService {
     if (comparables.length === 0) return null;
 
     // Calculate average distance
-    const distances = comparables.map(c => 
+    const distances = comparables.map(c =>
       this.calculateDistance(
         property.latitude, property.longitude,
         c.latitude, c.longitude
@@ -313,7 +314,7 @@ export class GapDetectionService {
     if (comparables.length === 0 || !property.built_area_sqm) return null;
 
     const targetSize = property.built_area_sqm;
-    const sizeDiffs = comparables.map(c => 
+    const sizeDiffs = comparables.map(c =>
       Math.abs((c.built_area_sqm || targetSize) - targetSize) / targetSize
     );
     const avgDiff = sizeDiffs.reduce((a, b) => a + b, 0) / sizeDiffs.length;
@@ -412,11 +413,11 @@ export class GapDetectionService {
     const R = 6371; // Earth's radius in km
     const dLat = (lat2 - lat1) * Math.PI / 180;
     const dLon = (lon2 - lon1) * Math.PI / 180;
-    const a = 
-      Math.sin(dLat/2) * Math.sin(dLat/2) +
-      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
-      Math.sin(dLon/2) * Math.sin(dLon/2);
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    const a =
+      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+      Math.sin(dLon / 2) * Math.sin(dLon / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
     return R * c;
   }
 
@@ -426,12 +427,12 @@ export class GapDetectionService {
     missingDataPoints: MissingDataPoint[]
   ): Promise<ContributionPrompt> {
     const promptId = `prompt_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-    
+
     // Calculate reward based on gap severity and missing data
     const baseReward = BASE_CREDITS.comparable_sale;
     const dataPointBonus = missingDataPoints.reduce((sum, dp) => sum + dp.rewardCredits, 0);
     const gapBonus = gapReasons.reduce((sum, r) => sum + Math.floor(r.impact / 10), 0);
-    
+
     const totalReward = baseReward + dataPointBonus + gapBonus;
 
     // Build search criteria for contributors
@@ -569,27 +570,48 @@ export class ContributionService {
    */
   async processContribution(submission: ContributionSubmission): Promise<ContributionResult> {
     const client = await this.pool.connect();
-    
+
     try {
       await client.query('BEGIN');
 
       // Validate the submission data
       const validationResult = await this.validateContribution(submission);
-      
+
       if (validationResult.isValid) {
         // Insert the contributed property
         const propertyId = await this.insertContributedProperty(client, submission);
-        
+
         // Calculate credits
         const credits = await this.calculateCredits(submission, validationResult.score);
-        
+
         // Award credits to contributor
         await this.awardCredits(client, submission.contributorId, credits, propertyId);
-        
+
         // Update contributor reputation
         await this.updateReputation(client, submission.contributorId, validationResult.score);
-        
+
         await client.query('COMMIT');
+
+        // Track in Data Hub contributions
+        try {
+          const { ServiceHooks } = await import('../data-hub/serviceHooks');
+          await ServiceHooks.createContribution({
+            contributor_id: submission.contributorId,
+            organization_id: undefined, // Global contribution
+            contribution_type: 'comparable',
+            source_context: 'valuation_workflow',
+            source_id: propertyId, // Use the generated property ID
+            data: {
+              ...submission.data,
+              property_id: propertyId,
+              prompt_id: submission.promptId,
+              action: 'valuation_contribution_processed'
+            }
+          });
+        } catch (hookError) {
+          // logger is available via import in this file
+          logger.error('Failed to create valuation contribution hook in workflow service', { error: hookError });
+        }
 
         return {
           id: propertyId,
@@ -600,7 +622,7 @@ export class ContributionService {
         };
       } else {
         await client.query('ROLLBACK');
-        
+
         return {
           id: '',
           status: 'rejected',
@@ -644,7 +666,7 @@ export class ContributionService {
     const transactionDate = new Date(submission.data.transaction_date as string);
     const now = new Date();
     const oneYearAgo = new Date(now.setFullYear(now.getFullYear() - 1));
-    
+
     if (transactionDate > new Date()) {
       score -= 50;
       issues.push('Transaction date cannot be in the future');
@@ -690,7 +712,7 @@ export class ContributionService {
     submission: ContributionSubmission
   ): Promise<string> {
     const data = submission.data;
-    
+
     const result = await client.query(
       `INSERT INTO properties (
         reference_number, address_street, property_type, 

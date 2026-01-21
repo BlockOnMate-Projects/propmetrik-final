@@ -30,7 +30,8 @@ import {
   Eye,
   Scale,
   Home,
-  Info
+  Info,
+  FileText
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import {
@@ -44,6 +45,7 @@ import {
   CONTACT_PREFERENCES,
   DEFAULT_PROPERTY_DATA,
   VALIDATION_RULES,
+  validateValuationDates,
   type ComprehensivePropertyData,
 } from '@/types/comprehensiveProperty'
 
@@ -53,6 +55,7 @@ interface ComprehensivePropertyFormProps {
   mode?: 'subject' | 'comparable' | 'contribution'
   showTransactionFields?: boolean
   showLocationFields?: boolean
+  showValuationDates?: boolean  // Show RICS/GhIS valuation date fields
   className?: string
   errors?: Record<string, string>
 }
@@ -76,10 +79,12 @@ export default function ComprehensivePropertyForm({
   mode = 'subject',
   showTransactionFields = false,
   showLocationFields = true,
+  showValuationDates = true,  // Default to showing for subject property valuations
   className = '',
   errors = {},
 }: ComprehensivePropertyFormProps) {
   const [activeSection, setActiveSection] = useState<string | null>(null)
+  const [dateErrors, setDateErrors] = useState<Record<string, string>>({})
 
   // Initialize with defaults
   useEffect(() => {
@@ -87,6 +92,14 @@ export default function ComprehensivePropertyForm({
       onChange({ ...DEFAULT_PROPERTY_DATA })
     }
   }, [data, onChange])
+
+  // Validate valuation dates on change (RICS VPS 3 compliance)
+  useEffect(() => {
+    if (showValuationDates && (data.inspection_date || data.valuation_date)) {
+      const validation = validateValuationDates(data)
+      setDateErrors(validation.errors)
+    }
+  }, [data.inspection_date, data.valuation_date, data.instruction_date, data.is_retrospective, showValuationDates])
 
   const updateField = (field: keyof ComprehensivePropertyData, value: any) => {
     onChange({ ...data, [field]: value })
@@ -116,6 +129,308 @@ export default function ComprehensivePropertyForm({
           </p>
         </div>
       </div>
+
+      {/* Valuation Dates Section - RICS Red Book VPS 3 Compliant */}
+      {showValuationDates && mode === 'subject' && (
+        <div className="space-y-4 border border-amber-500/20 rounded-lg p-4 bg-amber-500/5">
+          <div className="flex items-center gap-2 mb-3">
+            <Calendar className="w-4 h-4 text-amber-500" />
+            <span className="font-mono text-sm text-zinc-300">VALUATION DATES</span>
+            <span className="font-mono text-[9px] text-amber-500/70 ml-auto">RICS VPS 3 / GhIS Compliant</span>
+          </div>
+          <p className="font-mono text-[10px] text-zinc-500 -mt-2 mb-3">
+            These dates determine exchange rates and market conditions for the valuation per RICS Red Book standards
+          </p>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div>
+              <label className="font-mono text-[10px] text-zinc-500 mb-1 block">
+                DATE OF INSPECTION *
+              </label>
+              <input
+                type="date"
+                value={data.inspection_date || ''}
+                onChange={(e) => updateField('inspection_date', e.target.value)}
+                max={new Date().toISOString().split('T')[0]}
+                className={cn(
+                  'w-full px-3 py-2 bg-zinc-900 border text-white font-mono text-sm focus:outline-none focus:border-amber-500/50',
+                  (dateErrors.inspection_date || errors.inspection_date) ? 'border-red-500/50' : 'border-zinc-800'
+                )}
+              />
+              {(dateErrors.inspection_date || errors.inspection_date) && (
+                <p className="font-mono text-[9px] text-red-400 mt-1">
+                  {dateErrors.inspection_date || errors.inspection_date}
+                </p>
+              )}
+              <p className="font-mono text-[9px] text-zinc-600 mt-1">
+                Physical inspection date
+              </p>
+            </div>
+
+            <div>
+              <label className="font-mono text-[10px] text-zinc-500 mb-1 block">
+                DATE OF VALUATION (EFFECTIVE) *
+              </label>
+              <input
+                type="date"
+                value={data.valuation_date || ''}
+                onChange={(e) => {
+                  const val = e.target.value
+                  updateField('valuation_date', val)
+                  // Auto-detect retrospective valuation
+                  if (val && data.instruction_date) {
+                    const isRetro = new Date(val) < new Date(data.instruction_date)
+                    if (isRetro !== data.is_retrospective) {
+                      updateField('is_retrospective', isRetro)
+                    }
+                  }
+                }}
+                className={cn(
+                  'w-full px-3 py-2 bg-zinc-900 border text-white font-mono text-sm focus:outline-none focus:border-amber-500/50',
+                  (dateErrors.valuation_date || errors.valuation_date) ? 'border-red-500/50' : 'border-zinc-800'
+                )}
+              />
+              {(dateErrors.valuation_date || errors.valuation_date) && (
+                <p className="font-mono text-[9px] text-red-400 mt-1">
+                  {dateErrors.valuation_date || errors.valuation_date}
+                </p>
+              )}
+              <p className="font-mono text-[9px] text-zinc-600 mt-1">
+                FX rates fetched as of this date
+              </p>
+            </div>
+
+            <div>
+              <label className="font-mono text-[10px] text-zinc-500 mb-1 block">
+                DATE OF INSTRUCTION
+              </label>
+              <input
+                type="date"
+                value={data.instruction_date || ''}
+                onChange={(e) => {
+                  const val = e.target.value
+                  updateField('instruction_date', val)
+                  // Auto-detect retrospective valuation
+                  if (val && data.valuation_date) {
+                    const isRetro = new Date(data.valuation_date) < new Date(val)
+                    if (isRetro !== data.is_retrospective) {
+                      updateField('is_retrospective', isRetro)
+                    }
+                  }
+                }}
+                max={new Date().toISOString().split('T')[0]}
+                className="w-full px-3 py-2 bg-zinc-900 border border-zinc-800 text-white font-mono text-sm focus:outline-none focus:border-amber-500/50"
+              />
+              <p className="font-mono text-[9px] text-zinc-600 mt-1">
+                When client instructed
+              </p>
+            </div>
+
+            <div>
+              <label className="font-mono text-[10px] text-zinc-500 mb-1 block">
+                RETROSPECTIVE VALUATION
+              </label>
+              <div className="flex items-center gap-3 px-3 py-2 bg-zinc-900 border border-zinc-800 rounded">
+                <button
+                  type="button"
+                  onClick={() => updateBooleanField('is_retrospective', !data.is_retrospective)}
+                  className={cn(
+                    'relative w-10 h-5 rounded-full transition-colors duration-200',
+                    data.is_retrospective ? 'bg-amber-500' : 'bg-zinc-700'
+                  )}
+                >
+                  <span className={cn(
+                    'absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full transition-transform duration-200',
+                    data.is_retrospective ? 'translate-x-5' : 'translate-x-0'
+                  )} />
+                </button>
+                <span className="font-mono text-[10px] text-zinc-400">
+                  {data.is_retrospective ? 'Yes - Historic date' : 'No - Current/Future'}
+                </span>
+              </div>
+              {dateErrors.is_retrospective && (
+                <p className="font-mono text-[9px] text-amber-400 mt-1">
+                  {dateErrors.is_retrospective}
+                </p>
+              )}
+            </div>
+          </div>
+
+          {/* RICS VPS 3 Compliance Note */}
+          {data.is_retrospective && (
+            <div className="mt-3 p-2 bg-amber-500/10 border border-amber-500/30 rounded">
+              <p className="font-mono text-[9px] text-amber-400">
+                ⚠️ RETROSPECTIVE VALUATION: Per RICS VPS 3, this valuation reflects market conditions and 
+                exchange rates as at the effective date ({data.valuation_date}). Special assumptions may apply.
+              </p>
+            </div>
+          )}
+
+          {/* Engagement/Client Information */}
+          <div className="mt-4 pt-4 border-t border-amber-500/20">
+            <div className="flex items-center gap-2 mb-3">
+              <span className="font-mono text-sm text-zinc-300">INSTRUCTING CLIENT</span>
+              <span className="font-mono text-[9px] text-zinc-500 ml-auto">Who requested this valuation</span>
+            </div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              <div className="lg:col-span-2">
+                <label className="font-mono text-[10px] text-zinc-500 mb-1 block">
+                  CLIENT NAME *
+                </label>
+                <input
+                  type="text"
+                  value={data.client_name || ''}
+                  onChange={(e) => updateField('client_name', e.target.value)}
+                  placeholder="e.g., Mr. Eric Danso or ABC Bank Ltd"
+                  className="w-full px-3 py-2 bg-zinc-900 border border-zinc-800 text-white font-mono text-sm placeholder-zinc-600 focus:outline-none focus:border-amber-500/50"
+                />
+                <p className="font-mono text-[9px] text-zinc-600 mt-1">
+                  Person or entity who instructed the valuation
+                </p>
+              </div>
+
+              <div>
+                <label className="font-mono text-[10px] text-zinc-500 mb-1 block">
+                  REQUEST TYPE
+                </label>
+                <select
+                  value={data.request_type || 'written'}
+                  onChange={(e) => updateField('request_type', e.target.value)}
+                  className="w-full px-3 py-2 bg-zinc-900 border border-zinc-800 text-white font-mono text-sm focus:outline-none focus:border-amber-500/50"
+                >
+                  <option value="written">Written Request</option>
+                  <option value="verbal">Verbal Communication</option>
+                  <option value="online">Online Request</option>
+                </select>
+                <p className="font-mono text-[9px] text-zinc-600 mt-1">
+                  How instruction was received
+                </p>
+              </div>
+
+              <div>
+                <label className="font-mono text-[10px] text-zinc-500 mb-1 block">
+                  SAME AS OWNER?
+                </label>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (data.owner_name) {
+                      updateField('client_name', data.owner_name)
+                      updateField('client_address', data.owner_address || '')
+                      updateField('client_email', data.owner_email || '')
+                      updateField('client_phone', data.owner_phone || '')
+                    }
+                  }}
+                  disabled={!data.owner_name}
+                  className={cn(
+                    'w-full px-3 py-2 font-mono text-sm border rounded transition-colors',
+                    data.owner_name 
+                      ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/20' 
+                      : 'bg-zinc-900 border-zinc-800 text-zinc-600 cursor-not-allowed'
+                  )}
+                >
+                  Copy from Owner
+                </button>
+                <p className="font-mono text-[9px] text-zinc-600 mt-1">
+                  {data.owner_name ? 'Click to copy owner info' : 'Enter owner info first'}
+                </p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-3">
+              <div>
+                <label className="font-mono text-[10px] text-zinc-500 mb-1 block">
+                  CLIENT EMAIL
+                </label>
+                <input
+                  type="email"
+                  value={data.client_email || ''}
+                  onChange={(e) => updateField('client_email', e.target.value)}
+                  placeholder="client@example.com"
+                  className="w-full px-3 py-2 bg-zinc-900 border border-zinc-800 text-white font-mono text-sm placeholder-zinc-600 focus:outline-none focus:border-amber-500/50"
+                />
+              </div>
+
+              <div>
+                <label className="font-mono text-[10px] text-zinc-500 mb-1 block">
+                  CLIENT PHONE
+                </label>
+                <input
+                  type="tel"
+                  value={data.client_phone || ''}
+                  onChange={(e) => updateField('client_phone', e.target.value)}
+                  placeholder="+233 XX XXX XXXX"
+                  className="w-full px-3 py-2 bg-zinc-900 border border-zinc-800 text-white font-mono text-sm placeholder-zinc-600 focus:outline-none focus:border-amber-500/50"
+                />
+              </div>
+
+              <div>
+                <label className="font-mono text-[10px] text-zinc-500 mb-1 block">
+                  CLIENT ADDRESS
+                </label>
+                <input
+                  type="text"
+                  value={data.client_address || ''}
+                  onChange={(e) => updateField('client_address', e.target.value)}
+                  placeholder="Client's address"
+                  className="w-full px-3 py-2 bg-zinc-900 border border-zinc-800 text-white font-mono text-sm placeholder-zinc-600 focus:outline-none focus:border-amber-500/50"
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Purpose of Valuation */}
+      {showValuationDates && mode === 'subject' && (
+        <div className="space-y-4 border border-amber-500/20 rounded-lg p-4 bg-amber-500/5">
+          <div className="flex items-center gap-2 mb-3">
+            <Scale className="w-4 h-4 text-amber-400" />
+            <span className="font-mono text-sm text-zinc-300">PURPOSE OF VALUATION</span>
+            <span className="font-mono text-[9px] text-amber-400/70 ml-auto">RICS Red Book Compliant</span>
+          </div>
+          <p className="font-mono text-[10px] text-zinc-500 -mt-2 mb-3">
+            Select the purpose for which this valuation is being conducted
+          </p>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-3 gap-3">
+            {[
+              { value: 'sale', label: 'Market Value (Sale)', description: 'Sale/purchase valuation' },
+              { value: 'mortgage', label: 'Mortgage/Lending', description: 'Loan security' },
+              { value: 'insurance', label: 'Insurance', description: 'Replacement cost' },
+              { value: 'tax', label: 'Tax Assessment', description: 'Property tax basis' },
+              { value: 'investment', label: 'Investment', description: 'Returns analysis' },
+              { value: 'development', label: 'Development', description: 'Feasibility study' },
+              { value: 'rental', label: 'Rental Value', description: 'Market rent' },
+              { value: 'accounting', label: 'Financial Reporting', description: 'IFRS Fair Value' },
+              { value: 'litigation', label: 'Litigation', description: 'Court/dispute' },
+            ].map((purpose) => (
+              <button
+                key={purpose.value}
+                type="button"
+                onClick={() => updateField('valuation_purpose', purpose.value)}
+                className={cn(
+                  'p-3 border text-left transition-colors',
+                  data.valuation_purpose === purpose.value
+                    ? 'border-amber-500 bg-amber-500/10'
+                    : 'border-zinc-800 bg-zinc-900 hover:border-zinc-700'
+                )}
+              >
+                <div className={cn(
+                  'font-mono text-sm',
+                  data.valuation_purpose === purpose.value ? 'text-amber-400' : 'text-white'
+                )}>
+                  {purpose.label}
+                </div>
+                <div className="font-mono text-[9px] text-zinc-500 mt-1">
+                  {purpose.description}
+                </div>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Basic Information */}
       <div className="space-y-4">
@@ -506,6 +821,276 @@ export default function ComprehensivePropertyForm({
               />
             </div>
           )}
+        </div>
+      </div>
+
+      {/* Chapter 3: Report Data Section */}
+      <div className="space-y-6 border border-amber-500/30 p-4 bg-amber-500/5">
+        <div className="flex items-center gap-2 mb-3">
+          <FileText className="w-4 h-4 text-amber-500" />
+          <span className="font-mono text-sm text-amber-300">REPORT DATA (CHAPTER 3)</span>
+          <span className="font-mono text-[9px] text-zinc-500 ml-2">Detailed descriptions for valuation report</span>
+        </div>
+
+        {/* City Data */}
+        <div className="space-y-3">
+          <div className="font-mono text-[10px] text-amber-400 border-b border-amber-500/20 pb-1">CITY DATA</div>
+          <div>
+            <label className="font-mono text-[10px] text-zinc-500 mb-1 block">CITY DESCRIPTION</label>
+            <textarea
+              value={data.city_description || ''}
+              onChange={(e) => updateField('city_description', e.target.value)}
+              placeholder="Describe the city/metropolitan area - its history, economic activities, infrastructure, notable features, and development trends..."
+              rows={4}
+              className="w-full px-3 py-2 bg-zinc-900 border border-zinc-800 text-white font-mono text-sm placeholder-zinc-600 focus:outline-none focus:border-amber-500/50 resize-none"
+            />
+            <p className="font-mono text-[9px] text-zinc-600 mt-1">e.g., "The property is located within the Sekondi-Takoradi Metropolitan Area..."</p>
+          </div>
+        </div>
+
+        {/* Neighbourhood Data */}
+        <div className="space-y-3">
+          <div className="font-mono text-[10px] text-amber-400 border-b border-amber-500/20 pb-1">NEIGHBOURHOOD DATA</div>
+          <div>
+            <label className="font-mono text-[10px] text-zinc-500 mb-1 block">NEIGHBOURHOOD DESCRIPTION</label>
+            <textarea
+              value={data.neighbourhood_description || ''}
+              onChange={(e) => updateField('neighbourhood_description', e.target.value)}
+              placeholder="Describe the neighborhood - location, character, building types, income levels, infrastructure, nearby facilities..."
+              rows={4}
+              className="w-full px-3 py-2 bg-zinc-900 border border-zinc-800 text-white font-mono text-sm placeholder-zinc-600 focus:outline-none focus:border-amber-500/50 resize-none"
+            />
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div>
+              <label className="font-mono text-[10px] text-zinc-500 mb-1 block">NEIGHBOURHOOD CLASS</label>
+              <select
+                value={data.neighborhood_class || 'middle_class'}
+                onChange={(e) => updateField('neighborhood_class', e.target.value)}
+                className="w-full px-3 py-2 bg-zinc-900 border border-zinc-800 text-white font-mono text-sm focus:outline-none focus:border-amber-500/50"
+              >
+                <option value="first_class">1st Class</option>
+                <option value="high_class">High Class</option>
+                <option value="second_class">2nd Class</option>
+                <option value="middle_class">Middle Class</option>
+                <option value="third_class">3rd Class</option>
+                <option value="low_class">Low Class</option>
+              </select>
+            </div>
+            <div>
+              <label className="font-mono text-[10px] text-zinc-500 mb-1 block">RESIDENT INCOME LEVEL</label>
+              <select
+                value={data.resident_income_level || 'middle_income'}
+                onChange={(e) => updateField('resident_income_level', e.target.value)}
+                className="w-full px-3 py-2 bg-zinc-900 border border-zinc-800 text-white font-mono text-sm focus:outline-none focus:border-amber-500/50"
+              >
+                <option value="high_income">High Income Earners</option>
+                <option value="middle_income">Middle Income Earners</option>
+                <option value="low_income">Low Income Earners</option>
+                <option value="mixed_income">Mixed Income Levels</option>
+              </select>
+            </div>
+            <div>
+              <label className="font-mono text-[10px] text-zinc-500 mb-1 block">PRIMARY USE</label>
+              <select
+                value={data.primary_use || 'residential'}
+                onChange={(e) => updateField('primary_use', e.target.value)}
+                className="w-full px-3 py-2 bg-zinc-900 border border-zinc-800 text-white font-mono text-sm focus:outline-none focus:border-amber-500/50"
+              >
+                <option value="residential">Residential</option>
+                <option value="commercial">Commercial</option>
+                <option value="industrial">Industrial</option>
+                <option value="mixed_use">Mixed Use</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        {/* Location Description */}
+        <div className="space-y-3">
+          <div className="font-mono text-[10px] text-amber-400 border-b border-amber-500/20 pb-1">LOCATION</div>
+          <div>
+            <label className="font-mono text-[10px] text-zinc-500 mb-1 block">LOCATION DESCRIPTION</label>
+            <textarea
+              value={data.location_description || ''}
+              onChange={(e) => updateField('location_description', e.target.value)}
+              placeholder="Describe the specific location - distance from main roads, landmarks, access points..."
+              rows={2}
+              className="w-full px-3 py-2 bg-zinc-900 border border-zinc-800 text-white font-mono text-sm placeholder-zinc-600 focus:outline-none focus:border-amber-500/50 resize-none"
+            />
+          </div>
+        </div>
+
+        {/* Brief Property Description */}
+        <div className="space-y-3">
+          <div className="font-mono text-[10px] text-amber-400 border-b border-amber-500/20 pb-1">BRIEF DESCRIPTION OF PROPERTY</div>
+          <div>
+            <label className="font-mono text-[10px] text-zinc-500 mb-1 block">PROPERTY DESCRIPTION</label>
+            <textarea
+              value={data.brief_description || ''}
+              onChange={(e) => updateField('brief_description', e.target.value)}
+              placeholder="Brief description of the property - type, layout, land size, coverage..."
+              rows={3}
+              className="w-full px-3 py-2 bg-zinc-900 border border-zinc-800 text-white font-mono text-sm placeholder-zinc-600 focus:outline-none focus:border-amber-500/50 resize-none"
+            />
+          </div>
+        </div>
+
+        {/* Grounds and External Works */}
+        <div className="space-y-3">
+          <div className="font-mono text-[10px] text-amber-400 border-b border-amber-500/20 pb-1">GROUNDS AND EXTERNAL WORKS</div>
+          <div>
+            <label className="font-mono text-[10px] text-zinc-500 mb-1 block">GROUNDS DESCRIPTION</label>
+            <textarea
+              value={data.grounds_external_works || ''}
+              onChange={(e) => updateField('grounds_external_works', e.target.value)}
+              placeholder="Describe the compound - boundary walls, landscaping, paving, water tanks, outbuildings..."
+              rows={3}
+              className="w-full px-3 py-2 bg-zinc-900 border border-zinc-800 text-white font-mono text-sm placeholder-zinc-600 focus:outline-none focus:border-amber-500/50 resize-none"
+            />
+          </div>
+        </div>
+
+        {/* Construction Details */}
+        <div className="space-y-3">
+          <div className="font-mono text-[10px] text-amber-400 border-b border-amber-500/20 pb-1">CONSTRUCTION DETAILS</div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="font-mono text-[10px] text-zinc-500 mb-1 block">FLOOR FINISH</label>
+              <input
+                type="text"
+                value={data.floor_finish || ''}
+                onChange={(e) => updateField('floor_finish', e.target.value)}
+                placeholder="e.g., Ceramic tiles in all areas"
+                className="w-full px-3 py-2 bg-zinc-900 border border-zinc-800 text-white font-mono text-sm placeholder-zinc-600 focus:outline-none focus:border-amber-500/50"
+              />
+            </div>
+            <div>
+              <label className="font-mono text-[10px] text-zinc-500 mb-1 block">WALL CONSTRUCTION</label>
+              <input
+                type="text"
+                value={data.wall_construction || ''}
+                onChange={(e) => updateField('wall_construction', e.target.value)}
+                placeholder="e.g., Sandcrete blockwork, plastered and painted"
+                className="w-full px-3 py-2 bg-zinc-900 border border-zinc-800 text-white font-mono text-sm placeholder-zinc-600 focus:outline-none focus:border-amber-500/50"
+              />
+            </div>
+            <div>
+              <label className="font-mono text-[10px] text-zinc-500 mb-1 block">DOORS</label>
+              <input
+                type="text"
+                value={data.doors || ''}
+                onChange={(e) => updateField('doors', e.target.value)}
+                placeholder="e.g., Polished wooden panel and aluminum doors"
+                className="w-full px-3 py-2 bg-zinc-900 border border-zinc-800 text-white font-mono text-sm placeholder-zinc-600 focus:outline-none focus:border-amber-500/50"
+              />
+            </div>
+            <div>
+              <label className="font-mono text-[10px] text-zinc-500 mb-1 block">WINDOWS</label>
+              <input
+                type="text"
+                value={data.windows || ''}
+                onChange={(e) => updateField('windows', e.target.value)}
+                placeholder="e.g., Aluminum sliding windows with insect nets"
+                className="w-full px-3 py-2 bg-zinc-900 border border-zinc-800 text-white font-mono text-sm placeholder-zinc-600 focus:outline-none focus:border-amber-500/50"
+              />
+            </div>
+            <div>
+              <label className="font-mono text-[10px] text-zinc-500 mb-1 block">CEILING</label>
+              <input
+                type="text"
+                value={data.ceiling || ''}
+                onChange={(e) => updateField('ceiling', e.target.value)}
+                placeholder="e.g., Plaster of paris (POP)"
+                className="w-full px-3 py-2 bg-zinc-900 border border-zinc-800 text-white font-mono text-sm placeholder-zinc-600 focus:outline-none focus:border-amber-500/50"
+              />
+            </div>
+            <div>
+              <label className="font-mono text-[10px] text-zinc-500 mb-1 block">ROOFING</label>
+              <input
+                type="text"
+                value={data.roofing || ''}
+                onChange={(e) => updateField('roofing', e.target.value)}
+                placeholder="e.g., Aluminum roofing sheets"
+                className="w-full px-3 py-2 bg-zinc-900 border border-zinc-800 text-white font-mono text-sm placeholder-zinc-600 focus:outline-none focus:border-amber-500/50"
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* Fixtures and Fittings */}
+        <div className="space-y-3">
+          <div className="font-mono text-[10px] text-amber-400 border-b border-amber-500/20 pb-1">FIXTURES AND FITTINGS</div>
+          <div>
+            <label className="font-mono text-[10px] text-zinc-500 mb-1 block">FIXTURES LIST</label>
+            <textarea
+              value={data.fixtures_fittings || ''}
+              onChange={(e) => updateField('fixtures_fittings', e.target.value)}
+              placeholder="e.g., Water closets, wash hand basins, shower sets, air-conditioners..."
+              rows={2}
+              className="w-full px-3 py-2 bg-zinc-900 border border-zinc-800 text-white font-mono text-sm placeholder-zinc-600 focus:outline-none focus:border-amber-500/50 resize-none"
+            />
+          </div>
+        </div>
+
+        {/* Drainage/Sanitation */}
+        <div className="space-y-3">
+          <div className="font-mono text-[10px] text-amber-400 border-b border-amber-500/20 pb-1">DRAINAGE / SANITATION</div>
+          <div>
+            <label className="font-mono text-[10px] text-zinc-500 mb-1 block">DRAINAGE DESCRIPTION</label>
+            <textarea
+              value={data.drainage_sanitation || ''}
+              onChange={(e) => updateField('drainage_sanitation', e.target.value)}
+              placeholder="e.g., Drainage of liquid and solid waste is through PVC pipes into a septic tank..."
+              rows={2}
+              className="w-full px-3 py-2 bg-zinc-900 border border-zinc-800 text-white font-mono text-sm placeholder-zinc-600 focus:outline-none focus:border-amber-500/50 resize-none"
+            />
+          </div>
+        </div>
+
+        {/* Condition State */}
+        <div className="space-y-3">
+          <div className="font-mono text-[10px] text-amber-400 border-b border-amber-500/20 pb-1">GENERAL CONDITION AND STATE OF REPAIR</div>
+          <div>
+            <label className="font-mono text-[10px] text-zinc-500 mb-1 block">CONDITION NOTES</label>
+            <textarea
+              value={data.condition_state || ''}
+              onChange={(e) => updateField('condition_state', e.target.value)}
+              placeholder="Describe the property condition, any defects observed (cracks, dampness, deterioration)..."
+              rows={3}
+              className="w-full px-3 py-2 bg-zinc-900 border border-zinc-800 text-white font-mono text-sm placeholder-zinc-600 focus:outline-none focus:border-amber-500/50 resize-none"
+            />
+          </div>
+        </div>
+
+        {/* Services */}
+        <div className="space-y-3">
+          <div className="font-mono text-[10px] text-amber-400 border-b border-amber-500/20 pb-1">SERVICES</div>
+          <div>
+            <label className="font-mono text-[10px] text-zinc-500 mb-1 block">SERVICES DESCRIPTION</label>
+            <textarea
+              value={data.services_description || ''}
+              onChange={(e) => updateField('services_description', e.target.value)}
+              placeholder="e.g., Water, electricity and telecommunication facilities are available..."
+              rows={2}
+              className="w-full px-3 py-2 bg-zinc-900 border border-zinc-800 text-white font-mono text-sm placeholder-zinc-600 focus:outline-none focus:border-amber-500/50 resize-none"
+            />
+          </div>
+        </div>
+
+        {/* Land Value Evidence */}
+        <div className="space-y-3">
+          <div className="font-mono text-[10px] text-amber-400 border-b border-amber-500/20 pb-1">EVIDENCE OF LAND VALUES</div>
+          <div>
+            <label className="font-mono text-[10px] text-zinc-500 mb-1 block">LAND VALUE ANALYSIS</label>
+            <textarea
+              value={data.land_value_evidence || ''}
+              onChange={(e) => updateField('land_value_evidence', e.target.value)}
+              placeholder="Describe the land value analysis - infrastructure, drainage, neighborhood factors, adopted value per acre..."
+              rows={3}
+              className="w-full px-3 py-2 bg-zinc-900 border border-zinc-800 text-white font-mono text-sm placeholder-zinc-600 focus:outline-none focus:border-amber-500/50 resize-none"
+            />
+          </div>
         </div>
       </div>
 

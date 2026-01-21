@@ -1,12 +1,8 @@
 'use client'
 
-import { Header, MetricCard } from '@/components/layout'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
+import { TerminalPanel, DataMetricCard, TierBadge } from '@/components/ui/terminal'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { ScrollArea } from '@/components/ui/scroll-area'
-import { Skeleton } from '@/components/ui/skeleton'
 import {
   Select,
   SelectContent,
@@ -15,75 +11,43 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table'
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from '@/components/ui/dialog'
-import {
   Database,
-  Plus,
   Search,
   RefreshCw,
   Pause,
   Play,
-  Trash2,
-  ExternalLink,
   CheckCircle,
   AlertCircle,
   Clock,
+  Zap,
 } from 'lucide-react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { dataSourcesApi, DataSourceFilters } from '@/lib/api'
 import { DataSource, DataSourceTier } from '@/types/data-hub'
-import { formatRelativeTime, getTierLabel, getTierColor, cn } from '@/lib/utils'
+import { formatRelativeTime, cn } from '@/lib/utils'
 import { useState } from 'react'
 
 const tierOptions: { value: DataSourceTier | 'all'; label: string }[] = [
   { value: 'all', label: 'All Tiers' },
-  { value: 'tier1_government', label: 'Tier 1 - Government' },
-  { value: 'tier2_financial', label: 'Tier 2 - Financial' },
-  { value: 'tier3_partners', label: 'Tier 3 - Partners' },
-  { value: 'tier3b_user_generated', label: 'Tier 3b - User Generated' },
-  { value: 'tier4_market_data', label: 'Tier 4 - Market Data' },
-  { value: 'tier5_public_web', label: 'Tier 5 - Public Web' },
-]
-
-const statusOptions = [
-  { value: 'all', label: 'All Status' },
-  { value: 'active', label: 'Active' },
-  { value: 'paused', label: 'Paused' },
-  { value: 'inactive', label: 'Inactive' },
+  { value: 'tier1_government', label: 'Tier 1' },
+  { value: 'tier2_financial', label: 'Tier 2' },
+  { value: 'tier3_partners', label: 'Tier 3' },
+  { value: 'tier4_contributions', label: 'Tier 4' },
+  { value: 'tier5_public_web', label: 'Tier 5' },
 ]
 
 export default function DataSourcesPage() {
   const queryClient = useQueryClient()
-  const [filters, setFilters] = useState<DataSourceFilters>({
-    page: 1,
-    limit: 20,
-  })
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedTier, setSelectedTier] = useState<string>('all')
   const [selectedStatus, setSelectedStatus] = useState<string>('all')
 
-  // Build query filters
   const queryFilters: DataSourceFilters = {
-    ...filters,
     tier: selectedTier !== 'all' ? (selectedTier as DataSourceTier) : undefined,
     is_active: selectedStatus === 'active' ? true : selectedStatus === 'inactive' ? false : undefined,
     is_paused: selectedStatus === 'paused' ? true : undefined,
     search: searchQuery || undefined,
+    limit: 50,
   }
 
   const { data: sources, isLoading } = useQuery({
@@ -91,7 +55,7 @@ export default function DataSourcesPage() {
     queryFn: () => dataSourcesApi.getAll(queryFilters),
   })
 
-  const { data: stats, isLoading: statsLoading } = useQuery({
+  const { data: stats } = useQuery({
     queryKey: ['data-sources-stats'],
     queryFn: () => dataSourcesApi.getStatsByTier(),
   })
@@ -103,260 +67,231 @@ export default function DataSourcesPage() {
     },
   })
 
+  const pauseMutation = useMutation({
+    mutationFn: ({ id, pause }: { id: string; pause: boolean }) =>
+      dataSourcesApi.update(id, { is_paused: pause }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['data-sources'] })
+    },
+  })
+
   const totalSources = stats?.data?.reduce((acc, s) => acc + s.total, 0) || 0
   const activeSources = stats?.data?.reduce((acc, s) => acc + s.active, 0) || 0
   const pausedSources = stats?.data?.reduce((acc, s) => acc + s.paused, 0) || 0
 
-  const getSourceStatus = (source: DataSource) => {
-    if (source.is_paused) return 'paused'
-    if (!source.is_active) return 'inactive'
-    return 'active'
-  }
-
-  const getStatusBadge = (source: DataSource) => {
-    const status = getSourceStatus(source)
-    switch (status) {
-      case 'active':
-        return <Badge variant="success">Active</Badge>
-      case 'paused':
-        return <Badge variant="warning">Paused</Badge>
-      case 'inactive':
-        return <Badge variant="secondary">Inactive</Badge>
-    }
-  }
-
   return (
-    <div className="flex flex-col h-full">
-      <Header title="Data Sources" description="Manage and monitor data source connections" />
+    <div className="min-h-screen bg-black text-white p-4 pb-10">
+      {/* Header */}
+      <div className="mb-6">
+        <h1 className="font-mono text-2xl text-amber-500 tracking-wider">DATA SOURCES MANAGEMENT</h1>
+        <p className="font-mono text-[10px] text-zinc-500 mt-1">
+          MONITOR & CONTROL DATA SOURCE CONNECTIONS • REAL-TIME SYNC STATUS
+        </p>
+      </div>
 
-      <ScrollArea className="flex-1">
-        <div className="p-6 space-y-6">
-          {/* Metrics */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <MetricCard
-              title="Total Sources"
-              value={totalSources}
-              icon={Database}
-              color="blue"
-              isLoading={statsLoading}
-            />
-            <MetricCard
-              title="Active"
-              value={activeSources}
-              subtitle={`${((activeSources / Math.max(totalSources, 1)) * 100).toFixed(0)}% of total`}
-              icon={CheckCircle}
-              color="green"
-              isLoading={statsLoading}
-            />
-            <MetricCard
-              title="Paused"
-              value={pausedSources}
-              icon={Pause}
-              color="yellow"
-              isLoading={statsLoading}
-            />
-            <MetricCard
-              title="Error Rate"
-              value="2.3%"
-              subtitle="Last 24 hours"
-              icon={AlertCircle}
-              color="red"
-              isLoading={statsLoading}
-            />
+      {/* Key Metrics */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+        <DataMetricCard
+          title="Total Sources"
+          value={totalSources}
+          subtitle="Configured"
+          icon={Database}
+          color="blue"
+        />
+
+        <DataMetricCard
+          title="Active Sources"
+          value={activeSources}
+          subtitle={`${((activeSources / Math.max(totalSources, 1)) * 100).toFixed(0)}% of total`}
+          trend={5.2}
+          icon={CheckCircle}
+          color="green"
+          status="live"
+        />
+
+        <DataMetricCard
+          title="Paused"
+          value={pausedSources}
+          subtitle="Temporarily disabled"
+          icon={Pause}
+          color="yellow"
+        />
+
+        <DataMetricCard
+          title="Sync Rate"
+          value="94.5%"
+          subtitle="Success rate (24h)"
+          trend={2.1}
+          icon={Zap}
+          color="purple"
+        />
+      </div>
+
+      {/* Filters */}
+      <div className="mb-6">
+        <TerminalPanel title="Search & Filter">
+          <div className="flex items-center gap-4">
+            <div className="flex-1 relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
+              <input
+                type="text"
+                placeholder="Search sources..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full pl-10 pr-4 py-2 bg-zinc-800 border border-zinc-700 text-white font-mono text-sm focus:outline-none focus:border-amber-500"
+              />
+            </div>
+
+            <Select value={selectedTier} onValueChange={setSelectedTier}>
+              <SelectTrigger className="w-40 bg-zinc-800 border-zinc-700 font-mono text-xs">
+                <SelectValue placeholder="Tier" />
+              </SelectTrigger>
+              <SelectContent>
+                {tierOptions.map((option) => (
+                  <SelectItem key={option.value} value={option.value}>
+                    {option.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            <Select value={selectedStatus} onValueChange={setSelectedStatus}>
+              <SelectTrigger className="w-32 bg-zinc-800 border-zinc-700 font-mono text-xs">
+                <SelectValue placeholder="Status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All</SelectItem>
+                <SelectItem value="active">Active</SelectItem>
+                <SelectItem value="paused">Paused</SelectItem>
+                <SelectItem value="inactive">Inactive</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
+        </TerminalPanel>
+      </div>
 
-          {/* Filters & Actions */}
-          <Card>
-            <CardContent className="p-4">
-              <div className="flex flex-col md:flex-row gap-4 items-center justify-between">
-                <div className="flex flex-1 gap-4 items-center w-full md:w-auto">
-                  <div className="relative flex-1 max-w-sm">
-                    <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                    <Input
-                      placeholder="Search sources..."
-                      value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
-                      className="pl-9"
-                    />
-                  </div>
-                  <Select value={selectedTier} onValueChange={setSelectedTier}>
-                    <SelectTrigger className="w-48">
-                      <SelectValue placeholder="Filter by tier" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {tierOptions.map((option) => (
-                        <SelectItem key={option.value} value={option.value}>
-                          {option.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <Select value={selectedStatus} onValueChange={setSelectedStatus}>
-                    <SelectTrigger className="w-36">
-                      <SelectValue placeholder="Status" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {statusOptions.map((option) => (
-                        <SelectItem key={option.value} value={option.value}>
-                          {option.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <Button>
-                  <Plus className="h-4 w-4 mr-2" />
-                  Add Source
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
+      {/* Sources Table */}
+      <TerminalPanel title={`Data Sources (${sources?.data?.length || 0})`}>
+        {isLoading ? (
+          <div className="space-y-2">
+            {[1, 2, 3, 4, 5].map((i) => (
+              <div key={i} className="h-16 bg-zinc-800/30 animate-pulse" />
+            ))}
+          </div>
+        ) : sources?.data?.length === 0 ? (
+          <div className="text-center py-12">
+            <Database className="w-12 h-12 mx-auto mb-4 text-zinc-700" />
+            <p className="font-mono text-sm text-zinc-500">No sources found</p>
+          </div>
+        ) : (
+          <div className="space-y-2">
+            {sources?.data?.map((source) => (
+              <div
+                key={source.id}
+                className="p-4 bg-zinc-800/30 border border-zinc-800 hover:border-zinc-700 transition-colors"
+              >
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-4 flex-1">
+                    <Database className="w-5 h-5 text-blue-400" />
 
-          {/* Data Sources Table */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base font-medium">
-                Data Sources
-                <span className="ml-2 text-muted-foreground font-normal">
-                  ({sources?.meta?.total || 0} total)
-                </span>
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              {isLoading ? (
-                <div className="space-y-4">
-                  {[1, 2, 3, 4, 5].map((i) => (
-                    <div key={i} className="flex items-center gap-4 p-4 border rounded-lg">
-                      <Skeleton className="h-10 w-10 rounded-lg" />
-                      <div className="flex-1 space-y-2">
-                        <Skeleton className="h-4 w-48" />
-                        <Skeleton className="h-3 w-64" />
-                      </div>
-                      <Skeleton className="h-6 w-20 rounded-full" />
-                      <Skeleton className="h-8 w-8 rounded" />
-                    </div>
-                  ))}
-                </div>
-              ) : sources?.data?.length === 0 ? (
-                <div className="text-center py-12 text-muted-foreground">
-                  <Database className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                  <p className="text-lg font-medium">No data sources found</p>
-                  <p className="text-sm">Try adjusting your filters or add a new source</p>
-                </div>
-              ) : (
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Source</TableHead>
-                      <TableHead>Tier</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead>Last Sync</TableHead>
-                      <TableHead>Records</TableHead>
-                      <TableHead className="text-right">Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {sources?.data?.map((source) => (
-                      <TableRow key={source.id}>
-                        <TableCell>
-                          <div className="flex items-center gap-3">
-                            <div className={cn(
-                              'h-10 w-10 rounded-lg flex items-center justify-center',
-                              getTierColor(source.tier)
-                            )}>
-                              <Database className="h-5 w-5" />
-                            </div>
-                            <div>
-                              <p className="font-medium">{source.name}</p>
-                              <p className="text-xs text-muted-foreground">
-                                {source.tier} • {source.slug}
-                              </p>
-                            </div>
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <Badge variant="outline" className={cn('border-0', getTierColor(source.tier))}>
-                            {getTierLabel(source.tier)}
-                          </Badge>
-                        </TableCell>
-                        <TableCell>{getStatusBadge(source)}</TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-1 text-muted-foreground">
-                            <Clock className="h-3 w-3" />
-                            <span className="text-sm">
-                              {source.last_sync_at
-                                ? formatRelativeTime(source.last_sync_at)
-                                : 'Never'}
-                            </span>
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <span className="font-mono text-sm">
-                            {source.total_records_synced?.toLocaleString() || 0}
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="font-mono text-sm text-white">{source.name}</span>
+                        <TierBadge tier={source.tier} />
+                        {source.is_active && !source.is_paused && (
+                          <span className="flex items-center gap-1 px-2 py-0.5 bg-green-900/30 text-green-400 font-mono text-[9px]">
+                            <span className="w-1.5 h-1.5 bg-green-400 rounded-full animate-pulse" />
+                            ACTIVE
                           </span>
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex items-center justify-end gap-2">
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => syncMutation.mutate(source.id)}
-                              disabled={syncMutation.isPending}
-                            >
-                              <RefreshCw className={cn(
-                                'h-4 w-4',
-                                syncMutation.isPending && 'animate-spin'
-                              )} />
-                            </Button>
-                            <Button variant="ghost" size="icon">
-                              {source.is_paused ? (
-                                <Play className="h-4 w-4" />
-                              ) : (
-                                <Pause className="h-4 w-4" />
-                              )}
-                            </Button>
-                            <Button variant="ghost" size="icon">
-                              <ExternalLink className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              )}
+                        )}
+                        {source.is_paused && (
+                          <span className="px-2 py-0.5 bg-yellow-900/30 text-yellow-400 font-mono text-[9px]">
+                            PAUSED
+                          </span>
+                        )}
+                        {!source.is_active && (
+                          <span className="px-2 py-0.5 bg-zinc-700 text-zinc-400 font-mono text-[9px]">
+                            INACTIVE
+                          </span>
+                        )}
+                      </div>
 
-              {/* Pagination */}
-              {sources && sources.meta.total > filters.limit! && (
-                <div className="flex items-center justify-between mt-4 pt-4 border-t">
-                  <p className="text-sm text-muted-foreground">
-                    Showing {((filters.page! - 1) * filters.limit!) + 1} to{' '}
-                    {Math.min(filters.page! * filters.limit!, sources.meta.total)} of {sources.meta.total}
-                  </p>
-                  <div className="flex gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      disabled={filters.page === 1}
-                      onClick={() => setFilters((f) => ({ ...f, page: f.page! - 1 }))}
+                      <div className="flex items-center gap-4 font-mono text-[10px] text-zinc-500">
+                        <span>{source.slug}</span>
+                        <span>•</span>
+                        <div className="flex items-center gap-1">
+                          <Clock className="w-3 h-3" />
+                          <span>
+                            Last sync: {source.last_sync_at ? formatRelativeTime(source.last_sync_at) : 'Never'}
+                          </span>
+                        </div>
+                        <span>•</span>
+                        <span>{(source.total_records_synced || 0).toLocaleString()} records</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => syncMutation.mutate(source.id)}
+                      disabled={syncMutation.isPending || source.is_paused}
+                      className="p-2 bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 hover:border-amber-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                      Previous
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      disabled={filters.page! * filters.limit! >= sources.meta.total}
-                      onClick={() => setFilters((f) => ({ ...f, page: f.page! + 1 }))}
+                      <RefreshCw className={cn(
+                        'w-4 h-4 text-zinc-400',
+                        syncMutation.isPending && 'animate-spin'
+                      )} />
+                    </button>
+
+                    <button
+                      onClick={() => pauseMutation.mutate({ id: source.id, pause: !source.is_paused })}
+                      disabled={pauseMutation.isPending}
+                      className="p-2 bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 hover:border-amber-500 transition-colors disabled:opacity-50"
                     >
-                      Next
-                    </Button>
+                      {source.is_paused ? (
+                        <Play className="w-4 h-4 text-green-400" />
+                      ) : (
+                        <Pause className="w-4 h-4 text-yellow-400" />
+                      )}
+                    </button>
                   </div>
                 </div>
-              )}
-            </CardContent>
-          </Card>
-        </div>
-      </ScrollArea>
+
+                {/* Sync Status */}
+                {source.last_sync_status && (
+                  <div className="mt-3 pt-3 border-t border-zinc-800">
+                    <div className="flex items-center justify-between font-mono text-[10px]">
+                      <div className="flex items-center gap-2">
+                        {source.last_sync_status === 'success' && (
+                          <>
+                            <CheckCircle className="w-3 h-3 text-green-400" />
+                            <span className="text-green-400">Last sync successful</span>
+                          </>
+                        )}
+                        {source.last_sync_status === 'failed' && (
+                          <>
+                            <AlertCircle className="w-3 h-3 text-red-400" />
+                            <span className="text-red-400">Last sync failed</span>
+                          </>
+                        )}
+                        {source.last_sync_status === 'running' && (
+                          <>
+                            <RefreshCw className="w-3 h-3 text-blue-400 animate-spin" />
+                            <span className="text-blue-400">Sync in progress...</span>
+                          </>
+                        )}
+                      </div>
+                      <span className="text-zinc-600">
+                        Frequency: {source.sync_frequency || 'Manual'}
+                      </span>
+                    </div>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+      </TerminalPanel>
     </div>
   )
 }

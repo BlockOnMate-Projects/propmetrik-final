@@ -1,12 +1,7 @@
 'use client'
 
-import { Header, MetricCard } from '@/components/layout'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
+import { TerminalPanel, DataMetricCard } from '@/components/ui/terminal'
 import { Button } from '@/components/ui/button'
-import { ScrollArea } from '@/components/ui/scroll-area'
-import { Skeleton } from '@/components/ui/skeleton'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import {
   Select,
   SelectContent,
@@ -14,23 +9,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table'
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from '@/components/ui/dialog'
 import {
   Users,
   CheckCircle,
@@ -44,151 +22,55 @@ import {
   Star,
   Building2,
   FileText,
+  RefreshCw,
+  Upload,
+  AlertCircle,
 } from 'lucide-react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { contributionsApi, ContributionFilters } from '@/lib/api'
-import { Contribution, ContributionType, ValidationStatus, ContributorProfile } from '@/types/data-hub'
-import { formatRelativeTime, formatNumber, cn } from '@/lib/utils'
+import { ContributionType, ValidationStatus } from '@/types/data-hub'
+import { formatRelativeTime, cn } from '@/lib/utils'
 import { useState } from 'react'
 
-const statusOptions: { value: ValidationStatus | 'all'; label: string }[] = [
-  { value: 'all', label: 'All Status' },
-  { value: 'pending', label: 'Pending' },
-  { value: 'under_review', label: 'Under Review' },
-  { value: 'needs_info', label: 'Needs Info' },
-  { value: 'auto_approved', label: 'Auto Approved' },
-  { value: 'auto_rejected', label: 'Auto Rejected' },
-  { value: 'approved', label: 'Approved' },
-  { value: 'rejected', label: 'Rejected' },
+const CONTEXT_OPTIONS = [
+  { id: 'all', label: 'ALL SOURCES' },
+  { id: 'valuation_workflow', label: 'VALUATION' },
+  { id: 'property_management', label: 'PROPERTY MGMT' },
+  { id: 'crm_deal_management', label: 'CRM / DEALS' },
 ]
 
-const typeOptions: { value: ContributionType | 'all'; label: string }[] = [
-  { value: 'all', label: 'All Types' },
-  { value: 'new_property', label: 'New Property' },
-  { value: 'comparable', label: 'Comparable' },
-  { value: 'enrichment', label: 'Enrichment' },
-  { value: 'correction', label: 'Correction' },
-  { value: 'verification', label: 'Verification' },
-  { value: 'photo', label: 'Photo' },
-  { value: 'document', label: 'Document' },
-  { value: 'transaction', label: 'Transaction' },
-]
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api/v1'
 
-function ContributionReviewDialog({
-  contribution,
-  onApprove,
-  onReject,
-}: {
-  contribution: Contribution
-  onApprove: (id: string, credits?: number) => void
-  onReject: (id: string, reason: string) => void
-}) {
-  const [rejectReason, setRejectReason] = useState('')
-  const [credits, setCredits] = useState(10)
+interface CRMSyncStats {
+  total_properties: number
+  synced_count: number
+  pending_count: number
+  failed_count: number
+}
 
-  return (
-    <Dialog>
-      <DialogTrigger asChild>
-        <Button variant="ghost" size="icon">
-          <Eye className="h-4 w-4" />
-        </Button>
-      </DialogTrigger>
-      <DialogContent className="max-w-2xl">
-        <DialogHeader>
-          <DialogTitle>Review Contribution</DialogTitle>
-          <DialogDescription>
-            {contribution.contribution_type} • Submitted {formatRelativeTime(contribution.created_at)}
-          </DialogDescription>
-        </DialogHeader>
-
-        <div className="space-y-4">
-          {/* Contribution Details */}
-          <div className="rounded-lg border p-4 space-y-3">
-            <div className="flex items-center gap-2">
-              <Badge variant="outline">{contribution.contribution_type}</Badge>
-              <Badge variant={
-                contribution.validation_status === 'pending' ? 'warning' :
-                contribution.validation_status === 'approved' ? 'success' :
-                contribution.validation_status === 'rejected' ? 'destructive' : 'secondary'
-              }>
-                {contribution.validation_status}
-              </Badge>
-            </div>
-
-            {contribution.property_region && (
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <MapPin className="h-4 w-4" />
-                {contribution.property_region}
-              </div>
-            )}
-
-            <div className="text-sm">
-              <p className="font-medium mb-1">Submitted Data:</p>
-              <pre className="bg-muted p-3 rounded-lg text-xs overflow-auto max-h-48">
-                {JSON.stringify(contribution.data, null, 2)}
-              </pre>
-            </div>
-
-            {contribution.trust_score != null && (
-              <div className="flex items-center gap-2">
-                <span className="text-sm text-muted-foreground">Trust Score:</span>
-                <Badge variant={
-                  contribution.trust_score >= 0.8 ? 'success' :
-                  contribution.trust_score >= 0.5 ? 'warning' : 'destructive'
-                }>
-                  {(contribution.trust_score * 100).toFixed(0)}%
-                </Badge>
-              </div>
-            )}
-          </div>
-
-          {/* Actions */}
-          {contribution.validation_status === 'pending' && (
-            <DialogFooter className="flex gap-2">
-              <div className="flex items-center gap-2 flex-1">
-                <span className="text-sm text-muted-foreground">Credits:</span>
-                <input
-                  type="number"
-                  value={credits}
-                  onChange={(e) => setCredits(parseInt(e.target.value) || 0)}
-                  className="w-20 h-9 rounded-md border bg-background px-3 text-sm"
-                />
-              </div>
-              <Button
-                variant="outline"
-                onClick={() => onReject(contribution.id, rejectReason || 'Does not meet quality standards')}
-              >
-                <ThumbsDown className="h-4 w-4 mr-2" />
-                Reject
-              </Button>
-              <Button onClick={() => onApprove(contribution.id, credits)}>
-                <ThumbsUp className="h-4 w-4 mr-2" />
-                Approve
-              </Button>
-            </DialogFooter>
-          )}
-        </div>
-      </DialogContent>
-    </Dialog>
-  )
+interface CRMPendingProperty {
+  id: string
+  property_name: string
+  property_type: string
+  city: string
+  region: string
+  created_at: string
+  sync_status: string
 }
 
 export default function ContributionsPage() {
   const queryClient = useQueryClient()
-  const [filters, setFilters] = useState<ContributionFilters>({
-    page: 1,
-    limit: 20,
-  })
-  const [selectedStatus, setSelectedStatus] = useState<string>('all')
+  const [selectedStatus, setSelectedStatus] = useState<string>('pending')
   const [selectedType, setSelectedType] = useState<string>('all')
-  const [activeTab, setActiveTab] = useState('pending')
+  const [selectedContext, setSelectedContext] = useState<string>('all')
+  const [syncingAll, setSyncingAll] = useState(false)
+  const [retryingFailed, setRetryingFailed] = useState(false)
 
   const queryFilters: ContributionFilters = {
-    ...filters,
-    validation_status: activeTab === 'all'
-      ? (selectedStatus !== 'all' ? (selectedStatus as ValidationStatus) : undefined)
-      : activeTab === 'pending' ? 'pending' : undefined,
+    validation_status: selectedStatus !== 'all' ? (selectedStatus as ValidationStatus) : undefined,
     contribution_type: selectedType !== 'all' ? (selectedType as ContributionType) : undefined,
+    source_context: selectedContext !== 'all' ? selectedContext : undefined,
+    limit: 50,
   }
 
   const { data: contributions, isLoading } = useQuery({
@@ -196,22 +78,80 @@ export default function ContributionsPage() {
     queryFn: () => contributionsApi.getAll(queryFilters),
   })
 
-  const { data: stats, isLoading: statsLoading } = useQuery({
+  const { data: stats } = useQuery({
     queryKey: ['contributions-stats'],
     queryFn: () => contributionsApi.getStats(),
   })
 
-  const { data: leaderboard, isLoading: leaderboardLoading } = useQuery({
+  const { data: leaderboard } = useQuery({
     queryKey: ['contributors-leaderboard'],
     queryFn: () => contributionsApi.getLeaderboard(10),
   })
+
+  // CRM Sync Stats - only fetch when CRM tab is selected
+  const { data: crmSyncStats, refetch: refetchCrmStats } = useQuery<CRMSyncStats>({
+    queryKey: ['crm-sync-stats'],
+    queryFn: async () => {
+      const res = await fetch(`${API_BASE}/crm/properties/sync/stats`)
+      if (!res.ok) throw new Error('Failed to fetch CRM sync stats')
+      return res.json()
+    },
+    enabled: selectedContext === 'crm_deal_management',
+  })
+
+  // CRM Pending Properties - only fetch when CRM tab is selected
+  const { data: crmPendingProperties } = useQuery<{ properties: CRMPendingProperty[] }>({
+    queryKey: ['crm-pending-properties'],
+    queryFn: async () => {
+      const res = await fetch(`${API_BASE}/crm/properties/sync/pending?limit=10`)
+      if (!res.ok) throw new Error('Failed to fetch pending properties')
+      return res.json()
+    },
+    enabled: selectedContext === 'crm_deal_management',
+  })
+
+  // Bulk sync all pending CRM properties
+  const handleBulkSync = async () => {
+    setSyncingAll(true)
+    try {
+      const res = await fetch(`${API_BASE}/crm/properties/sync/bulk`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+      })
+      if (res.ok) {
+        refetchCrmStats()
+        queryClient.invalidateQueries({ queryKey: ['crm-pending-properties'] })
+      }
+    } catch (err) {
+      console.error('Bulk sync failed:', err)
+    } finally {
+      setSyncingAll(false)
+    }
+  }
+
+  // Retry failed CRM syncs
+  const handleRetryFailed = async () => {
+    setRetryingFailed(true)
+    try {
+      const res = await fetch(`${API_BASE}/crm/properties/sync/retry-failed`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+      })
+      if (res.ok) {
+        refetchCrmStats()
+      }
+    } catch (err) {
+      console.error('Retry failed:', err)
+    } finally {
+      setRetryingFailed(false)
+    }
+  }
 
   const approveMutation = useMutation({
     mutationFn: ({ id, credits }: { id: string; credits?: number }) =>
       contributionsApi.approve(id, credits),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['contributions'] })
-      queryClient.invalidateQueries({ queryKey: ['contributions-stats'] })
     },
   })
 
@@ -220,327 +160,374 @@ export default function ContributionsPage() {
       contributionsApi.reject(id, reason),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['contributions'] })
-      queryClient.invalidateQueries({ queryKey: ['contributions-stats'] })
     },
   })
 
-  const handleApprove = (id: string, credits?: number) => {
-    approveMutation.mutate({ id, credits })
-  }
-
-  const handleReject = (id: string, reason: string) => {
-    rejectMutation.mutate({ id, reason })
+  const getContributionIcon = (type: string) => {
+    switch (type) {
+      case 'property_listing': return <Building2 className="w-4 h-4" />
+      case 'price_update': return <FileText className="w-4 h-4" />
+      default: return <FileText className="w-4 h-4" />
+    }
   }
 
   return (
-    <div className="flex flex-col h-full">
-      <Header title="Contributions" description="Review and manage user-submitted data" />
+    <div className="min-h-screen bg-black text-white p-4 pb-10">
+      {/* Header */}
+      <div className="mb-6">
+        <h1 className="font-mono text-2xl text-amber-500 tracking-wider">USER CONTRIBUTIONS REVIEW</h1>
+        <p className="font-mono text-[10px] text-zinc-500 mt-1">
+          COMMUNITY DATA VALIDATION • QUALITY CONTROL • CONTRIBUTOR REWARDS
+        </p>
+      </div>
 
-      <ScrollArea className="flex-1">
-        <div className="p-6 space-y-6">
-          {/* Metrics */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <MetricCard
-              title="Pending Review"
-              value={stats?.data?.pending || 0}
-              icon={Clock}
-              color="yellow"
-              isLoading={statsLoading}
-            />
-            <MetricCard
-              title="Approved Today"
-              value={stats?.data?.approvedToday || 0}
-              icon={CheckCircle}
-              color="green"
-              isLoading={statsLoading}
-            />
-            <MetricCard
-              title="Rejection Rate"
-              value={`${stats?.data?.rejectionRate || 0}%`}
-              subtitle="Last 30 days"
-              icon={XCircle}
-              color="red"
-              isLoading={statsLoading}
-            />
-            <MetricCard
-              title="Active Contributors"
-              value={stats?.data?.activeContributors || 0}
-              icon={Users}
-              color="blue"
-              isLoading={statsLoading}
-            />
+      {/* Key Metrics */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+        <DataMetricCard
+          title="Pending Review"
+          value={stats?.data?.pending || 0}
+          subtitle="Awaiting validation"
+          icon={Clock}
+          color="amber"
+          status={(stats?.data?.pending ?? 0) > 0 ? 'live' : undefined}
+        />
+
+        <DataMetricCard
+          title="Approved Today"
+          value={stats?.data?.approvedToday || 0}
+          subtitle={`${stats?.data?.totalApproved || 0} total`}
+          trend={12.5}
+          icon={CheckCircle}
+          color="green"
+        />
+
+        <DataMetricCard
+          title="Rejection Rate"
+          value={`${((stats?.data?.rejectionRate || 0) * 100).toFixed(1)}%`}
+          subtitle="Last 30 days"
+          trend={-2.3}
+          icon={XCircle}
+          color="red"
+        />
+
+        <DataMetricCard
+          title="Active Contributors"
+          value={stats?.data?.activeContributors || 0}
+          subtitle="This month"
+          icon={Users}
+          color="blue"
+        />
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Main Content */}
+        <div className="lg:col-span-2 space-y-6">
+          {/* Sub-tabs */}
+          <div className="flex gap-1 overflow-x-auto pb-2 scrollbar-hide">
+            {CONTEXT_OPTIONS.map((option) => (
+              <button
+                key={option.id}
+                onClick={() => setSelectedContext(option.id)}
+                className={cn(
+                  'px-4 py-2 font-mono text-[10px] tracking-wider transition-colors border whitespace-nowrap',
+                  selectedContext === option.id
+                    ? 'bg-amber-500 text-black border-amber-500 font-bold'
+                    : 'bg-zinc-900 text-zinc-500 border-zinc-800 hover:border-zinc-700 hover:text-zinc-300'
+                )}
+              >
+                {option.label}
+              </button>
+            ))}
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {/* Main Content */}
-            <div className="lg:col-span-2 space-y-6">
-              <Tabs value={activeTab} onValueChange={setActiveTab}>
-                <div className="flex items-center justify-between">
-                  <TabsList>
-                    <TabsTrigger value="pending">
-                      Pending
-                      {stats?.data?.pending ? (
-                        <Badge variant="secondary" className="ml-2">
-                          {stats.data.pending}
-                        </Badge>
-                      ) : null}
-                    </TabsTrigger>
-                    <TabsTrigger value="all">All Contributions</TabsTrigger>
-                  </TabsList>
-
-                  {activeTab === 'all' && (
-                    <div className="flex gap-2">
-                      <Select value={selectedStatus} onValueChange={setSelectedStatus}>
-                        <SelectTrigger className="w-36">
-                          <SelectValue placeholder="Status" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {statusOptions.map((option) => (
-                            <SelectItem key={option.value} value={option.value}>
-                              {option.label}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <Select value={selectedType} onValueChange={setSelectedType}>
-                        <SelectTrigger className="w-40">
-                          <SelectValue placeholder="Type" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {typeOptions.map((option) => (
-                            <SelectItem key={option.value} value={option.value}>
-                              {option.label}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+          {/* CRM Sync Panel - Only visible when CRM tab is selected */}
+          {selectedContext === 'crm_deal_management' && crmSyncStats && (
+            <TerminalPanel title="CRM PROPERTY SYNC STATUS">
+              <div className="space-y-4">
+                {/* Sync Stats */}
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                  <div className="p-3 bg-zinc-800/50 border border-zinc-700">
+                    <div className="flex items-center gap-2 mb-1">
+                      <Building2 className="h-3 w-3 text-zinc-500" />
+                      <span className="font-mono text-[9px] text-zinc-500">TOTAL</span>
                     </div>
+                    <span className="font-mono text-xl text-white">{crmSyncStats.total_properties}</span>
+                  </div>
+                  <div className="p-3 bg-zinc-800/50 border border-green-500/30">
+                    <div className="flex items-center gap-2 mb-1">
+                      <CheckCircle className="h-3 w-3 text-green-500" />
+                      <span className="font-mono text-[9px] text-zinc-500">SYNCED</span>
+                    </div>
+                    <span className="font-mono text-xl text-green-400">{crmSyncStats.synced_count}</span>
+                  </div>
+                  <div className="p-3 bg-zinc-800/50 border border-blue-500/30">
+                    <div className="flex items-center gap-2 mb-1">
+                      <Clock className="h-3 w-3 text-blue-500" />
+                      <span className="font-mono text-[9px] text-zinc-500">PENDING</span>
+                    </div>
+                    <span className="font-mono text-xl text-blue-400">{crmSyncStats.pending_count}</span>
+                  </div>
+                  <div className="p-3 bg-zinc-800/50 border border-red-500/30">
+                    <div className="flex items-center gap-2 mb-1">
+                      <AlertCircle className="h-3 w-3 text-red-500" />
+                      <span className="font-mono text-[9px] text-zinc-500">FAILED</span>
+                    </div>
+                    <span className="font-mono text-xl text-red-400">{crmSyncStats.failed_count}</span>
+                  </div>
+                </div>
+
+                {/* Sync Actions */}
+                <div className="flex items-center gap-3 pt-2 border-t border-zinc-800">
+                  <Button
+                    onClick={handleBulkSync}
+                    disabled={syncingAll || crmSyncStats.pending_count === 0}
+                    className="bg-blue-600 hover:bg-blue-700 text-white font-mono text-[10px] h-8"
+                  >
+                    {syncingAll ? (
+                      <RefreshCw className="h-3 w-3 mr-2 animate-spin" />
+                    ) : (
+                      <Upload className="h-3 w-3 mr-2" />
+                    )}
+                    SYNC ALL PENDING ({crmSyncStats.pending_count})
+                  </Button>
+
+                  {crmSyncStats.failed_count > 0 && (
+                    <Button
+                      onClick={handleRetryFailed}
+                      disabled={retryingFailed}
+                      variant="outline"
+                      className="border-red-500/50 text-red-400 hover:bg-red-500/10 font-mono text-[10px] h-8"
+                    >
+                      {retryingFailed ? (
+                        <RefreshCw className="h-3 w-3 mr-2 animate-spin" />
+                      ) : (
+                        <RefreshCw className="h-3 w-3 mr-2" />
+                      )}
+                      RETRY FAILED ({crmSyncStats.failed_count})
+                    </Button>
                   )}
                 </div>
 
-                <TabsContent value="pending" className="mt-4">
-                  <Card>
-                    <CardContent className="p-0">
-                      {isLoading ? (
-                        <div className="p-4 space-y-4">
-                          {[1, 2, 3, 4, 5].map((i) => (
-                            <div key={i} className="flex items-center gap-4 p-4 border rounded-lg">
-                              <Skeleton className="h-10 w-10 rounded-full" />
-                              <div className="flex-1 space-y-2">
-                                <Skeleton className="h-4 w-32" />
-                                <Skeleton className="h-3 w-48" />
-                              </div>
-                              <Skeleton className="h-8 w-20" />
-                            </div>
-                          ))}
+                {/* Pending Properties Preview */}
+                {crmPendingProperties?.properties && crmPendingProperties.properties.length > 0 && (
+                  <div className="pt-3 border-t border-zinc-800">
+                    <div className="font-mono text-[10px] text-zinc-500 mb-2">PENDING SYNC QUEUE</div>
+                    <div className="space-y-1">
+                      {crmPendingProperties.properties.slice(0, 5).map((prop) => (
+                        <div
+                          key={prop.id}
+                          className="flex items-center justify-between p-2 bg-zinc-900/50 border border-zinc-800"
+                        >
+                          <div className="flex items-center gap-2 flex-1 min-w-0">
+                            <Building2 className="h-3 w-3 text-zinc-500 flex-shrink-0" />
+                            <span className="font-mono text-xs text-white truncate">
+                              {prop.property_name}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-2 text-zinc-500">
+                            <MapPin className="h-3 w-3" />
+                            <span className="font-mono text-[10px]">{prop.city}</span>
+                          </div>
                         </div>
-                      ) : contributions?.data?.length === 0 ? (
-                        <div className="text-center py-12 text-muted-foreground">
-                          <CheckCircle className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                          <p className="text-lg font-medium">All caught up!</p>
-                          <p className="text-sm">No pending contributions to review</p>
+                      ))}
+                      {crmPendingProperties.properties.length > 5 && (
+                        <div className="font-mono text-[10px] text-zinc-500 text-center py-1">
+                          +{crmPendingProperties.properties.length - 5} more pending...
                         </div>
-                      ) : (
-                        <Table>
-                          <TableHeader>
-                            <TableRow>
-                              <TableHead>Type</TableHead>
-                              <TableHead>Region</TableHead>
-                              <TableHead>Trust</TableHead>
-                              <TableHead>Submitted</TableHead>
-                              <TableHead className="text-right">Actions</TableHead>
-                            </TableRow>
-                          </TableHeader>
-                          <TableBody>
-                            {contributions?.data?.map((contribution) => (
-                              <TableRow key={contribution.id}>
-                                <TableCell>
-                                  <div className="flex items-center gap-2">
-                                    {contribution.contribution_type === 'new_property' && (
-                                      <Building2 className="h-4 w-4 text-blue-400" />
-                                    )}
-                                    {contribution.contribution_type === 'document' && (
-                                      <FileText className="h-4 w-4 text-green-400" />
-                                    )}
-                                    <span className="font-medium">
-                                      {contribution.contribution_type.replace(/_/g, ' ')}
-                                    </span>
-                                  </div>
-                                </TableCell>
-                                <TableCell>
-                                  <div className="flex items-center gap-1 text-sm text-muted-foreground">
-                                    <MapPin className="h-3 w-3" />
-                                    {contribution.property_region || 'Unknown'}
-                                  </div>
-                                </TableCell>
-                                <TableCell>
-                                  <Badge variant={
-                                    (contribution.trust_score || 0) >= 0.8 ? 'success' :
-                                    (contribution.trust_score || 0) >= 0.5 ? 'warning' : 'destructive'
-                                  }>
-                                    {((contribution.trust_score || 0) * 100).toFixed(0)}%
-                                  </Badge>
-                                </TableCell>
-                                <TableCell>
-                                  <span className="text-sm text-muted-foreground">
-                                    {formatRelativeTime(contribution.created_at)}
-                                  </span>
-                                </TableCell>
-                                <TableCell>
-                                  <div className="flex items-center justify-end gap-2">
-                                    <ContributionReviewDialog
-                                      contribution={contribution}
-                                      onApprove={handleApprove}
-                                      onReject={handleReject}
-                                    />
-                                    <Button
-                                      variant="ghost"
-                                      size="icon"
-                                      className="text-green-400 hover:text-green-300"
-                                      onClick={() => handleApprove(contribution.id, 10)}
-                                    >
-                                      <ThumbsUp className="h-4 w-4" />
-                                    </Button>
-                                    <Button
-                                      variant="ghost"
-                                      size="icon"
-                                      className="text-red-400 hover:text-red-300"
-                                      onClick={() => handleReject(contribution.id, 'Does not meet quality standards')}
-                                    >
-                                      <ThumbsDown className="h-4 w-4" />
-                                    </Button>
-                                  </div>
-                                </TableCell>
-                              </TableRow>
-                            ))}
-                          </TableBody>
-                        </Table>
                       )}
-                    </CardContent>
-                  </Card>
-                </TabsContent>
-
-                <TabsContent value="all" className="mt-4">
-                  <Card>
-                    <CardContent className="p-0">
-                      {/* Same table structure but showing all */}
-                      <Table>
-                        <TableHeader>
-                          <TableRow>
-                            <TableHead>Type</TableHead>
-                            <TableHead>Status</TableHead>
-                            <TableHead>Region</TableHead>
-                            <TableHead>Submitted</TableHead>
-                            <TableHead className="text-right">Actions</TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {contributions?.data?.map((contribution) => (
-                            <TableRow key={contribution.id}>
-                              <TableCell>
-                                <span className="font-medium">
-                                  {contribution.contribution_type.replace(/_/g, ' ')}
-                                </span>
-                              </TableCell>
-                              <TableCell>
-                                <Badge variant={
-                                  contribution.validation_status === 'approved' ? 'success' :
-                                  contribution.validation_status === 'rejected' ? 'destructive' :
-                                  contribution.validation_status === 'pending' ? 'warning' : 'secondary'
-                                }>
-                                  {contribution.validation_status}
-                                </Badge>
-                              </TableCell>
-                              <TableCell>
-                                <span className="text-sm text-muted-foreground">
-                                  {contribution.property_region || 'Unknown'}
-                                </span>
-                              </TableCell>
-                              <TableCell>
-                                <span className="text-sm text-muted-foreground">
-                                  {formatRelativeTime(contribution.created_at)}
-                                </span>
-                              </TableCell>
-                              <TableCell>
-                                <div className="flex items-center justify-end">
-                                  <ContributionReviewDialog
-                                    contribution={contribution}
-                                    onApprove={handleApprove}
-                                    onReject={handleReject}
-                                  />
-                                </div>
-                              </TableCell>
-                            </TableRow>
-                          ))}
-                        </TableBody>
-                      </Table>
-                    </CardContent>
-                  </Card>
-                </TabsContent>
-              </Tabs>
-            </div>
-
-            {/* Leaderboard Sidebar */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-base font-medium flex items-center gap-2">
-                  <Trophy className="h-5 w-5 text-yellow-400" />
-                  Top Contributors
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                {leaderboardLoading ? (
-                  <div className="space-y-4">
-                    {[1, 2, 3, 4, 5].map((i) => (
-                      <div key={i} className="flex items-center gap-3">
-                        <Skeleton className="h-8 w-8 rounded-full" />
-                        <div className="flex-1 space-y-1">
-                          <Skeleton className="h-4 w-24" />
-                          <Skeleton className="h-3 w-16" />
-                        </div>
-                        <Skeleton className="h-6 w-12" />
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="space-y-4">
-                    {leaderboard?.data?.map((contributor, index) => (
-                      <div
-                        key={contributor.user_id}
-                        className="flex items-center gap-3"
-                      >
-                        <div className={cn(
-                          'h-8 w-8 rounded-full flex items-center justify-center text-sm font-bold',
-                          index === 0 && 'bg-yellow-500/20 text-yellow-400',
-                          index === 1 && 'bg-gray-400/20 text-gray-300',
-                          index === 2 && 'bg-orange-500/20 text-orange-400',
-                          index > 2 && 'bg-muted text-muted-foreground'
-                        )}>
-                          {index + 1}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="font-medium text-sm truncate">
-                            {contributor.user_id}
-                          </p>
-                          <p className="text-xs text-muted-foreground">
-                            {contributor.total_contributions} contributions
-                          </p>
-                        </div>
-                        <div className="flex items-center gap-1 text-sm">
-                          <Star className="h-3 w-3 text-yellow-400" />
-                          <span className="font-medium">
-                            {formatNumber(contributor.credits_balance)}
-                          </span>
-                        </div>
-                      </div>
-                    ))}
+                    </div>
                   </div>
                 )}
-              </CardContent>
-            </Card>
-          </div>
+              </div>
+            </TerminalPanel>
+          )}
+
+          {/* Filters */}
+          <TerminalPanel title="Filter Contributions">
+            <div className="flex items-center gap-4">
+              <Select value={selectedStatus} onValueChange={setSelectedStatus}>
+                <SelectTrigger className="w-40 bg-zinc-800 border-zinc-700 font-mono text-xs">
+                  <SelectValue placeholder="Status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Status</SelectItem>
+                  <SelectItem value="pending">Pending</SelectItem>
+                  <SelectItem value="approved">Approved</SelectItem>
+                  <SelectItem value="rejected">Rejected</SelectItem>
+                  <SelectItem value="needs_review">Needs Review</SelectItem>
+                </SelectContent>
+              </Select>
+
+              <Select value={selectedType} onValueChange={setSelectedType}>
+                <SelectTrigger className="w-48 bg-zinc-800 border-zinc-700 font-mono text-xs">
+                  <SelectValue placeholder="Type" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Types</SelectItem>
+                  <SelectItem value="property_listing">Property Listing</SelectItem>
+                  <SelectItem value="price_update">Price Update</SelectItem>
+                  <SelectItem value="property_correction">Correction</SelectItem>
+                  <SelectItem value="new_development">New Development</SelectItem>
+                  <SelectItem value="market_insight">Market Insight</SelectItem>
+                  <SelectItem value="photo_submission">Photo</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </TerminalPanel>
+
+          {/* Contributions List */}
+          <TerminalPanel title={`Contributions (${contributions?.data?.length || 0})`}>
+            {isLoading ? (
+              <div className="space-y-2">
+                {[1, 2, 3, 4, 5].map((i) => (
+                  <div key={i} className="h-24 bg-zinc-800/30 animate-pulse" />
+                ))}
+              </div>
+            ) : contributions?.data?.length === 0 ? (
+              <div className="text-center py-12">
+                <CheckCircle className="w-12 h-12 mx-auto mb-4 text-zinc-700" />
+                <p className="font-mono text-sm text-zinc-500">No contributions found</p>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {contributions?.data?.map((contribution) => (
+                  <div
+                    key={contribution.id}
+                    className="p-4 bg-zinc-800/30 border border-zinc-800 hover:border-zinc-700 transition-colors"
+                  >
+                    <div className="flex items-start justify-between mb-3">
+                      <div className="flex items-center gap-3 flex-1">
+                        {getContributionIcon(contribution.contribution_type)}
+
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 mb-1">
+                            <span className="font-mono text-sm text-white">
+                              {contribution.contribution_type.replace(/_/g, ' ').toUpperCase()}
+                            </span>
+                            {contribution.validation_status === 'pending' && (
+                              <span className="px-2 py-0.5 bg-yellow-900/30 text-yellow-400 border border-yellow-500/30 font-mono text-[9px]">
+                                PENDING
+                              </span>
+                            )}
+                            {contribution.validation_status === 'approved' && (
+                              <span className="px-2 py-0.5 bg-green-900/30 text-green-400 border border-green-500/30 font-mono text-[9px]">
+                                APPROVED
+                              </span>
+                            )}
+                            {contribution.validation_status === 'rejected' && (
+                              <span className="px-2 py-0.5 bg-red-900/30 text-red-400 border border-red-500/30 font-mono text-[9px]">
+                                REJECTED
+                              </span>
+                            )}
+                          </div>
+
+                          <div className="flex items-center gap-4 font-mono text-[10px] text-zinc-500">
+                            {contribution.property_region && (
+                              <>
+                                <div className="flex items-center gap-1">
+                                  <MapPin className="w-3 h-3" />
+                                  <span>{contribution.property_region}</span>
+                                </div>
+                                <span>•</span>
+                              </>
+                            )}
+                            <div className="flex items-center gap-1">
+                              <Clock className="w-3 h-3" />
+                              <span>Submitted {formatRelativeTime(contribution.submitted_at)}</span>
+                            </div>
+                            {contribution.confidence_score !== undefined && (
+                              <>
+                                <span>•</span>
+                                <span className={cn(
+                                  contribution.confidence_score >= 0.8 ? 'text-green-400' :
+                                    contribution.confidence_score >= 0.5 ? 'text-yellow-400' :
+                                      'text-red-400'
+                                )}>
+                                  {(contribution.confidence_score * 100).toFixed(0)}% confidence
+                                </span>
+                              </>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+
+                      {contribution.validation_status === 'pending' && (
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={() => approveMutation.mutate({ id: contribution.id, credits: 10 })}
+                            disabled={approveMutation.isPending}
+                            className="p-2 bg-green-900/30 hover:bg-green-900/50 border border-green-500/30 hover:border-green-500 transition-colors disabled:opacity-50"
+                          >
+                            <ThumbsUp className="w-4 h-4 text-green-400" />
+                          </button>
+                          <button
+                            onClick={() => rejectMutation.mutate({ id: contribution.id, reason: 'Does not meet quality standards' })}
+                            disabled={rejectMutation.isPending}
+                            className="p-2 bg-red-900/30 hover:bg-red-900/50 border border-red-500/30 hover:border-red-500 transition-colors disabled:opacity-50"
+                          >
+                            <ThumbsDown className="w-4 h-4 text-red-400" />
+                          </button>
+                          <button className="p-2 bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 hover:border-amber-500 transition-colors">
+                            <Eye className="w-4 h-4 text-zinc-400" />
+                          </button>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Data Preview */}
+                    <div className="p-3 bg-zinc-900/50 border border-zinc-800 font-mono text-[10px] text-zinc-400">
+                      <pre className="overflow-x-auto">
+                        {JSON.stringify(contribution.data, null, 2).slice(0, 200)}
+                        {JSON.stringify(contribution.data).length > 200 && '...'}
+                      </pre>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </TerminalPanel>
         </div>
-      </ScrollArea>
+
+        {/* Leaderboard Sidebar */}
+        <div>
+          <TerminalPanel title="Top Contributors">
+            <div className="space-y-3">
+              {leaderboard?.data?.map((contributor, index) => (
+                <div
+                  key={contributor.id}
+                  className="flex items-center gap-3 p-3 bg-zinc-800/30 border border-zinc-800"
+                >
+                  <div className={cn(
+                    'w-8 h-8 rounded-full flex items-center justify-center font-mono text-sm font-bold',
+                    index === 0 && 'bg-yellow-500/20 text-yellow-400',
+                    index === 1 && 'bg-gray-400/20 text-gray-300',
+                    index === 2 && 'bg-orange-500/20 text-orange-400',
+                    index > 2 && 'bg-zinc-700 text-zinc-400'
+                  )}>
+                    {index + 1}
+                  </div>
+
+                  <div className="flex-1 min-w-0">
+                    <div className="font-mono text-sm text-white truncate">
+                      {contributor.display_name || 'Anonymous'}
+                    </div>
+                    <div className="font-mono text-[10px] text-zinc-500">
+                      {contributor.total_contributions} contributions
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-1">
+                    <Star className="w-3 h-3 text-yellow-400" />
+                    <span className="font-mono text-xs text-white">
+                      {(contributor.total_credits || 0).toLocaleString()}
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </TerminalPanel>
+        </div>
+      </div>
     </div>
   )
 }

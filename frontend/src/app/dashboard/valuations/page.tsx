@@ -51,6 +51,12 @@ export default function ValuationsPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [refreshing, setRefreshing] = useState(false)
+  const [mounted, setMounted] = useState(false)
+
+  // Set mounted after hydration
+  useEffect(() => {
+    setMounted(true)
+  }, [])
 
   // Fetch valuations and stats
   const fetchData = async (showRefresh = false) => {
@@ -162,12 +168,12 @@ export default function ValuationsPage() {
     count: getStatusCount(f.value),
   }))
 
-  // Timestamp for header
-  const timestamp = new Date().toLocaleTimeString('en-US', {
+  // Timestamp for header (only calculate after mount to avoid hydration mismatch)
+  const timestamp = mounted ? new Date().toLocaleTimeString('en-US', {
     hour12: false,
     hour: '2-digit',
     minute: '2-digit'
-  })
+  }) : '--:--'
 
   return (
     <div className="min-h-screen bg-black text-white p-4 pb-10">

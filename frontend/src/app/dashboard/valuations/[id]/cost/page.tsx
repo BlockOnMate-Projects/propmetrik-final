@@ -11,7 +11,7 @@ import {
   PropertyTypeBadge,
 } from '@/components/ui/terminal'
 import { EditableConstructionCostPanel, type ConstructionCostEditableData, type MaterialIndex } from '@/components/valuation/EditableConstructionCostPanel'
-import { valuationsApi, costApproachApi, overridesApi, landValueApi } from '@/lib/valuation-api'
+import { valuationsApi, costApproachApi, overridesApi, landValueApi, pythonMethodsApi } from '@/lib/valuation-api'
 import { valuationConfigApi, mapPropertyRegionToConstructionCluster, mapShortRegionToDataHub } from '@/lib/api'
 import type { Valuation, CostApproachData } from '@/types/valuation'
 import type { RegionCode as DataHubRegionCode } from '@/types/data-hub'
@@ -147,6 +147,10 @@ export default function CostApproachPage() {
   const [entrepreneurialProfit, setEntrepreneurialProfit] = useState(15) // % of total
   const [siteworks, setSiteworks] = useState(0)
 
+  // Python RICS Engine calculation result
+  const [pythonResult, setPythonResult] = useState<any>(null)
+  const [calculating, setCalculating] = useState(false)
+
   // Calculated values
   const hardCosts = components.reduce((sum, c) => sum + c.total, 0) || (gfa * constructionRate)
   const softCostsAmount = hardCosts * (softCosts / 100)
@@ -224,6 +228,52 @@ export default function CostApproachPage() {
 
     fetchData()
   }, [valuationId])
+
+  // Calculate via Python RICS Engine when inputs change
+  useEffect(() => {
+    const calculateCost = async () => {
+      if (!valuation?.property || gfa <= 0) return
+      
+      setCalculating(true)
+      try {
+        const prop = valuation.property as any
+        const result = await pythonMethodsApi.calculateCostApproach(
+          {
+            id: prop.id,
+            property_type: prop.property_type || 'residential',
+            region: prop.region || 'greater_accra',
+            land_area_sqm: plotSize || prop.land_area_sqm,
+            building_size_sqm: gfa,
+            year_built: prop.year_built,
+            condition: prop.condition,
+            quality_tier: constructionQuality,
+          },
+          {
+            land_value_per_sqm: plotSize > 0 ? landValue / plotSize : undefined,
+            construction_cost_per_sqm: constructionRate,
+            depreciation_overrides: {
+              physical: physicalDepreciation,
+              functional: functionalObsolescence,
+              external: externalObsolescence,
+            },
+          }
+        )
+        
+        if (result.success && result.data) {
+          setPythonResult(result.data)
+        }
+      } catch (err) {
+        console.error('Python Cost calculation error:', err)
+        // Keep using local calculation on error
+      } finally {
+        setCalculating(false)
+      }
+    }
+
+    // Debounce calculation
+    const timer = setTimeout(calculateCost, 500)
+    return () => clearTimeout(timer)
+  }, [valuation, gfa, plotSize, constructionQuality, constructionRate, landValue, physicalDepreciation, functionalObsolescence, externalObsolescence])
 
   // Fetch construction costs from Data Hub
   const fetchConstructionCosts = useCallback(async (shortRegionCode: string) => {
@@ -314,7 +364,7 @@ export default function CostApproachPage() {
     if (valuation?.property && !calculatingDepreciation) {
       calculateAgeDepreciation()
     }
-  }, [valuation?.property?.year_built, valuation?.property?.condition])
+  }, [valuation?.property?.year_built, (valuation?.property as any)?.condition])
 
   // Track when user modifies the rate from system default
   const handleRateChange = (newRate: number) => {
@@ -388,7 +438,7 @@ export default function CostApproachPage() {
   const [calculatingDepreciation, setCalculatingDepreciation] = useState(false)
   
   const calculateAgeDepreciation = async () => {
-    const property = valuation?.property
+    const property = valuation?.property as any
     if (!property?.year_built) {
       // Fallback to simple calculation if no property data
       const yearBuilt = property?.year_built || new Date().getFullYear() - 15
@@ -408,7 +458,7 @@ export default function CostApproachPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           property: {
-            id: valuation.id,
+            id: valuation?.id,
             property_type: property.propertyType || property.property_type || 'residential_house',
             region: property.region || 'greater_accra',
             year_built: property.year_built,
@@ -533,13 +583,30 @@ export default function CostApproachPage() {
         ? existingMethods 
         : [...existingMethods, 'cost_approach']
       
+      // Use Python result as primary, local as fallback
+      const finalValue = pythonResult?.estimated_value ?? indicatedValue
+      const finalConfidence = pythonResult?.confidence_score ?? calculateConfidence()
+      
       await valuationsApi.update(valuationId, {
         method_results: {
           ...(valuation?.method_results || {}),
           cost_approach: {
             method: 'cost_approach',
-            value_ghs: indicatedValue,
-            confidence_score: calculateConfidence(),
+            value: finalValue,
+            value_ghs: finalValue,
+            confidence: finalConfidence,
+            confidence_score: finalConfidence,
+            confidence_level: pythonResult?.confidence_level ?? 'medium',
+            value_range: pythonResult?.value_range ?? { low: finalValue * 0.9, high: finalValue * 1.1 },
+            details: pythonResult?.details ?? {
+              land_value: landValue,
+              construction_cost_new: reproductionCostNew,
+              depreciation_amount: depreciationAmount,
+              depreciated_building_value: depreciatedBuildingValue,
+            },
+            assumptions: pythonResult?.assumptions ?? [],
+            limitations: pythonResult?.limitations ?? [],
+            calculated_by: pythonResult ? 'python_rics_engine' : 'frontend_fallback',
             weight: 0,
             is_primary: false,
             notes: hasOverride ? 'Includes user overrides' : 'System-calculated',
@@ -554,6 +621,9 @@ export default function CostApproachPage() {
         },
         methods_applied: updatedMethods,
         current_step: 5,
+        // Also update summary fields on the main valuation record
+        cost_approach_value: finalValue,
+        cost_approach_confidence: finalConfidence,
       })
 
       // Navigate to next step based on selected methods
@@ -564,7 +634,8 @@ export default function CostApproachPage() {
       const hasResidual = selectedMethods.includes('residual_method')
       
       if (hasIncomeApproach) {
-        router.push(`/dashboard/valuations/${valuationId}/income`)
+        // Route to rental-market first for rental comparable analysis
+        router.push(`/dashboard/valuations/${valuationId}/rental-market`)
       } else if (hasDRC) {
         router.push(`/dashboard/valuations/${valuationId}/drc`)
       } else if (hasProfits) {
@@ -1581,7 +1652,7 @@ export default function CostApproachPage() {
             const selectedMethods = (valuation as any)?.selectedMethods || valuation?.methods_applied || []
             const hasIncomeApproach = selectedMethods.includes('income_approach')
             return hasIncomeApproach 
-              ? 'SAVE & CONTINUE TO INCOME APPROACH →' 
+              ? 'SAVE & CONTINUE TO RENTAL MARKET →' 
               : 'SAVE & CONTINUE TO RECONCILIATION →'
           })()}
         </button>

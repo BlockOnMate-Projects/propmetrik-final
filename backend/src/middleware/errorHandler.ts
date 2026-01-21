@@ -172,8 +172,8 @@ export function errorHandler(
 /**
  * Async handler wrapper to catch promise rejections
  */
-export function asyncHandler(
-  fn: (req: Request, res: Response, next: NextFunction) => Promise<void>
+export function asyncHandler<T = void>(
+  fn: (req: Request, res: Response, next: NextFunction) => Promise<T>
 ) {
   return (req: Request, res: Response, next: NextFunction): void => {
     Promise.resolve(fn(req, res, next)).catch(next);

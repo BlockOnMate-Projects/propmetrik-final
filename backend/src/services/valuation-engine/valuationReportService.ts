@@ -285,11 +285,11 @@ class ValuationReportService {
         id,
         property_id,
         valuation_type,
-        purpose,
-        valuation_date,
-        final_value,
-        value_low,
-        value_high,
+        valuation_purpose as purpose,
+        effective_date as valuation_date,
+        COALESCE(final_value_ghs, estimated_value) as final_value,
+        value_range_low as value_low,
+        value_range_high as value_high,
         primary_method,
         method_results,
         confidence_score,
@@ -333,12 +333,33 @@ class ValuationReportService {
 
   /**
    * Format method results for report
+   * Handles both array and object formats of method_results
    */
   private formatMethodResults(
-    results: any[],
+    results: any,
     options: ReportOptions
   ): ReportData['methods'] {
-    return results.map(result => ({
+    // Convert object format to array format
+    let resultsArray: any[] = [];
+    
+    if (Array.isArray(results)) {
+      resultsArray = results;
+    } else if (results && typeof results === 'object') {
+      // Convert object format {method_name: {value, confidence, ...}} to array
+      resultsArray = Object.entries(results).map(([method, data]: [string, any]) => ({
+        method,
+        value: data.value,
+        confidence: data.confidence,
+        weight: data.weight,
+        details: data.details,
+      }));
+    }
+    
+    if (resultsArray.length === 0) {
+      return [];
+    }
+    
+    return resultsArray.map(result => ({
       name: this.formatMethodName(result.method),
       value: result.value,
       value_formatted: this.formatCurrency(result.value, options.currency || 'GHS'),

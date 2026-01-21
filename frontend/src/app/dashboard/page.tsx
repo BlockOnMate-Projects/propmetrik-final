@@ -151,7 +151,7 @@ export default function DashboardPage() {
               <div key={stage.stage} className="flex items-center gap-3">
                 <div className="w-20 font-mono text-[10px] text-zinc-400">{stage.stage}</div>
                 <div className="flex-1 h-4 bg-zinc-800 relative">
-                  <div 
+                  <div
                     className="h-full bg-amber-500/80"
                     style={{ width: `${(stage.count / 45) * 100}%` }}
                   />
@@ -261,18 +261,10 @@ export default function DashboardPage() {
               <div className="font-mono text-[10px] text-zinc-500 mt-0.5">Add to pipeline</div>
             </Link>
             <Link
-              href="/dashboard/properties/new"
-              className="p-3 border border-zinc-700 hover:border-amber-500 hover:bg-zinc-800/50 transition-colors"
+              href="/dashboard/data-hub"
+              className="p-3 border border-zinc-700 hover:border-amber-500 hover:bg-zinc-800/50 transition-colors col-span-2"
             >
               <div className="font-mono text-xs text-amber-500">F3</div>
-              <div className="font-mono text-sm text-white mt-1">ADD PROPERTY</div>
-              <div className="font-mono text-[10px] text-zinc-500 mt-0.5">Register new asset</div>
-            </Link>
-            <Link
-              href="/dashboard/data-hub"
-              className="p-3 border border-zinc-700 hover:border-amber-500 hover:bg-zinc-800/50 transition-colors"
-            >
-              <div className="font-mono text-xs text-amber-500">F4</div>
               <div className="font-mono text-sm text-white mt-1">DATA HUB</div>
               <div className="font-mono text-[10px] text-zinc-500 mt-0.5">Manage data sources</div>
             </Link>

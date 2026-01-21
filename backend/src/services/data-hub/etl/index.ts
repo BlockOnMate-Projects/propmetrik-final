@@ -24,6 +24,7 @@ export {
   type PropertyMatch,
   type DuplicateGroup,
   type DeduplicationResult,
+  type MergeResult,
   type PropertyForMatching,
 } from './deduplication';
 
@@ -42,6 +43,40 @@ export {
   type EnrichmentField,
   type EnrichmentOptions,
 } from './dataEnrichment';
+
+// NEW: Conflict Resolution Service
+export {
+  ConflictResolutionService,
+  conflictResolutionService,
+  type FieldConflict,
+  type FieldResolution,
+  type PropertyResolution,
+  type SourcedValue,
+  type PropertySourceData,
+} from './conflictResolution';
+
+// NEW: Multi-Source Tracking Service
+export {
+  MultiSourceTrackingService,
+  multiSourceTrackingService,
+  type SourceContribution,
+  type TrackingResult,
+  type PropertySourceSummary,
+  type BatchTrackingOptions,
+} from './multiSourceTracking';
+
+// NEW: ETL Orchestrator (enhanced version)
+export {
+  ETLOrchestrator,
+  etlOrchestrator,
+  runETLPipeline,
+  type ETLJobConfig,
+  type ETLJobResult,
+  type ETLJobStatus,
+  type ETLJobType,
+  type PipelineProgress,
+  type DataQualityReport,
+} from './orchestrator';
 
 /**
  * ETL Pipeline Orchestrator
