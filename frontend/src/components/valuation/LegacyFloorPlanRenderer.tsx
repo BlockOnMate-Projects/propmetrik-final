@@ -103,7 +103,7 @@ export default function LegacyFloorPlanRenderer({
     fabricCanvasRef.current = canvas;
 
     // Disable all interactions (read-only)
-    canvas.forEachObject((obj) => {
+    canvas.forEachObject((obj: fabric.Object) => {
       obj.set({
         selectable: false,
         evented: false,
@@ -405,7 +405,7 @@ export function FloorPlanRenderer({
 
     return (
       <React.Suspense fallback={<div>Loading...</div>}>
-        <BlenderGeometryRenderer blenderGeometry={blenderGeometry} {...props} />
+        <BlenderGeometryRenderer geometry={blenderGeometry} {...props} />
       </React.Suspense>
     );
   }

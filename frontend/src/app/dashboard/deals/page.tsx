@@ -11,7 +11,8 @@ import {
     Loader2,
     Building2,
     User,
-    Calendar
+    Calendar,
+    LineChart
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -31,20 +32,11 @@ import { formatCurrency } from '@/lib/utils'
 // =====================================================
 // PANEL COMPONENT (Matches existing design)
 // =====================================================
-function Panel({ title, children, className }: { 
-    title: string; 
-    children: React.ReactNode; 
-    className?: string;
-}) {
-    return (
-        <div className={cn('border border-zinc-800 bg-zinc-900/50', className)}>
-            <div className="flex items-center justify-between px-3 py-1.5 bg-zinc-800/50 border-b border-zinc-800">
-                <span className="font-mono text-[10px] text-amber-500 tracking-wider">{title}</span>
-            </div>
-            <div className="p-3">{children}</div>
-        </div>
-    )
-}
+// =====================================================
+// PANEL COMPONENT (Replaced with Card for Modern Look)
+// =====================================================
+// Using standard Card component directly instead of custom Panel
+
 
 // =====================================================
 // KANBAN CARD
@@ -52,49 +44,56 @@ function Panel({ title, children, className }: {
 function KanbanCard({ deal }: { deal: Deal }) {
     return (
         <Link href={`/dashboard/deals/${deal.id}`}>
-            <div className="bg-zinc-800/50 border border-zinc-700 p-3 mb-2 hover:border-amber-500/50 transition-colors cursor-pointer group">
+            <Card className="mb-2 p-3 hover:border-primary/50 transition-colors cursor-pointer group bg-card border-border shadow-sm">
                 <div className="flex items-start justify-between mb-2">
-                    <span className="font-mono text-[10px] text-amber-500">{deal.deal_number}</span>
+                    <span className="font-mono text-[10px] text-muted-foreground">{deal.deal_number}</span>
                     <span className={cn(
-                        'font-mono text-[9px] px-1.5 py-0.5',
-                        deal.deal_type === 'sale' && 'bg-green-900/50 text-green-400',
-                        deal.deal_type === 'rental' && 'bg-blue-900/50 text-blue-400',
-                        deal.deal_type === 'development' && 'bg-purple-900/50 text-purple-400'
+                        'text-[10px] px-1.5 py-0.5 rounded-full font-medium',
+                        deal.deal_type === 'sale' && 'bg-green-500/10 text-green-500',
+                        deal.deal_type === 'rental' && 'bg-blue-500/10 text-blue-500',
+                        deal.deal_type === 'development' && 'bg-purple-500/10 text-purple-500'
                     )}>
                         {deal.deal_type?.toUpperCase()}
                     </span>
                 </div>
-                
-                <h4 className="font-mono text-xs text-white mb-2 group-hover:text-amber-500 transition-colors line-clamp-1">
+
+                {deal.has_valuation && (
+                    <div className="flex items-center gap-1 mb-2">
+                        <LineChart className="h-3 w-3 text-primary" />
+                        <span className="text-[10px] font-medium text-primary">Valuation Ready</span>
+                    </div>
+                )}
+
+                <h4 className="text-sm font-medium text-card-foreground mb-2 group-hover:text-primary transition-colors line-clamp-2">
                     {deal.title}
                 </h4>
 
                 {deal.primary_contact_name && (
                     <div className="flex items-center gap-1.5 mb-1">
-                        <User className="h-3 w-3 text-zinc-500" />
-                        <span className="font-mono text-[10px] text-zinc-400 truncate">{deal.primary_contact_name}</span>
+                        <User className="h-3 w-3 text-muted-foreground" />
+                        <span className="text-xs text-muted-foreground truncate">{deal.primary_contact_name}</span>
                     </div>
                 )}
 
                 {deal.property_names && deal.property_names.length > 0 && (
                     <div className="flex items-center gap-1.5 mb-1">
-                        <Building2 className="h-3 w-3 text-zinc-500" />
-                        <span className="font-mono text-[10px] text-zinc-400 truncate">{deal.property_names[0]}</span>
+                        <Building2 className="h-3 w-3 text-muted-foreground" />
+                        <span className="text-xs text-muted-foreground truncate">{deal.property_names[0]}</span>
                     </div>
                 )}
 
-                <div className="flex items-center justify-between mt-3 pt-2 border-t border-zinc-700/50">
-                    <span className="font-mono text-xs text-green-400">
+                <div className="flex items-center justify-between mt-3 pt-2 border-t border-border">
+                    <span className="font-mono text-xs font-medium text-foreground">
                         {deal.deal_value ? formatCurrency(deal.deal_value, deal.currency || 'GHS') : '—'}
                     </span>
                     {deal.expected_close_date && (
-                        <span className="font-mono text-[10px] text-zinc-500 flex items-center gap-1">
+                        <span className="text-[10px] text-muted-foreground flex items-center gap-1">
                             <Calendar className="h-3 w-3" />
                             {new Date(deal.expected_close_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}
                         </span>
                     )}
                 </div>
-            </div>
+            </Card>
         </Link>
     )
 }
@@ -104,33 +103,31 @@ function KanbanCard({ deal }: { deal: Deal }) {
 // =====================================================
 function KanbanColumnComponent({ stage, deals, totalValue }: KanbanColumn) {
     return (
-        <div className="flex-shrink-0 w-72">
-            <div 
-                className="sticky top-0 bg-zinc-900 border border-zinc-800 p-2 mb-2 z-10"
-                style={{ borderLeftColor: stage.stage_color || '#71717a', borderLeftWidth: '3px' }}
+        <div className="flex-shrink-0 w-80">
+            <div
+                className="sticky top-0 bg-background/95 backdrop-blur z-10 p-3 mb-2 flex items-center justify-between rounded-lg border border-border"
+                style={{ borderTopColor: stage.stage_color || '#71717a', borderTopWidth: '3px' }}
             >
-                <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                        <span className="font-mono text-[10px] text-white tracking-wider">
-                            {stage.stage_name}
-                        </span>
-                        <span className="font-mono text-[10px] bg-zinc-800 text-zinc-400 px-1.5 py-0.5 rounded">
-                            {deals.length}
-                        </span>
-                    </div>
+                <div className="flex items-center gap-2">
+                    <span className="text-sm font-medium text-foreground">
+                        {stage.stage_name}
+                    </span>
+                    <span className="text-xs bg-muted text-muted-foreground px-2 py-0.5 rounded-full">
+                        {deals.length}
+                    </span>
                 </div>
-                <div className="font-mono text-[10px] text-green-400 mt-1">
+                <div className="font-mono text-xs font-medium text-muted-foreground">
                     {formatCurrency(totalValue, 'GHS')}
                 </div>
             </div>
-            
-            <div className="space-y-0 max-h-[calc(100vh-320px)] overflow-y-auto pr-1">
+
+            <div className="space-y-0 h-[calc(100vh-280px)] overflow-y-auto pr-2 custom-scrollbar">
                 {deals.map((deal) => (
                     <KanbanCard key={deal.id} deal={deal} />
                 ))}
                 {deals.length === 0 && (
-                    <div className="border border-dashed border-zinc-700 p-4 text-center">
-                        <span className="font-mono text-[10px] text-zinc-600">No deals</span>
+                    <div className="h-24 flex items-center justify-center border-2 border-dashed border-muted rounded-lg">
+                        <span className="text-xs text-muted-foreground">No deals</span>
                     </div>
                 )}
             </div>
@@ -154,50 +151,50 @@ function DealsTable({ deals, isLoading }: { deals: Deal[]; isLoading: boolean })
         <div className="overflow-x-auto">
             <table className="w-full">
                 <thead>
-                    <tr className="text-[10px] font-mono text-zinc-500 border-b border-zinc-800">
-                        <th className="text-left pb-2 w-28">ID</th>
-                        <th className="text-left pb-2">TITLE</th>
-                        <th className="text-left pb-2">CLIENT</th>
-                        <th className="text-left pb-2 w-20">TYPE</th>
-                        <th className="text-right pb-2 w-28">VALUE</th>
-                        <th className="text-left pb-2 w-32">STAGE</th>
-                        <th className="text-left pb-2 w-24">AGENT</th>
-                        <th className="text-right pb-2 w-24">UPDATED</th>
+                    <tr className="text-xs font-medium text-muted-foreground border-b border-border">
+                        <th className="text-left pb-3 pl-4 w-28">ID</th>
+                        <th className="text-left pb-3">Title</th>
+                        <th className="text-left pb-3">Client</th>
+                        <th className="text-left pb-3 w-20">Type</th>
+                        <th className="text-right pb-3 w-28">Value</th>
+                        <th className="text-left pb-3 pl-4 w-32">Stage</th>
+                        <th className="text-left pb-3 w-24">Agent</th>
+                        <th className="text-right pb-3 pr-4 w-24">Updated</th>
                     </tr>
                 </thead>
-                <tbody className="font-mono text-xs">
+                <tbody className="text-sm">
                     {deals.map((deal) => (
-                        <tr 
-                            key={deal.id} 
-                            className="border-b border-zinc-800/50 hover:bg-zinc-800/30 cursor-pointer"
+                        <tr
+                            key={deal.id}
+                            className="border-b border-border hover:bg-muted/50 cursor-pointer transition-colors"
                             onClick={() => window.location.href = `/dashboard/deals/${deal.id}`}
                         >
-                            <td className="py-2.5 text-amber-500">{deal.deal_number}</td>
-                            <td className="py-2.5 text-white">{deal.title}</td>
-                            <td className="py-2.5 text-zinc-300">{deal.primary_contact_name || '—'}</td>
-                            <td className="py-2.5">
+                            <td className="py-3 pl-4 font-mono text-xs text-muted-foreground">{deal.deal_number}</td>
+                            <td className="py-3 font-medium text-foreground">{deal.title}</td>
+                            <td className="py-3 text-muted-foreground">{deal.primary_contact_name || '—'}</td>
+                            <td className="py-3">
                                 <span className={cn(
-                                    'px-1.5 py-0.5 text-[10px]',
-                                    deal.deal_type === 'sale' && 'bg-green-900/50 text-green-400',
-                                    deal.deal_type === 'rental' && 'bg-blue-900/50 text-blue-400',
-                                    deal.deal_type === 'development' && 'bg-purple-900/50 text-purple-400'
+                                    'px-2 py-0.5 text-[10px] rounded-full font-medium',
+                                    deal.deal_type === 'sale' && 'bg-green-500/10 text-green-500',
+                                    deal.deal_type === 'rental' && 'bg-blue-500/10 text-blue-500',
+                                    deal.deal_type === 'development' && 'bg-purple-500/10 text-purple-500'
                                 )}>
                                     {deal.deal_type?.toUpperCase()}
                                 </span>
                             </td>
-                            <td className="py-2.5 text-right text-green-400">
+                            <td className="py-3 text-right font-mono text-xs text-foreground">
                                 {deal.deal_value ? formatCurrency(deal.deal_value, deal.currency || 'GHS') : '—'}
                             </td>
-                            <td className="py-2.5">
-                                <span 
-                                    className="px-1.5 py-0.5 text-[10px] bg-zinc-800 text-zinc-300"
-                                    style={{ borderLeft: `2px solid ${deal.stage_color || '#71717a'}` }}
+                            <td className="py-3 pl-4">
+                                <span
+                                    className="px-2 py-0.5 text-[10px] rounded-full bg-muted text-foreground border border-border"
+                                    style={{ borderColor: deal.stage_color || '#71717a' }}
                                 >
                                     {deal.stage_name}
                                 </span>
                             </td>
-                            <td className="py-2.5 text-zinc-400">{deal.assigned_agent_name || '—'}</td>
-                            <td className="py-2.5 text-right text-zinc-500">
+                            <td className="py-3 text-muted-foreground">{deal.assigned_agent_name || '—'}</td>
+                            <td className="py-3 pr-4 text-right text-xs text-muted-foreground">
                                 {new Date(deal.updated_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}
                             </td>
                         </tr>
@@ -206,7 +203,7 @@ function DealsTable({ deals, isLoading }: { deals: Deal[]; isLoading: boolean })
             </table>
             {deals.length === 0 && (
                 <div className="text-center py-12">
-                    <p className="font-mono text-xs text-zinc-500">No deals found</p>
+                    <p className="text-sm text-muted-foreground">No deals found</p>
                 </div>
             )}
         </div>
@@ -301,57 +298,57 @@ export default function DealsPage() {
     return (
         <div className="space-y-4">
             {/* Header */}
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between pb-4 border-b border-border">
                 <div>
-                    <h1 className="font-mono text-xl text-white">DEAL MANAGEMENT</h1>
-                    <p className="font-mono text-[10px] text-zinc-500">Sales Pipeline & Transaction Tracking</p>
+                    <h1 className="text-2xl font-semibold tracking-tight text-foreground">Deals</h1>
+                    <p className="text-sm text-muted-foreground mt-1">Manage your sales pipeline and track opportunities.</p>
                 </div>
                 <Link href="/dashboard/deals/new">
-                    <Button className="bg-amber-500 text-black hover:bg-amber-400 font-mono text-xs">
+                    <Button className="bg-primary text-primary-foreground hover:bg-primary/90 font-medium text-sm h-9 px-4 rounded-md shadow-sm">
                         <Plus className="h-4 w-4 mr-2" />
-                        NEW DEAL
+                        Create Deal
                     </Button>
                 </Link>
             </div>
 
             {/* Metrics Cards */}
-            <div className="grid gap-3 md:grid-cols-5">
-                <Card className="bg-black border-zinc-800">
-                    <CardContent className="p-3">
-                        <div className="font-mono text-[10px] text-zinc-500 mb-1">ACTIVE DEALS</div>
-                        <div className="font-mono text-xl text-white">
+            <div className="grid gap-4 md:grid-cols-5">
+                <Card className="bg-card border-border shadow-sm">
+                    <CardContent className="p-4">
+                        <div className="text-xs font-medium text-muted-foreground mb-1 uppercase tracking-wider">Active Deals</div>
+                        <div className="text-2xl font-bold text-foreground">
                             {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : metrics?.activeDeals || 0}
                         </div>
                     </CardContent>
                 </Card>
-                <Card className="bg-black border-zinc-800">
-                    <CardContent className="p-3">
-                        <div className="font-mono text-[10px] text-zinc-500 mb-1">PIPELINE VALUE</div>
-                        <div className="font-mono text-xl text-green-400">
+                <Card className="bg-card border-border shadow-sm">
+                    <CardContent className="p-4">
+                        <div className="text-xs font-medium text-muted-foreground mb-1 uppercase tracking-wider">Pipeline Value</div>
+                        <div className="text-2xl font-bold text-primary">
                             {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : formatCurrency(metrics?.totalValue || 0, 'GHS')}
                         </div>
                     </CardContent>
                 </Card>
-                <Card className="bg-black border-zinc-800">
-                    <CardContent className="p-3">
-                        <div className="font-mono text-[10px] text-zinc-500 mb-1">WON THIS MONTH</div>
-                        <div className="font-mono text-xl text-amber-500">
+                <Card className="bg-card border-border shadow-sm">
+                    <CardContent className="p-4">
+                        <div className="text-xs font-medium text-muted-foreground mb-1 uppercase tracking-wider">Won (Month)</div>
+                        <div className="text-2xl font-bold text-green-500">
                             {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : metrics?.wonDeals || 0}
                         </div>
                     </CardContent>
                 </Card>
-                <Card className="bg-black border-zinc-800">
-                    <CardContent className="p-3">
-                        <div className="font-mono text-[10px] text-zinc-500 mb-1">WON VALUE</div>
-                        <div className="font-mono text-xl text-green-400">
+                <Card className="bg-card border-border shadow-sm">
+                    <CardContent className="p-4">
+                        <div className="text-xs font-medium text-muted-foreground mb-1 uppercase tracking-wider">Won Value</div>
+                        <div className="text-2xl font-bold text-green-500">
                             {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : formatCurrency(metrics?.wonValue || 0, 'GHS')}
                         </div>
                     </CardContent>
                 </Card>
-                <Card className="bg-black border-zinc-800">
-                    <CardContent className="p-3">
-                        <div className="font-mono text-[10px] text-zinc-500 mb-1">CONVERSION RATE</div>
-                        <div className="font-mono text-xl text-white">
+                <Card className="bg-card border-border shadow-sm">
+                    <CardContent className="p-4">
+                        <div className="text-xs font-medium text-muted-foreground mb-1 uppercase tracking-wider">Conversion</div>
+                        <div className="text-2xl font-bold text-foreground">
                             {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : `${((metrics?.conversionRate || 0) * 100).toFixed(1)}%`}
                         </div>
                     </CardContent>
@@ -359,19 +356,18 @@ export default function DealsPage() {
             </div>
 
             {/* Filters & View Toggle */}
-            <Panel title="PIPELINE VIEW" className="!p-0">
+            <Card className="border-border bg-card shadow-sm">
                 <div className="p-3 flex items-center gap-3 flex-wrap">
                     {/* Pipeline Selector */}
                     <Select value={selectedPipeline} onValueChange={setSelectedPipeline}>
-                        <SelectTrigger className="w-48 bg-zinc-800 border-zinc-700 text-white font-mono text-xs">
+                        <SelectTrigger className="w-[200px] h-9">
                             <SelectValue placeholder="Select pipeline" />
                         </SelectTrigger>
-                        <SelectContent className="bg-zinc-900 border-zinc-700">
+                        <SelectContent>
                             {pipelines.map((pipeline) => (
-                                <SelectItem 
-                                    key={pipeline.id} 
+                                <SelectItem
+                                    key={pipeline.id}
                                     value={pipeline.id}
-                                    className="font-mono text-xs text-white hover:bg-zinc-800"
                                 >
                                     {pipeline.pipeline_name}
                                 </SelectItem>
@@ -380,25 +376,25 @@ export default function DealsPage() {
                     </Select>
 
                     {/* Search */}
-                    <div className="relative flex-1 max-w-xs">
-                        <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-zinc-500" />
+                    <div className="relative flex-1 max-w-sm">
+                        <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                         <Input
                             placeholder="Search deals..."
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
-                            className="pl-8 bg-zinc-800 border-zinc-700 text-white font-mono text-xs h-9"
+                            className="pl-9 h-9"
                         />
                     </div>
 
                     <div className="flex-1" />
 
                     {/* View Toggle */}
-                    <div className="flex items-center border border-zinc-700 rounded">
+                    <div className="flex items-center border border-border rounded-md bg-muted/50 p-0.5">
                         <button
                             onClick={() => setViewMode('kanban')}
                             className={cn(
-                                'p-2 transition-colors',
-                                viewMode === 'kanban' ? 'bg-amber-500 text-black' : 'text-zinc-400 hover:text-white'
+                                'p-1.5 rounded-sm transition-all',
+                                viewMode === 'kanban' ? 'bg-background shadow text-foreground' : 'text-muted-foreground hover:text-foreground'
                             )}
                         >
                             <LayoutGrid className="h-4 w-4" />
@@ -406,23 +402,23 @@ export default function DealsPage() {
                         <button
                             onClick={() => setViewMode('list')}
                             className={cn(
-                                'p-2 transition-colors',
-                                viewMode === 'list' ? 'bg-amber-500 text-black' : 'text-zinc-400 hover:text-white'
+                                'p-1.5 rounded-sm transition-all',
+                                viewMode === 'list' ? 'bg-background shadow text-foreground' : 'text-muted-foreground hover:text-foreground'
                             )}
                         >
                             <List className="h-4 w-4" />
                         </button>
                     </div>
                 </div>
-            </Panel>
+            </Card>
 
             {/* Error State */}
             {error && (
                 <div className="border border-red-900 bg-red-900/20 p-4 text-center">
                     <p className="font-mono text-xs text-red-400">{error}</p>
-                    <Button 
-                        variant="link" 
-                        onClick={() => window.location.reload()} 
+                    <Button
+                        variant="link"
+                        onClick={() => window.location.reload()}
                         className="text-amber-500 mt-2"
                     >
                         Retry
@@ -440,7 +436,7 @@ export default function DealsPage() {
                     ) : (
                         <div className="flex gap-3 min-w-max">
                             {filteredKanban.map((column) => (
-                                <KanbanColumnComponent 
+                                <KanbanColumnComponent
                                     key={column.stage.id}
                                     stage={column.stage}
                                     deals={column.deals}
@@ -454,9 +450,12 @@ export default function DealsPage() {
 
             {/* List View */}
             {viewMode === 'list' && !error && (
-                <Panel title="ALL DEALS">
+                <Card className="border-border bg-card shadow-sm">
+                    <div className="p-4 border-b border-border">
+                        <h3 className="text-sm font-medium text-foreground">All Deals</h3>
+                    </div>
                     <DealsTable deals={filteredDeals} isLoading={isLoading} />
-                </Panel>
+                </Card>
             )}
         </div>
     )

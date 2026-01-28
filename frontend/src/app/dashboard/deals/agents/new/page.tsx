@@ -185,7 +185,7 @@ export default function NewAgentPage() {
                 specializations: specializations as AgentSpecialization[],
                 regions_covered: regionsCovered,
                 default_commission_rate: commissionRate ? parseFloat(commissionRate) : 5,
-                commission_split_percentage: commissionSplit ? parseFloat(commissionSplit) : 60,
+                commission_split_rate: commissionSplit ? parseFloat(commissionSplit) : 60,
                 status: AgentStatus.ACTIVE,
             })
 

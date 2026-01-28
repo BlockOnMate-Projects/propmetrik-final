@@ -56,17 +56,18 @@ async function getProperties(type?: string): Promise<{ properties: Property[]; t
 }
 
 interface PageProps {
-  searchParams: { type?: string };
+  searchParams: Promise<{ type?: string }>;
 }
 
 export default async function PropertiesListPage({ searchParams }: PageProps) {
+  const params = await searchParams;
   let properties: Property[] = [];
   let total: { sale?: number; rental?: number } = {};
   let error: string | null = null;
-  const activeType = searchParams.type || 'all';
+  const activeType = params.type || 'all';
 
   try {
-    const result = await getProperties(searchParams.type);
+    const result = await getProperties(params.type);
     properties = result.properties;
     total = result.total;
   } catch (e) {

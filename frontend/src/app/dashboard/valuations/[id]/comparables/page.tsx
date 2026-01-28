@@ -792,7 +792,7 @@ function ComparablesPageContent() {
               <div className="flex items-center gap-3 mb-4 p-3 bg-blue-500/10 border border-blue-500/20 rounded">
                 <Info className="w-4 h-4 text-blue-400" />
                 <span className="font-mono text-[11px] text-blue-300">
-                  {searchMeta.currencyConversion.usdCount} USD listings converted to GHS @ {parseFloat(searchMeta.currencyConversion.fxRateUsed || '0').toFixed(2)} rate
+                  {searchMeta.currencyConversion.usdCount} USD listings converted to GHS @ {parseFloat(String(searchMeta.currencyConversion.fxRateUsed || '0')).toFixed(2)} rate
                 </span>
               </div>
             )}

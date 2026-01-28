@@ -19,11 +19,10 @@
 
 import { Router, Request, Response, NextFunction } from 'express';
 import { authenticate, requireOrganization, requireRoles } from '../middleware/auth';
-import { validateRequest } from '../middleware/validation';
-import { body, param, query } from 'express-validator';
+import { body, param, query, validationResult } from 'express-validator';
 import { logger } from '../utils/logger';
-import workflowService, { TriggerEvent, ExecutionContext } from '../services/workflow/workflowService';
-import workflowExecutionEngine from '../services/workflow/workflowExecutionEngine';
+import workflowService, { TriggerEvent, ExecutionContext } from '../../shared-services/workflow/workflowService';
+import workflowExecutionEngine from '../../shared-services/workflow/workflowExecutionEngine';
 
 const router = Router();
 
@@ -32,6 +31,23 @@ const asyncHandler = (fn: (req: Request, res: Response, next: NextFunction) => P
   (req: Request, res: Response, next: NextFunction) => {
     Promise.resolve(fn(req, res, next)).catch(next);
   };
+
+// Helper to validate request
+const validateRequest = (req: Request, res: Response): boolean => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    res.status(400).json({
+      success: false,
+      error: {
+        code: 'VALIDATION_ERROR',
+        message: 'Validation failed',
+        details: errors.array()
+      }
+    });
+    return false;
+  }
+  return true;
+};
 
 // =====================================================
 // LIST WORKFLOWS
@@ -47,8 +63,9 @@ router.get(
     query('page').optional().isInt({ min: 1 }).toInt(),
     query('limit').optional().isInt({ min: 1, max: 100 }).toInt()
   ],
-  validateRequest,
   asyncHandler(async (req: Request, res: Response) => {
+    if (!validateRequest(req, res)) return;
+    
     const organizationId = (req as any).user.organization_id;
     const { status, trigger_type, page = 1, limit = 20 } = req.query;
 
@@ -100,8 +117,9 @@ router.post(
     body('steps').optional().isArray(),
     body('is_active').optional().isBoolean()
   ],
-  validateRequest,
   asyncHandler(async (req: Request, res: Response) => {
+    if (!validateRequest(req, res)) return;
+    
     const organizationId = (req as any).user.organization_id;
     const userId = (req as any).user.id;
 
@@ -132,8 +150,9 @@ router.get(
     query('category').optional().isString(),
     query('is_featured').optional().isBoolean()
   ],
-  validateRequest,
   asyncHandler(async (req: Request, res: Response) => {
+    if (!validateRequest(req, res)) return;
+    
     const { category, is_featured } = req.query;
 
     const templates = await workflowService.getTemplates({
@@ -161,8 +180,9 @@ router.post(
     body('template_id').isUUID(),
     body('name').optional().isString().trim()
   ],
-  validateRequest,
   asyncHandler(async (req: Request, res: Response) => {
+    if (!validateRequest(req, res)) return;
+    
     const organizationId = (req as any).user.organization_id;
     const userId = (req as any).user.id;
     const { template_id, name } = req.body;
@@ -214,8 +234,9 @@ router.get(
   [
     param('id').isUUID()
   ],
-  validateRequest,
   asyncHandler(async (req: Request, res: Response) => {
+    if (!validateRequest(req, res)) return;
+    
     const { id } = req.params;
     const organizationId = (req as any).user.organization_id;
 
@@ -257,8 +278,9 @@ router.put(
     body('steps').optional().isArray(),
     body('is_active').optional().isBoolean()
   ],
-  validateRequest,
   asyncHandler(async (req: Request, res: Response) => {
+    if (!validateRequest(req, res)) return;
+    
     const { id } = req.params;
     const organizationId = (req as any).user.organization_id;
     const userId = (req as any).user.id;
@@ -302,8 +324,9 @@ router.delete(
   [
     param('id').isUUID()
   ],
-  validateRequest,
   asyncHandler(async (req: Request, res: Response) => {
+    if (!validateRequest(req, res)) return;
+    
     const { id } = req.params;
     const organizationId = (req as any).user.organization_id;
     const userId = (req as any).user.id;
@@ -339,8 +362,9 @@ router.post(
   [
     param('id').isUUID()
   ],
-  validateRequest,
   asyncHandler(async (req: Request, res: Response) => {
+    if (!validateRequest(req, res)) return;
+    
     const { id } = req.params;
     const organizationId = (req as any).user.organization_id;
     const userId = (req as any).user.id;
@@ -376,8 +400,9 @@ router.post(
   [
     param('id').isUUID()
   ],
-  validateRequest,
   asyncHandler(async (req: Request, res: Response) => {
+    if (!validateRequest(req, res)) return;
+    
     const { id } = req.params;
     const organizationId = (req as any).user.organization_id;
     const userId = (req as any).user.id;
@@ -416,8 +441,9 @@ router.post(
     body('entity_id').isUUID(),
     body('data').optional().isObject()
   ],
-  validateRequest,
   asyncHandler(async (req: Request, res: Response) => {
+    if (!validateRequest(req, res)) return;
+    
     const { id } = req.params;
     const organizationId = (req as any).user.organization_id;
     const userId = (req as any).user.id;
@@ -476,8 +502,9 @@ router.post(
     param('id').isUUID(),
     body('context').isObject()
   ],
-  validateRequest,
   asyncHandler(async (req: Request, res: Response) => {
+    if (!validateRequest(req, res)) return;
+    
     const { id } = req.params;
     const organizationId = (req as any).user.organization_id;
     const { context } = req.body;
@@ -517,8 +544,9 @@ router.get(
     query('page').optional().isInt({ min: 1 }).toInt(),
     query('limit').optional().isInt({ min: 1, max: 100 }).toInt()
   ],
-  validateRequest,
   asyncHandler(async (req: Request, res: Response) => {
+    if (!validateRequest(req, res)) return;
+    
     const { id } = req.params;
     const organizationId = (req as any).user.organization_id;
     const { status, page = 1, limit = 20 } = req.query;
@@ -559,8 +587,9 @@ router.get(
   [
     param('executionId').isUUID()
   ],
-  validateRequest,
   asyncHandler(async (req: Request, res: Response) => {
+    if (!validateRequest(req, res)) return;
+    
     const { executionId } = req.params;
     const organizationId = (req as any).user.organization_id;
 
@@ -592,8 +621,9 @@ router.post(
   [
     param('executionId').isUUID()
   ],
-  validateRequest,
   asyncHandler(async (req: Request, res: Response) => {
+    if (!validateRequest(req, res)) return;
+    
     const { executionId } = req.params;
     const organizationId = (req as any).user.organization_id;
     const userId = (req as any).user.id;

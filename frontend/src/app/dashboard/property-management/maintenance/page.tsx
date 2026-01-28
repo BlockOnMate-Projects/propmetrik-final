@@ -72,7 +72,7 @@ export default function MaintenancePage() {
 
     const openRequests = workOrders.filter(wo => wo.status === WorkOrderStatus.OPEN).length
     const inProgress = workOrders.filter(wo => wo.status === WorkOrderStatus.IN_PROGRESS).length
-    const criticalTickets = workOrders.filter(wo => wo.priority === 'CRITICAL' || wo.priority === 'HIGH').length
+    const criticalTickets = workOrders.filter(wo => wo.priority === 'critical' || wo.priority === 'high').length
 
     return (
         <div className="space-y-6">
@@ -210,12 +210,12 @@ export default function MaintenancePage() {
                                             <TableCell>
                                                 <div className={`
                                                     flex items-center gap-1 font-mono text-[10px] font-bold uppercase
-                                                    ${wo.priority === 'CRITICAL' ? 'text-red-500' : ''}
-                                                    ${wo.priority === 'HIGH' ? 'text-orange-500' : ''}
-                                                    ${wo.priority === 'MEDIUM' ? 'text-yellow-500' : ''}
-                                                    ${wo.priority === 'LOW' ? 'text-blue-400' : ''}
+                                                    ${wo.priority === 'critical' ? 'text-red-500' : ''}
+                                                    ${wo.priority === 'high' ? 'text-orange-500' : ''}
+                                                    ${wo.priority === 'medium' ? 'text-yellow-500' : ''}
+                                                    ${wo.priority === 'low' ? 'text-blue-400' : ''}
                                                 `}>
-                                                    {(wo.priority === 'CRITICAL' || wo.priority === 'HIGH') && <AlertCircle className="h-3 w-3" />}
+                                                    {(wo.priority === 'critical' || wo.priority === 'high') && <AlertCircle className="h-3 w-3" />}
                                                     {wo.priority}
                                                 </div>
                                             </TableCell>

@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Label } from '@/components/ui/label'
 import Link from 'next/link'
-import { 
+import {
     Building2, Search, Filter, Plus, Home, MapPin, Loader2, BedDouble, Bath, Square,
     MoreVertical, Eye, Edit, Trash2, X, CheckCircle, AlertCircle, Warehouse, DollarSign, SlidersHorizontal
 } from 'lucide-react'
@@ -112,41 +112,40 @@ export default function PropertiesPage() {
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                 <div>
                     <div className="flex items-center gap-2 mb-1">
-                        <Building2 className="h-5 w-5 text-amber-500" />
-                        <h1 className="text-2xl font-bold tracking-tight text-white font-mono uppercase">Property Assets</h1>
+                        <Building2 className="h-5 w-5 text-primary" />
+                        <h1 className="text-2xl font-bold tracking-tight text-foreground font-mono uppercase">Property Assets</h1>
                     </div>
-                    <p className="text-sm text-zinc-500 font-mono">Manage and track your real estate portfolio</p>
                 </div>
                 <div className="flex items-center gap-2">
-                    <Button variant="outline" className={`border-zinc-800 hover:text-amber-500 hover:border-amber-900 bg-zinc-900 font-mono text-xs uppercase ${hasActiveFilters ? 'text-amber-500 border-amber-900' : 'text-zinc-400'}`} onClick={() => setShowFilterSheet(true)}>
+                    <Button variant="outline" className={`border-border hover:text-primary hover:border-primary/50 bg-card font-mono text-xs uppercase ${hasActiveFilters ? 'text-primary border-primary' : 'text-muted-foreground'}`} onClick={() => setShowFilterSheet(true)}>
                         <SlidersHorizontal className="mr-2 h-3 w-3" />Filter
-                        {hasActiveFilters && <Badge className="ml-2 bg-amber-600 text-black text-[9px] h-4 px-1">Active</Badge>}
+                        {hasActiveFilters && <Badge className="ml-2 bg-primary text-primary-foreground text-[9px] h-4 px-1">Active</Badge>}
                     </Button>
                     <Link href="/dashboard/property-management/properties/new">
-                        <Button className="bg-amber-600 hover:bg-amber-500 text-black font-bold font-mono text-xs uppercase"><Plus className="mr-2 h-3 w-3" />Add Property</Button>
+                        <Button className="bg-primary hover:bg-primary/90 text-primary-foreground font-bold font-mono text-xs uppercase"><Plus className="mr-2 h-3 w-3" />Add Property</Button>
                     </Link>
                 </div>
             </div>
 
             <div className="grid gap-4 grid-cols-2 lg:grid-cols-5">
-                <Card className="bg-zinc-900 border-zinc-800"><CardContent className="pt-6"><div className="flex items-center justify-between"><div><p className="text-[10px] font-mono text-zinc-500 uppercase">Total Assets</p><h2 className="text-2xl font-bold text-white font-mono">{isLoading ? '-' : totalProperties}</h2></div><div className="h-10 w-10 rounded-lg bg-amber-500/10 flex items-center justify-center"><Building2 className="h-5 w-5 text-amber-500" /></div></div></CardContent></Card>
-                <Card className="bg-zinc-900 border-zinc-800"><CardContent className="pt-6"><div className="flex items-center justify-between"><div><p className="text-[10px] font-mono text-zinc-500 uppercase">Residential</p><h2 className="text-2xl font-bold text-white font-mono">{isLoading ? '-' : residentialCount}</h2></div><div className="h-10 w-10 rounded-lg bg-sky-500/10 flex items-center justify-center"><Home className="h-5 w-5 text-sky-500" /></div></div></CardContent></Card>
-                <Card className="bg-zinc-900 border-zinc-800"><CardContent className="pt-6"><div className="flex items-center justify-between"><div><p className="text-[10px] font-mono text-zinc-500 uppercase">Commercial</p><h2 className="text-2xl font-bold text-white font-mono">{isLoading ? '-' : commercialCount}</h2></div><div className="h-10 w-10 rounded-lg bg-violet-500/10 flex items-center justify-center"><Building2 className="h-5 w-5 text-violet-500" /></div></div></CardContent></Card>
-                <Card className="bg-zinc-900 border-zinc-800"><CardContent className="pt-6"><div className="flex items-center justify-between"><div><p className="text-[10px] font-mono text-zinc-500 uppercase">Active</p><h2 className="text-2xl font-bold text-emerald-500 font-mono">{isLoading ? '-' : activeCount}</h2></div><div className="h-10 w-10 rounded-lg bg-emerald-500/10 flex items-center justify-center"><CheckCircle className="h-5 w-5 text-emerald-500" /></div></div></CardContent></Card>
-                <Card className="bg-zinc-900 border-zinc-800"><CardContent className="pt-6"><div className="flex items-center justify-between"><div><p className="text-[10px] font-mono text-zinc-500 uppercase">Total Value</p><h2 className="text-lg font-bold text-amber-500 font-mono">{isLoading ? '-' : formatCurrency(totalValue)}</h2></div><div className="h-10 w-10 rounded-lg bg-amber-500/10 flex items-center justify-center"><DollarSign className="h-5 w-5 text-amber-500" /></div></div></CardContent></Card>
+                <Card className="bg-card border-border"><CardContent className="pt-6"><div className="flex items-center justify-between"><div><p className="text-[10px] font-mono text-muted-foreground uppercase">Total Assets</p><h2 className="text-2xl font-bold text-foreground font-mono">{isLoading ? '-' : totalProperties}</h2></div><div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center"><Building2 className="h-5 w-5 text-primary" /></div></div></CardContent></Card>
+                <Card className="bg-card border-border"><CardContent className="pt-6"><div className="flex items-center justify-between"><div><p className="text-[10px] font-mono text-muted-foreground uppercase">Residential</p><h2 className="text-2xl font-bold text-foreground font-mono">{isLoading ? '-' : residentialCount}</h2></div><div className="h-10 w-10 rounded-lg bg-sky-500/10 flex items-center justify-center"><Home className="h-5 w-5 text-sky-500" /></div></div></CardContent></Card>
+                <Card className="bg-card border-border"><CardContent className="pt-6"><div className="flex items-center justify-between"><div><p className="text-[10px] font-mono text-muted-foreground uppercase">Commercial</p><h2 className="text-2xl font-bold text-foreground font-mono">{isLoading ? '-' : commercialCount}</h2></div><div className="h-10 w-10 rounded-lg bg-violet-500/10 flex items-center justify-center"><Building2 className="h-5 w-5 text-violet-500" /></div></div></CardContent></Card>
+                <Card className="bg-card border-border"><CardContent className="pt-6"><div className="flex items-center justify-between"><div><p className="text-[10px] font-mono text-muted-foreground uppercase">Active</p><h2 className="text-2xl font-bold text-emerald-500 font-mono">{isLoading ? '-' : activeCount}</h2></div><div className="h-10 w-10 rounded-lg bg-emerald-500/10 flex items-center justify-center"><CheckCircle className="h-5 w-5 text-emerald-500" /></div></div></CardContent></Card>
+                <Card className="bg-card border-border"><CardContent className="pt-6"><div className="flex items-center justify-between"><div><p className="text-[10px] font-mono text-muted-foreground uppercase">Total Value</p><h2 className="text-lg font-bold text-primary font-mono">{isLoading ? '-' : formatCurrency(totalValue)}</h2></div><div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center"><DollarSign className="h-5 w-5 text-primary" /></div></div></CardContent></Card>
             </div>
 
-            <Card className="bg-zinc-900 border-zinc-800">
+            <Card className="bg-card border-border">
                 <CardHeader className="pb-4">
                     <div className="flex items-center justify-between">
                         <div className="flex items-center gap-3">
-                            <CardTitle className="text-sm font-mono uppercase text-amber-500">Asset Registry</CardTitle>
-                            {hasActiveFilters && <Button variant="ghost" size="sm" className="text-xs text-zinc-500 hover:text-amber-500 h-6 px-2" onClick={clearFilters}><X className="h-3 w-3 mr-1" />Clear filters</Button>}
+                            <CardTitle className="text-sm font-mono uppercase text-primary">Asset Registry</CardTitle>
+                            {hasActiveFilters && <Button variant="ghost" size="sm" className="text-xs text-muted-foreground hover:text-primary h-6 px-2" onClick={clearFilters}><X className="h-3 w-3 mr-1" />Clear filters</Button>}
                         </div>
                         <div className="relative w-64">
-                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-zinc-500" />
-                            <Input placeholder="Search properties..." className="pl-9 bg-black border-zinc-800 text-zinc-300 focus:border-amber-500 font-mono text-xs h-9" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
-                            {searchTerm && <button className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-white" onClick={() => setSearchTerm('')}><X className="h-3 w-3" /></button>}
+                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                            <Input placeholder="Search properties..." className="pl-9 bg-background border-border text-foreground focus:border-primary font-mono text-xs h-9" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
+                            {searchTerm && <button className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground" onClick={() => setSearchTerm('')}><X className="h-3 w-3" /></button>}
                         </div>
                     </div>
                     {(searchTerm || hasActiveFilters) && <p className="text-[10px] text-zinc-500 font-mono mt-2">Showing {filteredProperties.length} of {properties.length} properties</p>}
@@ -158,22 +157,22 @@ export default function PropertiesPage() {
                     ) : (
                         <div className="space-y-3">
                             {filteredProperties.map((property) => (
-                                <div key={property.id} className="p-4 border border-zinc-800 bg-black/30 rounded-lg hover:bg-zinc-800/30 transition-colors group">
+                                <div key={property.id} className="p-4 border border-border bg-card/30 rounded-lg hover:bg-card transition-colors group">
                                     <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                                         <Link href={`/dashboard/property-management/properties/${property.id}`} className="flex flex-1 items-start gap-4 cursor-pointer">
-                                            <div className="h-14 w-14 bg-zinc-900 rounded-lg border border-zinc-800 flex items-center justify-center text-zinc-600 group-hover:border-amber-900/50 group-hover:bg-amber-950/20 transition-colors flex-shrink-0">
+                                            <div className="h-14 w-14 bg-secondary rounded-lg border border-border flex items-center justify-center text-muted-foreground group-hover:border-primary/50 group-hover:bg-primary/10 transition-colors flex-shrink-0">
                                                 <Building2 className="h-6 w-6" />
                                             </div>
                                             <div className="flex-1 min-w-0">
                                                 <div className="flex items-center gap-2 mb-1">
-                                                    <h3 className="font-semibold text-white font-mono group-hover:text-amber-500 transition-colors truncate">{property.title}</h3>
-                                                    <Badge variant="outline" className="text-[9px] border-zinc-700 text-zinc-500 flex-shrink-0">{TYPE_LABELS[property.propertyType] || property.propertyType}</Badge>
+                                                    <h3 className="font-semibold text-foreground font-mono group-hover:text-primary transition-colors truncate">{property.title}</h3>
+                                                    <Badge variant="outline" className="text-[9px] border-border text-muted-foreground flex-shrink-0">{TYPE_LABELS[property.propertyType] || property.propertyType}</Badge>
                                                 </div>
-                                                <div className="flex items-center gap-2 text-xs text-zinc-500 font-mono mb-2">
+                                                <div className="flex items-center gap-2 text-xs text-muted-foreground font-mono mb-2">
                                                     <MapPin className="h-3 w-3 flex-shrink-0" />
                                                     <span className="truncate">{property.addressCity}, {property.region?.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')}</span>
                                                 </div>
-                                                <div className="flex items-center gap-4 text-[10px] text-zinc-500 font-mono">
+                                                <div className="flex items-center gap-4 text-[10px] text-muted-foreground font-mono">
                                                     {property.bedrooms && <span className="flex items-center gap-1"><BedDouble className="h-3 w-3" /> {property.bedrooms} Beds</span>}
                                                     {property.bathrooms && <span className="flex items-center gap-1"><Bath className="h-3 w-3" /> {property.bathrooms} Baths</span>}
                                                     {property.totalAreaSqm && <span className="flex items-center gap-1"><Square className="h-3 w-3" /> {property.totalAreaSqm} m²</span>}
@@ -182,18 +181,18 @@ export default function PropertiesPage() {
                                         </Link>
                                         <div className="flex items-center gap-3 ml-auto">
                                             <div className="text-right mr-2">
-                                                <p className="text-sm font-bold text-amber-500 font-mono">{formatCurrency(property.price, property.priceCurrency || 'GHS')}</p>
-                                                <p className="text-[9px] text-zinc-600 font-mono">{property.referenceNumber}</p>
+                                                <p className="text-sm font-bold text-primary font-mono">{formatCurrency(property.price, property.priceCurrency || 'GHS')}</p>
+                                                <p className="text-[9px] text-muted-foreground font-mono">{property.referenceNumber}</p>
                                             </div>
-                                            <Badge variant="outline" className={`text-[10px] font-mono uppercase ${property.status === 'active' ? 'border-emerald-900 text-emerald-500 bg-emerald-900/10' : property.status === 'vacant' ? 'border-amber-900 text-amber-500 bg-amber-900/10' : property.status === 'maintenance' ? 'border-red-900 text-red-500 bg-red-900/10' : 'border-zinc-700 text-zinc-400'}`}>{property.status}</Badge>
+                                            <Badge variant="outline" className={`text-[10px] font-mono uppercase ${property.status === 'active' ? 'border-emerald-900 text-emerald-500 bg-emerald-900/10' : property.status === 'vacant' ? 'border-primary/50 text-primary bg-primary/10' : property.status === 'maintenance' ? 'border-destructive/50 text-destructive bg-destructive/10' : 'border-border text-muted-foreground'}`}>{property.status}</Badge>
                                             <DropdownMenu>
-                                                <DropdownMenuTrigger asChild><Button variant="ghost" className="h-8 w-8 p-0 text-zinc-500 hover:text-white"><MoreVertical className="h-4 w-4" /></Button></DropdownMenuTrigger>
-                                                <DropdownMenuContent align="end" className="bg-black border-zinc-800 text-zinc-300">
-                                                    <DropdownMenuLabel className="text-xs font-mono uppercase text-zinc-500">Actions</DropdownMenuLabel>
-                                                    <Link href={`/dashboard/property-management/properties/${property.id}`}><DropdownMenuItem className="hover:bg-zinc-900 focus:bg-zinc-900 cursor-pointer text-xs font-mono"><Eye className="h-3 w-3 mr-2" />View Details</DropdownMenuItem></Link>
-                                                    <Link href={`/dashboard/property-management/properties/${property.id}/edit`}><DropdownMenuItem className="hover:bg-zinc-900 focus:bg-zinc-900 cursor-pointer text-xs font-mono"><Edit className="h-3 w-3 mr-2" />Edit Property</DropdownMenuItem></Link>
-                                                    <DropdownMenuSeparator className="bg-zinc-800" />
-                                                    <DropdownMenuItem className="text-red-500 hover:bg-zinc-900 focus:bg-zinc-900 cursor-pointer text-xs font-mono" onClick={() => { setPropertyToDelete(property); setShowDeleteDialog(true) }}><Trash2 className="h-3 w-3 mr-2" />Delete Property</DropdownMenuItem>
+                                                <DropdownMenuTrigger asChild><Button variant="ghost" className="h-8 w-8 p-0 text-muted-foreground hover:text-foreground"><MoreVertical className="h-4 w-4" /></Button></DropdownMenuTrigger>
+                                                <DropdownMenuContent align="end" className="bg-card border-border text-foreground">
+                                                    <DropdownMenuLabel className="text-xs font-mono uppercase text-muted-foreground">Actions</DropdownMenuLabel>
+                                                    <Link href={`/dashboard/property-management/properties/${property.id}`}><DropdownMenuItem className="hover:bg-secondary focus:bg-secondary cursor-pointer text-xs font-mono"><Eye className="h-3 w-3 mr-2" />View Details</DropdownMenuItem></Link>
+                                                    <Link href={`/dashboard/property-management/properties/${property.id}/edit`}><DropdownMenuItem className="hover:bg-secondary focus:bg-secondary cursor-pointer text-xs font-mono"><Edit className="h-3 w-3 mr-2" />Edit Property</DropdownMenuItem></Link>
+                                                    <DropdownMenuSeparator className="bg-border" />
+                                                    <DropdownMenuItem className="text-destructive hover:bg-secondary focus:bg-secondary cursor-pointer text-xs font-mono" onClick={() => { setPropertyToDelete(property); setShowDeleteDialog(true) }}><Trash2 className="h-3 w-3 mr-2" />Delete Property</DropdownMenuItem>
                                                 </DropdownMenuContent>
                                             </DropdownMenu>
                                         </div>
@@ -201,10 +200,10 @@ export default function PropertiesPage() {
                                 </div>
                             ))}
                             {filteredProperties.length === 0 && (
-                                <div className="text-center py-12 border border-dashed border-zinc-800 rounded-lg">
-                                    <Building2 className="h-12 w-12 text-zinc-700 mx-auto mb-4" />
-                                    <p className="text-zinc-500 font-mono text-sm mb-2">{searchTerm || hasActiveFilters ? 'No properties match your criteria' : 'No properties found'}</p>
-                                    {(searchTerm || hasActiveFilters) ? <Button variant="outline" size="sm" className="border-zinc-700 text-zinc-400 hover:text-amber-500 font-mono text-xs mt-2" onClick={clearFilters}>Clear filters</Button> : <Link href="/dashboard/property-management/properties/new"><Button size="sm" className="bg-amber-600 hover:bg-amber-500 text-black font-mono text-xs mt-2"><Plus className="h-3 w-3 mr-1" />Add First Property</Button></Link>}
+                                <div className="text-center py-12 border border-dashed border-border rounded-lg">
+                                    <Building2 className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                                    <p className="text-muted-foreground font-mono text-sm mb-2">{searchTerm || hasActiveFilters ? 'No properties match your criteria' : 'No properties found'}</p>
+                                    {(searchTerm || hasActiveFilters) ? <Button variant="outline" size="sm" className="border-border text-muted-foreground hover:text-primary font-mono text-xs mt-2" onClick={clearFilters}>Clear filters</Button> : <Link href="/dashboard/property-management/properties/new"><Button size="sm" className="bg-primary hover:bg-primary/90 text-primary-foreground font-mono text-xs mt-2"><Plus className="h-3 w-3 mr-1" />Add First Property</Button></Link>}
                                 </div>
                             )}
                         </div>

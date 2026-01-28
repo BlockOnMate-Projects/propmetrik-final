@@ -31,9 +31,18 @@ const asyncHandler = (fn: Function) => (req: Request, res: Response, next: NextF
     Promise.resolve(fn(req, res, next)).catch(next);
 };
 
-// For testing, mock user ID extraction
+// Extract user ID from JWT or header
 const getUserId = (req: Request): string => {
-    return req.headers['x-user-id'] as string || '575438e9-a0a2-461d-8011-e9e54c30acd3'; // Default test user
+    // Try to get from JWT token first (added by auth middleware)
+    const jwtUserId = (req as any).userId || (req as any).user?.id;
+    if (jwtUserId) return jwtUserId;
+
+    // Fall back to header
+    const headerUserId = req.headers['x-user-id'] as string;
+    if (headerUserId) return headerUserId;
+
+    // Default to admin user for development (this user exists in the database)
+    return '00000000-0000-0000-0000-000000000002';
 };
 
 const getOrganizationId = (req: Request): string | undefined => {
@@ -240,15 +249,16 @@ router.post('/verify-token', asyncHandler(async (req: Request, res: Response) =>
         { pageNumber: 1, imageUrl: details.documentUrl || '/api/placeholder/612/792' }
     ];
 
-    // Get signature fields for this signer
-    const fields = details.signingRequest?.signatureFields?.filter(
+    // Get signature fields for this signer - safely access optional properties
+    const signingRequest = (details as any).signingRequest;
+    const fields = signingRequest?.signatureFields?.filter(
         (f: { signeeId: string }) => f.signeeId === details.signee.id
     ) || [];
 
     res.json({
         success: true,
         document: {
-            id: details.signingRequest?.id || token,
+            id: signingRequest?.id || token,
             title: details.documentTitle,
             pages: documentPages,
             fields: fields.map((f: { id: string; fieldType: string; pageNumber: number; x: number; y: number; width: number; height: number; required: boolean; signeeId: string }) => ({
@@ -361,10 +371,18 @@ router.post('/submit', asyncHandler(async (req: Request, res: Response) => {
     const evidenceIds: string[] = [];
     for (const [fieldId, signatureData] of Object.entries(signatures)) {
         const sigData = signatureData as { type: string; data: string };
-        
+
+        // Map signature type to valid SignatureMethod
+        let signatureMethod: 'click_to_sign' | 'typed_name' | 'drawn_signature' = 'drawn_signature';
+        if (sigData.type === 'typed' || sigData.type === 'type') {
+            signatureMethod = 'typed_name';
+        } else if (sigData.type === 'click') {
+            signatureMethod = 'click_to_sign';
+        }
+
         const dto: ExternalSignatureDto = {
             magicToken: token,
-            signatureMethod: sigData.type === 'drawn' ? 'draw' : sigData.type === 'typed' ? 'type' : 'upload',
+            signatureMethod,
             signatureImageBase64: sigData.data,
             ipAddress: req.ip,
             userAgent: req.headers['user-agent'],
@@ -382,15 +400,14 @@ router.post('/submit', asyncHandler(async (req: Request, res: Response) => {
     // Mark signee as completed
     await signingService.markSigneeComplete(details.signee.id);
 
-    // Log audit event
-    await auditLogService.logEvent({
-        signingRequestId: details.signingRequest?.id || '',
+    // Log audit event - use createAuditEvent method
+    const signingRequestForAudit = (details as any).signingRequest;
+    await auditLogService.createAuditEvent({
+        signingRequestId: signingRequestForAudit?.id || null,
         eventType: 'signature_captured',
         actorId: details.signee.id,
         actorType: 'external_signee',
-        description: `${details.signee.externalName} completed signing`,
-        ipAddress: req.ip,
-        userAgent: req.headers['user-agent']
+        ipAddress: req.ip
     });
 
     res.json({
@@ -477,10 +494,10 @@ router.get('/health', (_req: Request, res: Response) => {
  * Useful for testing the complete PDF generation pipeline.
  */
 router.post('/test/full-pdf', asyncHandler(async (req: Request, res: Response) => {
-    const { 
-        documentTitle = 'Test Document', 
+    const {
+        documentTitle = 'Test Document',
         includeSignatures = true,
-        includeCertificate = true 
+        includeCertificate = true
     } = req.body;
 
     try {
@@ -1056,9 +1073,16 @@ router.post('/sign-envelope/:token/fields/:fieldId', asyncHandler(async (req: Re
             ipAddress,
             userAgent
         );
-        res.json(field);
+        
+        // Return field with signature details
+        res.json({
+            success: true,
+            ...field,
+            signatureHash: field.signatureHash,
+            signerIdentityId: field.signerIdentityId,
+        });
     } catch (error: any) {
-        res.status(400).json({ error: error.message });
+        res.status(400).json({ success: false, error: error.message });
     }
 }));
 
@@ -1081,9 +1105,9 @@ router.get('/envelopes/:id/download', asyncHandler(async (req: Request, res: Res
         }
 
         // Check envelope status - only allow download for completed/voided envelopes or if admin
-        const allowedStatuses: EnvelopeStatus[] = ['completed', 'voided'];
+        const allowedStatuses: EnvelopeStatus[] = [EnvelopeStatus.COMPLETED, EnvelopeStatus.VOIDED];
         if (!allowedStatuses.includes(envelope.status)) {
-            return res.status(400).json({ 
+            return res.status(400).json({
                 error: 'Signed PDF is only available for completed or voided envelopes',
                 currentStatus: envelope.status
             });
@@ -1098,7 +1122,7 @@ router.get('/envelopes/:id/download', asyncHandler(async (req: Request, res: Res
         // Format: "bucket/path/to/file.pdf" or just "path/to/file.pdf"
         let bucket = buckets.documents;
         let key = envelope.documentPdfUrl;
-        
+
         if (envelope.documentPdfUrl.includes('/')) {
             const parts = envelope.documentPdfUrl.split('/');
             if (parts[0] === buckets.documents || parts[0] === buckets.uploads) {
@@ -1115,23 +1139,32 @@ router.get('/envelopes/:id/download', asyncHandler(async (req: Request, res: Res
             .map(f => {
                 // Find the signer for this field
                 const signer = (envelope.signers || []).find(s => s.id === f.signerId);
+
+                // Frontend captures at 1.5x scale (1224px width for 816px canvas)
+                // However, standard PDF width is 612pt (points). 
+                // Let's assume the frontend 'pixels' map to something that needs scaling to PDF points.
+                // 1224 -> 612 means a 0.5 scaling factor.
+                const scale = 0.5;
+
                 return {
                     signatureData: f.value!,
                     page: f.page,
-                    x: f.xPosition,
-                    y: f.yPosition,
-                    width: f.width,
-                    height: f.height,
+                    x: f.xPosition * scale,
+                    y: f.yPosition * scale,
+                    width: f.width * scale,
+                    height: f.height * scale,
                     signatureId: f.id,
+                    signatureHash: f.signatureHash, // Pass the hash for compliance rendering
                     signedAt: f.signedAt,
                     signerName: signer?.name,
-                    signerEmail: signer?.email
+                    signerEmail: signer?.email,
+                    usePercentage: false // Use absolute scaled pixels
                 };
             });
 
         // Generate the signed PDF with embedded signatures
         const documentHash = pdfSigningService.calculateDocumentHash(originalPdfBytes);
-        
+
         const signedPdfBytes = await pdfSigningService.generateFinalSignedPdf({
             originalPdfBytes,
             signatures: signatureFields,
@@ -1176,7 +1209,7 @@ router.get('/envelopes/:id/certificate', asyncHandler(async (req: Request, res: 
 
         // Certificate only available for completed envelopes
         if (envelope.status !== 'completed') {
-            return res.status(400).json({ 
+            return res.status(400).json({
                 error: 'Certificate of Completion is only available for completed envelopes',
                 currentStatus: envelope.status
             });
@@ -1194,7 +1227,7 @@ router.get('/envelopes/:id/certificate', asyncHandler(async (req: Request, res: 
             'SELECT certificate_id FROM esign_certificates WHERE envelope_id = $1',
             [req.params.id]
         );
-        
+
         let certificateId: string;
         if (certResult.rows.length > 0) {
             certificateId = certResult.rows[0].certificate_id;

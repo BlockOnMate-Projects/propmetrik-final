@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import {
     ArrowLeft,
@@ -40,7 +40,7 @@ import {
     SelectValue
 } from '@/components/ui/select'
 import { propertyManagementApi } from '@/lib/property-management-api'
-import { Property } from '@/types/property-management'
+import { Property, TenancyStatus } from '@/types/property-management'
 import { format, addMonths, addYears } from 'date-fns'
 
 // Steps for the wizard
@@ -75,6 +75,8 @@ const UTILITIES = [
 
 export default function NewTenantPage() {
     const router = useRouter()
+    const searchParams = useSearchParams()
+    const preSelectedPropertyId = searchParams.get('propertyId')
     const [currentStep, setCurrentStep] = useState(1)
     const [isLoading, setIsLoading] = useState(false)
     const [isSaving, setIsSaving] = useState(false)
@@ -114,7 +116,7 @@ export default function NewTenantPage() {
         maxOccupants: '4',
         petsAllowed: false,
         petDetails: '',
-        useType: 'residential' as const,
+        useType: 'residential' as 'residential' | 'commercial',
         includedAmenities: [] as string[],
         tenantUtilities: ['Electricity', 'Water', 'Internet/Cable', 'Waste Collection'] as string[],
         landlordUtilities: [] as string[],
@@ -124,7 +126,7 @@ export default function NewTenantPage() {
     // Form state - Payment
     const [paymentForm, setPaymentForm] = useState({
         paymentDueDay: '1',
-        paymentMethod: 'mobile_money' as const,
+        paymentMethod: 'mobile_money' as 'bank_transfer' | 'mobile_money' | 'cash' | 'other',
         paymentDetails: '',
         latePaymentPenaltyPercent: '5',
         latePaymentGraceDays: '7',
@@ -150,6 +152,16 @@ export default function NewTenantPage() {
         }
         loadProperties()
     }, [])
+
+    // Pre-select property if in URL
+    useEffect(() => {
+        if (preSelectedPropertyId && properties.length > 0) {
+            handleSelectProperty(preSelectedPropertyId)
+            // Optional: Auto-advance to step 2 if we want to show it selected, 
+            // but maybe users want to start with Tenant Info.
+            // Let's just set the form data.
+        }
+    }, [preSelectedPropertyId, properties])
 
     // Update end date when start date or duration changes
     useEffect(() => {
@@ -260,7 +272,7 @@ export default function NewTenantPage() {
                 paymentFreq: 'monthly',
                 advanceMonths: parseInt(leaseForm.advanceMonths),
                 securityDeposit: securityDeposit,
-                status: 'active'
+                status: TenancyStatus.ACTIVE
             }
 
             await propertyManagementApi.createTenancy(tenancyData)
@@ -280,19 +292,19 @@ export default function NewTenantPage() {
             <div className="flex items-center justify-between">
                 <div className="flex items-center gap-4">
                     <Link href="/dashboard/property-management/tenants">
-                        <Button variant="ghost" size="icon" className="h-8 w-8 text-zinc-400 hover:text-white">
+                        <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground">
                             <ArrowLeft className="h-4 w-4" />
                         </Button>
                     </Link>
                     <div>
-                        <h1 className="text-2xl font-bold tracking-tight text-white font-mono uppercase">Register New Tenant</h1>
-                        <p className="text-sm text-zinc-500 font-mono">Complete all steps to generate a lease agreement</p>
+                        <h1 className="text-2xl font-bold tracking-tight text-foreground font-mono uppercase">Register New Tenant</h1>
+                        <p className="text-sm text-muted-foreground font-mono">Complete all steps to generate a lease agreement</p>
                     </div>
                 </div>
             </div>
 
             {/* Step Progress */}
-            <div className="flex items-center justify-between bg-zinc-900 border border-zinc-800 rounded-lg p-4">
+            <div className="flex items-center justify-between bg-card border border-border rounded-lg p-4">
                 {STEPS.map((step, index) => {
                     const StepIcon = step.icon
                     const isActive = currentStep === step.id
@@ -302,18 +314,16 @@ export default function NewTenantPage() {
                         <React.Fragment key={step.id}>
                             <button
                                 onClick={() => currentStep > step.id && setCurrentStep(step.id)}
-                                className={`flex items-center gap-3 px-4 py-2 rounded-lg transition-all ${
-                                    isActive
-                                        ? 'bg-amber-600 text-black'
-                                        : isCompleted
-                                            ? 'bg-green-900/30 text-green-500 cursor-pointer hover:bg-green-900/50'
-                                            : 'text-zinc-600'
-                                }`}
+                                className={`flex items-center gap-3 px-4 py-2 rounded-lg transition-all ${isActive
+                                    ? 'bg-primary text-primary-foreground'
+                                    : isCompleted
+                                        ? 'bg-green-900/30 text-green-500 cursor-pointer hover:bg-green-900/50'
+                                        : 'text-muted-foreground'
+                                    }`}
                                 disabled={currentStep < step.id}
                             >
-                                <div className={`h-8 w-8 rounded-full flex items-center justify-center ${
-                                    isActive ? 'bg-black/20' : isCompleted ? 'bg-green-500/20' : 'bg-zinc-800'
-                                }`}>
+                                <div className={`h-8 w-8 rounded-full flex items-center justify-center ${isActive ? 'bg-black/20' : isCompleted ? 'bg-green-500/20' : 'bg-secondary'
+                                    }`}>
                                     {isCompleted ? (
                                         <CheckCircle className="h-4 w-4" />
                                     ) : (
@@ -321,18 +331,17 @@ export default function NewTenantPage() {
                                     )}
                                 </div>
                                 <div className="hidden sm:block text-left">
-                                    <div className={`text-xs font-mono font-bold ${isActive ? 'text-black' : ''}`}>
+                                    <div className={`text-xs font-mono font-bold ${isActive ? 'text-primary-foreground' : ''}`}>
                                         {step.title}
                                     </div>
-                                    <div className={`text-[10px] font-mono ${isActive ? 'text-black/70' : 'text-zinc-600'}`}>
+                                    <div className={`text-[10px] font-mono ${isActive ? 'text-primary-foreground/80' : 'text-muted-foreground'}`}>
                                         {step.description}
                                     </div>
                                 </div>
                             </button>
                             {index < STEPS.length - 1 && (
-                                <div className={`flex-1 h-0.5 mx-2 ${
-                                    isCompleted ? 'bg-green-500' : 'bg-zinc-800'
-                                }`} />
+                                <div className={`flex-1 h-0.5 mx-2 ${isCompleted ? 'bg-green-500' : 'bg-border'
+                                    }`} />
                             )}
                         </React.Fragment>
                     )
@@ -344,20 +353,20 @@ export default function NewTenantPage() {
                 {/* Step 1: Tenant Information */}
                 {currentStep === 1 && (
                     <div className="grid gap-6 md:grid-cols-2">
-                        <Card className="bg-zinc-900 border-zinc-800 md:col-span-2">
+                        <Card className="bg-card border-border md:col-span-2">
                             <CardHeader>
-                                <CardTitle className="text-sm font-mono uppercase text-amber-500">Personal Information</CardTitle>
-                                <CardDescription className="text-xs font-mono text-zinc-500">Basic tenant details and identification</CardDescription>
+                                <CardTitle className="text-sm font-mono uppercase text-primary">Personal Information</CardTitle>
+                                <CardDescription className="text-xs font-mono text-muted-foreground">Basic tenant details and identification</CardDescription>
                             </CardHeader>
                             <CardContent className="space-y-4">
                                 <div className="grid gap-4 md:grid-cols-2">
                                     <div className="space-y-2">
-                                        <Label className="text-[10px] font-mono uppercase text-zinc-500">Full Name *</Label>
+                                        <Label className="text-[10px] font-mono uppercase text-muted-foreground">Full Name *</Label>
                                         <Input
                                             placeholder="e.g. Kwame Mensah"
                                             value={tenantForm.fullName}
                                             onChange={(e) => setTenantForm(prev => ({ ...prev, fullName: e.target.value }))}
-                                            className="bg-black border-zinc-800 text-white font-mono focus:border-amber-500"
+                                            className="bg-background border-border text-foreground font-mono focus:border-primary"
                                         />
                                     </div>
                                     <div className="space-y-2">
@@ -419,10 +428,10 @@ export default function NewTenantPage() {
                             </CardContent>
                         </Card>
 
-                        <Card className="bg-zinc-900 border-zinc-800">
+                        <Card className="bg-card border-border">
                             <CardHeader>
-                                <CardTitle className="text-sm font-mono uppercase text-amber-500">Employment</CardTitle>
-                                <CardDescription className="text-xs font-mono text-zinc-500">For income verification</CardDescription>
+                                <CardTitle className="text-sm font-mono uppercase text-primary">Employment</CardTitle>
+                                <CardDescription className="text-xs font-mono text-muted-foreground">For income verification</CardDescription>
                             </CardHeader>
                             <CardContent className="space-y-4">
                                 <div className="space-y-2">
@@ -456,10 +465,10 @@ export default function NewTenantPage() {
                             </CardContent>
                         </Card>
 
-                        <Card className="bg-zinc-900 border-zinc-800">
+                        <Card className="bg-card border-border">
                             <CardHeader>
-                                <CardTitle className="text-sm font-mono uppercase text-amber-500">Emergency Contact</CardTitle>
-                                <CardDescription className="text-xs font-mono text-zinc-500">In case of emergency</CardDescription>
+                                <CardTitle className="text-sm font-mono uppercase text-primary">Emergency Contact</CardTitle>
+                                <CardDescription className="text-xs font-mono text-muted-foreground">In case of emergency</CardDescription>
                             </CardHeader>
                             <CardContent className="space-y-4">
                                 <div className="space-y-2">
@@ -505,23 +514,23 @@ export default function NewTenantPage() {
 
                 {/* Step 2: Property Selection */}
                 {currentStep === 2 && (
-                    <Card className="bg-zinc-900 border-zinc-800">
+                    <Card className="bg-card border-border">
                         <CardHeader>
-                            <CardTitle className="text-sm font-mono uppercase text-amber-500">Select Property</CardTitle>
-                            <CardDescription className="text-xs font-mono text-zinc-500">Choose a property for this tenancy</CardDescription>
+                            <CardTitle className="text-sm font-mono uppercase text-primary">Select Property</CardTitle>
+                            <CardDescription className="text-xs font-mono text-muted-foreground">Choose a property for this tenancy</CardDescription>
                         </CardHeader>
                         <CardContent>
                             {isLoading ? (
                                 <div className="flex flex-col items-center justify-center py-12">
-                                    <Loader2 className="h-8 w-8 text-amber-600 animate-spin" />
-                                    <p className="text-zinc-500 font-mono text-xs mt-4">Loading properties...</p>
+                                    <Loader2 className="h-8 w-8 text-primary animate-spin" />
+                                    <p className="text-muted-foreground font-mono text-xs mt-4">Loading properties...</p>
                                 </div>
                             ) : properties.length === 0 ? (
-                                <div className="text-center py-12 border border-dashed border-zinc-800 rounded-lg">
-                                    <Building2 className="h-12 w-12 text-zinc-800 mx-auto mb-4" />
-                                    <p className="text-zinc-500 font-mono text-sm">No available properties</p>
+                                <div className="text-center py-12 border border-dashed border-border rounded-lg">
+                                    <Building2 className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                                    <p className="text-muted-foreground font-mono text-sm">No available properties</p>
                                     <Link href="/dashboard/property-management/properties/new">
-                                        <Button className="mt-4 bg-amber-600 hover:bg-amber-500 text-black font-mono text-xs">
+                                        <Button className="mt-4 bg-primary hover:bg-primary/90 text-primary-foreground font-mono text-xs">
                                             Add Property First
                                         </Button>
                                     </Link>
@@ -532,34 +541,33 @@ export default function NewTenantPage() {
                                         <button
                                             key={property.id}
                                             onClick={() => handleSelectProperty(property.id)}
-                                            className={`p-4 rounded-lg border text-left transition-all ${
-                                                leaseForm.propertyId === property.id
-                                                    ? 'border-amber-500 bg-amber-950/30'
-                                                    : 'border-zinc-800 bg-zinc-950 hover:border-zinc-700'
-                                            }`}
+                                            className={`p-4 rounded-lg border text-left transition-all ${leaseForm.propertyId === property.id
+                                                ? 'border-primary bg-primary/10'
+                                                : 'border-border bg-card hover:border-primary/50'
+                                                }`}
                                         >
                                             <div className="flex items-start justify-between mb-3">
-                                                <div className="h-10 w-10 rounded bg-zinc-800 flex items-center justify-center">
-                                                    <Home className="h-5 w-5 text-amber-500" />
+                                                <div className="h-10 w-10 rounded bg-secondary flex items-center justify-center">
+                                                    <Home className="h-5 w-5 text-primary" />
                                                 </div>
                                                 {leaseForm.propertyId === property.id && (
-                                                    <CheckCircle className="h-5 w-5 text-amber-500" />
+                                                    <CheckCircle className="h-5 w-5 text-primary" />
                                                 )}
                                             </div>
-                                            <h3 className="font-mono font-bold text-white text-sm mb-1">{property.title}</h3>
-                                            <p className="text-[10px] font-mono text-zinc-500 mb-2">
+                                            <h3 className="font-mono font-bold text-foreground text-sm mb-1">{property.title}</h3>
+                                            <p className="text-[10px] font-mono text-muted-foreground mb-2">
                                                 {property.addressStreet}, {property.addressCity}
                                             </p>
                                             <div className="flex items-center gap-2 flex-wrap">
-                                                <Badge className="bg-zinc-800 text-zinc-400 text-[9px] font-mono">
+                                                <Badge className="bg-secondary text-secondary-foreground text-[9px] font-mono">
                                                     {property.propertyType}
                                                 </Badge>
                                                 {property.bedrooms && (
-                                                    <Badge className="bg-zinc-800 text-zinc-400 text-[9px] font-mono">
+                                                    <Badge className="bg-secondary text-secondary-foreground text-[9px] font-mono">
                                                         {property.bedrooms} BR
                                                     </Badge>
                                                 )}
-                                                <Badge className="bg-amber-900/30 text-amber-500 text-[9px] font-mono">
+                                                <Badge className="bg-primary/10 text-primary text-[9px] font-mono">
                                                     {property.priceCurrency} {property.price?.toLocaleString()}/mo
                                                 </Badge>
                                             </div>
@@ -574,18 +582,18 @@ export default function NewTenantPage() {
                 {/* Step 3: Lease Terms */}
                 {currentStep === 3 && (
                     <div className="grid gap-6 md:grid-cols-2">
-                        <Card className="bg-zinc-900 border-zinc-800">
+                        <Card className="bg-card border-border">
                             <CardHeader>
-                                <CardTitle className="text-sm font-mono uppercase text-amber-500">Lease Duration</CardTitle>
+                                <CardTitle className="text-sm font-mono uppercase text-primary">Lease Duration</CardTitle>
                             </CardHeader>
                             <CardContent className="space-y-4">
                                 <div className="space-y-2">
-                                    <Label className="text-[10px] font-mono uppercase text-zinc-500">Start Date *</Label>
+                                    <Label className="text-[10px] font-mono uppercase text-muted-foreground">Start Date *</Label>
                                     <Input
                                         type="date"
                                         value={leaseForm.leaseStartDate}
                                         onChange={(e) => setLeaseForm(prev => ({ ...prev, leaseStartDate: e.target.value }))}
-                                        className="bg-black border-zinc-800 text-white font-mono focus:border-amber-500"
+                                        className="bg-background border-border text-foreground font-mono focus:border-primary"
                                     />
                                 </div>
                                 <div className="space-y-2">
@@ -594,10 +602,10 @@ export default function NewTenantPage() {
                                         value={leaseForm.leaseDuration}
                                         onValueChange={(v) => setLeaseForm(prev => ({ ...prev, leaseDuration: v }))}
                                     >
-                                        <SelectTrigger className="bg-black border-zinc-800 text-white font-mono">
+                                        <SelectTrigger className="bg-background border-border text-foreground font-mono">
                                             <SelectValue />
                                         </SelectTrigger>
-                                        <SelectContent className="bg-zinc-950 border-zinc-800">
+                                        <SelectContent className="bg-card border-border">
                                             <SelectItem value="6">6 Months</SelectItem>
                                             <SelectItem value="12">1 Year</SelectItem>
                                             <SelectItem value="24">2 Years</SelectItem>
@@ -606,43 +614,43 @@ export default function NewTenantPage() {
                                     </Select>
                                 </div>
                                 <div className="space-y-2">
-                                    <Label className="text-[10px] font-mono uppercase text-zinc-500">End Date</Label>
+                                    <Label className="text-[10px] font-mono uppercase text-muted-foreground">End Date</Label>
                                     <Input
                                         type="date"
                                         value={leaseForm.leaseEndDate}
                                         onChange={(e) => setLeaseForm(prev => ({ ...prev, leaseEndDate: e.target.value }))}
-                                        className="bg-black border-zinc-800 text-white font-mono focus:border-amber-500"
+                                        className="bg-background border-border text-foreground font-mono focus:border-primary"
                                     />
                                 </div>
                             </CardContent>
                         </Card>
 
-                        <Card className="bg-zinc-900 border-zinc-800">
+                        <Card className="bg-card border-border">
                             <CardHeader>
-                                <CardTitle className="text-sm font-mono uppercase text-amber-500">Rent & Deposit</CardTitle>
+                                <CardTitle className="text-sm font-mono uppercase text-primary">Rent & Deposit</CardTitle>
                             </CardHeader>
                             <CardContent className="space-y-4">
                                 <div className="grid grid-cols-2 gap-4">
                                     <div className="space-y-2">
-                                        <Label className="text-[10px] font-mono uppercase text-zinc-500">Monthly Rent *</Label>
+                                        <Label className="text-[10px] font-mono uppercase text-muted-foreground">Monthly Rent *</Label>
                                         <Input
                                             type="number"
                                             placeholder="0.00"
                                             value={leaseForm.monthlyRent}
                                             onChange={(e) => setLeaseForm(prev => ({ ...prev, monthlyRent: e.target.value }))}
-                                            className="bg-black border-zinc-800 text-white font-mono focus:border-amber-500"
+                                            className="bg-background border-border text-foreground font-mono focus:border-primary"
                                         />
                                     </div>
                                     <div className="space-y-2">
-                                        <Label className="text-[10px] font-mono uppercase text-zinc-500">Currency</Label>
+                                        <Label className="text-[10px] font-mono uppercase text-muted-foreground">Currency</Label>
                                         <Select
                                             value={leaseForm.rentCurrency}
                                             onValueChange={(v) => setLeaseForm(prev => ({ ...prev, rentCurrency: v }))}
                                         >
-                                            <SelectTrigger className="bg-black border-zinc-800 text-white font-mono">
+                                            <SelectTrigger className="bg-background border-border text-foreground font-mono">
                                                 <SelectValue />
                                             </SelectTrigger>
-                                            <SelectContent className="bg-zinc-950 border-zinc-800">
+                                            <SelectContent className="bg-card border-border">
                                                 <SelectItem value="GHS">GHS (₵)</SelectItem>
                                                 <SelectItem value="USD">USD ($)</SelectItem>
                                             </SelectContent>
@@ -650,15 +658,15 @@ export default function NewTenantPage() {
                                     </div>
                                 </div>
                                 <div className="space-y-2">
-                                    <Label className="text-[10px] font-mono uppercase text-zinc-500">Advance Rent (Months)</Label>
+                                    <Label className="text-[10px] font-mono uppercase text-muted-foreground">Advance Rent (Months)</Label>
                                     <Select
                                         value={leaseForm.advanceMonths}
                                         onValueChange={(v) => setLeaseForm(prev => ({ ...prev, advanceMonths: v }))}
                                     >
-                                        <SelectTrigger className="bg-black border-zinc-800 text-white font-mono">
+                                        <SelectTrigger className="bg-background border-border text-foreground font-mono">
                                             <SelectValue />
                                         </SelectTrigger>
-                                        <SelectContent className="bg-zinc-950 border-zinc-800">
+                                        <SelectContent className="bg-card border-border">
                                             <SelectItem value="1">1 Month</SelectItem>
                                             <SelectItem value="2">2 Months</SelectItem>
                                             <SelectItem value="3">3 Months</SelectItem>
@@ -667,15 +675,15 @@ export default function NewTenantPage() {
                                     </Select>
                                 </div>
                                 <div className="space-y-2">
-                                    <Label className="text-[10px] font-mono uppercase text-zinc-500">Security Deposit (Months)</Label>
+                                    <Label className="text-[10px] font-mono uppercase text-muted-foreground">Security Deposit (Months)</Label>
                                     <Select
                                         value={leaseForm.securityDepositMonths}
                                         onValueChange={(v) => setLeaseForm(prev => ({ ...prev, securityDepositMonths: v }))}
                                     >
-                                        <SelectTrigger className="bg-black border-zinc-800 text-white font-mono">
+                                        <SelectTrigger className="bg-background border-border text-foreground font-mono">
                                             <SelectValue />
                                         </SelectTrigger>
-                                        <SelectContent className="bg-zinc-950 border-zinc-800">
+                                        <SelectContent className="bg-card border-border">
                                             <SelectItem value="1">1 Month</SelectItem>
                                             <SelectItem value="2">2 Months</SelectItem>
                                             <SelectItem value="3">3 Months</SelectItem>
@@ -683,46 +691,46 @@ export default function NewTenantPage() {
                                     </Select>
                                 </div>
 
-                                <div className="p-4 bg-zinc-950 rounded-lg border border-zinc-800 mt-4">
-                                    <div className="text-[10px] font-mono uppercase text-zinc-500 mb-2">Total Due at Signing</div>
-                                    <div className="text-2xl font-bold text-amber-500 font-mono">
+                                <div className="p-4 bg-background rounded-lg border border-border mt-4">
+                                    <div className="text-[10px] font-mono uppercase text-muted-foreground mb-2">Total Due at Signing</div>
+                                    <div className="text-2xl font-bold text-primary font-mono">
                                         {leaseForm.rentCurrency === 'USD' ? '$' : '₵'}{totalDueAtSigning.toLocaleString()}
                                     </div>
-                                    <div className="text-[10px] text-zinc-600 font-mono mt-1">
-                                        Advance: {leaseForm.rentCurrency === 'USD' ? '$' : '₵'}{advanceAmount.toLocaleString()} + 
+                                    <div className="text-[10px] text-zinc-500 font-mono mt-1">
+                                        Advance: {leaseForm.rentCurrency === 'USD' ? '$' : '₵'}{advanceAmount.toLocaleString()} +
                                         Deposit: {leaseForm.rentCurrency === 'USD' ? '$' : '₵'}{securityDeposit.toLocaleString()}
                                     </div>
                                 </div>
                             </CardContent>
                         </Card>
 
-                        <Card className="bg-zinc-900 border-zinc-800">
+                        <Card className="bg-card border-border">
                             <CardHeader>
-                                <CardTitle className="text-sm font-mono uppercase text-amber-500">Property Use</CardTitle>
+                                <CardTitle className="text-sm font-mono uppercase text-primary">Property Use</CardTitle>
                             </CardHeader>
                             <CardContent className="space-y-4">
                                 <div className="space-y-2">
-                                    <Label className="text-[10px] font-mono uppercase text-zinc-500">Use Type</Label>
+                                    <Label className="text-[10px] font-mono uppercase text-muted-foreground">Use Type</Label>
                                     <Select
                                         value={leaseForm.useType}
                                         onValueChange={(v: 'residential' | 'commercial') => setLeaseForm(prev => ({ ...prev, useType: v }))}
                                     >
-                                        <SelectTrigger className="bg-black border-zinc-800 text-white font-mono">
+                                        <SelectTrigger className="bg-background border-border text-foreground font-mono">
                                             <SelectValue />
                                         </SelectTrigger>
-                                        <SelectContent className="bg-zinc-950 border-zinc-800">
+                                        <SelectContent className="bg-card border-border">
                                             <SelectItem value="residential">Residential</SelectItem>
                                             <SelectItem value="commercial">Commercial</SelectItem>
                                         </SelectContent>
                                     </Select>
                                 </div>
                                 <div className="space-y-2">
-                                    <Label className="text-[10px] font-mono uppercase text-zinc-500">Max Occupants</Label>
+                                    <Label className="text-[10px] font-mono uppercase text-muted-foreground">Max Occupants</Label>
                                     <Input
                                         type="number"
                                         value={leaseForm.maxOccupants}
                                         onChange={(e) => setLeaseForm(prev => ({ ...prev, maxOccupants: e.target.value }))}
-                                        className="bg-black border-zinc-800 text-white font-mono focus:border-amber-500"
+                                        className="bg-background border-border text-foreground font-mono focus:border-primary"
                                     />
                                 </div>
                                 <div className="flex items-center gap-2">
@@ -731,29 +739,28 @@ export default function NewTenantPage() {
                                         checked={leaseForm.petsAllowed}
                                         onCheckedChange={(checked) => setLeaseForm(prev => ({ ...prev, petsAllowed: !!checked }))}
                                     />
-                                    <Label htmlFor="petsAllowed" className="text-xs font-mono text-zinc-400">Pets Allowed</Label>
+                                    <Label htmlFor="petsAllowed" className="text-xs font-mono text-muted-foreground">Pets Allowed</Label>
                                 </div>
                             </CardContent>
                         </Card>
 
-                        <Card className="bg-zinc-900 border-zinc-800">
+                        <Card className="bg-card border-border">
                             <CardHeader>
-                                <CardTitle className="text-sm font-mono uppercase text-amber-500">Utilities</CardTitle>
-                                <CardDescription className="text-xs font-mono text-zinc-500">Toggle to assign to Landlord</CardDescription>
+                                <CardTitle className="text-sm font-mono uppercase text-primary">Utilities</CardTitle>
+                                <CardDescription className="text-xs font-mono text-muted-foreground">Toggle to assign to Landlord</CardDescription>
                             </CardHeader>
                             <CardContent className="space-y-3">
                                 {UTILITIES.map((utility) => {
                                     const isTenantPaying = leaseForm.tenantUtilities.includes(utility)
                                     return (
-                                        <div key={utility} className="flex items-center justify-between p-2 bg-zinc-950 rounded border border-zinc-800">
-                                            <span className="text-xs font-mono text-zinc-300">{utility}</span>
+                                        <div key={utility} className="flex items-center justify-between p-2 bg-background rounded border border-border">
+                                            <span className="text-xs font-mono text-muted-foreground">{utility}</span>
                                             <button
                                                 onClick={() => toggleTenantUtility(utility)}
-                                                className={`px-3 py-1 rounded text-[10px] font-mono font-bold transition-all ${
-                                                    isTenantPaying
-                                                        ? 'bg-amber-600 text-black'
-                                                        : 'bg-zinc-700 text-zinc-300'
-                                                }`}
+                                                className={`px-3 py-1 rounded text-[10px] font-mono font-bold transition-all ${isTenantPaying
+                                                    ? 'bg-primary text-primary-foreground'
+                                                    : 'bg-secondary text-secondary-foreground'
+                                                    }`}
                                             >
                                                 {isTenantPaying ? 'TENANT' : 'LANDLORD'}
                                             </button>
@@ -768,21 +775,21 @@ export default function NewTenantPage() {
                 {/* Step 4: Payment Details */}
                 {currentStep === 4 && (
                     <div className="grid gap-6 md:grid-cols-2">
-                        <Card className="bg-zinc-900 border-zinc-800">
+                        <Card className="bg-card border-border">
                             <CardHeader>
-                                <CardTitle className="text-sm font-mono uppercase text-amber-500">Payment Method</CardTitle>
+                                <CardTitle className="text-sm font-mono uppercase text-primary">Payment Method</CardTitle>
                             </CardHeader>
                             <CardContent className="space-y-4">
                                 <div className="space-y-2">
-                                    <Label className="text-[10px] font-mono uppercase text-zinc-500">Primary Method</Label>
+                                    <Label className="text-[10px] font-mono uppercase text-muted-foreground">Primary Method</Label>
                                     <Select
                                         value={paymentForm.paymentMethod}
                                         onValueChange={(v: 'bank_transfer' | 'mobile_money' | 'cash' | 'other') => setPaymentForm(prev => ({ ...prev, paymentMethod: v }))}
                                     >
-                                        <SelectTrigger className="bg-black border-zinc-800 text-white font-mono">
+                                        <SelectTrigger className="bg-background border-border text-foreground font-mono">
                                             <SelectValue />
                                         </SelectTrigger>
-                                        <SelectContent className="bg-zinc-950 border-zinc-800">
+                                        <SelectContent className="bg-card border-border">
                                             <SelectItem value="bank_transfer">Bank Transfer</SelectItem>
                                             <SelectItem value="mobile_money">Mobile Money</SelectItem>
                                             <SelectItem value="cash">Cash (with receipt)</SelectItem>
@@ -791,7 +798,7 @@ export default function NewTenantPage() {
                                     </Select>
                                 </div>
                                 <div className="space-y-2">
-                                    <Label className="text-[10px] font-mono uppercase text-zinc-500">Payment Details</Label>
+                                    <Label className="text-[10px] font-mono uppercase text-muted-foreground">Payment Details</Label>
                                     <Textarea
                                         placeholder={
                                             paymentForm.paymentMethod === 'bank_transfer'
@@ -802,19 +809,19 @@ export default function NewTenantPage() {
                                         }
                                         value={paymentForm.paymentDetails}
                                         onChange={(e) => setPaymentForm(prev => ({ ...prev, paymentDetails: e.target.value }))}
-                                        className="bg-black border-zinc-800 text-white font-mono focus:border-amber-500"
+                                        className="bg-background border-border text-foreground font-mono focus:border-primary"
                                     />
                                 </div>
                                 <div className="space-y-2">
-                                    <Label className="text-[10px] font-mono uppercase text-zinc-500">Payment Due Day</Label>
+                                    <Label className="text-[10px] font-mono uppercase text-muted-foreground">Payment Due Day</Label>
                                     <Select
                                         value={paymentForm.paymentDueDay}
                                         onValueChange={(v) => setPaymentForm(prev => ({ ...prev, paymentDueDay: v }))}
                                     >
-                                        <SelectTrigger className="bg-black border-zinc-800 text-white font-mono">
+                                        <SelectTrigger className="bg-background border-border text-foreground font-mono">
                                             <SelectValue />
                                         </SelectTrigger>
-                                        <SelectContent className="bg-zinc-950 border-zinc-800">
+                                        <SelectContent className="bg-card border-border">
                                             <SelectItem value="1">1st of month</SelectItem>
                                             <SelectItem value="5">5th of month</SelectItem>
                                             <SelectItem value="15">15th of month</SelectItem>
@@ -825,41 +832,41 @@ export default function NewTenantPage() {
                             </CardContent>
                         </Card>
 
-                        <Card className="bg-zinc-900 border-zinc-800">
+                        <Card className="bg-card border-border">
                             <CardHeader>
-                                <CardTitle className="text-sm font-mono uppercase text-amber-500">Late Payment & Termination</CardTitle>
+                                <CardTitle className="text-sm font-mono uppercase text-primary">Late Payment & Termination</CardTitle>
                             </CardHeader>
                             <CardContent className="space-y-4">
                                 <div className="grid grid-cols-2 gap-4">
                                     <div className="space-y-2">
-                                        <Label className="text-[10px] font-mono uppercase text-zinc-500">Late Fee (%)</Label>
+                                        <Label className="text-[10px] font-mono uppercase text-muted-foreground">Late Fee (%)</Label>
                                         <Input
                                             type="number"
                                             value={paymentForm.latePaymentPenaltyPercent}
                                             onChange={(e) => setPaymentForm(prev => ({ ...prev, latePaymentPenaltyPercent: e.target.value }))}
-                                            className="bg-black border-zinc-800 text-white font-mono focus:border-amber-500"
+                                            className="bg-background border-border text-foreground font-mono focus:border-primary"
                                         />
                                     </div>
                                     <div className="space-y-2">
-                                        <Label className="text-[10px] font-mono uppercase text-zinc-500">Grace Days</Label>
+                                        <Label className="text-[10px] font-mono uppercase text-muted-foreground">Grace Days</Label>
                                         <Input
                                             type="number"
                                             value={paymentForm.latePaymentGraceDays}
                                             onChange={(e) => setPaymentForm(prev => ({ ...prev, latePaymentGraceDays: e.target.value }))}
-                                            className="bg-black border-zinc-800 text-white font-mono focus:border-amber-500"
+                                            className="bg-background border-border text-foreground font-mono focus:border-primary"
                                         />
                                     </div>
                                 </div>
                                 <div className="space-y-2">
-                                    <Label className="text-[10px] font-mono uppercase text-zinc-500">Notice Period (Months)</Label>
+                                    <Label className="text-[10px] font-mono uppercase text-muted-foreground">Notice Period (Months)</Label>
                                     <Select
                                         value={paymentForm.noticePeriodMonths}
                                         onValueChange={(v) => setPaymentForm(prev => ({ ...prev, noticePeriodMonths: v }))}
                                     >
-                                        <SelectTrigger className="bg-black border-zinc-800 text-white font-mono">
+                                        <SelectTrigger className="bg-background border-border text-foreground font-mono">
                                             <SelectValue />
                                         </SelectTrigger>
-                                        <SelectContent className="bg-zinc-950 border-zinc-800">
+                                        <SelectContent className="bg-card border-border">
                                             <SelectItem value="1">1 Month</SelectItem>
                                             <SelectItem value="2">2 Months</SelectItem>
                                             <SelectItem value="3">3 Months</SelectItem>
@@ -867,27 +874,27 @@ export default function NewTenantPage() {
                                     </Select>
                                 </div>
                                 <div className="space-y-2">
-                                    <Label className="text-[10px] font-mono uppercase text-zinc-500">Dispute Resolution City</Label>
+                                    <Label className="text-[10px] font-mono uppercase text-muted-foreground">Dispute Resolution City</Label>
                                     <Input
                                         value={paymentForm.disputeResolutionCity}
                                         onChange={(e) => setPaymentForm(prev => ({ ...prev, disputeResolutionCity: e.target.value }))}
-                                        className="bg-black border-zinc-800 text-white font-mono focus:border-amber-500"
+                                        className="bg-background border-border text-foreground font-mono focus:border-primary"
                                     />
                                 </div>
                             </CardContent>
                         </Card>
 
-                        <Card className="bg-zinc-900 border-zinc-800 md:col-span-2">
+                        <Card className="bg-card border-border md:col-span-2">
                             <CardHeader>
-                                <CardTitle className="text-sm font-mono uppercase text-amber-500">Special Conditions</CardTitle>
-                                <CardDescription className="text-xs font-mono text-zinc-500">Additional terms agreed by both parties</CardDescription>
+                                <CardTitle className="text-sm font-mono uppercase text-primary">Special Conditions</CardTitle>
+                                <CardDescription className="text-xs font-mono text-muted-foreground">Additional terms agreed by both parties</CardDescription>
                             </CardHeader>
                             <CardContent>
                                 <Textarea
                                     placeholder="Enter any additional terms or conditions..."
                                     value={leaseForm.specialConditions}
                                     onChange={(e) => setLeaseForm(prev => ({ ...prev, specialConditions: e.target.value }))}
-                                    className="bg-black border-zinc-800 text-white font-mono focus:border-amber-500 min-h-[100px]"
+                                    className="bg-background border-border text-foreground font-mono focus:border-primary min-h-[100px]"
                                 />
                             </CardContent>
                         </Card>
@@ -897,21 +904,21 @@ export default function NewTenantPage() {
                 {/* Step 5: Review */}
                 {currentStep === 5 && (
                     <div className="space-y-6">
-                        <Card className="bg-zinc-900 border-zinc-800">
+                        <Card className="bg-card border-border">
                             <CardHeader>
-                                <CardTitle className="text-sm font-mono uppercase text-amber-500">Review & Confirm</CardTitle>
-                                <CardDescription className="text-xs font-mono text-zinc-500">Please review all details before generating the lease</CardDescription>
+                                <CardTitle className="text-sm font-mono uppercase text-primary">Review & Confirm</CardTitle>
+                                <CardDescription className="text-xs font-mono text-muted-foreground">Please review all details before generating the lease</CardDescription>
                             </CardHeader>
                             <CardContent>
                                 <div className="grid gap-6 md:grid-cols-2">
                                     {/* Tenant Summary */}
-                                    <div className="p-4 bg-zinc-950 rounded-lg border border-zinc-800">
+                                    <div className="p-4 bg-secondary/50 rounded-lg border border-border">
                                         <div className="flex items-center gap-2 mb-3">
-                                            <User className="h-4 w-4 text-amber-500" />
-                                            <span className="text-xs font-mono uppercase text-amber-500">Tenant</span>
+                                            <User className="h-4 w-4 text-primary" />
+                                            <span className="text-xs font-mono uppercase text-primary">Tenant</span>
                                         </div>
-                                        <div className="text-lg font-bold text-white font-mono mb-2">{tenantForm.fullName}</div>
-                                        <div className="space-y-1 text-xs font-mono text-zinc-400">
+                                        <div className="text-lg font-bold text-foreground font-mono mb-2">{tenantForm.fullName}</div>
+                                        <div className="space-y-1 text-xs font-mono text-muted-foreground">
                                             <p><Phone className="inline h-3 w-3 mr-1" /> {tenantForm.phonePrimary}</p>
                                             {tenantForm.email && <p><Mail className="inline h-3 w-3 mr-1" /> {tenantForm.email}</p>}
                                             <p><Shield className="inline h-3 w-3 mr-1" /> {tenantForm.ghanaCardNumber}</p>
@@ -919,93 +926,93 @@ export default function NewTenantPage() {
                                     </div>
 
                                     {/* Property Summary */}
-                                    <div className="p-4 bg-zinc-950 rounded-lg border border-zinc-800">
+                                    <div className="p-4 bg-secondary/50 rounded-lg border border-border">
                                         <div className="flex items-center gap-2 mb-3">
-                                            <Building2 className="h-4 w-4 text-amber-500" />
-                                            <span className="text-xs font-mono uppercase text-amber-500">Property</span>
+                                            <Building2 className="h-4 w-4 text-primary" />
+                                            <span className="text-xs font-mono uppercase text-primary">Property</span>
                                         </div>
-                                        <div className="text-lg font-bold text-white font-mono mb-2">{selectedProperty?.title}</div>
-                                        <div className="space-y-1 text-xs font-mono text-zinc-400">
+                                        <div className="text-lg font-bold text-foreground font-mono mb-2">{selectedProperty?.title}</div>
+                                        <div className="space-y-1 text-xs font-mono text-muted-foreground">
                                             <p><MapPin className="inline h-3 w-3 mr-1" /> {selectedProperty?.addressStreet}, {selectedProperty?.addressCity}</p>
                                             <p>{selectedProperty?.propertyType} • {selectedProperty?.bedrooms} BR</p>
                                         </div>
                                     </div>
 
                                     {/* Lease Terms Summary */}
-                                    <div className="p-4 bg-zinc-950 rounded-lg border border-zinc-800">
+                                    <div className="p-4 bg-secondary/50 rounded-lg border border-border">
                                         <div className="flex items-center gap-2 mb-3">
-                                            <FileText className="h-4 w-4 text-amber-500" />
-                                            <span className="text-xs font-mono uppercase text-amber-500">Lease Terms</span>
+                                            <FileText className="h-4 w-4 text-primary" />
+                                            <span className="text-xs font-mono uppercase text-primary">Lease Terms</span>
                                         </div>
                                         <div className="grid grid-cols-2 gap-3 text-xs font-mono">
                                             <div>
-                                                <span className="text-zinc-500">Start:</span>
-                                                <p className="text-white">{format(new Date(leaseForm.leaseStartDate), 'dd MMM yyyy')}</p>
+                                                <span className="text-muted-foreground">Start:</span>
+                                                <p className="text-foreground">{format(new Date(leaseForm.leaseStartDate), 'dd MMM yyyy')}</p>
                                             </div>
                                             <div>
-                                                <span className="text-zinc-500">End:</span>
-                                                <p className="text-white">{format(new Date(leaseForm.leaseEndDate), 'dd MMM yyyy')}</p>
+                                                <span className="text-muted-foreground">End:</span>
+                                                <p className="text-foreground">{format(new Date(leaseForm.leaseEndDate), 'dd MMM yyyy')}</p>
                                             </div>
                                             <div>
-                                                <span className="text-zinc-500">Duration:</span>
-                                                <p className="text-white">{leaseForm.leaseDuration} Months</p>
+                                                <span className="text-muted-foreground">Duration:</span>
+                                                <p className="text-foreground">{leaseForm.leaseDuration} Months</p>
                                             </div>
                                             <div>
-                                                <span className="text-zinc-500">Use:</span>
-                                                <p className="text-white capitalize">{leaseForm.useType}</p>
+                                                <span className="text-muted-foreground">Use:</span>
+                                                <p className="text-foreground capitalize">{leaseForm.useType}</p>
                                             </div>
                                         </div>
                                     </div>
 
                                     {/* Financial Summary */}
-                                    <div className="p-4 bg-zinc-950 rounded-lg border border-zinc-800">
+                                    <div className="p-4 bg-secondary/50 rounded-lg border border-border">
                                         <div className="flex items-center gap-2 mb-3">
-                                            <CreditCard className="h-4 w-4 text-amber-500" />
-                                            <span className="text-xs font-mono uppercase text-amber-500">Financials</span>
+                                            <CreditCard className="h-4 w-4 text-primary" />
+                                            <span className="text-xs font-mono uppercase text-primary">Financials</span>
                                         </div>
                                         <div className="grid grid-cols-2 gap-3 text-xs font-mono">
                                             <div>
-                                                <span className="text-zinc-500">Monthly Rent:</span>
-                                                <p className="text-white">{leaseForm.rentCurrency === 'USD' ? '$' : '₵'}{monthlyRent.toLocaleString()}</p>
+                                                <span className="text-muted-foreground">Monthly Rent:</span>
+                                                <p className="text-foreground">{leaseForm.rentCurrency === 'USD' ? '$' : '₵'}{monthlyRent.toLocaleString()}</p>
                                             </div>
                                             <div>
-                                                <span className="text-zinc-500">Advance:</span>
-                                                <p className="text-white">{leaseForm.advanceMonths} mo ({leaseForm.rentCurrency === 'USD' ? '$' : '₵'}{advanceAmount.toLocaleString()})</p>
+                                                <span className="text-muted-foreground">Advance:</span>
+                                                <p className="text-foreground">{leaseForm.advanceMonths} mo ({leaseForm.rentCurrency === 'USD' ? '$' : '₵'}{advanceAmount.toLocaleString()})</p>
                                             </div>
                                             <div>
-                                                <span className="text-zinc-500">Deposit:</span>
-                                                <p className="text-white">{leaseForm.securityDepositMonths} mo ({leaseForm.rentCurrency === 'USD' ? '$' : '₵'}{securityDeposit.toLocaleString()})</p>
+                                                <span className="text-muted-foreground">Deposit:</span>
+                                                <p className="text-foreground">{leaseForm.securityDepositMonths} mo ({leaseForm.rentCurrency === 'USD' ? '$' : '₵'}{securityDeposit.toLocaleString()})</p>
                                             </div>
                                             <div>
-                                                <span className="text-zinc-500">Total Due:</span>
-                                                <p className="text-amber-500 font-bold">{leaseForm.rentCurrency === 'USD' ? '$' : '₵'}{totalDueAtSigning.toLocaleString()}</p>
+                                                <span className="text-muted-foreground">Total Due:</span>
+                                                <p className="text-primary font-bold">{leaseForm.rentCurrency === 'USD' ? '$' : '₵'}{totalDueAtSigning.toLocaleString()}</p>
                                             </div>
                                         </div>
                                     </div>
                                 </div>
 
                                 {/* Utilities */}
-                                <div className="mt-6 p-4 bg-zinc-950 rounded-lg border border-zinc-800">
-                                    <div className="text-xs font-mono uppercase text-amber-500 mb-3">Utilities Assignment</div>
+                                <div className="mt-6 p-4 bg-secondary/50 rounded-lg border border-border">
+                                    <div className="text-xs font-mono uppercase text-primary mb-3">Utilities Assignment</div>
                                     <div className="grid grid-cols-2 gap-4 text-xs font-mono">
                                         <div>
-                                            <span className="text-zinc-500">Tenant Pays:</span>
-                                            <p className="text-white">{leaseForm.tenantUtilities.join(', ') || 'None'}</p>
+                                            <span className="text-muted-foreground">Tenant Pays:</span>
+                                            <p className="text-foreground">{leaseForm.tenantUtilities.join(', ') || 'None'}</p>
                                         </div>
                                         <div>
-                                            <span className="text-zinc-500">Landlord Pays:</span>
-                                            <p className="text-white">{leaseForm.landlordUtilities.join(', ') || 'None'}</p>
+                                            <span className="text-muted-foreground">Landlord Pays:</span>
+                                            <p className="text-foreground">{leaseForm.landlordUtilities.join(', ') || 'None'}</p>
                                         </div>
                                     </div>
                                 </div>
 
                                 {/* Warning */}
-                                <div className="mt-6 p-4 bg-amber-950/30 border border-amber-900/50 rounded-lg flex gap-3">
-                                    <AlertCircle className="h-5 w-5 text-amber-500 shrink-0 mt-0.5" />
+                                <div className="mt-6 p-4 bg-primary/10 border border-primary/20 rounded-lg flex gap-3">
+                                    <AlertCircle className="h-5 w-5 text-primary shrink-0 mt-0.5" />
                                     <div>
-                                        <p className="text-sm font-mono text-amber-500 font-bold">Ready to Generate Lease Agreement</p>
-                                        <p className="text-xs font-mono text-amber-500/70 mt-1">
-                                            This will create the tenant record and generate a tenancy agreement based on the Ghana Rent Act. 
+                                        <p className="text-sm font-mono text-primary font-bold">Ready to Generate Lease Agreement</p>
+                                        <p className="text-xs font-mono text-primary/70 mt-1">
+                                            This will create the tenant record and generate a tenancy agreement based on the Ghana Rent Act.
                                             The lease document can be downloaded for signing.
                                         </p>
                                     </div>
@@ -1017,10 +1024,10 @@ export default function NewTenantPage() {
             </div>
 
             {/* Navigation Buttons */}
-            <div className="flex items-center justify-between pt-4 border-t border-zinc-800">
+            <div className="flex items-center justify-between pt-4 border-t border-border">
                 <Button
                     variant="outline"
-                    className="border-zinc-800 text-zinc-400 hover:text-white font-mono text-xs"
+                    className="border-border text-muted-foreground hover:text-foreground font-mono text-xs"
                     onClick={() => setCurrentStep(prev => Math.max(1, prev - 1))}
                     disabled={currentStep === 1}
                 >
@@ -1030,7 +1037,7 @@ export default function NewTenantPage() {
 
                 {currentStep < 5 ? (
                     <Button
-                        className="bg-amber-600 hover:bg-amber-500 text-black font-bold font-mono text-xs"
+                        className="bg-primary hover:bg-primary/90 text-primary-foreground font-bold font-mono text-xs"
                         onClick={() => setCurrentStep(prev => prev + 1)}
                         disabled={!canProceed()}
                     >

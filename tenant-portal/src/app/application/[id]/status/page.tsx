@@ -67,14 +67,14 @@ export default function ApplicationStatusPage() {
       'lease_sent': 3,
       'signed': 4
     };
-    
+
     // Simple mock logic for demonstration
     const currentStatusIndex = statusMap[status.status.toLowerCase()] ?? 0;
     const stepIndex = steps.findIndex(s => s.id === stepId); // This logic needs alignment with actual enum
-    
+
     // Fallback simple active logic
     if (status.status.toLowerCase() === stepId) return 'current';
-    return 'pending'; 
+    return 'pending';
   };
 
   return (
@@ -96,8 +96,8 @@ export default function ApplicationStatusPage() {
                 </CardDescription>
               </div>
               <Badge variant={
-                status.status === 'approved' ? 'default' : 
-                status.status === 'rejected' ? 'destructive' : 'secondary'
+                status.status === 'approved' ? 'default' :
+                  status.status === 'rejected' ? 'destructive' : 'secondary'
               } className="text-sm px-3 py-1">
                 {status.status.replace(/_/g, ' ')}
               </Badge>
@@ -127,13 +127,16 @@ export default function ApplicationStatusPage() {
               </div>
             </div>
 
-            {(status.status === 'lease_generated' || status.status === 'LEASE_SENT') && (
+            {status.status === 'lease_generated' && (
               <div className="mt-8 p-4 bg-blue-50 border border-blue-100 rounded-lg flex items-center justify-between">
                 <div>
                   <h4 className="font-semibold text-blue-900">Lease Ready to Sign</h4>
                   <p className="text-sm text-blue-700">Congratulations! Please review and sign your lease.</p>
                 </div>
-                <Link href={`/lease/${status.id}`}>
+                <Link href={status.signerToken 
+                  ? `/lease/${status.id}?token=${status.signerToken}` 
+                  : `/lease/${status.id}`
+                }>
                   <Button>Review Lease <ArrowRight className="ml-2 h-4 w-4" /></Button>
                 </Link>
               </div>

@@ -72,7 +72,7 @@ import {
 } from '@/components/ui/sheet'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { propertyManagementApi } from '@/lib/property-management-api'
-import { Vendor, MaintenanceCategory } from '@/types/property-management'
+import { Vendor, MaintenanceCategory, VendorStatus } from '@/types/property-management'
 
 const getServiceIcon = (categories: MaintenanceCategory[] | undefined | null) => {
     // Just use the first category for the icon
@@ -178,7 +178,7 @@ export default function VendorsPage() {
                 address: newVendor.address,
                 serviceCategories: newVendor.serviceCategories as MaintenanceCategory[],
                 notes: newVendor.notes,
-                status: 'active'
+                status: VendorStatus.ACTIVE
             })
             
             setShowAddDialog(false)

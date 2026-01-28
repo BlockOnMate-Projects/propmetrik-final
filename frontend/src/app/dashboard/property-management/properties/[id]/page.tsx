@@ -26,7 +26,10 @@ import {
     Camera,
     AlertTriangle,
     Share2,
-    ExternalLink
+    ExternalLink,
+    Link as LinkIcon,
+    Copy,
+    Check
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
@@ -66,6 +69,8 @@ import {
     Property,
     Tenancy,
     WorkOrder,
+    WorkOrderStatus,
+    PaymentStatus,
     PropertyDocument,
     FinancialRecord
 } from '@/types/property-management'
@@ -74,7 +79,8 @@ import { format } from 'date-fns'
 export default function PropertyDetailPage() {
     const params = useParams()
     const router = useRouter()
-    const propertyId = params.id as string
+    // Ensure propertyId is always a string (handle array case from Next.js)
+    const propertyId = typeof params.id === 'string' ? params.id : Array.isArray(params.id) ? params.id[0] : String(params.id)
 
     const [property, setProperty] = useState<Property | null>(null)
     const [tenancies, setTenancies] = useState<Tenancy[]>([])
@@ -90,11 +96,11 @@ export default function PropertyDetailPage() {
     const [newPhotoTitle, setNewPhotoTitle] = useState('')
     const [error, setError] = useState<string | null>(null)
     const [isUploadDialogOpen, setIsUploadDialogOpen] = useState(false)
-    
+
     // Delete confirmation state
     const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
     const [isDeleting, setIsDeleting] = useState(false)
-    
+
     // Work order dialog state
     const [isWorkOrderDialogOpen, setIsWorkOrderDialogOpen] = useState(false)
     const [isCreatingWorkOrder, setIsCreatingWorkOrder] = useState(false)
@@ -104,7 +110,7 @@ export default function PropertyDetailPage() {
         category: 'general_maintenance',
         priority: 'medium'
     })
-    
+
     // Financial entry dialog state
     const [isFinancialDialogOpen, setIsFinancialDialogOpen] = useState(false)
     const [isCreatingFinancial, setIsCreatingFinancial] = useState(false)
@@ -116,6 +122,17 @@ export default function PropertyDetailPage() {
         description: ''
     })
 
+    // Application link state
+    const [isApplicationLinkDialogOpen, setIsApplicationLinkDialogOpen] = useState(false)
+    const [isCreatingApplicationLink, setIsCreatingApplicationLink] = useState(false)
+    const [applicationLinks, setApplicationLinks] = useState<any[]>([])
+    const [newApplicationLink, setNewApplicationLink] = useState({
+        applicationType: 'rental' as 'rental' | 'purchase',
+        maxUses: 10,
+        expiresInDays: 30
+    })
+    const [copiedLinkId, setCopiedLinkId] = useState<string | null>(null)
+
     const loadData = async () => {
         try {
             setIsLoading(true)
@@ -126,7 +143,8 @@ export default function PropertyDetailPage() {
                 docsRes,
                 financialsRes,
                 roiRes,
-                photosRes
+                photosRes,
+                linksRes
             ] = await Promise.all([
                 propertyManagementApi.getPropertyById(propertyId),
                 propertyManagementApi.getTenancies({ propertyId }),
@@ -134,7 +152,8 @@ export default function PropertyDetailPage() {
                 propertyManagementApi.getDocuments({ propertyId }),
                 propertyManagementApi.getFinancials({ propertyId, limit: 10 }),
                 propertyManagementApi.getROI(propertyId).catch(() => null),
-                propertyManagementApi.getDocuments({ propertyId, type: 'property_photos' })
+                propertyManagementApi.getDocuments({ propertyId, type: 'property_photos' }),
+                propertyManagementApi.getApplicationLinks({ propertyId }).catch(() => [])
             ])
 
             setProperty(propRes)
@@ -144,6 +163,7 @@ export default function PropertyDetailPage() {
             setFinancials(Array.isArray(financialsRes) ? financialsRes : financialsRes.data || [])
             setRoiData(roiRes)
             setAssetPhotos(Array.isArray(photosRes) ? photosRes : photosRes.data || [])
+            setApplicationLinks(Array.isArray(linksRes) ? linksRes : [])
 
         } catch (err) {
             console.error('Failed to load property details:', err)
@@ -214,7 +234,7 @@ export default function PropertyDetailPage() {
                 description: newWorkOrder.description,
                 category: newWorkOrder.category as any,
                 priority: newWorkOrder.priority as any,
-                status: 'open'
+                status: WorkOrderStatus.OPEN
             })
             // Refresh work orders
             const workOrdersRes = await propertyManagementApi.getWorkOrders({ propertyId })
@@ -240,7 +260,7 @@ export default function PropertyDetailPage() {
                 currency: newFinancial.currency,
                 transactionDate: new Date().toISOString(),
                 description: newFinancial.description,
-                status: 'completed'
+                status: PaymentStatus.COMPLETED
             })
             // Refresh financials
             const financialsRes = await propertyManagementApi.getFinancials({ propertyId, limit: 10 })
@@ -268,6 +288,48 @@ export default function PropertyDetailPage() {
         }
     }
 
+    const handleCreateApplicationLink = async () => {
+        try {
+            setIsCreatingApplicationLink(true)
+            const currentPropertyId = propertyId // Capture the value to avoid closure issues
+            const link = await propertyManagementApi.createApplicationLink({
+                propertyId: currentPropertyId,
+                applicationType: newApplicationLink.applicationType,
+                maxUses: newApplicationLink.maxUses,
+                expiresInDays: newApplicationLink.expiresInDays
+            })
+            // Refresh application links
+            const linksRes = await propertyManagementApi.getApplicationLinks({ propertyId: currentPropertyId })
+            setApplicationLinks(Array.isArray(linksRes) ? linksRes : [])
+            setNewApplicationLink({ applicationType: 'rental', maxUses: 10, expiresInDays: 30 })
+            // Auto-copy the new link
+            const tenantPortalUrl = `${window.location.origin.replace(':3000', ':3001')}/apply/${link.token}`
+            await navigator.clipboard.writeText(tenantPortalUrl)
+            setCopiedLinkId(link.id)
+            setTimeout(() => setCopiedLinkId(null), 3000)
+        } catch (err) {
+            console.error('Failed to create application link:', err)
+        } finally {
+            setIsCreatingApplicationLink(false)
+        }
+    }
+
+    const handleCopyApplicationLink = async (token: string, id: string) => {
+        const tenantPortalUrl = `${window.location.origin.replace(':3000', ':3001')}/apply/${token}`
+        await navigator.clipboard.writeText(tenantPortalUrl)
+        setCopiedLinkId(id)
+        setTimeout(() => setCopiedLinkId(null), 3000)
+    }
+
+    const handleDeleteApplicationLink = async (id: string) => {
+        try {
+            await propertyManagementApi.deleteApplicationLink(id)
+            setApplicationLinks(prev => prev.filter(link => link.id !== id))
+        } catch (err) {
+            console.error('Failed to delete application link:', err)
+        }
+    }
+
     if (isLoading) {
         return (
             <div className="flex flex-col items-center justify-center min-h-[400px] space-y-4">
@@ -279,8 +341,8 @@ export default function PropertyDetailPage() {
 
     if (error || !property) {
         return (
-            <div className="p-8 bg-red-950/20 border border-red-900 rounded-lg text-center">
-                <p className="text-red-500 font-mono mb-4">{error || 'Property not found'}</p>
+            <div className="p-8 bg-destructive/10 border border-destructive/20 rounded-lg text-center">
+                <p className="text-destructive font-mono mb-4">{error || 'Property not found'}</p>
                 <Button variant="outline" onClick={() => router.back()}>Go Back</Button>
             </div>
         )
@@ -300,15 +362,144 @@ export default function PropertyDetailPage() {
                         <ArrowLeft className="h-4 w-4 mr-2" />
                         BACK TO LISTING
                     </Button>
-                    <div className="h-4 w-px bg-zinc-800 hidden md:block" />
-                    <Badge variant="outline" className="border-zinc-800 text-zinc-500 font-mono uppercase text-[10px]">
+                    <div className="h-4 w-px bg-border hidden md:block" />
+                    <Badge variant="outline" className="border-border text-muted-foreground font-mono uppercase text-[10px]">
                         REF: {property.referenceNumber}
                     </Badge>
                 </div>
                 <div className="flex items-center gap-2">
-                    <Button 
-                        variant="ghost" 
-                        size="sm" 
+                    <Dialog open={isApplicationLinkDialogOpen} onOpenChange={setIsApplicationLinkDialogOpen}>
+                        <DialogTrigger asChild>
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                className="border-primary/50 text-primary hover:bg-primary/10 hover:border-primary"
+                            >
+                                <LinkIcon className="h-3 w-3 mr-2" />
+                                GENERATE LINK
+                            </Button>
+                        </DialogTrigger>
+                        <DialogContent className="bg-card border-border max-w-lg">
+                            <DialogHeader>
+                                <DialogTitle className="text-foreground font-mono uppercase flex items-center gap-2">
+                                    <LinkIcon className="h-5 w-5 text-primary" />
+                                    Generate Tenant Application Link
+                                </DialogTitle>
+                                <DialogDescription className="text-muted-foreground font-mono text-xs">
+                                    Create a shareable link for prospective tenants to apply for this property.
+                                </DialogDescription>
+                            </DialogHeader>
+                            <div className="space-y-4 py-4">
+                                <div className="space-y-2">
+                                    <Label className="text-xs font-mono text-muted-foreground uppercase">Application Type</Label>
+                                    <Select
+                                        value={newApplicationLink.applicationType}
+                                        onValueChange={(v: 'rental' | 'purchase') => setNewApplicationLink(prev => ({ ...prev, applicationType: v }))}
+                                    >
+                                        <SelectTrigger className="bg-background border-border">
+                                            <SelectValue />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="rental">Rental Application</SelectItem>
+                                            <SelectItem value="purchase">Purchase Application</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div className="space-y-2">
+                                        <Label className="text-xs font-mono text-muted-foreground uppercase">Max Uses</Label>
+                                        <Input
+                                            type="number"
+                                            value={newApplicationLink.maxUses}
+                                            onChange={(e) => setNewApplicationLink(prev => ({ ...prev, maxUses: parseInt(e.target.value) || 10 }))}
+                                            className="bg-background border-border"
+                                            min={1}
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label className="text-xs font-mono text-muted-foreground uppercase">Expires In (Days)</Label>
+                                        <Input
+                                            type="number"
+                                            value={newApplicationLink.expiresInDays}
+                                            onChange={(e) => setNewApplicationLink(prev => ({ ...prev, expiresInDays: parseInt(e.target.value) || 30 }))}
+                                            className="bg-background border-border"
+                                            min={1}
+                                        />
+                                    </div>
+                                </div>
+                                {applicationLinks.length > 0 && (
+                                    <div className="space-y-2">
+                                        <Label className="text-xs font-mono text-muted-foreground uppercase">Active Links</Label>
+                                        <div className="space-y-2 max-h-40 overflow-y-auto">
+                                            {applicationLinks.filter(l => l.isActive).map((link) => (
+                                                <div key={link.id} className="flex items-center justify-between p-2 bg-background rounded border border-border">
+                                                    <div className="flex-1 min-w-0">
+                                                        <p className="text-xs font-mono text-foreground truncate">
+                                                            {link.applicationType === 'rental' ? '🏠' : '💰'} {link.token.substring(0, 16)}...
+                                                        </p>
+                                                        <p className="text-[10px] font-mono text-muted-foreground">
+                                                            Uses: {link.currentUses}/{link.maxUses} • Expires: {format(new Date(link.expiresAt), 'MMM dd')}
+                                                        </p>
+                                                    </div>
+                                                    <div className="flex items-center gap-1">
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="sm"
+                                                            className="h-7 w-7 p-0"
+                                                            onClick={() => handleCopyApplicationLink(link.token, link.id)}
+                                                        >
+                                                            {copiedLinkId === link.id ? (
+                                                                <Check className="h-3 w-3 text-green-500" />
+                                                            ) : (
+                                                                <Copy className="h-3 w-3 text-muted-foreground" />
+                                                            )}
+                                                        </Button>
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="sm"
+                                                            className="h-7 w-7 p-0 text-destructive hover:text-destructive"
+                                                            onClick={() => handleDeleteApplicationLink(link.id)}
+                                                        >
+                                                            <Trash2 className="h-3 w-3" />
+                                                        </Button>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                            <DialogFooter>
+                                <Button
+                                    variant="outline"
+                                    onClick={() => setIsApplicationLinkDialogOpen(false)}
+                                    className="bg-secondary border-border text-muted-foreground hover:bg-secondary/80 hover:text-foreground font-mono text-xs uppercase"
+                                >
+                                    Cancel
+                                </Button>
+                                <Button
+                                    onClick={handleCreateApplicationLink}
+                                    disabled={isCreatingApplicationLink}
+                                    className="bg-primary hover:bg-primary/90 text-primary-foreground font-mono text-xs uppercase"
+                                >
+                                    {isCreatingApplicationLink ? (
+                                        <>
+                                            <Loader2 className="h-3 w-3 mr-2 animate-spin" />
+                                            Creating...
+                                        </>
+                                    ) : (
+                                        <>
+                                            <LinkIcon className="h-3 w-3 mr-2" />
+                                            Generate & Copy Link
+                                        </>
+                                    )}
+                                </Button>
+                            </DialogFooter>
+                        </DialogContent>
+                    </Dialog>
+                    <Button
+                        variant="ghost"
+                        size="sm"
                         className="text-zinc-400 hover:text-white"
                         onClick={handleShareProperty}
                     >
@@ -321,10 +512,10 @@ export default function PropertyDetailPage() {
                             EDIT
                         </Button>
                     </Link>
-                    <Button 
-                        variant="outline" 
-                        size="sm" 
-                        className="border-zinc-800 text-red-500 hover:bg-red-950/30 hover:border-red-900"
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        className="border-destructive/50 text-destructive hover:bg-destructive/10 hover:border-destructive"
                         onClick={() => setIsDeleteDialogOpen(true)}
                     >
                         <Trash2 className="h-3 w-3 mr-2" />
@@ -335,24 +526,24 @@ export default function PropertyDetailPage() {
 
             {/* Delete Confirmation Dialog */}
             <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
-                <AlertDialogContent className="bg-zinc-950 border-zinc-800">
+                <AlertDialogContent className="bg-card border-border">
                     <AlertDialogHeader>
-                        <AlertDialogTitle className="text-white font-mono uppercase flex items-center gap-2">
-                            <AlertTriangle className="h-5 w-5 text-red-500" />
+                        <AlertDialogTitle className="text-foreground font-mono uppercase flex items-center gap-2">
+                            <AlertTriangle className="h-5 w-5 text-destructive" />
                             Confirm Asset Removal
                         </AlertDialogTitle>
-                        <AlertDialogDescription className="text-zinc-400 font-mono text-xs">
-                            This action will permanently delete <span className="text-amber-500">{property.title}</span> and all associated data including tenancies, work orders, documents, and financial records. This cannot be undone.
+                        <AlertDialogDescription className="text-muted-foreground font-mono text-xs">
+                            This action will permanently delete <span className="text-primary">{property.title}</span> and all associated data including tenancies, work orders, documents, and financial records. This cannot be undone.
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
-                        <AlertDialogCancel className="bg-zinc-900 border-zinc-800 text-zinc-400 hover:bg-zinc-800 hover:text-white font-mono text-xs uppercase">
+                        <AlertDialogCancel className="bg-secondary border-border text-muted-foreground hover:bg-secondary/80 hover:text-foreground font-mono text-xs uppercase">
                             Cancel
                         </AlertDialogCancel>
                         <AlertDialogAction
                             onClick={handleDeleteProperty}
                             disabled={isDeleting}
-                            className="bg-red-600 hover:bg-red-500 text-white font-mono text-xs uppercase"
+                            className="bg-destructive hover:bg-destructive/90 text-destructive-foreground font-mono text-xs uppercase"
                         >
                             {isDeleting ? (
                                 <>
@@ -372,33 +563,33 @@ export default function PropertyDetailPage() {
 
             {/* Property Hero Section */}
             <div className="flex flex-col md:flex-row gap-6 items-start">
-                <div className="w-full md:w-1/3 aspect-video bg-zinc-900 rounded-lg border border-zinc-800 flex items-center justify-center text-zinc-700 overflow-hidden relative group">
+                <div className="w-full md:w-1/3 aspect-video bg-card rounded-lg border border-border flex items-center justify-center text-muted-foreground overflow-hidden relative group">
                     {assetPhotos.length > 0 ? (
                         <img src={assetPhotos[0].fileUrl} alt={property.title} className="absolute inset-0 w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
                     ) : (
                         <Building2 className="h-20 w-20 group-hover:scale-110 transition-transform duration-500" />
                     )}
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent flex items-end p-4">
+                    <div className="absolute inset-0 bg-gradient-to-t from-background/80 to-transparent flex items-end p-4">
                         <div>
-                            <Badge className="mb-2 bg-amber-600 text-black font-bold border-none">{property.transactionType}</Badge>
-                            <h2 className="text-xl font-bold text-white font-mono uppercase tracking-tight">{property.title}</h2>
+                            <Badge className="mb-2 bg-primary text-primary-foreground font-bold border-none">{property.transactionType}</Badge>
+                            <h2 className="text-xl font-bold text-foreground font-mono uppercase tracking-tight">{property.title}</h2>
                         </div>
                     </div>
                 </div>
 
                 <div className="flex-1 grid grid-cols-2 md:grid-cols-4 gap-4 w-full">
-                    <Card className="bg-black border-zinc-800 col-span-2">
+                    <Card className="bg-card border-border col-span-2">
                         <CardHeader className="p-4 pb-0">
-                            <CardTitle className="text-[10px] font-mono text-zinc-500 uppercase">Location & Address</CardTitle>
+                            <CardTitle className="text-[10px] font-mono text-muted-foreground uppercase">Location & Address</CardTitle>
                         </CardHeader>
                         <CardContent className="p-4 pt-2">
                             <div className="flex items-start gap-2">
-                                <MapPin className="h-4 w-4 text-amber-500 mt-1 shrink-0" />
+                                <MapPin className="h-4 w-4 text-primary mt-1 shrink-0" />
                                 <div className="space-y-1">
-                                    <p className="text-sm text-white font-mono">{property.addressStreet || 'N/A'}</p>
-                                    <p className="text-xs text-zinc-400 font-mono">{property.addressCity}, {property.region}</p>
+                                    <p className="text-sm text-foreground font-mono">{property.addressStreet || 'N/A'}</p>
+                                    <p className="text-xs text-muted-foreground font-mono">{property.addressCity}, {property.region}</p>
                                     {property.digitalAddress && (
-                                        <Badge variant="outline" className="text-[9px] font-mono border-zinc-700 text-zinc-500 mt-2">
+                                        <Badge variant="outline" className="text-[9px] font-mono border-border text-muted-foreground mt-2">
                                             {property.digitalAddress}
                                         </Badge>
                                     )}
@@ -407,9 +598,9 @@ export default function PropertyDetailPage() {
                         </CardContent>
                     </Card>
 
-                    <Card className="bg-black border-zinc-800">
+                    <Card className="bg-card border-border">
                         <CardHeader className="p-4 pb-0">
-                            <CardTitle className="text-[10px] font-mono text-zinc-500 uppercase">Current Status</CardTitle>
+                            <CardTitle className="text-[10px] font-mono text-muted-foreground uppercase">Current Status</CardTitle>
                         </CardHeader>
                         <CardContent className="p-4 pt-2">
                             <Badge
@@ -425,12 +616,12 @@ export default function PropertyDetailPage() {
                         </CardContent>
                     </Card>
 
-                    <Card className="bg-black border-zinc-800">
+                    <Card className="bg-card border-border">
                         <CardHeader className="p-4 pb-0">
-                            <CardTitle className="text-[10px] font-mono text-zinc-500 uppercase">Valuation</CardTitle>
+                            <CardTitle className="text-[10px] font-mono text-muted-foreground uppercase">Valuation</CardTitle>
                         </CardHeader>
                         <CardContent className="p-4 pt-2">
-                            <p className="text-lg font-bold text-amber-500 font-mono">
+                            <p className="text-lg font-bold text-primary font-mono">
                                 {property.priceCurrency} {property.price.toLocaleString()}
                             </p>
                             <div className="mt-4 flex items-center gap-1 text-[9px] font-mono text-green-500">
@@ -444,28 +635,28 @@ export default function PropertyDetailPage() {
 
             {/* Detailed Tabs */}
             <Tabs defaultValue="overview" className="w-full">
-                <TabsList className="bg-zinc-900 border border-zinc-800 p-1 font-mono text-xs uppercase overflow-x-auto overflow-y-hidden h-auto">
-                    <TabsTrigger value="overview" className="data-[state=active]:bg-black data-[state=active]:text-amber-500">
+                <TabsList className="bg-card border border-border p-1 font-mono text-xs uppercase overflow-x-auto overflow-y-hidden h-auto">
+                    <TabsTrigger value="overview" className="data-[state=active]:bg-background data-[state=active]:text-primary">
                         <Building2 className="h-3 w-3 mr-2 hidden md:block" />
                         Attribute Matrix
                     </TabsTrigger>
-                    <TabsTrigger value="financials" className="data-[state=active]:bg-black data-[state=active]:text-amber-500">
+                    <TabsTrigger value="financials" className="data-[state=active]:bg-background data-[state=active]:text-primary">
                         <Activity className="h-3 w-3 mr-2 hidden md:block" />
                         Financial Intel
                     </TabsTrigger>
-                    <TabsTrigger value="tenants" className="data-[state=active]:bg-black data-[state=active]:text-amber-500">
+                    <TabsTrigger value="tenants" className="data-[state=active]:bg-background data-[state=active]:text-primary">
                         <Users className="h-3 w-3 mr-2 hidden md:block" />
                         Personnel
                     </TabsTrigger>
-                    <TabsTrigger value="maintenance" className="data-[state=active]:bg-black data-[state=active]:text-amber-500">
+                    <TabsTrigger value="maintenance" className="data-[state=active]:bg-background data-[state=active]:text-primary">
                         <Wrench className="h-3 w-3 mr-2 hidden md:block" />
                         Asset Integrity
                     </TabsTrigger>
-                    <TabsTrigger value="documents" className="data-[state=active]:bg-black data-[state=active]:text-amber-500">
+                    <TabsTrigger value="documents" className="data-[state=active]:bg-background data-[state=active]:text-primary">
                         <FileText className="h-3 w-3 mr-2 hidden md:block" />
                         Archives
                     </TabsTrigger>
-                    <TabsTrigger value="assets" className="data-[state=active]:bg-black data-[state=active]:text-amber-500">
+                    <TabsTrigger value="assets" className="data-[state=active]:bg-background data-[state=active]:text-primary">
                         <Camera className="h-3 w-3 mr-2 hidden md:block" />
                         Assets
                     </TabsTrigger>
@@ -474,44 +665,44 @@ export default function PropertyDetailPage() {
                 {/* OVERVIEW TAB */}
                 <TabsContent value="overview" className="mt-6">
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                        <Card className="bg-zinc-950 border-zinc-800 col-span-2">
+                        <Card className="bg-card border-border col-span-2">
                             <CardHeader>
-                                <CardTitle className="text-sm font-mono text-amber-500 uppercase">Core Technical Attributes</CardTitle>
+                                <CardTitle className="text-sm font-mono text-primary uppercase">Core Technical Attributes</CardTitle>
                             </CardHeader>
                             <CardContent className="grid grid-cols-2 md:grid-cols-3 gap-8">
                                 <div className="space-y-1">
-                                    <p className="text-[10px] text-zinc-500 font-mono uppercase">Asset Class</p>
-                                    <p className="text-sm text-white font-mono uppercase flex items-center gap-2">
+                                    <p className="text-[10px] text-muted-foreground font-mono uppercase">Asset Class</p>
+                                    <p className="text-sm text-foreground font-mono uppercase flex items-center gap-2">
                                         {property.propertyType.replace('_', ' ')}
                                     </p>
                                 </div>
                                 <div className="space-y-1">
-                                    <p className="text-[10px] text-zinc-500 font-mono uppercase">Internal Volume</p>
-                                    <p className="text-sm text-white font-mono uppercase flex items-center gap-2">
-                                        <BedDouble className="h-3 w-3 text-zinc-400" /> {property.bedrooms || '0'} Bed / <Bath className="h-3 w-3 text-zinc-400" /> {property.bathrooms || '0'} Bath
+                                    <p className="text-[10px] text-muted-foreground font-mono uppercase">Internal Volume</p>
+                                    <p className="text-sm text-foreground font-mono uppercase flex items-center gap-2">
+                                        <BedDouble className="h-3 w-3 text-muted-foreground" /> {property.bedrooms || '0'} Bed / <Bath className="h-3 w-3 text-muted-foreground" /> {property.bathrooms || '0'} Bath
                                     </p>
                                 </div>
                                 <div className="space-y-1">
-                                    <p className="text-[10px] text-zinc-500 font-mono uppercase">Total Surface Area</p>
-                                    <p className="text-sm text-white font-mono uppercase flex items-center gap-2">
-                                        <Square className="h-3 w-3 text-zinc-400" /> {property.totalAreaSqm || '0'} m²
+                                    <p className="text-[10px] text-muted-foreground font-mono uppercase">Total Surface Area</p>
+                                    <p className="text-sm text-foreground font-mono uppercase flex items-center gap-2">
+                                        <Square className="h-3 w-3 text-muted-foreground" /> {property.totalAreaSqm || '0'} m²
                                     </p>
                                 </div>
                                 <div className="space-y-1">
-                                    <p className="text-[10px] text-zinc-500 font-mono uppercase">Verticality</p>
-                                    <p className="text-sm text-white font-mono uppercase">
+                                    <p className="text-[10px] text-muted-foreground font-mono uppercase">Verticality</p>
+                                    <p className="text-sm text-foreground font-mono uppercase">
                                         {property.floors || '1'} {property.floors === 1 ? 'Floor' : 'Floors'}
                                     </p>
                                 </div>
                                 <div className="space-y-1">
-                                    <p className="text-[10px] text-zinc-500 font-mono uppercase">Unit Identifier</p>
-                                    <p className="text-sm text-zinc-400 font-mono">
+                                    <p className="text-[10px] text-muted-foreground font-mono uppercase">Unit Identifier</p>
+                                    <p className="text-sm text-muted-foreground font-mono">
                                         {property.unitNumber || 'Main Asset'}
                                     </p>
                                 </div>
                                 <div className="space-y-1">
-                                    <p className="text-[10px] text-zinc-500 font-mono uppercase">Creation Date</p>
-                                    <p className="text-sm text-zinc-400 font-mono">
+                                    <p className="text-[10px] text-muted-foreground font-mono uppercase">Creation Date</p>
+                                    <p className="text-sm text-muted-foreground font-mono">
                                         {format(new Date(property.createdAt), 'dd MMM yyyy')}
                                     </p>
                                 </div>
@@ -519,19 +710,19 @@ export default function PropertyDetailPage() {
                         </Card>
 
                         <div className="space-y-6">
-                            <Card className="bg-zinc-950 border-zinc-800">
+                            <Card className="bg-card border-border">
                                 <CardHeader>
-                                    <CardTitle className="text-sm font-mono text-amber-500 uppercase">Asset Links</CardTitle>
+                                    <CardTitle className="text-sm font-mono text-primary uppercase">Asset Links</CardTitle>
                                 </CardHeader>
                                 <CardContent className="space-y-2">
                                     <Link href={`/dashboard/property-management/properties/${propertyId}/brochure`} className="block w-full">
-                                        <Button variant="ghost" className="w-full justify-between text-xs font-mono text-zinc-400 hover:text-white hover:bg-zinc-800">
+                                        <Button variant="ghost" className="w-full justify-between text-xs font-mono text-muted-foreground hover:text-foreground hover:bg-muted">
                                             GENERATE BROCHURE
                                             <Download className="h-3 w-3" />
                                         </Button>
                                     </Link>
                                     <Link href={`/dashboard/property-management/properties/${propertyId}/logbook`} className="block w-full">
-                                        <Button variant="ghost" className="w-full justify-between text-xs font-mono text-zinc-400 hover:text-white hover:bg-zinc-800">
+                                        <Button variant="ghost" className="w-full justify-between text-xs font-mono text-muted-foreground hover:text-foreground hover:bg-muted">
                                             ASSET LOGBOOK
                                             <FileText className="h-3 w-3" />
                                         </Button>
@@ -550,38 +741,38 @@ export default function PropertyDetailPage() {
                         const expenseRatio = totalIncome > 0 ? ((totalExpenses / totalIncome) * 100).toFixed(1) : '0.0'
                         const netCashFlow = totalIncome - totalExpenses
                         const appreciation = roiData?.appreciation || (property.price ? property.price * 0.05 : 0)
-                        
+
                         return (
                             <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-                                <Card className="bg-zinc-950 border-zinc-800">
+                                <Card className="bg-card border-border">
                                     <CardContent className="p-4">
-                                        <p className="text-[10px] text-zinc-500 font-mono uppercase mb-2">Total ROI</p>
+                                        <p className="text-[10px] text-muted-foreground font-mono uppercase mb-2">Total ROI</p>
                                         <p className="text-xl font-bold text-green-500 font-mono">
                                             {roiData?.returnOnInvestment ? `${roiData.returnOnInvestment.toFixed(1)}%` : (totalIncome > 0 ? `${((netCashFlow / (property.price || 1)) * 100).toFixed(1)}%` : '—')}
                                         </p>
                                     </CardContent>
                                 </Card>
-                                <Card className="bg-zinc-950 border-zinc-800">
+                                <Card className="bg-card border-border">
                                     <CardContent className="p-4">
-                                        <p className="text-[10px] text-zinc-500 font-mono uppercase mb-2">Net Cash Flow</p>
-                                        <p className={`text-xl font-bold font-mono flex items-center gap-2 ${netCashFlow >= 0 ? 'text-green-500' : 'text-red-500'}`}>
-                                            <span className="text-amber-500 text-sm">GHS</span>
+                                        <p className="text-[10px] text-muted-foreground font-mono uppercase mb-2">Net Cash Flow</p>
+                                        <p className={`text-xl font-bold font-mono flex items-center gap-2 ${netCashFlow >= 0 ? 'text-green-500' : 'text-destructive'}`}>
+                                            <span className="text-primary text-sm">GHS</span>
                                             {netCashFlow >= 0 ? '+' : ''}{netCashFlow.toLocaleString()}
                                         </p>
                                     </CardContent>
                                 </Card>
-                                <Card className="bg-zinc-950 border-zinc-800">
+                                <Card className="bg-card border-border">
                                     <CardContent className="p-4">
-                                        <p className="text-[10px] text-zinc-500 font-mono uppercase mb-2">Expense Ratio</p>
-                                        <p className={`text-xl font-bold font-mono ${parseFloat(expenseRatio) > 50 ? 'text-red-500' : parseFloat(expenseRatio) > 30 ? 'text-amber-500' : 'text-green-500'}`}>
+                                        <p className="text-[10px] text-muted-foreground font-mono uppercase mb-2">Expense Ratio</p>
+                                        <p className={`text-xl font-bold font-mono ${parseFloat(expenseRatio) > 50 ? 'text-destructive' : parseFloat(expenseRatio) > 30 ? 'text-primary' : 'text-green-500'}`}>
                                             {totalIncome > 0 ? `${expenseRatio}%` : '—'}
                                         </p>
                                     </CardContent>
                                 </Card>
-                                <Card className="bg-zinc-950 border-zinc-800">
+                                <Card className="bg-card border-border">
                                     <CardContent className="p-4">
-                                        <p className="text-[10px] text-zinc-500 font-mono uppercase mb-2">Total Expenses</p>
-                                        <p className="text-xl font-bold text-red-400 font-mono">
+                                        <p className="text-[10px] text-muted-foreground font-mono uppercase mb-2">Total Expenses</p>
+                                        <p className="text-xl font-bold text-destructive/80 font-mono">
                                             {totalExpenses > 0 ? `GHS ${totalExpenses.toLocaleString()}` : '—'}
                                         </p>
                                     </CardContent>
@@ -590,38 +781,38 @@ export default function PropertyDetailPage() {
                         )
                     })()}
 
-                    <Card className="bg-zinc-950 border-zinc-800">
+                    <Card className="bg-card border-border">
                         <CardHeader className="flex flex-row items-center justify-between">
                             <div>
-                                <CardTitle className="text-sm font-mono text-amber-500 uppercase">Recent Financial Operations</CardTitle>
-                                <CardDescription className="text-xs font-mono text-zinc-500 uppercase mt-1">Audit trail of income and overheads</CardDescription>
+                                <CardTitle className="text-sm font-mono text-primary uppercase">Recent Financial Operations</CardTitle>
+                                <CardDescription className="text-xs font-mono text-muted-foreground uppercase mt-1">Audit trail of income and overheads</CardDescription>
                             </div>
                             <Dialog open={isFinancialDialogOpen} onOpenChange={setIsFinancialDialogOpen}>
                                 <DialogTrigger asChild>
-                                    <Button size="sm" className="bg-zinc-800 hover:bg-amber-600 text-white font-mono text-[10px] uppercase">
+                                    <Button size="sm" className="bg-secondary hover:bg-primary text-secondary-foreground font-mono text-[10px] uppercase">
                                         <Plus className="h-3 w-3 mr-2" />
                                         Record Entry
                                     </Button>
                                 </DialogTrigger>
-                                <DialogContent className="bg-zinc-950 border-zinc-800 text-white">
+                                <DialogContent className="bg-card border-border text-foreground">
                                     <DialogHeader>
-                                        <DialogTitle className="font-mono uppercase text-amber-500">Record Financial Entry</DialogTitle>
-                                        <DialogDescription className="text-zinc-500 font-mono text-xs">
+                                        <DialogTitle className="font-mono uppercase text-primary">Record Financial Entry</DialogTitle>
+                                        <DialogDescription className="text-muted-foreground font-mono text-xs">
                                             Log income or expense for this property
                                         </DialogDescription>
                                     </DialogHeader>
                                     <div className="space-y-4 py-4">
                                         <div className="grid grid-cols-2 gap-4">
                                             <div className="space-y-2">
-                                                <Label className="text-[10px] font-mono uppercase text-zinc-500">Type</Label>
+                                                <Label className="text-[10px] font-mono uppercase text-muted-foreground">Type</Label>
                                                 <Select
                                                     value={newFinancial.recordType}
                                                     onValueChange={(v: 'income' | 'expense') => setNewFinancial(prev => ({ ...prev, recordType: v }))}
                                                 >
-                                                    <SelectTrigger className="bg-black border-zinc-800 text-white font-mono text-sm">
+                                                    <SelectTrigger className="bg-background border-border text-foreground font-mono text-sm">
                                                         <SelectValue />
                                                     </SelectTrigger>
-                                                    <SelectContent className="bg-zinc-950 border-zinc-800">
+                                                    <SelectContent className="bg-card border-border">
                                                         <SelectItem value="income">Income</SelectItem>
                                                         <SelectItem value="expense">Expense</SelectItem>
                                                     </SelectContent>
@@ -724,10 +915,10 @@ export default function PropertyDetailPage() {
                                             </div>
                                         </div>
                                         <div className="text-right">
-                                            <p className={`text-sm font-bold font-mono ${record.recordType === 'income' ? 'text-green-500' : 'text-white'}`}>
+                                            <p className={`text-sm font-bold font-mono ${record.recordType === 'income' ? 'text-green-500' : 'text-destructive/90'}`}>
                                                 {record.recordType === 'income' ? '+' : '-'}{record.currency} {record.amount.toLocaleString()}
                                             </p>
-                                            <Badge variant="outline" className="text-[8px] font-mono border-zinc-800 text-zinc-600 uppercase">
+                                            <Badge variant="outline" className="text-[8px] font-mono border-border text-muted-foreground uppercase">
                                                 {record.status}
                                             </Badge>
                                         </div>
@@ -745,18 +936,24 @@ export default function PropertyDetailPage() {
                 {/* PERSONNEL TAB */}
                 <TabsContent value="tenants" className="mt-6">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <Card className="bg-zinc-950 border-zinc-800">
-                            <CardHeader>
-                                <CardTitle className="text-sm font-mono text-amber-500 uppercase">Current Fleet (Tenants)</CardTitle>
+                        <Card className="bg-card border-border">
+                            <CardHeader className="flex flex-row items-center justify-between">
+                                <CardTitle className="text-sm font-mono text-primary uppercase">Current Tenants</CardTitle>
+                                <Link href={`/dashboard/property-management/tenants/new?propertyId=${propertyId}`}>
+                                    <Button size="sm" className="bg-secondary hover:bg-primary text-secondary-foreground font-mono text-[10px] uppercase">
+                                        <Plus className="h-3 w-3 mr-2" />
+                                        Add Tenant
+                                    </Button>
+                                </Link>
                             </CardHeader>
                             <CardContent className="p-0">
                                 {tenancies.length > 0 ? (
-                                    <div className="divide-y divide-zinc-900">
+                                    <div className="divide-y divide-border">
                                         {tenancies.filter(t => t.status === 'active').map((tenancy) => (
-                                            <div key={tenancy.id} className="p-4 flex items-center justify-between hover:bg-zinc-900 cursor-pointer transition-colors">
+                                            <div key={tenancy.id} className="p-4 flex items-center justify-between hover:bg-secondary/20 cursor-pointer transition-colors">
                                                 <div className="flex items-center gap-3">
-                                                    <div className="h-10 w-10 rounded-full bg-zinc-800 flex items-center justify-center border border-zinc-700">
-                                                        <Users className="h-5 w-5 text-zinc-400" />
+                                                    <div className="h-10 w-10 rounded-full bg-secondary flex items-center justify-center border border-border">
+                                                        <Users className="h-5 w-5 text-muted-foreground" />
                                                     </div>
                                                     <div>
                                                         <p className="text-sm font-bold text-white font-mono uppercase">{tenancy.tenant?.fullName || 'Occupant'}</p>

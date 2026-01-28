@@ -16,6 +16,7 @@ import { WorkOrderService } from '../services/property-management/maintenance/wo
 import { VendorService } from '../services/property-management/maintenance/vendorService';
 import { DocumentService } from '../services/property-management/documents/documentService';
 import { FinancialService } from '../services/property-management/financial-reporting/financialService';
+import { advancedFinancialService } from '../services/property-management/financial-reporting/advancedFinancialService';
 import { PortfolioService } from '../services/property-management/portfolios/portfolioService';
 import { propertyService } from '../services/property-management/properties/propertyService';
 import db from '../database';
@@ -1988,6 +1989,256 @@ router.get('/applications/public/:token', asyncHandler(async (req: Request, res:
         return res.status(404).json({ error: 'Application not found or token expired' });
     }
     res.json(application);
+}));
+
+// =====================================================
+// LEASE TEMPLATES
+// =====================================================
+
+import { leaseTemplateService } from '../services/property-management/leases/leaseTemplateService';
+
+/**
+ * GET /api/v1/pm/lease-templates
+ * List all lease templates for organization
+ */
+router.get('/lease-templates', asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
+    const { category, activeOnly, limit, offset } = req.query;
+    const result = await leaseTemplateService.listTemplates(req.organizationId!, {
+        category: category as string,
+        activeOnly: activeOnly !== 'false',
+        limit: limit ? parseInt(limit as string) : undefined,
+        offset: offset ? parseInt(offset as string) : undefined
+    });
+    res.json(result);
+}));
+
+/**
+ * GET /api/v1/pm/lease-templates/:id
+ * Get a specific lease template
+ */
+router.get('/lease-templates/:id', asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
+    const template = await leaseTemplateService.getTemplate(req.params.id, req.organizationId!);
+    if (!template) {
+        return res.status(404).json({ error: 'Template not found' });
+    }
+    res.json(template);
+}));
+
+/**
+ * POST /api/v1/pm/lease-templates
+ * Create a new lease template
+ */
+router.post('/lease-templates', asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
+    const template = await leaseTemplateService.createTemplate(
+        req.organizationId!,
+        req.body,
+        req.userId!
+    );
+    res.status(201).json(template);
+}));
+
+/**
+ * PATCH /api/v1/pm/lease-templates/:id
+ * Update a lease template
+ */
+router.patch('/lease-templates/:id', asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
+    const template = await leaseTemplateService.updateTemplate(
+        req.params.id,
+        req.organizationId!,
+        req.body
+    );
+    if (!template) {
+        return res.status(404).json({ error: 'Template not found' });
+    }
+    res.json(template);
+}));
+
+/**
+ * DELETE /api/v1/pm/lease-templates/:id
+ * Delete (soft) a lease template
+ */
+router.delete('/lease-templates/:id', asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
+    const deleted = await leaseTemplateService.deleteTemplate(req.params.id, req.organizationId!);
+    if (!deleted) {
+        return res.status(404).json({ error: 'Template not found' });
+    }
+    res.status(204).send();
+}));
+
+/**
+ * POST /api/v1/pm/lease-templates/:id/preview
+ * Preview a template with sample data
+ */
+router.post('/lease-templates/:id/preview', asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
+    const html = await leaseTemplateService.previewTemplate(
+        req.params.id,
+        req.organizationId!,
+        req.body.sampleData
+    );
+    res.setHeader('Content-Type', 'text/html');
+    res.send(html);
+}));
+
+/**
+ * POST /api/v1/pm/lease-documents/generate
+ * Generate a lease document for a tenancy
+ */
+router.post('/lease-documents/generate', asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
+    const { tenancyId, templateId, additionalData, format } = req.body;
+    
+    if (!tenancyId) {
+        return res.status(400).json({ error: 'tenancyId is required' });
+    }
+
+    const result = await leaseTemplateService.generateLease(req.organizationId!, {
+        tenancyId,
+        templateId,
+        additionalData,
+        format
+    });
+    
+    res.status(201).json(result);
+}));
+
+// =====================================================
+// ADVANCED FINANCIAL REPORTS
+// =====================================================
+
+/**
+ * GET /api/v1/pm/financials/noi/:propertyId
+ * Calculate Net Operating Income for a property
+ */
+router.get('/financials/noi/:propertyId', asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
+    const { startDate, endDate } = req.query;
+    
+    // Default to last 12 months
+    const end = endDate as string || new Date().toISOString().split('T')[0];
+    const start = startDate as string || (() => {
+        const d = new Date();
+        d.setFullYear(d.getFullYear() - 1);
+        return d.toISOString().split('T')[0];
+    })();
+    
+    const noi = await advancedFinancialService.calculateNOI(
+        req.organizationId!,
+        req.params.propertyId,
+        start,
+        end
+    );
+    
+    res.json(noi);
+}));
+
+/**
+ * GET /api/v1/pm/financials/cap-rate/:propertyId
+ * Calculate Cap Rate for a property
+ */
+router.get('/financials/cap-rate/:propertyId', asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
+    const marketValue = req.query.marketValue ? parseFloat(req.query.marketValue as string) : undefined;
+    
+    const capRate = await advancedFinancialService.calculateCapRate(
+        req.organizationId!,
+        req.params.propertyId,
+        marketValue
+    );
+    
+    res.json(capRate);
+}));
+
+/**
+ * GET /api/v1/pm/financials/irr/:propertyId
+ * Calculate Internal Rate of Return for a property
+ */
+router.get('/financials/irr/:propertyId', asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
+    const holdingPeriod = req.query.holdingPeriod ? parseInt(req.query.holdingPeriod as string) : 5;
+    const discountRate = req.query.discountRate ? parseFloat(req.query.discountRate as string) : 10;
+    
+    const irr = await advancedFinancialService.calculateIRR(
+        req.organizationId!,
+        req.params.propertyId,
+        holdingPeriod,
+        discountRate
+    );
+    
+    res.json(irr);
+}));
+
+/**
+ * POST /api/v1/pm/financials/cash-on-cash/:propertyId
+ * Calculate Cash-on-Cash Return with investment details
+ */
+router.post('/financials/cash-on-cash/:propertyId', asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
+    const { downPayment, closingCosts, renovationCosts, annualDebtService, year } = req.body;
+    
+    if (downPayment === undefined) {
+        return res.status(400).json({ error: 'downPayment is required' });
+    }
+    
+    const cashOnCash = await advancedFinancialService.calculateCashOnCash(
+        req.organizationId!,
+        req.params.propertyId,
+        {
+            downPayment,
+            closingCosts: closingCosts || 0,
+            renovationCosts: renovationCosts || 0,
+            annualDebtService: annualDebtService || 0
+        },
+        year
+    );
+    
+    res.json(cashOnCash);
+}));
+
+/**
+ * GET /api/v1/pm/financials/dscr/:propertyId
+ * Calculate Debt Service Coverage Ratio
+ */
+router.get('/financials/dscr/:propertyId', asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
+    const annualDebtService = req.query.annualDebtService 
+        ? parseFloat(req.query.annualDebtService as string) 
+        : 0;
+    
+    if (!annualDebtService) {
+        return res.status(400).json({ error: 'annualDebtService query parameter is required' });
+    }
+    
+    const dscr = await advancedFinancialService.calculateDSCR(
+        req.organizationId!,
+        req.params.propertyId,
+        annualDebtService
+    );
+    
+    res.json(dscr);
+}));
+
+/**
+ * GET /api/v1/pm/financials/summary/:propertyId
+ * Get comprehensive financial summary for a property
+ */
+router.get('/financials/summary/:propertyId', asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
+    const investmentDetails = req.query.downPayment ? {
+        downPayment: parseFloat(req.query.downPayment as string),
+        closingCosts: parseFloat(req.query.closingCosts as string || '0'),
+        renovationCosts: parseFloat(req.query.renovationCosts as string || '0'),
+        annualDebtService: parseFloat(req.query.annualDebtService as string || '0')
+    } : undefined;
+    
+    const summary = await advancedFinancialService.getPropertyFinancialSummary(
+        req.organizationId!,
+        req.params.propertyId,
+        investmentDetails
+    );
+    
+    res.json(summary);
+}));
+
+/**
+ * GET /api/v1/pm/financials/portfolio-summary
+ * Get portfolio-level financial summary
+ */
+router.get('/financials/portfolio-summary', asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
+    const summary = await advancedFinancialService.getPortfolioFinancialSummary(req.organizationId!);
+    res.json(summary);
 }));
 
 // =====================================================

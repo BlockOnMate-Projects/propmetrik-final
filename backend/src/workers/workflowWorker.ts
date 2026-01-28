@@ -11,8 +11,8 @@
 import { Queue, Worker, Job } from 'bullmq';
 import { pool } from '../database';
 import { logger } from '../utils/logger';
-import workflowExecutionEngine from '../services/workflow/workflowExecutionEngine';
-import workflowService, { TriggerEvent } from '../services/workflow/workflowService';
+import workflowExecutionEngine from '../../shared-services/workflow/workflowExecutionEngine';
+import workflowService, { TriggerEvent } from '../../shared-services/workflow/workflowService';
 
 const REDIS_HOST = process.env.REDIS_HOST || 'localhost';
 const REDIS_PORT = parseInt(process.env.REDIS_PORT || '6379');
@@ -199,7 +199,7 @@ async function executeScheduledWorkflow(workflowId: string, organizationId: stri
     type: 'time_based',
     entity_type: 'workflow',
     entity_id: workflowId,
-    organization_id,
+    organization_id: organizationId,
     triggered_by: 'scheduler',
     data: {
       scheduled_at: new Date().toISOString()
@@ -397,15 +397,15 @@ export async function setupWorkflowScheduler(): Promise<void> {
 // WORKER EVENTS
 // =====================================================
 
-workflowWorker.on('completed', (job) => {
+workflowWorker.on('completed', (job: any) => {
   logger.debug({ jobId: job?.id }, 'Workflow job completed');
 });
 
-workflowWorker.on('failed', (job, error) => {
+workflowWorker.on('failed', (job: any, error: any) => {
   logger.error({ jobId: job?.id, error }, 'Workflow job failed');
 });
 
-workflowWorker.on('error', (error) => {
+workflowWorker.on('error', (error: any) => {
   logger.error({ error }, 'Workflow worker error');
 });
 

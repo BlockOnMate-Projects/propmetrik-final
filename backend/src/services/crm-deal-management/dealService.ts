@@ -159,7 +159,9 @@ export class DealService {
           ds.stage_color,
           ag.first_name || ' ' || ag.last_name as assigned_agent_name,
           ag.email as assigned_agent_email,
-          ag.phone_primary as assigned_agent_phone
+          ag.phone_primary as assigned_agent_phone,
+          (SELECT ARRAY_AGG(title) FROM crm_properties WHERE id = ANY(d.property_ids)) as property_names,
+          (SELECT EXISTS(SELECT 1 FROM valuations v WHERE v.property_id = ANY(d.property_ids) AND v.status = 'completed')) as has_valuation
          FROM deals d
          LEFT JOIN contacts c ON d.primary_contact_id = c.id
          LEFT JOIN companies comp ON d.company_id = comp.id
@@ -267,7 +269,9 @@ export class DealService {
           c.first_name || ' ' || c.last_name as primary_contact_name,
           ds.stage_name,
           ds.stage_color,
-          dp.pipeline_name
+          dp.pipeline_name,
+          (SELECT ARRAY_AGG(title) FROM crm_properties WHERE id = ANY(d.property_ids)) as property_names,
+          (SELECT EXISTS(SELECT 1 FROM valuations v WHERE v.property_id = ANY(d.property_ids) AND v.status = 'completed')) as has_valuation
          FROM deals d
          LEFT JOIN contacts c ON d.primary_contact_id = c.id
          LEFT JOIN deal_stages ds ON d.stage_id = ds.id
@@ -493,7 +497,9 @@ export class DealService {
           ds.stage_name,
           ds.stage_order,
           ds.stage_color,
-          c.first_name || ' ' || c.last_name as primary_contact_name
+          c.first_name || ' ' || c.last_name as primary_contact_name,
+          (SELECT ARRAY_AGG(title) FROM crm_properties WHERE id = ANY(d.property_ids)) as property_names,
+          (SELECT EXISTS(SELECT 1 FROM valuations v WHERE v.property_id = ANY(d.property_ids) AND v.status = 'completed')) as has_valuation
          FROM deals d
          JOIN deal_stages ds ON d.stage_id = ds.id
          LEFT JOIN contacts c ON d.primary_contact_id = c.id

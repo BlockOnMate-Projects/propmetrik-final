@@ -38,11 +38,12 @@ The Propmetrik Analytics Platform is a comprehensive, subscription-based analyti
 7. [Ghana-Specific Analytics](#7-ghana-specific-analytics) ⭐ **NEW**
 8. [Machine Learning Analytics](#8-machine-learning-analytics)
    - 8.7 [Centralized ML/NLP Services](#87-centralized-mlnlp-services) **Shared Services Layer**
-9. [Data Sources & Integration](#9-data-sources--integration)
-10. [API Endpoints](#10-api-endpoints)
-11. [Database Schema](#11-database-schema)
-12. [UI/UX Design](#12-uiux-design)
-13. [Implementation Roadmap](#13-implementation-roadmap)
+9. [Advanced Risk & Specialized Asset Analytics](#9-advanced-risk--specialized-asset-analytics) ⭐ **NEW**
+10. [Data Sources & Integration](#10-data-sources--integration)
+11. [API Endpoints](#11-api-endpoints)
+12. [Database Schema](#12-database-schema)
+13. [UI/UX Design](#13-uiux-design)
+14. [Implementation Roadmap](#14-implementation-roadmap)
 
 > **Architecture Principle**: All analytics domains integrate with the **Centralized ML/NLP Services** layer. PropMetrik provides CBRE/RICS/JLL-grade analytics purpose-built for Ghana.
 
@@ -523,6 +524,21 @@ interface ValuationVolumeMetrics {
 | Cost Approach | 71.5% | 25% primary | ±12.1% |
 | Income Approach | 76.8% | 15% primary | ±9.7% |
 | DRC | 68.2% | 5% primary | ±15.3% |
+
+**RICS Red Book Compliance Audit**
+- **Process Compliance**: Tracks adherence to IVS/RICS VPS 1-5 standards.
+- **Reporting Standards**: Automatic flagging of reports missing mandatory RICS disclosures.
+- **Conflict Checks**: Automated conflict of interest detection log.
+
+```typescript
+interface RICSComplianceMetrics {
+  valuation_id: string;
+  is_red_book_compliant: boolean;
+  compliance_score: number;        // 0-100
+  missing_disclosures: string[];    // e.g., "Special Assumptions", "Liability Cap"
+  valuer_accreditation_valid: boolean;
+}
+```
 
 **Comparable Quality Metrics**
 - Average comparables per valuation
@@ -1129,7 +1145,22 @@ interface IncentivePackages {
 }
 ```
 
-### 5.6 Availability Index
+### 5.6 Service Charge Monitor (OCM)
+**Purpose**: Benchmark operating costs (Service Charges) for strata-title and commercial properties.
+- **Metrics**: GHS/USD per sqm/month.
+- **Components**: Security, Cleaning, Power (Gen Set), Water, Management Fee.
+- **Analysis**: "Total Cost of Occupancy" (Rent + Service Charge) visualization.
+
+```typescript
+interface ServiceChargeAnalytics {
+  property_grad: 'A' | 'B' | 'C';
+  avg_service_charge_psqm: number;
+  charge_components_breakdown: Record<string, number>;
+  collection_rate: number;          // % of tenants paying on time
+}
+```
+
+### 5.7 Availability Index
 
 **Purpose**: Track supply of commercial space available by sector.
 
@@ -1154,7 +1185,7 @@ interface AvailabilityIndex {
 }
 ```
 
-### 5.7 ML/NLP Integration for Commercial Monitor
+### 5.8 ML/NLP Integration for Commercial Monitor
 
 ```typescript
 // Link to centralized sentiment service for market commentary
@@ -1446,14 +1477,15 @@ interface LandMarketAnalytics {
     base_period: string;
     change_yoy: number;
     price_per_acre_avg: number;
-    price_per_plot_avg: number;      // Standard 100x100 plot
+    price_per_plot_avg: number;      // Standard 70x100 or 100x100 plot
+    standardized_plot_size: string;  // Normalization factor
   };
   
   title_security: {
-    registered_land_pct: number;     // % with formal titles
+    registered_land_pct: number;     // % with Lands Commission cert
     stool_land_pct: number;          // % stool/family land
-    govt_land_pct: number;           // % government-owned
-    litigation_rate: number;         // % with active disputes
+    litigation_risk_score: number;   // 0-100 (100 = High "Landguard" risk)
+    encumbrance_check_time_avg: number; // Days to verify title
   };
   
   title_security_scoring: Record<string, {
@@ -1716,7 +1748,7 @@ interface AVMPerformanceMetrics {
 }
 ```
 
-### 5.2 Feature Importance Analytics
+### 8.2 Feature Importance Analytics
 
 **Top Value Drivers (ML-Identified)**
 
@@ -1759,7 +1791,7 @@ interface FeatureImportanceAnalytics {
 }
 ```
 
-### 5.3 Prediction Confidence Analytics
+### 8.3 Prediction Confidence Analytics
 
 **Confidence Distribution**
 - High confidence (>80%): reliable predictions
@@ -1794,7 +1826,7 @@ interface PredictionConfidenceAnalytics {
 }
 ```
 
-### 5.4 Model Drift & Monitoring
+### 8.4 Model Drift & Monitoring
 
 **Performance Over Time**
 - Daily/weekly model accuracy tracking
@@ -1833,7 +1865,7 @@ interface ModelMonitoringMetrics {
 }
 ```
 
-### 5.5 Price Prediction Analytics
+### 8.5 Price Prediction Analytics
 
 **Short-Term Forecasts (1-6 months)**
 - Price direction probability
@@ -1876,7 +1908,7 @@ interface PriceForecastAnalytics {
 }
 ```
 
-### 5.6 Ensemble Model Analytics
+### 8.6 Ensemble Model Analytics
 
 **Model Composition**
 - Random Forest contribution
@@ -2708,9 +2740,91 @@ interface MLServiceMetrics {
 
 ---
 
-## 6. Data Sources & Integration
+## 9. Advanced Risk & Specialized Asset Analytics
 
-### 6.1 Internal Data Sources
+### 9.1 Climate & Resilience Analytics
+> **Industry Standard**: Based on First Street Foundation and FEMA risk modeling standards, adapted for Ghana's unique environmental challenges.
+
+**Flood Risk Score**
+- **Hyper-local Analysis**: 0-100 score based on elevation, drainage proximity, and historical flood patterns (NADMO data).
+- **Impact on Valuation**: Direct correlation model between high flood risk and insurance premiums/resale value.
+- **Visual Mapping**: Inundation zones overlay on regional heatmaps.
+
+**Utility Reliability Score**
+- **"Dumsor" (Power Outage) Frequency**: Neighborhood-level stability rating.
+- **Water Supply Reliability**: Connection consistency and dependence on private tankers.
+- **Livability Index**: Composite score of flood + power + water risks.
+
+```typescript
+interface ClimateResilienceMetrics {
+  location: GeoCoordinates;
+  
+  flood_risk: {
+    score: number;                   // 0-100 (100 = high risk)
+    zone_type: 'safe' | 'prone' | 'critical';
+    historical_incidents: number;
+    drainage_proximity_m: number;
+    elevation_m: number;
+  };
+  
+  utility_reliability: {
+    power_stability_score: number;   // 0-100
+    avg_outage_hours_weekly: number;
+    water_reliability_score: number;
+    borehole_necessity: 'optional' | 'recommended' | 'critical';
+  };
+  
+  livability_score: number;          // Composite 0-100
+}
+```
+
+### 9.2 Short-Stay & Tourism Analytics
+> **Industry Standard**: Based on AirDNA architecture, tracking the booming "Year of Return" tourism market.
+
+**Performance Metrics**
+- **RevPAR (Revenue Per Available Room)**: Daily/Weekly tracking for short-term rentals.
+- **ADR (Average Daily Rate)**: Dynamic pricing insights.
+- **Occupancy Impact**: "December in GH" seasonality spikes vs lean season.
+- **Arbitrage Monitor**: Calculator comparing Long-term Rental Income vs Short-term potential (factoring in management fees/turnover).
+
+```typescript
+interface ShortStayAnalytics {
+  region: RegionCode;
+  
+  performance: {
+    revpar_avg: number;
+    adr_avg: number;
+    occupancy_rate: number;
+    seasonality_factor: number;      // Multiplier for peak season
+  };
+  
+  arbitrage: {
+    long_term_yield: number;
+    short_term_yield_potential: number;
+    breakeven_occupancy: number;
+  };
+}
+```
+
+### 9.3 Distressed Property Monitor
+> **Industry Standard**: Based on RealtyTrac methodology for foreclosure and auction data.
+
+**Foreclosure Pipeline**
+- **Pre-Foreclosure**: Properties with 90+ days mortgage delinquency (bank data integration).
+- **Auction Tracker**: Aggregation of public auction listings.
+- **REO (Real Estate Owned)**: Bank-held inventory analysis.
+- **Equity Buffer Estimates**: Estimated gap between outstanding loan and current market value.
+
+### 9.4 ML/NLP Integration for Specialized Analytics
+- **"Dumsor" Sentiment Tracking**: Monitor social media for hyperlocal power outage complaints to update reliability scores in real-time.
+- **Flood Incident Detection**: Real-time extraction of flood reports from news/twitter during rainy season.
+- **Auction Listing Scraper**: Automated extraction of auction dates/locations from newspaper legal notices (using the Document Intelligence Engine).
+
+---
+
+## 10. Data Sources & Integration
+
+### 10.1 Internal Data Sources
 
 | Source | Data Type | Refresh Rate |
 |--------|-----------|--------------|
@@ -2720,7 +2834,7 @@ interface MLServiceMetrics {
 | Rental Comparables | Rental listings, agreements | Daily |
 | Construction Cost Service | Material/labor costs | Weekly |
 
-### 6.2 External Data Sources
+### 10.2 External Data Sources
 
 | Source | Data Type | Refresh Rate |
 |--------|-----------|--------------|
@@ -2730,7 +2844,7 @@ interface MLServiceMetrics {
 | Commodity Markets | Steel, cement, fuel prices | Daily |
 | Ghana Lands Commission | Transaction records | Monthly |
 
-### 6.3 Data Quality Framework
+### 10.3 Data Quality Framework
 
 ```typescript
 interface DataQualityMetrics {
@@ -2756,11 +2870,28 @@ interface DataQualityMetrics {
 }
 ```
 
+### 10.4 Critical Data Gaps & Acquisition Strategy ⭐ **NEW**
+
+**1. RICS & Valuation Compliance Data**
+- **Gap**: No automated way to verify if a report meets IVS/RICS standards (VPS 1-5).
+- **Strategy**: Build a PDF parsing pipeline (Document Intelligence) to extract mandatory disclosures (e.g., "Special Assumptions", "Conflict of Interest Declarations") from uploaded valuation reports.
+
+**2. Specialized Risk Data (Litigation & Flood)**
+- **Gap**: "Landguard" activity and specific land litigation court judgments are not digitized.
+- **Gap**: Hyper-local flood risk data is sparse.
+- **Strategy**: 
+    - **Litigation**: Scrape "Legal Notices" from Daily Graphic/Ghanaian Times archives for land dispute judgments.
+    - **Flood**: Partner with NADMO for historical incident data + scrape social media for real-time flood reports during rainy seasons.
+
+**3. Short-Stay/Tourism Metrics (AirDNA style)**
+- **Gap**: No direct feed for Airbnb/Booking.com occupancy and ADR in Ghana.
+- **Strategy**: Build a scraper for major booking platforms (Airbnb, Booking.com) to track availability calendars and pricing changes for key neighborhoods (Osu, Cantonments, East Legon).
+
 ---
 
-## 7. API Endpoints
+## 11. API Endpoints
 
-### 7.1 Construction Analytics API
+### 11.1 Construction Analytics API
 
 ```typescript
 // GET /api/v1/analytics/construction/index
@@ -2783,7 +2914,7 @@ interface DataQualityMetrics {
 // Returns: Cost forecasts with confidence intervals
 ```
 
-### 7.2 Housing Affordability API
+### 11.2 Housing Affordability API
 
 ```typescript
 // GET /api/v1/analytics/hai/current
@@ -2804,7 +2935,7 @@ interface DataQualityMetrics {
 // Returns: MHAI, CHAI, RHAI breakdown
 ```
 
-### 7.3 Valuation Analytics API
+### 11.3 Valuation Analytics API
 
 ```typescript
 // GET /api/v1/analytics/valuations/volume
@@ -2827,7 +2958,7 @@ interface DataQualityMetrics {
 // Returns: Sensitivity analysis results
 ```
 
-### 7.4 Market Intelligence API
+### 11.4 Market Intelligence API
 
 ```typescript
 // GET /api/v1/analytics/market/price-index
@@ -2847,7 +2978,7 @@ interface DataQualityMetrics {
 // Returns: Investment opportunity metrics
 ```
 
-### 7.5 ML Analytics API
+### 11.5 ML Analytics API
 
 ```typescript
 // GET /api/v1/analytics/ml/performance
@@ -2872,9 +3003,9 @@ interface DataQualityMetrics {
 
 ---
 
-## 8. Database Schema
+## 12. Database Schema
 
-### 8.1 Analytics Summary Tables
+### 12.1 Analytics Summary Tables
 
 ```sql
 -- Construction Cost Index (time series)
@@ -3045,7 +3176,7 @@ CREATE TABLE market_activity_metrics (
 );
 ```
 
-### 8.2 Indexes and Partitioning
+### 12.2 Indexes and Partitioning
 
 ```sql
 -- Indexes for efficient querying
@@ -3061,9 +3192,9 @@ CREATE INDEX idx_mam_period ON market_activity_metrics(period_date, region);
 
 ---
 
-## 9. UI/UX Design
+## 13. UI/UX Design
 
-### 9.1 Analytics Dashboard Layout
+### 13.1 Analytics Dashboard Layout
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
@@ -3111,7 +3242,7 @@ CREATE INDEX idx_mam_period ON market_activity_metrics(period_date, region);
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
 
-### 9.2 Component Library
+### 13.2 Component Library
 
 **Metric Cards**
 - Large number display with trend indicator
@@ -3142,7 +3273,7 @@ CREATE INDEX idx_mam_period ON market_activity_metrics(period_date, region);
 
 ---
 
-## 10. Implementation Roadmap
+## 14. Implementation Roadmap
 
 ### Phase 1: Foundation (Weeks 1-4)
 
@@ -3256,8 +3387,10 @@ CREATE INDEX idx_mam_period ON market_activity_metrics(period_date, region);
 
 | Week | Deliverable | Owner |
 |------|-------------|-------|
+| 23 | Climate & Flood Risk modeling service | Backend |
 | 23 | Predictive construction cost forecasting | ML Team |
 | 23 | GHAI forecasting model | ML Team |
+| 24 | Short-stay/Airbnb analytics engine | Backend |
 | 24 | Custom dashboard builder | Frontend |
 | 24 | Report scheduling and distribution | Backend |
 | 25 | API rate limiting and subscription tiers | Backend |

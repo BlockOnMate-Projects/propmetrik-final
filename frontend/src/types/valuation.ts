@@ -834,6 +834,10 @@ export interface IncomeApproachData {
   operating_expenses: number;
   net_operating_income: number;
   cap_rate: number;
+  cap_rate_mode?: 'system' | 'manual' | 'custom' | 'user';
+  cap_rate_grade?: string | null;
+  cap_rate_methodology?: string | Record<string, any> | null;
+  system_cap_rate?: number | null;
   indicated_value: number;
   dcf_value?: number;
   grm_value?: number;

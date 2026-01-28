@@ -35,8 +35,9 @@ async function getPropertyData(id: string): Promise<PropertyEnrichmentResponse |
   }
 }
 
-export default async function PropertyPage({ params }: { params: { id: string } }) {
-  const data = await getPropertyData(params.id);
+export default async function PropertyPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
+  const data = await getPropertyData(id);
 
   if (!data) {
     return notFound();

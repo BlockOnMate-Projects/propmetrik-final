@@ -191,6 +191,7 @@ export interface EtlJobStats {
   pending?: number;
   completed?: number;
   failed?: number;
+  failed_today?: number;
   cancelled?: number;
   completed_today?: number;
   by_status: Record<EtlJobStatus, number>;

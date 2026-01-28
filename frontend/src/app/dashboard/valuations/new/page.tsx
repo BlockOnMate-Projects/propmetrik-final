@@ -1,6 +1,6 @@
 'use client'
 
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { useState, useEffect } from 'react'
 import {
@@ -59,22 +59,52 @@ const regions = [
 
 export default function NewValuationPage() {
   const router = useRouter()
-  
+  const searchParams = useSearchParams()
+  const initialPropertyId = searchParams?.get('property_id')
+
   // Form state
   const [step, setStep] = useState(1)
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedProperty, setSelectedProperty] = useState<Property | null>(null)
   const [createNewProperty, setCreateNewProperty] = useState(false)
   const [valuationPurpose, setValuationPurpose] = useState<ValuationPurpose>('sale')
-  
+
   // New property form - comprehensive data
   const [newProperty, setNewProperty] = useState<Partial<ComprehensivePropertyData>>({})
-  
+
   // Search state
   const [properties, setProperties] = useState<Property[]>([])
   const [searching, setSearching] = useState(false)
   const [creating, setCreating] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [loadingInitial, setLoadingInitial] = useState(false)
+
+  // Load initial property if ID provided
+  useEffect(() => {
+    if (!initialPropertyId) return
+
+    async function loadProperty() {
+      try {
+        setLoadingInitial(true)
+        // Correct endpoint for single property (added in backend/routes/publicProperties.ts)
+        const response = await fetch(`/api/properties/${initialPropertyId}`)
+        if (!response.ok) throw new Error('Property not found')
+
+        const data = await response.json()
+        if (data.data) {
+          setSelectedProperty(data.data)
+          setStep(2) // Auto-advance to next step
+        }
+      } catch (err) {
+        console.error('Failed to load initial property:', err)
+        setError('Failed to load pre-selected property')
+      } finally {
+        setLoadingInitial(false)
+      }
+    }
+
+    loadProperty()
+  }, [initialPropertyId])
 
   // Search for existing properties
   useEffect(() => {
@@ -104,6 +134,14 @@ export default function NewValuationPage() {
     const timer = setTimeout(searchProperties, 300)
     return () => clearTimeout(timer)
   }, [searchQuery])
+
+  if (loadingInitial) {
+    return (
+      <div className="min-h-screen bg-black text-white flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-amber-500" />
+      </div>
+    )
+  }
 
   // Create valuation
   const handleCreateValuation = async () => {
@@ -163,7 +201,7 @@ export default function NewValuationPage() {
           report_date: newProperty.report_date || null,
           is_retrospective: newProperty.is_retrospective || false,
         });
-        
+
         console.log('Valuation response:', valuationResponse);
       } else {
         if (!selectedProperty?.id) {
@@ -238,9 +276,8 @@ export default function NewValuationPage() {
       <div className="flex items-center gap-4 mb-6">
         <button
           onClick={() => setStep(1)}
-          className={`flex items-center gap-2 px-4 py-2 font-mono text-xs transition-colors ${
-            step === 1 ? 'bg-amber-500 text-black font-bold' : 'bg-zinc-800 text-zinc-400 hover:text-white'
-          }`}
+          className={`flex items-center gap-2 px-4 py-2 font-mono text-xs transition-colors ${step === 1 ? 'bg-amber-500 text-black font-bold' : 'bg-zinc-800 text-zinc-400 hover:text-white'
+            }`}
         >
           1. SELECT PROPERTY
         </button>
@@ -248,11 +285,10 @@ export default function NewValuationPage() {
         <button
           onClick={() => selectedProperty || createNewProperty ? setStep(2) : null}
           disabled={!selectedProperty && !createNewProperty}
-          className={`flex items-center gap-2 px-4 py-2 font-mono text-xs transition-colors ${
-            step === 2 ? 'bg-amber-500 text-black font-bold' : 
-            (selectedProperty || createNewProperty) ? 'bg-zinc-800 text-zinc-400 hover:text-white' : 
-            'bg-zinc-900 text-zinc-600 cursor-not-allowed'
-          }`}
+          className={`flex items-center gap-2 px-4 py-2 font-mono text-xs transition-colors ${step === 2 ? 'bg-amber-500 text-black font-bold' :
+            (selectedProperty || createNewProperty) ? 'bg-zinc-800 text-zinc-400 hover:text-white' :
+              'bg-zinc-900 text-zinc-600 cursor-not-allowed'
+            }`}
         >
           2. VALUATION TYPE
         </button>
@@ -298,11 +334,10 @@ export default function NewValuationPage() {
                       setCreateNewProperty(false)
                       setStep(2)
                     }}
-                    className={`w-full p-4 text-left border transition-colors ${
-                      selectedProperty?.id === property.id 
-                        ? 'border-amber-500 bg-amber-500/10' 
-                        : 'border-zinc-800 bg-zinc-900/50 hover:border-zinc-700'
-                    }`}
+                    className={`w-full p-4 text-left border transition-colors ${selectedProperty?.id === property.id
+                      ? 'border-amber-500 bg-amber-500/10'
+                      : 'border-zinc-800 bg-zinc-900/50 hover:border-zinc-700'
+                      }`}
                   >
                     <div className="flex items-center justify-between">
                       <div>
@@ -343,11 +378,10 @@ export default function NewValuationPage() {
                 setCreateNewProperty(true)
                 setSelectedProperty(null)
               }}
-              className={`w-full p-4 border transition-colors flex items-center justify-center gap-2 ${
-                createNewProperty 
-                  ? 'border-amber-500 bg-amber-500/10' 
-                  : 'border-zinc-800 bg-zinc-900/50 hover:border-zinc-700'
-              }`}
+              className={`w-full p-4 border transition-colors flex items-center justify-center gap-2 ${createNewProperty
+                ? 'border-amber-500 bg-amber-500/10'
+                : 'border-zinc-800 bg-zinc-900/50 hover:border-zinc-700'
+                }`}
             >
               <Plus className="w-4 h-4" />
               <span className="font-mono text-sm">ADD NEW PROPERTY</span>
@@ -411,15 +445,13 @@ export default function NewValuationPage() {
                 <button
                   key={type.value}
                   onClick={() => setValuationPurpose(type.value)}
-                  className={`p-4 border text-left transition-colors ${
-                    valuationPurpose === type.value
-                      ? 'border-amber-500 bg-amber-500/10'
-                      : 'border-zinc-800 hover:border-zinc-700'
-                  }`}
+                  className={`p-4 border text-left transition-colors ${valuationPurpose === type.value
+                    ? 'border-amber-500 bg-amber-500/10'
+                    : 'border-zinc-800 hover:border-zinc-700'
+                    }`}
                 >
-                  <div className={`font-mono text-sm mb-1 ${
-                    valuationPurpose === type.value ? 'text-amber-400' : 'text-white'
-                  }`}>
+                  <div className={`font-mono text-sm mb-1 ${valuationPurpose === type.value ? 'text-amber-400' : 'text-white'
+                    }`}>
                     {type.label.toUpperCase()}
                   </div>
                   <div className="font-mono text-[10px] text-zinc-500">

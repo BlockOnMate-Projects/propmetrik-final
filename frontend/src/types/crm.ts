@@ -266,6 +266,7 @@ export interface Deal {
     activity_count?: number;
     document_count?: number;
     task_count?: number;
+    has_valuation?: boolean;
 }
 
 export interface DealActivity {

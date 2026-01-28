@@ -96,6 +96,9 @@ export function ESignEditor({
     const [isSending, setIsSending] = useState(false);
     const [activeTab, setActiveTab] = useState<'prepare' | 'signers' | 'settings'>('signers');
     const [pages, setPages] = useState<{ pageNumber: number; imageUrl: string }[]>([]);
+    const [documentImage, setDocumentImage] = useState<string | null>(null);  // Full document image
+    const [captureWidth, setCaptureWidth] = useState<number>(1224);           // Default: 816 * 1.5
+    const [captureHeight, setCaptureHeight] = useState<number | null>(null);  // Will be set on capture
     const [signers, setSigners] = useState<Signer[]>([]);
     const [fields, setFields] = useState<SignatureField[]>([]);
     const [selectedSignerId, setSelectedSignerId] = useState<string | null>(null);
@@ -164,17 +167,43 @@ export function ESignEditor({
                         // Wait for content to load
                         await new Promise(resolve => setTimeout(resolve, 800));
 
-                        // Capture the content
+                        // Get actual content height
+                        const contentHeight = doc.body.scrollHeight;
+                        const contentWidth = 816;
+                        
+                        // Resize iframe to fit all content
+                        iframe.style.height = `${contentHeight}px`;
+
+                        // Capture the entire content at 1.5x scale for high quality
                         const canvas = await html2canvas(doc.body, {
                             scale: 1.5,
                             useCORS: true,
                             allowTaint: true,
                             backgroundColor: '#ffffff',
-                            width: 816,
-                            windowWidth: 816,
+                            width: contentWidth,
+                            height: contentHeight,
+                            windowWidth: contentWidth,
+                            windowHeight: contentHeight,
                         });
 
                         const imageUrl = canvas.toDataURL('image/png');
+                        
+                        console.log('[ESignEditor] Document captured:', {
+                            iframeWidth: 816,
+                            iframeHeight: contentHeight,
+                            canvasWidth: canvas.width,
+                            canvasHeight: canvas.height,
+                            scale: 1.5,
+                            expectedWidth: contentWidth * 1.5,
+                            expectedHeight: contentHeight * 1.5
+                        });
+                        
+                        // Store the document image and capture dimensions
+                        // Field positions will be in the captured image's coordinate space (1224 x height)
+                        setDocumentImage(imageUrl);
+                        setCaptureWidth(canvas.width);   // 816 * 1.5 = 1224
+                        setCaptureHeight(canvas.height); // contentHeight * 1.5
+                        
                         setPages([{ pageNumber: 1, imageUrl }]);
                         
                         document.body.removeChild(iframe);
@@ -260,13 +289,21 @@ export function ESignEditor({
         setIsSending(true);
         
         try {
-            const envelope: Partial<ESignEnvelope> = {
+            const envelope: Partial<ESignEnvelope> & {
+                documentImageUrl?: string;
+                captureWidth?: number;
+                captureHeight?: number;
+            } = {
                 name: documentName,
                 signers,
                 fields,
                 message,
                 status: 'sent',
                 expiresAt: new Date(Date.now() + expirationDays * 24 * 60 * 60 * 1000),
+                // Include captured document image and dimensions for consistent display
+                documentImageUrl: documentImage || undefined,
+                captureWidth: captureWidth,
+                captureHeight: captureHeight || undefined,
             };
             
             await onSend?.(envelope);

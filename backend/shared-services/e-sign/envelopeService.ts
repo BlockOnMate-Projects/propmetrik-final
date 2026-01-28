@@ -47,6 +47,9 @@ export interface ESignEnvelope {
   name: string;
   documentHtml?: string;
   documentPdfUrl?: string;
+  documentImageUrl?: string;  // Pre-rendered document image for consistent display
+  captureWidth?: number;      // Width in pixels used when capturing fields
+  captureHeight?: number;     // Height in pixels of the captured document
   contextType?: string;
   contextEntityId?: string;
   contextEntityName?: string;
@@ -83,6 +86,7 @@ export interface ESignSigner {
   declineReason?: string;
   signedFromIp?: string;
   signedUserAgent?: string;
+  permanentSignerId?: string;
   createdAt: Date;
 }
 
@@ -101,12 +105,17 @@ export interface ESignField {
   signedAt?: Date;
   required: boolean;
   label?: string;
+  signatureHash?: string;
+  signerIdentityId?: string;
   createdAt: Date;
 }
 
 export interface CreateEnvelopeDto {
   name: string;
   documentHtml: string;
+  documentImageUrl?: string;  // Pre-rendered document image (base64 data URL)
+  captureWidth?: number;      // Width of captured document in pixels
+  captureHeight?: number;     // Height of captured document in pixels
   contextType?: string;
   contextEntityId?: string;
   contextEntityName?: string;
@@ -147,6 +156,53 @@ export class EnvelopeService {
     return crypto.randomBytes(32).toString('hex');
   }
 
+  /**
+   * Generate a permanent signer ID in format SGN-XXXXXXXX
+   */
+  private generatePermanentSignerId(): string {
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // Exclude confusing chars like O/0, I/1
+    let id = 'SGN-';
+    for (let i = 0; i < 8; i++) {
+      id += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    return id;
+  }
+
+  /**
+   * Get or create a permanent signer identity by email
+   * This ID persists across all documents the person signs
+   */
+  private async getOrCreateSignerIdentity(email: string, name: string): Promise<{ id: string; permanentId: string }> {
+    const normalizedEmail = email.toLowerCase().trim();
+    
+    // Check if identity exists
+    const existing = await this.db.query(
+      `SELECT id, permanent_id FROM esign_signer_identities WHERE email = $1`,
+      [normalizedEmail]
+    );
+    
+    if (existing.rows.length > 0) {
+      // Update display name if changed
+      await this.db.query(
+        `UPDATE esign_signer_identities SET display_name = $1, last_signed_at = NOW() WHERE id = $2`,
+        [name, existing.rows[0].id]
+      );
+      return { id: existing.rows[0].id, permanentId: existing.rows[0].permanent_id };
+    }
+    
+    // Create new permanent identity
+    const permanentId = this.generatePermanentSignerId();
+    const result = await this.db.query(
+      `INSERT INTO esign_signer_identities (email, permanent_id, display_name, first_signed_at, last_signed_at)
+       VALUES ($1, $2, $3, NOW(), NOW())
+       RETURNING id, permanent_id`,
+      [normalizedEmail, permanentId, name]
+    );
+    
+    logger.info('Created new signer identity', { email: normalizedEmail, permanentId });
+    return { id: result.rows[0].id, permanentId: result.rows[0].permanent_id };
+  }
+
   private mapRowToEnvelope(row: any): ESignEnvelope {
     return {
       id: row.id,
@@ -154,6 +210,9 @@ export class EnvelopeService {
       name: row.name,
       documentHtml: row.document_html,
       documentPdfUrl: row.document_pdf_url,
+      documentImageUrl: row.document_image_url,
+      captureWidth: row.capture_width,
+      captureHeight: row.capture_height,
       contextType: row.context_type,
       contextEntityId: row.context_entity_id,
       contextEntityName: row.context_entity_name,
@@ -190,6 +249,7 @@ export class EnvelopeService {
       declineReason: row.decline_reason,
       signedFromIp: row.signed_from_ip,
       signedUserAgent: row.signed_user_agent,
+      permanentSignerId: row.permanent_signer_id,
       createdAt: row.created_at
     };
   }
@@ -210,6 +270,8 @@ export class EnvelopeService {
       signedAt: row.signed_at,
       required: row.required,
       label: row.label,
+      signatureHash: row.signature_hash,
+      signerIdentityId: row.signer_identity_id,
       createdAt: row.created_at
     };
   }
@@ -230,6 +292,9 @@ export class EnvelopeService {
         organization_id,
         name,
         document_html,
+        document_image_url,
+        capture_width,
+        capture_height,
         context_type,
         context_entity_id,
         context_entity_name,
@@ -238,7 +303,7 @@ export class EnvelopeService {
         expires_at,
         sent_at,
         created_by
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW(), $10)
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, NOW(), $13)
       RETURNING *
     `;
 
@@ -246,6 +311,9 @@ export class EnvelopeService {
       organizationId,
       data.name,
       data.documentHtml,
+      data.documentImageUrl || null,
+      data.captureWidth || 1224,  // Default: 816 * 1.5 scale
+      data.captureHeight || null,
       data.contextType || 'lease',
       data.contextEntityId,
       data.contextEntityName,
@@ -448,6 +516,28 @@ export class EnvelopeService {
   }
 
   /**
+   * Get signer access token by envelope ID and email
+   * Used to construct signing URL for tenant from application
+   */
+  async getSignerAccessToken(envelopeId: string, email: string): Promise<string | null> {
+    const query = `
+      SELECT access_token 
+      FROM esign_signers 
+      WHERE envelope_id = $1 
+        AND LOWER(email) = LOWER($2)
+        AND access_token IS NOT NULL
+        AND access_token_expires_at > NOW()
+    `;
+    const result = await this.db.query(query, [envelopeId, email]);
+    
+    if (result.rows.length === 0) {
+      return null;
+    }
+    
+    return result.rows[0].access_token;
+  }
+
+  /**
    * List envelopes for an organization
    */
   async listEnvelopes(
@@ -575,15 +665,68 @@ export class EnvelopeService {
       throw new Error('Field not found or not assigned to this signer');
     }
 
-    const query = `UPDATE esign_fields SET value = $1, font_family = $2, signed_at = NOW() WHERE id = $3 RETURNING *`;
-    const result = await this.db.query(query, [value, fontFamily, fieldId]);
+    // Get or create permanent signer identity (persists across ALL documents they ever sign)
+    const signerIdentity = await this.getOrCreateSignerIdentity(signer.email, signer.name);
 
-    await this.logEvent(envelope.id, signer.id, 'field_signed', { fieldId, fieldType: field.fieldType });
+    // Generate a unique signature hash for verification (like DocuSign)
+    const signatureHash = crypto
+      .createHash('sha256')
+      .update(`${fieldId}:${signer.id}:${envelope.id}:${signerIdentity.permanentId}:${value}:${Date.now()}`)
+      .digest('hex')
+      .substring(0, 16)
+      .toUpperCase();
 
+    // Update field with signature, hash, and permanent signer identity
+    const query = `UPDATE esign_fields SET value = $1, font_family = $2, signed_at = NOW(), signature_hash = $3, signer_identity_id = $4 WHERE id = $5 RETURNING *`;
+    const result = await this.db.query(query, [value, fontFamily, signatureHash, signerIdentity.id, fieldId]);
+
+    // Update signer with permanent ID if not already set
+    await this.db.query(
+      `UPDATE esign_signers SET permanent_signer_id = $1 WHERE id = $2 AND permanent_signer_id IS NULL`,
+      [signerIdentity.permanentId, signer.id]
+    );
+
+    // Increment signature count for this identity
+    await this.db.query(
+      `UPDATE esign_signer_identities SET total_signatures = total_signatures + 1 WHERE id = $1`,
+      [signerIdentity.id]
+    );
+
+    await this.logEvent(envelope.id, signer.id, 'field_signed', { 
+      fieldId, 
+      fieldType: field.fieldType, 
+      signatureHash,
+      permanentSignerId: signerIdentity.permanentId 
+    });
+
+    // Get all fields for this signer
     const signerFields = envelope.fields?.filter(f => f.signerId === signer.id) || [];
-    const unsignedFields = signerFields.filter(f => f.id !== fieldId && !f.value);
+    
+    // Check if all signature/initials fields are signed (excluding date_signed which we auto-populate)
+    const signatureFields = signerFields.filter(f => f.fieldType === FieldType.SIGNATURE || f.fieldType === FieldType.INITIALS);
+    const unsignedSignatureFields = signatureFields.filter(f => f.id !== fieldId && !f.value);
 
-    if (unsignedFields.length === 0) {
+    // If all signature/initials fields are signed, auto-populate date_signed fields
+    if (unsignedSignatureFields.length === 0) {
+      const dateFields = signerFields.filter(f => f.fieldType === FieldType.DATE_SIGNED && !f.value);
+      if (dateFields.length > 0) {
+        const dateValue = new Date().toLocaleDateString('en-US', { 
+          year: 'numeric', 
+          month: 'short', 
+          day: 'numeric' 
+        });
+        await this.db.query(
+          `UPDATE esign_fields SET value = $1, signed_at = NOW() WHERE id = ANY($2::uuid[])`,
+          [dateValue, dateFields.map(f => f.id)]
+        );
+        logger.info('Auto-populated date_signed fields', { 
+          envelopeId: envelope.id, 
+          signerId: signer.id, 
+          dateFieldCount: dateFields.length 
+        });
+      }
+
+      // Mark signer as signed
       await this.db.query(
         `UPDATE esign_signers SET status = $1, signed_at = NOW(), signed_from_ip = $2, signed_user_agent = $3 WHERE id = $4`,
         [SignerStatus.SIGNED, ipAddress, userAgent, signer.id]

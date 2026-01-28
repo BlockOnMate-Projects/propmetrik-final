@@ -749,7 +749,7 @@ interface DataMetricCardProps {
   trendLabel?: string;
   sparklineData?: number[];
   icon?: React.ComponentType<{ className?: string }>;
-  color?: 'blue' | 'green' | 'amber' | 'red' | 'purple';
+  color?: 'blue' | 'green' | 'amber' | 'red' | 'purple' | 'yellow';
   status?: 'live' | 'loading' | 'error';
 }
 
@@ -770,6 +770,7 @@ export function DataMetricCard({
     amber: 'text-amber-400',
     red: 'text-red-400',
     purple: 'text-purple-400',
+    yellow: 'text-yellow-400',
   };
 
   return (

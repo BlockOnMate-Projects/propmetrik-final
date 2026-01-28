@@ -1240,13 +1240,20 @@ router.get('/construction/index', asyncHandler(async (req: Request, res: Respons
  * POST /data-hub/construction/seed
  */
 router.post('/construction/seed', asyncHandler(async (req: Request, res: Response) => {
-  // TODO: Add admin auth middleware
-  await constructionCostService.seedInitialData();
-
-  res.json({
-    success: true,
-    message: 'Construction cost data seeded',
-  });
+  try {
+    await constructionCostService.seedInitialData();
+    res.json({
+      success: true,
+      message: 'Construction cost data seeded',
+    });
+  } catch (error: any) {
+    logger.error('Error in POST /construction/seed', { error: error.message, stack: error.stack });
+    res.status(500).json({
+      success: false,
+      error: error.message,
+      stack: error.stack
+    });
+  }
 }));
 
 // ============================================

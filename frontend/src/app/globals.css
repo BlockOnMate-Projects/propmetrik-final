@@ -4,25 +4,48 @@
 
 @layer base {
   :root {
-    --background: 222.2 84% 4.9%;
+    /* Enterprise Dark Theme (Slate/Indigo) */
+    --background: 222 47% 11%;
+    /* Slate 950 */
     --foreground: 210 40% 98%;
-    --card: 222.2 84% 4.9%;
+    /* Slate 50 */
+
+    --card: 215 25% 15%;
+    /* Slate 900 */
     --card-foreground: 210 40% 98%;
-    --popover: 222.2 84% 4.9%;
+    /* Slate 50 */
+
+    --popover: 215 25% 15%;
+    /* Slate 900 */
     --popover-foreground: 210 40% 98%;
-    --primary: 217.2 91.2% 59.8%;
-    --primary-foreground: 222.2 47.4% 11.2%;
-    --secondary: 217.2 32.6% 17.5%;
+
+    --primary: 243 75% 59%;
+    /* Indigo 500 */
+    --primary-foreground: 210 40% 98%;
+
+    --secondary: 217 33% 17%;
+    /* Slate 800 */
     --secondary-foreground: 210 40% 98%;
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
-    --accent: 217.2 32.6% 17.5%;
+
+    --muted: 217 33% 17%;
+    /* Slate 800 */
+    --muted-foreground: 215 20% 65%;
+    /* Slate 400 */
+
+    --accent: 217 33% 17%;
+    /* Slate 800 */
     --accent-foreground: 210 40% 98%;
-    --destructive: 0 62.8% 30.6%;
+
+    --destructive: 0 84% 60%;
+    /* Red 500 */
     --destructive-foreground: 210 40% 98%;
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 224.3 76.3% 48%;
+
+    --border: 217 33% 20%;
+    /* Slate 800 (slightly lighter) */
+    --input: 217 33% 20%;
+    --ring: 243 75% 59%;
+    /* Indigo 500 */
+
     --radius: 0.5rem;
   }
 }
@@ -31,6 +54,7 @@
   * {
     @apply border-border;
   }
+
   body {
     @apply bg-background text-foreground;
   }
@@ -84,9 +108,12 @@
 
 /* Status indicator animations */
 @keyframes pulse-status {
-  0%, 100% {
+
+  0%,
+  100% {
     opacity: 1;
   }
+
   50% {
     opacity: 0.5;
   }

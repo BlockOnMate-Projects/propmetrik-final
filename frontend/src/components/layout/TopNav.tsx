@@ -6,13 +6,14 @@ import { cn } from '@/lib/utils'
 import { useTheme } from 'next-themes'
 import { useEffect, useState } from 'react'
 
-const navigation: { name: string; href: string; key: string; badge?: string }[] = [
+const navigation: { name: string; href: string; key: string; badge?: string; adminOnly?: boolean }[] = [
   { name: 'OVERVIEW', href: '/dashboard', key: '1' },
   { name: 'VALUATIONS', href: '/dashboard/valuations', key: '2' },
   { name: 'DEALS', href: '/dashboard/deals', key: '3' },
-  { name: 'DATA HUB', href: '/dashboard/data-hub', key: '4' },
+  { name: 'PROJECTS', href: '/dashboard/projects', key: '4' },
   { name: 'ANALYTICS', href: '/dashboard/analytics', key: '5' },
   { name: 'MANAGEMENT', href: '/dashboard/property-management', key: '6' },
+  { name: 'ADMIN', href: '/dashboard/admin', key: 'A', badge: 'ADMIN', adminOnly: true },
 ]
 
 function Clock() {
@@ -95,6 +96,8 @@ export function TopNav() {
         <nav className="flex items-center gap-0.5 flex-1">
           {navigation.map((item) => {
             const active = isActive(item.href)
+            // TODO: Check user role from session and hide adminOnly items for non-admins
+            const isAdminTab = item.adminOnly
             return (
               <Link
                 key={item.name}
@@ -102,16 +105,26 @@ export function TopNav() {
                 className={cn(
                   'px-3 py-1.5 text-xs font-mono tracking-wider transition-colors flex items-center gap-1.5',
                   active
-                    ? 'bg-amber-500 text-black font-bold'
-                    : 'text-zinc-400 hover:text-white hover:bg-zinc-800'
+                    ? isAdminTab 
+                      ? 'bg-red-600 text-white font-bold'
+                      : 'bg-amber-500 text-black font-bold'
+                    : isAdminTab
+                      ? 'text-red-400 hover:text-red-300 hover:bg-red-900/30 border border-red-900/50'
+                      : 'text-zinc-400 hover:text-white hover:bg-zinc-800'
                 )}
               >
-                <span className="text-zinc-600 mr-1">{item.key}</span>
+                <span className={cn("mr-1", isAdminTab ? "text-red-600" : "text-zinc-600")}>{item.key}</span>
                 {item.name}
                 {item.badge && (
                   <span className={cn(
                     'px-1 py-0.5 text-[8px] rounded',
-                    active ? 'bg-black/20 text-black' : 'bg-yellow-500/20 text-yellow-500'
+                    active 
+                      ? isAdminTab 
+                        ? 'bg-black/20 text-white' 
+                        : 'bg-black/20 text-black' 
+                      : isAdminTab
+                        ? 'bg-red-500/20 text-red-400'
+                        : 'bg-yellow-500/20 text-yellow-500'
                   )}>
                     {item.badge}
                   </span>

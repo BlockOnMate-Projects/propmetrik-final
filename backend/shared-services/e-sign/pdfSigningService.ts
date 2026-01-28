@@ -322,25 +322,26 @@ export class PdfSigningService {
             width: number;
             height: number;
             signatureId?: string;
+            signatureHash?: string;  // NEW: For compliance metadata
             signedAt?: Date;
             usePercentage?: boolean; // Default true
         }
     ): Promise<Uint8Array> {
         const pdfDoc = await PDFDocument.load(pdfBytes);
         const pages = pdfDoc.getPages();
-        
+
         const pageIndex = options.page - 1;
         if (pageIndex < 0 || pageIndex >= pages.length) {
             throw new Error(`Invalid page number: ${options.page}`);
         }
-        
+
         const page = pages[pageIndex];
         const { width: pageWidth, height: pageHeight } = page.getSize();
-        
+
         // Calculate actual coordinates
         const usePercentage = options.usePercentage !== false;
         let x: number, y: number;
-        
+
         if (usePercentage) {
             // Convert percentage to pixels
             x = (options.x / 100) * pageWidth;
@@ -351,11 +352,11 @@ export class PdfSigningService {
             // Y coordinate from top
             y = pageHeight - options.y - options.height;
         }
-        
+
         // Decode and embed signature image
         const sigBase64 = signatureData.replace(/^data:image\/\w+;base64,/, '');
         const sigBytes = Buffer.from(sigBase64, 'base64');
-        
+
         let sigImage;
         try {
             if (signatureData.includes('image/png') || signatureData.includes('PNG')) {
@@ -371,7 +372,7 @@ export class PdfSigningService {
                 sigImage = await pdfDoc.embedJpg(sigBytes);
             }
         }
-        
+
         // Draw signature
         page.drawImage(sigImage, {
             x,
@@ -379,33 +380,45 @@ export class PdfSigningService {
             width: options.width,
             height: options.height,
         });
-        
-        // Add signature ID and timestamp below if provided
-        if (options.signatureId || options.signedAt) {
+
+        // Add signature ID, timestamp and hash below if provided
+        if (options.signatureId || options.signedAt || options.signatureHash) {
             const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
-            const dateStr = options.signedAt 
-                ? options.signedAt.toISOString().split('T')[0] 
+            const dateStr = options.signedAt
+                ? options.signedAt.toISOString().split('T')[0]
                 : new Date().toISOString().split('T')[0];
-            const labelText = options.signatureId 
+
+            const line1 = options.signatureId
                 ? `Signed: ${dateStr} | ID: ${options.signatureId}`
                 : `Signed: ${dateStr}`;
-            
-            page.drawText(labelText, {
+
+            page.drawText(line1, {
                 x,
-                y: y - 10,
-                size: 6,
+                y: y - 8,
+                size: 5,
                 font,
                 color: rgb(0.4, 0.4, 0.4),
             });
+
+            if (options.signatureHash) {
+                const hashLabel = `DIGITAL HASH: ${options.signatureHash}`;
+                page.drawText(hashLabel, {
+                    x,
+                    y: y - 14,
+                    size: 4,
+                    font,
+                    color: rgb(0.6, 0.6, 0.6),
+                });
+            }
         }
-        
+
         logger.info('Signature embedded at position', {
             page: options.page,
             x: options.x,
             y: options.y,
             signatureId: options.signatureId
         });
-        
+
         return pdfDoc.save();
     }
 
@@ -422,11 +435,12 @@ export class PdfSigningService {
             width: number;
             height: number;
             signatureId?: string;
+            signatureHash?: string;
             signedAt?: Date;
         }>
     ): Promise<Uint8Array> {
         let currentPdfBytes = pdfBytes;
-        
+
         for (const sig of signatures) {
             currentPdfBytes = await this.embedSignatureAtPosition(
                 currentPdfBytes,
@@ -438,11 +452,12 @@ export class PdfSigningService {
                     width: sig.width,
                     height: sig.height,
                     signatureId: sig.signatureId,
+                    signatureHash: sig.signatureHash,
                     signedAt: sig.signedAt
                 }
             );
         }
-        
+
         return currentPdfBytes;
     }
 
@@ -560,10 +575,7 @@ export class PdfSigningService {
             ['Envelope ID:', params.envelopeId],
             ['Organization:', params.organizationName],
             ['Status:', '✓ COMPLETED'],
-            ['Completed On:', params.completedAt.toLocaleString('en-US', {
-                dateStyle: 'full',
-                timeStyle: 'long',
-            })],
+            ['Completed On:', params.completedAt.toISOString().replace('T', ' ').replace(/\..+/, '') + ' UTC'],
         ];
 
         for (const [label, value] of docInfo) {
@@ -659,7 +671,7 @@ export class PdfSigningService {
         // Signers table
         for (let i = 0; i < params.signers.length; i++) {
             const signer = params.signers[i];
-            
+
             // Signer box
             const boxHeight = 70;
             if (yPos - boxHeight < 100) {
@@ -826,15 +838,10 @@ export class PdfSigningService {
             for (const event of params.auditEvents) {
                 if (y2 < 100) break;
 
-                const timestamp = event.timestamp.toLocaleString('en-US', {
-                    month: 'short',
-                    day: '2-digit',
-                    hour: '2-digit',
-                    minute: '2-digit',
-                });
+                const timestamp = event.timestamp.toISOString().replace('T', ' ').substring(5, 16);
 
                 page2.drawText(timestamp, { x: margin + 5, y: y2, size: 7, font, color: rgb(0.3, 0.3, 0.3) });
-                
+
                 // Event type with color
                 const eventColors: Record<string, [number, number, number]> = {
                     'created': [0.15, 0.39, 0.92],
@@ -846,7 +853,7 @@ export class PdfSigningService {
                     'voided': [0.86, 0.15, 0.15],
                 };
                 const eventColor = eventColors[event.eventType] || [0.3, 0.3, 0.3];
-                
+
                 page2.drawText(event.eventType.toUpperCase(), {
                     x: margin + 130,
                     y: y2,
@@ -856,8 +863,8 @@ export class PdfSigningService {
                 });
 
                 // Truncate description if too long
-                const desc = event.description.length > 40 
-                    ? event.description.substring(0, 37) + '...' 
+                const desc = event.description.length > 40
+                    ? event.description.substring(0, 37) + '...'
                     : event.description;
                 page2.drawText(desc, { x: margin + 250, y: y2, size: 7, font, color: rgb(0.4, 0.4, 0.4) });
 
