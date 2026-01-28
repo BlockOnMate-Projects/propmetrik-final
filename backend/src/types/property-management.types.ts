@@ -315,6 +315,13 @@ export interface Tenancy {
         id: string;
         title: string;
         address: string;
+        addressStreet?: string;
+        addressCity?: string;
+        addressRegion?: string;
+        digitalAddress?: string;
+        propertyType?: string;
+        bedrooms?: number;
+        bathrooms?: number;
     };
 }
 
@@ -462,6 +469,7 @@ export interface CreateVendorDto {
     mobileMoneyNumber?: string;
     preferredPaymentMethod?: PaymentMethod;
     notes?: string;
+    status?: VendorStatus;
 }
 
 export interface UpdateVendorDto extends Partial<CreateVendorDto> {

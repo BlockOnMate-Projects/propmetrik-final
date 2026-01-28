@@ -435,7 +435,7 @@ export default function ContactDetailPage() {
                                 {deals.map((deal) => (
                                     <Link key={deal.id} href={`/dashboard/deals/${deal.id}`}>
                                         <div className="p-3 bg-zinc-800/50 border border-zinc-700 hover:border-amber-500/50 transition-colors cursor-pointer">
-                                            <h4 className="font-mono text-sm text-white truncate">{deal.deal_name}</h4>
+                                            <h4 className="font-mono text-sm text-white truncate">{deal.title}</h4>
                                             <p className="font-mono text-[10px] text-zinc-500 mt-1">
                                                 {formatCurrency(deal.deal_value || 0)}
                                             </p>

@@ -54,7 +54,7 @@ router.get('/endpoints',
           e.*,
           ds.name as source_name,
           ds.tier as source_tier,
-          ds.country as source_country,
+          ds.regions_covered as source_regions,
           COUNT(j.id) FILTER (WHERE j.started_at >= NOW() - INTERVAL '7 days') as jobs_last_7d,
           COUNT(j.id) FILTER (WHERE j.status = 'completed' AND j.started_at >= NOW() - INTERVAL '7 days') as successful_jobs_last_7d
         FROM partner_api_endpoints e
@@ -85,7 +85,7 @@ router.get('/endpoints',
       }
 
       query += ` 
-        GROUP BY e.id, ds.name, ds.tier, ds.country
+        GROUP BY e.id, ds.name, ds.tier, ds.regions_covered
         ORDER BY e.created_at DESC
       `;
 

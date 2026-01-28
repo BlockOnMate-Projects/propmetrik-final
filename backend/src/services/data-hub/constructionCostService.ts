@@ -162,6 +162,9 @@ export interface ConstructionCostIndex {
   source: string;
   is_official: boolean;
   notes: string | null;
+  material_index?: number;
+  labor_index?: number;
+  overall_index?: number;
   created_at: Date;
 }
 
@@ -565,9 +568,8 @@ export class ConstructionCostService {
    * Create a new labor rate record
    */
   async createLaborRate(input: CreateLaborRateInput): Promise<LaborRate> {
-    // Get previous rate
     const previousResult = await query<{ rate_ghs: number }>(
-      `SELECT rate_ghs FROM labor_rates 
+      `SELECT daily_rate_ghs AS rate_ghs FROM labor_rates 
        WHERE labor_category = $1 AND skill_level = $2 AND region = $3
        ORDER BY survey_date DESC LIMIT 1`,
       [input.labor_category, input.skill_level, input.region]
@@ -580,11 +582,14 @@ export class ConstructionCostService {
 
     const result = await query<LaborRate>(
       `INSERT INTO labor_rates (
-        labor_category, skill_level, rate_ghs, previous_rate_ghs, rate_change_percent,
+        labor_category, skill_level, daily_rate_ghs, previous_rate_ghs, rate_change_percent,
         rate_type, unit_description, region, includes_benefits, minimum_hire_period,
         survey_date, source, is_verified, notes, metadata
       ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
-      RETURNING *`,
+       RETURNING id, labor_category, skill_level, daily_rate_ghs AS rate_ghs, 
+                 previous_rate_ghs, rate_change_percent, rate_type, unit_description, 
+                 region, includes_benefits, minimum_hire_period, survey_date, source, 
+                 is_verified, notes, metadata, created_at, updated_at`,
       [
         input.labor_category, input.skill_level, input.rate_ghs, previousRate, changePercent,
         input.rate_type, input.unit_description || null, input.region,
@@ -673,7 +678,9 @@ export class ConstructionCostService {
     const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
 
     const result = await query<LaborRate>(
-      `SELECT DISTINCT ON (labor_category, skill_level, region) *
+      `SELECT DISTINCT ON (labor_category, skill_level, region) 
+        id, labor_category, skill_level, daily_rate_ghs AS rate_ghs, region, 
+        survey_date, previous_rate_ghs, rate_change_percent, notes
        FROM labor_rates ${whereClause}
        ORDER BY labor_category, skill_level, region, survey_date DESC`,
       params
@@ -846,7 +853,7 @@ export class ConstructionCostService {
   async getLatestConstructionIndex(region?: RegionCode): Promise<ConstructionCostIndex | null> {
     try {
       const result = await query<ConstructionCostIndex>(
-        `SELECT * FROM construction_cost_indices 
+        `SELECT *, methodology AS calculation_methodology FROM construction_cost_indices 
          WHERE ($1::text IS NULL OR region::text = $1)
          ORDER BY period_end DESC LIMIT 1`,
         [region || null]
@@ -869,18 +876,30 @@ export class ConstructionCostService {
    * Calculate current construction index based on live market data
    */
   async calculateCurrentIndex(region?: RegionCode): Promise<ConstructionCostIndex> {
+    logger.info('Starting calculateCurrentIndex', { region });
     const materialIndex = await this.calculateMaterialIndex(region);
     const laborIndex = await this.calculateLaborIndex(region);
 
+    logger.info('Sub-indices calculated', { materialIndex, laborIndex, region });
+
     // Combine indices based on breakdown weights
-    const overallIndexValue = (materialIndex * ConstructionCostService.COST_BREAKDOWN.materials) +
-      (laborIndex * ConstructionCostService.COST_BREAKDOWN.labor) +
-      (100 * (1 - ConstructionCostService.COST_BREAKDOWN.materials - ConstructionCostService.COST_BREAKDOWN.labor));
+    const materialsWeight = ConstructionCostService.COST_BREAKDOWN.materials;
+    const laborWeight = ConstructionCostService.COST_BREAKDOWN.labor;
+    const othersWeight = 1 - materialsWeight - laborWeight;
+
+    const overallIndexValue = (materialIndex * materialsWeight) +
+      (laborIndex * laborWeight) +
+      (100 * othersWeight);
+
+    logger.info('Overall index value calculated', { overallIndexValue, region });
 
     return {
       id: `calc-${Date.now()}`,
       index_name: 'Composite Construction Cost Index',
       index_value: Math.round(overallIndexValue * 10) / 10,
+      material_index: Math.round(materialIndex * 10) / 10,
+      labor_index: Math.round(laborIndex * 10) / 10,
+      overall_index: Math.round(overallIndexValue * 10) / 10,
       base_year: 2024,
       base_value: 100,
       period_start: new Date(new Date().getFullYear(), new Date().getMonth(), 1),
@@ -889,6 +908,7 @@ export class ConstructionCostService {
       change_year_on_year: 0,
       region: region as any,
       property_type: 'residential',
+      calculation_methodology: 'Weighted relative average of materials and labor',
       components: [
         { name: 'Materials', weight: ConstructionCostService.COST_BREAKDOWN.materials, value: materialIndex },
         { name: 'Labor', weight: ConstructionCostService.COST_BREAKDOWN.labor, value: laborIndex }
@@ -954,12 +974,16 @@ export class ConstructionCostService {
   async updateConstructionIndex(input: {
     index_name: string;
     index_value: number;
+    material_index?: number;
+    labor_index?: number;
+    overall_index?: number;
     base_year: number;
     base_value: number;
     period_start: Date;
     period_end: Date;
     region?: RegionCode;
     property_type?: string;
+    calculation_methodology?: string;
     components?: Array<{ name: string; weight: number; value: number }>;
     source: string;
     is_official?: boolean;
@@ -968,7 +992,7 @@ export class ConstructionCostService {
     // Get previous index for change calculation
     const previousResult = await query<{ index_value: number; period_end: Date }>(
       `SELECT index_value, period_end FROM construction_cost_indices 
-       WHERE index_name = $1 AND ($2::text IS NULL OR region = $2)
+       WHERE index_name = $1 AND ($2::text IS NULL OR region::text = $2)
        ORDER BY period_end DESC LIMIT 1`,
       [input.index_name, input.region || null]
     );
@@ -981,8 +1005,8 @@ export class ConstructionCostService {
     // Calculate YoY change
     const yoyResult = await query<{ index_value: number }>(
       `SELECT index_value FROM construction_cost_indices 
-       WHERE index_name = $1 AND ($2::text IS NULL OR region = $2)
-         AND period_end <= $3 - INTERVAL '1 year'
+       WHERE index_name = $1 AND ($2::text IS NULL OR region::text = $2)
+         AND period_end <= $3::date - INTERVAL '1 year'
        ORDER BY period_end DESC LIMIT 1`,
       [input.index_name, input.region || null, input.period_end]
     );
@@ -993,17 +1017,28 @@ export class ConstructionCostService {
 
     const result = await query<ConstructionCostIndex>(
       `INSERT INTO construction_cost_indices (
-        index_name, index_value, base_year, base_value,
-        period_start, period_end, change_from_previous, change_year_on_year,
-        region, property_type, components, source, is_official, notes
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
-      RETURNING *`,
+        index_name, index_value, material_index, labor_index, overall_index, 
+        base_year, base_value, period_start, period_end, effective_date,
+        change_from_previous, change_year_on_year, region, property_type, 
+        methodology, components, source, is_official, notes
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19)
+      ON CONFLICT (effective_date, region) DO UPDATE SET
+        index_value = EXCLUDED.index_value,
+        material_index = EXCLUDED.material_index,
+        labor_index = EXCLUDED.labor_index,
+        overall_index = EXCLUDED.overall_index,
+        change_from_previous = EXCLUDED.change_from_previous,
+        change_year_on_year = EXCLUDED.change_year_on_year,
+        components = EXCLUDED.components,
+        updated_at = NOW()
+      RETURNING *, methodology AS calculation_methodology`,
       [
-        input.index_name, input.index_value, input.base_year, input.base_value,
-        input.period_start, input.period_end, changeFromPrevious, changeYoY,
-        input.region || null, input.property_type || null,
-        JSON.stringify(input.components || []), input.source,
-        input.is_official || false, input.notes || null,
+        input.index_name, input.index_value, input.material_index || input.index_value,
+        input.labor_index || input.index_value, input.overall_index || input.index_value,
+        input.base_year, input.base_value, input.period_start, input.period_end, input.period_end,
+        changeFromPrevious, changeYoY, input.region || null, input.property_type || null,
+        input.calculation_methodology || null, JSON.stringify(input.components || []),
+        input.source, input.is_official || false, input.notes || null,
       ]
     );
 
@@ -1221,7 +1256,7 @@ export class ConstructionCostService {
   // ============================================
 
   /**
-   * Get material category weights from database
+   * Get material category weights from database with fallback
    */
   async getMaterialWeights(): Promise<Array<{
     category: string;
@@ -1229,21 +1264,50 @@ export class ConstructionCostService {
     weight: number;
     updated_at: string;
   }>> {
-    const result = await query<{
-      category: string;
-      percentage: number;
-      description: string;
-      updated_at: Date;
-    }>(
-      'SELECT category, percentage, description, updated_at FROM cost_breakdown ORDER BY display_order ASC'
-    );
+    try {
+      const result = await query<{
+        category: string;
+        percentage: number;
+        description: string;
+        updated_at: Date;
+      }>(
+        'SELECT category, percentage, description, updated_at FROM cost_breakdown ORDER BY display_order ASC'
+      );
 
-    return result.rows.map(row => ({
-      category: row.category,
-      display_name: row.description,
-      weight: parseFloat(row.percentage as any),
-      updated_at: row.updated_at.toISOString(),
-    }));
+      if (result.rows.length === 0) {
+        return this.getFallbackWeights();
+      }
+
+      return result.rows.map(row => ({
+        category: row.category,
+        display_name: row.description,
+        weight: parseFloat(row.percentage as any),
+        updated_at: row.updated_at.toISOString(),
+      }));
+    } catch (error) {
+      // If table doesn't exist or other error, use fallback weights
+      logger.info('Using fallback material weights (table cost_breakdown may be missing)');
+      return this.getFallbackWeights();
+    }
+  }
+
+  /**
+   * Default cost breakdown weights for Ghana construction
+   */
+  private getFallbackWeights() {
+    const weights: Array<{ category: string; display_name: string; weight: number; updated_at: string }> = [
+      { category: 'cement', display_name: 'Cement', weight: 0.15, updated_at: new Date().toISOString() },
+      { category: 'steel', display_name: 'Steel & Reinforcement', weight: 0.12, updated_at: new Date().toISOString() },
+      { category: 'timber', display_name: 'Timber & Formwork', weight: 0.08, updated_at: new Date().toISOString() },
+      { category: 'blocks', display_name: 'Blocks & Masonry', weight: 0.10, updated_at: new Date().toISOString() },
+      { category: 'sand', display_name: 'Sand', weight: 0.05, updated_at: new Date().toISOString() },
+      { category: 'gravel', display_name: 'Gravel & Stones', weight: 0.05, updated_at: new Date().toISOString() },
+      { category: 'roofing', display_name: 'Roofing', weight: 0.10, updated_at: new Date().toISOString() },
+      { category: 'finishing', display_name: 'Finishing & Painting', weight: 0.15, updated_at: new Date().toISOString() },
+      { category: 'electrical', display_name: 'Electrical Works', weight: 0.10, updated_at: new Date().toISOString() },
+      { category: 'plumbing', display_name: 'Plumbing & Sanitary', weight: 0.10, updated_at: new Date().toISOString() },
+    ];
+    return weights;
   }
 
   /**

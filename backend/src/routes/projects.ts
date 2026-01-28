@@ -16,21 +16,43 @@
  */
 
 import { Router, Request, Response, NextFunction } from 'express';
-import projectService from '../services/crm-deal-management/project-management/projectService';
-import phaseService from '../services/crm-deal-management/project-management/phaseService';
-import unitService from '../services/crm-deal-management/project-management/unitService';
-import projectCostService from '../services/crm-deal-management/project-management/projectCostService';
-import contractorService from '../services/crm-deal-management/project-management/contractorService';
-import drawService from '../services/crm-deal-management/project-management/drawService';
-import dailyLogService from '../services/crm-deal-management/project-management/dailyLogService';
-import paymentPlanService from '../services/crm-deal-management/project-management/paymentPlanService';
-import punchListService from '../services/crm-deal-management/project-management/punchListService';
-import projectIntegrationService from '../services/crm-deal-management/project-management/projectIntegrationService';
+import projectService from '../services/project-management/projectService';
+import phaseService from '../services/project-management/phaseService';
+import unitService from '../services/project-management/unitService';
+import projectCostService from '../services/project-management/projectCostService';
+import contractorService from '../services/project-management/contractorService';
+import drawService from '../services/project-management/drawService';
+import dailyLogService from '../services/project-management/dailyLogService';
+import paymentPlanService from '../services/project-management/paymentPlanService';
+import punchListService from '../services/project-management/punchListService';
+import projectIntegrationService from '../services/project-management/projectIntegrationService';
+// Phase 1: Ghana Enhancement Services
+import projectLocationService from '../services/project-management/projectLocationService';
+import projectCostCurrencyService from '../services/project-management/projectCostCurrencyService';
+import projectWizardService from '../services/project-management/projectWizardService';
+import { 
+  GHANA_REGIONS, 
+  LAND_TENURE_TYPES, 
+  PROJECT_TYPES,
+  getPhaseTemplateForType,
+  getAmenitiesForType,
+  requiresEPAPermit
+} from '../services/project-management/projectDefaults';
+// Phase 2: Dashboard & Gantt Services
+import dashboardAnalyticsService from '../services/project-management/dashboardAnalyticsService';
+import milestoneService from '../services/project-management/milestoneService';
+import ganttService from '../services/project-management/ganttService';
+// Phase 3: Compliance & Document Services
+import { complianceService } from '../services/project-management/complianceService';
+import { projectDocumentService } from '../services/project-management/projectDocumentService';
+import { complianceReportService } from '../services/project-management/complianceReportService';
 
 const router = Router();
 
 // Development mode organization ID (valid UUID for testing)
 const DEV_ORG_ID = '00000000-0000-0000-0000-000000000001';
+// Development mode user ID (valid UUID for testing)
+const DEV_USER_ID = '00000000-0000-0000-0000-000000000001';
 
 // Helper to get organization ID from request
 const getOrgId = (req: Request): string => {
@@ -38,7 +60,7 @@ const getOrgId = (req: Request): string => {
 };
 
 const getUserId = (req: Request): string => {
-  return (req as any).user?.id || (req as any).userId || 'system';
+  return (req as any).user?.id || (req as any).user?.sub || (req as any).userId || DEV_USER_ID;
 };
 
 // ============================================================================
@@ -138,7 +160,21 @@ router.post('/', async (req: Request, res: Response, next: NextFunction) => {
 });
 
 // Get single project
+// Note: This must come AFTER all specific path routes like /ghana-regions, /ghana-districts, /validate-gps, etc.
+// Use a middleware to skip non-UUID paths
 router.get('/:id', async (req: Request, res: Response, next: NextFunction) => {
+  // Skip if path matches known non-ID routes (let them fall through to later handlers)
+  const nonIdPaths = [
+    'summaries', 'stats', 'defaults', 'phase-templates', 'wizard', 'search', 'nearby',
+    'traditional-authorities', 'assemblies', 'ghana-regions', 'ghana-districts', 
+    'validate-gps', 'validate-location', 'reverse-geocode', 'estimate-costs',
+    'suggest-budget-breakdown', 'required-permits', 'with-location'
+  ];
+  
+  if (nonIdPaths.includes(req.params.id)) {
+    return next('route');
+  }
+
   try {
     const orgId = getOrgId(req);
     const project = await projectService.getById(req.params.id, orgId);
@@ -2219,6 +2255,2657 @@ router.post('/:projectId/add-to-portfolio', async (req: Request, res: Response, 
     });
     
     res.json({ message: `${count} properties added to portfolio` });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// ============================================================================
+// PHASE 1: WIZARD & DRAFT MANAGEMENT
+// ============================================================================
+
+// Get wizard templates
+router.get('/wizard/templates', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const orgId = getOrgId(req);
+    const { projectType } = req.query;
+    const templates = await projectWizardService.getTemplates(orgId, projectType as any);
+    res.json(templates);
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Get user's drafts
+router.get('/wizard/drafts', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const orgId = getOrgId(req);
+    const userId = getUserId(req);
+    const drafts = await projectWizardService.getUserDrafts(orgId, userId);
+    res.json(drafts);
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Create new wizard draft
+router.post('/wizard/drafts', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const userId = getUserId(req);
+    const orgId = getOrgId(req);
+    const { templateId, draftName, draftType, sourceProjectId } = req.body;
+    
+    const draft = await projectWizardService.createDraft({
+      organization_id: orgId,
+      created_by: userId,
+      draft_name: draftName,
+      draft_type: draftType || 'new_project',
+      source_template_id: templateId,
+      source_project_id: sourceProjectId,
+    });
+    res.status(201).json(draft);
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Get specific draft
+router.get('/wizard/drafts/:draftId', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const orgId = getOrgId(req);
+    const draft = await projectWizardService.getDraftById(req.params.draftId, orgId);
+    
+    if (!draft) {
+      return res.status(404).json({ error: 'Draft not found' });
+    }
+    
+    res.json(draft);
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Update draft (auto-save)
+router.patch('/wizard/drafts/:draftId', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const orgId = getOrgId(req);
+    const userId = getUserId(req);
+    const { step, data, isAutoSave } = req.body;
+    
+    const draft = await projectWizardService.updateDraft(
+      req.params.draftId,
+      orgId,
+      {
+        step,
+        data,
+        is_auto_save: isAutoSave,
+        last_edited_by: userId,
+      }
+    );
+    
+    res.json(draft);
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Validate wizard step
+router.post('/wizard/drafts/:draftId/validate-step', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const orgId = getOrgId(req);
+    const { step } = req.body;
+    
+    const validation = await projectWizardService.validateStep(
+      req.params.draftId,
+      orgId,
+      step
+    );
+    
+    res.json(validation);
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Complete wizard step
+router.post('/wizard/drafts/:draftId/complete-step', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const orgId = getOrgId(req);
+    const { stepNumber } = req.body;
+    
+    const draft = await projectWizardService.completeStep(
+      req.params.draftId,
+      orgId,
+      stepNumber
+    );
+    
+    res.json(draft);
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Get cost estimate from wizard data
+router.post('/wizard/drafts/:draftId/cost-estimate', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const orgId = getOrgId(req);
+    
+    const estimate = await projectWizardService.generateCostEstimate(
+      req.params.draftId,
+      orgId
+    );
+    
+    res.json(estimate);
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Submit wizard and create project
+router.post('/wizard/drafts/:draftId/submit', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const orgId = getOrgId(req);
+    const userId = getUserId(req);
+    
+    const project = await projectWizardService.submitWizard(
+      req.params.draftId,
+      orgId,
+      userId
+    );
+    
+    res.status(201).json(project);
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Delete draft
+router.delete('/wizard/drafts/:draftId', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const orgId = getOrgId(req);
+    
+    await projectWizardService.deleteDraft(req.params.draftId, orgId);
+    
+    res.status(204).send();
+  } catch (error) {
+    next(error);
+  }
+});
+
+// ============================================================================
+// PHASE 1: LOCATION VALIDATION & ENRICHMENT
+// ============================================================================
+
+// Validate Ghana PostGPS code
+router.post('/validate-gps', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { gps_code } = req.body;
+    
+    if (!gps_code) {
+      return res.status(400).json({ 
+        valid: false, 
+        error: 'GPS code is required' 
+      });
+    }
+    
+    const result = await projectLocationService.validateAndEnrichLocation({
+      ghana_post_gps: gps_code,
+    });
+    
+    // Transform to GhanaPostValidation format expected by frontend
+    res.json({
+      valid: result.isValid,
+      gpsCode: result.validated.ghana_post_gps || gps_code,
+      address: [
+        result.validated.ghana_area,
+        result.validated.ghana_district,
+        result.validated.ghana_region,
+      ].filter(Boolean).join(', '),
+      region: result.validated.ghana_region,
+      district: result.validated.ghana_district,
+      area: result.validated.ghana_area,
+      latitude: result.validated.latitude,
+      longitude: result.validated.longitude,
+      confidence: result.confidence,
+      source: result.source,
+      errors: result.issues.filter(i => i.severity === 'error').map(i => i.message),
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Validate and enrich location
+router.post('/validate-location', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { ghana_post_gps, latitude, longitude, address_line1, city, region } = req.body;
+    
+    const result = await projectLocationService.validateAndEnrichLocation({
+      ghana_post_gps,
+      latitude,
+      longitude,
+      address_line1,
+      city,
+      region,
+    });
+    
+    res.json(result);
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Reverse geocode coordinates
+router.post('/reverse-geocode', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { latitude, longitude } = req.body;
+    
+    if (!latitude || !longitude) {
+      return res.status(400).json({ 
+        valid: false, 
+        error: 'latitude and longitude are required' 
+      });
+    }
+    
+    const result = await projectLocationService.validateAndEnrichLocation({
+      latitude: parseFloat(latitude),
+      longitude: parseFloat(longitude),
+    });
+    
+    res.json(result);
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Get Ghana regions
+router.get('/ghana-regions', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    // Return all 16 regions of Ghana
+    const regions = [
+      'Greater Accra',
+      'Ashanti',
+      'Western',
+      'Central',
+      'Eastern',
+      'Volta',
+      'Northern',
+      'Upper East',
+      'Upper West',
+      'Brong-Ahafo',
+      'Oti',
+      'Bono East',
+      'Ahafo',
+      'Western North',
+      'Savannah',
+      'North East',
+    ];
+    
+    res.json(regions);
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Get districts by region
+router.get('/ghana-districts', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { region } = req.query;
+    
+    if (!region) {
+      return res.status(400).json({ error: 'region is required' });
+    }
+    
+    // Ghana districts by region (major districts/municipalities)
+    const districtsByRegion: Record<string, string[]> = {
+      'Greater Accra': [
+        'Accra Metropolitan',
+        'Tema Metropolitan',
+        'Ga East Municipal',
+        'Ga West Municipal',
+        'Ga South Municipal',
+        'Ga Central Municipal',
+        'Ga North Municipal',
+        'La Dade Kotopon Municipal',
+        'La Nkwantanang Madina Municipal',
+        'Ledzokuku Municipal',
+        'Kpone Katamanso Municipal',
+        'Adentan Municipal',
+        'Ayawaso East Municipal',
+        'Ayawaso West Municipal',
+        'Ayawaso North Municipal',
+        'Ayawaso Central Municipal',
+        'Ablekuma North Municipal',
+        'Ablekuma West Municipal',
+        'Ablekuma Central Municipal',
+        'Okaikwei North Municipal',
+        'Korle Klottey Municipal',
+        'Weija Gbawe Municipal',
+        'Ada East',
+        'Ada West',
+        'Ningo Prampram',
+        'Shai Osudoku',
+      ],
+      'Ashanti': [
+        'Kumasi Metropolitan',
+        'Obuasi Municipal',
+        'Asokwa Municipal',
+        'Suame Municipal',
+        'Bantama Municipal',
+        'Nhyiaeso Municipal',
+        'Kwadaso Municipal',
+        'Oforikrom Municipal',
+        'Tafo-Pankrono Municipal',
+        'Old Tafo Municipal',
+        'Asokore Mampong Municipal',
+        'Afigya Kwabre South',
+        'Afigya Kwabre North',
+        'Atwima Kwanwoma',
+        'Atwima Mponua',
+        'Atwima Nwabiagya North',
+        'Atwima Nwabiagya South',
+        'Bekwai Municipal',
+        'Bosomtwe',
+        'Ejisu Municipal',
+        'Juaben Municipal',
+        'Kwabre East Municipal',
+      ],
+      'Central': [
+        'Cape Coast Metropolitan',
+        'Awutu Senya East Municipal',
+        'Awutu Senya West',
+        'Effutu Municipal',
+        'Gomoa East',
+        'Gomoa West',
+        'Gomoa Central',
+        'Mfantsiman Municipal',
+        'Abura Asebu Kwamankese',
+        'Asikuma Odoben Brakwa',
+        'Ajumako Enyan Essiam',
+        'Ekumfi',
+        'Assin North',
+        'Assin South',
+        'Assin Fosu Municipal',
+        'Twifo Atti Morkwa',
+        'Twifo Hemang Lower Denkyira',
+        'Upper Denkyira East Municipal',
+        'Upper Denkyira West',
+        'Agona East',
+        'Agona West Municipal',
+      ],
+      'Western': [
+        'Sekondi-Takoradi Metropolitan',
+        'Effia Kwesimintsim Municipal',
+        'Shama',
+        'Ahanta West Municipal',
+        'Nzema East Municipal',
+        'Ellembelle',
+        'Jomoro',
+        'Tarkwa Nsuaem Municipal',
+        'Prestea Huni Valley Municipal',
+        'Wassa Amenfi East',
+        'Wassa Amenfi Central',
+        'Wassa Amenfi West',
+        'Wassa East',
+        'Mpohor',
+      ],
+      'Eastern': [
+        'New Juaben South Municipal',
+        'New Juaben North Municipal',
+        'Akuapem South',
+        'Akuapem North Municipal',
+        'Akyem Mansa North',
+        'Akyem Mansa South',
+        'Birim Central Municipal',
+        'Birim North',
+        'Birim South',
+        'Denkyembour',
+        'Kwahu Afram Plains North',
+        'Kwahu Afram Plains South',
+        'Kwahu East',
+        'Kwahu South',
+        'Kwahu West Municipal',
+        'Lower Manya Krobo',
+        'Upper Manya Krobo',
+        'Yilo Krobo Municipal',
+        'Asuogyaman',
+        'Nsawam Adoagyiri Municipal',
+        'Suhum Municipal',
+        'Ayensuano',
+        'Upper West Akyem',
+        'Atiwa East',
+        'Atiwa West',
+        'Fanteakwa North',
+        'Fanteakwa South',
+      ],
+      'Volta': [
+        'Ho Municipal',
+        'Ho West',
+        'South Dayi',
+        'North Dayi',
+        'Keta Municipal',
+        'Ketu North',
+        'Ketu South Municipal',
+        'Akatsi North',
+        'Akatsi South',
+        'Adaklu',
+        'Afadzato South',
+        'Hohoe Municipal',
+        'Anloga',
+        'Central Tongu',
+        'South Tongu',
+        'North Tongu',
+      ],
+      'Northern': [
+        'Tamale Metropolitan',
+        'Sagnarigu Municipal',
+        'Tolon',
+        'Kumbungu',
+        'Savelugu Municipal',
+        'Nanton',
+        'Zabzugu',
+        'Tatale Sanguli',
+        'Yendi Municipal',
+        'Mion',
+        'Karaga',
+        'Gushegu Municipal',
+        'Nanumba North Municipal',
+        'Nanumba South',
+      ],
+      'Upper East': [
+        'Bolgatanga Municipal',
+        'Bolgatanga East',
+        'Bongo',
+        'Builsa North',
+        'Builsa South',
+        'Kassena Nankana West',
+        'Kassena Nankana Municipal',
+        'Bawku Municipal',
+        'Bawku West',
+        'Binduri',
+        'Garu',
+        'Tempane',
+        'Pusiga',
+        'Nabdam',
+        'Talensi',
+      ],
+      'Upper West': [
+        'Wa Municipal',
+        'Wa East',
+        'Wa West',
+        'Nadowli Kaleo',
+        'Daffiama Bussie Issa',
+        'Jirapa Municipal',
+        'Lambussie Karni',
+        'Lawra Municipal',
+        'Nandom',
+        'Sissala East',
+        'Sissala West',
+      ],
+      'Brong-Ahafo': [
+        'Sunyani Municipal',
+        'Sunyani West',
+        'Dormaa Municipal',
+        'Dormaa East',
+        'Dormaa West',
+        'Berekum West',
+        'Berekum East Municipal',
+        'Jaman North',
+        'Jaman South',
+        'Tain',
+        'Wenchi Municipal',
+      ],
+      'Oti': [
+        'Krachi East Municipal',
+        'Krachi West',
+        'Krachi Nchumuru',
+        'Biakoye',
+        'Jasikan',
+        'Kadjebi',
+        'Nkwanta North',
+        'Nkwanta South Municipal',
+      ],
+      'Bono East': [
+        'Techiman Municipal',
+        'Techiman North',
+        'Nkoranza North',
+        'Nkoranza South Municipal',
+        'Kintampo North Municipal',
+        'Kintampo South',
+        'Sene East',
+        'Sene West',
+        'Atebubu Amantin',
+        'Pru East',
+        'Pru West',
+      ],
+      'Ahafo': [
+        'Asunafo North Municipal',
+        'Asunafo South',
+        'Asutifi North',
+        'Asutifi South',
+        'Tano North Municipal',
+        'Tano South',
+      ],
+      'Western North': [
+        'Sefwi Wiawso Municipal',
+        'Sefwi Akontombra',
+        'Bibiani Anhwiaso Bekwai Municipal',
+        'Juaboso',
+        'Bia East',
+        'Bia West',
+        'Bodi',
+        'Suaman',
+        'Aowin',
+      ],
+      'Savannah': [
+        'Damongo Municipal',
+        'Sawla Tuna Kalba',
+        'Bole',
+        'Central Gonja',
+        'East Gonja Municipal',
+        'North Gonja',
+        'North East Gonja',
+      ],
+      'North East': [
+        'Nalerigu Municipal',
+        'Walewale Municipal',
+        'Mamprugu Moagduri',
+        'Bunkpurugu Nakpanduri',
+        'Yunyoo Nasuan',
+        'Chereponi',
+      ],
+    };
+    
+    const districts = districtsByRegion[region as string] || [];
+    res.json(districts);
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Create project with location validation
+router.post('/with-location', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const orgId = getOrgId(req);
+    const userId = getUserId(req);
+    
+    const project = await projectLocationService.createWithValidation(
+      { ...req.body, organization_id: orgId, created_by: userId }
+    );
+    
+    res.status(201).json(project);
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Search projects with full-text search
+router.get('/search', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const orgId = getOrgId(req);
+    const { q, region, district, type, status, limit, offset } = req.query;
+    
+    const results = await projectLocationService.searchProjects({
+      organizationId: orgId,
+      query: q as string,
+      region: region as string,
+      district: district as string,
+      projectType: type as string,
+      status: status as string,
+      limit: limit ? parseInt(limit as string) : undefined,
+      offset: offset ? parseInt(offset as string) : undefined,
+    });
+    
+    res.json(results);
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Find nearby projects
+router.get('/nearby', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const orgId = getOrgId(req);
+    const { lat, lng, radius, limit } = req.query;
+    
+    if (!lat || !lng) {
+      return res.status(400).json({ error: 'lat and lng are required' });
+    }
+    
+    const projects = await projectLocationService.findNearbyProjects(
+      orgId,
+      parseFloat(lat as string),
+      parseFloat(lng as string),
+      radius ? parseFloat(radius as string) : 5000,
+      limit ? parseInt(limit as string) : 10
+    );
+    
+    res.json(projects);
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Get traditional authorities by region - Static data for Ghana
+router.get('/traditional-authorities', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { region } = req.query;
+    
+    // Static traditional authorities data by region
+    const TRADITIONAL_AUTHORITIES: Record<string, Array<{id: string, name: string, chieftaincyTitle: string}>> = {
+      'Greater Accra': [
+        { id: 'ta-ga-1', name: 'Ga Traditional Council', chieftaincyTitle: 'Ga Mantse' },
+        { id: 'ta-ga-2', name: 'Nungua Traditional Council', chieftaincyTitle: 'Nungua Mantse' },
+        { id: 'ta-ga-3', name: 'Teshie Traditional Council', chieftaincyTitle: 'Teshie Mantse' },
+        { id: 'ta-ga-4', name: 'La Traditional Council', chieftaincyTitle: 'La Mantse' },
+        { id: 'ta-ga-5', name: 'Osu Traditional Council', chieftaincyTitle: 'Osu Mantse' },
+        { id: 'ta-ga-6', name: 'Tema Traditional Council', chieftaincyTitle: 'Tema Mantse' },
+        { id: 'ta-ga-7', name: 'Ada Traditional Council', chieftaincyTitle: 'Ada Mantse' },
+      ],
+      'Ashanti': [
+        { id: 'ta-ash-1', name: 'Asanteman Council', chieftaincyTitle: 'Asantehene' },
+        { id: 'ta-ash-2', name: 'Kumasi Traditional Council', chieftaincyTitle: 'Kumasihene' },
+        { id: 'ta-ash-3', name: 'Ejisu Traditional Council', chieftaincyTitle: 'Ejisuhene' },
+        { id: 'ta-ash-4', name: 'Mampong Traditional Council', chieftaincyTitle: 'Mamponghene' },
+        { id: 'ta-ash-5', name: 'Bekwai Traditional Council', chieftaincyTitle: 'Bekwaihene' },
+        { id: 'ta-ash-6', name: 'Offinso Traditional Council', chieftaincyTitle: 'Offinsohene' },
+      ],
+      'Central': [
+        { id: 'ta-cen-1', name: 'Oguaa Traditional Council', chieftaincyTitle: 'Oguaahene' },
+        { id: 'ta-cen-2', name: 'Elmina Traditional Council', chieftaincyTitle: 'Elminahene' },
+        { id: 'ta-cen-3', name: 'Winneba Traditional Council', chieftaincyTitle: 'Winnebahene' },
+        { id: 'ta-cen-4', name: 'Agona Traditional Council', chieftaincyTitle: 'Agonahene' },
+        { id: 'ta-cen-5', name: 'Assin Traditional Council', chieftaincyTitle: 'Assinhene' },
+      ],
+      'Western': [
+        { id: 'ta-wes-1', name: 'Sekondi Traditional Council', chieftaincyTitle: 'Sekondihene' },
+        { id: 'ta-wes-2', name: 'Takoradi Traditional Council', chieftaincyTitle: 'Takoradihene' },
+        { id: 'ta-wes-3', name: 'Ahanta Traditional Council', chieftaincyTitle: 'Ahantahene' },
+        { id: 'ta-wes-4', name: 'Nzema Traditional Council', chieftaincyTitle: 'Nzemahene' },
+      ],
+      'Eastern': [
+        { id: 'ta-eas-1', name: 'Akyem Abuakwa Traditional Council', chieftaincyTitle: 'Okyenhene' },
+        { id: 'ta-eas-2', name: 'Kwahu Traditional Council', chieftaincyTitle: 'Kwahuhene' },
+        { id: 'ta-eas-3', name: 'Akuapem Traditional Council', chieftaincyTitle: 'Akuapemhene' },
+        { id: 'ta-eas-4', name: 'New Juaben Traditional Council', chieftaincyTitle: 'Omanhene' },
+      ],
+      'Volta': [
+        { id: 'ta-vol-1', name: 'Anlo Traditional Council', chieftaincyTitle: 'Awomefia' },
+        { id: 'ta-vol-2', name: 'Asogli Traditional Council', chieftaincyTitle: 'Agbogbomefia' },
+        { id: 'ta-vol-3', name: 'Peki Traditional Council', chieftaincyTitle: 'Pekihene' },
+        { id: 'ta-vol-4', name: 'Hohoe Traditional Council', chieftaincyTitle: 'Hohoehene' },
+      ],
+      'Northern': [
+        { id: 'ta-nor-1', name: 'Dagbon Traditional Council', chieftaincyTitle: 'Ya-Na' },
+        { id: 'ta-nor-2', name: 'Tamale Traditional Council', chieftaincyTitle: 'Tamale Na' },
+        { id: 'ta-nor-3', name: 'Yendi Traditional Council', chieftaincyTitle: 'Yendi Na' },
+      ],
+      'Upper East': [
+        { id: 'ta-ue-1', name: 'Bolgatanga Traditional Council', chieftaincyTitle: 'Bolganaba' },
+        { id: 'ta-ue-2', name: 'Bawku Traditional Council', chieftaincyTitle: 'Bawkunaba' },
+        { id: 'ta-ue-3', name: 'Navrongo Traditional Council', chieftaincyTitle: 'Navro-Pio' },
+      ],
+      'Upper West': [
+        { id: 'ta-uw-1', name: 'Wa Traditional Council', chieftaincyTitle: 'Wa Na' },
+        { id: 'ta-uw-2', name: 'Lawra Traditional Council', chieftaincyTitle: 'Lawra Na' },
+        { id: 'ta-uw-3', name: 'Jirapa Traditional Council', chieftaincyTitle: 'Jirapa Na' },
+      ],
+      'Bono': [
+        { id: 'ta-bon-1', name: 'Sunyani Traditional Council', chieftaincyTitle: 'Sunyanihene' },
+        { id: 'ta-bon-2', name: 'Dormaa Traditional Council', chieftaincyTitle: 'Dormaahene' },
+        { id: 'ta-bon-3', name: 'Berekum Traditional Council', chieftaincyTitle: 'Berekumhene' },
+      ],
+      'Bono East': [
+        { id: 'ta-be-1', name: 'Techiman Traditional Council', chieftaincyTitle: 'Techimanhene' },
+        { id: 'ta-be-2', name: 'Nkoranza Traditional Council', chieftaincyTitle: 'Nkoranzahene' },
+        { id: 'ta-be-3', name: 'Kintampo Traditional Council', chieftaincyTitle: 'Kintampohene' },
+      ],
+      'Ahafo': [
+        { id: 'ta-aha-1', name: 'Goaso Traditional Council', chieftaincyTitle: 'Goasohene' },
+        { id: 'ta-aha-2', name: 'Bechem Traditional Council', chieftaincyTitle: 'Bechemhene' },
+      ],
+      'Oti': [
+        { id: 'ta-oti-1', name: 'Dambai Traditional Council', chieftaincyTitle: 'Dambaihene' },
+        { id: 'ta-oti-2', name: 'Nkwanta Traditional Council', chieftaincyTitle: 'Nkwantahene' },
+      ],
+      'Western North': [
+        { id: 'ta-wn-1', name: 'Sefwi Traditional Council', chieftaincyTitle: 'Sefwihene' },
+        { id: 'ta-wn-2', name: 'Juaboso Traditional Council', chieftaincyTitle: 'Juabosohene' },
+      ],
+      'North East': [
+        { id: 'ta-ne-1', name: 'Nalerigu Traditional Council', chieftaincyTitle: 'Nayiri' },
+        { id: 'ta-ne-2', name: 'Walewale Traditional Council', chieftaincyTitle: 'Walewalenaba' },
+      ],
+      'Savannah': [
+        { id: 'ta-sav-1', name: 'Damongo Traditional Council', chieftaincyTitle: 'Yagbonwura' },
+        { id: 'ta-sav-2', name: 'Bole Traditional Council', chieftaincyTitle: 'Bolewura' },
+      ],
+    };
+    
+    const regionKey = region as string;
+    const authorities = regionKey ? (TRADITIONAL_AUTHORITIES[regionKey] || []) : [];
+    
+    res.json(authorities);
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Get regulatory assemblies - Static data for Ghana
+router.get('/assemblies', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { region } = req.query;
+    
+    // Static assemblies data by region (same as districts but with additional metadata)
+    const ASSEMBLIES: Record<string, Array<{id: string, assembly_name: string, assembly_type: string}>> = {
+      'Greater Accra': [
+        { id: 'asm-ga-1', assembly_name: 'Accra Metropolitan', assembly_type: 'metropolitan' },
+        { id: 'asm-ga-2', assembly_name: 'Tema Metropolitan', assembly_type: 'metropolitan' },
+        { id: 'asm-ga-3', assembly_name: 'Ga East Municipal', assembly_type: 'municipal' },
+        { id: 'asm-ga-4', assembly_name: 'Ga West Municipal', assembly_type: 'municipal' },
+        { id: 'asm-ga-5', assembly_name: 'Ga South Municipal', assembly_type: 'municipal' },
+        { id: 'asm-ga-6', assembly_name: 'Ga North Municipal', assembly_type: 'municipal' },
+        { id: 'asm-ga-7', assembly_name: 'Ga Central Municipal', assembly_type: 'municipal' },
+        { id: 'asm-ga-8', assembly_name: 'La Dade Kotopon Municipal', assembly_type: 'municipal' },
+        { id: 'asm-ga-9', assembly_name: 'La Nkwantanang Madina Municipal', assembly_type: 'municipal' },
+        { id: 'asm-ga-10', assembly_name: 'Ledzokuku Municipal', assembly_type: 'municipal' },
+        { id: 'asm-ga-11', assembly_name: 'Krowor Municipal', assembly_type: 'municipal' },
+        { id: 'asm-ga-12', assembly_name: 'Korle Klottey Municipal', assembly_type: 'municipal' },
+        { id: 'asm-ga-13', assembly_name: 'Ablekuma North Municipal', assembly_type: 'municipal' },
+        { id: 'asm-ga-14', assembly_name: 'Ablekuma Central Municipal', assembly_type: 'municipal' },
+        { id: 'asm-ga-15', assembly_name: 'Ablekuma West Municipal', assembly_type: 'municipal' },
+        { id: 'asm-ga-16', assembly_name: 'Ayawaso North Municipal', assembly_type: 'municipal' },
+        { id: 'asm-ga-17', assembly_name: 'Ayawaso East Municipal', assembly_type: 'municipal' },
+        { id: 'asm-ga-18', assembly_name: 'Ayawaso West Municipal', assembly_type: 'municipal' },
+        { id: 'asm-ga-19', assembly_name: 'Ayawaso Central Municipal', assembly_type: 'municipal' },
+        { id: 'asm-ga-20', assembly_name: 'Okaikwei North Municipal', assembly_type: 'municipal' },
+        { id: 'asm-ga-21', assembly_name: 'Weija Gbawe Municipal', assembly_type: 'municipal' },
+        { id: 'asm-ga-22', assembly_name: 'Kpone Katamanso Municipal', assembly_type: 'municipal' },
+        { id: 'asm-ga-23', assembly_name: 'Ada East District', assembly_type: 'district' },
+        { id: 'asm-ga-24', assembly_name: 'Ada West District', assembly_type: 'district' },
+        { id: 'asm-ga-25', assembly_name: 'Ningo Prampram District', assembly_type: 'district' },
+        { id: 'asm-ga-26', assembly_name: 'Shai Osudoku District', assembly_type: 'district' },
+      ],
+      'Ashanti': [
+        { id: 'asm-ash-1', assembly_name: 'Kumasi Metropolitan', assembly_type: 'metropolitan' },
+        { id: 'asm-ash-2', assembly_name: 'Oforikrom Municipal', assembly_type: 'municipal' },
+        { id: 'asm-ash-3', assembly_name: 'Asokwa Municipal', assembly_type: 'municipal' },
+        { id: 'asm-ash-4', assembly_name: 'Suame Municipal', assembly_type: 'municipal' },
+        { id: 'asm-ash-5', assembly_name: 'Old Tafo Municipal', assembly_type: 'municipal' },
+        { id: 'asm-ash-6', assembly_name: 'Kwadaso Municipal', assembly_type: 'municipal' },
+        { id: 'asm-ash-7', assembly_name: 'Nhyiaeso Municipal', assembly_type: 'municipal' },
+        { id: 'asm-ash-8', assembly_name: 'Asokore Mampong Municipal', assembly_type: 'municipal' },
+        { id: 'asm-ash-9', assembly_name: 'Bantama Municipal', assembly_type: 'municipal' },
+        { id: 'asm-ash-10', assembly_name: 'Ejisu Municipal', assembly_type: 'municipal' },
+        { id: 'asm-ash-11', assembly_name: 'Mampong Municipal', assembly_type: 'municipal' },
+        { id: 'asm-ash-12', assembly_name: 'Obuasi Municipal', assembly_type: 'municipal' },
+        { id: 'asm-ash-13', assembly_name: 'Bekwai Municipal', assembly_type: 'municipal' },
+        { id: 'asm-ash-14', assembly_name: 'Offinso North District', assembly_type: 'district' },
+        { id: 'asm-ash-15', assembly_name: 'Offinso South Municipal', assembly_type: 'municipal' },
+        { id: 'asm-ash-16', assembly_name: 'Afigya Kwabre South District', assembly_type: 'district' },
+        { id: 'asm-ash-17', assembly_name: 'Kwabre East Municipal', assembly_type: 'municipal' },
+        { id: 'asm-ash-18', assembly_name: 'Atwima Kwanwoma District', assembly_type: 'district' },
+        { id: 'asm-ash-19', assembly_name: 'Atwima Nwabiagya Municipal', assembly_type: 'municipal' },
+        { id: 'asm-ash-20', assembly_name: 'Bosomtwe District', assembly_type: 'district' },
+      ],
+      'Central': [
+        { id: 'asm-cen-1', assembly_name: 'Cape Coast Metropolitan', assembly_type: 'metropolitan' },
+        { id: 'asm-cen-2', assembly_name: 'Komenda Edina Eguafo Abirem Municipal', assembly_type: 'municipal' },
+        { id: 'asm-cen-3', assembly_name: 'Mfantseman Municipal', assembly_type: 'municipal' },
+        { id: 'asm-cen-4', assembly_name: 'Abura Asebu Kwamankese District', assembly_type: 'district' },
+        { id: 'asm-cen-5', assembly_name: 'Ajumako Enyan Essiam District', assembly_type: 'district' },
+        { id: 'asm-cen-6', assembly_name: 'Assin Central Municipal', assembly_type: 'municipal' },
+        { id: 'asm-cen-7', assembly_name: 'Assin North District', assembly_type: 'district' },
+        { id: 'asm-cen-8', assembly_name: 'Assin South District', assembly_type: 'district' },
+        { id: 'asm-cen-9', assembly_name: 'Twifo Atti Morkwa District', assembly_type: 'district' },
+        { id: 'asm-cen-10', assembly_name: 'Upper Denkyira East Municipal', assembly_type: 'municipal' },
+        { id: 'asm-cen-11', assembly_name: 'Upper Denkyira West District', assembly_type: 'district' },
+        { id: 'asm-cen-12', assembly_name: 'Effutu Municipal', assembly_type: 'municipal' },
+        { id: 'asm-cen-13', assembly_name: 'Gomoa Central District', assembly_type: 'district' },
+        { id: 'asm-cen-14', assembly_name: 'Gomoa East District', assembly_type: 'district' },
+        { id: 'asm-cen-15', assembly_name: 'Gomoa West District', assembly_type: 'district' },
+        { id: 'asm-cen-16', assembly_name: 'Awutu Senya District', assembly_type: 'district' },
+        { id: 'asm-cen-17', assembly_name: 'Awutu Senya East Municipal', assembly_type: 'municipal' },
+        { id: 'asm-cen-18', assembly_name: 'Agona East District', assembly_type: 'district' },
+        { id: 'asm-cen-19', assembly_name: 'Agona West Municipal', assembly_type: 'municipal' },
+      ],
+      'Western': [
+        { id: 'asm-wes-1', assembly_name: 'Sekondi Takoradi Metropolitan', assembly_type: 'metropolitan' },
+        { id: 'asm-wes-2', assembly_name: 'Effia Kwesimintsim Municipal', assembly_type: 'municipal' },
+        { id: 'asm-wes-3', assembly_name: 'Ahanta West Municipal', assembly_type: 'municipal' },
+        { id: 'asm-wes-4', assembly_name: 'Shama District', assembly_type: 'district' },
+        { id: 'asm-wes-5', assembly_name: 'Wassa East District', assembly_type: 'district' },
+        { id: 'asm-wes-6', assembly_name: 'Mpohor District', assembly_type: 'district' },
+        { id: 'asm-wes-7', assembly_name: 'Tarkwa Nsuaem Municipal', assembly_type: 'municipal' },
+        { id: 'asm-wes-8', assembly_name: 'Prestea Huni Valley Municipal', assembly_type: 'municipal' },
+        { id: 'asm-wes-9', assembly_name: 'Ellembelle District', assembly_type: 'district' },
+        { id: 'asm-wes-10', assembly_name: 'Nzema East Municipal', assembly_type: 'municipal' },
+        { id: 'asm-wes-11', assembly_name: 'Jomoro Municipal', assembly_type: 'municipal' },
+      ],
+      'Eastern': [
+        { id: 'asm-eas-1', assembly_name: 'New Juaben South Municipal', assembly_type: 'municipal' },
+        { id: 'asm-eas-2', assembly_name: 'New Juaben North Municipal', assembly_type: 'municipal' },
+        { id: 'asm-eas-3', assembly_name: 'Akuapem North Municipal', assembly_type: 'municipal' },
+        { id: 'asm-eas-4', assembly_name: 'Akuapem South District', assembly_type: 'district' },
+        { id: 'asm-eas-5', assembly_name: 'Akyem Mansa Municipal', assembly_type: 'municipal' },
+        { id: 'asm-eas-6', assembly_name: 'Birim North District', assembly_type: 'district' },
+        { id: 'asm-eas-7', assembly_name: 'Birim Central Municipal', assembly_type: 'municipal' },
+        { id: 'asm-eas-8', assembly_name: 'Birim South District', assembly_type: 'district' },
+        { id: 'asm-eas-9', assembly_name: 'Abuakwa South Municipal', assembly_type: 'municipal' },
+        { id: 'asm-eas-10', assembly_name: 'Abuakwa North Municipal', assembly_type: 'municipal' },
+        { id: 'asm-eas-11', assembly_name: 'Kwahu West Municipal', assembly_type: 'municipal' },
+        { id: 'asm-eas-12', assembly_name: 'Kwahu East District', assembly_type: 'district' },
+        { id: 'asm-eas-13', assembly_name: 'Kwahu South District', assembly_type: 'district' },
+        { id: 'asm-eas-14', assembly_name: 'Kwahu Afram Plains North District', assembly_type: 'district' },
+        { id: 'asm-eas-15', assembly_name: 'Kwahu Afram Plains South District', assembly_type: 'district' },
+        { id: 'asm-eas-16', assembly_name: 'Suhum Municipal', assembly_type: 'municipal' },
+        { id: 'asm-eas-17', assembly_name: 'Ayensuano District', assembly_type: 'district' },
+        { id: 'asm-eas-18', assembly_name: 'West Akim Municipal', assembly_type: 'municipal' },
+        { id: 'asm-eas-19', assembly_name: 'Nsawam Adoagyiri Municipal', assembly_type: 'municipal' },
+      ],
+      'Volta': [
+        { id: 'asm-vol-1', assembly_name: 'Ho Municipal', assembly_type: 'municipal' },
+        { id: 'asm-vol-2', assembly_name: 'Ho West District', assembly_type: 'district' },
+        { id: 'asm-vol-3', assembly_name: 'South Dayi District', assembly_type: 'district' },
+        { id: 'asm-vol-4', assembly_name: 'Keta Municipal', assembly_type: 'municipal' },
+        { id: 'asm-vol-5', assembly_name: 'Ketu South Municipal', assembly_type: 'municipal' },
+        { id: 'asm-vol-6', assembly_name: 'Ketu North Municipal', assembly_type: 'municipal' },
+        { id: 'asm-vol-7', assembly_name: 'Akatsi South District', assembly_type: 'district' },
+        { id: 'asm-vol-8', assembly_name: 'Akatsi North District', assembly_type: 'district' },
+        { id: 'asm-vol-9', assembly_name: 'South Tongu District', assembly_type: 'district' },
+        { id: 'asm-vol-10', assembly_name: 'Central Tongu District', assembly_type: 'district' },
+        { id: 'asm-vol-11', assembly_name: 'North Tongu District', assembly_type: 'district' },
+        { id: 'asm-vol-12', assembly_name: 'Adaklu District', assembly_type: 'district' },
+        { id: 'asm-vol-13', assembly_name: 'Agotime Ziope District', assembly_type: 'district' },
+        { id: 'asm-vol-14', assembly_name: 'North Dayi District', assembly_type: 'district' },
+        { id: 'asm-vol-15', assembly_name: 'Hohoe Municipal', assembly_type: 'municipal' },
+        { id: 'asm-vol-16', assembly_name: 'Afadjato South District', assembly_type: 'district' },
+      ],
+      'Northern': [
+        { id: 'asm-nor-1', assembly_name: 'Tamale Metropolitan', assembly_type: 'metropolitan' },
+        { id: 'asm-nor-2', assembly_name: 'Sagnarigu Municipal', assembly_type: 'municipal' },
+        { id: 'asm-nor-3', assembly_name: 'Yendi Municipal', assembly_type: 'municipal' },
+        { id: 'asm-nor-4', assembly_name: 'Mion District', assembly_type: 'district' },
+        { id: 'asm-nor-5', assembly_name: 'Nanton District', assembly_type: 'district' },
+        { id: 'asm-nor-6', assembly_name: 'Savelugu Municipal', assembly_type: 'municipal' },
+        { id: 'asm-nor-7', assembly_name: 'Karaga District', assembly_type: 'district' },
+        { id: 'asm-nor-8', assembly_name: 'Gushegu Municipal', assembly_type: 'municipal' },
+        { id: 'asm-nor-9', assembly_name: 'Saboba District', assembly_type: 'district' },
+        { id: 'asm-nor-10', assembly_name: 'Tatale Sanguli District', assembly_type: 'district' },
+        { id: 'asm-nor-11', assembly_name: 'Zabzugu District', assembly_type: 'district' },
+        { id: 'asm-nor-12', assembly_name: 'Nanumba South District', assembly_type: 'district' },
+        { id: 'asm-nor-13', assembly_name: 'Nanumba North Municipal', assembly_type: 'municipal' },
+        { id: 'asm-nor-14', assembly_name: 'Kpandai District', assembly_type: 'district' },
+        { id: 'asm-nor-15', assembly_name: 'Kumbungu District', assembly_type: 'district' },
+        { id: 'asm-nor-16', assembly_name: 'Tolon District', assembly_type: 'district' },
+      ],
+      'Upper East': [
+        { id: 'asm-ue-1', assembly_name: 'Bolgatanga Municipal', assembly_type: 'municipal' },
+        { id: 'asm-ue-2', assembly_name: 'Bolgatanga East District', assembly_type: 'district' },
+        { id: 'asm-ue-3', assembly_name: 'Bongo District', assembly_type: 'district' },
+        { id: 'asm-ue-4', assembly_name: 'Talensi District', assembly_type: 'district' },
+        { id: 'asm-ue-5', assembly_name: 'Nabdam District', assembly_type: 'district' },
+        { id: 'asm-ue-6', assembly_name: 'Kassena Nankana Municipal', assembly_type: 'municipal' },
+        { id: 'asm-ue-7', assembly_name: 'Kassena Nankana West District', assembly_type: 'district' },
+        { id: 'asm-ue-8', assembly_name: 'Builsa North Municipal', assembly_type: 'municipal' },
+        { id: 'asm-ue-9', assembly_name: 'Builsa South District', assembly_type: 'district' },
+        { id: 'asm-ue-10', assembly_name: 'Bawku Municipal', assembly_type: 'municipal' },
+        { id: 'asm-ue-11', assembly_name: 'Bawku West District', assembly_type: 'district' },
+        { id: 'asm-ue-12', assembly_name: 'Binduri District', assembly_type: 'district' },
+        { id: 'asm-ue-13', assembly_name: 'Pusiga District', assembly_type: 'district' },
+        { id: 'asm-ue-14', assembly_name: 'Garu District', assembly_type: 'district' },
+        { id: 'asm-ue-15', assembly_name: 'Tempane District', assembly_type: 'district' },
+      ],
+      'Upper West': [
+        { id: 'asm-uw-1', assembly_name: 'Wa Municipal', assembly_type: 'municipal' },
+        { id: 'asm-uw-2', assembly_name: 'Wa East District', assembly_type: 'district' },
+        { id: 'asm-uw-3', assembly_name: 'Wa West District', assembly_type: 'district' },
+        { id: 'asm-uw-4', assembly_name: 'Nadowli Kaleo District', assembly_type: 'district' },
+        { id: 'asm-uw-5', assembly_name: 'Daffiama Bussie Issa District', assembly_type: 'district' },
+        { id: 'asm-uw-6', assembly_name: 'Jirapa Municipal', assembly_type: 'municipal' },
+        { id: 'asm-uw-7', assembly_name: 'Lambussie Karni District', assembly_type: 'district' },
+        { id: 'asm-uw-8', assembly_name: 'Lawra Municipal', assembly_type: 'municipal' },
+        { id: 'asm-uw-9', assembly_name: 'Nandom Municipal', assembly_type: 'municipal' },
+        { id: 'asm-uw-10', assembly_name: 'Sissala East Municipal', assembly_type: 'municipal' },
+        { id: 'asm-uw-11', assembly_name: 'Sissala West District', assembly_type: 'district' },
+      ],
+      'Bono': [
+        { id: 'asm-bon-1', assembly_name: 'Sunyani Municipal', assembly_type: 'municipal' },
+        { id: 'asm-bon-2', assembly_name: 'Sunyani West Municipal', assembly_type: 'municipal' },
+        { id: 'asm-bon-3', assembly_name: 'Dormaa Central Municipal', assembly_type: 'municipal' },
+        { id: 'asm-bon-4', assembly_name: 'Dormaa East District', assembly_type: 'district' },
+        { id: 'asm-bon-5', assembly_name: 'Dormaa West District', assembly_type: 'district' },
+        { id: 'asm-bon-6', assembly_name: 'Berekum East Municipal', assembly_type: 'municipal' },
+        { id: 'asm-bon-7', assembly_name: 'Berekum West District', assembly_type: 'district' },
+        { id: 'asm-bon-8', assembly_name: 'Jaman North District', assembly_type: 'district' },
+        { id: 'asm-bon-9', assembly_name: 'Jaman South Municipal', assembly_type: 'municipal' },
+        { id: 'asm-bon-10', assembly_name: 'Tain District', assembly_type: 'district' },
+        { id: 'asm-bon-11', assembly_name: 'Wenchi Municipal', assembly_type: 'municipal' },
+        { id: 'asm-bon-12', assembly_name: 'Banda District', assembly_type: 'district' },
+      ],
+      'Bono East': [
+        { id: 'asm-be-1', assembly_name: 'Techiman Municipal', assembly_type: 'municipal' },
+        { id: 'asm-be-2', assembly_name: 'Techiman North District', assembly_type: 'district' },
+        { id: 'asm-be-3', assembly_name: 'Nkoranza South Municipal', assembly_type: 'municipal' },
+        { id: 'asm-be-4', assembly_name: 'Nkoranza North District', assembly_type: 'district' },
+        { id: 'asm-be-5', assembly_name: 'Kintampo North Municipal', assembly_type: 'municipal' },
+        { id: 'asm-be-6', assembly_name: 'Kintampo South District', assembly_type: 'district' },
+        { id: 'asm-be-7', assembly_name: 'Atebubu Amantin Municipal', assembly_type: 'municipal' },
+        { id: 'asm-be-8', assembly_name: 'Sene East District', assembly_type: 'district' },
+        { id: 'asm-be-9', assembly_name: 'Sene West District', assembly_type: 'district' },
+        { id: 'asm-be-10', assembly_name: 'Pru East District', assembly_type: 'district' },
+        { id: 'asm-be-11', assembly_name: 'Pru West District', assembly_type: 'district' },
+      ],
+      'Ahafo': [
+        { id: 'asm-aha-1', assembly_name: 'Asunafo North Municipal', assembly_type: 'municipal' },
+        { id: 'asm-aha-2', assembly_name: 'Asunafo South District', assembly_type: 'district' },
+        { id: 'asm-aha-3', assembly_name: 'Asutifi North District', assembly_type: 'district' },
+        { id: 'asm-aha-4', assembly_name: 'Asutifi South District', assembly_type: 'district' },
+        { id: 'asm-aha-5', assembly_name: 'Tano North Municipal', assembly_type: 'municipal' },
+        { id: 'asm-aha-6', assembly_name: 'Tano South Municipal', assembly_type: 'municipal' },
+      ],
+      'Oti': [
+        { id: 'asm-oti-1', assembly_name: 'Krachi East Municipal', assembly_type: 'municipal' },
+        { id: 'asm-oti-2', assembly_name: 'Krachi West District', assembly_type: 'district' },
+        { id: 'asm-oti-3', assembly_name: 'Krachi Nchumuru District', assembly_type: 'district' },
+        { id: 'asm-oti-4', assembly_name: 'Nkwanta South Municipal', assembly_type: 'municipal' },
+        { id: 'asm-oti-5', assembly_name: 'Nkwanta North District', assembly_type: 'district' },
+        { id: 'asm-oti-6', assembly_name: 'Biakoye District', assembly_type: 'district' },
+        { id: 'asm-oti-7', assembly_name: 'Jasikan District', assembly_type: 'district' },
+        { id: 'asm-oti-8', assembly_name: 'Kadjebi District', assembly_type: 'district' },
+      ],
+      'Western North': [
+        { id: 'asm-wn-1', assembly_name: 'Sefwi Wiawso Municipal', assembly_type: 'municipal' },
+        { id: 'asm-wn-2', assembly_name: 'Sefwi Akontombra District', assembly_type: 'district' },
+        { id: 'asm-wn-3', assembly_name: 'Bibiani Anhwiaso Bekwai Municipal', assembly_type: 'municipal' },
+        { id: 'asm-wn-4', assembly_name: 'Juaboso District', assembly_type: 'district' },
+        { id: 'asm-wn-5', assembly_name: 'Bia East District', assembly_type: 'district' },
+        { id: 'asm-wn-6', assembly_name: 'Bia West District', assembly_type: 'district' },
+        { id: 'asm-wn-7', assembly_name: 'Bodi District', assembly_type: 'district' },
+        { id: 'asm-wn-8', assembly_name: 'Suaman District', assembly_type: 'district' },
+        { id: 'asm-wn-9', assembly_name: 'Aowin Municipal', assembly_type: 'municipal' },
+      ],
+      'North East': [
+        { id: 'asm-ne-1', assembly_name: 'Mamprugu Moagduri District', assembly_type: 'district' },
+        { id: 'asm-ne-2', assembly_name: 'West Mamprusi Municipal', assembly_type: 'municipal' },
+        { id: 'asm-ne-3', assembly_name: 'East Mamprusi Municipal', assembly_type: 'municipal' },
+        { id: 'asm-ne-4', assembly_name: 'Bunkpurugu Nakpanduri District', assembly_type: 'district' },
+        { id: 'asm-ne-5', assembly_name: 'Yunyoo Nasuan District', assembly_type: 'district' },
+        { id: 'asm-ne-6', assembly_name: 'Chereponi District', assembly_type: 'district' },
+      ],
+      'Savannah': [
+        { id: 'asm-sav-1', assembly_name: 'West Gonja Municipal', assembly_type: 'municipal' },
+        { id: 'asm-sav-2', assembly_name: 'Central Gonja District', assembly_type: 'district' },
+        { id: 'asm-sav-3', assembly_name: 'East Gonja Municipal', assembly_type: 'municipal' },
+        { id: 'asm-sav-4', assembly_name: 'North Gonja District', assembly_type: 'district' },
+        { id: 'asm-sav-5', assembly_name: 'North East Gonja District', assembly_type: 'district' },
+        { id: 'asm-sav-6', assembly_name: 'Sawla Tuna Kalba District', assembly_type: 'district' },
+        { id: 'asm-sav-7', assembly_name: 'Bole District', assembly_type: 'district' },
+      ],
+    };
+    
+    const regionKey = region as string;
+    const assemblies = regionKey ? (ASSEMBLIES[regionKey] || []) : [];
+    
+    res.json(assemblies);
+  } catch (error) {
+    next(error);
+  }
+});
+
+// ============================================================================
+// PHASE 1: MULTI-CURRENCY & COST ESTIMATION
+// ============================================================================
+
+// Get exchange rates
+router.get('/exchange-rates', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const rates = await projectCostCurrencyService.getAllExchangeRates();
+    res.json(rates);
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Convert currency
+router.post('/convert-currency', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { amount, fromCurrency, toCurrency } = req.body;
+    
+    const result = await projectCostCurrencyService.convertCurrency(
+      amount,
+      fromCurrency,
+      toCurrency
+    );
+    
+    res.json(result);
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Generate cost estimate
+router.post('/estimate-costs', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { 
+      project_type, 
+      total_sqm, 
+      total_floors,
+      region,
+      finish_level,
+      include_land,
+      land_cost_per_sqm,
+      display_currency 
+    } = req.body;
+    
+    const estimate = await projectCostCurrencyService.generateCostEstimate(
+      {
+        project_type,
+        total_sqm,
+        total_floors,
+        region,
+        finish_level: finish_level || 'standard',
+        include_land,
+        land_cost_per_sqm,
+      },
+      display_currency || 'GHS'
+    );
+    
+    res.json(estimate);
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Get material cost benchmarks
+router.get('/benchmarks/materials', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { region, category } = req.query;
+    
+    const benchmarks = await projectCostCurrencyService.getMaterialCostBenchmarks(
+      region as any,
+      category as string | undefined
+    );
+    
+    res.json(benchmarks);
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Get labor rate benchmarks
+router.get('/benchmarks/labor', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { region } = req.query;
+    
+    const benchmarks = await projectCostCurrencyService.getLaborRateBenchmarks(
+      region as any
+    );
+    
+    res.json(benchmarks);
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Capture exchange rate snapshot for project
+router.post('/:projectId/capture-exchange-rates', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const snapshot = await projectCostCurrencyService.captureExchangeRateSnapshot(
+      req.params.projectId
+    );
+    
+    res.json(snapshot);
+  } catch (error) {
+    next(error);
+  }
+});
+
+// ============================================================================
+// PHASE 1: PERMIT MANAGEMENT
+// ============================================================================
+
+// Get project permits
+router.get('/:projectId/permits', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const permits = await projectLocationService.getProjectPermits(req.params.projectId);
+    res.json(permits);
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Add permit to project
+router.post('/:projectId/permits', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const userId = getUserId(req);
+    const { 
+      permitTypeId, 
+      applicationNumber, 
+      status, 
+      submittedDate, 
+      approvedDate,
+      expiryDate,
+      fees,
+      documents 
+    } = req.body;
+    
+    const permit = await projectLocationService.addProjectPermit({
+      projectId: req.params.projectId,
+      permitTypeId,
+      applicationNumber,
+      status,
+      submittedDate,
+      approvedDate,
+      expiryDate,
+      fees,
+      documents,
+      createdBy: userId,
+    });
+    
+    res.status(201).json(permit);
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Update permit status
+router.patch('/:projectId/permits/:permitId', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const userId = getUserId(req);
+    
+    const permit = await projectLocationService.updatePermitStatus(
+      req.params.permitId,
+      req.body,
+      userId
+    );
+    
+    res.json(permit);
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Get required permits for project type
+router.get('/permit-requirements', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { projectType, region, totalArea } = req.query;
+    
+    const requirements = await projectLocationService.getRequiredPermits({
+      projectType: projectType as string,
+      region: region as string,
+      totalArea: totalArea ? parseFloat(totalArea as string) : undefined,
+    });
+    
+    res.json(requirements);
+  } catch (error) {
+    next(error);
+  }
+});
+
+// ============================================================================
+// PHASE 1: GHANA-SPECIFIC CONFIGURATION ENDPOINTS
+// ============================================================================
+
+// Get Ghana regions
+router.get('/config/regions', async (_req: Request, res: Response) => {
+  res.json(GHANA_REGIONS);
+});
+
+// Get land tenure types
+router.get('/config/land-tenure-types', async (_req: Request, res: Response) => {
+  res.json(LAND_TENURE_TYPES);
+});
+
+// Get project types
+router.get('/config/project-types', async (_req: Request, res: Response) => {
+  res.json(PROJECT_TYPES);
+});
+
+// Get phase templates for project type
+router.get('/config/phase-templates/:projectType', async (req: Request, res: Response) => {
+  const template = getPhaseTemplateForType(req.params.projectType);
+  res.json(template);
+});
+
+// Get amenities for project type
+router.get('/config/amenities/:projectType', async (req: Request, res: Response) => {
+  const amenities = getAmenitiesForType(req.params.projectType);
+  res.json(amenities);
+});
+
+// Check if EPA permit is required
+router.get('/config/epa-requirements', async (req: Request, res: Response) => {
+  const { projectType, totalArea } = req.query;
+  
+  const required = requiresEPAPermit(
+    projectType as string,
+    totalArea ? parseFloat(totalArea as string) : undefined
+  );
+  
+  res.json({ required, projectType, totalArea });
+});
+
+// ============================================================================
+// PHASE 2: DASHBOARD ANALYTICS
+// ============================================================================
+
+// Get portfolio metrics
+router.get('/dashboard/metrics', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const orgId = getOrgId(req);
+    const { projectTypes, statuses, regions } = req.query;
+    
+    const filters = {
+      organizationId: orgId,
+      projectTypes: projectTypes ? (projectTypes as string).split(',') : undefined,
+      statuses: statuses ? (statuses as string).split(',') : undefined,
+      regions: regions ? (regions as string).split(',') : undefined
+    };
+    
+    const metrics = await dashboardAnalyticsService.getPortfolioMetrics(orgId, filters);
+    res.json(metrics);
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Get budget overview
+router.get('/dashboard/budget-overview', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const orgId = getOrgId(req);
+    const overview = await dashboardAnalyticsService.getBudgetOverview(orgId);
+    res.json(overview);
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Get timeline status
+router.get('/dashboard/timeline-status', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const orgId = getOrgId(req);
+    const status = await dashboardAnalyticsService.getTimelineStatus(orgId);
+    res.json(status);
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Get compliance status (Ghana regulatory)
+router.get('/dashboard/compliance-status', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const orgId = getOrgId(req);
+    const status = await dashboardAnalyticsService.getComplianceStatus(orgId);
+    res.json(status);
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Get active alerts
+router.get('/dashboard/alerts', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const orgId = getOrgId(req);
+    const { projectId, severity, limit } = req.query;
+    
+    const alerts = await dashboardAnalyticsService.getActiveAlerts(orgId, {
+      projectId: projectId as string,
+      severity: severity ? (severity as string).split(',') : undefined,
+      limit: limit ? parseInt(limit as string) : undefined
+    });
+    
+    res.json(alerts);
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Acknowledge alert
+router.post('/dashboard/alerts/:id/acknowledge', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const userId = getUserId(req);
+    await dashboardAnalyticsService.acknowledgeAlert(req.params.id, userId);
+    res.json({ success: true });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Resolve alert
+router.post('/dashboard/alerts/:id/resolve', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const userId = getUserId(req);
+    await dashboardAnalyticsService.resolveAlert(req.params.id, userId);
+    res.json({ success: true });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Dismiss alert
+router.post('/dashboard/alerts/:id/dismiss', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    await dashboardAnalyticsService.dismissAlert(req.params.id);
+    res.json({ success: true });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Snooze alert
+router.post('/dashboard/alerts/:id/snooze', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { days } = req.body;
+    await dashboardAnalyticsService.snoozeAlert(req.params.id, days || 1);
+    res.json({ success: true });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Get upcoming milestones (dashboard widget)
+router.get('/dashboard/upcoming-milestones', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const orgId = getOrgId(req);
+    const { daysAhead, projectId, milestoneTypes, limit } = req.query;
+    
+    const milestones = await dashboardAnalyticsService.getUpcomingMilestones(orgId, {
+      daysAhead: daysAhead ? parseInt(daysAhead as string) : undefined,
+      projectId: projectId as string,
+      milestoneTypes: milestoneTypes ? (milestoneTypes as string).split(',') : undefined,
+      limit: limit ? parseInt(limit as string) : undefined
+    });
+    
+    res.json(milestones);
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Get progress trend
+router.get('/dashboard/progress-trend', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const orgId = getOrgId(req);
+    const { projectId, period } = req.query;
+    
+    const trend = await dashboardAnalyticsService.getProgressTrend(
+      orgId,
+      projectId as string,
+      (period as 'daily' | 'weekly' | 'monthly') || 'weekly'
+    );
+    
+    res.json(trend);
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Get project health score
+router.get('/:id/health-score', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const orgId = getOrgId(req);
+    const healthScore = await dashboardAnalyticsService.getProjectHealthScore(req.params.id, orgId);
+    res.json(healthScore);
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Get budget variance analysis (EVM)
+router.get('/:id/budget-variance', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const orgId = getOrgId(req);
+    const analysis = await dashboardAnalyticsService.getBudgetVarianceAnalysis(req.params.id, orgId);
+    res.json(analysis);
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Forecast completion
+router.get('/:id/forecast-completion', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const orgId = getOrgId(req);
+    const forecast = await dashboardAnalyticsService.forecastCompletion(req.params.id, orgId);
+    res.json(forecast);
+  } catch (error) {
+    next(error);
+  }
+});
+
+// ============================================================================
+// PHASE 2: MILESTONES
+// ============================================================================
+
+// Get project milestones
+router.get('/:id/milestones', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const orgId = getOrgId(req);
+    const { phaseId, includeCompleted } = req.query;
+    
+    const milestones = await milestoneService.getProjectMilestones(
+      req.params.id,
+      orgId,
+      {
+        phaseId: phaseId as string,
+        includeCompleted: includeCompleted === 'true'
+      }
+    );
+    
+    res.json(milestones);
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Get milestone by ID
+router.get('/:projectId/milestones/:milestoneId', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const orgId = getOrgId(req);
+    const milestone = await milestoneService.getMilestoneById(req.params.milestoneId, orgId);
+    
+    if (!milestone) {
+      return res.status(404).json({ error: 'Milestone not found' });
+    }
+    
+    res.json(milestone);
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Create milestone
+router.post('/:id/milestones', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const orgId = getOrgId(req);
+    const userId = getUserId(req);
+    
+    // Map snake_case from frontend to camelCase for service
+    const { target_date, phase_id, milestone_type, ...rest } = req.body;
+    
+    const milestone = await milestoneService.createMilestone({
+      ...rest,
+      projectId: req.params.id,
+      organizationId: orgId,
+      createdBy: userId,
+      targetDate: target_date || rest.targetDate,
+      phaseId: phase_id || rest.phaseId,
+      milestoneType: milestone_type || rest.milestoneType || 'internal'
+    });
+    
+    res.status(201).json(milestone);
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Update milestone
+router.put('/:projectId/milestones/:milestoneId', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const orgId = getOrgId(req);
+    const userId = getUserId(req);
+    
+    // Map snake_case from frontend to camelCase for service
+    const { target_date, phase_id, due_date, ...rest } = req.body;
+    
+    const milestone = await milestoneService.updateMilestone(
+      req.params.milestoneId,
+      orgId,
+      { 
+        ...rest, 
+        updatedBy: userId,
+        targetDate: target_date || due_date || rest.targetDate,
+        phaseId: phase_id || rest.phaseId
+      }
+    );
+    
+    if (!milestone) {
+      return res.status(404).json({ error: 'Milestone not found' });
+    }
+    
+    res.json(milestone);
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Delete milestone
+router.delete('/:projectId/milestones/:milestoneId', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const orgId = getOrgId(req);
+    const deleted = await milestoneService.deleteMilestone(req.params.milestoneId, orgId);
+    
+    if (!deleted) {
+      return res.status(404).json({ error: 'Milestone not found' });
+    }
+    
+    res.json({ success: true });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Complete milestone
+router.post('/:projectId/milestones/:milestoneId/complete', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const orgId = getOrgId(req);
+    const userId = getUserId(req);
+    const { actualDate } = req.body;
+    
+    const milestone = await milestoneService.completeMilestone(
+      req.params.milestoneId,
+      orgId,
+      actualDate,
+      userId
+    );
+    
+    if (!milestone) {
+      return res.status(404).json({ error: 'Milestone not found' });
+    }
+    
+    res.json(milestone);
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Reschedule milestone
+router.post('/:projectId/milestones/:milestoneId/reschedule', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const orgId = getOrgId(req);
+    const userId = getUserId(req);
+    const { newTargetDate, reason } = req.body;
+    
+    const milestone = await milestoneService.rescheduleMilestone(
+      req.params.milestoneId,
+      orgId,
+      newTargetDate,
+      reason,
+      userId
+    );
+    
+    if (!milestone) {
+      return res.status(404).json({ error: 'Milestone not found' });
+    }
+    
+    res.json(milestone);
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Get milestone statistics
+router.get('/:id/milestone-stats', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const orgId = getOrgId(req);
+    const stats = await milestoneService.getStats(req.params.id, orgId);
+    res.json(stats);
+  } catch (error) {
+    next(error);
+  }
+});
+
+// ============================================================================
+// MILESTONE SUB-PHASES
+// ============================================================================
+
+// Get all sub-phases for a milestone
+router.get('/:projectId/milestones/:milestoneId/subphases', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const orgId = getOrgId(req);
+    const subphases = await milestoneService.getSubphasesByMilestone(
+      req.params.milestoneId,
+      orgId
+    );
+    res.json(subphases);
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Get milestone with sub-phases summary
+router.get('/:projectId/milestones/:milestoneId/with-subphases', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const orgId = getOrgId(req);
+    const result = await milestoneService.getMilestoneWithSubphases(
+      req.params.milestoneId,
+      orgId
+    );
+    
+    if (!result) {
+      return res.status(404).json({ error: 'Milestone not found' });
+    }
+    
+    res.json(result);
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Create a sub-phase
+router.post('/:projectId/milestones/:milestoneId/subphases', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const orgId = getOrgId(req);
+    const userId = getUserId(req);
+    const { start_date, end_date, sequence_order, assigned_to, assigned_team, estimated_hours, ...rest } = req.body;
+    
+    const subphase = await milestoneService.createSubphase({
+      milestoneId: req.params.milestoneId,
+      projectId: req.params.projectId,
+      organizationId: orgId,
+      startDate: start_date || rest.startDate,
+      endDate: end_date || rest.endDate,
+      sequenceOrder: sequence_order ?? rest.sequenceOrder,
+      assignedTo: assigned_to || rest.assignedTo,
+      assignedTeam: assigned_team || rest.assignedTeam,
+      estimatedHours: estimated_hours ?? rest.estimatedHours,
+      createdBy: userId,
+      ...rest,
+    });
+    
+    res.status(201).json(subphase);
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Get a single sub-phase
+router.get('/:projectId/milestones/:milestoneId/subphases/:subphaseId', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const orgId = getOrgId(req);
+    const subphase = await milestoneService.getSubphaseById(
+      req.params.subphaseId,
+      orgId
+    );
+    
+    if (!subphase) {
+      return res.status(404).json({ error: 'Sub-phase not found' });
+    }
+    
+    res.json(subphase);
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Update a sub-phase
+router.put('/:projectId/milestones/:milestoneId/subphases/:subphaseId', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const orgId = getOrgId(req);
+    const userId = getUserId(req);
+    const { 
+      start_date, end_date, actual_start_date, actual_end_date,
+      sequence_order, assigned_to, assigned_team, 
+      estimated_hours, actual_hours, progress_percentage,
+      depends_on_subphase_ids, ...rest 
+    } = req.body;
+    
+    const subphase = await milestoneService.updateSubphase(
+      req.params.subphaseId,
+      orgId,
+      {
+        startDate: start_date || rest.startDate,
+        endDate: end_date || rest.endDate,
+        actualStartDate: actual_start_date || rest.actualStartDate,
+        actualEndDate: actual_end_date || rest.actualEndDate,
+        sequenceOrder: sequence_order ?? rest.sequenceOrder,
+        assignedTo: assigned_to || rest.assignedTo,
+        assignedTeam: assigned_team || rest.assignedTeam,
+        estimatedHours: estimated_hours ?? rest.estimatedHours,
+        actualHours: actual_hours ?? rest.actualHours,
+        progressPercentage: progress_percentage ?? rest.progressPercentage,
+        dependsOnSubphaseIds: depends_on_subphase_ids || rest.dependsOnSubphaseIds,
+        updatedBy: userId,
+        ...rest,
+      }
+    );
+    
+    if (!subphase) {
+      return res.status(404).json({ error: 'Sub-phase not found' });
+    }
+    
+    res.json(subphase);
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Delete a sub-phase
+router.delete('/:projectId/milestones/:milestoneId/subphases/:subphaseId', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const orgId = getOrgId(req);
+    const deleted = await milestoneService.deleteSubphase(
+      req.params.subphaseId,
+      orgId
+    );
+    
+    if (!deleted) {
+      return res.status(404).json({ error: 'Sub-phase not found' });
+    }
+    
+    res.json({ success: true });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Reorder sub-phases
+router.post('/:projectId/milestones/:milestoneId/subphases/reorder', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const orgId = getOrgId(req);
+    const { orderedIds } = req.body;
+    
+    if (!Array.isArray(orderedIds)) {
+      return res.status(400).json({ error: 'orderedIds must be an array of sub-phase IDs' });
+    }
+    
+    const subphases = await milestoneService.reorderSubphases(
+      req.params.milestoneId,
+      orgId,
+      orderedIds
+    );
+    
+    res.json(subphases);
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Apply Ghana milestone templates
+router.post('/:id/milestones/apply-ghana-templates', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const orgId = getOrgId(req);
+    const userId = getUserId(req);
+    const { projectType, projectStartDate } = req.body;
+    
+    const milestones = await milestoneService.applyGhanaTemplates(
+      req.params.id,
+      orgId,
+      projectType,
+      projectStartDate,
+      userId
+    );
+    
+    res.json({ milestones, count: milestones.length });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Get milestone templates
+router.get('/config/milestone-templates', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const orgId = getOrgId(req);
+    const { projectType, ghanaSpecificOnly, milestoneType } = req.query;
+    
+    const templates = await milestoneService.getTemplates(orgId, {
+      projectType: projectType as string,
+      ghanaSpecificOnly: ghanaSpecificOnly === 'true',
+      milestoneType: milestoneType as any
+    });
+    
+    res.json(templates);
+  } catch (error) {
+    next(error);
+  }
+});
+
+// ============================================================================
+// PHASE 2: GANTT CHART & TIMELINE
+// ============================================================================
+
+// Get Gantt data for project
+router.get('/:id/gantt', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const orgId = getOrgId(req);
+    const ganttData = await ganttService.getGanttData(req.params.id, orgId);
+    res.json(ganttData);
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Calculate critical path
+router.post('/:id/gantt/calculate-critical-path', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const orgId = getOrgId(req);
+    const result = await ganttService.calculateCriticalPath(req.params.id, orgId);
+    res.json(result);
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Update phase dates
+router.put('/:projectId/gantt/phases/:phaseId/dates', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const orgId = getOrgId(req);
+    const { startDate, endDate, cascadeToSuccessors } = req.body;
+    
+    await ganttService.updatePhaseDates(
+      req.params.phaseId,
+      req.params.projectId,
+      orgId,
+      { startDate, endDate, cascadeToSuccessors }
+    );
+    
+    res.json({ success: true });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Update phase dependencies
+router.put('/:id/gantt/dependencies', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const orgId = getOrgId(req);
+    const { updates } = req.body; // Array of { phaseId, dependencyIds }
+    
+    await ganttService.updateDependencies(req.params.id, orgId, updates);
+    res.json({ success: true });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// ============================================================================
+// PHASE 2: BASELINES
+// ============================================================================
+
+// Get project baselines
+router.get('/:id/baselines', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const orgId = getOrgId(req);
+    const baselines = await ganttService.getProjectBaselines(req.params.id, orgId);
+    res.json(baselines);
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Get baseline by ID
+router.get('/:projectId/baselines/:baselineId', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const orgId = getOrgId(req);
+    const baseline = await ganttService.getBaseline(req.params.baselineId, orgId);
+    
+    if (!baseline) {
+      return res.status(404).json({ error: 'Baseline not found' });
+    }
+    
+    res.json(baseline);
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Create baseline
+router.post('/:id/baselines', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const orgId = getOrgId(req);
+    const userId = getUserId(req);
+    const { name, description } = req.body;
+    
+    const baseline = await ganttService.createBaseline(
+      req.params.id,
+      orgId,
+      name,
+      description,
+      userId
+    );
+    
+    res.status(201).json(baseline);
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Set active baseline
+router.post('/:projectId/baselines/:baselineId/set-active', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const orgId = getOrgId(req);
+    await ganttService.setActiveBaseline(req.params.baselineId, req.params.projectId, orgId);
+    res.json({ success: true });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Delete baseline
+router.delete('/:projectId/baselines/:baselineId', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const orgId = getOrgId(req);
+    const deleted = await ganttService.deleteBaseline(req.params.baselineId, orgId);
+    
+    if (!deleted) {
+      return res.status(404).json({ error: 'Baseline not found or is locked' });
+    }
+    
+    res.json({ success: true });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Get baseline comparison
+router.get('/:id/baseline-comparison', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const orgId = getOrgId(req);
+    const { baselineId } = req.query;
+    
+    const comparison = await ganttService.getBaselineComparison(
+      req.params.id,
+      orgId,
+      baselineId as string
+    );
+    
+    if (!comparison) {
+      return res.status(404).json({ error: 'No baseline found for comparison' });
+    }
+    
+    res.json(comparison);
+  } catch (error) {
+    next(error);
+  }
+});
+
+// ============================================================================
+// PHASE 3: COMPLIANCE
+// ============================================================================
+
+// Get compliance dashboard for a project
+router.get('/:id/compliance', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const dashboard = await complianceService.getComplianceDashboard(req.params.id);
+    res.json(dashboard);
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Get compliance score
+router.get('/:id/compliance/score', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const score = await complianceService.getComplianceScore(req.params.id);
+    res.json(score || { compliance_score: 0, risk_level: 'unknown' });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Get all permits for a project
+router.get('/:id/permits', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { status, type, expiring } = req.query;
+    const permits = await complianceService.getPermitsByProject(req.params.id, {
+      project_id: req.params.id,
+      status: status as any,
+      permit_type: type as any,
+      expiring_within_days: expiring ? parseInt(expiring as string) : undefined,
+    });
+    res.json(permits);
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Create a permit
+router.post('/:id/permits', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const orgId = getOrgId(req);
+    const userId = getUserId(req);
+    
+    const permit = await complianceService.createPermit({
+      ...req.body,
+      project_id: req.params.id,
+      organization_id: orgId,
+      created_by: userId,
+    });
+    
+    res.status(201).json(permit);
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Get a specific permit
+router.get('/:projectId/permits/:permitId', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const permit = await complianceService.getPermitById(req.params.permitId);
+    
+    if (!permit) {
+      return res.status(404).json({ error: 'Permit not found' });
+    }
+    
+    res.json(permit);
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Update a permit
+router.put('/:projectId/permits/:permitId', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const userId = getUserId(req);
+    
+    const permit = await complianceService.updatePermit(req.params.permitId, {
+      ...req.body,
+      updated_by: userId,
+    });
+    
+    if (!permit) {
+      return res.status(404).json({ error: 'Permit not found' });
+    }
+    
+    res.json(permit);
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Delete a permit
+router.delete('/:projectId/permits/:permitId', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const deleted = await complianceService.deletePermit(req.params.permitId);
+    
+    if (!deleted) {
+      return res.status(404).json({ error: 'Permit not found' });
+    }
+    
+    res.json({ success: true });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Get inspections for a permit
+router.get('/:projectId/permits/:permitId/inspections', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const inspections = await complianceService.getInspectionsByPermit(req.params.permitId);
+    res.json(inspections);
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Create an inspection
+router.post('/:projectId/permits/:permitId/inspections', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const userId = getUserId(req);
+    
+    const inspection = await complianceService.createInspection({
+      ...req.body,
+      permit_id: req.params.permitId,
+      project_id: req.params.projectId,
+      conducted_by: userId,
+    });
+    
+    res.status(201).json(inspection);
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Update an inspection
+router.put('/:projectId/inspections/:inspectionId', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const inspection = await complianceService.updateInspection(req.params.inspectionId, req.body);
+    
+    if (!inspection) {
+      return res.status(404).json({ error: 'Inspection not found' });
+    }
+    
+    res.json(inspection);
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Delete an inspection
+router.delete('/:projectId/inspections/:inspectionId', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const deleted = await complianceService.deleteInspection(req.params.inspectionId);
+    
+    if (!deleted) {
+      return res.status(404).json({ error: 'Inspection not found' });
+    }
+    
+    res.json({ success: true });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Get all inspections for a project
+router.get('/:id/inspections', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const inspections = await complianceService.getInspectionsByProject(req.params.id);
+    res.json(inspections);
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Get regulatory authorities
+router.get('/compliance/authorities', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { region } = req.query;
+    const authorities = await complianceService.getAuthorities(region as string);
+    res.json(authorities);
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Get regulatory templates
+router.get('/compliance/templates', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { region, project_type } = req.query;
+    const templates = await complianceService.getTemplates(region as string, project_type as string);
+    res.json(templates);
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Apply regulatory template to project
+router.post('/:id/compliance/apply-template', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const orgId = getOrgId(req);
+    const userId = getUserId(req);
+    const { templateId } = req.body;
+    
+    const permits = await complianceService.applyTemplate(
+      req.params.id,
+      orgId,
+      templateId,
+      userId
+    );
+    
+    res.status(201).json(permits);
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Get expiring permits for organization
+router.get('/compliance/expiring', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const orgId = getOrgId(req);
+    const { days } = req.query;
+    const permits = await complianceService.getExpiringPermits(orgId, parseInt(days as string) || 30);
+    res.json(permits);
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Get expired permits for organization
+router.get('/compliance/expired', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const orgId = getOrgId(req);
+    const permits = await complianceService.getExpiredPermits(orgId);
+    res.json(permits);
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Get compliance summary for organization
+router.get('/compliance/summary', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const orgId = getOrgId(req);
+    const summary = await complianceService.getComplianceSummaryByOrganization(orgId);
+    res.json(summary);
+  } catch (error) {
+    next(error);
+  }
+});
+
+// ============================================================================
+// PHASE 3: DOCUMENTS
+// ============================================================================
+
+// Get folder tree for a project
+router.get('/:id/folders', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { tree } = req.query;
+    
+    if (tree === 'true') {
+      const folders = await projectDocumentService.getFolderTree(req.params.id);
+      res.json(folders);
+    } else {
+      const folders = await projectDocumentService.getFoldersByProject(req.params.id);
+      res.json(folders);
+    }
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Create a folder
+router.post('/:id/folders', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const orgId = getOrgId(req);
+    const userId = getUserId(req);
+    
+    const folder = await projectDocumentService.createFolder({
+      ...req.body,
+      project_id: req.params.id,
+      organization_id: orgId,
+      created_by: userId,
+    });
+    
+    res.status(201).json(folder);
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Update a folder
+router.put('/:projectId/folders/:folderId', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const folder = await projectDocumentService.updateFolder(req.params.folderId, req.body);
+    
+    if (!folder) {
+      return res.status(404).json({ error: 'Folder not found' });
+    }
+    
+    res.json(folder);
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Delete a folder
+router.delete('/:projectId/folders/:folderId', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { moveDocumentsTo } = req.query;
+    const deleted = await projectDocumentService.deleteFolder(
+      req.params.folderId,
+      moveDocumentsTo as string
+    );
+    
+    if (!deleted) {
+      return res.status(404).json({ error: 'Folder not found' });
+    }
+    
+    res.json({ success: true });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Get all documents for a project
+router.get('/:id/documents', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { folder, type, tags, search, expiring } = req.query;
+    
+    const documents = await projectDocumentService.getDocumentsByProject(req.params.id, {
+      project_id: req.params.id,
+      folder_id: folder as string,
+      document_type: type as any,
+      tags: tags ? (tags as string).split(',') : undefined,
+      search: search as string,
+      expiring_within_days: expiring ? parseInt(expiring as string) : undefined,
+    });
+    
+    res.json(documents);
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Get documents by folder
+router.get('/:projectId/folders/:folderId/documents', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const documents = await projectDocumentService.getDocumentsByFolder(req.params.folderId);
+    res.json(documents);
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Get document statistics
+router.get('/:id/documents/stats', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const stats = await projectDocumentService.getDocumentStats(req.params.id);
+    res.json(stats);
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Create a document
+router.post('/:id/documents', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const orgId = getOrgId(req);
+    const userId = getUserId(req);
+    
+    const document = await projectDocumentService.createDocument({
+      ...req.body,
+      project_id: req.params.id,
+      organization_id: orgId,
+      uploaded_by: userId,
+    });
+    
+    res.status(201).json(document);
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Get a specific document
+router.get('/:projectId/documents/:documentId', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const userId = getUserId(req);
+    const document = await projectDocumentService.getDocumentById(req.params.documentId);
+    
+    if (!document) {
+      return res.status(404).json({ error: 'Document not found' });
+    }
+    
+    // Record access
+    await projectDocumentService.recordDocumentAccess(req.params.documentId, userId);
+    
+    res.json(document);
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Update a document
+router.put('/:projectId/documents/:documentId', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const document = await projectDocumentService.updateDocument(req.params.documentId, req.body);
+    
+    if (!document) {
+      return res.status(404).json({ error: 'Document not found' });
+    }
+    
+    res.json(document);
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Delete a document
+router.delete('/:projectId/documents/:documentId', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { hard } = req.query;
+    const deleted = await projectDocumentService.deleteDocument(
+      req.params.documentId,
+      hard === 'true'
+    );
+    
+    if (!deleted) {
+      return res.status(404).json({ error: 'Document not found' });
+    }
+    
+    res.json({ success: true });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Archive a document
+router.post('/:projectId/documents/:documentId/archive', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const document = await projectDocumentService.archiveDocument(req.params.documentId);
+    
+    if (!document) {
+      return res.status(404).json({ error: 'Document not found' });
+    }
+    
+    res.json(document);
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Restore a document
+router.post('/:projectId/documents/:documentId/restore', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const document = await projectDocumentService.restoreDocument(req.params.documentId);
+    
+    if (!document) {
+      return res.status(404).json({ error: 'Document not found' });
+    }
+    
+    res.json(document);
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Upload a new version
+router.post('/:projectId/documents/:documentId/versions', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const userId = getUserId(req);
+    
+    const document = await projectDocumentService.uploadNewVersion(req.params.documentId, {
+      ...req.body,
+      changed_by: userId,
+    });
+    
+    res.status(201).json(document);
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Get document versions
+router.get('/:projectId/documents/:documentId/versions', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const versions = await projectDocumentService.getDocumentVersions(req.params.documentId);
+    res.json(versions);
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Revert to a version
+router.post('/:projectId/documents/:documentId/versions/:versionId/revert', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const userId = getUserId(req);
+    
+    const document = await projectDocumentService.revertToVersion(
+      req.params.documentId,
+      req.params.versionId,
+      userId
+    );
+    
+    res.json(document);
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Create a share link
+router.post('/:projectId/documents/:documentId/share', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const userId = getUserId(req);
+    
+    const share = await projectDocumentService.createShare({
+      ...req.body,
+      document_id: req.params.documentId,
+      created_by: userId,
+    });
+    
+    res.status(201).json(share);
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Get shares for a document
+router.get('/:projectId/documents/:documentId/shares', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const shares = await projectDocumentService.getSharesByDocument(req.params.documentId);
+    res.json(shares);
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Delete a share
+router.delete('/:projectId/shares/:shareId', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const deleted = await projectDocumentService.deleteShare(req.params.shareId);
+    
+    if (!deleted) {
+      return res.status(404).json({ error: 'Share not found' });
+    }
+    
+    res.json({ success: true });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Access shared document (public route - no auth required)
+router.get('/shared/:shareToken', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { password } = req.query;
+    
+    const result = await projectDocumentService.validateShare(
+      req.params.shareToken,
+      password as string
+    );
+    
+    if (!result.valid) {
+      return res.status(403).json({ error: result.message });
+    }
+    
+    // Record access
+    await projectDocumentService.recordShareAccess(req.params.shareToken, {
+      ip: req.ip,
+      userAgent: req.headers['user-agent'],
+    });
+    
+    res.json(result.document);
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Get document templates
+router.get('/documents/templates', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const orgId = getOrgId(req);
+    const { category, type } = req.query;
+    
+    const templates = await projectDocumentService.getTemplates(
+      orgId,
+      category as string,
+      type as string
+    );
+    
+    res.json(templates);
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Get expiring documents for organization
+router.get('/documents/expiring', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const orgId = getOrgId(req);
+    const { days } = req.query;
+    const documents = await projectDocumentService.getExpiringDocuments(orgId, parseInt(days as string) || 30);
+    res.json(documents);
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Get expired documents for organization
+router.get('/documents/expired', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const orgId = getOrgId(req);
+    const documents = await projectDocumentService.getExpiredDocuments(orgId);
+    res.json(documents);
+  } catch (error) {
+    next(error);
+  }
+});
+
+// ============================================================================
+// COMPLIANCE REPORTS (with E-Sign integration)
+// ============================================================================
+
+// Generate compliance report for a project
+router.post('/:id/compliance/report', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const orgId = getOrgId(req);
+    const userId = getUserId(req);
+    
+    const {
+      include_inspections,
+      include_timeline,
+      include_recommendations,
+      for_signing,
+      signees,
+    } = req.body;
+    
+    const report = await complianceReportService.generateReport({
+      project_id: req.params.id,
+      organization_id: orgId,
+      generated_by: userId,
+      include_inspections,
+      include_timeline,
+      include_recommendations,
+      for_signing,
+      signees,
+    });
+    
+    res.status(201).json({
+      report_id: report.report_id,
+      pdf_url: report.pdf_url,
+      signing_request_id: report.signing_request_id,
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Download compliance report PDF
+router.get('/:id/compliance/report/:reportId/download', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const report = await complianceReportService.getReportById(req.params.reportId);
+    
+    if (!report || report.project_id !== req.params.id) {
+      return res.status(404).json({ error: 'Report not found' });
+    }
+    
+    // Redirect to PDF URL or stream the file
+    res.redirect(report.pdf_url);
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Get compliance reports for a project
+router.get('/:id/compliance/reports', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const reports = await complianceReportService.getReportsByProject(req.params.id);
+    res.json(reports);
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Get single compliance report
+router.get('/:id/compliance/report/:reportId', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const report = await complianceReportService.getReportById(req.params.reportId);
+    
+    if (!report || report.project_id !== req.params.id) {
+      return res.status(404).json({ error: 'Report not found' });
+    }
+    
+    res.json(report);
   } catch (error) {
     next(error);
   }

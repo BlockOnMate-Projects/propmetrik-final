@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useEffect, useRef, useCallback } from 'react'
+import React, { useState, useEffect, useRef, useCallback, use } from 'react'
 import { useRouter } from 'next/navigation'
 import { 
     Loader2, 
@@ -33,7 +33,8 @@ interface SigningDocument {
     status: 'pending' | 'in_progress' | 'completed'
 }
 
-export default function ExternalSigningPage({ params }: { params: { token: string } }) {
+export default function ExternalSigningPage({ params }: { params: Promise<{ token: string }> }) {
+    const { token } = use(params)
     const router = useRouter()
     
     // States
@@ -71,7 +72,7 @@ export default function ExternalSigningPage({ params }: { params: { token: strin
                 const response = await fetch(`/api/e-sign/verify-token`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ token: params.token })
+                    body: JSON.stringify({ token: token })
                 })
 
                 if (!response.ok) {
@@ -92,7 +93,7 @@ export default function ExternalSigningPage({ params }: { params: { token: strin
         }
 
         loadDocument()
-    }, [params.token])
+    }, [token])
 
     // Verify OTP
     const handleVerifyOtp = async () => {
@@ -104,7 +105,7 @@ export default function ExternalSigningPage({ params }: { params: { token: strin
             const response = await fetch(`/api/e-sign/verify-otp`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ token: params.token, code: otpCode })
+                body: JSON.stringify({ token: token, code: otpCode })
             })
 
             if (!response.ok) {
@@ -127,7 +128,7 @@ export default function ExternalSigningPage({ params }: { params: { token: strin
             const response = await fetch(`/api/e-sign/resend-otp`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ token: params.token })
+                body: JSON.stringify({ token: token })
             })
 
             if (response.ok) {
@@ -204,7 +205,7 @@ export default function ExternalSigningPage({ params }: { params: { token: strin
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    token: params.token,
+                    token: token,
                     signatures: completedFields
                 })
             })

@@ -395,15 +395,20 @@ export class NotificationService {
     }
 
     /**
-     * Send Email (integrate with SendGrid)
+     * Send Email (integrate with Google SMTP via nodemailer)
      */
     private async sendEmail(email: string, subject: string, html: string): Promise<string> {
-        // TODO: Integrate with SendGrid
         logger.info('Email notification', { email, subject });
         
-        const sendgridKey = process.env.SENDGRID_API_KEY;
-        if (sendgridKey) {
-            // SendGrid integration would go here
+        // Use unified notification service if available
+        try {
+            const { emailService } = require('../../../shared-services/notifications');
+            const result = await emailService.send({ to: email, subject, html });
+            if (result.success) {
+                return result.messageId || `EMAIL-${Date.now()}`;
+            }
+        } catch (e) {
+            logger.warn('Unified email service not available, email not sent');
         }
         
         return `EMAIL-${Date.now()}`;

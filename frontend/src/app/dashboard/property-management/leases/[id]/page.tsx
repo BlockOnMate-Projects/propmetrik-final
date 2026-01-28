@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useEffect, useState, useMemo } from 'react'
+import React, { useEffect, useState, useMemo, use } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import {
@@ -65,7 +65,8 @@ import { propertyManagementApi } from '@/lib/property-management-api'
 import { Tenancy, FinancialRecord } from '@/types/property-management'
 import { format, differenceInDays, addYears } from 'date-fns'
 
-export default function LeaseDetailsPage({ params }: { params: { id: string } }) {
+export default function LeaseDetailsPage({ params }: { params: Promise<{ id: string }> }) {
+    const { id } = use(params)
     const router = useRouter()
     const [tenancy, setTenancy] = useState<Tenancy | null>(null)
     const [payments, setPayments] = useState<FinancialRecord[]>([])
@@ -103,7 +104,7 @@ export default function LeaseDetailsPage({ params }: { params: { id: string } })
         const loadTenancy = async () => {
             try {
                 setIsLoading(true)
-                const data = await propertyManagementApi.getTenancyById(params.id)
+                const data = await propertyManagementApi.getTenancyById(id)
                 setTenancy(data)
                 
                 // Set edit form defaults
@@ -138,7 +139,7 @@ export default function LeaseDetailsPage({ params }: { params: { id: string } })
             }
         }
         loadTenancy()
-    }, [params.id])
+    }, [id])
 
     // Calculate lease progress
     const leaseProgress = useMemo(() => {
@@ -174,7 +175,7 @@ export default function LeaseDetailsPage({ params }: { params: { id: string } })
                 paymentFreq: editForm.paymentFreq as any
             })
             // Reload tenancy
-            const updated = await propertyManagementApi.getTenancyById(params.id)
+            const updated = await propertyManagementApi.getTenancyById(id)
             setTenancy(updated)
             setIsEditDialogOpen(false)
         } catch (err) {
@@ -213,7 +214,7 @@ export default function LeaseDetailsPage({ params }: { params: { id: string } })
                 renewForm.newMonthlyRent
             )
             // Reload tenancy
-            const updated = await propertyManagementApi.getTenancyById(params.id)
+            const updated = await propertyManagementApi.getTenancyById(id)
             setTenancy(updated)
             setIsRenewDialogOpen(false)
         } catch (err) {
@@ -347,7 +348,7 @@ export default function LeaseDetailsPage({ params }: { params: { id: string } })
                                 </div>
                                 <div>
                                     <div className="text-zinc-200 font-medium font-mono">{tenancy.property?.title || 'Property'}</div>
-                                    <div className="text-zinc-500 text-xs font-mono">{tenancy.property?.unitNumber || ''}</div>
+                                    <div className="text-zinc-500 text-xs font-mono">{(tenancy.property as any)?.unitNumber || ''}</div>
                                 </div>
                             </div>
                             <div className="text-sm text-zinc-400 font-mono">

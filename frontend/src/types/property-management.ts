@@ -56,7 +56,8 @@ export enum Priority {
     LOW = 'low',
     MEDIUM = 'medium',
     HIGH = 'high',
-    URGENT = 'urgent'
+    URGENT = 'urgent',
+    CRITICAL = 'critical'
 }
 
 export enum Urgency {

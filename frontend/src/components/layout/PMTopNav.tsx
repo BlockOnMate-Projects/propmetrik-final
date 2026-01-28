@@ -14,6 +14,7 @@ const navigation = [
     { name: 'MAINTENANCE', href: '/dashboard/property-management/maintenance', key: '6' },
     { name: 'DOCUMENTS', href: '/dashboard/property-management/documents', key: '7' },
     { name: 'VENDORS', href: '/dashboard/property-management/vendors', key: '8' },
+    { name: 'CALENDAR', href: '/dashboard/property-management/calendar', key: '9' },
 ]
 
 export function PMTopNav() {

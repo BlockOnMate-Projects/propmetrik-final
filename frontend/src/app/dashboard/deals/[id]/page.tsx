@@ -4,6 +4,7 @@ import React, { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useParams, useRouter } from 'next/navigation'
 import { cn, formatCurrency } from '@/lib/utils'
+import { isFeatureEnabled } from '@/lib/features'
 import {
     ArrowLeft,
     Edit,
@@ -20,7 +21,9 @@ import {
     CheckSquare,
     Plus,
     Loader2,
-    ChevronRight
+    ChevronRight,
+    FileDown,
+    LineChart
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -45,13 +48,15 @@ import {
 } from '@/components/ui/select'
 import { dealsApi, pipelinesApi, tasksApi, notesApi } from '@/lib/crm-api'
 import type { Deal, DealActivity, DealStage, Task, Note, CrmDocument, DealPipeline } from '@/types/crm'
+import { GenerateDocumentDialog } from '@/components/deals/GenerateDocumentDialog'
+import { DocumentChecklist } from '@/components/deals/DocumentChecklist'
 
 // =====================================================
 // PANEL COMPONENT
 // =====================================================
-function Panel({ title, children, className, action }: { 
-    title: string; 
-    children: React.ReactNode; 
+function Panel({ title, children, className, action }: {
+    title: string;
+    children: React.ReactNode;
     className?: string;
     action?: React.ReactNode;
 }) {
@@ -157,7 +162,7 @@ export default function DealDetailPage() {
     const [pipeline, setPipeline] = useState<DealPipeline | null>(null)
     const [isLoading, setIsLoading] = useState(true)
     const [error, setError] = useState<string | null>(null)
-    
+
     // Stage change dialog
     const [stageDialogOpen, setStageDialogOpen] = useState(false)
     const [selectedStage, setSelectedStage] = useState<string>('')
@@ -167,6 +172,10 @@ export default function DealDetailPage() {
     // New note
     const [newNote, setNewNote] = useState('')
     const [isAddingNote, setIsAddingNote] = useState(false)
+
+    // Document generation dialog
+    const [generateDocDialogOpen, setGenerateDocDialogOpen] = useState(false)
+    const [documentRefreshKey, setDocumentRefreshKey] = useState(0)
 
     // Load deal data
     useEffect(() => {
@@ -201,7 +210,7 @@ export default function DealDetailPage() {
                 setIsLoading(false)
             }
         }
-        
+
         if (dealId) {
             loadDeal()
         }
@@ -215,11 +224,11 @@ export default function DealDetailPage() {
             setIsUpdatingStage(true)
             const updated = await dealsApi.updateStage(deal.id, selectedStage, stageNote)
             setDeal(updated)
-            
+
             // Reload activities
             const newActivities = await dealsApi.getActivities(dealId)
             setActivities(newActivities)
-            
+
             setStageDialogOpen(false)
             setStageNote('')
         } catch (err) {
@@ -273,9 +282,9 @@ export default function DealDetailPage() {
             {/* Header */}
             <div className="flex items-start justify-between">
                 <div className="flex items-start gap-4">
-                    <Button 
-                        variant="ghost" 
-                        size="icon" 
+                    <Button
+                        variant="ghost"
+                        size="icon"
                         onClick={() => router.back()}
                         className="text-zinc-400 hover:text-white"
                     >
@@ -324,10 +333,10 @@ export default function DealDetailPage() {
                     {pipeline?.stages?.sort((a, b) => a.stage_order - b.stage_order).map((stage, index) => {
                         const isActive = stage.id === deal.stage_id
                         const isPast = (pipeline?.stages?.findIndex(s => s.id === deal.stage_id) || 0) > index
-                        
+
                         return (
                             <React.Fragment key={stage.id}>
-                                <div 
+                                <div
                                     className={cn(
                                         'flex-shrink-0 px-3 py-1.5 font-mono text-[10px] border transition-colors cursor-pointer',
                                         isActive && 'bg-amber-500 text-black border-amber-500',
@@ -390,7 +399,7 @@ export default function DealDetailPage() {
                             <CardContent className="p-3">
                                 <div className="font-mono text-[10px] text-zinc-500 mb-1">EXPECTED CLOSE</div>
                                 <div className="font-mono text-lg text-white">
-                                    {deal.expected_close_date 
+                                    {deal.expected_close_date
                                         ? new Date(deal.expected_close_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })
                                         : '—'
                                     }
@@ -423,8 +432,8 @@ export default function DealDetailPage() {
                         </TabsContent>
 
                         <TabsContent value="tasks" className="mt-4">
-                            <Panel 
-                                title="TASKS" 
+                            <Panel
+                                title="TASKS"
                                 action={
                                     <Link href={`/dashboard/deals/tasks?deal_id=${deal.id}`}>
                                         <Button variant="ghost" size="sm" className="h-6 px-2 text-amber-500 hover:text-amber-400">
@@ -439,8 +448,8 @@ export default function DealDetailPage() {
                                 ) : (
                                     <div className="space-y-2">
                                         {tasks.map((task) => (
-                                            <div 
-                                                key={task.id} 
+                                            <div
+                                                key={task.id}
                                                 className="flex items-center gap-3 p-2 bg-zinc-800/50 border border-zinc-700"
                                             >
                                                 <CheckSquare className={cn(
@@ -477,30 +486,53 @@ export default function DealDetailPage() {
                         </TabsContent>
 
                         <TabsContent value="documents" className="mt-4">
-                            <Panel title="DOCUMENTS">
-                                {documents.length === 0 ? (
-                                    <p className="font-mono text-xs text-zinc-500 text-center py-6">No documents</p>
-                                ) : (
-                                    <div className="space-y-2">
-                                        {documents.map((doc) => (
-                                            <div 
-                                                key={doc.id} 
-                                                className="flex items-center gap-3 p-2 bg-zinc-800/50 border border-zinc-700"
-                                            >
-                                                <FileText className="h-4 w-4 text-zinc-500" />
-                                                <div className="flex-1">
-                                                    <p className="font-mono text-xs text-white">{doc.file_name}</p>
-                                                    <p className="font-mono text-[10px] text-zinc-500">
-                                                        {doc.document_type?.replace('_', ' ')} • {(doc.file_size / 1024).toFixed(0)}KB
-                                                    </p>
+                            <Panel
+                                title="DOCUMENTS"
+                                action={
+                                    <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        className="h-6 px-2 text-amber-500 hover:text-amber-400"
+                                        onClick={() => setGenerateDocDialogOpen(true)}
+                                    >
+                                        <FileDown className="h-3 w-3 mr-1" />
+                                        Generate
+                                    </Button>
+                                }
+                            >
+                                <DocumentChecklist
+                                    key={documentRefreshKey}
+                                    dealId={dealId}
+                                    onGenerateDocument={() => setGenerateDocDialogOpen(true)}
+                                />
+
+                                {/* Legacy uploaded documents */}
+                                {documents.length > 0 && (
+                                    <div className="pt-4 border-t border-zinc-800 mt-4">
+                                        <h4 className="font-mono text-[10px] text-zinc-500 uppercase tracking-wider mb-3">
+                                            Uploaded Files ({documents.length})
+                                        </h4>
+                                        <div className="space-y-2">
+                                            {documents.map((doc) => (
+                                                <div
+                                                    key={doc.id}
+                                                    className="flex items-center gap-3 p-2 bg-zinc-800/50 border border-zinc-700"
+                                                >
+                                                    <FileText className="h-4 w-4 text-zinc-500" />
+                                                    <div className="flex-1">
+                                                        <p className="font-mono text-xs text-white">{doc.file_name}</p>
+                                                        <p className="font-mono text-[10px] text-zinc-500">
+                                                            {doc.document_type?.replace('_', ' ')} • {(doc.file_size / 1024).toFixed(0)}KB
+                                                        </p>
+                                                    </div>
+                                                    {doc.is_signed && (
+                                                        <span className="font-mono text-[9px] px-1.5 py-0.5 bg-green-900/50 text-green-400">
+                                                            SIGNED
+                                                        </span>
+                                                    )}
                                                 </div>
-                                                {doc.is_signed && (
-                                                    <span className="font-mono text-[9px] px-1.5 py-0.5 bg-green-900/50 text-green-400">
-                                                        SIGNED
-                                                    </span>
-                                                )}
-                                            </div>
-                                        ))}
+                                            ))}
+                                        </div>
                                     </div>
                                 )}
                             </Panel>
@@ -517,7 +549,7 @@ export default function DealDetailPage() {
                                         rows={3}
                                     />
                                     <div className="flex justify-end mt-2">
-                                        <Button 
+                                        <Button
                                             onClick={handleAddNote}
                                             disabled={!newNote.trim() || isAddingNote}
                                             className="bg-amber-500 text-black hover:bg-amber-400 font-mono text-xs"
@@ -609,12 +641,28 @@ export default function DealDetailPage() {
                     {deal.property_names && deal.property_names.length > 0 && (
                         <Panel title="PROPERTIES">
                             <div className="space-y-2">
-                                {deal.property_names.map((name, idx) => (
-                                    <div key={idx} className="flex items-center gap-2 p-2 bg-zinc-800/50 border border-zinc-700">
-                                        <Building2 className="h-4 w-4 text-zinc-500" />
-                                        <span className="font-mono text-xs text-white">{name}</span>
-                                    </div>
-                                ))}
+                                {deal.property_names.map((name, idx) => {
+                                    const propertyId = deal.property_ids?.[idx];
+                                    return (
+                                        <div key={idx} className="flex items-center justify-between p-2 bg-zinc-800/50 border border-zinc-700">
+                                            <div className="flex items-center gap-2">
+                                                <Building2 className="h-4 w-4 text-zinc-500" />
+                                                <span className="font-mono text-xs text-white">{name}</span>
+                                            </div>
+                                            {propertyId && isFeatureEnabled('valuations') && (
+                                                <Button
+                                                    variant="ghost"
+                                                    size="sm"
+                                                    className="h-6 px-2 text-amber-500 hover:text-amber-400"
+                                                    onClick={() => router.push(`/dashboard/valuations/new?property_id=${propertyId}`)}
+                                                >
+                                                    <LineChart className="h-3 w-3 mr-1" />
+                                                    Valuation
+                                                </Button>
+                                            )}
+                                        </div>
+                                    );
+                                })}
                             </div>
                         </Panel>
                     )}
@@ -664,8 +712,8 @@ export default function DealDetailPage() {
                                 </SelectTrigger>
                                 <SelectContent className="bg-zinc-900 border-zinc-700">
                                     {pipeline?.stages?.map((stage) => (
-                                        <SelectItem 
-                                            key={stage.id} 
+                                        <SelectItem
+                                            key={stage.id}
                                             value={stage.id}
                                             className="font-mono text-xs text-white"
                                         >
@@ -687,14 +735,14 @@ export default function DealDetailPage() {
                         </div>
                     </div>
                     <DialogFooter>
-                        <Button 
-                            variant="outline" 
+                        <Button
+                            variant="outline"
                             onClick={() => setStageDialogOpen(false)}
                             className="border-zinc-700 text-zinc-300"
                         >
                             Cancel
                         </Button>
-                        <Button 
+                        <Button
                             onClick={handleStageChange}
                             disabled={!selectedStage || isUpdatingStage}
                             className="bg-amber-500 text-black hover:bg-amber-400"
@@ -704,6 +752,19 @@ export default function DealDetailPage() {
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
+
+            {/* Generate Document Dialog */}
+            {deal && (
+                <GenerateDocumentDialog
+                    isOpen={generateDocDialogOpen}
+                    onClose={() => setGenerateDocDialogOpen(false)}
+                    dealId={dealId}
+                    dealTitle={deal.title}
+                    onDocumentGenerated={() => {
+                        setDocumentRefreshKey(k => k + 1)
+                    }}
+                />
+            )}
         </div>
     )
 }

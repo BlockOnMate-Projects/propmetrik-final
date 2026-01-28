@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useMemo, useCallback } from 'react'
 import { useRouter, useParams, useSearchParams } from 'next/navigation'
 import { 
     ArrowLeft, 
@@ -53,6 +53,10 @@ export default function EnvelopeViewPage() {
     const [isLoading, setIsLoading] = useState(true)
     const [error, setError] = useState<string | null>(null)
     
+    // Document image for viewing with signatures
+    const [documentImage, setDocumentImage] = useState<string | null>(null)
+    const [isRenderingDocument, setIsRenderingDocument] = useState(false)
+    
     // Dialogs
     const [isVoidDialogOpen, setIsVoidDialogOpen] = useState(false)
     const [voidReason, setVoidReason] = useState('')
@@ -60,6 +64,74 @@ export default function EnvelopeViewPage() {
     const [showDocument, setShowDocument] = useState(false)
     const [showCertificate, setShowCertificate] = useState(false)
     const [isDownloading, setIsDownloading] = useState(false)
+
+    // Render document as image when dialog opens
+    // IMPORTANT: Use the stored document image if available to ensure field positions match
+    const renderDocumentImage = useCallback(async () => {
+        // If envelope has a pre-rendered image stored, use that for consistent display
+        if (envelope?.documentImageUrl) {
+            setDocumentImage(envelope.documentImageUrl);
+            return;
+        }
+        
+        // Fallback: re-render from HTML (may have slight position differences)
+        if (!envelope?.documentHtml) return;
+        if (documentImage) return;
+        
+        setIsRenderingDocument(true);
+        try {
+            const html2canvas = (await import('html2canvas')).default;
+            
+            // Create hidden iframe to render the HTML (same as ESignEditor)
+            const iframe = document.createElement('iframe');
+            iframe.style.position = 'fixed';
+            iframe.style.left = '-9999px';
+            iframe.style.width = '816px';
+            iframe.style.border = 'none';
+            document.body.appendChild(iframe);
+
+            const doc = iframe.contentDocument;
+            if (doc) {
+                doc.open();
+                doc.write(envelope.documentHtml);
+                doc.close();
+
+                // Wait for content to load
+                await new Promise(resolve => setTimeout(resolve, 800));
+                
+                // Get the full height of the content
+                const contentHeight = doc.body.scrollHeight;
+
+                // Capture the FULL content (not just viewport)
+                const canvas = await html2canvas(doc.body, {
+                    scale: 1.5,
+                    useCORS: true,
+                    allowTaint: true,
+                    backgroundColor: '#ffffff',
+                    width: 816,
+                    height: contentHeight,
+                    windowWidth: 816,
+                    windowHeight: contentHeight,
+                });
+
+                const imageUrl = canvas.toDataURL('image/png');
+                setDocumentImage(imageUrl);
+                
+                document.body.removeChild(iframe);
+            }
+        } catch (err) {
+            console.error('Failed to render document image:', err);
+        } finally {
+            setIsRenderingDocument(false);
+        }
+    }, [envelope?.documentHtml, envelope?.documentImageUrl, documentImage]);
+
+    // Render document when dialog opens
+    useEffect(() => {
+        if (showDocument && (envelope?.documentImageUrl || envelope?.documentHtml) && !documentImage) {
+            renderDocumentImage();
+        }
+    }, [showDocument, envelope?.documentImageUrl, envelope?.documentHtml, documentImage, renderDocumentImage]);
 
     useEffect(() => {
         loadEnvelope()
@@ -74,6 +146,8 @@ export default function EnvelopeViewPage() {
             ])
             setEnvelope(envelopeData)
             setAuditLog(auditData)
+            // Reset document image so it re-renders with fresh data
+            setDocumentImage(null);
         } catch (err) {
             console.error('Failed to load envelope:', err)
             setError('Failed to load envelope details')
@@ -246,8 +320,8 @@ export default function EnvelopeViewPage() {
 
     const canVoid = envelope.status !== EnvelopeStatus.VOIDED && envelope.status !== EnvelopeStatus.COMPLETED
     const canResend = envelope.status === EnvelopeStatus.SENT || envelope.status === EnvelopeStatus.DELIVERED
-    const canDownload = envelope.status === EnvelopeStatus.COMPLETED || envelope.status === EnvelopeStatus.VOIDED
-    const canViewCertificate = envelope.status === EnvelopeStatus.COMPLETED
+    const canDownload = envelope?.status === EnvelopeStatus.COMPLETED || envelope?.status === EnvelopeStatus.VOIDED
+    const canViewCertificate = envelope?.status === EnvelopeStatus.COMPLETED
 
     return (
         <div className="min-h-screen bg-black p-6">
@@ -365,6 +439,15 @@ export default function EnvelopeViewPage() {
                                                 {signer.role && (
                                                     <p className="text-zinc-600 text-xs font-mono uppercase mt-1">{signer.role}</p>
                                                 )}
+                                                {/* Permanent Signer ID - visible prominently */}
+                                                {signer.permanentSignerId && (
+                                                    <div className="flex items-center gap-1.5 mt-2 px-2 py-1 bg-emerald-900/30 border border-emerald-800 rounded">
+                                                        <Shield className="h-3 w-3 text-emerald-400" />
+                                                        <span className="text-[11px] font-mono text-emerald-400">
+                                                            {signer.permanentSignerId}
+                                                        </span>
+                                                    </div>
+                                                )}
                                             </div>
                                         </div>
                                         <div className="flex flex-col items-end gap-2">
@@ -429,13 +512,24 @@ export default function EnvelopeViewPage() {
                                                                 className="max-h-12 object-contain"
                                                             />
                                                         </div>
-                                                        {/* Signature ID and timestamp */}
-                                                        <div className="mt-2 flex items-center gap-2 text-[10px]">
-                                                            <Fingerprint className="h-3 w-3 text-purple-400" />
-                                                            <span className="font-mono text-purple-400 truncate" title={field.id}>
-                                                                ID: {field.id.substring(0, 8)}...
-                                                            </span>
-                                                        </div>
+                                                        {/* Permanent Signer ID */}
+                                                        {signer?.permanentSignerId && (
+                                                            <div className="mt-2 flex items-center gap-2 text-[10px]">
+                                                                <User className="h-3 w-3 text-emerald-400" />
+                                                                <span className="font-mono text-emerald-400">
+                                                                    Signer: {signer.permanentSignerId}
+                                                                </span>
+                                                            </div>
+                                                        )}
+                                                        {/* Signature Hash */}
+                                                        {field.signatureHash && (
+                                                            <div className="flex items-center gap-2 text-[10px]">
+                                                                <Fingerprint className="h-3 w-3 text-purple-400" />
+                                                                <span className="font-mono text-purple-400">
+                                                                    Hash: {field.signatureHash}
+                                                                </span>
+                                                            </div>
+                                                        )}
                                                         {field.signedAt && (
                                                             <p className="text-[10px] text-zinc-500 mt-1">
                                                                 Signed: {format(new Date(field.signedAt), 'MMM d, yyyy h:mm a')}
@@ -600,57 +694,112 @@ export default function EnvelopeViewPage() {
                         <DialogTitle className="text-white flex items-center gap-2">
                             <FileText className="h-5 w-5 text-amber-500" />
                             {envelope.name}
+                            {envelope.fields && envelope.fields.filter(f => f.value).length > 0 && (
+                                <Badge className="bg-green-900/50 text-green-400 text-[10px] ml-2">
+                                    <CheckCircle className="h-3 w-3 mr-1" />
+                                    Signed
+                                </Badge>
+                            )}
                         </DialogTitle>
                     </DialogHeader>
-                    <div className="mt-4 bg-white rounded-lg overflow-auto max-h-[70vh] relative">
-                        {envelope.documentHtml ? (
-                            <div className="relative">
-                                <div 
-                                    dangerouslySetInnerHTML={{ __html: envelope.documentHtml }}
-                                    className="p-8"
+                    <div className="mt-4 bg-white rounded-lg overflow-auto" style={{ height: '70vh' }}>
+                        {isRenderingDocument ? (
+                            <div className="flex flex-col items-center justify-center h-full">
+                                <Loader2 className="h-8 w-8 animate-spin text-amber-600 mb-4" />
+                                <p className="text-zinc-500 text-sm">Rendering document...</p>
+                            </div>
+                        ) : documentImage ? (
+                            <div 
+                                className="relative mx-auto"
+                                style={{ width: '816px' }}
+                            >
+                                {/* Document rendered as image (same as during signing) */}
+                                <img 
+                                    src={documentImage} 
+                                    alt="Document"
+                                    style={{ width: '100%', display: 'block' }}
                                 />
-                                {/* Render captured signatures on the document */}
-                                {envelope.fields && envelope.fields.filter(f => f.value).length > 0 && (
-                                    <div className="absolute inset-0 pointer-events-none p-8">
-                                        <div className="relative w-full h-full">
-                                            {envelope.fields.filter(f => f.value).map((field) => {
-                                                const signer = envelope.signers?.find(s => s.id === field.signerId)
-                                                return (
-                                                    <div
-                                                        key={field.id}
-                                                        className="absolute"
-                                                        style={{
-                                                            left: `${field.xPosition}%`,
-                                                            top: `${field.yPosition}%`,
-                                                            width: `${field.width || 120}px`,
-                                                            height: `${field.height || 40}px`,
-                                                        }}
-                                                    >
-                                                        {field.fieldType === 'signature' || field.fieldType === 'initials' ? (
-                                                            <img 
-                                                                src={field.value} 
-                                                                alt={`${signer?.name || 'Signature'}`}
-                                                                className="max-w-full max-h-full object-contain"
-                                                            />
-                                                        ) : field.fieldType === 'date_signed' ? (
-                                                            <span 
-                                                                className="text-sm text-black"
-                                                                style={{ fontFamily: field.fontFamily || 'inherit' }}
-                                                            >
-                                                                {field.signedAt ? format(new Date(field.signedAt), 'MMM d, yyyy') : field.value}
-                                                            </span>
-                                                        ) : (
-                                                            <span className="text-sm text-black">{field.value}</span>
-                                                        )}
-                                                    </div>
-                                                )
-                                            })}
+                                {/* Debug marker at top to verify overlay is working */}
+                                <div style={{
+                                    position: 'absolute',
+                                    top: '10px',
+                                    left: '10px',
+                                    padding: '5px 10px',
+                                    background: 'red',
+                                    color: 'white',
+                                    fontSize: '12px',
+                                    zIndex: 200,
+                                }}>
+                                    Signatures: {envelope.fields?.filter(f => f.value).length || 0} signed fields
+                                </div>
+                                {/* Overlay signatures at their exact stored positions */}
+                                {envelope.fields && envelope.fields.filter(f => f.value).map((field) => {
+                                    const signer = envelope.signers?.find(s => s.id === field.signerId)
+                                    
+                                    // Use stored capture dimensions if available, otherwise assume default 1.5x scale
+                                    // Field positions are stored in the captured image coordinate space
+                                    // Display: 816px width, Capture: usually 1224px (816 * 1.5)
+                                    const captureWidth = envelope.captureWidth || 1224;
+                                    const displayWidth = 816;
+                                    const scaleRatio = captureWidth / displayWidth;
+                                    
+                                    const xPos = (field.xPosition || 0) / scaleRatio;
+                                    const yPos = (field.yPosition || 0) / scaleRatio;
+                                    const fieldDisplayWidth = (field.width || 120) / scaleRatio;
+                                    const fieldDisplayHeight = (field.height || 40) / scaleRatio;
+                                    
+                                    console.log('[Signature Overlay]', {
+                                        fieldType: field.fieldType,
+                                        storedX: field.xPosition,
+                                        storedY: field.yPosition,
+                                        displayX: xPos,
+                                        displayY: yPos,
+                                        scaleRatio,
+                                        hasValue: !!field.value
+                                    });
+                                    
+                                    return (
+                                        <div
+                                            key={field.id}
+                                            style={{
+                                                position: 'absolute',
+                                                left: `${xPos}px`,
+                                                top: `${yPos}px`,
+                                                width: `${Math.max(fieldDisplayWidth, 80)}px`,
+                                                height: `${Math.max(fieldDisplayHeight, 30)}px`,
+                                                zIndex: 100,
+                                                pointerEvents: 'none',
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                justifyContent: 'flex-start',
+                                                // Add debug border to see where signatures are placed
+                                                border: '2px solid red',
+                                                background: 'rgba(255,0,0,0.1)',
+                                            }}
+                                        >
+                                            {(field.fieldType === 'signature' || field.fieldType === 'initials') && field.value ? (
+                                                <img 
+                                                    src={field.value} 
+                                                    alt={`${signer?.name || 'Signature'}`}
+                                                    style={{
+                                                        maxHeight: '100%',
+                                                        maxWidth: '100%',
+                                                        objectFit: 'contain',
+                                                    }}
+                                                />
+                                            ) : field.fieldType === 'date_signed' && field.value ? (
+                                                <span style={{ fontSize: '12px', color: '#000', fontFamily: 'serif' }}>
+                                                    {field.signedAt ? format(new Date(field.signedAt), 'MMM d, yyyy') : field.value}
+                                                </span>
+                                            ) : field.value ? (
+                                                <span style={{ fontSize: '12px', color: '#000' }}>{field.value}</span>
+                                            ) : null}
                                         </div>
-                                    </div>
-                                )}
+                                    )
+                                })}
                             </div>
                         ) : (
-                            <div className="p-8 text-center text-zinc-500">
+                            <div className="p-8 text-center text-zinc-500 h-full flex items-center justify-center">
                                 Document content not available
                             </div>
                         )}
@@ -658,25 +807,49 @@ export default function EnvelopeViewPage() {
                     {/* Show signature summary below document */}
                     {envelope.fields && envelope.fields.filter(f => f.value && (f.fieldType === 'signature' || f.fieldType === 'initials')).length > 0 && (
                         <div className="border-t border-zinc-800 pt-4 mt-4">
-                            <p className="text-zinc-400 text-xs font-mono uppercase mb-3">Captured Signatures</p>
+                            <p className="text-zinc-400 text-xs font-mono uppercase mb-3">Signature Verification</p>
                             <div className="flex flex-wrap gap-4">
                                 {envelope.fields.filter(f => f.value && (f.fieldType === 'signature' || f.fieldType === 'initials')).map((field) => {
                                     const signer = envelope.signers?.find(s => s.id === field.signerId)
                                     return (
                                         <div key={field.id} className="bg-zinc-900 border border-zinc-800 rounded-lg p-3">
-                                            <p className="text-zinc-400 text-xs mb-2">{signer?.name || 'Unknown'}</p>
-                                            <div className="bg-white rounded p-2 min-w-[100px]">
-                                                <img 
-                                                    src={field.value} 
-                                                    alt="Signature"
-                                                    className="h-8 object-contain"
-                                                />
+                                            <div className="flex items-center gap-3">
+                                                <div className="bg-white rounded p-2 min-w-[80px]">
+                                                    <img 
+                                                        src={field.value} 
+                                                        alt="Signature"
+                                                        className="h-6 object-contain"
+                                                    />
+                                                </div>
+                                                <div>
+                                                    <p className="text-white text-xs font-medium">{signer?.name || 'Unknown'}</p>
+                                                    {field.signedAt && (
+                                                        <p className="text-zinc-500 text-[10px]">
+                                                            {format(new Date(field.signedAt), 'MMM d, yyyy h:mm a')}
+                                                        </p>
+                                                    )}
+                                                </div>
+                                                <CheckCircle className="h-4 w-4 text-green-500" />
                                             </div>
-                                            {field.signedAt && (
-                                                <p className="text-zinc-500 text-[10px] mt-1">
-                                                    {format(new Date(field.signedAt), 'MMM d, yyyy h:mm a')}
-                                                </p>
-                                            )}
+                                            {/* Permanent Signer ID + Signature Hash - DocuSign-style verification */}
+                                            <div className="mt-2 pt-2 border-t border-zinc-800 space-y-1">
+                                                {signer?.permanentSignerId && (
+                                                    <div className="flex items-center gap-2">
+                                                        <User className="h-3 w-3 text-emerald-400" />
+                                                        <span className="text-[10px] font-mono text-emerald-400">
+                                                            Signer ID: {signer.permanentSignerId}
+                                                        </span>
+                                                    </div>
+                                                )}
+                                                {field.signatureHash && (
+                                                    <div className="flex items-center gap-2">
+                                                        <Fingerprint className="h-3 w-3 text-purple-400" />
+                                                        <span className="text-[10px] font-mono text-purple-400">
+                                                            Signature ID: {field.signatureHash}
+                                                        </span>
+                                                    </div>
+                                                )}
+                                            </div>
                                         </div>
                                     )
                                 })}

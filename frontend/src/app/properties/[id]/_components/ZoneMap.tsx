@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef } from 'react';
-import Map, { Marker, NavigationControl, Popup } from 'react-map-gl/mapbox';
+import Map, { Marker, NavigationControl, Popup } from 'react-map-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
 import { PropertyEnrichmentResponse } from '@/types/property';
 import { MapPin, AlertTriangle, CheckCircle, Info } from 'lucide-react';

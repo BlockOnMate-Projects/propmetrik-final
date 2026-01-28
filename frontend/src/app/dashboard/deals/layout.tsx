@@ -14,7 +14,8 @@ import {
     Home,
     UserCircle,
     Workflow,
-    FolderKanban
+    FileText,
+    Calendar
 } from 'lucide-react'
 
 const crmNavItems = [
@@ -23,8 +24,9 @@ const crmNavItems = [
     { href: '/dashboard/deals/contacts', label: 'CONTACTS', icon: Users },
     { href: '/dashboard/deals/agents', label: 'AGENTS', icon: UserCircle },
     { href: '/dashboard/deals/companies', label: 'COMPANIES', icon: Building2 },
-    { href: '/dashboard/deals/projects', label: 'PROJECTS', icon: FolderKanban },
     { href: '/dashboard/deals/tasks', label: 'TASKS', icon: CheckSquare },
+    { href: '/dashboard/deals/documents', label: 'DOCUMENTS', icon: FileText },
+    { href: '/dashboard/deals/calendar', label: 'CALENDAR', icon: Calendar },
     { href: '/dashboard/deals/analytics', label: 'ANALYTICS', icon: BarChart3 },
     { href: '/dashboard/deals/workflows', label: 'WORKFLOWS', icon: Workflow },
     { href: '/dashboard/deals/pipelines', label: 'PIPELINES', icon: Settings },

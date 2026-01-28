@@ -1,6 +1,7 @@
 
 'use client'
 
+import React, { use } from 'react'
 import Link from 'next/link'
 import {
     ArrowLeft,
@@ -57,7 +58,8 @@ const ticket = {
     ]
 }
 
-export default function WorkOrderDetailsPage({ params }: { params: { id: string } }) {
+export default function WorkOrderDetailsPage({ params }: { params: Promise<{ id: string }> }) {
+    const { id } = use(params)
     return (
         <div className="space-y-6 max-w-6xl mx-auto">
             {/* Header */}

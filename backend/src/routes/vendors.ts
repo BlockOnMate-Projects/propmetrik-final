@@ -1,0 +1,528 @@
+/**
+ * Vendor Routes
+ * Phase 4 Sprint 8 - Team & Integration
+ * 
+ * API routes for:
+ * - Vendor directory
+ * - Vendor ratings
+ * - Vendor assignments
+ * - Compliance tracking
+ */
+
+import { Router, Request, Response } from 'express';
+import { teamService, VendorCategory } from '../services/project-management/teamService';
+import { logger } from '../utils/logger';
+
+const router = Router();
+
+// ============================================================================
+// VENDOR DIRECTORY
+// ============================================================================
+
+/**
+ * POST /vendors
+ * Add a vendor to the directory
+ */
+router.post('/', async (req: Request, res: Response) => {
+  try {
+    const userId = (req as any).user?.id || req.body.createdBy;
+    
+    const vendor = await teamService.addVendor({
+      ...req.body,
+      createdBy: userId,
+    });
+    
+    res.status(201).json({
+      success: true,
+      data: vendor,
+    });
+  } catch (error) {
+    logger.error('Error adding vendor', { error });
+    res.status(500).json({
+      success: false,
+      error: 'Failed to add vendor',
+    });
+  }
+});
+
+/**
+ * GET /vendors
+ * Get vendors with filters
+ */
+router.get('/', async (req: Request, res: Response) => {
+  try {
+    const filters = {
+      organizationId: req.query.organizationId as string,
+      category: req.query.category as VendorCategory | undefined,
+      isApproved: req.query.isApproved === 'true' ? true : req.query.isApproved === 'false' ? false : undefined,
+      search: req.query.search as string,
+      minRating: req.query.minRating ? parseFloat(req.query.minRating as string) : undefined,
+    };
+    
+    const limit = parseInt(req.query.limit as string) || 50;
+    const offset = parseInt(req.query.offset as string) || 0;
+    
+    const { vendors, total } = await teamService.getVendors(filters, limit, offset);
+    
+    res.json({
+      success: true,
+      data: vendors,
+      pagination: {
+        total,
+        limit,
+        offset,
+      },
+    });
+  } catch (error) {
+    logger.error('Error getting vendors', { error });
+    res.status(500).json({
+      success: false,
+      error: 'Failed to get vendors',
+    });
+  }
+});
+
+/**
+ * GET /vendors/:id
+ * Get vendor by ID
+ */
+router.get('/:id', async (req: Request, res: Response) => {
+  try {
+    const vendor = await teamService.getVendorById(req.params.id);
+    
+    if (!vendor) {
+      return res.status(404).json({
+        success: false,
+        error: 'Vendor not found',
+      });
+    }
+    
+    res.json({
+      success: true,
+      data: vendor,
+    });
+  } catch (error) {
+    logger.error('Error getting vendor', { error });
+    res.status(500).json({
+      success: false,
+      error: 'Failed to get vendor',
+    });
+  }
+});
+
+/**
+ * PUT /vendors/:id
+ * Update a vendor
+ */
+router.put('/:id', async (req: Request, res: Response) => {
+  try {
+    const vendor = await teamService.updateVendor(req.params.id, req.body);
+    
+    res.json({
+      success: true,
+      data: vendor,
+    });
+  } catch (error) {
+    logger.error('Error updating vendor', { error });
+    res.status(500).json({
+      success: false,
+      error: 'Failed to update vendor',
+    });
+  }
+});
+
+/**
+ * POST /vendors/:id/approve
+ * Approve a vendor
+ */
+router.post('/:id/approve', async (req: Request, res: Response) => {
+  try {
+    const userId = (req as any).user?.id || req.body.approvedBy;
+    
+    const vendor = await teamService.approveVendor(req.params.id, userId);
+    
+    res.json({
+      success: true,
+      data: vendor,
+    });
+  } catch (error) {
+    logger.error('Error approving vendor', { error });
+    res.status(500).json({
+      success: false,
+      error: 'Failed to approve vendor',
+    });
+  }
+});
+
+/**
+ * POST /vendors/:id/suspend
+ * Suspend a vendor
+ */
+router.post('/:id/suspend', async (req: Request, res: Response) => {
+  try {
+    const { reason } = req.body;
+    
+    const vendor = await teamService.suspendVendor(req.params.id, reason);
+    
+    res.json({
+      success: true,
+      data: vendor,
+    });
+  } catch (error) {
+    logger.error('Error suspending vendor', { error });
+    res.status(500).json({
+      success: false,
+      error: 'Failed to suspend vendor',
+    });
+  }
+});
+
+/**
+ * DELETE /vendors/:id
+ * Delete a vendor
+ */
+router.delete('/:id', async (req: Request, res: Response) => {
+  try {
+    await teamService.deleteVendor(req.params.id);
+    
+    res.json({
+      success: true,
+      message: 'Vendor deleted',
+    });
+  } catch (error) {
+    logger.error('Error deleting vendor', { error });
+    res.status(500).json({
+      success: false,
+      error: 'Failed to delete vendor',
+    });
+  }
+});
+
+// ============================================================================
+// VENDOR RATINGS
+// ============================================================================
+
+/**
+ * POST /vendors/:id/ratings
+ * Rate a vendor's performance
+ */
+router.post('/:id/ratings', async (req: Request, res: Response) => {
+  try {
+    const { id: vendorId } = req.params;
+    const userId = (req as any).user?.id || req.body.ratedBy;
+    
+    const rating = await teamService.rateVendorPerformance({
+      vendorId,
+      ...req.body,
+      ratedBy: userId,
+    });
+    
+    res.status(201).json({
+      success: true,
+      data: rating,
+    });
+  } catch (error) {
+    logger.error('Error rating vendor', { error });
+    res.status(500).json({
+      success: false,
+      error: 'Failed to rate vendor',
+    });
+  }
+});
+
+/**
+ * GET /vendors/:id/ratings
+ * Get vendor ratings
+ */
+router.get('/:id/ratings', async (req: Request, res: Response) => {
+  try {
+    const { id: vendorId } = req.params;
+    
+    const ratings = await teamService.getVendorRatings(vendorId);
+    
+    res.json({
+      success: true,
+      data: ratings,
+    });
+  } catch (error) {
+    logger.error('Error getting vendor ratings', { error });
+    res.status(500).json({
+      success: false,
+      error: 'Failed to get vendor ratings',
+    });
+  }
+});
+
+/**
+ * GET /vendors/:id/ratings/summary
+ * Get vendor rating summary
+ */
+router.get('/:id/ratings/summary', async (req: Request, res: Response) => {
+  try {
+    const { id: vendorId } = req.params;
+    
+    const summary = await teamService.getVendorRatingSummary(vendorId);
+    
+    res.json({
+      success: true,
+      data: summary,
+    });
+  } catch (error) {
+    logger.error('Error getting vendor rating summary', { error });
+    res.status(500).json({
+      success: false,
+      error: 'Failed to get vendor rating summary',
+    });
+  }
+});
+
+// ============================================================================
+// VENDOR ASSIGNMENTS
+// ============================================================================
+
+/**
+ * POST /vendors/:id/assignments
+ * Assign a vendor to a project
+ */
+router.post('/:id/assignments', async (req: Request, res: Response) => {
+  try {
+    const { id: vendorId } = req.params;
+    const userId = (req as any).user?.id || req.body.assignedBy;
+    
+    const assignment = await teamService.assignVendorToProject({
+      vendorId,
+      ...req.body,
+      assignedBy: userId,
+    });
+    
+    res.status(201).json({
+      success: true,
+      data: assignment,
+    });
+  } catch (error) {
+    logger.error('Error assigning vendor', { error });
+    res.status(500).json({
+      success: false,
+      error: 'Failed to assign vendor',
+    });
+  }
+});
+
+/**
+ * GET /vendors/:id/assignments
+ * Get vendor's project assignments
+ */
+router.get('/:id/assignments', async (req: Request, res: Response) => {
+  try {
+    const { id: vendorId } = req.params;
+    
+    const assignments = await teamService.getVendorAssignments(vendorId);
+    
+    res.json({
+      success: true,
+      data: assignments,
+    });
+  } catch (error) {
+    logger.error('Error getting vendor assignments', { error });
+    res.status(500).json({
+      success: false,
+      error: 'Failed to get vendor assignments',
+    });
+  }
+});
+
+/**
+ * GET /vendors/projects/:projectId/vendors
+ * Get vendors assigned to a project
+ */
+router.get('/projects/:projectId/vendors', async (req: Request, res: Response) => {
+  try {
+    const { projectId } = req.params;
+    
+    const vendors = await teamService.getProjectVendors(projectId);
+    
+    res.json({
+      success: true,
+      data: vendors,
+    });
+  } catch (error) {
+    logger.error('Error getting project vendors', { error });
+    res.status(500).json({
+      success: false,
+      error: 'Failed to get project vendors',
+    });
+  }
+});
+
+/**
+ * PUT /vendors/assignments/:assignmentId
+ * Update a vendor assignment
+ */
+router.put('/assignments/:assignmentId', async (req: Request, res: Response) => {
+  try {
+    const { assignmentId } = req.params;
+    
+    const assignment = await teamService.updateVendorAssignment(assignmentId, req.body);
+    
+    res.json({
+      success: true,
+      data: assignment,
+    });
+  } catch (error) {
+    logger.error('Error updating vendor assignment', { error });
+    res.status(500).json({
+      success: false,
+      error: 'Failed to update vendor assignment',
+    });
+  }
+});
+
+/**
+ * POST /vendors/assignments/:assignmentId/complete
+ * Mark a vendor assignment as complete
+ */
+router.post('/assignments/:assignmentId/complete', async (req: Request, res: Response) => {
+  try {
+    const { assignmentId } = req.params;
+    
+    const assignment = await teamService.completeVendorAssignment(assignmentId);
+    
+    res.json({
+      success: true,
+      data: assignment,
+    });
+  } catch (error) {
+    logger.error('Error completing vendor assignment', { error });
+    res.status(500).json({
+      success: false,
+      error: 'Failed to complete vendor assignment',
+    });
+  }
+});
+
+/**
+ * DELETE /vendors/assignments/:assignmentId
+ * Remove a vendor from a project
+ */
+router.delete('/assignments/:assignmentId', async (req: Request, res: Response) => {
+  try {
+    const { assignmentId } = req.params;
+    
+    await teamService.removeVendorFromProject(assignmentId);
+    
+    res.json({
+      success: true,
+      message: 'Vendor removed from project',
+    });
+  } catch (error) {
+    logger.error('Error removing vendor from project', { error });
+    res.status(500).json({
+      success: false,
+      error: 'Failed to remove vendor from project',
+    });
+  }
+});
+
+// ============================================================================
+// VENDOR COMPLIANCE
+// ============================================================================
+
+/**
+ * PUT /vendors/:id/compliance
+ * Update vendor compliance documents
+ */
+router.put('/:id/compliance', async (req: Request, res: Response) => {
+  try {
+    const { id: vendorId } = req.params;
+    const { complianceDocuments } = req.body;
+    
+    const vendor = await teamService.updateVendorCompliance(vendorId, complianceDocuments);
+    
+    res.json({
+      success: true,
+      data: vendor,
+    });
+  } catch (error) {
+    logger.error('Error updating vendor compliance', { error });
+    res.status(500).json({
+      success: false,
+      error: 'Failed to update vendor compliance',
+    });
+  }
+});
+
+/**
+ * GET /vendors/compliance/expiring
+ * Get vendors with expiring compliance documents
+ */
+router.get('/compliance/expiring', async (req: Request, res: Response) => {
+  try {
+    const organizationId = req.query.organizationId as string;
+    const daysAhead = parseInt(req.query.daysAhead as string) || 30;
+    
+    const vendors = await teamService.getVendorsWithExpiringCompliance(organizationId, daysAhead);
+    
+    res.json({
+      success: true,
+      data: vendors,
+    });
+  } catch (error) {
+    logger.error('Error getting expiring compliance', { error });
+    res.status(500).json({
+      success: false,
+      error: 'Failed to get expiring compliance',
+    });
+  }
+});
+
+// ============================================================================
+// VENDOR CATEGORIES
+// ============================================================================
+
+/**
+ * GET /vendors/categories
+ * Get all vendor categories
+ */
+router.get('/categories/all', async (_req: Request, res: Response) => {
+  try {
+    const categories = await teamService.getVendorCategories();
+    
+    res.json({
+      success: true,
+      data: categories,
+    });
+  } catch (error) {
+    logger.error('Error getting vendor categories', { error });
+    res.status(500).json({
+      success: false,
+      error: 'Failed to get vendor categories',
+    });
+  }
+});
+
+/**
+ * GET /vendors/top-rated
+ * Get top rated vendors
+ */
+router.get('/top-rated', async (req: Request, res: Response) => {
+  try {
+    const organizationId = req.query.organizationId as string;
+    const category = req.query.category as VendorCategory | undefined;
+    const limit = parseInt(req.query.limit as string) || 10;
+    
+    const vendors = await teamService.getTopRatedVendors(organizationId, category, limit);
+    
+    res.json({
+      success: true,
+      data: vendors,
+    });
+  } catch (error) {
+    logger.error('Error getting top rated vendors', { error });
+    res.status(500).json({
+      success: false,
+      error: 'Failed to get top rated vendors',
+    });
+  }
+});
+
+export default router;

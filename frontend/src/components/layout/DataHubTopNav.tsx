@@ -18,24 +18,26 @@ import {
     DollarSign,
     Building2,
     Layers,
-    Settings
+    Settings,
+    Calendar
 } from 'lucide-react'
 
 const navigation = [
-    { name: 'OVERVIEW', href: '/dashboard/data-hub', exact: true, icon: LayoutDashboard },
-    { name: 'ANALYTICS', href: '/dashboard/data-hub/analytics', icon: BarChart3 },
-    { name: 'QUALITY', href: '/dashboard/data-hub/quality', icon: CheckCircle },
-    { name: 'LINEAGE', href: '/dashboard/data-hub/lineage', icon: GitBranch },
-    { name: 'PERFORMANCE', href: '/dashboard/data-hub/performance', icon: Zap },
-    { name: 'CATALOG', href: '/dashboard/data-hub/catalog', icon: BookOpen },
-    { name: 'INSIGHTS', href: '/dashboard/data-hub/insights', icon: Lightbulb },
-    { name: 'SOURCES', href: '/dashboard/data-hub/sources', icon: Database },
-    { name: 'JOBS', href: '/dashboard/data-hub/jobs', icon: Activity },
-    { name: 'CONTRIBUTIONS', href: '/dashboard/data-hub/contributions', icon: Users },
-    { name: 'ECONOMIC', href: '/dashboard/data-hub/economic', icon: DollarSign },
-    { name: 'CONSTRUCTION', href: '/dashboard/data-hub/construction', icon: Building2 },
-    { name: 'INGESTION', href: '/dashboard/data-hub/ingestion', icon: Layers },
-    { name: 'VALUATION CONFIG', href: '/dashboard/data-hub/valuation-config', icon: Settings },
+    { name: 'OVERVIEW', href: '/dashboard/admin/data-hub', exact: true, icon: LayoutDashboard },
+    { name: 'ANALYTICS', href: '/dashboard/admin/data-hub/analytics', icon: BarChart3 },
+    { name: 'QUALITY', href: '/dashboard/admin/data-hub/quality', icon: CheckCircle },
+    { name: 'LINEAGE', href: '/dashboard/admin/data-hub/lineage', icon: GitBranch },
+    { name: 'PERFORMANCE', href: '/dashboard/admin/data-hub/performance', icon: Zap },
+    { name: 'CATALOG', href: '/dashboard/admin/data-hub/catalog', icon: BookOpen },
+    { name: 'INSIGHTS', href: '/dashboard/admin/data-hub/insights', icon: Lightbulb },
+    { name: 'SOURCES', href: '/dashboard/admin/data-hub/sources', icon: Database },
+    { name: 'JOBS', href: '/dashboard/admin/data-hub/jobs', icon: Activity },
+    { name: 'CONTRIBUTIONS', href: '/dashboard/admin/data-hub/contributions', icon: Users },
+    { name: 'ECONOMIC', href: '/dashboard/admin/data-hub/economic', icon: DollarSign },
+    { name: 'CONSTRUCTION', href: '/dashboard/admin/data-hub/construction', icon: Building2 },
+    { name: 'INGESTION', href: '/dashboard/admin/data-hub/ingestion', icon: Layers },
+    { name: 'CALENDAR', href: '/dashboard/admin/data-hub/calendar', icon: Calendar },
+    { name: 'VALUATION CONFIG', href: '/dashboard/admin/data-hub/valuation-config', icon: Settings },
 ]
 
 export function DataHubTopNav() {

@@ -5,6 +5,10 @@ import { ReactQueryDevtools } from '@tanstack/react-query-devtools'
 import { ThemeProvider } from 'next-themes'
 import { useState } from 'react'
 import { TooltipProvider } from '@/components/ui/tooltip'
+import { PWAProvider, OfflineIndicator, InstallPrompt } from '@/components/pwa'
+import { RealtimeProvider } from '@/lib/realtime-provider'
+import { AuthProvider } from '@/lib/auth-context'
+import { SessionProvider } from 'next-auth/react'
 
 export function Providers({ children }: { children: React.ReactNode }) {
   const [queryClient] = useState(
@@ -21,13 +25,23 @@ export function Providers({ children }: { children: React.ReactNode }) {
   )
 
   return (
-    <QueryClientProvider client={queryClient}>
-      <ThemeProvider attribute="class" defaultTheme="dark" enableSystem={false}>
-        <TooltipProvider>
-          {children}
-        </TooltipProvider>
-      </ThemeProvider>
-      <ReactQueryDevtools initialIsOpen={false} />
-    </QueryClientProvider>
+    <SessionProvider>
+      <QueryClientProvider client={queryClient}>
+        <ThemeProvider attribute="class" defaultTheme="dark" enableSystem={false}>
+          <TooltipProvider>
+            <AuthProvider>
+              <PWAProvider>
+                <RealtimeProvider autoInvalidateQueries={true}>
+                  {children}
+                </RealtimeProvider>
+                <OfflineIndicator />
+                <InstallPrompt />
+              </PWAProvider>
+            </AuthProvider>
+          </TooltipProvider>
+        </ThemeProvider>
+        <ReactQueryDevtools initialIsOpen={false} />
+      </QueryClientProvider>
+    </SessionProvider>
   )
 }

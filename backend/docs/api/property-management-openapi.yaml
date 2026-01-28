@@ -1,0 +1,2244 @@
+openapi: 3.0.3
+info:
+  title: PropMetrik Property Management API
+  description: |
+    Property Management API for PropMetrik platform.
+    
+    ## Features
+    - **Property Management**: Properties, units, amenities, and listings
+    - **Tenancy Management**: Lease lifecycle, tenant onboarding, renewals
+    - **Payment Processing**: Rent collection via Paystack (cards, mobile money)
+    - **Maintenance**: Work order submission and status tracking
+    - **Lease Templates**: Template CRUD, variable substitution, PDF generation
+    - **Tenant Portal**: Self-service for tenants (payments, maintenance, documents)
+    
+    ## Authentication
+    - Admin/Staff endpoints use Keycloak Bearer tokens
+    - Tenant Portal uses magic link/OTP-based authentication
+    
+    ## Payment Modes
+    - Test mode: Uses Paystack test keys (no real transactions)
+    - Live mode: Uses Paystack live keys (real transactions)
+    
+  version: 1.0.0
+  contact:
+    name: PropMetrik Support
+    email: support@propmetrik.com
+
+servers:
+  - url: https://api.propmetrik.com/v1/pm
+    description: Production server
+  - url: https://staging-api.propmetrik.com/v1/pm
+    description: Staging server
+  - url: http://localhost:3001/api/pm
+    description: Local development
+
+tags:
+  - name: Properties
+    description: Property management operations
+  - name: Units
+    description: Unit management within properties
+  - name: Tenancies
+    description: Tenancy lifecycle management
+  - name: Payments
+    description: Rent payment processing
+  - name: Maintenance
+    description: Maintenance request management
+  - name: Lease Templates
+    description: Lease document template management
+  - name: Tenant Portal - Auth
+    description: Tenant authentication (magic link, OTP)
+  - name: Tenant Portal - Profile
+    description: Tenant profile management
+  - name: Tenant Portal - Payments
+    description: Tenant payment operations
+  - name: Tenant Portal - Maintenance
+    description: Tenant maintenance requests
+
+paths:
+  # ===== PROPERTIES =====
+  /properties:
+    get:
+      tags:
+        - Properties
+      summary: List properties
+      description: Retrieve paginated list of properties with optional filters
+      operationId: listProperties
+      parameters:
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [active, inactive, under_maintenance]
+        - name: propertyType
+          in: query
+          schema:
+            type: string
+            enum: [residential, commercial, mixed_use, land]
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+            maximum: 100
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            default: 0
+        - name: search
+          in: query
+          description: Search by property name or address
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PropertyListResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+      security:
+        - bearerAuth: []
+
+    post:
+      tags:
+        - Properties
+      summary: Create property
+      operationId: createProperty
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreatePropertyRequest'
+      responses:
+        '201':
+          description: Property created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Property'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+      security:
+        - bearerAuth: []
+
+  /properties/{propertyId}:
+    get:
+      tags:
+        - Properties
+      summary: Get property details
+      operationId: getProperty
+      parameters:
+        - $ref: '#/components/parameters/PropertyId'
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PropertyDetail'
+        '404':
+          $ref: '#/components/responses/NotFound'
+      security:
+        - bearerAuth: []
+
+    patch:
+      tags:
+        - Properties
+      summary: Update property
+      operationId: updateProperty
+      parameters:
+        - $ref: '#/components/parameters/PropertyId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdatePropertyRequest'
+      responses:
+        '200':
+          description: Property updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Property'
+      security:
+        - bearerAuth: []
+
+  # ===== UNITS =====
+  /properties/{propertyId}/units:
+    get:
+      tags:
+        - Units
+      summary: List units for property
+      operationId: listUnits
+      parameters:
+        - $ref: '#/components/parameters/PropertyId'
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [vacant, occupied, maintenance, reserved]
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UnitListResponse'
+      security:
+        - bearerAuth: []
+
+    post:
+      tags:
+        - Units
+      summary: Add unit to property
+      operationId: createUnit
+      parameters:
+        - $ref: '#/components/parameters/PropertyId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateUnitRequest'
+      responses:
+        '201':
+          description: Unit created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Unit'
+      security:
+        - bearerAuth: []
+
+  /units/{unitId}:
+    get:
+      tags:
+        - Units
+      summary: Get unit details
+      operationId: getUnit
+      parameters:
+        - $ref: '#/components/parameters/UnitId'
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UnitDetail'
+      security:
+        - bearerAuth: []
+
+    patch:
+      tags:
+        - Units
+      summary: Update unit
+      operationId: updateUnit
+      parameters:
+        - $ref: '#/components/parameters/UnitId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateUnitRequest'
+      responses:
+        '200':
+          description: Unit updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Unit'
+      security:
+        - bearerAuth: []
+
+  # ===== TENANCIES =====
+  /tenancies:
+    get:
+      tags:
+        - Tenancies
+      summary: List tenancies
+      operationId: listTenancies
+      parameters:
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [pending, active, expired, terminated]
+        - name: propertyId
+          in: query
+          schema:
+            type: string
+            format: uuid
+        - name: unitId
+          in: query
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TenancyListResponse'
+      security:
+        - bearerAuth: []
+
+    post:
+      tags:
+        - Tenancies
+      summary: Create tenancy
+      description: Create a new tenancy, generate rent schedule, and optionally send lease for signing
+      operationId: createTenancy
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateTenancyRequest'
+      responses:
+        '201':
+          description: Tenancy created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TenancyDetail'
+      security:
+        - bearerAuth: []
+
+  /tenancies/{tenancyId}:
+    get:
+      tags:
+        - Tenancies
+      summary: Get tenancy details
+      operationId: getTenancy
+      parameters:
+        - $ref: '#/components/parameters/TenancyId'
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TenancyDetail'
+      security:
+        - bearerAuth: []
+
+    patch:
+      tags:
+        - Tenancies
+      summary: Update tenancy
+      operationId: updateTenancy
+      parameters:
+        - $ref: '#/components/parameters/TenancyId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateTenancyRequest'
+      responses:
+        '200':
+          description: Tenancy updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TenancyDetail'
+      security:
+        - bearerAuth: []
+
+  /tenancies/{tenancyId}/terminate:
+    post:
+      tags:
+        - Tenancies
+      summary: Terminate tenancy
+      description: Early termination of an active tenancy
+      operationId: terminateTenancy
+      parameters:
+        - $ref: '#/components/parameters/TenancyId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - terminationDate
+                - reason
+              properties:
+                terminationDate:
+                  type: string
+                  format: date
+                reason:
+                  type: string
+                refundDeposit:
+                  type: boolean
+                  default: true
+      responses:
+        '200':
+          description: Tenancy terminated
+      security:
+        - bearerAuth: []
+
+  /tenancies/{tenancyId}/renew:
+    post:
+      tags:
+        - Tenancies
+      summary: Renew tenancy
+      description: Extend the lease for another term
+      operationId: renewTenancy
+      parameters:
+        - $ref: '#/components/parameters/TenancyId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - newEndDate
+              properties:
+                newEndDate:
+                  type: string
+                  format: date
+                newRentAmount:
+                  type: number
+                rentIncreasePercent:
+                  type: number
+      responses:
+        '200':
+          description: Tenancy renewed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TenancyDetail'
+      security:
+        - bearerAuth: []
+
+  # ===== RENT SCHEDULES =====
+  /tenancies/{tenancyId}/rent-schedules:
+    get:
+      tags:
+        - Payments
+      summary: Get rent schedules
+      description: List all rent payment schedules for a tenancy
+      operationId: getRentSchedules
+      parameters:
+        - $ref: '#/components/parameters/TenancyId'
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [pending, paid, overdue, partially_paid]
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RentScheduleListResponse'
+      security:
+        - bearerAuth: []
+
+    post:
+      tags:
+        - Payments
+      summary: Generate rent schedules
+      description: Auto-generate rent schedules based on tenancy terms
+      operationId: generateRentSchedules
+      parameters:
+        - $ref: '#/components/parameters/TenancyId'
+      responses:
+        '201':
+          description: Rent schedules generated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RentScheduleListResponse'
+      security:
+        - bearerAuth: []
+
+  # ===== PAYMENTS =====
+  /payments/initialize:
+    post:
+      tags:
+        - Payments
+      summary: Initialize payment
+      description: Initialize a Paystack payment transaction
+      operationId: initializePayment
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/InitializePaymentRequest'
+      responses:
+        '200':
+          description: Payment initialized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaymentInitResponse'
+      security:
+        - bearerAuth: []
+
+  /payments/verify/{reference}:
+    get:
+      tags:
+        - Payments
+      summary: Verify payment
+      description: Verify a Paystack payment transaction
+      operationId: verifyPayment
+      parameters:
+        - name: reference
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Payment verification result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaymentVerifyResponse'
+      security:
+        - bearerAuth: []
+
+  /payments/webhook:
+    post:
+      tags:
+        - Payments
+      summary: Paystack webhook
+      description: Receive payment notifications from Paystack
+      operationId: paystackWebhook
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '200':
+          description: Webhook processed
+      security: []
+
+  /payments/mobile-money:
+    post:
+      tags:
+        - Payments
+      summary: Initialize mobile money payment
+      description: Initialize a mobile money payment (MTN, Vodafone, AirtelTigo)
+      operationId: initializeMobileMoneyPayment
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MobileMoneyPaymentRequest'
+      responses:
+        '200':
+          description: Mobile money payment initiated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaymentInitResponse'
+      security:
+        - bearerAuth: []
+
+  # ===== MAINTENANCE =====
+  /maintenance:
+    get:
+      tags:
+        - Maintenance
+      summary: List maintenance requests
+      operationId: listMaintenanceRequests
+      parameters:
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [pending, assigned, in_progress, completed, cancelled]
+        - name: priority
+          in: query
+          schema:
+            type: string
+            enum: [low, medium, high, emergency]
+        - name: propertyId
+          in: query
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MaintenanceListResponse'
+      security:
+        - bearerAuth: []
+
+    post:
+      tags:
+        - Maintenance
+      summary: Create maintenance request
+      operationId: createMaintenanceRequest
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/CreateMaintenanceRequest'
+      responses:
+        '201':
+          description: Request created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MaintenanceRequest'
+      security:
+        - bearerAuth: []
+
+  /maintenance/{requestId}:
+    get:
+      tags:
+        - Maintenance
+      summary: Get maintenance request
+      operationId: getMaintenanceRequest
+      parameters:
+        - $ref: '#/components/parameters/MaintenanceRequestId'
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MaintenanceRequestDetail'
+      security:
+        - bearerAuth: []
+
+    patch:
+      tags:
+        - Maintenance
+      summary: Update maintenance request
+      description: Update status, assign technician, add notes
+      operationId: updateMaintenanceRequest
+      parameters:
+        - $ref: '#/components/parameters/MaintenanceRequestId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateMaintenanceRequest'
+      responses:
+        '200':
+          description: Request updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MaintenanceRequestDetail'
+      security:
+        - bearerAuth: []
+
+  # ===== LEASE TEMPLATES =====
+  /lease-templates:
+    get:
+      tags:
+        - Lease Templates
+      summary: List lease templates
+      operationId: listLeaseTemplates
+      parameters:
+        - name: templateType
+          in: query
+          schema:
+            type: string
+            enum: [residential, commercial, short_term]
+        - name: jurisdiction
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LeaseTemplateListResponse'
+      security:
+        - bearerAuth: []
+
+    post:
+      tags:
+        - Lease Templates
+      summary: Create lease template
+      operationId: createLeaseTemplate
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateLeaseTemplateRequest'
+      responses:
+        '201':
+          description: Template created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LeaseTemplate'
+      security:
+        - bearerAuth: []
+
+  /lease-templates/{templateId}:
+    get:
+      tags:
+        - Lease Templates
+      summary: Get lease template
+      operationId: getLeaseTemplate
+      parameters:
+        - $ref: '#/components/parameters/LeaseTemplateId'
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LeaseTemplateDetail'
+      security:
+        - bearerAuth: []
+
+    patch:
+      tags:
+        - Lease Templates
+      summary: Update lease template
+      operationId: updateLeaseTemplate
+      parameters:
+        - $ref: '#/components/parameters/LeaseTemplateId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateLeaseTemplateRequest'
+      responses:
+        '200':
+          description: Template updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LeaseTemplate'
+      security:
+        - bearerAuth: []
+
+    delete:
+      tags:
+        - Lease Templates
+      summary: Delete lease template
+      operationId: deleteLeaseTemplate
+      parameters:
+        - $ref: '#/components/parameters/LeaseTemplateId'
+      responses:
+        '204':
+          description: Template deleted
+      security:
+        - bearerAuth: []
+
+  /lease-templates/{templateId}/preview:
+    post:
+      tags:
+        - Lease Templates
+      summary: Preview lease template
+      description: Preview template with sample data
+      operationId: previewLeaseTemplate
+      parameters:
+        - $ref: '#/components/parameters/LeaseTemplateId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                sampleData:
+                  type: object
+                  additionalProperties: true
+      responses:
+        '200':
+          description: Preview generated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  html:
+                    type: string
+      security:
+        - bearerAuth: []
+
+  /lease-documents/generate:
+    post:
+      tags:
+        - Lease Templates
+      summary: Generate lease document
+      description: Generate a PDF lease document from template and tenancy data
+      operationId: generateLeaseDocument
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - tenancyId
+                - templateId
+              properties:
+                tenancyId:
+                  type: string
+                  format: uuid
+                templateId:
+                  type: string
+                  format: uuid
+                additionalData:
+                  type: object
+                  additionalProperties: true
+      responses:
+        '200':
+          description: Document generated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LeaseDocument'
+      security:
+        - bearerAuth: []
+
+  # ===== TENANT PORTAL - AUTH =====
+  /tenant-portal/auth/request-magic-link:
+    post:
+      tags:
+        - Tenant Portal - Auth
+      summary: Request magic link
+      description: Send a magic link to tenant's email for passwordless login
+      operationId: requestMagicLink
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - email
+              properties:
+                email:
+                  type: string
+                  format: email
+      responses:
+        '200':
+          description: Magic link sent
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: Magic link sent to your email
+      security: []
+
+  /tenant-portal/auth/verify-magic-link:
+    post:
+      tags:
+        - Tenant Portal - Auth
+      summary: Verify magic link
+      description: Verify magic link token and create session
+      operationId: verifyMagicLink
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - token
+              properties:
+                token:
+                  type: string
+      responses:
+        '200':
+          description: Session created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TenantSession'
+      security: []
+
+  /tenant-portal/auth/request-otp:
+    post:
+      tags:
+        - Tenant Portal - Auth
+      summary: Request OTP
+      description: Send OTP to tenant's phone via SMS
+      operationId: requestOTP
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - phone
+              properties:
+                phone:
+                  type: string
+                  example: "+233244123456"
+      responses:
+        '200':
+          description: OTP sent
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  otpLength:
+                    type: integer
+                    example: 6
+      security: []
+
+  /tenant-portal/auth/verify-otp:
+    post:
+      tags:
+        - Tenant Portal - Auth
+      summary: Verify OTP
+      description: Verify OTP and create session
+      operationId: verifyOTP
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - phone
+                - otp
+              properties:
+                phone:
+                  type: string
+                otp:
+                  type: string
+      responses:
+        '200':
+          description: Session created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TenantSession'
+      security: []
+
+  /tenant-portal/auth/logout:
+    post:
+      tags:
+        - Tenant Portal - Auth
+      summary: Logout
+      description: End tenant session
+      operationId: tenantLogout
+      responses:
+        '200':
+          description: Logged out
+      security:
+        - tenantToken: []
+
+  # ===== TENANT PORTAL - PROFILE =====
+  /tenant-portal/profile:
+    get:
+      tags:
+        - Tenant Portal - Profile
+      summary: Get tenant profile
+      operationId: getTenantProfile
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TenantProfile'
+      security:
+        - tenantToken: []
+
+    patch:
+      tags:
+        - Tenant Portal - Profile
+      summary: Update tenant profile
+      operationId: updateTenantProfile
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateTenantProfileRequest'
+      responses:
+        '200':
+          description: Profile updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TenantProfile'
+      security:
+        - tenantToken: []
+
+  # ===== TENANT PORTAL - PAYMENTS =====
+  /tenant-portal/tenancies/{tenancyId}/payment-summary:
+    get:
+      tags:
+        - Tenant Portal - Payments
+      summary: Get payment summary
+      description: Get outstanding balance, overdue count, and next payment info
+      operationId: getTenantPaymentSummary
+      parameters:
+        - $ref: '#/components/parameters/TenancyId'
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaymentSummary'
+      security:
+        - tenantToken: []
+
+  /tenant-portal/tenancies/{tenancyId}/rent-schedules:
+    get:
+      tags:
+        - Tenant Portal - Payments
+      summary: Get rent schedules
+      operationId: getTenantRentSchedules
+      parameters:
+        - $ref: '#/components/parameters/TenancyId'
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RentScheduleListResponse'
+      security:
+        - tenantToken: []
+
+  /tenant-portal/tenancies/{tenancyId}/payment-history:
+    get:
+      tags:
+        - Tenant Portal - Payments
+      summary: Get payment history
+      operationId: getTenantPaymentHistory
+      parameters:
+        - $ref: '#/components/parameters/TenancyId'
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            default: 0
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaymentHistoryResponse'
+      security:
+        - tenantToken: []
+
+  /tenant-portal/tenancies/{tenancyId}/payments/initiate:
+    post:
+      tags:
+        - Tenant Portal - Payments
+      summary: Initiate payment
+      description: Initialize a rent payment via Paystack
+      operationId: initiateTenantPayment
+      parameters:
+        - $ref: '#/components/parameters/TenancyId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - rentScheduleIds
+              properties:
+                rentScheduleIds:
+                  type: array
+                  items:
+                    type: string
+                    format: uuid
+                paymentMethod:
+                  type: string
+                  enum: [card, mobile_money, bank_transfer]
+                  default: card
+                mobileMoneyProvider:
+                  type: string
+                  enum: [mtn, vodafone, airteltigo]
+                mobileMoneyNumber:
+                  type: string
+      responses:
+        '200':
+          description: Payment initialized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaymentInitResponse'
+      security:
+        - tenantToken: []
+
+  /tenant-portal/payments/verify/{reference}:
+    get:
+      tags:
+        - Tenant Portal - Payments
+      summary: Verify payment
+      operationId: verifyTenantPayment
+      parameters:
+        - name: reference
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Verification result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaymentVerifyResponse'
+      security:
+        - tenantToken: []
+
+  # ===== TENANT PORTAL - MAINTENANCE =====
+  /tenant-portal/tenancies/{tenancyId}/maintenance:
+    get:
+      tags:
+        - Tenant Portal - Maintenance
+      summary: List tenant maintenance requests
+      operationId: getTenantMaintenanceRequests
+      parameters:
+        - $ref: '#/components/parameters/TenancyId'
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [pending, assigned, in_progress, completed, cancelled]
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MaintenanceListResponse'
+      security:
+        - tenantToken: []
+
+    post:
+      tags:
+        - Tenant Portal - Maintenance
+      summary: Submit maintenance request
+      operationId: submitTenantMaintenanceRequest
+      parameters:
+        - $ref: '#/components/parameters/TenancyId'
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required:
+                - title
+                - category
+                - description
+              properties:
+                title:
+                  type: string
+                category:
+                  type: string
+                  enum: [plumbing, electrical, hvac, appliances, structural, pest_control, locks_security, exterior, cleaning, other]
+                priority:
+                  type: string
+                  enum: [low, medium, high, emergency]
+                  default: medium
+                description:
+                  type: string
+                location:
+                  type: string
+                preferredContactMethod:
+                  type: string
+                  enum: [phone, email, sms]
+                preferredTimeSlot:
+                  type: string
+                  enum: [morning, afternoon, evening, weekend]
+                images:
+                  type: array
+                  items:
+                    type: string
+                    format: binary
+                  maxItems: 5
+      responses:
+        '201':
+          description: Request submitted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MaintenanceRequest'
+      security:
+        - tenantToken: []
+
+  /tenant-portal/maintenance/{requestId}:
+    get:
+      tags:
+        - Tenant Portal - Maintenance
+      summary: Get maintenance request status
+      operationId: getTenantMaintenanceStatus
+      parameters:
+        - $ref: '#/components/parameters/MaintenanceRequestId'
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MaintenanceRequestDetail'
+      security:
+        - tenantToken: []
+
+  # ===== TENANT PORTAL - DOCUMENTS =====
+  /tenant-portal/tenancies/{tenancyId}/documents:
+    get:
+      tags:
+        - Tenant Portal - Profile
+      summary: Get tenant documents
+      description: Get lease documents, receipts, and other tenant documents
+      operationId: getTenantDocuments
+      parameters:
+        - $ref: '#/components/parameters/TenancyId'
+        - name: type
+          in: query
+          schema:
+            type: string
+            enum: [lease, receipt, notice, other]
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TenantDocumentListResponse'
+      security:
+        - tenantToken: []
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Keycloak JWT token for admin/staff access
+    
+    tenantToken:
+      type: http
+      scheme: bearer
+      description: Session token for tenant portal access
+
+  parameters:
+    PropertyId:
+      name: propertyId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    
+    UnitId:
+      name: unitId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    
+    TenancyId:
+      name: tenancyId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    
+    MaintenanceRequestId:
+      name: requestId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    
+    LeaseTemplateId:
+      name: templateId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+
+  responses:
+    BadRequest:
+      description: Bad request
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    
+    Unauthorized:
+      description: Unauthorized
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+  schemas:
+    Error:
+      type: object
+      properties:
+        error:
+          type: string
+        message:
+          type: string
+        code:
+          type: string
+
+    Pagination:
+      type: object
+      properties:
+        total:
+          type: integer
+        limit:
+          type: integer
+        offset:
+          type: integer
+        hasMore:
+          type: boolean
+
+    # Property Schemas
+    Property:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        propertyType:
+          type: string
+          enum: [residential, commercial, mixed_use, land]
+        address:
+          type: string
+        city:
+          type: string
+        region:
+          type: string
+        status:
+          type: string
+          enum: [active, inactive, under_maintenance]
+        totalUnits:
+          type: integer
+        occupiedUnits:
+          type: integer
+        createdAt:
+          type: string
+          format: date-time
+
+    PropertyDetail:
+      allOf:
+        - $ref: '#/components/schemas/Property'
+        - type: object
+          properties:
+            description:
+              type: string
+            amenities:
+              type: array
+              items:
+                type: string
+            images:
+              type: array
+              items:
+                type: string
+            owner:
+              type: object
+              properties:
+                id:
+                  type: string
+                name:
+                  type: string
+                email:
+                  type: string
+
+    PropertyListResponse:
+      type: object
+      properties:
+        properties:
+          type: array
+          items:
+            $ref: '#/components/schemas/Property'
+        pagination:
+          $ref: '#/components/schemas/Pagination'
+
+    CreatePropertyRequest:
+      type: object
+      required:
+        - name
+        - propertyType
+        - address
+      properties:
+        name:
+          type: string
+        propertyType:
+          type: string
+          enum: [residential, commercial, mixed_use, land]
+        address:
+          type: string
+        city:
+          type: string
+        region:
+          type: string
+        description:
+          type: string
+        amenities:
+          type: array
+          items:
+            type: string
+
+    UpdatePropertyRequest:
+      type: object
+      properties:
+        name:
+          type: string
+        address:
+          type: string
+        status:
+          type: string
+          enum: [active, inactive, under_maintenance]
+        description:
+          type: string
+        amenities:
+          type: array
+          items:
+            type: string
+
+    # Unit Schemas
+    Unit:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        propertyId:
+          type: string
+          format: uuid
+        unitNumber:
+          type: string
+        unitType:
+          type: string
+          enum: [studio, 1br, 2br, 3br, 4br, penthouse, office, retail, warehouse]
+        status:
+          type: string
+          enum: [vacant, occupied, maintenance, reserved]
+        rentAmount:
+          type: number
+        rentCurrency:
+          type: string
+          default: GHS
+        sqft:
+          type: number
+        bedrooms:
+          type: integer
+        bathrooms:
+          type: number
+
+    UnitDetail:
+      allOf:
+        - $ref: '#/components/schemas/Unit'
+        - type: object
+          properties:
+            amenities:
+              type: array
+              items:
+                type: string
+            currentTenancy:
+              $ref: '#/components/schemas/Tenancy'
+
+    UnitListResponse:
+      type: object
+      properties:
+        units:
+          type: array
+          items:
+            $ref: '#/components/schemas/Unit'
+        pagination:
+          $ref: '#/components/schemas/Pagination'
+
+    CreateUnitRequest:
+      type: object
+      required:
+        - unitNumber
+        - unitType
+        - rentAmount
+      properties:
+        unitNumber:
+          type: string
+        unitType:
+          type: string
+        rentAmount:
+          type: number
+        rentCurrency:
+          type: string
+          default: GHS
+        sqft:
+          type: number
+        bedrooms:
+          type: integer
+        bathrooms:
+          type: number
+        amenities:
+          type: array
+          items:
+            type: string
+
+    UpdateUnitRequest:
+      type: object
+      properties:
+        unitNumber:
+          type: string
+        status:
+          type: string
+          enum: [vacant, occupied, maintenance, reserved]
+        rentAmount:
+          type: number
+        sqft:
+          type: number
+        amenities:
+          type: array
+          items:
+            type: string
+
+    # Tenancy Schemas
+    Tenancy:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        propertyId:
+          type: string
+          format: uuid
+        unitId:
+          type: string
+          format: uuid
+        tenantId:
+          type: string
+          format: uuid
+        status:
+          type: string
+          enum: [pending, active, expired, terminated]
+        startDate:
+          type: string
+          format: date
+        endDate:
+          type: string
+          format: date
+        rentAmount:
+          type: number
+        rentCurrency:
+          type: string
+        paymentFrequency:
+          type: string
+          enum: [monthly, quarterly, annually]
+
+    TenancyDetail:
+      allOf:
+        - $ref: '#/components/schemas/Tenancy'
+        - type: object
+          properties:
+            tenant:
+              type: object
+              properties:
+                id:
+                  type: string
+                fullName:
+                  type: string
+                email:
+                  type: string
+                phone:
+                  type: string
+            property:
+              type: object
+              properties:
+                id:
+                  type: string
+                name:
+                  type: string
+                address:
+                  type: string
+            unit:
+              type: object
+              properties:
+                id:
+                  type: string
+                unitNumber:
+                  type: string
+                unitType:
+                  type: string
+            securityDeposit:
+              type: number
+            depositPaid:
+              type: boolean
+            leaseDocumentUrl:
+              type: string
+
+    TenancyListResponse:
+      type: object
+      properties:
+        tenancies:
+          type: array
+          items:
+            $ref: '#/components/schemas/TenancyDetail'
+        pagination:
+          $ref: '#/components/schemas/Pagination'
+
+    CreateTenancyRequest:
+      type: object
+      required:
+        - propertyId
+        - unitId
+        - tenantId
+        - startDate
+        - endDate
+        - rentAmount
+      properties:
+        propertyId:
+          type: string
+          format: uuid
+        unitId:
+          type: string
+          format: uuid
+        tenantId:
+          type: string
+          format: uuid
+        startDate:
+          type: string
+          format: date
+        endDate:
+          type: string
+          format: date
+        rentAmount:
+          type: number
+        rentCurrency:
+          type: string
+          default: GHS
+        paymentFrequency:
+          type: string
+          enum: [monthly, quarterly, annually]
+          default: monthly
+        securityDeposit:
+          type: number
+        generateRentSchedules:
+          type: boolean
+          default: true
+        generateLeaseDocument:
+          type: boolean
+          default: false
+        leaseTemplateId:
+          type: string
+          format: uuid
+
+    UpdateTenancyRequest:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [pending, active, expired, terminated]
+        rentAmount:
+          type: number
+        endDate:
+          type: string
+          format: date
+
+    # Rent Schedule Schemas
+    RentSchedule:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        tenancyId:
+          type: string
+          format: uuid
+        periodStart:
+          type: string
+          format: date
+        periodEnd:
+          type: string
+          format: date
+        dueDate:
+          type: string
+          format: date
+        amount:
+          type: number
+        currency:
+          type: string
+        status:
+          type: string
+          enum: [pending, paid, overdue, partially_paid]
+        paidAmount:
+          type: number
+        paidDate:
+          type: string
+          format: date-time
+
+    RentScheduleListResponse:
+      type: object
+      properties:
+        rentSchedules:
+          type: array
+          items:
+            $ref: '#/components/schemas/RentSchedule'
+
+    # Payment Schemas
+    InitializePaymentRequest:
+      type: object
+      required:
+        - tenancyId
+        - rentScheduleIds
+        - email
+      properties:
+        tenancyId:
+          type: string
+          format: uuid
+        rentScheduleIds:
+          type: array
+          items:
+            type: string
+            format: uuid
+        email:
+          type: string
+          format: email
+        callbackUrl:
+          type: string
+          format: uri
+
+    MobileMoneyPaymentRequest:
+      type: object
+      required:
+        - tenancyId
+        - rentScheduleIds
+        - phone
+        - provider
+      properties:
+        tenancyId:
+          type: string
+          format: uuid
+        rentScheduleIds:
+          type: array
+          items:
+            type: string
+            format: uuid
+        phone:
+          type: string
+          example: "+233244123456"
+        provider:
+          type: string
+          enum: [mtn, vodafone, airteltigo]
+
+    PaymentInitResponse:
+      type: object
+      properties:
+        reference:
+          type: string
+        authorizationUrl:
+          type: string
+          format: uri
+        accessCode:
+          type: string
+
+    PaymentVerifyResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [success, failed, pending]
+        reference:
+          type: string
+        amount:
+          type: number
+        currency:
+          type: string
+        paidAt:
+          type: string
+          format: date-time
+        channel:
+          type: string
+        message:
+          type: string
+
+    PaymentSummary:
+      type: object
+      properties:
+        totalOutstanding:
+          type: number
+        overdueSchedules:
+          type: integer
+        overdueAmount:
+          type: number
+        currency:
+          type: string
+        nextPaymentDue:
+          type: object
+          properties:
+            dueDate:
+              type: string
+              format: date
+            amount:
+              type: number
+        lastPayment:
+          type: object
+          properties:
+            paidAt:
+              type: string
+              format: date-time
+            amount:
+              type: number
+
+    PaymentHistory:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        amount:
+          type: number
+        currency:
+          type: string
+        status:
+          type: string
+        reference:
+          type: string
+        paymentMethod:
+          type: string
+        paidAt:
+          type: string
+          format: date-time
+        receiptUrl:
+          type: string
+
+    PaymentHistoryResponse:
+      type: object
+      properties:
+        payments:
+          type: array
+          items:
+            $ref: '#/components/schemas/PaymentHistory'
+        pagination:
+          $ref: '#/components/schemas/Pagination'
+
+    # Maintenance Schemas
+    MaintenanceRequest:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        tenancyId:
+          type: string
+          format: uuid
+        title:
+          type: string
+        category:
+          type: string
+        priority:
+          type: string
+          enum: [low, medium, high, emergency]
+        status:
+          type: string
+          enum: [pending, assigned, in_progress, completed, cancelled]
+        description:
+          type: string
+        location:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+
+    MaintenanceRequestDetail:
+      allOf:
+        - $ref: '#/components/schemas/MaintenanceRequest'
+        - type: object
+          properties:
+            tenant:
+              type: object
+              properties:
+                fullName:
+                  type: string
+                email:
+                  type: string
+                phone:
+                  type: string
+            property:
+              type: object
+              properties:
+                title:
+                  type: string
+                address:
+                  type: string
+            assignedTo:
+              type: object
+              properties:
+                name:
+                  type: string
+                company:
+                  type: string
+                phone:
+                  type: string
+            scheduledDate:
+              type: string
+              format: date-time
+            completedDate:
+              type: string
+              format: date-time
+            resolution:
+              type: string
+            images:
+              type: array
+              items:
+                type: string
+            statusHistory:
+              type: array
+              items:
+                type: object
+                properties:
+                  status:
+                    type: string
+                  updatedAt:
+                    type: string
+                    format: date-time
+                  updatedBy:
+                    type: string
+                  notes:
+                    type: string
+
+    MaintenanceListResponse:
+      type: object
+      properties:
+        requests:
+          type: array
+          items:
+            $ref: '#/components/schemas/MaintenanceRequest'
+        pagination:
+          $ref: '#/components/schemas/Pagination'
+
+    CreateMaintenanceRequest:
+      type: object
+      required:
+        - tenancyId
+        - title
+        - category
+        - description
+      properties:
+        tenancyId:
+          type: string
+          format: uuid
+        title:
+          type: string
+        category:
+          type: string
+        priority:
+          type: string
+          enum: [low, medium, high, emergency]
+          default: medium
+        description:
+          type: string
+        location:
+          type: string
+        preferredContactMethod:
+          type: string
+          enum: [phone, email, sms]
+        preferredTimeSlot:
+          type: string
+        images:
+          type: array
+          items:
+            type: string
+            format: binary
+
+    UpdateMaintenanceRequest:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [pending, assigned, in_progress, completed, cancelled]
+        priority:
+          type: string
+          enum: [low, medium, high, emergency]
+        assignedToId:
+          type: string
+          format: uuid
+        scheduledDate:
+          type: string
+          format: date-time
+        resolution:
+          type: string
+        notes:
+          type: string
+
+    # Lease Template Schemas
+    LeaseTemplate:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        templateType:
+          type: string
+          enum: [residential, commercial, short_term]
+        jurisdiction:
+          type: string
+        version:
+          type: string
+        isDefault:
+          type: boolean
+        variables:
+          type: array
+          items:
+            type: string
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    LeaseTemplateDetail:
+      allOf:
+        - $ref: '#/components/schemas/LeaseTemplate'
+        - type: object
+          properties:
+            content:
+              type: string
+              description: HTML/Handlebars template content
+            headerHtml:
+              type: string
+            footerHtml:
+              type: string
+            styles:
+              type: string
+
+    LeaseTemplateListResponse:
+      type: object
+      properties:
+        templates:
+          type: array
+          items:
+            $ref: '#/components/schemas/LeaseTemplate'
+
+    CreateLeaseTemplateRequest:
+      type: object
+      required:
+        - name
+        - templateType
+        - content
+      properties:
+        name:
+          type: string
+        templateType:
+          type: string
+          enum: [residential, commercial, short_term]
+        jurisdiction:
+          type: string
+          default: GH
+        content:
+          type: string
+        headerHtml:
+          type: string
+        footerHtml:
+          type: string
+        styles:
+          type: string
+        isDefault:
+          type: boolean
+
+    UpdateLeaseTemplateRequest:
+      type: object
+      properties:
+        name:
+          type: string
+        content:
+          type: string
+        headerHtml:
+          type: string
+        footerHtml:
+          type: string
+        styles:
+          type: string
+        isDefault:
+          type: boolean
+
+    LeaseDocument:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        tenancyId:
+          type: string
+          format: uuid
+        templateId:
+          type: string
+          format: uuid
+        documentUrl:
+          type: string
+        status:
+          type: string
+          enum: [draft, pending_signature, signed, expired]
+        generatedAt:
+          type: string
+          format: date-time
+        signedAt:
+          type: string
+          format: date-time
+
+    # Tenant Portal Schemas
+    TenantSession:
+      type: object
+      properties:
+        token:
+          type: string
+        expiresAt:
+          type: string
+          format: date-time
+        tenant:
+          type: object
+          properties:
+            id:
+              type: string
+            fullName:
+              type: string
+            email:
+              type: string
+            phone:
+              type: string
+
+    TenantProfile:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        fullName:
+          type: string
+        email:
+          type: string
+          format: email
+        phone:
+          type: string
+        dateOfBirth:
+          type: string
+          format: date
+        emergencyContact:
+          type: object
+          properties:
+            name:
+              type: string
+            phone:
+              type: string
+            relationship:
+              type: string
+        tenancies:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: string
+                format: uuid
+              propertyTitle:
+                type: string
+              propertyAddress:
+                type: string
+              unitNumber:
+                type: string
+              status:
+                type: string
+              startDate:
+                type: string
+                format: date
+              endDate:
+                type: string
+                format: date
+              rentAmount:
+                type: number
+              rentCurrency:
+                type: string
+
+    UpdateTenantProfileRequest:
+      type: object
+      properties:
+        phone:
+          type: string
+        emergencyContact:
+          type: object
+          properties:
+            name:
+              type: string
+            phone:
+              type: string
+            relationship:
+              type: string
+
+    TenantDocument:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        type:
+          type: string
+          enum: [lease, receipt, notice, other]
+        title:
+          type: string
+        url:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+
+    TenantDocumentListResponse:
+      type: object
+      properties:
+        documents:
+          type: array
+          items:
+            $ref: '#/components/schemas/TenantDocument'

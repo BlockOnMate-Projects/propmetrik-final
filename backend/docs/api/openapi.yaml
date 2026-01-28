@@ -1,0 +1,1360 @@
+openapi: 3.0.3
+info:
+  title: PropMetrik Construction Management API
+  description: |
+    PropMetrik is a comprehensive construction project management platform designed for the Ghana market.
+    
+    ## Features
+    - **Project Management**: Create, track, and manage construction projects
+    - **Budget Tracking**: Monitor expenses, invoices, and budget analytics
+    - **Team Management**: Manage teams, roles, and assignments
+    - **Document Management**: Store and organize project documents
+    - **Vendor Management**: Track vendors and supplier relationships
+    - **Daily Logs**: Capture daily construction progress
+    - **Offline Support**: Full offline capability with background sync
+    
+    ## Authentication
+    All API endpoints require authentication using Bearer tokens from Keycloak.
+    
+    ## Rate Limiting
+    - Standard tier: 100 requests/minute
+    - Premium tier: 1000 requests/minute
+    
+  version: 1.0.0
+  contact:
+    name: PropMetrik Support
+    email: support@propmetrik.com
+    url: https://propmetrik.com/support
+  license:
+    name: Proprietary
+    url: https://propmetrik.com/license
+
+servers:
+  - url: https://api.propmetrik.com/v1
+    description: Production server
+  - url: https://staging-api.propmetrik.com/v1
+    description: Staging server
+  - url: http://localhost:3001/api
+    description: Local development
+
+tags:
+  - name: Projects
+    description: Project management operations
+  - name: Budget
+    description: Budget tracking and expense management
+  - name: Team
+    description: Team and role management
+  - name: Vendors
+    description: Vendor directory and relationships
+  - name: Documents
+    description: Document storage and management
+  - name: Notifications
+    description: Push notification management
+  - name: Ghana
+    description: Ghana-specific data (regions, assemblies)
+
+paths:
+  /projects:
+    get:
+      tags:
+        - Projects
+      summary: List all projects
+      description: Retrieve a paginated list of projects with optional filters
+      operationId: listProjects
+      parameters:
+        - name: status
+          in: query
+          description: Filter by project status
+          schema:
+            type: string
+            enum: [draft, active, on_hold, completed, cancelled]
+        - name: limit
+          in: query
+          description: Number of items per page
+          schema:
+            type: integer
+            default: 20
+            maximum: 100
+        - name: offset
+          in: query
+          description: Number of items to skip
+          schema:
+            type: integer
+            default: 0
+        - name: search
+          in: query
+          description: Search by project name or client name
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProjectListResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+      security:
+        - bearerAuth: []
+
+    post:
+      tags:
+        - Projects
+      summary: Create a new project
+      description: Create a new construction project
+      operationId: createProject
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateProjectRequest'
+      responses:
+        '201':
+          description: Project created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Project'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+      security:
+        - bearerAuth: []
+
+  /projects/{projectId}:
+    get:
+      tags:
+        - Projects
+      summary: Get project by ID
+      description: Retrieve detailed information about a specific project
+      operationId: getProject
+      parameters:
+        - $ref: '#/components/parameters/ProjectId'
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProjectDetail'
+        '404':
+          $ref: '#/components/responses/NotFound'
+      security:
+        - bearerAuth: []
+
+    put:
+      tags:
+        - Projects
+      summary: Update project
+      description: Update project details
+      operationId: updateProject
+      parameters:
+        - $ref: '#/components/parameters/ProjectId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateProjectRequest'
+      responses:
+        '200':
+          description: Project updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Project'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+      security:
+        - bearerAuth: []
+
+    delete:
+      tags:
+        - Projects
+      summary: Delete project
+      description: Soft delete a project (moves to cancelled status)
+      operationId: deleteProject
+      parameters:
+        - $ref: '#/components/parameters/ProjectId'
+      responses:
+        '204':
+          description: Project deleted successfully
+        '404':
+          $ref: '#/components/responses/NotFound'
+      security:
+        - bearerAuth: []
+
+  /projects/{projectId}/milestones:
+    get:
+      tags:
+        - Projects
+      summary: List project milestones
+      description: Get all milestones for a project
+      operationId: listMilestones
+      parameters:
+        - $ref: '#/components/parameters/ProjectId'
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MilestoneListResponse'
+      security:
+        - bearerAuth: []
+
+    post:
+      tags:
+        - Projects
+      summary: Create milestone
+      description: Add a new milestone to a project
+      operationId: createMilestone
+      parameters:
+        - $ref: '#/components/parameters/ProjectId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateMilestoneRequest'
+      responses:
+        '201':
+          description: Milestone created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Milestone'
+      security:
+        - bearerAuth: []
+
+  /projects/daily-logs:
+    get:
+      tags:
+        - Projects
+      summary: List daily logs
+      description: Get daily logs with optional project filter
+      operationId: listDailyLogs
+      parameters:
+        - name: projectId
+          in: query
+          schema:
+            type: string
+            format: uuid
+        - name: startDate
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: endDate
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DailyLogListResponse'
+      security:
+        - bearerAuth: []
+
+    post:
+      tags:
+        - Projects
+      summary: Create daily log
+      description: Create a new daily log entry
+      operationId: createDailyLog
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateDailyLogRequest'
+      responses:
+        '201':
+          description: Daily log created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DailyLog'
+      security:
+        - bearerAuth: []
+
+  /budget/expenses:
+    get:
+      tags:
+        - Budget
+      summary: List expenses
+      description: Get paginated list of expenses with filters
+      operationId: listExpenses
+      parameters:
+        - name: projectId
+          in: query
+          schema:
+            type: string
+            format: uuid
+        - name: expenseType
+          in: query
+          schema:
+            type: string
+            enum: [materials, labor, equipment, transport, utilities, permits, professional, other]
+        - name: startDate
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: endDate
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExpenseListResponse'
+      security:
+        - bearerAuth: []
+
+    post:
+      tags:
+        - Budget
+      summary: Create expense
+      description: Record a new expense
+      operationId: createExpense
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateExpenseRequest'
+      responses:
+        '201':
+          description: Expense created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Expense'
+      security:
+        - bearerAuth: []
+
+  /budget/analytics:
+    get:
+      tags:
+        - Budget
+      summary: Get budget analytics
+      description: Get budget analytics and spending breakdown
+      operationId: getBudgetAnalytics
+      parameters:
+        - name: projectId
+          in: query
+          schema:
+            type: string
+            format: uuid
+        - name: period
+          in: query
+          schema:
+            type: string
+            enum: [week, month, quarter, year]
+            default: month
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BudgetAnalytics'
+      security:
+        - bearerAuth: []
+
+  /budget/invoices:
+    get:
+      tags:
+        - Budget
+      summary: List invoices
+      description: Get paginated list of invoices
+      operationId: listInvoices
+      parameters:
+        - name: projectId
+          in: query
+          schema:
+            type: string
+            format: uuid
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [draft, sent, paid, overdue, cancelled]
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InvoiceListResponse'
+      security:
+        - bearerAuth: []
+
+    post:
+      tags:
+        - Budget
+      summary: Create invoice
+      description: Create a new invoice
+      operationId: createInvoice
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateInvoiceRequest'
+      responses:
+        '201':
+          description: Invoice created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Invoice'
+      security:
+        - bearerAuth: []
+
+  /team:
+    get:
+      tags:
+        - Team
+      summary: List team members
+      description: Get all team members with roles
+      operationId: listTeamMembers
+      parameters:
+        - name: projectId
+          in: query
+          schema:
+            type: string
+            format: uuid
+        - name: role
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TeamMemberListResponse'
+      security:
+        - bearerAuth: []
+
+    post:
+      tags:
+        - Team
+      summary: Add team member
+      description: Add a new team member
+      operationId: addTeamMember
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AddTeamMemberRequest'
+      responses:
+        '201':
+          description: Team member added successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TeamMember'
+      security:
+        - bearerAuth: []
+
+  /vendors:
+    get:
+      tags:
+        - Vendors
+      summary: List vendors
+      description: Get paginated list of vendors
+      operationId: listVendors
+      parameters:
+        - name: category
+          in: query
+          schema:
+            type: string
+        - name: search
+          in: query
+          schema:
+            type: string
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VendorListResponse'
+      security:
+        - bearerAuth: []
+
+    post:
+      tags:
+        - Vendors
+      summary: Create vendor
+      description: Add a new vendor to the directory
+      operationId: createVendor
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateVendorRequest'
+      responses:
+        '201':
+          description: Vendor created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Vendor'
+      security:
+        - bearerAuth: []
+
+  /notifications/subscribe:
+    post:
+      tags:
+        - Notifications
+      summary: Subscribe to push notifications
+      description: Register a push subscription
+      operationId: subscribePush
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PushSubscription'
+      responses:
+        '201':
+          description: Subscription created successfully
+      security:
+        - bearerAuth: []
+
+  /notifications/unsubscribe:
+    post:
+      tags:
+        - Notifications
+      summary: Unsubscribe from push notifications
+      description: Remove a push subscription
+      operationId: unsubscribePush
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                endpoint:
+                  type: string
+      responses:
+        '204':
+          description: Subscription removed successfully
+      security:
+        - bearerAuth: []
+
+  /notifications/preferences:
+    get:
+      tags:
+        - Notifications
+      summary: Get notification preferences
+      description: Get user's notification preferences
+      operationId: getNotificationPreferences
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotificationPreferences'
+      security:
+        - bearerAuth: []
+
+    put:
+      tags:
+        - Notifications
+      summary: Update notification preferences
+      description: Update user's notification preferences
+      operationId: updateNotificationPreferences
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NotificationPreferences'
+      responses:
+        '200':
+          description: Preferences updated successfully
+      security:
+        - bearerAuth: []
+
+  /ghana-regions:
+    get:
+      tags:
+        - Ghana
+      summary: List Ghana regions
+      description: Get list of all Ghana administrative regions
+      operationId: listGhanaRegions
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GhanaRegionListResponse'
+
+  /ghana-assemblies:
+    get:
+      tags:
+        - Ghana
+      summary: List Ghana assemblies
+      description: Get list of metropolitan/municipal/district assemblies
+      operationId: listGhanaAssemblies
+      parameters:
+        - name: regionId
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GhanaAssemblyListResponse'
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Keycloak JWT token
+
+  parameters:
+    ProjectId:
+      name: projectId
+      in: path
+      required: true
+      description: Unique project identifier
+      schema:
+        type: string
+        format: uuid
+
+  responses:
+    BadRequest:
+      description: Bad request
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    Unauthorized:
+      description: Unauthorized
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+  schemas:
+    Error:
+      type: object
+      required:
+        - message
+        - code
+      properties:
+        message:
+          type: string
+        code:
+          type: string
+        details:
+          type: object
+
+    Pagination:
+      type: object
+      properties:
+        total:
+          type: integer
+        limit:
+          type: integer
+        offset:
+          type: integer
+        hasMore:
+          type: boolean
+
+    Project:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        clientName:
+          type: string
+        status:
+          type: string
+          enum: [draft, active, on_hold, completed, cancelled]
+        progress:
+          type: number
+          minimum: 0
+          maximum: 100
+        budget:
+          type: number
+        budgetUsed:
+          type: number
+        startDate:
+          type: string
+          format: date
+        endDate:
+          type: string
+          format: date
+        region:
+          type: string
+        assembly:
+          type: string
+        address:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    ProjectDetail:
+      allOf:
+        - $ref: '#/components/schemas/Project'
+        - type: object
+          properties:
+            milestones:
+              type: array
+              items:
+                $ref: '#/components/schemas/Milestone'
+            teamMembers:
+              type: array
+              items:
+                $ref: '#/components/schemas/TeamMember'
+            recentExpenses:
+              type: array
+              items:
+                $ref: '#/components/schemas/Expense'
+
+    CreateProjectRequest:
+      type: object
+      required:
+        - name
+        - clientName
+        - budget
+        - startDate
+      properties:
+        name:
+          type: string
+        clientName:
+          type: string
+        budget:
+          type: number
+        startDate:
+          type: string
+          format: date
+        endDate:
+          type: string
+          format: date
+        region:
+          type: string
+        assembly:
+          type: string
+        address:
+          type: string
+
+    UpdateProjectRequest:
+      type: object
+      properties:
+        name:
+          type: string
+        clientName:
+          type: string
+        status:
+          type: string
+          enum: [draft, active, on_hold, completed, cancelled]
+        budget:
+          type: number
+        progress:
+          type: number
+        startDate:
+          type: string
+          format: date
+        endDate:
+          type: string
+          format: date
+
+    ProjectListResponse:
+      type: object
+      properties:
+        projects:
+          type: array
+          items:
+            $ref: '#/components/schemas/Project'
+        pagination:
+          $ref: '#/components/schemas/Pagination'
+
+    Milestone:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        projectId:
+          type: string
+          format: uuid
+        name:
+          type: string
+        description:
+          type: string
+        dueDate:
+          type: string
+          format: date
+        status:
+          type: string
+          enum: [pending, in_progress, completed, delayed]
+        progress:
+          type: number
+        createdAt:
+          type: string
+          format: date-time
+
+    CreateMilestoneRequest:
+      type: object
+      required:
+        - name
+        - dueDate
+      properties:
+        name:
+          type: string
+        description:
+          type: string
+        dueDate:
+          type: string
+          format: date
+
+    MilestoneListResponse:
+      type: object
+      properties:
+        milestones:
+          type: array
+          items:
+            $ref: '#/components/schemas/Milestone'
+
+    DailyLog:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        projectId:
+          type: string
+          format: uuid
+        logDate:
+          type: string
+          format: date
+        weather:
+          type: string
+        temperature:
+          type: number
+        workersOnSite:
+          type: integer
+        workDescription:
+          type: string
+        materialsUsed:
+          type: string
+        issues:
+          type: string
+        safetyObservations:
+          type: string
+        photos:
+          type: array
+          items:
+            type: string
+        location:
+          $ref: '#/components/schemas/GeoLocation'
+        createdAt:
+          type: string
+          format: date-time
+        createdBy:
+          type: string
+
+    CreateDailyLogRequest:
+      type: object
+      required:
+        - projectId
+        - logDate
+        - workDescription
+        - workersOnSite
+      properties:
+        projectId:
+          type: string
+          format: uuid
+        logDate:
+          type: string
+          format: date
+        weather:
+          type: string
+        temperature:
+          type: number
+        workersOnSite:
+          type: integer
+        workDescription:
+          type: string
+        materialsUsed:
+          type: string
+        issues:
+          type: string
+        safetyObservations:
+          type: string
+        photos:
+          type: array
+          items:
+            type: string
+        location:
+          $ref: '#/components/schemas/GeoLocation'
+
+    DailyLogListResponse:
+      type: object
+      properties:
+        dailyLogs:
+          type: array
+          items:
+            $ref: '#/components/schemas/DailyLog'
+        pagination:
+          $ref: '#/components/schemas/Pagination'
+
+    Expense:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        projectId:
+          type: string
+          format: uuid
+        description:
+          type: string
+        amount:
+          type: number
+        currency:
+          type: string
+        expenseType:
+          type: string
+          enum: [materials, labor, equipment, transport, utilities, permits, professional, other]
+        expenseDate:
+          type: string
+          format: date
+        vendorName:
+          type: string
+        receiptUrl:
+          type: string
+        notes:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        createdBy:
+          type: string
+
+    CreateExpenseRequest:
+      type: object
+      required:
+        - projectId
+        - description
+        - amount
+        - expenseType
+        - expenseDate
+      properties:
+        projectId:
+          type: string
+          format: uuid
+        description:
+          type: string
+        amount:
+          type: number
+        currency:
+          type: string
+          default: GHS
+        expenseType:
+          type: string
+        expenseDate:
+          type: string
+          format: date
+        vendorName:
+          type: string
+        receiptDataUrl:
+          type: string
+        notes:
+          type: string
+        location:
+          $ref: '#/components/schemas/GeoLocation'
+
+    ExpenseListResponse:
+      type: object
+      properties:
+        expenses:
+          type: array
+          items:
+            $ref: '#/components/schemas/Expense'
+        pagination:
+          $ref: '#/components/schemas/Pagination'
+        totalAmount:
+          type: number
+
+    BudgetAnalytics:
+      type: object
+      properties:
+        totalBudget:
+          type: number
+        totalSpent:
+          type: number
+        remaining:
+          type: number
+        percentUsed:
+          type: number
+        byCategory:
+          type: array
+          items:
+            type: object
+            properties:
+              category:
+                type: string
+              amount:
+                type: number
+              percentage:
+                type: number
+        trend:
+          type: array
+          items:
+            type: object
+            properties:
+              date:
+                type: string
+              amount:
+                type: number
+
+    Invoice:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        invoiceNumber:
+          type: string
+        projectId:
+          type: string
+          format: uuid
+        clientName:
+          type: string
+        amount:
+          type: number
+        currency:
+          type: string
+        status:
+          type: string
+          enum: [draft, sent, paid, overdue, cancelled]
+        dueDate:
+          type: string
+          format: date
+        paidDate:
+          type: string
+          format: date
+        lineItems:
+          type: array
+          items:
+            $ref: '#/components/schemas/InvoiceLineItem'
+        createdAt:
+          type: string
+          format: date-time
+
+    InvoiceLineItem:
+      type: object
+      properties:
+        description:
+          type: string
+        quantity:
+          type: number
+        unitPrice:
+          type: number
+        total:
+          type: number
+
+    CreateInvoiceRequest:
+      type: object
+      required:
+        - projectId
+        - clientName
+        - dueDate
+        - lineItems
+      properties:
+        projectId:
+          type: string
+          format: uuid
+        clientName:
+          type: string
+        dueDate:
+          type: string
+          format: date
+        lineItems:
+          type: array
+          items:
+            $ref: '#/components/schemas/InvoiceLineItem'
+        notes:
+          type: string
+
+    InvoiceListResponse:
+      type: object
+      properties:
+        invoices:
+          type: array
+          items:
+            $ref: '#/components/schemas/Invoice'
+        pagination:
+          $ref: '#/components/schemas/Pagination'
+
+    TeamMember:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        userId:
+          type: string
+        name:
+          type: string
+        email:
+          type: string
+        phone:
+          type: string
+        role:
+          type: string
+        avatar:
+          type: string
+        projectAssignments:
+          type: array
+          items:
+            type: object
+            properties:
+              projectId:
+                type: string
+                format: uuid
+              role:
+                type: string
+        createdAt:
+          type: string
+          format: date-time
+
+    AddTeamMemberRequest:
+      type: object
+      required:
+        - name
+        - email
+        - role
+      properties:
+        name:
+          type: string
+        email:
+          type: string
+          format: email
+        phone:
+          type: string
+        role:
+          type: string
+        projectId:
+          type: string
+          format: uuid
+
+    TeamMemberListResponse:
+      type: object
+      properties:
+        teamMembers:
+          type: array
+          items:
+            $ref: '#/components/schemas/TeamMember'
+        pagination:
+          $ref: '#/components/schemas/Pagination'
+
+    Vendor:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        category:
+          type: string
+        contactName:
+          type: string
+        email:
+          type: string
+        phone:
+          type: string
+        address:
+          type: string
+        region:
+          type: string
+        rating:
+          type: number
+          minimum: 0
+          maximum: 5
+        totalOrders:
+          type: integer
+        totalSpent:
+          type: number
+        createdAt:
+          type: string
+          format: date-time
+
+    CreateVendorRequest:
+      type: object
+      required:
+        - name
+        - category
+      properties:
+        name:
+          type: string
+        category:
+          type: string
+        contactName:
+          type: string
+        email:
+          type: string
+          format: email
+        phone:
+          type: string
+        address:
+          type: string
+        region:
+          type: string
+
+    VendorListResponse:
+      type: object
+      properties:
+        vendors:
+          type: array
+          items:
+            $ref: '#/components/schemas/Vendor'
+        pagination:
+          $ref: '#/components/schemas/Pagination'
+
+    PushSubscription:
+      type: object
+      required:
+        - endpoint
+        - keys
+      properties:
+        endpoint:
+          type: string
+        keys:
+          type: object
+          properties:
+            p256dh:
+              type: string
+            auth:
+              type: string
+
+    NotificationPreferences:
+      type: object
+      properties:
+        preferences:
+          type: object
+          properties:
+            projectUpdates:
+              type: boolean
+            budgetAlerts:
+              type: boolean
+            milestoneReminders:
+              type: boolean
+            teamMessages:
+              type: boolean
+            dailyDigest:
+              type: boolean
+
+    GeoLocation:
+      type: object
+      properties:
+        latitude:
+          type: number
+        longitude:
+          type: number
+
+    GhanaRegion:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        capital:
+          type: string
+
+    GhanaRegionListResponse:
+      type: object
+      properties:
+        regions:
+          type: array
+          items:
+            $ref: '#/components/schemas/GhanaRegion'
+
+    GhanaAssembly:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        type:
+          type: string
+          enum: [metropolitan, municipal, district]
+        regionId:
+          type: string
+
+    GhanaAssemblyListResponse:
+      type: object
+      properties:
+        assemblies:
+          type: array
+          items:
+            $ref: '#/components/schemas/GhanaAssembly'

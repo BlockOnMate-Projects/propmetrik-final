@@ -27,13 +27,53 @@ router.get('/', asyncHandler(async (req: Request, res: Response) => {
     propertyEnrichmentService.getProperties(limit, offset, transactionType, search),
     propertyEnrichmentService.getPropertyCounts()
   ]);
-  
-  res.json({ 
-    success: true, 
-    count: properties.length, 
+
+  res.json({
+    success: true,
+    count: properties.length,
     total: counts,
-    data: properties 
+    data: properties
   });
+}));
+
+/**
+ * Get single property by ID
+ * GET /api/public/properties/:id
+ */
+router.get('/:id', asyncHandler(async (req: Request, res: Response) => {
+  const { id } = req.params;
+
+  // Skip if looking for specific sub-resources (enriched, legal, etc)
+  if (id === 'enriched' || id === 'legal' || id === 'construction') return;
+
+  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  if (!uuidRegex.test(id)) {
+    // Pass to next route if it might be a different path, or error if clearly UUID
+    return res.status(404).json({ error: 'Property not found' });
+  }
+
+  try {
+    // Reuse enrichment service but for single property
+    // Or fallback to basic db query if enrichment is too heavy, 
+    // but enrichment service is best for consistency.
+    const result = await propertyEnrichmentService.getEnrichedProperty(id);
+
+    if (!result) {
+      return res.status(404).json({
+        error: { code: 'NOT_FOUND', message: 'Property not found' }
+      });
+    }
+
+    res.json({
+      success: true,
+      data: result
+    });
+  } catch (error: any) {
+    logger.error('Error fetching property', { propertyId: id, error: error.message });
+    res.status(500).json({
+      error: { code: 'INTERNAL_ERROR', message: 'Failed to retrieve property' }
+    });
+  }
 }));
 
 /**
@@ -46,13 +86,13 @@ router.get('/:id/enriched', asyncHandler(async (req: Request, res: Response) => 
   // Basic UUID validation
   const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
   if (!uuidRegex.test(id)) {
-      res.status(400).json({
-          error: {
-              code: 'INVALID_ID',
-              message: 'Invalid property ID format'
-          }
-      });
-      return;
+    res.status(400).json({
+      error: {
+        code: 'INVALID_ID',
+        message: 'Invalid property ID format'
+      }
+    });
+    return;
   }
 
   try {
@@ -305,8 +345,8 @@ router.put('/:id', asyncHandler(async (req: Request, res: Response) => {
     `;
 
     // Debug logging
-    logger.info('Executing property update', { 
-      query: updateQuery, 
+    logger.info('Executing property update', {
+      query: updateQuery,
       valueCount: values.length,
       paramIndex,
       updates: updates.length
@@ -321,9 +361,9 @@ router.put('/:id', asyncHandler(async (req: Request, res: Response) => {
       return;
     }
 
-    logger.info('Property updated successfully', { 
-      propertyId: id, 
-      fieldsUpdated: updates.length - 1 
+    logger.info('Property updated successfully', {
+      propertyId: id,
+      fieldsUpdated: updates.length - 1
     });
 
     res.json({
@@ -332,8 +372,8 @@ router.put('/:id', asyncHandler(async (req: Request, res: Response) => {
       message: 'Property updated successfully'
     });
   } catch (error: any) {
-    logger.error('Error updating property', { 
-      propertyId: id, 
+    logger.error('Error updating property', {
+      propertyId: id,
       error: error.message,
       stack: error.stack,
       code: error.code,

@@ -184,7 +184,7 @@ export default function WorkflowEditorPage() {
       steps: [...prev.steps, newStep]
     }));
     setShowActionPicker(false);
-    setExpandedSteps(prev => new Set([...prev, newStep.id]));
+    setExpandedSteps(prev => new Set(Array.from(prev).concat(newStep.id)));
     setSelectedStep(newStep.id);
   };
 

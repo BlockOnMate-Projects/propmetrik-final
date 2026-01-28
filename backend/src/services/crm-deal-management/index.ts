@@ -43,17 +43,8 @@ export { crmPropertySyncService, CrmPropertySyncService } from './crmPropertySyn
 export { commissionService } from './commissionService';
 export { targetService } from './targetService';
 
-// Project Management (Phase 5.8)
-export { default as projectService } from './project-management/projectService';
-export { default as phaseService } from './project-management/phaseService';
-export { default as unitService } from './project-management/unitService';
-export { default as projectCostService } from './project-management/projectCostService';
-export { default as contractorService } from './project-management/contractorService';
-export { default as drawService } from './project-management/drawService';
-export { default as dailyLogService } from './project-management/dailyLogService';
-export { default as paymentPlanService } from './project-management/paymentPlanService';
-export { default as punchListService } from './project-management/punchListService';
-export { default as projectIntegrationService } from './project-management/projectIntegrationService';
+// Note: Project Management (Phase 5.8) moved to separate top-level module
+// See: services/project-management/index.ts
 
 // Types
 export * from './types';

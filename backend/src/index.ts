@@ -28,9 +28,32 @@ import eSignRoutes from './routes/eSign';
 import crmRoutes from './routes/crm';
 import webhooksRoutes from './routes/webhooks';
 import authIntegrationsRoutes from './routes/auth-integrations';
+import authRoutes from './routes/auth';
 import messagingRoutes from './routes/messaging';
 import projectRoutes from './routes/projects';
 import workflowRoutes from './routes/workflows';
+import realtimeRoutes from './routes/realtime';
+import calendarRoutes from './routes/calendar';
+import analyticsRoutes from './routes/analytics';
+import budgetRoutes from './routes/budget';
+import teamRoutes from './routes/team';
+import vendorRoutes from './routes/vendors';
+import integrationsRoutes from './routes/integrations';
+import constructionRoutes from './routes/construction';
+import rfiRoutes from './routes/rfis';
+import changeOrderRoutes from './routes/changeOrders';
+import submittalRoutes from './routes/submittals';
+import portfolioRoutes from './routes/portfolio';
+import whatsappRoutes from './routes/whatsapp';
+import photoRoutes from './routes/photos';
+import checklistRoutes from './routes/checklists';
+import procurementRoutes from './routes/procurement';
+import siteDiaryRoutes from './routes/siteDiaries';
+import governanceRoutes from './routes/governance';
+import docsRoutes from './routes/docs';
+
+// Import shared services
+import { realtimeEmitter } from '../shared-services/realtime';
 
 // Import Data Hub queue manager
 import { dataHubQueueManager } from './services/data-hub';
@@ -90,6 +113,7 @@ app.use(rateLimiter);
 
 // API routes
 app.use('/health', healthRoutes);
+// app.use('/api/docs', docsRoutes);  // OpenAPI documentation - TODO: fix zod-to-openapi integration
 app.use('/api/v1/data-hub', dataHubRoutes);
 app.use('/api/v1/valuations', valuationRoutes);
 app.use('/api/valuations', valuationRoutes);  // Also mount for frontend compatibility
@@ -107,13 +131,49 @@ app.use('/api/v1/esign', eSignRoutes);
 app.use('/api/v1/crm', crmRoutes);
 app.use('/api/crm', crmRoutes);  // Also mount for frontend compatibility
 app.use('/api/v1/webhooks', webhooksRoutes);
-app.use('/api/v1/auth', authIntegrationsRoutes);
+app.use('/api/v1/auth', authRoutes);  // User authentication routes
+app.use('/api/v1/auth', authIntegrationsRoutes);  // OAuth integrations
 app.use('/api/v1/messaging', messagingRoutes);
 app.use('/api/messaging', messagingRoutes);  // Also mount for frontend compatibility
 app.use('/api/v1/projects', projectRoutes);
 app.use('/api/projects', projectRoutes);  // Also mount for frontend compatibility
 app.use('/api/v1/workflows', workflowRoutes);
 app.use('/api/workflows', workflowRoutes);  // Also mount for frontend compatibility
+app.use('/api/v1/realtime', realtimeRoutes);
+app.use('/api/realtime', realtimeRoutes);  // Also mount for frontend compatibility
+app.use('/api/v1/calendar', calendarRoutes);
+app.use('/api/calendar', calendarRoutes);  // Also mount for frontend compatibility
+app.use('/api/v1/analytics', analyticsRoutes);
+app.use('/api/analytics', analyticsRoutes);  // Also mount for frontend compatibility
+app.use('/api/v1/budget', budgetRoutes);
+app.use('/api/budget', budgetRoutes);  // Also mount for frontend compatibility
+app.use('/api/v1/team', teamRoutes);
+app.use('/api/team', teamRoutes);  // Also mount for frontend compatibility
+app.use('/api/v1/vendors', vendorRoutes);
+app.use('/api/vendors', vendorRoutes);  // Also mount for frontend compatibility
+app.use('/api/v1/integrations', integrationsRoutes);
+app.use('/api/integrations', integrationsRoutes);  // Also mount for frontend compatibility
+app.use('/api/v1', constructionRoutes); // Construction Ops (Site Diaries, Petty Cash, Market Prices)
+app.use('/api/v1/rfis', rfiRoutes);
+app.use('/api/rfis', rfiRoutes);  // Also mount for frontend compatibility
+app.use('/api/v1/change-orders', changeOrderRoutes);
+app.use('/api/change-orders', changeOrderRoutes);  // Also mount for frontend compatibility
+app.use('/api/v1/submittals', submittalRoutes);
+app.use('/api/submittals', submittalRoutes);  // Also mount for frontend compatibility
+app.use('/api/v1/portfolio', portfolioRoutes);
+app.use('/api/portfolio', portfolioRoutes);  // Also mount for frontend compatibility
+app.use('/api/v1/whatsapp', whatsappRoutes);
+app.use('/api/whatsapp', whatsappRoutes);  // Also mount for frontend compatibility
+app.use('/api/v1/photos', photoRoutes);
+app.use('/api/photos', photoRoutes);  // Also mount for frontend compatibility
+app.use('/api/v1/checklists', checklistRoutes);
+app.use('/api/checklists', checklistRoutes);  // Also mount for frontend compatibility
+app.use('/api/v1/procurement', procurementRoutes);
+app.use('/api/procurement', procurementRoutes);  // Also mount for frontend compatibility
+app.use('/api/v1/site-diaries', siteDiaryRoutes);
+app.use('/api/site-diaries', siteDiaryRoutes);  // Also mount for frontend compatibility
+app.use('/api/v1', governanceRoutes);  // Governance: milestone-frameworks, framework-phases, milestone-templates
+
 
 
 // TODO: Add more route modules as they are created
@@ -145,6 +205,10 @@ async function shutdown(signal: string): Promise<void> {
     }
 
     try {
+      // Shutdown realtime connections
+      realtimeEmitter.shutdown();
+      logger.info('Realtime connections closed');
+
       // Shutdown Data Hub queues
       await dataHubQueueManager.shutdown();
       logger.info('Data Hub queues closed');

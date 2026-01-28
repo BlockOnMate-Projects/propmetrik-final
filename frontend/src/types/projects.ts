@@ -19,13 +19,13 @@ export type ProjectStatus =
   | 'archived';
 
 export type ProjectType =
-  | 'residential'
+  | 'residential_single'
+  | 'residential_multi'
   | 'commercial'
   | 'mixed_use'
+  | 'industrial'
   | 'land_development'
-  | 'renovation'
-  | 'infrastructure'
-  | 'other';
+  | 'renovation';
 
 export type PhaseStatus =
   | 'not_started'
@@ -130,22 +130,32 @@ export interface DevelopmentProject {
   organization_id: string;
   project_number: string;
   project_name: string;
+  name?: string; // Alias for project_name (backend compatibility)
   project_type: ProjectType;
   status: ProjectStatus;
   description?: string;
   
   // Location
   address?: string;
+  address_line1?: string; // Backend field name
   city?: string;
   region?: string;
   latitude?: number;
   longitude?: number;
   land_area_sqm?: number;
+  land_size_sqm?: number; // Backend field name
   total_built_area_sqm?: number;
+  
+  // Ghana Specific
+  land_tenure?: 'freehold' | 'leasehold' | 'customary';
+  traditional_authority?: string;
+  district_assembly?: string; // Aligning naming with backend schema potentially, or just assembly
+
   
   // Timeline
   planned_start_date?: string;
   planned_end_date?: string;
+  planned_completion_date?: string; // Backend field name
   actual_start_date?: string;
   actual_end_date?: string;
   
@@ -153,6 +163,7 @@ export interface DevelopmentProject {
   total_budget?: number;
   total_spent?: number;
   currency: string;
+  display_currency?: string; // Currency stored from wizard
   
   // Units
   total_units?: number;
@@ -169,9 +180,11 @@ export interface DevelopmentProject {
   project_manager_id?: string;
   project_manager_name?: string;
   land_property_id?: string;
+  milestone_framework_id?: string;
   
   // Metadata
   hero_image_url?: string;
+  cover_image_url?: string; // Backend field name
   gallery_urls?: string[];
   tags?: string[];
   metadata?: Record<string, any>;
@@ -223,7 +236,14 @@ export interface Milestone {
   completed_date?: string;
   is_completed: boolean;
   description?: string;
+  status?: 'not_started' | 'in_progress' | 'completed' | 'blocked' | 'overdue';
+  progress?: number;
+  project_id?: string;
+  phase_id?: string;
 }
+
+// Alias for PM portal compatibility
+export type ProjectMilestone = Milestone;
 
 export interface ProjectPhase {
   id: string;
@@ -390,11 +410,11 @@ export interface ProjectCost {
   revised_budget: number;
   
   // Actuals
-  committed_amount: number;
-  pending_amount: number;
-  projected_amount: number;
-  actual_amount: number;
-  variance_amount: number;
+  committed_costs: number;
+  pending_costs: number;
+  projected_costs: number;
+  actual_costs: number;
+  variance: number;
   
   // Invoice
   invoice_number?: string;

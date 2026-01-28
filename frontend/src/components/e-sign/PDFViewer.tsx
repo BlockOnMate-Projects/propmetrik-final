@@ -370,13 +370,27 @@ function DocumentPage({
                 // Calculate drop position in pixels (unscaled)
                 const x = (offset.x - containerRect.left) / scale;
                 const y = (offset.y - containerRect.top) / scale;
+                
+                console.log('[PDFViewer] Field dropped:', {
+                    clientOffset: offset,
+                    containerRect: {
+                        left: containerRect.left,
+                        top: containerRect.top,
+                        width: containerRect.width,
+                        height: containerRect.height
+                    },
+                    scale,
+                    pageSize,
+                    calculatedPosition: { x, y }
+                });
+                
                 onAddField(item.fieldType, x, y);
             }
         },
         collect: (monitor) => ({
             isOver: monitor.isOver(),
         }),
-    }), [onAddField, scale]);
+    }), [onAddField, scale, pageSize]);
 
     // Combine refs using callback ref pattern
     const setRefs = useCallback((node: HTMLDivElement | null) => {
@@ -416,7 +430,15 @@ function DocumentPage({
                     draggable={false}
                     onLoad={(e) => {
                         const img = e.target as HTMLImageElement;
-                        setPageSize({ width: img.naturalWidth || 612, height: img.naturalHeight || 792 });
+                        const newSize = { width: img.naturalWidth || 612, height: img.naturalHeight || 792 };
+                        console.log('[PDFViewer] Image loaded:', {
+                            naturalWidth: img.naturalWidth,
+                            naturalHeight: img.naturalHeight,
+                            displayWidth: img.width,
+                            displayHeight: img.height,
+                            newPageSize: newSize
+                        });
+                        setPageSize(newSize);
                     }}
                 />
 

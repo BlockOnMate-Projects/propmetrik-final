@@ -39,6 +39,21 @@ const mockFxService = {
   healthCheck: jest.fn(),
 };
 
+const mockNpaScraper = {
+  syncAll: jest.fn(),
+  syncLatest: jest.fn(),
+};
+
+const mockMaterialScraper = {
+  syncAll: jest.fn(),
+  syncLatest: jest.fn(),
+};
+
+const mockLaborService = {
+  syncAll: jest.fn(),
+  syncLatest: jest.fn(),
+};
+
 const mockSyncLogRepository = {
   startSync: jest.fn(),
   completeSync: jest.fn(),
@@ -60,6 +75,9 @@ describe('EconomicDataSyncService', () => {
       mockBogScraper as any,
       mockWdiClient as any,
       mockFxService as any,
+      mockNpaScraper as any,
+      mockMaterialScraper as any,
+      mockLaborService as any,
       mockSyncLogRepository as any
     );
   });
@@ -171,10 +189,18 @@ describe('EconomicDataSyncService', () => {
     });
 
     it('should sync all sources when source is "all"', async () => {
+      mockSyncLogRepository.startSync.mockResolvedValue('sync-id-all');
+      mockBogScraper.syncAll.mockResolvedValue(createMockResult('Bank of Ghana'));
+      mockWdiClient.syncAll.mockResolvedValue(createMockResult('World Bank WDI'));
+      mockFxService.saveAllDailyRates.mockResolvedValue(createMockResult('ExchangeRate-API'));
+      mockNpaScraper.syncAll.mockResolvedValue(createMockResult('NPA Fuel Prices'));
+      mockMaterialScraper.syncAll.mockResolvedValue(createMockResult('Local Material Prices'));
+      mockLaborService.syncAll.mockResolvedValue(createMockResult('GSS Labor Rates'));
+
       const result = await syncService.sync({ source: 'all', type: 'full' });
 
       expect(Array.isArray(result)).toBe(true);
-      expect((result as SyncResult[]).length).toBe(3);
+      expect((result as SyncResult[]).length).toBe(6);
     });
   });
 
@@ -195,7 +221,7 @@ describe('EconomicDataSyncService', () => {
 
       const status = await syncService.getStatus();
 
-      expect(status).toHaveLength(3);
+      expect(status).toHaveLength(6);
       expect(status.map(s => s.source)).toContain('Bank of Ghana');
       expect(status.map(s => s.source)).toContain('World Bank WDI');
       expect(status.map(s => s.source)).toContain('ExchangeRate-API');

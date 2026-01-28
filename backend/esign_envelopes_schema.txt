@@ -1,0 +1,51 @@
+                                       Table "public.esign_envelopes"
+         Column          |           Type           | Collation | Nullable |            Default             
+-------------------------+--------------------------+-----------+----------+--------------------------------
+ id                      | uuid                     |           | not null | gen_random_uuid()
+ organization_id         | uuid                     |           | not null | 
+ name                    | character varying(255)   |           | not null | 
+ document_html           | text                     |           |          | 
+ document_pdf_url        | text                     |           |          | 
+ context_type            | character varying(50)    |           |          | 
+ context_entity_id       | uuid                     |           |          | 
+ context_entity_name     | text                     |           |          | 
+ message                 | text                     |           |          | 
+ status                  | esign_envelope_status    |           |          | 'draft'::esign_envelope_status
+ expires_at              | timestamp with time zone |           |          | 
+ sent_at                 | timestamp with time zone |           |          | 
+ completed_at            | timestamp with time zone |           |          | 
+ voided_at               | timestamp with time zone |           |          | 
+ voided_by               | uuid                     |           |          | 
+ void_reason             | text                     |           |          | 
+ created_by              | uuid                     |           | not null | 
+ created_at              | timestamp with time zone |           |          | now()
+ updated_at              | timestamp with time zone |           |          | now()
+ reminder_frequency_days | integer                  |           |          | 3
+ reminder_enabled        | boolean                  |           |          | true
+ template_id             | uuid                     |           |          | 
+ certificate_hash        | character varying(64)    |           |          | 
+ capture_scale           | numeric(3,2)             |           |          | 1.5
+ capture_width           | integer                  |           |          | 816
+ document_image_url      | text                     |           |          | 
+ capture_height          | integer                  |           |          | 
+Indexes:
+    "esign_envelopes_pkey" PRIMARY KEY, btree (id)
+    "idx_esign_envelopes_context" btree (context_type, context_entity_id)
+    "idx_esign_envelopes_org" btree (organization_id)
+    "idx_esign_envelopes_status" btree (status)
+Foreign-key constraints:
+    "esign_envelopes_created_by_fkey" FOREIGN KEY (created_by) REFERENCES users(id)
+    "esign_envelopes_organization_id_fkey" FOREIGN KEY (organization_id) REFERENCES organizations(id)
+    "esign_envelopes_template_id_fkey" FOREIGN KEY (template_id) REFERENCES esign_templates(id)
+    "esign_envelopes_voided_by_fkey" FOREIGN KEY (voided_by) REFERENCES users(id)
+Referenced by:
+    TABLE "applications" CONSTRAINT "applications_envelope_id_fkey" FOREIGN KEY (envelope_id) REFERENCES esign_envelopes(id)
+    TABLE "esign_audit_log" CONSTRAINT "esign_audit_log_envelope_id_fkey" FOREIGN KEY (envelope_id) REFERENCES esign_envelopes(id) ON DELETE CASCADE
+    TABLE "esign_certificates" CONSTRAINT "esign_certificates_envelope_id_fkey" FOREIGN KEY (envelope_id) REFERENCES esign_envelopes(id) ON DELETE CASCADE
+    TABLE "esign_fields" CONSTRAINT "esign_fields_envelope_id_fkey" FOREIGN KEY (envelope_id) REFERENCES esign_envelopes(id) ON DELETE CASCADE
+    TABLE "esign_reminders" CONSTRAINT "esign_reminders_envelope_id_fkey" FOREIGN KEY (envelope_id) REFERENCES esign_envelopes(id) ON DELETE CASCADE
+    TABLE "esign_signatures" CONSTRAINT "esign_signatures_envelope_id_fkey" FOREIGN KEY (envelope_id) REFERENCES esign_envelopes(id) ON DELETE CASCADE
+    TABLE "esign_signers" CONSTRAINT "esign_signers_envelope_id_fkey" FOREIGN KEY (envelope_id) REFERENCES esign_envelopes(id) ON DELETE CASCADE
+Triggers:
+    trigger_update_esign_envelope_timestamp BEFORE UPDATE ON esign_envelopes FOR EACH ROW EXECUTE FUNCTION update_esign_envelope_timestamp()
+

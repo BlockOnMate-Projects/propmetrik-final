@@ -459,12 +459,11 @@ class CommissionService {
         const result = await pool.query(
             `SELECT cr.*, 
                 u.display_name AS agent_name,
-                d.name AS deal_name,
-                p.address AS property_address
+                d.title AS deal_name,
+                (SELECT p.address_street FROM crm_properties p WHERE p.id = ANY(d.property_ids) LIMIT 1) AS property_address
             FROM commission_records cr
             JOIN users u ON cr.agent_id = u.id
             LEFT JOIN deals d ON cr.deal_id = d.id
-            LEFT JOIN properties p ON d.property_id = p.id
             WHERE cr.id = $1`,
             [id]
         );
@@ -517,12 +516,11 @@ class CommissionService {
         const result = await pool.query(
             `SELECT cr.*, 
                 u.display_name AS agent_name,
-                d.name AS deal_name,
-                p.address AS property_address
+                d.title AS deal_name,
+                (SELECT p.address_street FROM crm_properties p WHERE p.id = ANY(d.property_ids) LIMIT 1) AS property_address
             FROM commission_records cr
             JOIN users u ON cr.agent_id = u.id
             LEFT JOIN deals d ON cr.deal_id = d.id
-            LEFT JOIN properties p ON d.property_id = p.id
             ${whereClause}
             ORDER BY cr.deal_close_date DESC
             LIMIT $${paramIndex++} OFFSET $${paramIndex}`,

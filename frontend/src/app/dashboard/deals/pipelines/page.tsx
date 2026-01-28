@@ -339,7 +339,7 @@ export default function PipelinesPage() {
                     stage_name: stageName,
                     stage_color: stageColor,
                     probability: parseInt(stageProbability),
-                    sort_order: sortOrder
+                    stage_order: sortOrder
                 })
             }
             setShowStageDialog(false)
