@@ -13,6 +13,7 @@ const navigation: { name: string; href: string; key: string; badge?: string; adm
   { name: 'PROJECTS', href: '/dashboard/projects', key: '4' },
   { name: 'ANALYTICS', href: '/dashboard/analytics', key: '5' },
   { name: 'MANAGEMENT', href: '/dashboard/property-management', key: '6' },
+  { name: 'E-SIGN', href: '/dashboard/e-sign', key: '7' },
   { name: 'ADMIN', href: '/dashboard/admin', key: 'A', badge: 'ADMIN', adminOnly: true },
 ]
 

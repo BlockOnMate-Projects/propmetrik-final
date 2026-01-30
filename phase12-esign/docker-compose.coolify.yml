@@ -1,0 +1,63 @@
+# Phase 12: E-Sign - Coolify Deployment
+# ============================================================================
+# Document signing service
+# Images: ghcr.io/cedyngroup/cedyn-sso/phase12-esign-*:latest
+# ============================================================================
+
+services:
+  # E-Sign Backend
+  esign-backend:
+    image: ghcr.io/cedyngroup/cedyn-sso/phase12-esign-backend:latest
+    environment:
+      # Database
+      DATABASE_URL: postgresql://keycloak:${POSTGRES_PASSWORD}@cedyn-postgres:5432/esign_db
+      # Redis
+      REDIS_URL: redis://:${REDIS_PASSWORD}@cedyn-redis:6379/2
+      # Keycloak
+      KEYCLOAK_URL: http://cedyn-keycloak:8080
+      KEYCLOAK_REALM: cedyn
+      KEYCLOAK_CLIENT_ID: ${ESIGN_CLIENT_ID:-cedyn-esign}
+      KEYCLOAK_CLIENT_SECRET: ${ESIGN_CLIENT_SECRET}
+      # MinIO/S3
+      S3_ENDPOINT: http://cedyn-minio:9000
+      S3_ACCESS_KEY: ${MINIO_ROOT_USER}
+      S3_SECRET_KEY: ${MINIO_ROOT_PASSWORD}
+      S3_BUCKET: esign-documents
+      # Google Drive (if configured)
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
+    expose:
+      - "8000"
+    networks:
+      coolify:
+        aliases:
+          - esign-backend
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
+    restart: unless-stopped
+
+  # E-Sign Frontend
+  esign-frontend:
+    image: ghcr.io/cedyngroup/cedyn-sso/phase12-esign-frontend:latest
+    environment:
+      NEXT_PUBLIC_API_URL: https://esign-api.cedynhq.com
+      NEXT_PUBLIC_KEYCLOAK_URL: https://sso.cedynhq.com
+      NEXT_PUBLIC_KEYCLOAK_REALM: cedyn
+      NEXT_PUBLIC_KEYCLOAK_CLIENT_ID: cedyn-esign
+    expose:
+      - "80"
+    networks:
+      coolify:
+        aliases:
+          - esign-frontend
+    depends_on:
+      - esign-backend
+    restart: unless-stopped
+
+networks:
+  coolify:
+    external: true

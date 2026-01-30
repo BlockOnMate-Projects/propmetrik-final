@@ -10,8 +10,6 @@
 
 import { Pool } from 'pg';
 import { pool } from '../../../database';
-import { randomBytes } from 'crypto';
-import { esignEnvelopeService } from '../../../../shared-services/e-sign/envelopeService';
 
 // =====================================================
 // TYPES
@@ -469,22 +467,6 @@ export class ApplicationService {
     }
     
     const application = this.mapRowToApplication(result.rows[0]);
-    
-    // If application has an envelope, try to get the signer's access token
-    if (application.envelopeId && application.applicantEmail) {
-      try {
-        const signerToken = await esignEnvelopeService.getSignerAccessToken(
-          application.envelopeId, 
-          application.applicantEmail
-        );
-        if (signerToken) {
-          application.signerToken = signerToken;
-        }
-      } catch (error) {
-        console.error('Error fetching signer token:', error);
-        // Continue without signer token
-      }
-    }
     
     return application;
   }

@@ -4,6 +4,9 @@
  */
 
 import { Router, Request, Response, NextFunction } from 'express';
+import multer from 'multer';
+import path from 'path';
+import fs from 'fs';
 import {
     signingService,
     auditLogService,
@@ -22,6 +25,32 @@ import {
 import { logger } from '../utils/logger';
 import { pool, query as dbQuery } from '../database';
 import { getFile, buckets } from '../database/minio';
+import { PDFDocument } from 'pdf-lib';
+
+// Multer configuration for PDF uploads
+const UPLOAD_DIR = path.join(__dirname, '../../uploads/esign');
+if (!fs.existsSync(UPLOAD_DIR)) {
+    fs.mkdirSync(UPLOAD_DIR, { recursive: true });
+}
+
+const esignUpload = multer({
+    storage: multer.diskStorage({
+        destination: (req, file, cb) => cb(null, UPLOAD_DIR),
+        filename: (req, file, cb) => {
+            const uniqueSuffix = `${Date.now()}-${Math.round(Math.random() * 1e9)}`;
+            const ext = path.extname(file.originalname);
+            cb(null, `envelope-${uniqueSuffix}${ext}`);
+        },
+    }),
+    fileFilter: (req, file, cb) => {
+        if (file.mimetype === 'application/pdf') {
+            cb(null, true);
+        } else {
+            cb(new Error('Only PDF files are allowed'));
+        }
+    },
+    limits: { fileSize: 50 * 1024 * 1024 }, // 50MB
+});
 
 const router = Router();
 const esignEnvelopeService = createEnvelopeService(pool);
@@ -43,6 +72,19 @@ const getUserId = (req: Request): string => {
 
     // Default to admin user for development (this user exists in the database)
     return '00000000-0000-0000-0000-000000000002';
+};
+
+// Extract user email from JWT or header
+const getUserEmail = (req: Request): string | undefined => {
+    // Try to get from JWT token first
+    const jwtEmail = (req as any).user?.email;
+    if (jwtEmail) return jwtEmail;
+
+    // Fall back to header
+    const headerEmail = req.headers['x-user-email'] as string;
+    if (headerEmail) return headerEmail;
+
+    return undefined;
 };
 
 const getOrganizationId = (req: Request): string | undefined => {
@@ -928,21 +970,70 @@ router.post('/envelopes/from-template', asyncHandler(async (req: Request, res: R
 }));
 
 /**
- * Create and send a new envelope
+ * Create and send a new envelope (supports both JSON body and FormData/file upload)
  * POST /api/v1/esign/envelopes
  */
-router.post('/envelopes', asyncHandler(async (req: Request, res: Response) => {
+router.post('/envelopes', esignUpload.single('file'), asyncHandler(async (req: Request, res: Response) => {
     const organizationId = getOrganizationId(req) || await getDefaultOrgId();
     const userId = getUserId(req);
 
     try {
+        let envelopeData: any;
+        
+        // Check if this is a FormData upload (file upload from frontend)
+        if (req.file) {
+            // Parse signers from FormData string
+            let signers = [];
+            try {
+                signers = req.body.signers ? JSON.parse(req.body.signers) : [];
+            } catch {
+                signers = [];
+            }
+            
+            // Read the PDF file and convert to base64 for storage
+            const pdfBuffer = fs.readFileSync(req.file.path);
+            const pdfBase64 = pdfBuffer.toString('base64');
+            const pdfDataUrl = `data:application/pdf;base64,${pdfBase64}`;
+            
+            envelopeData = {
+                name: req.body.name || req.body.title || 'Untitled Document',
+                documentHtml: `<div class="pdf-document" data-pdf-url="${pdfDataUrl}">PDF Document: ${req.body.name || req.file.originalname}</div>`,
+                documentPdfUrl: pdfDataUrl,
+                message: req.body.message || '',
+                contextType: req.body.contextType || 'document',
+                contextEntityId: req.body.contextEntityId || null,
+                contextEntityName: req.body.contextEntityName || req.body.name || req.file.originalname,
+                signers: signers.length > 0 ? signers : [{
+                    name: 'Signer',
+                    email: req.body.signerEmail || 'signer@example.com',
+                    role: 'signer',
+                    order: 1
+                }],
+                fields: [], // No predefined fields for uploaded PDFs
+                expiresInDays: 30
+            };
+            
+            // Clean up the uploaded file
+            fs.unlinkSync(req.file.path);
+        } else {
+            // Regular JSON body (from lease generation, etc.)
+            envelopeData = req.body;
+        }
+        
         const envelope = await esignEnvelopeService.createAndSendEnvelope(
             organizationId,
             userId,
-            req.body
+            envelopeData
         );
-        res.status(201).json(envelope);
+        res.status(201).json({
+            success: true,
+            data: envelope
+        });
     } catch (error: any) {
+        // Clean up file if it exists and there was an error
+        if (req.file && fs.existsSync(req.file.path)) {
+            fs.unlinkSync(req.file.path);
+        }
         logger.error('E-Sign Envelope Error:', error);
         res.status(400).json({ error: error.message });
     }
@@ -951,14 +1042,24 @@ router.post('/envelopes', asyncHandler(async (req: Request, res: Response) => {
 /**
  * List envelopes for the organization
  * GET /api/v1/esign/envelopes
+ * Query params:
+ *   - inbox=true: Filter to show only envelopes where current user has pending signature
+ *   - signerEmail: Email to filter by (used with inbox)
  */
 router.get('/envelopes', asyncHandler(async (req: Request, res: Response) => {
     const organizationId = getOrganizationId(req) || await getDefaultOrgId();
+    
+    // Handle inbox filter - get user's email to find pending signatures
+    let signerEmail: string | undefined;
+    if (req.query.inbox === 'true') {
+        signerEmail = req.query.signerEmail as string || getUserEmail(req);
+    }
 
     const { envelopes, total } = await esignEnvelopeService.listEnvelopes(organizationId, {
         status: req.query.status as EnvelopeStatus | undefined,
         contextType: req.query.contextType as string | undefined,
         contextEntityId: req.query.contextEntityId as string | undefined,
+        signerEmail,
         limit: req.query.limit ? parseInt(req.query.limit as string, 10) : undefined,
         offset: req.query.offset ? parseInt(req.query.offset as string, 10) : undefined
     });
@@ -997,6 +1098,24 @@ router.post('/envelopes/:id/void', asyncHandler(async (req: Request, res: Respon
             req.body.reason || 'Voided by sender'
         );
         res.json(envelope);
+    } catch (error: any) {
+        if (error.message === 'Envelope not found') {
+            return res.status(404).json({ error: error.message });
+        }
+        res.status(400).json({ error: error.message });
+    }
+}));
+
+/**
+ * Delete an envelope
+ * DELETE /api/v1/esign/envelopes/:id
+ */
+router.delete('/envelopes/:id', asyncHandler(async (req: Request, res: Response) => {
+    const organizationId = getOrganizationId(req) || await getDefaultOrgId();
+
+    try {
+        await esignEnvelopeService.deleteEnvelope(req.params.id, organizationId);
+        res.json({ success: true, message: 'Envelope deleted successfully' });
     } catch (error: any) {
         if (error.message === 'Envelope not found') {
             return res.status(404).json({ error: error.message });
@@ -1113,53 +1232,125 @@ router.get('/envelopes/:id/download', asyncHandler(async (req: Request, res: Res
             });
         }
 
-        // Get the original PDF from storage
-        if (!envelope.documentPdfUrl) {
+        // Get the original PDF from storage, or generate from stored image if missing
+        let originalPdfBytes: Uint8Array;
+
+        if (envelope.documentPdfUrl) {
+            // Parse the storage URL to get bucket and key
+            // Format: "bucket/path/to/file.pdf" or just "path/to/file.pdf"
+            let bucket = buckets.documents;
+            let key = envelope.documentPdfUrl;
+
+            if (envelope.documentPdfUrl.includes('/')) {
+                const parts = envelope.documentPdfUrl.split('/');
+                if (parts[0] === buckets.documents || parts[0] === buckets.uploads) {
+                    bucket = parts[0];
+                    key = parts.slice(1).join('/');
+                }
+            }
+
+            const { body } = await getFile(bucket, key);
+            originalPdfBytes = body;
+        } else if (envelope.documentImageUrl) {
+            // Generate a single-page PDF from the captured document image
+            const pdfDoc = await PDFDocument.create();
+            const imageBase64 = envelope.documentImageUrl.replace(/^data:image\/\w+;base64,/, '');
+            const imageBytes = Buffer.from(imageBase64, 'base64');
+
+            let image;
+            if (envelope.documentImageUrl.includes('image/png')) {
+                image = await pdfDoc.embedPng(imageBytes);
+            } else {
+                image = await pdfDoc.embedJpg(imageBytes);
+            }
+
+            const page = pdfDoc.addPage([image.width, image.height]);
+            page.drawImage(image, {
+                x: 0,
+                y: 0,
+                width: image.width,
+                height: image.height,
+            });
+
+            originalPdfBytes = await pdfDoc.save();
+        } else {
             return res.status(404).json({ error: 'Original document not found' });
         }
 
-        // Parse the storage URL to get bucket and key
-        // Format: "bucket/path/to/file.pdf" or just "path/to/file.pdf"
-        let bucket = buckets.documents;
-        let key = envelope.documentPdfUrl;
+        // Load PDF to get page dimensions
+        // When the PDF is generated from the same captured document image,
+        // the PDF page size equals the captured image size - NO SCALING NEEDED
+        const pdfDoc = await PDFDocument.load(originalPdfBytes);
+        const pdfPages = pdfDoc.getPages();
 
-        if (envelope.documentPdfUrl.includes('/')) {
-            const parts = envelope.documentPdfUrl.split('/');
-            if (parts[0] === buckets.documents || parts[0] === buckets.uploads) {
-                bucket = parts[0];
-                key = parts.slice(1).join('/');
-            }
-        }
-
-        const { body: originalPdfBytes } = await getFile(bucket, key);
+        // Log all fields for debugging
+        logger.info('Envelope fields for PDF download:', {
+            envelopeId: envelope.id,
+            totalFields: envelope.fields?.length || 0,
+            signatureFields: envelope.fields?.filter(f => f.fieldType === 'signature').map(f => ({
+                id: f.id,
+                signerId: f.signerId,
+                hasValue: !!f.value,
+                x: f.xPosition,
+                y: f.yPosition,
+                width: f.width,
+                height: f.height,
+                signatureHash: f.signatureHash,
+                signedAt: f.signedAt
+            })),
+            signers: envelope.signers?.map(s => ({
+                id: s.id,
+                name: s.name,
+                status: s.status,
+                permanentSignerId: s.permanentSignerId
+            })),
+            pdfPageSize: pdfPages[0]?.getSize()
+        });
 
         // Collect all signature fields with their data
+        // INVARIANT: Field coordinates are absolute pixels relative to the captured document image
+        // The PDF is generated from the same image, so coordinates are used AS-IS
+        // Only Y-axis flip is needed (handled by pdfSigningService with usePercentage: false)
         const signatureFields = (envelope.fields || [])
             .filter(f => f.fieldType === 'signature' && f.value)
             .map(f => {
                 // Find the signer for this field
                 const signer = (envelope.signers || []).find(s => s.id === f.signerId);
 
-                // Frontend captures at 1.5x scale (1224px width for 816px canvas)
-                // However, standard PDF width is 612pt (points). 
-                // Let's assume the frontend 'pixels' map to something that needs scaling to PDF points.
-                // 1224 -> 612 means a 0.5 scaling factor.
-                const scale = 0.5;
+                // Convert signedAt to Date if it's a string
+                const signedAtDate = f.signedAt 
+                    ? (f.signedAt instanceof Date ? f.signedAt : new Date(f.signedAt))
+                    : undefined;
 
-                return {
+                // Pass coordinates AS-IS to pdfSigningService
+                // usePercentage: false tells pdfSigningService to:
+                //   - Use x,y as absolute pixels (not percentages)
+                //   - Do the Y-axis flip internally (browser origin = top-left, PDF origin = bottom-left)
+                const signatureField = {
                     signatureData: f.value!,
-                    page: f.page,
-                    x: f.xPosition * scale,
-                    y: f.yPosition * scale,
-                    width: f.width * scale,
-                    height: f.height * scale,
-                    signatureId: f.id,
-                    signatureHash: f.signatureHash, // Pass the hash for compliance rendering
-                    signedAt: f.signedAt,
+                    page: f.page || 1,
+                    x: f.xPosition,           // Absolute pixels from left
+                    y: f.yPosition,           // Absolute pixels from top (pdfSigningService will flip)
+                    width: f.width,           // Absolute pixels
+                    height: f.height,         // Absolute pixels
+                    signatureId: signer?.permanentSignerId,
+                    signatureHash: f.signatureHash,
+                    signedAt: signedAtDate,
                     signerName: signer?.name,
                     signerEmail: signer?.email,
-                    usePercentage: false // Use absolute scaled pixels
+                    usePercentage: false      // Tells pdfSigningService these are absolute pixels
                 };
+
+                logger.info('Prepared signature field for embedding:', {
+                    fieldId: f.id,
+                    signerName: signer?.name,
+                    permanentSignerId: signer?.permanentSignerId,
+                    signatureHash: f.signatureHash,
+                    coords: { x: f.xPosition, y: f.yPosition },
+                    dimensions: { width: f.width, height: f.height }
+                });
+
+                return signatureField;
             });
 
         // Generate the signed PDF with embedded signatures
