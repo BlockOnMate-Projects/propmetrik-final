@@ -137,7 +137,7 @@ interface UseRealtimeReturn {
 }
 
 // Use empty string for relative URLs - Next.js proxy will rewrite /api/* to http://localhost:4000/api/v1/*
-const DEFAULT_BASE_URL = process.env.NEXT_PUBLIC_API_URL || '';
+const DEFAULT_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api/v1';
 
 export function useRealtime(options: UseRealtimeOptions = {}): UseRealtimeReturn {
   const {
@@ -147,7 +147,7 @@ export function useRealtime(options: UseRealtimeOptions = {}): UseRealtimeReturn
     autoConnect = true,
     autoReconnect = true,
     reconnectDelay = 3000,
-    maxReconnectAttempts = 10,
+    maxReconnectAttempts = 3,
     handlers = {},
     onEvent,
     onConnectionChange,
@@ -161,6 +161,7 @@ export function useRealtime(options: UseRealtimeOptions = {}): UseRealtimeReturn
   const eventSourceRef = useRef<EventSource | null>(null);
   const handlersRef = useRef<Map<string, Set<EventHandler>>>(new Map());
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const hasLoggedWarningRef = useRef(false);
 
   // Initialize handlers from options
   useEffect(() => {
@@ -228,7 +229,11 @@ export function useRealtime(options: UseRealtimeOptions = {}): UseRealtimeReturn
 
       // Handle error
       eventSource.onerror = (error) => {
-        console.error('SSE connection error:', error);
+        // Only log warning once to avoid console spam
+        if (!hasLoggedWarningRef.current) {
+          console.warn('SSE connection unavailable - realtime features disabled');
+          hasLoggedWarningRef.current = true;
+        }
         
         setIsConnected(false);
         onConnectionChange?.(false);
@@ -236,7 +241,7 @@ export function useRealtime(options: UseRealtimeOptions = {}): UseRealtimeReturn
         eventSource.close();
         eventSourceRef.current = null;
 
-        // Attempt reconnect
+        // Attempt reconnect (limited to avoid spam)
         if (autoReconnect && reconnectAttempts < maxReconnectAttempts) {
           handleEvent({
             type: RealtimeEventType.RECONNECTING,
@@ -289,7 +294,7 @@ export function useRealtime(options: UseRealtimeOptions = {}): UseRealtimeReturn
       };
 
     } catch (error) {
-      console.error('Failed to create EventSource:', error);
+      // Silently handle EventSource creation failures
     }
   }, [
     baseUrl,

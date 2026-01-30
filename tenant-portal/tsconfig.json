@@ -14,11 +14,9 @@
     "incremental": true,
     "plugins": [{ "name": "next" }],
     "paths": {
-      "@/*": ["./src/*"],
-      "@propmetrik/e-sign-ui": ["../packages/e-sign-ui/src/index.ts"],
-      "@propmetrik/e-sign-ui/*": ["../packages/e-sign-ui/src/*"]
+      "@/*": ["./src/*"]
     }
   },
-  "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts", "../packages/e-sign-ui/src/**/*"],
+  "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts"],
   "exclude": ["node_modules"]
 }

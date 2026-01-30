@@ -7,7 +7,7 @@
  * 1. Creates/gets report for valuation
  * 2. Generates report content from valuation data
  * 3. Displays Tiptap-based ReportEditor for in-browser editing
- * 4. E-Sign workflow for approval and signature
+ * 4. Approval workflow for signature
  */
 
 import { useParams, useRouter, useSearchParams } from 'next/navigation'
@@ -16,7 +16,6 @@ import { useState, useEffect, useCallback } from 'react'
 import { reportsApi } from '@/lib/reports-api'
 import { valuationsApi } from '@/lib/valuation-api'
 import { ReportEditor, ApprovalModal } from '@/components/reports'
-import { ValuerSelectionModal } from '@/components/e-sign'
 import type { ValuationReport } from '@/types/report'
 import type { Valuation } from '@/types/valuation'
 import {
@@ -39,9 +38,6 @@ export default function ReportPage() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const valuationId = params.id as string
-  
-  // Check for success message from e-sign
-  const esignSent = searchParams.get('esign_sent') === 'true'
 
   // State
   const [pageState, setPageState] = useState<PageState>('loading')
@@ -51,13 +47,10 @@ export default function ReportPage() {
   const [isGenerated, setIsGenerated] = useState(false)
   const [readOnly, setReadOnly] = useState(true)
   const [showApprovalModal, setShowApprovalModal] = useState(false)
-  const [showValuerModal, setShowValuerModal] = useState(false)
   const [valuerCredentials, setValuerCredentials] = useState<any>(null)
   const [approvalCheck, setApprovalCheck] = useState<any>(null)
   const [regenerating, setRegenerating] = useState(false)
-  const [successMessage, setSuccessMessage] = useState<string | null>(
-    esignSent ? 'Report sent for signature successfully!' : null
-  )
+  const [successMessage, setSuccessMessage] = useState<string | null>(null)
 
   // Initialize: load valuation and create/get report
   useEffect(() => {
@@ -161,51 +154,7 @@ export default function ReportPage() {
     }
   }, [report])
 
-  // Open valuer selection modal for e-sign flow
-  const handleOpenESign = useCallback(async () => {
-    if (!report) return
-
-    try {
-      // Check if can approve
-      const checkRes = await reportsApi.checkApproval(report.id)
-      setApprovalCheck(checkRes)
-
-      if (!checkRes.can_approve) {
-        setError(`Cannot approve: ${checkRes.reasons?.join(', ') || 'Report not ready'}`)
-        return
-      }
-
-      // Show valuer selection modal
-      setShowValuerModal(true)
-    } catch (err) {
-      console.error('Failed to check approval:', err)
-      setError(err instanceof Error ? err.message : 'Failed to check approval status')
-    }
-  }, [report])
-
-  // Handle valuer selection and navigate to e-sign
-  const handleValuerSelected = useCallback((selection: {
-    signerId: string;
-    signerName: string;
-    signerEmail: string;
-    isSelf: boolean;
-    message?: string;
-  }) => {
-    setShowValuerModal(false)
-
-    // Navigate to e-sign page with signer info
-    const params = new URLSearchParams({
-      reportId: report?.id || '',
-      signerId: selection.signerId,
-      signerName: encodeURIComponent(selection.signerName),
-      signerEmail: encodeURIComponent(selection.signerEmail),
-      isSelf: selection.isSelf.toString(),
-    })
-
-    router.push(`/dashboard/valuations/${valuationId}/e-sign?${params.toString()}`)
-  }, [report, valuationId, router])
-
-  // Open approval modal (legacy - kept for compatibility)
+  // Open approval modal
   const handleOpenApproval = useCallback(async () => {
     if (!report) return
 
@@ -380,10 +329,10 @@ export default function ReportPage() {
             </button>
           )}
 
-          {/* Approve & Sign - Now uses E-Sign flow */}
+          {/* Approve & Sign */}
           {report.status === 'draft' && (
             <button
-              onClick={handleOpenESign}
+              onClick={() => setShowApprovalModal(true)}
               className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white font-mono text-xs font-bold hover:bg-green-500 transition-colors"
             >
               <PenTool className="w-3 h-3" />
@@ -437,20 +386,7 @@ export default function ReportPage() {
         />
       </div>
 
-      {/* Valuer Selection Modal for E-Sign */}
-      <ValuerSelectionModal
-        isOpen={showValuerModal}
-        onClose={() => setShowValuerModal(false)}
-        onConfirm={handleValuerSelected}
-        reportName={`Valuation Report - ${valuation?.property?.address || valuationId}`}
-        currentUserId={valuation?.created_by || 'current-user'}
-        currentUserName="Property Valuer"
-        currentUserEmail="valuer@propmetrik.com"
-        isCurrentUserValuer={true}
-        apiBaseUrl={process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api/v1'}
-      />
-
-      {/* Approval Modal (legacy - kept for compatibility) */}
+      {/* Approval Modal */}
       <ApprovalModal
         isOpen={showApprovalModal}
         onClose={() => setShowApprovalModal(false)}

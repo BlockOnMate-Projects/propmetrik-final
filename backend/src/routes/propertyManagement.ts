@@ -1506,6 +1506,125 @@ router.get('/leases/:tenancyId/signing-status', asyncHandler(async (req: Request
     });
 }));
 
+/**
+ * POST /api/v1/pm/leases/:id/sign
+ * Submit a signature for a lease document
+ * This endpoint handles both legacy lease IDs and application-based lease IDs
+ */
+router.post('/leases/:id/sign', asyncHandler(async (req: Request, res: Response) => {
+    const leaseId = req.params.id;
+    const { signatureDataUrl, signerToken, fieldId } = req.body;
+
+    if (!signatureDataUrl) {
+        return res.status(400).json({ error: 'Signature data is required' });
+    }
+
+    // Extract application ID if the leaseId is in format "lease-{applicationId}"
+    let applicationId = leaseId;
+    if (leaseId.startsWith('lease-')) {
+        applicationId = leaseId.replace('lease-', '');
+    }
+
+    // Find the envelope for this application
+    const appResult = await db.query(
+        `SELECT envelope_id FROM pm_rental_applications WHERE id = $1`,
+        [applicationId]
+    );
+
+    if (appResult.rows.length === 0 || !appResult.rows[0].envelope_id) {
+        return res.status(404).json({ 
+            error: 'No e-sign envelope found for this lease. Please use the signing link from your email.' 
+        });
+    }
+
+    const envelopeId = appResult.rows[0].envelope_id;
+
+    // If we have a signerToken and fieldId, use e-sign service directly
+    if (signerToken && fieldId) {
+        // Import e-sign routes handler
+        // For now, redirect to the e-sign endpoint
+        return res.status(400).json({
+            error: 'Please use the e-sign service directly',
+            redirectTo: `/api/v1/esign/sign/${signerToken}`,
+            envelopeId
+        });
+    }
+
+    // Otherwise, try to find the tenant's signer and signature field
+    const signerResult = await db.query(
+        `SELECT s.id, s.access_token, f.id as field_id
+         FROM esign_signers s
+         JOIN esign_fields f ON f.signer_id = s.id AND f.field_type = 'signature'
+         WHERE s.envelope_id = $1
+         AND s.name != 'Property Owner'
+         AND f.value IS NULL
+         LIMIT 1`,
+        [envelopeId]
+    );
+
+    if (signerResult.rows.length === 0) {
+        return res.status(400).json({ 
+            error: 'No pending signature field found. The lease may already be signed.' 
+        });
+    }
+
+    const signer = signerResult.rows[0];
+
+    // Generate signature hash
+    let signatureHash;
+    try {
+        const { createHash } = require('crypto');
+        signatureHash = createHash('sha256')
+            .update(signatureDataUrl)
+            .digest('hex')
+            .substring(0, 16);
+    } catch (hashError) {
+        console.error('Error generating hash:', hashError);
+        // Fallback or rethrow
+        signatureHash = 'hash-gen-failed-' + Date.now();
+    }
+
+    // Update the signature field
+    await db.query(
+        `UPDATE esign_fields
+         SET value = $1, signed_at = NOW(), signature_hash = $2, updated_at = NOW()
+         WHERE id = $3`,
+        [signatureDataUrl, signatureHash, signer.field_id]
+    );
+
+    // Update signer status
+    await db.query(
+        `UPDATE esign_signers
+         SET status = 'signed', signed_at = NOW(), updated_at = NOW()
+         WHERE id = $1`,
+        [signer.id]
+    );
+
+    // Check if all signers have signed
+    const pendingResult = await db.query(
+        `SELECT COUNT(*) as pending FROM esign_signers
+         WHERE envelope_id = $1 AND status != 'signed'`,
+        [envelopeId]
+    );
+
+    if (parseInt(pendingResult.rows[0].pending) === 0) {
+        // All signed - update envelope status
+        await db.query(
+            `UPDATE esign_envelopes
+             SET status = 'completed', completed_at = NOW(), updated_at = NOW()
+             WHERE id = $1`,
+            [envelopeId]
+        );
+    }
+
+    res.json({
+        success: true,
+        signatureHash,
+        signerId: signer.id,
+        message: 'Signature submitted successfully'
+    });
+}));
+
 // =====================================================
 // APPLICATION ROUTES
 // =====================================================
@@ -1760,6 +1879,105 @@ router.post('/applications/:id/reject', asyncHandler(async (req: Request, res: R
         }
         throw error;
     }
+}));
+
+/**
+ * GET /api/v1/pm/applications/:id/lease
+ * Get lease details for tenant portal - returns e-sign envelope data if available
+ */
+router.get('/applications/:id/lease', asyncHandler(async (req: Request, res: Response) => {
+    const applicationId = req.params.id;
+
+    // First, try to find the application (public access for tenants)
+    const appResult = await db.query(
+        `SELECT a.id, a.status, a.envelope_id, a.applicant_data,
+                p.title as property_title, p.address_street
+         FROM pm_rental_applications a
+         LEFT JOIN pm_properties p ON p.id = a.property_id
+         WHERE a.id = $1`,
+        [applicationId]
+    );
+
+    if (appResult.rows.length === 0) {
+        return res.status(404).json({ error: 'Application not found' });
+    }
+
+    const application = appResult.rows[0];
+    
+    // If no envelope, return basic info
+    if (!application.envelope_id) {
+        return res.status(404).json({ 
+            error: 'No lease envelope found for this application',
+            hasLease: false
+        });
+    }
+
+    // Get the e-sign envelope with signer info
+    const envelopeResult = await db.query(
+        `SELECT e.id, e.name, e.status, e.document_html, e.document_image,
+                e.metadata, e.created_at
+         FROM esign_envelopes e
+         WHERE e.id = $1`,
+        [application.envelope_id]
+    );
+
+    if (envelopeResult.rows.length === 0) {
+        return res.status(404).json({ error: 'Lease envelope not found' });
+    }
+
+    const envelope = envelopeResult.rows[0];
+
+    // Get the tenant signer (usually SIGNER_2 for tenant)
+    const signersResult = await db.query(
+        `SELECT id, name, email, role, status, access_token, permanent_signer_id
+         FROM esign_signers
+         WHERE envelope_id = $1
+         ORDER BY role`,
+        [application.envelope_id]
+    );
+
+    // Find tenant signer (not Property Owner)
+    const tenantSigner = signersResult.rows.find((s: any) => 
+        s.name?.toLowerCase() !== 'property owner' && s.role !== 'SIGNER_1'
+    ) || signersResult.rows[1] || signersResult.rows[0];
+
+    // Get signature fields for this signer
+    const fieldsResult = await db.query(
+        `SELECT id, field_type, signer_id, page, x_position, y_position,
+                width, height, value, signed_at, signature_hash
+         FROM esign_fields
+         WHERE envelope_id = $1 AND signer_id = $2`,
+        [application.envelope_id, tenantSigner?.id]
+    );
+
+    // Build the response
+    res.json({
+        id: envelope.id,
+        applicationId,
+        envelopeId: envelope.id,
+        content: envelope.document_html || '',
+        documentUrl: envelope.document_image,
+        status: envelope.status,
+        terms: envelope.metadata || {},
+        hasSigned: fieldsResult.rows.some((f: any) => f.value != null),
+        tenantName: tenantSigner?.name || application.applicant_data?.fullName,
+        signerToken: tenantSigner?.access_token,
+        signerId: tenantSigner?.id,
+        fields: fieldsResult.rows.map((f: any) => ({
+            id: f.id,
+            fieldType: f.field_type,
+            type: f.field_type,
+            signerId: f.signer_id,
+            page: f.page,
+            x: f.x_position,
+            y: f.y_position,
+            width: f.width,
+            height: f.height,
+            value: f.value,
+            signedAt: f.signed_at,
+            signatureHash: f.signature_hash
+        }))
+    });
 }));
 
 /**

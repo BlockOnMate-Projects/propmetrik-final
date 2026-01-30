@@ -1,0 +1,336 @@
+# Phase 12: E-Signature Platform - Unified Docker Compose
+# ============================================================================
+# Usage:
+#   Development: docker-compose --profile dev up -d
+#   Production:  docker-compose --profile prod up -d
+#   Coolify:     docker-compose --profile coolify up -d
+#
+# Coolify Deployment:
+#   - Base Directory: /phase12-esign
+#   - Build Pack: Docker Compose
+#   - Docker Compose Profile: coolify
+#   - Network: coolify (add manually after deployment)
+#   - Production URL: https://esign.cedynhq.com
+#
+# Required Shared Variables (Coolify):
+#   POSTGRES_PASSWORD, KEYCLOAK_URL, KEYCLOAK_REALM, GARAGE_S3_*
+#
+# Phase-specific Variables:
+#   ESIGN_KEYCLOAK_CLIENT_ID=cedyn-esign
+#   ESIGN_KEYCLOAK_CLIENT_SECRET=<keycloak-client-secret>
+#   GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET (for Drive integration)
+# ============================================================================
+
+services:
+  # =============================================================================
+  # E-Sign Backend - FastAPI (All Profiles)
+  # =============================================================================
+  
+  esign-backend-dev:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: cedyn-esign-backend
+    profiles:
+      - dev
+    env_file:
+      - ../.env
+    environment:
+      # Database (uses shared postgres)
+      DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD}@cedyn-dev-postgres:5432/esign_db
+      POSTGRES_HOST: cedyn-dev-postgres
+      POSTGRES_PORT: 5432
+      POSTGRES_DB: esign_db
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      # Keycloak
+      KEYCLOAK_BASE_URL: ${KEYCLOAK_URL:-http://cedyn-dev-keycloak:8080}
+      KEYCLOAK_REALM: ${KEYCLOAK_REALM:-cedyn}
+      KEYCLOAK_CLIENT_ID: ${ESIGN_KEYCLOAK_CLIENT_ID:-cedyn-esign}
+      KEYCLOAK_CLIENT_SECRET: ${ESIGN_KEYCLOAK_CLIENT_SECRET}
+      # Google OAuth (for Drive integration)
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET}
+      GOOGLE_REDIRECT_URI: ${GOOGLE_REDIRECT_URI:-http://localhost:8000/api/auth/google/callback}
+      GOOGLE_SCOPES: ${GOOGLE_SCOPES:-openid email profile https://www.googleapis.com/auth/drive.file}
+      # API URLs
+      API_BASE_URL: ${ESIGN_API_BASE_URL:-http://localhost:8000}
+      FRONTEND_URL: ${ESIGN_FRONTEND_URL:-http://localhost:3000}
+      # SMTP (MailHog for dev)
+      SMTP_HOST: cedyn-dev-mailhog
+      SMTP_PORT: 1025
+      SMTP_USE_TLS: "false"
+      SMTP_USERNAME: ""
+      SMTP_PASSWORD: ""
+      # S3 Storage (Garage)
+      S3_ENDPOINT: ${ESIGN_S3_ENDPOINT:-http://garage-node:3900}
+      S3_ACCESS_KEY: ${GARAGE_ROOT_ACCESS_KEY}
+      S3_SECRET_KEY: ${GARAGE_ROOT_SECRET_KEY}
+      S3_BUCKET: ${ESIGN_S3_BUCKET:-esign-documents}
+      S3_REGION: garage
+    volumes:
+      - ./backend:/app
+      - esign_uploads:/app/uploads
+    ports:
+      - "${ESIGN_API_PORT:-8000}:8000"
+    networks:
+      - cedyn-dev-network
+    command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    restart: unless-stopped
+    labels:
+      - "cedyn.service=esign-backend"
+      - "cedyn.phase=phase12"
+      - "cedyn.environment=development"
+
+  esign-backend-prod:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: cedyn-esign-backend
+    profiles:
+      - prod
+    env_file:
+      - ../.env
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-keycloak}:${POSTGRES_PASSWORD}@postgres:5432/esign_db
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      POSTGRES_DB: esign_db
+      POSTGRES_USER: ${POSTGRES_USER:-keycloak}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      KEYCLOAK_BASE_URL: ${KEYCLOAK_URL}
+      KEYCLOAK_REALM: ${KEYCLOAK_REALM:-cedyn}
+      KEYCLOAK_CLIENT_ID: ${ESIGN_KEYCLOAK_CLIENT_ID:-cedyn-esign}
+      KEYCLOAK_CLIENT_SECRET: ${ESIGN_KEYCLOAK_CLIENT_SECRET}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET}
+      GOOGLE_REDIRECT_URI: https://esign.cedynhq.com/api/auth/google/callback
+      GOOGLE_SCOPES: ${GOOGLE_SCOPES}
+      API_BASE_URL: https://esign.cedynhq.com
+      FRONTEND_URL: https://esign.cedynhq.com
+      SMTP_HOST: ${SMTP_HOST}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_USE_TLS: "true"
+      SMTP_USERNAME: ${SMTP_USERNAME}
+      SMTP_PASSWORD: ${SMTP_PASSWORD}
+      S3_ENDPOINT: ${ESIGN_S3_ENDPOINT}
+      S3_ACCESS_KEY: ${GARAGE_ROOT_ACCESS_KEY}
+      S3_SECRET_KEY: ${GARAGE_ROOT_SECRET_KEY}
+      S3_BUCKET: ${ESIGN_S3_BUCKET:-esign-documents}
+      S3_REGION: garage
+    expose:
+      - "8000"
+    networks:
+      - cedyn-prod-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+        reservations:
+          memory: 256M
+    labels:
+      - "cedyn.service=esign-backend"
+      - "cedyn.phase=phase12"
+      - "cedyn.environment=production"
+
+  esign-backend-coolify:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    profiles:
+      - coolify
+    environment:
+      # Database (uses Coolify shared postgres)
+      DATABASE_URL: postgresql://${POSTGRES_USER:-keycloak}:${POSTGRES_PASSWORD}@postgres-d4g0kskk0o4oc40coc0swc4c:5432/esign_db
+      POSTGRES_HOST: postgres-d4g0kskk0o4oc40coc0swc4c
+      POSTGRES_PORT: 5432
+      POSTGRES_DB: esign_db
+      POSTGRES_USER: ${POSTGRES_USER:-keycloak}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      # Keycloak (uses Coolify shared variables)
+      KEYCLOAK_BASE_URL: https://sso.cedynhq.com
+      KEYCLOAK_REALM: cedyn
+      KEYCLOAK_CLIENT_ID: ${ESIGN_KEYCLOAK_CLIENT_ID:-cedyn-esign}
+      KEYCLOAK_CLIENT_SECRET: ${ESIGN_KEYCLOAK_CLIENT_SECRET}
+      # Google OAuth
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET}
+      GOOGLE_REDIRECT_URI: https://esign.cedynhq.com/api/auth/google/callback
+      GOOGLE_SCOPES: openid email profile https://www.googleapis.com/auth/drive.file
+      # API URLs
+      API_BASE_URL: https://esign.cedynhq.com
+      FRONTEND_URL: https://esign.cedynhq.com
+      # SMTP (uses Coolify shared variables)
+      SMTP_HOST: ${SMTP_HOST}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_USE_TLS: "true"
+      SMTP_USERNAME: ${SMTP_USERNAME}
+      SMTP_PASSWORD: ${SMTP_PASSWORD}
+      # S3 Storage (Garage via Coolify)
+      S3_ENDPOINT: ${GARAGE_ENDPOINT:-garage:3900}
+      S3_ACCESS_KEY: ${GARAGE_S3_ACCESS_KEY}
+      S3_SECRET_KEY: ${GARAGE_S3_SECRET_KEY}
+      S3_BUCKET: esign-documents
+      S3_REGION: garage
+    expose:
+      - "8000"
+    networks:
+      coolify:
+        aliases:
+          - esign-backend
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+    restart: unless-stopped
+    labels:
+      - "coolify.managed=true"
+      - "cedyn.service=esign-backend"
+      - "cedyn.phase=phase12"
+
+  # =============================================================================
+  # E-Sign Frontend - React/Vite (All Profiles)
+  # =============================================================================
+  
+  esign-frontend-dev:
+    image: node:20-alpine
+    container_name: cedyn-esign-frontend
+    profiles:
+      - dev
+    working_dir: /app
+    environment:
+      VITE_KEYCLOAK_URL: ${KEYCLOAK_URL:-http://localhost:8080}
+      VITE_KEYCLOAK_REALM: ${KEYCLOAK_REALM:-cedyn}
+      VITE_KEYCLOAK_CLIENT_ID: ${ESIGN_KEYCLOAK_CLIENT_ID:-cedyn-esign}
+      VITE_API_BASE_URL: http://localhost:8000
+      VITE_GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    ports:
+      - "3012:3000"
+    networks:
+      - cedyn-dev-network
+    depends_on:
+      - esign-backend-dev
+    command: sh -c "npm install && npm run dev -- --host 0.0.0.0"
+    restart: unless-stopped
+    labels:
+      - "cedyn.service=esign-frontend"
+      - "cedyn.phase=phase12"
+      - "cedyn.environment=development"
+
+  esign-frontend-prod:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: cedyn-esign-frontend
+    profiles:
+      - prod
+    environment:
+      VITE_KEYCLOAK_URL: ${KEYCLOAK_URL}
+      VITE_KEYCLOAK_REALM: ${KEYCLOAK_REALM:-cedyn}
+      VITE_KEYCLOAK_CLIENT_ID: ${ESIGN_KEYCLOAK_CLIENT_ID:-cedyn-esign}
+      VITE_API_BASE_URL: https://esign.cedynhq.com/api
+      VITE_GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
+    expose:
+      - "80"
+    networks:
+      - cedyn-prod-network
+    depends_on:
+      - esign-backend-prod
+    restart: unless-stopped
+    labels:
+      - "cedyn.service=esign-frontend"
+      - "cedyn.phase=phase12"
+      - "cedyn.environment=production"
+
+  esign-frontend-coolify:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    profiles:
+      - coolify
+    environment:
+      VITE_KEYCLOAK_URL: https://sso.cedynhq.com
+      VITE_KEYCLOAK_REALM: cedyn
+      VITE_KEYCLOAK_CLIENT_ID: ${ESIGN_KEYCLOAK_CLIENT_ID:-cedyn-esign}
+      VITE_API_BASE_URL: https://esign.cedynhq.com/api
+      VITE_GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
+    expose:
+      - "80"
+    networks:
+      coolify:
+        aliases:
+          - esign-frontend
+    depends_on:
+      - esign-backend-coolify
+    restart: unless-stopped
+    labels:
+      - "coolify.managed=true"
+      - "cedyn.service=esign-frontend"
+      - "cedyn.phase=phase12"
+
+  # =============================================================================
+  # Nginx Proxy (Coolify only - routes frontend and API)
+  # =============================================================================
+  esign-proxy:
+    image: nginx:alpine
+    profiles:
+      - coolify
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+    expose:
+      - "80"
+    networks:
+      coolify:
+        aliases:
+          - esign-proxy
+    depends_on:
+      - esign-backend-coolify
+      - esign-frontend-coolify
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    restart: unless-stopped
+    labels:
+      - "coolify.managed=true"
+      - "cedyn.service=esign-proxy"
+      - "cedyn.phase=phase12"
+
+# =============================================================================
+# Networks
+# =============================================================================
+networks:
+  cedyn-dev-network:
+    external: true
+    name: cedyn-dev-network
+
+  cedyn-prod-network:
+    external: true
+    name: cedyn-prod-network
+
+  coolify:
+    external: true
+
+# =============================================================================
+# Volumes
+# =============================================================================
+volumes:
+  esign_uploads:
+    name: cedyn-esign-uploads

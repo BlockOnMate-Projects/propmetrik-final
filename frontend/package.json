@@ -54,7 +54,6 @@
     "@tiptap/react": "^3.15.3",
     "@tiptap/starter-kit": "^3.15.3",
     "@types/react-signature-canvas": "^1.0.7",
-    "@propmetrik/e-sign-ui": "file:../packages/e-sign-ui",
     "class-variance-authority": "^0.7.0",
     "clsx": "^2.1.1",
     "date-fns": "^3.3.1",
