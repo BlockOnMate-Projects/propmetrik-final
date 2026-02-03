@@ -131,15 +131,19 @@ export default function Templates() {
     try {
       await useTemplate(template.id);
       toast.success(`Template "${template.name}" selected. Opening envelope wizard...`);
-      // TODO: Open envelope wizard with template pre-filled
+      // Navigate to agreements page with template to trigger envelope wizard
+      navigate('/agreements', { state: { useTemplate: template } });
     } catch (error) {
       toast.info(`Using template: ${template.name}`);
+      // Navigate anyway for demo templates
+      navigate('/agreements', { state: { useTemplate: template } });
     }
   };
 
   const handleEditTemplate = (template: Template) => {
-    toast.info(`Editing template: ${template.name}`);
-    // TODO: Open template editor
+    toast.info(`Opening template editor for: ${template.name}`);
+    // Navigate to template edit page
+    navigate(`/templates/${template.id}/edit`, { state: { template } });
   };
 
   const handleDeleteTemplate = async (template: Template) => {

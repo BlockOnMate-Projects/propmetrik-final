@@ -552,6 +552,45 @@ router.post('/tenancies/:id/invoice', asyncHandler(async (req: Request, res: Res
     }
 }));
 
+/**
+ * POST /api/v1/pm/tenancies/:id/regenerate-lease
+ * Regenerate lease document for an existing tenancy
+ */
+router.post('/tenancies/:id/regenerate-lease', asyncHandler(async (req: Request, res: Response) => {
+    const organizationId = await getOrganizationId(req);
+    
+    if (!organizationId || organizationId === '00000000-0000-0000-0000-000000000000') {
+        return res.status(401).json({ error: 'Organization not found' });
+    }
+
+    try {
+        const { leaseTemplateService } = await import('../services/property-management/leases/leaseTemplateService');
+        
+        const leaseDoc = await leaseTemplateService.generateLease(organizationId, {
+            tenancyId: req.params.id,
+            templateId: req.body.templateId,
+            format: 'pdf'
+        });
+
+        res.json({
+            success: true,
+            documentId: leaseDoc.documentId,
+            documentKey: leaseDoc.documentKey,
+            documentUrl: leaseDoc.downloadUrl,
+            filename: leaseDoc.filename,
+            generatedAt: leaseDoc.generatedAt
+        });
+    } catch (error: any) {
+        if (error.message === 'Tenancy not found') {
+            return res.status(404).json({ error: error.message });
+        }
+        if (error.message.includes('not found')) {
+            return res.status(404).json({ error: error.message });
+        }
+        throw error;
+    }
+}));
+
 // =====================================================
 // WORK ORDER ROUTES
 // =====================================================
@@ -2009,6 +2048,43 @@ router.post('/applications/:id/send-lease', asyncHandler(async (req: Request, re
         }
         if (error.message === 'Application not found') {
             return res.status(404).json({ error: error.message });
+        }
+        throw error;
+    }
+}));
+
+/**
+ * POST /api/v1/pm/applications/:id/generate-lease-document
+ * Generate lease document (PDF) without sending to e-sign
+ * Returns document URL and signer info for frontend to redirect to e-sign wizard
+ */
+router.post('/applications/:id/generate-lease-document', asyncHandler(async (req: Request, res: Response) => {
+    const organizationId = await getOrganizationId(req);
+    const userId = await getUserId(req);
+    
+    if (!organizationId || organizationId === '00000000-0000-0000-0000-000000000000') {
+        return res.status(401).json({ error: 'Organization not found' });
+    }
+    if (!userId) {
+        return res.status(401).json({ error: 'User not authenticated' });
+    }
+
+    try {
+        const result = await applicationService.generateLeaseDocument(
+            req.params.id, 
+            organizationId, 
+            userId,
+            req.body
+        );
+        res.json(result);
+    } catch (error: any) {
+        if (error.message === 'Application not found') {
+            return res.status(404).json({ error: error.message });
+        }
+        if (error.message.includes('must be approved') || 
+            error.message.includes('required') || 
+            error.message.includes('Invalid')) {
+            return res.status(400).json({ error: error.message });
         }
         throw error;
     }

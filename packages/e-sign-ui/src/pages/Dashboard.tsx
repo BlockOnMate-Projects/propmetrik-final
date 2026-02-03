@@ -1,11 +1,24 @@
-import { useState, useEffect, useMemo } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useNavigate, useLocation, useSearchParams } from 'react-router-dom';
 import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import { getUserInfo, logout as authLogout } from '../propmetrik-auth';
 import api from '../api';
 import { EnvelopeWizard } from '../components/envelope';
 import './Dashboard.css';
+
+// External document data received from parent (PropMetrik main app)
+interface ExternalDocumentData {
+  documentUrl: string;
+  documentKey: string;
+  filename: string;
+  subject: string;
+  message: string;
+  signers: Array<{ name: string; email: string; role: string }>;
+  tenancyId?: string;
+  applicationId?: string;
+  propertyName?: string;
+}
 
 interface Envelope {
   id: string;
@@ -26,7 +39,9 @@ interface Template {
 export default function Dashboard() {
   const navigate = useNavigate();
   const location = useLocation();
+  const [searchParams] = useSearchParams();
   const [showEnvelopeWizard, setShowEnvelopeWizard] = useState(false);
+  const [externalDocument, setExternalDocument] = useState<ExternalDocumentData | null>(null);
   const [envelopes, setEnvelopes] = useState<Envelope[]>([]);
   const [templates] = useState<Template[]>([
     { id: 1, name: 'Employment Eligibility Verification: I-9', description: 'Starter Template' },
@@ -43,6 +58,36 @@ export default function Dashboard() {
     };
   }, [envelopes]);
   const [isLoading, setIsLoading] = useState(true);
+
+  // Handle external document loading from parent window (PropMetrik main app)
+  useEffect(() => {
+    const handleExternalDocument = (event: MessageEvent) => {
+      if (event.data?.type === 'LOAD_DOCUMENT' && event.data?.data) {
+        console.log('📄 Received external document from PropMetrik:', event.data.data);
+        setExternalDocument(event.data.data);
+        setShowEnvelopeWizard(true);
+        
+        // Notify parent that we're ready
+        if (window.parent !== window) {
+          window.parent.postMessage({ type: 'ESIGN_READY' }, '*');
+        }
+      }
+    };
+
+    window.addEventListener('message', handleExternalDocument);
+    
+    // Check if we're in embedded mode
+    const mode = searchParams.get('mode');
+    if (mode === 'embedded') {
+      console.log('🔗 E-Sign UI in embedded mode, waiting for document...');
+      // Notify parent that we're ready to receive documents
+      if (window.parent !== window) {
+        window.parent.postMessage({ type: 'ESIGN_READY' }, '*');
+      }
+    }
+
+    return () => window.removeEventListener('message', handleExternalDocument);
+  }, [searchParams]);
 
   useEffect(() => {
     loadDashboardData();
@@ -222,18 +267,39 @@ export default function Dashboard() {
     return `${Math.floor(diffDays / 30)} months ago`;
   };
 
+  // Handle envelope wizard completion
+  const handleEnvelopeComplete = () => {
+    setShowEnvelopeWizard(false);
+    setExternalDocument(null);
+    loadDashboardData();
+    
+    // Notify parent window of completion
+    if (window.parent !== window) {
+      window.parent.postMessage({ type: 'ESIGN_COMPLETE' }, '*');
+    }
+  };
+
+  // Handle envelope wizard cancellation
+  const handleEnvelopeCancel = () => {
+    setShowEnvelopeWizard(false);
+    setExternalDocument(null);
+    
+    // Notify parent window of cancellation
+    if (window.parent !== window) {
+      window.parent.postMessage({ type: 'ESIGN_CANCEL' }, '*');
+    }
+  };
+
   if (showEnvelopeWizard) {
     return (
       <EnvelopeWizard
-        onComplete={() => {
-          setShowEnvelopeWizard(false);
-          loadDashboardData();
-        }}
-        onCancel={() => setShowEnvelopeWizard(false)}
+        onComplete={handleEnvelopeComplete}
+        onCancel={handleEnvelopeCancel}
         currentUser={{
           name: getUserInfo()?.name || 'Me',
           email: getUserInfo()?.email || '',
         }}
+        externalDocument={externalDocument}
       />
     );
   }

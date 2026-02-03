@@ -5,4 +5,4 @@ export { default as RecipientSetup } from './RecipientSetup';
 export { default as FieldPlacement } from './FieldPlacement';
 export { default as EnvelopeReview } from './EnvelopeReview';
 
-export type { DocumentFile, Recipient, PlacedField } from './EnvelopeWizard';
+export type { DocumentFile, Recipient, PlacedField, ExternalDocumentData } from './EnvelopeWizard';

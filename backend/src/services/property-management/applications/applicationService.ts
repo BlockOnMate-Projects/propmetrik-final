@@ -9,6 +9,7 @@
  */
 
 import { Pool } from 'pg';
+import { randomBytes } from 'crypto';
 import { pool } from '../../../database';
 
 // =====================================================
@@ -119,6 +120,11 @@ export interface Application {
   // Virtual fields (from joins)
   propertyName?: string;
   propertyAddress?: string;
+  propertyPrice?: number;
+  propertyPriceCurrency?: string;
+  propertyBedrooms?: number;
+  propertyBathrooms?: number;
+  propertyType?: string;
   
   // E-Sign integration (populated dynamically)
   signerToken?: string;
@@ -414,7 +420,12 @@ export class ApplicationService {
     const query = `
       SELECT a.*, 
              p.title as property_name,
-             p.address_street as property_address
+             p.address_street as property_address,
+             p.price as property_price,
+             p.price_currency as property_price_currency,
+             p.bedrooms as property_bedrooms,
+             p.bathrooms as property_bathrooms,
+             p.property_type as property_type
       FROM applications a
       LEFT JOIN properties p ON p.id = a.property_id
       WHERE a.id = $1 AND a.organization_id = $2 AND a.deleted_at IS NULL
@@ -438,7 +449,12 @@ export class ApplicationService {
     const tokenQuery = `
       SELECT a.*, 
              p.title as property_name,
-             p.address_street as property_address
+             p.address_street as property_address,
+             p.price as property_price,
+             p.price_currency as property_price_currency,
+             p.bedrooms as property_bedrooms,
+             p.bathrooms as property_bathrooms,
+             p.property_type as property_type
       FROM applications a
       LEFT JOIN properties p ON p.id = a.property_id
       WHERE a.application_token = $1 
@@ -453,7 +469,12 @@ export class ApplicationService {
       const idQuery = `
         SELECT a.*, 
                p.title as property_name,
-               p.address_street as property_address
+               p.address_street as property_address,
+               p.price as property_price,
+               p.price_currency as property_price_currency,
+               p.bedrooms as property_bedrooms,
+               p.bathrooms as property_bathrooms,
+               p.property_type as property_type
         FROM applications a
         LEFT JOIN properties p ON p.id = a.property_id
         WHERE a.id = $1 
@@ -828,16 +849,30 @@ export class ApplicationService {
   }
 
   /**
-   * Mark lease as sent to applicant for signature
+   * Generate and send lease to applicant for signature
    * This transitions from APPROVED to LEASE_GENERATED status
+   * Creates tenancy and triggers e-sign workflow
    */
   async sendLease(
     applicationId: string,
     organizationId: string,
     userId: string,
     leaseData?: {
+      templateId?: string;
+      startDate?: string;
+      endDate?: string;
+      monthlyRent?: number;
+      securityDeposit?: number;
+      advanceMonths?: number;
+      noticePeriodDays?: number;
+      autoRenew?: boolean;
+      additionalTerms?: string;
+      landlordName?: string;
+      landlordEmail?: string;
       envelopeId?: string;
       pdfUrl?: string;
+      tenantUtilities?: string[];
+      landlordUtilities?: string[];
       signers?: { name: string; email: string; role: string }[];
     }
   ): Promise<Application> {
@@ -849,10 +884,77 @@ export class ApplicationService {
     
     this.validateTransition(application.status, ApplicationStatus.LEASE_GENERATED);
 
-    // Update application status and envelope_id if provided
+    // If lease data includes start/end dates, we can create a tenancy
+    let tenancyId: string | null = null;
+    let tenantId: string | null = application.tenantId;
+    let envelopeId: string | null = leaseData?.envelopeId || null;
+
+    // If we have comprehensive lease data and no existing tenant, create tenant and tenancy
+    if (leaseData?.startDate && leaseData?.endDate && leaseData?.monthlyRent) {
+      try {
+        // Import tenancy service dynamically to avoid circular dependency
+        const { tenancyService } = await import('../leases/tenancyService');
+        const { tenantService } = await import('../tenants/tenantService');
+
+        // Create tenant if not exists
+        if (!tenantId) {
+          const tenant = await tenantService.createTenant(organizationId, {
+            fullName: application.applicantFullName,
+            email: application.applicantEmail,
+            phonePrimary: application.applicantPhone,
+            ghanaCardNumber: application.applicantGhanaCard,
+            currentAddress: application.applicantCurrentAddress,
+            digitalAddress: application.applicantDigitalAddress,
+            emergencyContactName: application.emergencyContactName,
+            emergencyContactPhone: application.emergencyContactPhone || undefined,
+            emergencyContactRelationship: application.emergencyContactRelationship || undefined
+          }, userId);
+          tenantId = tenant.id;
+        }
+
+        // Create tenancy
+        const tenancy = await tenancyService.createTenancy(organizationId, {
+          propertyId: application.propertyId,
+          tenantId: tenantId,
+          leaseStartDate: leaseData.startDate,
+          leaseEndDate: leaseData.endDate,
+          monthlyRent: leaseData.monthlyRent,
+          securityDeposit: leaseData.securityDeposit,
+          autoRenew: leaseData.autoRenew || false,
+          advancePaymentMonths: leaseData.advanceMonths || 1,
+          specialConditions: leaseData.additionalTerms,
+          leaseTerms: {
+            tenantUtilities: leaseData.tenantUtilities || [],
+            landlordUtilities: leaseData.landlordUtilities || []
+          }
+        }, userId);
+        tenancyId = tenancy.id;
+
+        // If signers are provided, initiate e-sign workflow
+        if (leaseData.signers && leaseData.signers.length > 0) {
+          const esignResult = await tenancyService.initiateLeaseEsign(
+            tenancy,
+            organizationId,
+            userId,
+            { templateId: leaseData.templateId }
+          );
+          envelopeId = esignResult.envelopeId;
+        }
+      } catch (error: any) {
+        // Log but don't fail - we can still mark as lease_generated
+        console.error('Failed to create tenancy for application:', error);
+        // If tenancy creation fails, we still update the status
+      }
+    }
+
+    // Update application status, tenant/tenancy IDs and envelope_id if provided
     const query = `
       UPDATE applications
-      SET status = $1, envelope_id = COALESCE($4, envelope_id), updated_at = NOW()
+      SET status = $1, 
+          envelope_id = COALESCE($4, envelope_id), 
+          tenant_id = COALESCE($5, tenant_id),
+          tenancy_id = COALESCE($6, tenancy_id),
+          updated_at = NOW()
       WHERE id = $2 AND organization_id = $3
       RETURNING *
     `;
@@ -861,7 +963,9 @@ export class ApplicationService {
       ApplicationStatus.LEASE_GENERATED,
       applicationId,
       organizationId,
-      leaseData?.envelopeId || null
+      envelopeId,
+      tenantId,
+      tenancyId
     ]);
 
     return this.mapRowToApplication(result.rows[0]);
@@ -897,6 +1001,179 @@ export class ApplicationService {
     ]);
 
     return this.mapRowToApplication(result.rows[0]);
+  }
+
+  /**
+   * Generate lease document for an approved application
+   * Creates tenant, tenancy, and generates PDF - but does NOT auto-send to e-sign
+   * Returns document info so frontend can redirect to e-sign wizard for field placement
+   */
+  async generateLeaseDocument(
+    applicationId: string,
+    organizationId: string,
+    userId: string,
+    leaseData: {
+      templateId?: string;
+      startDate: string;
+      endDate: string;
+      monthlyRent: number;
+      securityDeposit?: number;
+      advanceMonths?: number;
+      noticePeriodDays?: number;
+      autoRenew?: boolean;
+      additionalTerms?: string;
+      landlordName?: string;
+      landlordEmail?: string;
+      tenantUtilities?: string[];
+      landlordUtilities?: string[];
+      isUserLandlord?: boolean;
+      landlordWillSign?: boolean;
+      signers?: Array<{ role: string; name: string; email: string; order: number }>;
+    }
+  ): Promise<{
+    tenantId: string;
+    tenancyId: string;
+    documentId: string;
+    documentKey: string;
+    documentUrl: string;
+    filename: string;
+    signers: Array<{ name: string; email: string; role: string; order?: number }>;
+  }> {
+    // Validate required lease data
+    if (!leaseData.startDate || !leaseData.endDate) {
+      throw new Error('Lease start date and end date are required');
+    }
+    if (!leaseData.monthlyRent || leaseData.monthlyRent <= 0) {
+      throw new Error('Monthly rent is required and must be greater than 0');
+    }
+
+    // Validate date formats
+    const startDate = new Date(leaseData.startDate);
+    const endDate = new Date(leaseData.endDate);
+    if (isNaN(startDate.getTime())) {
+      throw new Error(`Invalid start date format: ${leaseData.startDate}`);
+    }
+    if (isNaN(endDate.getTime())) {
+      throw new Error(`Invalid end date format: ${leaseData.endDate}`);
+    }
+    if (endDate <= startDate) {
+      throw new Error('End date must be after start date');
+    }
+
+    const application = await this.getApplicationById(applicationId, organizationId);
+    
+    if (!application) {
+      throw new Error('Application not found');
+    }
+    
+    if (application.status !== ApplicationStatus.APPROVED) {
+      throw new Error('Application must be approved before generating a lease');
+    }
+
+    // Import services dynamically to avoid circular dependency
+    const { tenancyService } = await import('../leases/tenancyService');
+    const { leaseTemplateService } = await import('../leases/leaseTemplateService');
+
+    // NOTE: We do NOT create tenant here - tenant is created only after lease is signed
+    // The tenancy is created with status 'pending_signature' and will store applicant info
+    // When e-sign is completed, we'll create the tenant and activate the tenancy
+
+    // Create tenancy with pending_signature status (no tenant yet)
+    const tenancy = await tenancyService.createTenancy(organizationId, {
+      propertyId: application.propertyId,
+      tenantId: undefined, // No tenant yet - will be created after signing
+      leaseStartDate: leaseData.startDate,
+      leaseEndDate: leaseData.endDate,
+      monthlyRent: leaseData.monthlyRent,
+      securityDeposit: leaseData.securityDeposit,
+      autoRenew: leaseData.autoRenew || false,
+      advancePaymentMonths: leaseData.advanceMonths || 1,
+      specialConditions: leaseData.additionalTerms,
+      status: 'pending_signature', // Awaiting e-signatures
+      leaseTerms: {
+        tenantUtilities: leaseData.tenantUtilities || [],
+        landlordUtilities: leaseData.landlordUtilities || [],
+        // Signing scenario flags
+        isUserLandlord: leaseData.isUserLandlord || false,
+        landlordWillSign: leaseData.landlordWillSign || false,
+        landlordName: leaseData.landlordName || '',
+        landlordEmail: leaseData.landlordEmail || '',
+        signers: leaseData.signers || [],
+        noticePeriodDays: leaseData.noticePeriodDays || 30,
+        // Store applicant info for tenant creation after signing
+        applicationId: applicationId,
+        applicantFullName: application.applicantFullName,
+        applicantEmail: application.applicantEmail,
+        applicantPhone: application.applicantPhone,
+        applicantGhanaCard: application.applicantGhanaCard,
+        applicantCurrentAddress: application.applicantCurrentAddress,
+        applicantDigitalAddress: application.applicantDigitalAddress,
+        emergencyContactName: application.emergencyContactName,
+        emergencyContactPhone: application.emergencyContactPhone,
+        emergencyContactRelationship: application.emergencyContactRelationship
+      }
+    }, userId);
+
+    // Generate lease PDF document (without sending to e-sign)
+    const leaseDoc = await leaseTemplateService.generateLease(organizationId, {
+      tenancyId: tenancy.id,
+      templateId: leaseData.templateId,
+      format: 'pdf'
+    });
+
+    // Update application with tenancy ID only (NO tenant_id yet - that comes after signing)
+    // Status stays as 'approved' until e-sign envelope is sent
+    await this.db.query(
+      `UPDATE applications 
+       SET tenancy_id = $1, updated_at = NOW()
+       WHERE id = $2 AND organization_id = $3`,
+      [tenancy.id, applicationId, organizationId]
+    );
+
+    // Build signers list - use provided signers from frontend or fall back to default
+    let signers: Array<{ name: string; email: string; role: string; order?: number }>;
+    
+    if (leaseData.signers && leaseData.signers.length > 0) {
+      // Use signers provided by frontend (which has the signing authorization logic)
+      signers = leaseData.signers.map(s => ({
+        name: s.name,
+        email: s.email,
+        role: s.role.toUpperCase(),
+        order: s.order
+      }));
+    } else {
+      // Fallback to default signers
+      const orgResult = await this.db.query(
+        `SELECT name, email FROM organizations WHERE id = $1`,
+        [organizationId]
+      );
+      const orgInfo = orgResult.rows[0] || { name: 'Property Manager', email: '' };
+
+      signers = [
+        { 
+          name: leaseData.landlordName || orgInfo.name, 
+          email: leaseData.landlordEmail || orgInfo.email, 
+          role: 'LANDLORD',
+          order: 1
+        },
+        { 
+          name: application.applicantFullName, 
+          email: application.applicantEmail, 
+          role: 'TENANT',
+          order: 2
+        }
+      ];
+    }
+
+    return {
+      tenantId: '', // Will be created after e-sign completion
+      tenancyId: tenancy.id,
+      documentId: leaseDoc.documentId,
+      documentKey: leaseDoc.documentKey,
+      documentUrl: leaseDoc.downloadUrl,
+      filename: leaseDoc.filename,
+      signers
+    };
   }
 
   // =====================================================
@@ -1352,7 +1629,12 @@ export class ApplicationService {
       expiresAt: row.expires_at,
       deletedAt: row.deleted_at,
       propertyName: row.property_name,
-      propertyAddress: row.property_address
+      propertyAddress: row.property_address,
+      propertyPrice: row.property_price ? parseFloat(row.property_price) : undefined,
+      propertyPriceCurrency: row.property_price_currency,
+      propertyBedrooms: row.property_bedrooms,
+      propertyBathrooms: row.property_bathrooms,
+      propertyType: row.property_type
     };
   }
 

@@ -15,6 +15,7 @@ let tokenPayload: TokenPayload | null = null;
 interface TokenPayload {
   userId: string;
   email: string;
+  name?: string;
   role: string;
   organizationId: string;
   tier: string;
@@ -162,7 +163,7 @@ export const getUserInfo = (): UserInfo | null => {
   return {
     id: tokenPayload.userId,
     email: tokenPayload.email,
-    name: tokenPayload.email.split('@')[0], // Use email prefix as name
+    name: tokenPayload.name || tokenPayload.email.split('@')[0], // Use name from token, fallback to email prefix
     role: tokenPayload.role,
     organizationId: tokenPayload.organizationId,
     tier: tokenPayload.tier,

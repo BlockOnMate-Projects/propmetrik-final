@@ -273,3 +273,10 @@ export const createEnvelope = (formData: FormData) =>
 export const voidEnvelope = (id: string) => api.post(`/envelopes/${id}/void`);
 
 export const resendEnvelope = (id: string) => api.post(`/envelopes/${id}/resend`);
+
+export const downloadEnvelopeDocument = (envelopeId: string, documentId?: string) => {
+  const url = documentId 
+    ? `/envelopes/${envelopeId}/documents/${documentId}/download`
+    : `/envelopes/${envelopeId}/documents/0/download`;
+  return api.get(url, { responseType: 'blob' });
+};

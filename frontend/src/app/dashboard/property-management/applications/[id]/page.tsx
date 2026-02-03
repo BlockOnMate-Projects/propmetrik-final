@@ -316,7 +316,8 @@ export default function ApplicationDetailPage() {
             )}
 
             {/* Lease Signed - Tenant Created Banner */}
-            {application.tenantId && (
+            {/* Only show when lease is actually signed (has envelopeId with completed status or explicit signed flag) */}
+            {application.tenantId && application.envelopeId && application.status === 'lease_signed' && (
                 <Card className="bg-emerald-900/20 border-emerald-900">
                     <CardContent className="pt-4">
                         <div className="flex items-center justify-between">
@@ -341,7 +342,48 @@ export default function ApplicationDetailPage() {
                 </Card>
             )}
 
-            {/* Lease Sent - Awaiting Signature Banner */}
+            {/* Lease Generated - Awaiting Signature Banner */}
+            {/* Show only when status is lease_generated */}
+            {application.status === ApplicationStatus.LEASE_GENERATED && (
+                <Card className="bg-amber-900/20 border-amber-900">
+                    <CardContent className="pt-4">
+                        <div className="flex items-center justify-between">
+                            <div className="flex items-start gap-3">
+                                <Send className="h-5 w-5 text-amber-400 mt-0.5" />
+                                <div>
+                                    <p className="font-medium text-amber-400">Lease Generated - Awaiting Signature</p>
+                                    <p className="text-zinc-400 mt-1">
+                                        The lease agreement has been generated. Continue to the e-sign wizard to place signature fields and send for signing.
+                                    </p>
+                                </div>
+                            </div>
+                            <div className="flex gap-2">
+                                {application.envelopeId ? (
+                                    <Link href={`/dashboard/e-sign/envelopes/${application.envelopeId}?return=/dashboard/property-management/applications/${application.id}`}>
+                                        <Button 
+                                            variant="outline"
+                                            size="sm"
+                                            className="border-amber-700 text-amber-400 hover:bg-amber-900/30"
+                                        >
+                                            <Eye className="h-4 w-4 mr-2" />
+                                            View Envelope
+                                        </Button>
+                                    </Link>
+                                ) : (
+                                    <Link href={`/dashboard/property-management/applications/${application.id}/generate-lease`}>
+                                        <Button className="bg-emerald-600 hover:bg-emerald-700">
+                                            <FileText className="h-4 w-4 mr-2" />
+                                            Continue to E-Sign
+                                        </Button>
+                                    </Link>
+                                )}
+                            </div>
+                        </div>
+                    </CardContent>
+                </Card>
+            )}
+
+            {/* Lease Sent - Awaiting Signature Banner (legacy - for old leases without tenantId set during generation) */}
             {application.status === ApplicationStatus.LEASE_GENERATED && !application.tenantId && (
                 <Card className="bg-amber-900/20 border-amber-900">
                     <CardContent className="pt-4">

@@ -348,6 +348,12 @@ export class TemplateService {
             }).format(value);
         });
 
+        // Format number (no currency symbol)
+        this.handlebars.registerHelper('formatNumber', (value: number) => {
+            if (value === null || value === undefined || isNaN(value)) return '0';
+            return new Intl.NumberFormat('en-GH').format(value);
+        });
+
         // Format date
         this.handlebars.registerHelper('formatDate', (date: Date | string, format: string = 'long') => {
             const d = new Date(date);
@@ -459,7 +465,7 @@ export class PDFGenerationService {
     }
 
     /**
-     * Generate PDF from HTML content
+     * Generate PDF from HTML content using Puppeteer for proper rendering
      */
     async generateFromHTML(html: string, options?: {
         format?: 'A4' | 'Letter';
@@ -468,30 +474,134 @@ export class PDFGenerationService {
         footerTemplate?: string;
     }): Promise<Buffer> {
         try {
-            // Try using pdf-lib for basic PDF generation
-            const { PDFDocument, StandardFonts, rgb } = await import('pdf-lib');
+            // Replace Unicode characters that might cause issues
+            let sanitizedHtml = html
+                .replace(/₵/g, 'GHS ')
+                .replace(/€/g, 'EUR ')
+                .replace(/£/g, 'GBP ')
+                .replace(/¥/g, 'JPY ')
+                .replace(/₦/g, 'NGN ');
+
+            // Try Puppeteer first for proper HTML rendering
+            try {
+                const puppeteer = await import('puppeteer');
+                const browser = await puppeteer.default.launch({
+                    headless: true,
+                    args: ['--no-sandbox', '--disable-setuid-sandbox']
+                });
+                
+                const page = await browser.newPage();
+                
+                // Set the HTML content with proper styling
+                await page.setContent(sanitizedHtml, {
+                    waitUntil: 'networkidle0'
+                });
+                
+                // Generate PDF with proper formatting
+                const pdfBuffer = await page.pdf({
+                    format: options?.format || 'A4',
+                    margin: options?.margin || {
+                        top: '2.5cm',
+                        right: '2.5cm',
+                        bottom: '2.5cm',
+                        left: '2.5cm'
+                    },
+                    printBackground: true,
+                    displayHeaderFooter: false
+                });
+                
+                await browser.close();
+                
+                this.logger.info('PDF generated successfully with Puppeteer');
+                return Buffer.from(pdfBuffer);
+            } catch (puppeteerError: any) {
+                this.logger.warn('Puppeteer not available, falling back to pdf-lib', { error: puppeteerError.message });
+                // Fall back to pdf-lib for basic rendering
+                return this.generateWithPdfLib(sanitizedHtml);
+            }
+        } catch (error: any) {
+            this.logger.error('Failed to generate PDF', { error: error.message });
+            throw new Error(`Failed to generate PDF: ${error.message}`);
+        }
+    }
+
+    /**
+     * Fallback PDF generation using pdf-lib (basic text rendering)
+     */
+    private async generateWithPdfLib(html: string): Promise<Buffer> {
+        const { PDFDocument, StandardFonts, rgb } = await import('pdf-lib');
+        
+        const doc = await PDFDocument.create();
+        let page = doc.addPage([595.28, 841.89]); // A4 size
+        const font = await doc.embedFont(StandardFonts.Helvetica);
+        const fontBold = await doc.embedFont(StandardFonts.HelveticaBold);
+        
+        // Strip HTML tags but try to preserve structure
+        const text = html
+            .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '') // Remove style tags
+            .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '') // Remove script tags
+            .replace(/<br\s*\/?>/gi, '\n')
+            .replace(/<\/p>/gi, '\n\n')
+            .replace(/<\/div>/gi, '\n')
+            .replace(/<\/h[1-6]>/gi, '\n\n')
+            .replace(/<[^>]*>/g, '')
+            .replace(/&nbsp;/g, ' ')
+            .replace(/&amp;/g, '&')
+            .replace(/&lt;/g, '<')
+            .replace(/&gt;/g, '>')
+            .replace(/\n\s*\n\s*\n/g, '\n\n')
+            .trim();
+        
+        const lines = text.split('\n');
+        
+        let y = 780;
+        const lineHeight = 14;
+        const marginLeft = 72; // 1 inch = 72 points
+        const pageWidth = 595.28 - 144; // A4 width minus margins
+        
+        for (const line of lines) {
+            const trimmedLine = line.trim();
+            if (!trimmedLine) {
+                y -= lineHeight / 2;
+                continue;
+            }
             
-            // For complex HTML, we'd use puppeteer, but for now use basic text extraction
-            // This is a simplified version - production would use puppeteer
-            const doc = await PDFDocument.create();
-            const page = doc.addPage([595.28, 841.89]); // A4 size
-            const font = await doc.embedFont(StandardFonts.Helvetica);
+            if (y < 72) {
+                page = doc.addPage([595.28, 841.89]);
+                y = 780;
+            }
             
-            // Strip HTML and render as text (simplified)
-            const text = html.replace(/<[^>]*>/g, '\n').replace(/\n\s*\n/g, '\n').trim();
-            const lines = text.split('\n').filter(line => line.trim());
+            // Word wrap long lines
+            const words = trimmedLine.split(' ');
+            let currentLine = '';
             
-            let y = 800;
-            const lineHeight = 14;
-            
-            for (const line of lines) {
-                if (y < 50) {
-                    // Add new page
-                    const newPage = doc.addPage([595.28, 841.89]);
-                    y = 800;
+            for (const word of words) {
+                const testLine = currentLine ? `${currentLine} ${word}` : word;
+                const textWidth = font.widthOfTextAtSize(testLine, 11);
+                
+                if (textWidth > pageWidth && currentLine) {
+                    page.drawText(currentLine, {
+                        x: marginLeft,
+                        y,
+                        size: 11,
+                        font,
+                        color: rgb(0, 0, 0)
+                    });
+                    y -= lineHeight;
+                    currentLine = word;
+                    
+                    if (y < 72) {
+                        page = doc.addPage([595.28, 841.89]);
+                        y = 780;
+                    }
+                } else {
+                    currentLine = testLine;
                 }
-                page.drawText(line.substring(0, 80), { // Limit line length
-                    x: 50,
+            }
+            
+            if (currentLine) {
+                page.drawText(currentLine, {
+                    x: marginLeft,
                     y,
                     size: 11,
                     font,
@@ -499,13 +609,10 @@ export class PDFGenerationService {
                 });
                 y -= lineHeight;
             }
-
-            const pdfBytes = await doc.save();
-            return Buffer.from(pdfBytes);
-        } catch (error: any) {
-            this.logger.error('Failed to generate PDF', { error: error.message });
-            throw new Error(`Failed to generate PDF: ${error.message}`);
         }
+
+        const pdfBytes = await doc.save();
+        return Buffer.from(pdfBytes);
     }
 
     /**

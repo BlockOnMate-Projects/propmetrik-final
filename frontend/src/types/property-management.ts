@@ -16,6 +16,7 @@ export enum TenantStatus {
 }
 
 export enum TenancyStatus {
+    PENDING_SIGNATURE = 'pending_signature', // Lease generated, awaiting e-signatures
     PENDING = 'pending',
     ACTIVE = 'active',
     EXPIRED = 'expired',

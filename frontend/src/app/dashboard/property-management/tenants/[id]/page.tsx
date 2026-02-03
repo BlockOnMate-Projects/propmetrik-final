@@ -314,8 +314,8 @@ export default function TenantDetailsPage() {
             return
         }
 
-        // Navigate to the e-sign page for the tenancy
-        router.push(`/dashboard/property-management/e-sign/${targetTenancy.id}`)
+        // Navigate to the tenancy/lease detail page for document management
+        router.push(`/dashboard/property-management/leases/${targetTenancy.id}`)
     }
 
     if (isLoading) {

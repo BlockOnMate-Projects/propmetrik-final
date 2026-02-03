@@ -1,19 +1,29 @@
 /**
  * Contractor Service
  * Phase 5.8 Week 2 - Contractor Management
+ * Phase 5 E-Sign Integration - Contract signing workflow for contractor assignments
+ * 
  * Competitive Inspiration: Procore, Buildertrend
  * 
  * Handles:
  * - Contractor CRUD and approval
- * - Project assignments
+ * - Project assignments with e-sign contract workflow
  * - Performance tracking
  * - Payment information (bank/MoMo for Ghana)
+ * 
+ * E-Sign Integration (Phase 5):
+ * - Triggers e-sign workflow when contractor is assigned with a contract
+ * - Collects signatures from project owner and contractor representative
+ * - Updates assignment with signed contract URL
  */
 
 import { pool } from '../../database';
 import { v4 as uuidv4 } from 'uuid';
 import { BaseService } from '../base/BaseService';
 import { eventBus, ProjectEventType } from './events';
+import { eSignIntegrationService } from '../e-sign/eSignIntegrationService';
+import { CompletionEvent, ESignField, ESignSigner } from '../e-sign/types';
+import { logger } from '../../utils/logger';
 
 // ============================================================================
 // TYPES
@@ -604,6 +614,278 @@ class ContractorService extends BaseService {
     );
     
     return result.rows.map(row => row.trade);
+  }
+
+  // --------------------------------------------------------------------------
+  // E-SIGN INTEGRATION (Phase 5)
+  // --------------------------------------------------------------------------
+
+  /**
+   * Trigger e-sign workflow for contractor contract
+   */
+  async triggerContractEsign(
+    assignmentId: string,
+    contractDocumentUrl: string,
+    userId: string
+  ): Promise<void> {
+    const assignment = await this.getAssignment(assignmentId);
+    if (!assignment) {
+      throw new Error(`Assignment not found: ${assignmentId}`);
+    }
+
+    const contractor = await this.getById(assignment.contractor_id);
+    if (!contractor) {
+      throw new Error(`Contractor not found: ${assignment.contractor_id}`);
+    }
+
+    // Get project info
+    const projectResult = await pool.query(
+      'SELECT * FROM projects WHERE id = $1',
+      [assignment.project_id]
+    );
+    const project = projectResult.rows[0];
+
+    logger.info('Triggering e-sign for contractor contract', {
+      assignmentId,
+      contractorId: contractor.id,
+      projectId: assignment.project_id,
+    });
+
+    // Fetch contract document
+    const contractPdf = await this.fetchContractDocument(contractDocumentUrl);
+
+    // Resolve signers
+    const signers = await this.resolveContractSigners(assignment, contractor);
+
+    if (signers.length === 0) {
+      logger.warn('No signers resolved for contractor contract e-sign', {
+        assignmentId,
+      });
+      return;
+    }
+
+    // Build field placements
+    const fields = this.buildContractFields(signers);
+
+    // Create envelope
+    const envelope = await eSignIntegrationService.createEnvelope({
+      subject: `Contractor Agreement - ${contractor.company_name} - ${project?.name || 'Project'}`,
+      message: `Please review and sign the contractor agreement for ${contractor.company_name}. Contract value: ${assignment.contract_value.toLocaleString()}`,
+      documents: [{
+        name: `Contractor_Contract_${contractor.company_name.replace(/\s+/g, '_')}.pdf`,
+        content: contractPdf,
+        mimeType: 'application/pdf',
+        source: 'uploaded',
+      }],
+      signers,
+      fields,
+      sourceModule: 'project_management',
+      sourceEntityType: 'contractor_contract',
+      sourceEntityId: assignmentId,
+      expiresInDays: 14,
+    });
+
+    // Update assignment with envelope info
+    await pool.query(`
+      UPDATE project_contractor_assignments
+      SET esign_envelope_id = $1,
+          esign_status = 'sent',
+          esign_triggered_at = NOW(),
+          contract_status = 'pending_signature'
+      WHERE id = $2
+    `, [envelope.envelopeId, assignmentId]);
+
+    // Log audit event
+    await this.logEsignAudit(
+      assignment.organization_id,
+      'contractor_contract',
+      assignmentId,
+      envelope.envelopeId,
+      'created',
+      userId
+    );
+
+    logger.info('E-sign triggered for contractor contract', {
+      assignmentId,
+      envelopeId: envelope.envelopeId,
+    });
+  }
+
+  /**
+   * Handle e-sign completion for contractor contracts
+   */
+  async handleEsignCompletion(event: CompletionEvent): Promise<void> {
+    const { sourceContext, envelope, documents, signers: completedSigners } = event;
+
+    logger.info('Handling e-sign completion for contractor contract', {
+      assignmentId: sourceContext.entityId,
+      envelopeId: envelope.id,
+    });
+
+    const assignment = await this.getAssignment(sourceContext.entityId);
+    if (!assignment) {
+      throw new Error(`Assignment not found: ${sourceContext.entityId}`);
+    }
+
+    // Update assignment with signed contract
+    const signedContractUrl = documents[0]?.signedUrl || null;
+
+    await pool.query(`
+      UPDATE project_contractor_assignments
+      SET esign_status = 'completed',
+          esign_completed_at = NOW(),
+          signed_contract_url = $2,
+          contract_status = 'signed'
+      WHERE id = $1
+    `, [sourceContext.entityId, signedContractUrl]);
+
+    // Log audit event
+    await this.logEsignAudit(
+      assignment.organization_id,
+      'contractor_contract',
+      sourceContext.entityId,
+      envelope.id,
+      'completed',
+      null,
+      { signers: completedSigners }
+    );
+
+    // Emit event for notifications
+    eventBus.emit(ProjectEventType.CONTRACTOR_CONTRACT_SIGNED, {
+      assignmentId: sourceContext.entityId,
+      contractorId: assignment.contractor_id,
+      projectId: assignment.project_id,
+      signedContractUrl,
+    });
+
+    logger.info('Contractor contract e-sign completed', {
+      assignmentId: sourceContext.entityId,
+    });
+  }
+
+  /**
+   * Fetch contract document from URL
+   */
+  private async fetchContractDocument(url: string): Promise<Buffer> {
+    try {
+      const response = await fetch(url);
+      if (!response.ok) {
+        throw new Error(`Failed to fetch document: ${response.status}`);
+      }
+      const arrayBuffer = await response.arrayBuffer();
+      return Buffer.from(arrayBuffer);
+    } catch (error) {
+      logger.error('Failed to fetch contract document', { url, error });
+      throw error;
+    }
+  }
+
+  /**
+   * Resolve signers for contractor contract
+   */
+  private async resolveContractSigners(
+    assignment: ContractorAssignment,
+    contractor: Contractor
+  ): Promise<ESignSigner[]> {
+    const signers: ESignSigner[] = [];
+
+    // Get project owner/representative
+    const teamResult = await pool.query(`
+      SELECT pt.*, u.full_name, u.email
+      FROM project_team pt
+      JOIN users u ON pt.user_id = u.id
+      WHERE pt.project_id = $1 
+        AND pt.is_active = true
+        AND pt.role IN ('owner', 'owner_representative', 'project_manager')
+      ORDER BY CASE 
+        WHEN pt.role = 'owner' THEN 1
+        WHEN pt.role = 'owner_representative' THEN 2
+        ELSE 3
+      END
+      LIMIT 1
+    `, [assignment.project_id]);
+
+    if (teamResult.rows.length > 0) {
+      const owner = teamResult.rows[0];
+      signers.push({
+        name: owner.full_name,
+        email: owner.email,
+        role: 'signer',
+        order: 1,
+      });
+    }
+
+    // Contractor representative
+    if (contractor.email && contractor.contact_name) {
+      signers.push({
+        name: contractor.contact_name,
+        email: contractor.email,
+        role: 'signer',
+        order: 2,
+      });
+    }
+
+    return signers;
+  }
+
+  /**
+   * Build signature field placements for contract
+   */
+  private buildContractFields(signers: ESignSigner[]): ESignField[] {
+    const fields: ESignField[] = [];
+    let yPosition = 0.75;
+
+    for (const signer of signers) {
+      // Signature field
+      fields.push({
+        type: 'signature',
+        recipientEmail: signer.email,
+        documentIndex: 0,
+        page: 1, // Typically last page
+        x: 0.1,
+        y: yPosition,
+        width: 0.3,
+        height: 0.08,
+        required: true,
+      });
+
+      // Date field
+      fields.push({
+        type: 'date',
+        recipientEmail: signer.email,
+        documentIndex: 0,
+        page: 1,
+        x: 0.5,
+        y: yPosition,
+        width: 0.2,
+        height: 0.05,
+        required: true,
+      });
+
+      yPosition -= 0.12;
+    }
+
+    return fields;
+  }
+
+  /**
+   * Log e-sign audit event
+   */
+  private async logEsignAudit(
+    organizationId: string,
+    entityType: string,
+    entityId: string,
+    envelopeId: string,
+    action: string,
+    performedBy: string | null,
+    metadata: any = {}
+  ): Promise<void> {
+    await pool.query(`
+      INSERT INTO project_esign_audit (
+        organization_id, entity_type, entity_id, esign_envelope_id,
+        action, performed_by, metadata
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7)
+    `, [organizationId, entityType, entityId, envelopeId, action, performedBy, JSON.stringify(metadata)]);
   }
 
   // --------------------------------------------------------------------------
