@@ -128,6 +128,12 @@ class Settings(BaseSettings):
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
     
+    # Internal API Key for server-to-server authentication (programmatic API)
+    INTERNAL_API_KEY: str = os.getenv("ESIGN_INTERNAL_API_KEY", "")
+    
+    # Webhook HMAC secret for signing webhook payloads
+    WEBHOOK_SECRET: str = os.getenv("ESIGN_WEBHOOK_SECRET", "")
+    
     # Application Settings
     ENVIRONMENT: str = os.getenv("ENVIRONMENT", "development")
     DEBUG: bool = os.getenv("DEBUG", "false").lower() == "true"

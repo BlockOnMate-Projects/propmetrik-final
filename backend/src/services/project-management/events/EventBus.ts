@@ -112,6 +112,11 @@ export enum ProjectEventType {
   FRAMEWORK_APPLIED = 'framework.applied',
   FRAMEWORK_MODIFIED = 'framework.modified',
   
+  // E-Sign events (Phase 5)
+  CONTRACTOR_CONTRACT_SIGNED = 'contractor.contract_signed',
+  DRAW_ESIGN_COMPLETED = 'draw.esign_completed',
+  CHANGE_ORDER_ESIGN_COMPLETED = 'change_order.esign_completed',
+  
   // System events
   SYSTEM_ERROR = 'system.error',
   SYNC_REQUIRED = 'sync.required'

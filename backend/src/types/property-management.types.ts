@@ -18,6 +18,7 @@ export enum TenantStatus {
 }
 
 export enum TenancyStatus {
+    PENDING_SIGNATURE = 'pending_signature', // Lease generated, awaiting e-signatures
     PENDING = 'pending',
     ACTIVE = 'active',
     EXPIRED = 'expired',
@@ -338,12 +339,14 @@ export interface LeaseTerms {
     sublettingAllowed?: boolean;
     maxOccupants?: number;
     utilitiesIncluded?: string[];
+    tenantUtilities?: string[];
+    landlordUtilities?: string[];
     additionalTerms?: string[];
 }
 
 export interface CreateTenancyDto {
     propertyId: string;
-    tenantId: string;
+    tenantId?: string; // Optional - tenant is created after lease is signed
     unitNumber?: string;
     leaseStartDate: string;
     leaseEndDate: string;
@@ -360,6 +363,7 @@ export interface CreateTenancyDto {
     autoRenew?: boolean;
     leaseTerms?: LeaseTerms;
     specialConditions?: string;
+    status?: TenancyStatus | string; // Allow setting initial status
 }
 
 export interface UpdateTenancyDto extends Partial<CreateTenancyDto> {

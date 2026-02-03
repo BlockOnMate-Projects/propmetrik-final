@@ -14,7 +14,7 @@ from database import init_db
 from auth import get_current_user, test_keycloak_connection
 
 # Import API routers
-from api import documents, signature_requests, signing, google_drive, drive_picker, quick_sign, envelopes, templates, reports, users
+from api import documents, signature_requests, signing, google_drive, drive_picker, quick_sign, envelopes, templates, reports, users, programmatic, webhooks
 
 # Create FastAPI app
 app = FastAPI(
@@ -160,6 +160,8 @@ app.include_router(envelopes.router, tags=["Envelopes"])
 app.include_router(templates.router, tags=["Templates"])
 app.include_router(reports.router, tags=["Reports"])
 app.include_router(users.router, tags=["Users"])
+app.include_router(programmatic.router, tags=["Programmatic API"])
+app.include_router(webhooks.router, tags=["Webhooks"])
 # app.include_router(auth.router, prefix="/auth", tags=["Authentication"])
 # app.include_router(google.router, prefix="/google", tags=["Google Drive"])
 # app.include_router(esign.router, prefix="/esign", tags=["E-Signature"])

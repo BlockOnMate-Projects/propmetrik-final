@@ -50,6 +50,10 @@ import procurementRoutes from './routes/procurement';
 import siteDiaryRoutes from './routes/siteDiaries';
 import governanceRoutes from './routes/governance';
 import docsRoutes from './routes/docs';
+import litigationRoutes from './routes/litigation';
+import shortStayRoutes from './routes/shortStay';
+import ricsComplianceRoutes from './routes/ricsCompliance';
+import floodRiskRoutes from './routes/floodRisk';
 
 // Import shared services
 import { realtimeEmitter } from '../shared-services/realtime';
@@ -174,6 +178,16 @@ app.use('/api/procurement', procurementRoutes);  // Also mount for frontend comp
 app.use('/api/v1/site-diaries', siteDiaryRoutes);
 app.use('/api/site-diaries', siteDiaryRoutes);  // Also mount for frontend compatibility
 app.use('/api/v1', governanceRoutes);  // Governance: milestone-frameworks, framework-phases, milestone-templates
+
+// Critical Data Gaps: Litigation Risk & Short-Stay Metrics
+app.use('/api/v1/litigation', litigationRoutes);
+app.use('/api/litigation', litigationRoutes);  // Also mount for frontend compatibility
+app.use('/api/v1/short-stay', shortStayRoutes);
+app.use('/api/short-stay', shortStayRoutes);  // Also mount for frontend compatibility
+app.use('/api/v1/rics-compliance', ricsComplianceRoutes);
+app.use('/api/rics-compliance', ricsComplianceRoutes);  // Also mount for frontend compatibility
+app.use('/api/v1/flood-risk', floodRiskRoutes);
+app.use('/api/flood-risk', floodRiskRoutes);  // Also mount for frontend compatibility
 
 // In-Mail Notification System
 app.use('/api/v1/notifications', notificationRoutes);

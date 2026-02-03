@@ -253,6 +253,14 @@ class Envelope(Base):
     security_hash_algorithm = Column(String(20), default="SHA-256")
     security_hash_generated_at = Column(DateTime)
     certificate_file_path = Column(String(1000))
+    # Source context for programmatic integration
+    source_module = Column(String(50), index=True)  # property_management, valuation, crm, project_management
+    source_entity_type = Column(String(50))  # tenancy, valuation_report, deal, change_order
+    source_entity_id = Column(String(36))  # UUID of source entity
+    callback_url = Column(Text)  # Webhook URL for completion notification
+    is_programmatic = Column(Boolean, default=False)  # TRUE if created via programmatic API
+    webhook_delivered_at = Column(DateTime)
+    webhook_delivery_attempts = Column(Integer, default=0)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False, index=True)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 

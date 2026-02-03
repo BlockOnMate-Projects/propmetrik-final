@@ -143,20 +143,21 @@ class CleaningPipeline:
             item['country'] = 'Ghana'
         
         # Calculate USD price
-        if item.get('price') and item.get('currency'):
+        if item.get('price') and item.get('currency') and 'price_usd' in item.fields:
             item['price_usd'] = self._convert_to_usd(item['price'], item['currency'])
             item['price_ghs'] = self._convert_to_ghs(item['price'], item['currency'])
         
         # Calculate price per sqm
-        if item.get('price_usd') and item.get('building_size_sqm'):
+        if item.get('price_usd') and item.get('building_size_sqm') and 'price_per_sqm' in item.fields:
             item['price_per_sqm'] = float(item['price_usd']) / float(item['building_size_sqm'])
         
         # Convert land size to sqm if not present
-        if item.get('land_size_acres') and not item.get('land_size_sqm'):
-            item['land_size_sqm'] = float(item['land_size_acres']) * 4046.86
-        elif item.get('land_size_plots') and not item.get('land_size_sqm'):
-            # 1 plot ≈ 70x100 ft ≈ 650 sqm in Ghana
-            item['land_size_sqm'] = float(item['land_size_plots']) * 650
+        if 'land_size_sqm' in item.fields:
+            if item.get('land_size_acres') and not item.get('land_size_sqm'):
+                item['land_size_sqm'] = float(item['land_size_acres']) * 4046.86
+            elif item.get('land_size_plots') and not item.get('land_size_sqm'):
+                # 1 plot ≈ 70x100 ft ≈ 650 sqm in Ghana
+                item['land_size_sqm'] = float(item['land_size_plots']) * 650
         
         # Clean phone numbers
         if item.get('agent_phone'):
@@ -167,12 +168,13 @@ class CleaningPipeline:
             item['images'] = self._clean_images(item['images'])
             item['image_count'] = len(item['images'])
         
-        # Generate duplicate hash
-        item['duplicate_hash'] = self._generate_duplicate_hash(item)
+        # Property specific enrichments
+        if 'duplicate_hash' in item.fields:
+            item['duplicate_hash'] = self._generate_duplicate_hash(item)
         
-        # Calculate data quality score
-        item['data_quality_score'] = self._calculate_quality_score(item)
-        item['completeness_score'] = self._calculate_completeness_score(item)
+        if 'data_quality_score' in item.fields:
+            item['data_quality_score'] = self._calculate_quality_score(item)
+            item['completeness_score'] = self._calculate_completeness_score(item)
         
         return item
     
@@ -588,6 +590,183 @@ class PostgresPipeline:
             return 'lease'
         return 'sale'
 
+    def _save_litigation_data(self, cursor, item):
+        """Save litigation risk item."""
+        # Check existence using source_url
+        cursor.execute("SELECT id FROM litigation_risk_data WHERE source_url = %s", (item.get('source_url'),))
+        if cursor.fetchone():
+            return # Skip existing for now
+            
+        cursor.execute("""
+            INSERT INTO litigation_risk_data (
+                source_name, source_url,
+                case_number, case_title, court_name,
+                plaintiff_names, defendant_names,
+                property_description, land_parcel_id, land_size_acres,
+                raw_address, neighborhood, city, region,
+                dispute_type, status, judgment_date, judgment_summary,
+                involves_landguard, involves_violence,
+                extracted_data
+            ) VALUES (
+                %s, %s,
+                %s, %s, %s,
+                %s, %s,
+                %s, %s, %s,
+                %s, %s, %s, %s,
+                %s, %s, %s, %s,
+                %s, %s,
+                %s
+            )
+        """, (
+            item.get('source_name'), item.get('source_url'),
+            item.get('case_number'), item.get('case_title'), item.get('court_name'),
+            item.get('plaintiff_names'), item.get('defendant_names'),
+            item.get('property_description'), item.get('land_parcel_id'), item.get('land_size_acres'),
+            item.get('raw_address'), item.get('neighborhood'), item.get('city'), item.get('region'),
+            item.get('dispute_type'), item.get('status'), item.get('judgment_date'), item.get('judgment_summary'),
+            item.get('involves_landguard')[0] if isinstance(item.get('involves_landguard'), list) else item.get('involves_landguard'),
+            item.get('involves_violence')[0] if isinstance(item.get('involves_violence'), list) else item.get('involves_violence'),
+            json.dumps(item.get('extracted_data') or {})
+        ))
+        self.items_saved += 1
+        
+    def _save_flood_data(self, cursor, item):
+        """Save flood risk incident."""
+        pass
+
+    def _save_short_stay_listing_data(self, cursor, item):
+        """Save short-stay listing data."""
+        # Check existence using platform and external_id
+        cursor.execute("""
+            SELECT id FROM short_stay_listings 
+            WHERE platform = %s AND external_id = %s
+        """, (item.get('platform'), item.get('external_id')))
+        
+        existing = cursor.fetchone()
+        
+        # Prepare location point
+        location = None
+        if item.get('latitude') and item.get('longitude'):
+            location = f"SRID=4326;POINT({item['longitude']} {item['latitude']})"
+
+        if existing:
+            # Update existing
+            cursor.execute("""
+                UPDATE short_stay_listings SET
+                    property_name = %s, property_type = %s,
+                    neighborhood = %s, city = %s, region = %s,
+                    location = %s::geography,
+                    bedrooms = %s, bathrooms = %s, max_guests = %s,
+                    amenities = %s,
+                    host_id = %s, host_name = %s, host_is_superhost = %s,
+                    rating_average = %s, rating_count = %s,
+                    is_active = %s,
+                    extracted_data = %s,
+                    last_seen_at = NOW(),
+                    updated_at = NOW()
+                WHERE id = %s
+            """, (
+                item.get('property_name'), item.get('property_type'),
+                item.get('neighborhood'), item.get('city'), item.get('region'),
+                location,
+                item.get('bedrooms'), item.get('bathrooms'), item.get('max_guests'),
+                item.get('amenities'),
+                item.get('host_id'), item.get('host_name'), item.get('host_is_superhost'),
+                item.get('rating_average'), item.get('rating_count'),
+                item.get('is_active', True),
+                json.dumps(item.get('extracted_data') or {}),
+                existing['id']
+            ))
+            self.items_updated += 1
+            return existing['id']
+        else:
+            # Insert new
+            cursor.execute("""
+                INSERT INTO short_stay_listings (
+                    platform, external_id, listing_url,
+                    property_name, property_type,
+                    neighborhood, city, region,
+                    location,
+                    bedrooms, bathrooms, max_guests,
+                    amenities,
+                    host_id, host_name, host_is_superhost,
+                    rating_average, rating_count,
+                    is_active,
+                    extracted_data
+                ) VALUES (
+                    %s, %s, %s,
+                    %s, %s,
+                    %s, %s, %s,
+                    %s::geography,
+                    %s, %s, %s,
+                    %s,
+                    %s, %s, %s,
+                    %s, %s,
+                    %s,
+                    %s
+                ) RETURNING id
+            """, (
+                item.get('platform'), item.get('external_id'), item.get('listing_url'),
+                item.get('property_name'), item.get('property_type'),
+                item.get('neighborhood'), item.get('city'), item.get('region'),
+                location,
+                item.get('bedrooms'), item.get('bathrooms'), item.get('max_guests'),
+                item.get('amenities'),
+                item.get('host_id'), item.get('host_name'), item.get('host_is_superhost'),
+                item.get('rating_average'), item.get('rating_count'),
+                item.get('is_active', True),
+                json.dumps(item.get('extracted_data') or {})
+            ))
+            result = cursor.fetchone()
+            self.items_saved += 1
+            return result['id']
+
+    def _save_short_stay_availability_data(self, cursor, item):
+        """Save short-stay availability snapshot."""
+        # Find listing_id correctly
+        cursor.execute("""
+            SELECT id FROM short_stay_listings 
+            WHERE platform = %s AND external_id = %s
+        """, (item.get('platform'), item.get('listing_external_id')))
+        
+        listing = cursor.fetchone()
+        if not listing:
+            logger.warning(f"Could not find listing {item.get('listing_external_id')} for availability snapshot")
+            return
+
+        # Insert snapshot (UPSERT on listing_id, check_date, snapshot_date)
+        cursor.execute("""
+            INSERT INTO short_stay_availability (
+                listing_id, check_date, snapshot_date,
+                is_available, min_nights, max_nights,
+                price_per_night_usd, price_per_night_local, currency,
+                cleaning_fee_usd, service_fee_usd,
+                extracted_data
+            ) VALUES (
+                %s, %s, %s,
+                %s, %s, %s,
+                %s, %s, %s,
+                %s, %s,
+                %s
+            ) ON CONFLICT (listing_id, check_date, snapshot_date) DO UPDATE SET
+                is_available = EXCLUDED.is_available,
+                min_nights = EXCLUDED.min_nights,
+                max_nights = EXCLUDED.max_nights,
+                price_per_night_usd = EXCLUDED.price_per_night_usd,
+                price_per_night_local = EXCLUDED.price_per_night_local,
+                currency = EXCLUDED.currency,
+                cleaning_fee_usd = EXCLUDED.cleaning_fee_usd,
+                service_fee_usd = EXCLUDED.service_fee_usd,
+                extracted_data = EXCLUDED.extracted_data
+        """, (
+            listing['id'], item.get('check_date'), item.get('snapshot_date'),
+            item.get('is_available'), item.get('min_nights'), item.get('max_nights'),
+            item.get('price_per_night_usd'), item.get('price_per_night_local'), item.get('currency'),
+            item.get('cleaning_fee_usd'), item.get('service_fee_usd'),
+            json.dumps(item.get('extracted_data') or {})
+        ))
+        self.items_saved += 1
+
     def _normalize_property_type(self, prop_type: str) -> str:
         """Convert property type to database enum value."""
         if not prop_type:
@@ -613,44 +792,59 @@ class PostgresPipeline:
         """Save item to PostgreSQL and track multi-source contributions."""
         
         try:
+            # Determine Item Type and Route
+            from propmetrik_scrapers.critical_data_items import (
+                LitigationItem, FloodIncidentItem, 
+                ShortStayListingItem, ShortStayAvailabilityItem
+            )
+            
             with self.conn.cursor(cursor_factory=RealDictCursor) as cur:
-                # Check if property exists by external_id and external_source
-                cur.execute("""
-                    SELECT id, region FROM properties 
-                    WHERE external_id = %s AND external_source = %s
-                """, (item.get('source_id'), item.get('source_slug')))
-                
-                existing = cur.fetchone()
-                property_id = None
-                
-                if existing:
-                    # Update existing property
-                    property_id = existing['id']
-                    self._update_property(cur, existing['id'], existing['region'], item)
-                    self.items_updated += 1
+                if isinstance(item, LitigationItem) or 'case_number' in item.fields:
+                     self._save_litigation_data(cur, item)
+                elif isinstance(item, FloodIncidentItem) or 'incident_description' in item.fields:
+                     self._save_flood_data(cur, item)
+                elif isinstance(item, ShortStayListingItem) or 'property_name' in item.fields:
+                     self._save_short_stay_listing_data(cur, item)
+                elif isinstance(item, ShortStayAvailabilityItem) or 'check_date' in item.fields:
+                     self._save_short_stay_availability_data(cur, item)
                 else:
-                    # Insert new property
-                    property_id = self._insert_property(cur, item)
-                    self.items_saved += 1
-                
-                self.conn.commit()
-                
-                # Track multi-source contribution if enabled and we have a property_id
-                if self._multi_source_tracker and property_id:
-                    try:
-                        source_type = self._get_source_type(item.get('source_slug'))
-                        self._multi_source_tracker.track_contribution(
-                            property_id=str(property_id),
-                            source_slug=item.get('source_slug', 'unknown'),
-                            source_type=source_type,
-                            item_data=dict(item),
-                            source_url=item.get('source_url')
-                        )
-                        self.sources_tracked += 1
-                    except Exception as e:
-                        logger.warning(f"Multi-source tracking failed: {e}")
-                        # Don't fail the pipeline, just log the error
-                
+                    # Default: Property Listing
+                    # Check if property exists by external_id and external_source
+                    cur.execute("""
+                        SELECT id, region FROM properties 
+                        WHERE external_id = %s AND external_source = %s
+                    """, (item.get('source_id'), item.get('source_slug')))
+                    
+                    existing = cur.fetchone()
+                    property_id = None
+                    
+                    if existing:
+                        # Update existing property
+                        property_id = existing['id']
+                        self._update_property(cur, existing['id'], existing['region'], item)
+                        self.items_updated += 1
+                    else:
+                        # Insert new property
+                        property_id = self._insert_property(cur, item)
+                        self.items_saved += 1
+                    
+                    # Track multi-source contribution if enabled and we have a property_id
+                    if self._multi_source_tracker and property_id:
+                        try:
+                            source_type = self._get_source_type(item.get('source_slug'))
+                            self._multi_source_tracker.track_contribution(
+                                property_id=str(property_id),
+                                source_slug=item.get('source_slug', 'unknown'),
+                                source_type=source_type,
+                                item_data=dict(item),
+                                source_url=item.get('source_url')
+                            )
+                            self.sources_tracked += 1
+                        except Exception as e:
+                            logger.warning(f"Multi-source tracking failed: {e}")
+                            # Don't fail the pipeline, just log the error
+
+            self.conn.commit()
         except Exception as e:
             self.conn.rollback()
             logger.error(f"PostgreSQL error: {e}")
