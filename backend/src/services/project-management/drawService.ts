@@ -14,10 +14,10 @@
 
 import { pool } from '../../database';
 import { logger } from '../../utils/logger';
-import { BaseService } from '../../../shared-services/base/BaseService';
+import { BaseService } from '../base/BaseService';
 import { eventBus, ProjectEventType } from './events';
-import { eSignIntegrationService } from '../../../shared-services/e-sign/integration/eSignIntegrationService';
-import { CompletionEvent, ESignField, ESignSigner } from '../../../shared-services/e-sign/integration/types';
+import { eSignIntegrationService } from '../e-sign/eSignIntegrationService';
+import { CompletionEvent, ESignField, ESignSigner } from '../e-sign/types';
 
 // =====================================================
 // TYPES

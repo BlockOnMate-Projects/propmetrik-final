@@ -5,7 +5,7 @@
  */
 
 import { Router } from 'express';
-import { litigationRiskService } from '../../shared-services/risk/litigationRiskService';
+import { litigationRiskService } from '../services/risk/litigationRiskService';
 import { logger } from '../utils/logger';
 
 const router = Router();

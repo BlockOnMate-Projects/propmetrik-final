@@ -15,8 +15,8 @@
 import { query, pool } from '../../database';
 import { logger } from '../../utils/logger';
 import { v4 as uuidv4 } from 'uuid';
-import { eSignIntegrationService } from '../../../shared-services/e-sign/integration/eSignIntegrationService';
-import { CompletionEvent, ESignField } from '../../../shared-services/e-sign/integration/types';
+import { eSignIntegrationService } from '../e-sign/eSignIntegrationService';
+import { CompletionEvent, ESignField } from '../e-sign/types';
 
 // =====================================================
 // TYPES

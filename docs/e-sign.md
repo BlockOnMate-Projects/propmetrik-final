@@ -2,7 +2,7 @@
 
 ## Executive Summary
 
-This document defines the architecture for integrating PROPMETRIK's E-Signature service as a **headless capability** triggered by business events across all modules. The e-sign tab remains available for manual document signing, but core services integrate e-sign directly into their workflows without requiring navigation to the e-sign UI.
+This document defines the architecture for integrating PropMetrik's E-Signature service as a **headless capability** triggered by business events across all modules. The e-sign tab remains available for manual document signing, but core services integrate e-sign directly into their workflows without requiring navigation to the e-sign UI.
 
 > **Key Principle**: E-sign is not a destination. It is an embedded capability.
 

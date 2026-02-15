@@ -5,7 +5,7 @@
  * Supports CSV parsing and normalization of disaster records.
  */
 
-import { floodRiskService } from '../../../../shared-services/risk/floodRiskService';
+import { floodRiskService } from '../../risk/floodRiskService';
 import { logger } from '../../../utils/logger';
 import * as fs from 'fs';
 import * as path from 'path';

@@ -28,8 +28,8 @@
 
 import { pool } from '../../database';
 import { logger } from '../../utils/logger';
-import { eSignIntegrationService } from '../../../shared-services/e-sign/integration/eSignIntegrationService';
-import { CompletionEvent, ESignField, ESignSigner } from '../../../shared-services/e-sign/integration/types';
+import { eSignIntegrationService } from '../e-sign/eSignIntegrationService';
+import { CompletionEvent, ESignField, ESignSigner } from '../e-sign/types';
 
 // =====================================================
 // TYPES
@@ -1106,7 +1106,7 @@ class ChangeOrderService {
         addition: parseInt(row.type_addition, 10),
         deduction: parseInt(row.type_deduction, 10),
         no_cost: parseInt(row.type_no_cost, 10)
-      } as any,
+      },
       total_additions: parseFloat(row.total_additions) || 0,
       total_deductions: parseFloat(row.total_deductions) || 0,
       net_change: parseFloat(row.net_change) || 0,
@@ -1291,7 +1291,7 @@ class ChangeOrderService {
         changeOrder.status,
         changeOrder.status,
         { signers: signers.map(s => ({ email: s.email, signedAt: s.signedAt })) },
-        undefined,
+        null,
         'All signatures collected via e-sign'
       );
 
@@ -1319,7 +1319,7 @@ class ChangeOrderService {
           'approved',
           'executed',
           null,
-          undefined,
+          null,
           'Auto-executed after e-sign completion'
         );
 

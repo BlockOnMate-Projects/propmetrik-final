@@ -36,14 +36,13 @@ export class ScrapyScheduler {
   private isInitialized = false;
 
   constructor() {
-    const scrapyConfig = (config as any).scrapy;
     this.config = {
-      autoStart: scrapyConfig?.autoStart ?? true,
-      initialDelay: scrapyConfig?.initialDelay ?? 30000, // 30 seconds after startup
-      weeklySchedule: scrapyConfig?.weeklySchedule ?? '0 2 * * 0', // Sunday 2 AM
-      dailyUpdates: scrapyConfig?.dailyUpdates ?? true,
-      dailySchedule: scrapyConfig?.dailySchedule ?? '0 3 * * *', // Daily 3 AM
-      enabledSpiders: scrapyConfig?.enabledSpiders ?? [
+      autoStart: config.scrapy?.autoStart ?? true,
+      initialDelay: config.scrapy?.initialDelay ?? 30000, // 30 seconds after startup
+      weeklySchedule: config.scrapy?.weeklySchedule ?? '0 2 * * 0', // Sunday 2 AM
+      dailyUpdates: config.scrapy?.dailyUpdates ?? true,
+      dailySchedule: config.scrapy?.dailySchedule ?? '0 3 * * *', // Daily 3 AM
+      enabledSpiders: config.scrapy?.enabledSpiders ?? [
         'meqasa',
         'housemaster',
         'gpc',
@@ -52,9 +51,9 @@ export class ScrapyScheduler {
         'daily_graphic_legal',  // Critical data: Litigation risk
         'airbnb_ghana',         // Critical data: Short-stay metrics
       ],
-      concurrentSpiders: scrapyConfig?.concurrentSpiders ?? 2,
-      retryFailed: scrapyConfig?.retryFailed ?? true,
-      maxRetries: scrapyConfig?.maxRetries ?? 3,
+      concurrentSpiders: config.scrapy?.concurrentSpiders ?? 2,
+      retryFailed: config.scrapy?.retryFailed ?? true,
+      maxRetries: config.scrapy?.maxRetries ?? 3,
     };
 
     logger.info('Scrapy scheduler initialized', {

@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-PROPMETRIK Scrapers - Critical Data Gaps Item Definitions
+Propmetrik Scrapers - Critical Data Gaps Item Definitions
 
 Defines the data structures for:
 - Litigation/Legal Notice items

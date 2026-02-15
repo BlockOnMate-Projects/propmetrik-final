@@ -5,7 +5,7 @@
  */
 
 import { Router } from 'express';
-import { shortStayMetricsService } from '../../shared-services/analytics/shortStayMetricsService';
+import { shortStayMetricsService } from '../services/analytics/shortStayMetricsService';
 import { logger } from '../utils/logger';
 
 const router = Router();

@@ -7,7 +7,7 @@
  */
 
 import { logger } from '../../../utils/logger';
-import { shortStayMetricsService } from '../../../../shared-services/analytics/shortStayMetricsService';
+import { shortStayMetricsService } from '../../analytics/shortStayMetricsService';
 
 export interface BookingScrapeResult {
     external_id: string;

@@ -12,7 +12,7 @@ import { Router, Request, Response } from 'express';
 import * as crypto from 'crypto';
 import { whatsappService, WebhookPayload } from '../../shared-services/messaging/whatsappService';
 import { logger } from '../utils/logger';
-import { CompletionEvent, ESignSourceModule } from '../../shared-services/e-sign/integration/types';
+import { CompletionEvent, ESignSourceModule } from '../services/e-sign/types';
 
 const router = Router();
 
@@ -232,93 +232,23 @@ router.post('/whatsapp', async (req: Request, res: Response) => {
 });
 
 // ============================================================================
-// Paystack Webhooks — handled by /api/v1/pm/payments/webhook (propertyManagement.ts)
-// Do NOT add Paystack webhook routes here. The canonical handler verifies
-// signatures and processes events. See propertyManagement.ts.
-// ============================================================================
-
-// ============================================================================
-// NOWPayments IPN (Instant Payment Notification) Webhook
+// Paystack Webhooks (Future)
 // ============================================================================
 
 /**
- * POST /api/v1/webhooks/nowpayments/ipn
- *
- * Receives payment status updates from NOWPayments.
- * Verifies HMAC-SHA512 signature, updates payment records,
- * and triggers downstream actions (escrow deposit, completion, etc.)
- *
- * IPN statuses: waiting → confirming → confirmed → sending → finished
- * Error statuses: failed, expired, refunded, partially_paid
+ * Paystack Webhook Handler
+ * Receives payment notifications
  */
-router.post('/nowpayments/ipn', async (req: Request, res: Response) => {
+router.post('/paystack', async (req: Request, res: Response) => {
   try {
-    const signature = req.headers['x-nowpayments-sig'] as string;
-    if (!signature) {
-      logger.warn('NOWPayments IPN: missing signature header');
-      return res.status(401).json({ error: 'Missing signature' });
-    }
-
-    const { nowPaymentsService } = await import('../../shared-services/payments/crypto/nowPaymentsService');
-
-    // Verify HMAC signature
-    if (!nowPaymentsService.verifyIpnSignature(req.body, signature)) {
-      logger.warn('NOWPayments IPN: invalid signature');
-      return res.status(401).json({ error: 'Invalid signature' });
-    }
-
-    // Process the callback
-    const result = await nowPaymentsService.processIpnCallback(req.body);
-
-    logger.info('NOWPayments IPN processed', {
-      action: result.action,
-      paymentReference: result.paymentReference,
-      status: req.body.payment_status,
-    });
-
-    // If escrow deposit is needed, trigger it asynchronously
-    if (result.action === 'escrow_deposit') {
-      setImmediate(async () => {
-        try {
-          const { escrowPayoutService } = await import('../../shared-services/payments/crypto/escrowPayoutService');
-          await escrowPayoutService.handleEscrowDeposit(result.paymentReference);
-        } catch (err: any) {
-          logger.error('Failed to handle escrow deposit', {
-            reference: result.paymentReference,
-            error: err.message,
-          });
-        }
-      });
-    }
-
-    // For direct (non-escrow) completed payments, attest on-chain for audit trail.
-    // Escrow payments already go through the smart contract, so they have on-chain records.
-    if (result.action === 'completed') {
-      setImmediate(async () => {
-        try {
-          const { attestationService } = await import('../../shared-services/payments/crypto/attestationService');
-          const attestResult = await attestationService.attestOffChainPayment(result.paymentReference);
-          if (!attestResult.success) {
-            logger.warn('Off-chain payment attestation failed (non-blocking)', {
-              reference: result.paymentReference,
-              error: attestResult.error,
-            });
-          }
-        } catch (err: any) {
-          logger.error('Failed to attest off-chain payment (non-blocking)', {
-            reference: result.paymentReference,
-            error: err.message,
-          });
-        }
-      });
-    }
-
-    // Always respond 200 to prevent retries
-    res.status(200).json({ status: 'ok', action: result.action });
-  } catch (error: any) {
-    logger.error('NOWPayments IPN error', { error: error.message });
-    // Still respond 200 to prevent infinite retries
-    res.status(200).json({ status: 'error', message: error.message });
+    // TODO: Verify Paystack signature
+    // TODO: Process payment events
+    
+    logger.info('Paystack webhook received', { event: req.body.event });
+    res.status(200).send('OK');
+  } catch (error) {
+    logger.error('Paystack webhook error', { error });
+    res.status(200).send('OK');
   }
 });
 
