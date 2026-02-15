@@ -530,7 +530,7 @@ export class EconomicDataScheduler {
         base_value: 100,
         period_start: periodStart,
         period_end: periodEnd,
-        source: 'PropMetrik Calculation (Automated)',
+        source: 'PROPMETRIK Calculation (Automated)',
         is_official: false,
         components,
         notes: `Automated monthly recalculation. Materials: ${materialIndex.toFixed(1)}, Labor: ${laborIndex.toFixed(1)}, Equipment: ${equipmentIndex.toFixed(1)}, Overheads: ${overheadIndex.toFixed(1)}`,

@@ -10,7 +10,7 @@
  */
 
 import { pool } from '../../../database';
-import { BaseService } from '../../base/BaseService';
+import { BaseService } from '../../../../shared-services/base/BaseService';
 import { PMWhatsAppNotification, PMNotificationType } from './types';
 import { whatsAppTemplates } from './WhatsAppTemplates';
 import { eventBus } from '../events/EventBus';

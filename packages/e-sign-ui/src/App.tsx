@@ -19,22 +19,22 @@ function App() {
     
     setInitialized(true);
     
-    // Initialize PropMetrik authentication
+    // Initialize PROPMETRIK authentication
     const hasToken = initAuth();
     
     if (hasToken && isAuthenticated()) {
       const userInfo = getUserInfo();
-      console.log('✅ User authenticated via PropMetrik');
+      console.log('✅ User authenticated via PROPMETRIK');
       console.log('User info:', userInfo);
       setAuthenticated(true);
       setLoading(false);
     } else {
-      console.log('❌ Not authenticated - waiting for PropMetrik token...');
+      console.log('❌ Not authenticated - waiting for PROPMETRIK token...');
       // In embedded mode, we wait for token from parent
       // Set a timeout to show error if no token received
       const timeout = setTimeout(() => {
         if (!isAuthenticated()) {
-          console.error('No authentication token received from PropMetrik');
+          console.error('No authentication token received from PROPMETRIK');
           setLoading(false);
         }
       }, 5000);
@@ -46,7 +46,7 @@ function App() {
           clearInterval(checkAuth);
           setAuthenticated(true);
           setLoading(false);
-          console.log('✅ Received auth token from PropMetrik');
+          console.log('✅ Received auth token from PROPMETRIK');
         }
       }, 100);
       
@@ -61,7 +61,7 @@ function App() {
     return (
       <div className="app-loading">
         <div className="spinner"></div>
-        <p>Loading PropMetrik E-Signature...</p>
+        <p>Loading PROPMETRIK E-Signature...</p>
       </div>
     );
   }
@@ -71,9 +71,9 @@ function App() {
       <div className="app-loading">
         <div className="card">
           <h2>Authentication Required</h2>
-          <p>Please access E-Sign through PropMetrik.</p>
+          <p>Please access E-Sign through PROPMETRIK.</p>
           <p style={{ fontSize: '0.9rem', color: '#666', marginTop: '1rem' }}>
-            E-Sign requires a valid PropMetrik session.
+            E-Sign requires a valid PROPMETRIK session.
           </p>
         </div>
       </div>

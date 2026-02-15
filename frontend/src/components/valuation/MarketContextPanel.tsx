@@ -673,7 +673,7 @@ export function MarketContextPanel({
           {/* Data Sources */}
           <div className="flex items-center justify-between pt-2 border-t border-zinc-800">
             <span className="font-mono text-[9px] text-zinc-500">
-              Sources: Bank of Ghana, Ghana Statistical Service, PropMetrik DB
+              Sources: Bank of Ghana, Ghana Statistical Service, PROPMETRIK DB
             </span>
             <span className="font-mono text-[9px] text-zinc-500">
               Last Updated: {data ? formatDate(data.last_updated) : '—'}

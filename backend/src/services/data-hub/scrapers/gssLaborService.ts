@@ -60,7 +60,7 @@ interface GSSLaborServiceConfig {
 const DEFAULT_CONFIG: GSSLaborServiceConfig = {
   gss_base_url: 'https://statsghana.gov.gh',
   fair_wages_url: 'https://fairwages.gov.gh',
-  user_agent: 'PropMetrik Labor Data Bot/1.0 (+https://propmetrik.com/bot)',
+  user_agent: 'PROPMETRIK Labor Data Bot/1.0 (+https://propmetrik.com/bot)',
   timeout_ms: 30000,
   retry_attempts: 3,
 };

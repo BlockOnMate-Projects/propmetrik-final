@@ -6,7 +6,7 @@
  */
 
 import { rentScheduleService, RentScheduleStatus } from '../services/property-management/rent-collection/rentScheduleService';
-import { notificationService } from '../shared-services/notifications';
+import { notificationService } from '../../shared-services/notifications/unified';
 import { logger } from '../utils/logger';
 import db from '../database';
 

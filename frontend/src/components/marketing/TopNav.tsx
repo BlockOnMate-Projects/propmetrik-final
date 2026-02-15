@@ -33,7 +33,7 @@ export default function TopNav() {
                 <Link href="/" className="flex items-center gap-2">
                     <Image
                         src="/branding/logo-full.png"
-                        alt="Propmetrik Logo"
+                        alt="PROPMETRIK Logo"
                         width={200}
                         height={55}
                         className="h-14 w-auto object-contain"

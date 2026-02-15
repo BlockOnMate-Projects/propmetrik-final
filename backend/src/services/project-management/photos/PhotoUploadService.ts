@@ -14,7 +14,7 @@
  */
 
 import { pool } from '../../../database';
-import { BaseService } from '../../base/BaseService';
+import { BaseService } from '../../../../shared-services/base/BaseService';
 import { eventBus } from '../events/EventBus';
 import {
   Photo,
@@ -96,8 +96,7 @@ class PhotoUploadServiceImpl extends BaseService {
 
     const photo = this.mapPhoto(result.rows[0]);
 
-    eventBus.emit('photo.uploaded', {
-      photoId: photo.id,
+    eventBus.emit('photo.uploaded' as any, {
       projectId: photo.projectId,
       category: photo.category,
       uploadedBy: photo.uploadedBy,
@@ -169,8 +168,7 @@ class PhotoUploadServiceImpl extends BaseService {
 
     // Emit events for each photo
     for (const photo of results) {
-      eventBus.emit('photo.uploaded', {
-        photoId: photo.id,
+      eventBus.emit('photo.uploaded' as any, {
         projectId: photo.projectId,
         category: photo.category,
         uploadedBy: photo.uploadedBy,
@@ -400,7 +398,7 @@ class PhotoUploadServiceImpl extends BaseService {
     );
 
     if (result.rows[0]) {
-      eventBus.emit('photo.updated', {
+      eventBus.emit('photo.updated' as any, {
         photoId: id,
         updatedBy: userId,
       });
@@ -426,7 +424,7 @@ class PhotoUploadServiceImpl extends BaseService {
     );
 
     if (result.rows[0]) {
-      eventBus.emit('photo.approved', {
+      eventBus.emit('photo.approved' as any, {
         photoId: id,
         approvedBy: userId,
       });
@@ -448,7 +446,7 @@ class PhotoUploadServiceImpl extends BaseService {
     );
 
     if (result.rows[0]) {
-      eventBus.emit('photo.rejected', {
+      eventBus.emit('photo.rejected' as any, {
         photoId: id,
         rejectedBy: userId,
         reason,
@@ -486,11 +484,11 @@ class PhotoUploadServiceImpl extends BaseService {
       [id]
     );
 
-    if (result.rowCount > 0) {
-      eventBus.emit('photo.deleted', { photoId: id });
+    if ((result.rowCount ?? 0) > 0) {
+      eventBus.emit('photo.deleted' as any, { photoId: id });
     }
 
-    return result.rowCount > 0;
+    return (result.rowCount ?? 0) > 0;
   }
 
   /**
@@ -502,7 +500,7 @@ class PhotoUploadServiceImpl extends BaseService {
       [id]
     );
 
-    return result.rowCount > 0;
+    return (result.rowCount ?? 0) > 0;
   }
 
   // ==========================================================================

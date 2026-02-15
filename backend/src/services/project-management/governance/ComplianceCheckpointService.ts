@@ -14,7 +14,7 @@
  * @module services/project-management/governance/ComplianceCheckpointService
  */
 
-import { BaseService } from '../../base/BaseService';
+import { BaseService } from '../../../../shared-services/base/BaseService';
 import {
   UUID,
   ComplianceType,
@@ -506,9 +506,9 @@ class ComplianceCheckpointServiceImpl extends BaseService {
       { 
         userId, 
         projectId: checkpoint.projectId,
-        previousStatus: checkpoint.status,
-        newStatus,
-      }
+        previousData: { status: checkpoint.status },
+        newData: { status: newStatus },
+      } as any
     );
 
     return updated;

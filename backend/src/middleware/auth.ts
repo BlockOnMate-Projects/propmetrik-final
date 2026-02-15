@@ -48,6 +48,8 @@ declare global {
     interface Request {
       user?: AuthenticatedUser;
       token?: string;
+      organizationId?: string;
+      userId?: string;
     }
   }
 }

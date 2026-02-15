@@ -240,7 +240,7 @@ jobs:
                   "type": "section",
                   "text": {
                     "type": "mrkdwn",
-                    "text": "*Propmetrik API Staging Deployment*\nStatus: ${{ job.status }}\nCommit: ${{ github.sha }}"
+                    "text": "*PROPMETRIK API Staging Deployment*\nStatus: ${{ job.status }}\nCommit: ${{ github.sha }}"
                   }
                 }
               ]
@@ -283,7 +283,7 @@ jobs:
                   "type": "section",
                   "text": {
                     "type": "mrkdwn",
-                    "text": "*Propmetrik API Production Deployment*\nStatus: ${{ job.status }}\nCommit: ${{ github.sha }}\nVersion: ${{ needs.build.outputs.image-tag }}"
+                    "text": "*PROPMETRIK API Production Deployment*\nStatus: ${{ job.status }}\nCommit: ${{ github.sha }}\nVersion: ${{ needs.build.outputs.image-tag }}"
                   }
                 }
               ]

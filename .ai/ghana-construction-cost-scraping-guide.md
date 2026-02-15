@@ -8,7 +8,7 @@ This guide provides comprehensive instructions for automatically scraping constr
 ## 📊 MARKET DATA INTEGRATION STATUS
 
 > **Last Updated**: January 10, 2026  
-> This section tracks which external market data sources are already integrated in PropMetrik Data Hub vs. need implementation.
+> This section tracks which external market data sources are already integrated in PROPMETRIK Data Hub vs. need implementation.
 
 ### ✅ ALREADY INTEGRATED (Use existing Data Hub services)
 
@@ -2883,7 +2883,7 @@ The current static multipliers serve as **valid seed values** until sufficient t
 
 # Part 3: Phased Implementation Strategy
 
-> **Purpose**: Step-by-step implementation plan that builds on existing PropMetrik Data Hub architecture.
+> **Purpose**: Step-by-step implementation plan that builds on existing PROPMETRIK Data Hub architecture.
 
 ---
 
@@ -3036,7 +3036,7 @@ export class NPAScraper {
     try {
       const response = await axios.get(this.pricesUrl, {
         timeout: 30000,
-        headers: { 'User-Agent': 'PropMetrik-DataHub/1.0' }
+        headers: { 'User-Agent': 'PROPMETRIK-DataHub/1.0' }
       });
 
       const $ = cheerio.load(response.data);
@@ -3186,7 +3186,7 @@ export class LocalMaterialScraper {
     try {
       const response = await axios.get(url, {
         timeout: 30000,
-        headers: { 'User-Agent': 'PropMetrik-DataHub/1.0' }
+        headers: { 'User-Agent': 'PROPMETRIK-DataHub/1.0' }
       });
       const $ = cheerio.load(response.data);
       const prices: MaterialPrice[] = [];

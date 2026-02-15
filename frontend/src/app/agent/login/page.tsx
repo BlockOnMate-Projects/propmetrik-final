@@ -185,7 +185,7 @@ export default function AgentLoginPage() {
 
                 {/* Footer */}
                 <p className="text-center mt-6 font-mono text-[10px] text-zinc-600">
-                    © 2026 PropMetrik. All rights reserved.
+                    © 2026 PROPMETRIK. All rights reserved.
                 </p>
             </div>
         </div>

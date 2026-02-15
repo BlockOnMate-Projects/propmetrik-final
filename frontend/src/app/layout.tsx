@@ -6,13 +6,13 @@ import { Providers } from '@/components/providers'
 const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
-  title: 'PropMetrik - Real Estate Analytics & Valuations',
+  title: 'PROPMETRIK - Real Estate Analytics & Valuations',
   description: 'AI-powered Real Estate Valuation, Property Management, Analytics and Deal Management Platform',
   manifest: '/manifest.json',
   appleWebApp: {
     capable: true,
     statusBarStyle: 'black-translucent',
-    title: 'PropMetrik',
+    title: 'PROPMETRIK',
   },
   formatDetection: {
     telephone: false,

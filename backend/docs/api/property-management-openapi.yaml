@@ -1,8 +1,8 @@
 openapi: 3.0.3
 info:
-  title: PropMetrik Property Management API
+  title: PROPMETRIK Property Management API
   description: |
-    Property Management API for PropMetrik platform.
+    Property Management API for PROPMETRIK platform.
     
     ## Features
     - **Property Management**: Properties, units, amenities, and listings
@@ -22,7 +22,7 @@ info:
     
   version: 1.0.0
   contact:
-    name: PropMetrik Support
+    name: PROPMETRIK Support
     email: support@propmetrik.com
 
 servers:

@@ -1,4 +1,4 @@
-# Propmetrik Floor Plan System: Valuation-First Architecture
+# PROPMETRIK Floor Plan System: Valuation-First Architecture
 
 **Version:** 2.0  
 **Date:** January 2026  
@@ -8,7 +8,7 @@
 
 ## Executive Summary
 
-This document outlines a production-ready architecture for Propmetrik's floor plan system, designed to deliver **valuation-defensible geometry** while providing an AutoCAD-like user experience. The system integrates:
+This document outlines a production-ready architecture for PROPMETRIK's floor plan system, designed to deliver **valuation-defensible geometry** while providing an AutoCAD-like user experience. The system integrates:
 
 - **LLMs** for intelligent layout generation and assumption surfacing
 - **Blender 3D** as the authoritative geometry kernel  
@@ -107,7 +107,7 @@ The architecture explicitly prioritizes **determinism, auditability, and measure
 - Geometry represents design intent
 - Output is a drawing/model for construction
 
-**Valuation Context (Propmetrik):**
+**Valuation Context (PROPMETRIK):**
 - Valuer RECORDS existing reality
 - Geometry must reflect subject property
 - Output is EVIDENCE for valuation opinion
@@ -242,7 +242,7 @@ interface LLMDesignIntent {
 }
 ```
 
-### 3.4 LLM Integration with Existing Propmetrik Services
+### 3.4 LLM Integration with Existing PROPMETRIK Services
 
 ```typescript
 // NEW FILE: /backend/src/services/ai/floorPlanDesignIntentService.ts
@@ -1118,7 +1118,7 @@ class FloorPlanService {
 
 ### 9.1 Comparison Matrix
 
-| Feature | AutoCAD | Propmetrik Floor Plan |
+| Feature | AutoCAD | PROPMETRIK Floor Plan |
 |---------|---------|----------------------|
 | **Geometry authority** | User drawings | Blender kernel |
 | **Drawing freedom** | Unlimited | Constrained to valid layouts |
@@ -1159,7 +1159,7 @@ class FloorPlanService {
 - Geometry IS the deliverable
 - Creative expression valued
 
-**For Valuers (Propmetrik):**
+**For Valuers (PROPMETRIK):**
 - Need to capture existing reality
 - Measurements ARE the deliverable
 - Accuracy and defensibility valued
@@ -2384,5 +2384,5 @@ The intentional removal of unrestricted CAD features is the **correct tradeoff**
 
 ---
 
-*Document maintained by Propmetrik Engineering Team*
+*Document maintained by PROPMETRIK Engineering Team*
 *Last updated: January 2026*

@@ -9,7 +9,7 @@ export default function PrivacyPolicyPage() {
     const sections = [
         {
             title: '1. Introduction',
-            content: `PropMetrik ("we," "our," or "us") respects your privacy and is committed to protecting your personal data. This privacy policy explains how we collect, use, share, and protect your personal information when you use our real estate platform and services, in compliance with the Ghana Data Protection Act, 2012 (Act 843) and international best practices.`
+            content: `PROPMETRIK ("we," "our," or "us") respects your privacy and is committed to protecting your personal data. This privacy policy explains how we collect, use, share, and protect your personal information when you use our real estate platform and services, in compliance with the Ghana Data Protection Act, 2012 (Act 843) and international best practices.`
         },
         {
             title: '2. Information We Collect',
@@ -153,7 +153,7 @@ You can control cookies through your browser settings. See our Cookie Policy for
             content: `For questions about this privacy policy or to exercise your data protection rights:
 
 Email: privacy@propmetrik.com
-Address: PropMetrik, Accra, Ghana
+Address: PROPMETRIK, Accra, Ghana
 Data Protection Officer: dpo@propmetrik.com
 
 You also have the right to lodge a complaint with the Data Protection Commission of Ghana if you believe we have violated your data protection rights.`

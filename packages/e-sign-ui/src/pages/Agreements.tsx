@@ -3,7 +3,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import { getUserInfo, logout as authLogout } from '../propmetrik-auth';
-import { getEnvelopes, getSignatureRequests, voidEnvelope, resendEnvelope } from '../api';
+import { getEnvelopes, getSignatureRequests, voidEnvelope, resendEnvelope, downloadEnvelopeDocument } from '../api';
 import { EnvelopeWizard } from '../components/envelope';
 import './Agreements.css';
 
@@ -153,9 +153,29 @@ export default function Agreements() {
     }
   };
 
-  const handleDownload = async (_id: string) => {
+  const handleDownload = async (id: string) => {
     toast.info('Downloading document...');
-    // TODO: Implement download
+    try {
+      // Handle both envelope IDs and signature request IDs
+      const actualId = id.startsWith('req-') ? id.replace('req-', '') : id;
+      const response = await downloadEnvelopeDocument(actualId);
+      
+      // Create download link
+      const blob = new Blob([response.data], { type: 'application/pdf' });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `agreement-${actualId}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(url);
+      
+      toast.success('Document downloaded successfully');
+    } catch (error) {
+      console.error('Download error:', error);
+      toast.error('Failed to download document');
+    }
   };
 
   const toggleSelectAll = () => {

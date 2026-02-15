@@ -3,9 +3,9 @@
 import { useEffect, useState } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import Link from 'next/link';
+import PortalShell from '@/components/portal/PortalShell';
 import {
   getMaintenanceStatus,
-  getSessionToken,
   MaintenanceRequest
 } from '@/lib/api';
 
@@ -45,7 +45,7 @@ const STATUS_STEPS = [
   { key: 'completed', label: 'Completed', icon: '✅' }
 ];
 
-export default function MaintenanceDetailPage() {
+function MaintenanceDetailContent() {
   const router = useRouter();
   const params = useParams();
   const requestId = params.id as string;
@@ -55,28 +55,11 @@ export default function MaintenanceDetailPage() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const token = getSessionToken();
-    if (!token) {
-      router.push('/login');
-      return;
-    }
-
-    async function loadRequest() {
-      try {
-        const data = await getMaintenanceStatus(requestId);
-        setRequest(data as MaintenanceDetails);
-      } catch (err: any) {
-        setError(err.message);
-        if (err.message === 'Session expired') {
-          router.push('/login');
-        }
-      } finally {
-        setLoading(false);
-      }
-    }
-
-    loadRequest();
-  }, [router, requestId]);
+    getMaintenanceStatus(requestId)
+      .then(data => setRequest(data as MaintenanceDetails))
+      .catch(err => setError(err.message))
+      .finally(() => setLoading(false));
+  }, [requestId]);
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -118,21 +101,23 @@ export default function MaintenanceDetailPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      <div className="space-y-4">
+        {[1, 2, 3].map(i => (
+          <div key={i} className="bg-white rounded-xl border border-gray-100 p-6 shadow-sm">
+            <div className="skeleton w-48 h-5 mb-3" />
+            <div className="skeleton w-full h-4" />
+            <div className="skeleton w-2/3 h-4 mt-2" />
+          </div>
+        ))}
       </div>
     );
   }
 
   if (error || !request) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="text-center">
-          <p className="text-red-600 mb-4">{error || 'Request not found'}</p>
-          <Link href="/maintenance" className="text-blue-600 hover:underline">
-            Return to maintenance requests
-          </Link>
-        </div>
+      <div className="text-center py-12">
+        <p className="text-red-600 mb-4">{error || 'Request not found'}</p>
+        <Link href="/maintenance" className="text-cyan-600 hover:underline">Return to maintenance requests</Link>
       </div>
     );
   }
@@ -140,30 +125,17 @@ export default function MaintenanceDetailPage() {
   const currentStep = getCurrentStepIndex();
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <header className="bg-white shadow">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-          <div className="flex items-center gap-4">
-            <Link href="/maintenance" className="text-gray-500 hover:text-gray-700">
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-              </svg>
-            </Link>
-            <div className="flex-1">
-              <h1 className="text-xl font-bold text-gray-900">{request.title}</h1>
-              <p className="text-sm text-gray-500">
-                Request #{request.id.slice(0, 8)}
-              </p>
-            </div>
-            <span className={`px-3 py-1 rounded-full text-sm font-medium border ${getStatusColor(request.status)}`}>
-              {request.status.replace('_', ' ')}
-            </span>
-          </div>
+    <div className="max-w-4xl mx-auto space-y-6 animate-fade-in">
+      {/* Title Card */}
+      <div className="flex items-start justify-between">
+        <div>
+          <h2 className="text-xl font-bold text-gray-900">{request.title}</h2>
+          <p className="text-sm text-gray-500">Request #{request.id.slice(0, 8)}</p>
         </div>
-      </header>
-
-      <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <span className={`px-3 py-1 rounded-full text-xs font-semibold uppercase border ${getStatusColor(request.status)}`}>
+          {request.status.replace('_', ' ')}
+        </span>
+      </div>
         {/* Status Progress */}
         {request.status !== 'cancelled' && (
           <div className="bg-white rounded-lg shadow p-6 mb-6">
@@ -358,10 +330,10 @@ export default function MaintenanceDetailPage() {
         </div>
 
         {/* Actions */}
-        <div className="mt-8 flex gap-4">
+        <div className="flex gap-4">
           <Link
             href="/maintenance"
-            className="flex-1 px-6 py-3 bg-gray-100 text-gray-700 rounded-lg text-center hover:bg-gray-200 transition-colors"
+            className="flex-1 px-6 py-3 bg-gray-100 text-gray-700 rounded-xl text-center hover:bg-gray-200 transition-colors"
           >
             Back to Requests
           </Link>
@@ -372,13 +344,20 @@ export default function MaintenanceDetailPage() {
                   // TODO: Implement cancel functionality
                 }
               }}
-              className="px-6 py-3 bg-red-100 text-red-700 rounded-lg hover:bg-red-200 transition-colors"
+              className="px-6 py-3 bg-red-50 text-red-700 rounded-xl hover:bg-red-100 transition-colors"
             >
               Cancel Request
             </button>
           )}
         </div>
-      </main>
     </div>
+  );
+}
+
+export default function MaintenanceDetailPage() {
+  return (
+    <PortalShell title="Maintenance Detail">
+      <MaintenanceDetailContent />
+    </PortalShell>
   );
 }

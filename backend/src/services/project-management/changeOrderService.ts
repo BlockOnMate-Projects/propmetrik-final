@@ -1,9 +1,16 @@
 /**
  * Change Order Service
  * Phase 3A Week 1 - Enterprise-grade Change Order Management
+ * Phase 5 E-Sign Integration - Programmatic signing for change order execution
  * 
  * Handles the complete change order lifecycle from creation through approval and execution.
  * Supports multi-level approval chains, cost tracking, and schedule impact analysis.
+ * 
+ * E-Sign Integration (Phase 5):
+ * - Triggers e-sign workflow when change order is approved
+ * - Collects signatures from project manager, owner rep, and contractor
+ * - Auto-executes change order after all signatures collected
+ * - Stores signed document and updates audit trail
  * 
  * @deprecated This monolithic service has been split into focused modules.
  * Import from 'change-orders/' instead:
@@ -21,6 +28,8 @@
 
 import { pool } from '../../database';
 import { logger } from '../../utils/logger';
+import { eSignIntegrationService } from '../../../shared-services/e-sign/integration/eSignIntegrationService';
+import { CompletionEvent, ESignField, ESignSigner } from '../../../shared-services/e-sign/integration/types';
 
 // =====================================================
 // TYPES
@@ -855,6 +864,7 @@ class ChangeOrderService {
 
   /**
    * Approve Change Order (bypass individual signatures)
+   * Phase 5: Now triggers e-sign workflow if configured
    */
   async approve(id: string, userId: string, comment?: string): Promise<ChangeOrderWithDetails> {
     const client = await pool.connect();
@@ -884,6 +894,10 @@ class ChangeOrderService {
       await client.query('COMMIT');
 
       logger.info(`Change Order approved: ${current.rows[0].co_number}`, { coId: id });
+
+      // Phase 5: Check if e-sign is configured and trigger workflow
+      const changeOrder = await this.getById(id) as ChangeOrderWithDetails;
+      await this.checkAndTriggerEsign(changeOrder, userId);
 
       return this.getById(id) as Promise<ChangeOrderWithDetails>;
     } catch (error) {
@@ -1092,7 +1106,7 @@ class ChangeOrderService {
         addition: parseInt(row.type_addition, 10),
         deduction: parseInt(row.type_deduction, 10),
         no_cost: parseInt(row.type_no_cost, 10)
-      },
+      } as any,
       total_additions: parseFloat(row.total_additions) || 0,
       total_deductions: parseFloat(row.total_deductions) || 0,
       net_change: parseFloat(row.net_change) || 0,
@@ -1100,6 +1114,450 @@ class ChangeOrderService {
       pending_approval: parseInt(row.pending_approval, 10),
       total_schedule_impact_days: parseInt(row.total_schedule_impact_days, 10)
     };
+  }
+
+  // =====================================================
+  // E-SIGN INTEGRATION (Phase 5)
+  // =====================================================
+
+  /**
+   * Check if e-sign is configured and trigger workflow
+   */
+  private async checkAndTriggerEsign(
+    changeOrder: ChangeOrderWithDetails,
+    userId: string
+  ): Promise<void> {
+    try {
+      // Get e-sign config for organization
+      const configResult = await pool.query(`
+        SELECT * FROM change_order_esign_config 
+        WHERE organization_id = $1
+      `, [changeOrder.organization_id]);
+
+      if (configResult.rows.length === 0) {
+        logger.info('No e-sign config for change orders, skipping', {
+          coId: changeOrder.id,
+          organizationId: changeOrder.organization_id,
+        });
+        return;
+      }
+
+      const config = configResult.rows[0];
+
+      // Check if trigger is enabled
+      if (!config.trigger_on_approval) {
+        return;
+      }
+
+      // Check amount threshold
+      if (Math.abs(changeOrder.this_change_amount) < parseFloat(config.min_amount_threshold || 0)) {
+        logger.info('Change order amount below e-sign threshold', {
+          coId: changeOrder.id,
+          amount: changeOrder.this_change_amount,
+          threshold: config.min_amount_threshold,
+        });
+        return;
+      }
+
+      await this.triggerChangeOrderEsign(changeOrder, config, userId);
+    } catch (error) {
+      logger.error('Error checking/triggering e-sign for change order', {
+        coId: changeOrder.id,
+        error,
+      });
+      // Don't throw - e-sign failure shouldn't block approval
+    }
+  }
+
+  /**
+   * Trigger e-sign workflow for a change order
+   */
+  async triggerChangeOrderEsign(
+    changeOrder: ChangeOrderWithDetails,
+    config: any,
+    userId: string
+  ): Promise<void> {
+    logger.info('Triggering e-sign for change order', {
+      coId: changeOrder.id,
+      coNumber: changeOrder.co_number,
+    });
+
+    // Generate or fetch change order document PDF
+    const changeOrderPdf = await this.generateChangeOrderPdf(changeOrder);
+
+    // Resolve signers based on config
+    const signers = await this.resolveChangeOrderSigners(
+      changeOrder,
+      config.signer_roles || ['project_manager', 'owner_representative', 'contractor']
+    );
+
+    if (signers.length === 0) {
+      logger.warn('No signers resolved for change order e-sign', {
+        coId: changeOrder.id,
+      });
+      return;
+    }
+
+    // Build field placements
+    const fields = this.buildChangeOrderFields(signers, config.field_placements);
+
+    // Create envelope
+    const envelope = await eSignIntegrationService.createEnvelope({
+      subject: `Change Order ${changeOrder.co_number} - ${changeOrder.title}`,
+      message: `Please review and sign Change Order ${changeOrder.co_number} for project ${changeOrder.project_name || 'N/A'}. Amount: ${changeOrder.currency} ${changeOrder.this_change_amount.toLocaleString()}`,
+      documents: [{
+        name: `Change_Order_${changeOrder.co_number}.pdf`,
+        content: changeOrderPdf,
+        mimeType: 'application/pdf',
+        source: 'system_generated',
+      }],
+      signers,
+      fields,
+      sourceModule: 'project_management',
+      sourceEntityType: 'change_order',
+      sourceEntityId: changeOrder.id,
+      expiresInDays: 30,
+    });
+
+    // Update change order with envelope info
+    await pool.query(`
+      UPDATE change_orders
+      SET esign_envelope_id = $1,
+          esign_status = 'sent',
+          esign_triggered_at = NOW()
+      WHERE id = $2
+    `, [envelope.envelopeId, changeOrder.id]);
+
+    // Log audit event
+    await this.logEsignAudit(
+      changeOrder.organization_id,
+      'change_order',
+      changeOrder.id,
+      envelope.envelopeId,
+      'created',
+      userId
+    );
+
+    logger.info('E-sign triggered for change order', {
+      coId: changeOrder.id,
+      envelopeId: envelope.envelopeId,
+      signerCount: signers.length,
+    });
+  }
+
+  /**
+   * Handle e-sign completion webhook for change orders
+   */
+  async handleEsignCompletion(event: CompletionEvent): Promise<void> {
+    const { sourceContext, envelope, documents, signers } = event;
+
+    logger.info('Handling e-sign completion for change order', {
+      coId: sourceContext.entityId,
+      envelopeId: envelope.id,
+    });
+
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+
+      // Get change order
+      const coResult = await client.query(
+        'SELECT * FROM change_orders WHERE id = $1',
+        [sourceContext.entityId]
+      );
+
+      if (coResult.rows.length === 0) {
+        throw new Error(`Change order not found: ${sourceContext.entityId}`);
+      }
+
+      const changeOrder = coResult.rows[0];
+
+      // Update change order with signed document
+      const signedDocUrl = documents[0]?.signedUrl || null;
+      
+      await client.query(`
+        UPDATE change_orders
+        SET esign_status = 'completed',
+            esign_completed_at = NOW(),
+            signed_document_url = $2
+        WHERE id = $1
+      `, [sourceContext.entityId, signedDocUrl]);
+
+      // Log completion
+      await this.logHistory(
+        client,
+        sourceContext.entityId,
+        'esign_completed',
+        changeOrder.status,
+        changeOrder.status,
+        { signers: signers.map(s => ({ email: s.email, signedAt: s.signedAt })) },
+        undefined,
+        'All signatures collected via e-sign'
+      );
+
+      // Check if auto-execute is enabled
+      const configResult = await client.query(`
+        SELECT auto_execute_on_complete FROM change_order_esign_config 
+        WHERE organization_id = $1
+      `, [changeOrder.organization_id]);
+
+      const autoExecute = configResult.rows[0]?.auto_execute_on_complete ?? true;
+
+      if (autoExecute && changeOrder.status === 'approved') {
+        // Auto-execute the change order
+        await client.query(`
+          UPDATE change_orders
+          SET status = 'executed',
+              executed_at = NOW()
+          WHERE id = $1
+        `, [sourceContext.entityId]);
+
+        await this.logHistory(
+          client,
+          sourceContext.entityId,
+          'auto_executed',
+          'approved',
+          'executed',
+          null,
+          undefined,
+          'Auto-executed after e-sign completion'
+        );
+
+        logger.info('Change order auto-executed after e-sign', {
+          coId: sourceContext.entityId,
+        });
+      }
+
+      await client.query('COMMIT');
+
+      // Log audit event
+      await this.logEsignAudit(
+        changeOrder.organization_id,
+        'change_order',
+        sourceContext.entityId,
+        envelope.id,
+        'completed',
+        null
+      );
+
+    } catch (error) {
+      await client.query('ROLLBACK');
+      logger.error('Error handling e-sign completion for change order', {
+        coId: sourceContext.entityId,
+        error,
+      });
+      throw error;
+    } finally {
+      client.release();
+    }
+  }
+
+  /**
+   * Generate PDF for change order (stub - integrate with document service)
+   */
+  private async generateChangeOrderPdf(changeOrder: ChangeOrderWithDetails): Promise<Buffer> {
+    // TODO: Integrate with actual document generation service
+    // For now, check if there's an existing attachment
+    if (changeOrder.attachments && changeOrder.attachments.length > 0) {
+      const pdfAttachment = changeOrder.attachments.find(
+        a => a.type === 'application/pdf' || a.filename?.endsWith('.pdf')
+      );
+      if (pdfAttachment && pdfAttachment.url) {
+        try {
+          const response = await fetch(pdfAttachment.url);
+          const buffer = await response.arrayBuffer();
+          return Buffer.from(buffer);
+        } catch (error) {
+          logger.warn('Failed to fetch attachment PDF, using placeholder', { error });
+        }
+      }
+    }
+
+    // Return a minimal placeholder PDF (this should be replaced with actual generation)
+    const placeholderPdf = Buffer.from(
+      `%PDF-1.4
+1 0 obj << /Type /Catalog /Pages 2 0 R >> endobj
+2 0 obj << /Type /Pages /Kids [3 0 R] /Count 1 >> endobj
+3 0 obj << /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Contents 4 0 R >> endobj
+4 0 obj << /Length 44 >> stream
+BT /F1 12 Tf 100 700 Td (Change Order ${changeOrder.co_number}) Tj ET
+endstream endobj
+xref
+0 5
+0000000000 65535 f 
+0000000009 00000 n 
+0000000058 00000 n 
+0000000115 00000 n 
+0000000214 00000 n 
+trailer << /Size 5 /Root 1 0 R >>
+startxref
+307
+%%EOF`
+    );
+    return placeholderPdf;
+  }
+
+  /**
+   * Resolve signers for change order e-sign
+   */
+  private async resolveChangeOrderSigners(
+    changeOrder: ChangeOrderWithDetails,
+    signerRoles: string[]
+  ): Promise<ESignSigner[]> {
+    const signers: ESignSigner[] = [];
+
+    // Get project team members
+    const teamResult = await pool.query(`
+      SELECT pt.*, u.full_name, u.email
+      FROM project_team pt
+      JOIN users u ON pt.user_id = u.id
+      WHERE pt.project_id = $1 AND pt.is_active = true
+    `, [changeOrder.project_id]);
+
+    const teamByRole = new Map<string, any>();
+    for (const member of teamResult.rows) {
+      teamByRole.set(member.role?.toLowerCase(), member);
+    }
+
+    // Resolve each signer role
+    let order = 1;
+    for (const role of signerRoles) {
+      let signer: ESignSigner | null = null;
+
+      switch (role.toLowerCase()) {
+        case 'project_manager':
+          const pm = teamByRole.get('project_manager') || teamByRole.get('pm');
+          if (pm) {
+            signer = {
+              name: pm.full_name,
+              email: pm.email,
+              role: 'signer',
+              order: order++,
+            };
+          }
+          break;
+
+        case 'owner_representative':
+          const ownerRep = teamByRole.get('owner_representative') || teamByRole.get('owner');
+          if (ownerRep) {
+            signer = {
+              name: ownerRep.full_name,
+              email: ownerRep.email,
+              role: 'signer',
+              order: order++,
+            };
+          }
+          break;
+
+        case 'contractor':
+        case 'general_contractor':
+          const gc = teamByRole.get('general_contractor') || teamByRole.get('contractor');
+          if (gc) {
+            signer = {
+              name: gc.full_name,
+              email: gc.email,
+              role: 'signer',
+              order: order++,
+            };
+          }
+          break;
+
+        case 'superintendent':
+          const super_ = teamByRole.get('superintendent');
+          if (super_) {
+            signer = {
+              name: super_.full_name,
+              email: super_.email,
+              role: 'signer',
+              order: order++,
+            };
+          }
+          break;
+      }
+
+      if (signer) {
+        signers.push(signer);
+      }
+    }
+
+    return signers;
+  }
+
+  /**
+   * Build signature field placements for change order
+   */
+  private buildChangeOrderFields(
+    signers: ESignSigner[],
+    configuredPlacements?: any[]
+  ): ESignField[] {
+    // Use configured placements if available
+    if (configuredPlacements && configuredPlacements.length > 0) {
+      return configuredPlacements.map(p => ({
+        type: p.type || 'signature',
+        recipientEmail: signers[p.signerIndex]?.email || '',
+        documentIndex: 0,
+        page: p.page || 1,
+        x: p.x || 0.1,
+        y: p.y || 0.8,
+        width: p.width || 0.25,
+        height: p.height || 0.08,
+        required: true,
+      }));
+    }
+
+    // Default: Stack signatures on the last page
+    const fields: ESignField[] = [];
+    let yPosition = 0.7;
+
+    for (const signer of signers) {
+      fields.push({
+        type: 'signature',
+        recipientEmail: signer.email,
+        documentIndex: 0,
+        page: 1, // Last page would require page count
+        x: 0.1,
+        y: yPosition,
+        width: 0.3,
+        height: 0.08,
+        required: true,
+      });
+      
+      fields.push({
+        type: 'date',
+        recipientEmail: signer.email,
+        documentIndex: 0,
+        page: 1,
+        x: 0.5,
+        y: yPosition,
+        width: 0.2,
+        height: 0.05,
+        required: true,
+      });
+
+      yPosition -= 0.12;
+    }
+
+    return fields;
+  }
+
+  /**
+   * Log e-sign audit event
+   */
+  private async logEsignAudit(
+    organizationId: string,
+    entityType: string,
+    entityId: string,
+    envelopeId: string,
+    action: string,
+    performedBy: string | null,
+    metadata: any = {}
+  ): Promise<void> {
+    await pool.query(`
+      INSERT INTO project_esign_audit (
+        organization_id, entity_type, entity_id, esign_envelope_id,
+        action, performed_by, metadata
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7)
+    `, [organizationId, entityType, entityId, envelopeId, action, performedBy, JSON.stringify(metadata)]);
   }
 
   // =====================================================

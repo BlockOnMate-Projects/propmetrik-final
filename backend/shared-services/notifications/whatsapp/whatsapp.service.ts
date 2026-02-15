@@ -18,8 +18,8 @@ export class WhatsAppService {
 
   private constructor() {
     // These should be in your .env / config
-    this.apiUrl = config.whatsapp?.apiUrl || 'https://graph.facebook.com/v17.0';
-    this.apiToken = config.whatsapp?.apiToken || process.env.WHATSAPP_API_TOKEN || 'mock-token';
+    this.apiUrl = config.whatsapp?.apiBaseUrl || 'https://graph.facebook.com/v17.0';
+    this.apiToken = config.whatsapp?.accessToken || process.env.WHATSAPP_API_TOKEN || 'mock-token';
     this.phoneNumberId = config.whatsapp?.phoneNumberId || process.env.WHATSAPP_PHONE_ID || 'mock-phone-id';
   }
 

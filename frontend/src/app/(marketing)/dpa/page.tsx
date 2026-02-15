@@ -27,7 +27,7 @@ export default function DPAPage() {
                         <section className="mb-12">
                             <h2 className="text-2xl font-bold text-white mb-4">1. Purpose and Scope</h2>
                             <p className="text-zinc-300 mb-4">
-                                This Data Processing Agreement ("DPA") forms part of the service agreement between PropMetrik ("Processor") and our Enterprise customers ("Controller") regarding the processing of personal data in compliance with:
+                                This Data Processing Agreement ("DPA") forms part of the service agreement between PROPMETRIK ("Processor") and our Enterprise customers ("Controller") regarding the processing of personal data in compliance with:
                             </p>
                             <ul className="list-disc list-inside text-zinc-300 space-y-2 ml-4">
                                 <li>Ghana Data Protection Act, 2012 (Act 843)</li>
@@ -40,7 +40,7 @@ export default function DPAPage() {
                             <h2 className="text-2xl font-bold text-white mb-4">2. Definitions</h2>
                             <ul className="list-disc list-inside text-zinc-300 space-y-2 ml-4">
                                 <li><strong>Controller:</strong> The Enterprise customer determining purposes and means of processing</li>
-                                <li><strong>Processor:</strong> PropMetrik processing personal data on behalf of Controller</li>
+                                <li><strong>Processor:</strong> PROPMETRIK processing personal data on behalf of Controller</li>
                                 <li><strong>Personal Data:</strong> Information relating to identified or identifiable individuals</li>
                                 <li><strong>Processing:</strong> Any operation performed on personal data</li>
                                 <li><strong>Sub-processor:</strong> Third-party engaged by Processor to process personal data</li>
@@ -51,7 +51,7 @@ export default function DPAPage() {
                             <h2 className="text-2xl font-bold text-white mb-4">3. Processing Details</h2>
 
                             <h3 className="text-xl font-bold text-white mb-3 mt-6">3.1 Nature and Purpose</h3>
-                            <p className="text-zinc-300 mb-2">PropMetrik processes personal data to provide:</p>
+                            <p className="text-zinc-300 mb-2">PROPMETRIK processes personal data to provide:</p>
                             <ul className="list-disc list-inside text-zinc-300 space-y-2 ml-4">
                                 <li>Property valuation and advisory services</li>
                                 <li>Real estate data intelligence and analytics</li>
@@ -83,7 +83,7 @@ export default function DPAPage() {
 
                         <section className="mb-12">
                             <h2 className="text-2xl font-bold text-white mb-4">4. Processor Obligations</h2>
-                            <p className="text-zinc-300 mb-2">PropMetrik commits to:</p>
+                            <p className="text-zinc-300 mb-2">PROPMETRIK commits to:</p>
                             <ul className="list-disc list-inside text-zinc-300 space-y-2 ml-4">
                                 <li>Process personal data only on documented instructions from the Controller</li>
                                 <li>Ensure personnel processing data are bound by confidentiality</li>
@@ -123,7 +123,7 @@ export default function DPAPage() {
 
                             <h3 className="text-xl font-bold text-white mb-3 mt-6">6.1 Authorized Sub-processors</h3>
                             <p className="text-zinc-300 mb-4">
-                                PropMetrik engages the following sub-processors:
+                                PROPMETRIK engages the following sub-processors:
                             </p>
                             <div className="bg-zinc-900 border border-zinc-800 rounded-lg p-6 mb-4">
                                 <table className="w-full text-sm text-zinc-300">
@@ -156,14 +156,14 @@ export default function DPAPage() {
 
                             <h3 className="text-xl font-bold text-white mb-3 mt-6">6.2 Sub-processor Changes</h3>
                             <p className="text-zinc-300">
-                                PropMetrik will notify Controller of any intended changes to sub-processors at least 30 days in advance. Controller may object to changes on reasonable grounds.
+                                PROPMETRIK will notify Controller of any intended changes to sub-processors at least 30 days in advance. Controller may object to changes on reasonable grounds.
                             </p>
                         </section>
 
                         <section className="mb-12">
                             <h2 className="text-2xl font-bold text-white mb-4">7. Data Breach Notification</h2>
                             <p className="text-zinc-300 mb-4">
-                                In the event of a personal data breach, PropMetrik will:
+                                In the event of a personal data breach, PROPMETRIK will:
                             </p>
                             <ul className="list-disc list-inside text-zinc-300 space-y-2 ml-4">
                                 <li>Notify Controller without undue delay (within 72 hours where feasible)</li>
@@ -177,7 +177,7 @@ export default function DPAPage() {
                         <section className="mb-12">
                             <h2 className="text-2xl font-bold text-white mb-4">8. International Transfers</h2>
                             <p className="text-zinc-300 mb-4">
-                                Where personal data is transferred outside Ghana, PropMetrik ensures adequate safeguards through:
+                                Where personal data is transferred outside Ghana, PROPMETRIK ensures adequate safeguards through:
                             </p>
                             <ul className="list-disc list-inside text-zinc-300 space-y-2 ml-4">
                                 <li>Standard Contractual Clauses (SCCs) approved by regulatory authorities</li>
@@ -198,14 +198,14 @@ export default function DPAPage() {
                                 <li>Engage third-party auditors (subject to confidentiality agreements)</li>
                             </ul>
                             <p className="text-zinc-300 mt-4">
-                                PropMetrik will provide reasonable cooperation for audits, subject to confidentiality and operational constraints.
+                                PROPMETRIK will provide reasonable cooperation for audits, subject to confidentiality and operational constraints.
                             </p>
                         </section>
 
                         <section className="mb-12">
                             <h2 className="text-2xl font-bold text-white mb-4">10. Return and Deletion of Data</h2>
                             <p className="text-zinc-300 mb-4">
-                                Upon termination or expiry of services, PropMetrik will:
+                                Upon termination or expiry of services, PROPMETRIK will:
                             </p>
                             <ul className="list-disc list-inside text-zinc-300 space-y-2 ml-4">
                                 <li>Return all personal data to Controller in standard format (within 30 days)</li>
@@ -218,7 +218,7 @@ export default function DPAPage() {
                         <section className="mb-12">
                             <h2 className="text-2xl font-bold text-white mb-4">11. Liability and Indemnification</h2>
                             <p className="text-zinc-300">
-                                Each party's liability under this DPA is subject to limitations in the main service agreement. PropMetrik indemnifies Controller for damages arising from PropMetrik's breach of data protection obligations, subject to applicable limitations.
+                                Each party's liability under this DPA is subject to limitations in the main service agreement. PROPMETRIK indemnifies Controller for damages arising from PROPMETRIK's breach of data protection obligations, subject to applicable limitations.
                             </p>
                         </section>
 
@@ -234,7 +234,7 @@ export default function DPAPage() {
                             <p className="text-zinc-300">
                                 For DPA-related inquiries or data protection concerns:<br /><br />
                                 Email: dpo@propmetrik.com<br />
-                                Address: PropMetrik, Data Protection Officer, Accra, Ghana
+                                Address: PROPMETRIK, Data Protection Officer, Accra, Ghana
                             </p>
                         </section>
                     </div>

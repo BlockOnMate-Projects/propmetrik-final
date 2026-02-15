@@ -8,6 +8,7 @@
  * - Background workflow execution
  */
 
+// @ts-ignore
 import { Queue, Worker, Job } from 'bullmq';
 import { pool } from '../database';
 import { logger } from '../utils/logger';
@@ -139,7 +140,7 @@ async function resumeExecution(executionId: string): Promise<void> {
   const workflow = await workflowService.getById(execution.workflow_id);
   if (!workflow || !workflow.is_active) {
     logger.info({ executionId, workflowId: execution.workflow_id }, 'Workflow not active, cancelling execution');
-    await workflowService.cancelExecution(executionId);
+    await workflowService.cancelExecution(executionId, 'system');
     return;
   }
   
@@ -163,7 +164,7 @@ async function resumeExecution(executionId: string): Promise<void> {
   try {
     // Import the executeSteps method through the engine
     await workflowService.addExecutionLog(executionId, {
-      step_id: execution.current_step_id,
+      step_id: execution.current_step_id || '',
       action: 'resume',
       status: 'success',
       result: { resumed_at: new Date() },

@@ -189,7 +189,7 @@ class LoadTestRunner {
   async run(): Promise<AggregateMetrics> {
     console.log('');
     console.log('╔═══════════════════════════════════════════════════════════════╗');
-    console.log('║         PropMetrik Economic API Load Test                     ║');
+    console.log('║         PROPMETRIK Economic API Load Test                     ║');
     console.log('╚═══════════════════════════════════════════════════════════════╝');
     console.log('');
     console.log(`Base URL: ${this.config.baseUrl}`);

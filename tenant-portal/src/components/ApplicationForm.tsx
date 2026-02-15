@@ -321,7 +321,7 @@ export default function ApplicationForm({ property, token }: ApplicationFormProp
                     <p>{formData.employment.currency} {formData.employment.monthlyIncome}/mo</p>
                 </div>
                 <div className="bg-blue-50 text-blue-800 p-4 rounded-md text-xs">
-                    By submitting this application, you authorize PropMetrik and the property manager to verify the information provided, including checking credit and employment references.
+                    By submitting this application, you authorize PROPMETRIK and the property manager to verify the information provided, including checking credit and employment references.
                 </div>
             </div>
           )}

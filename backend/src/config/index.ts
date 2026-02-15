@@ -120,6 +120,9 @@ export const config = {
     clientSecret: process.env.KEYCLOAK_CLIENT_SECRET,
     adminClientId: process.env.KEYCLOAK_ADMIN_CLIENT_ID,
     adminSecret: process.env.KEYCLOAK_ADMIN_SECRET,
+    adminRealm: process.env.KEYCLOAK_ADMIN_REALM || 'master',
+    adminUsername: process.env.KEYCLOAK_ADMIN_USERNAME,
+    adminPassword: process.env.KEYCLOAK_ADMIN_PASSWORD,
   },
 
   // JWT (for internal tokens)

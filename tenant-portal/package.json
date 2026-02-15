@@ -1,12 +1,13 @@
 {
-  "name": "propmetrik-tenant-portal",
+  "name": "@propmetrik/tenant-portal",
   "version": "0.1.0",
   "private": true,
   "scripts": {
     "dev": "next dev -p 3001",
     "build": "next build",
     "start": "next start -p 3001",
-    "lint": "next lint"
+    "lint": "next lint",
+    "clean": "rm -rf .next node_modules"
   },
   "dependencies": {
     "@radix-ui/react-checkbox": "^1.3.3",
@@ -16,6 +17,7 @@
     "@radix-ui/react-select": "^2.0.0",
     "@radix-ui/react-slot": "^1.0.2",
     "@radix-ui/react-tabs": "^1.0.4",
+    "@tanstack/react-query": "^5.90.21",
     "autoprefixer": "^10.4.16",
     "class-variance-authority": "^0.7.0",
     "clsx": "^2.1.0",
@@ -28,7 +30,9 @@
     "signature_pad": "^4.1.7",
     "tailwind-merge": "^2.2.0",
     "tailwindcss": "^3.4.1",
-    "tailwindcss-animate": "^1.0.7"
+    "tailwindcss-animate": "^1.0.7",
+    "viem": "^2.45.3",
+    "wagmi": "^3.4.3"
   },
   "devDependencies": {
     "@types/node": "^20.11.5",

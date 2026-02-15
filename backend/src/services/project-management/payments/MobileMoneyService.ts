@@ -19,7 +19,7 @@
 
 import { v4 as uuidv4 } from 'uuid';
 import { pool } from '../../../database';
-import { BaseService } from '../../base/BaseService';
+import { BaseService } from '../../../../shared-services/base/BaseService';
 import { UUID } from '../types';
 import { ValidationError, NotFoundError, ServiceError } from '../errors';
 import { eventBus, ProjectEventType } from '../events';
@@ -222,7 +222,7 @@ class MobileMoneyServiceImpl extends BaseService {
     
     // Should be 10 digits for Ghana
     if (digits.length !== 10) {
-      throw ValidationError.invalidField('phoneNumber', 'Ghana mobile numbers must be 10 digits');
+      throw ValidationError.forField('phoneNumber', 'Ghana mobile numbers must be 10 digits');
     }
     
     return digits;
@@ -241,7 +241,7 @@ class MobileMoneyServiceImpl extends BaseService {
       }
     }
     
-    throw ValidationError.invalidField('phoneNumber', `Unknown mobile money provider for prefix ${prefix}`);
+    throw ValidationError.forField('phoneNumber', `Unknown mobile money provider for prefix ${prefix}`);
   }
 
   /**
@@ -267,7 +267,7 @@ class MobileMoneyServiceImpl extends BaseService {
     
     // Validate amount
     if (input.amount <= 0) {
-      throw ValidationError.invalidField('amount', 'Amount must be positive');
+      throw ValidationError.forField('amount', 'Amount must be positive');
     }
     
     // Generate reference if not provided

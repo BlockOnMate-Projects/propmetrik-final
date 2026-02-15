@@ -17,14 +17,14 @@ const testimonials: Testimonial[] = [
         name: 'Kwame Mensah',
         role: 'CEO',
         company: 'Accra Properties Ltd',
-        content: 'PropMetrik has transformed how we value properties in Ghana. The AI-powered AVMs are incredibly accurate and save us days of work.',
+        content: 'PROPMETRIK has transformed how we value properties in Ghana. The AI-powered AVMs are incredibly accurate and save us days of work.',
         rating: 5
     },
     {
         name: 'Ama Sarpong',
         role: 'Head of Real Estate',
         company: 'Ghana Commercial Bank',
-        content: 'The market intelligence and data quality are unmatched. We\'ve reduced our property assessment time by 70% since implementing PropMetrik.',
+        content: 'The market intelligence and data quality are unmatched. We\'ve reduced our property assessment time by 70% since implementing PROPMETRIK.',
         rating: 5
     },
     {
@@ -38,7 +38,7 @@ const testimonials: Testimonial[] = [
         name: 'Abena Owusu',
         role: 'Investment Manager',
         company: 'West Africa REIT',
-        content: 'PropMetrik\'s portfolio analytics give us confidence in our investment decisions. The platform is world-class.',
+        content: 'PROPMETRIK\'s portfolio analytics give us confidence in our investment decisions. The platform is world-class.',
         rating: 5
     },
 ];

@@ -366,6 +366,7 @@ export interface GeocodingResult {
   latitude: number;
   longitude: number;
   street_address: string | null;
+  city?: string | null;
   neighborhood: string | null;
   district: string | null;
   region: string | null;
@@ -375,6 +376,7 @@ export interface GeocodingResult {
   match_type: 'exact' | 'interpolated' | 'approximate' | 'centroid';
   provider: 'mapbox' | 'google' | 'nominatim';
   provider_place_id: string | null;
+  area?: string | null;
 }
 
 export interface GeocodingCacheEntry extends GeocodingResult {

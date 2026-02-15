@@ -1,0 +1,26 @@
+Date: Tue, 06 Jan 2026 15:23:59 GMT
+Content-Type: text/html; charset=UTF-8
+Accept-Ch: Sec-CH-UA-Bitness, Sec-CH-UA-Arch, Sec-CH-UA-Full-Version, Sec-CH-UA-Mobile, Sec-CH-UA-Model, Sec-CH-UA-Platform-Version, Sec-CH-UA-Full-Version-List, Sec-CH-UA-Platform, Sec-CH-UA, UA-Bitness, UA-Arch, UA-Full-Version, UA-Mobile, UA-Model, UA-Platform-Version, UA-Platform, UA
+Cf-Mitigated: challenge
+Critical-Ch: Sec-CH-UA-Bitness, Sec-CH-UA-Arch, Sec-CH-UA-Full-Version, Sec-CH-UA-Mobile, Sec-CH-UA-Model, Sec-CH-UA-Platform-Version, Sec-CH-UA-Full-Version-List, Sec-CH-UA-Platform, Sec-CH-UA, UA-Bitness, UA-Arch, UA-Full-Version, UA-Mobile, UA-Model, UA-Platform-Version, UA-Platform, UA
+Cross-Origin-Embedder-Policy: require-corp
+Cross-Origin-Opener-Policy: same-origin
+Cross-Origin-Resource-Policy: same-origin
+Origin-Agent-Cluster: ?1
+Permissions-Policy: accelerometer=(),browsing-topics=(),camera=(),clipboard-read=(),clipboard-write=(),geolocation=(),gyroscope=(),hid=(),interest-cohort=(),magnetometer=(),microphone=(),payment=(),publickey-credentials-get=(),screen-wake-lock=(),serial=(),sync-xhr=(),usb=()
+Referrer-Policy: same-origin
+Server-Timing: chlray;desc="9b9c3840cbaf8293"
+Server-Timing: cfOrigin;dur=0,cfEdge;dur=30
+Server-Timing: cfL4;desc="?proto=TCP&rtt=7378&min_rtt=7377&rtt_var=2770&sent=5&recv=7&lost=0&retrans=0&sent_bytes=3912&recv_bytes=1942&delivery_rate=556006&cwnd=245&unsent_bytes=0&cid=6f746bfcb1c4798c&ts=52&x=0"
+X-Content-Type-Options: nosniff
+X-Frame-Options: SAMEORIGIN
+Cache-Control: private, max-age=0, no-store, no-cache, must-revalidate, post-check=0, pre-check=0
+Expires: Thu, 01 Jan 1970 00:00:01 GMT
+Report-To: {"endpoints":[{"url":"https:\/\/a.nel.cloudflare.com\/report\/v4?s=BssTxi%2FcfgZ4NJtcO%2Fh9PhyHYQfeCkxjBid8oE%2BNRp5XSrtQ8zz0F6qphWpRHbxwVOGoSkNXDj60jB5MS1NEc1PpCVAsYKS7XK0FqA3jOnCsCPc%2FI2CjbzKYqCzGgg%3D%3D"}],"group":"cf-nel","max_age":604800}
+Nel: {"success_fraction":0,"report_to":"cf-nel","max_age":604800}
+Vary: Accept-Encoding
+Strict-Transport-Security: max-age=31536000; includeSubDomains; preload
+Server: cloudflare
+Cf-Ray: 9b9c3840cbaf8293-IAD
+Content-Encoding: gzip
+Alt-Svc: h3=":443"; ma=86400

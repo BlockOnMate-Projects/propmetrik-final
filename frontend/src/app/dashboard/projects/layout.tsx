@@ -14,7 +14,8 @@ import {
     Settings,
     Building2,
     Layers,
-    Calendar
+    Calendar,
+    CreditCard
 } from 'lucide-react'
 
 const projectsNavItems = [
@@ -22,8 +23,9 @@ const projectsNavItems = [
     { href: '/dashboard/projects/units', label: 'UNITS', icon: Layers },
     { href: '/dashboard/projects/contractors', label: 'CONTRACTORS', icon: Hammer },
     { href: '/dashboard/projects/costs', label: 'COSTS', icon: DollarSign },
+    { href: '/dashboard/projects/financials', label: 'FINANCIALS', icon: CreditCard },
     { href: '/dashboard/projects/punch-lists', label: 'PUNCH LISTS', icon: ClipboardList },
-    { href: '/dashboard/projects/calendar', label: 'CALENDAR', icon: Calendar },
+    { href: '/dashboard/calendar', label: 'CALENDAR', icon: Calendar },
     { href: '/dashboard/projects/analytics', label: 'ANALYTICS', icon: BarChart3 },
     { href: '/dashboard/projects/settings', label: 'SETTINGS', icon: Settings },
 ]

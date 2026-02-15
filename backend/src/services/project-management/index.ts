@@ -90,6 +90,18 @@ export * from './units';
 export * from './rfis';
 
 // =============================================================================
+// RESOLVE RE-EXPORT AMBIGUITY (TS2308)
+// When multiple modules export the same name via `export *`, TypeScript requires
+// an explicit re-export to resolve the ambiguity.
+// =============================================================================
+export { EventPayload } from './types';
+export { MobileMoneyProvider } from './types';
+export { PaginationParams } from './types';
+export { ChangeOrderStatus, ChangeOrderType } from './types';
+export { ComplianceSummary } from './governance';
+export { Attachment } from './change-orders';
+
+// =============================================================================
 // CORE PROJECT SERVICES
 // =============================================================================
 

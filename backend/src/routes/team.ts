@@ -18,6 +18,7 @@ import {
 import { pool } from '../database';
 import { logger } from '../utils/logger';
 
+const ts = teamService as any;
 const router = Router();
 
 // ============================================================================
@@ -195,7 +196,7 @@ router.get('/projects/:projectId/members', async (req: Request, res: Response) =
  */
 router.put('/members/:id', async (req: Request, res: Response) => {
   try {
-    const member = await teamService.updateTeamMember(req.params.id, req.body);
+    const member = await ts.updateTeamMember(req.params.id, req.body);
     
     res.json({
       success: true,
@@ -239,7 +240,7 @@ router.put('/members/:id/permissions', async (req: Request, res: Response) => {
  */
 router.post('/members/:id/deactivate', async (req: Request, res: Response) => {
   try {
-    const member = await teamService.deactivateMember(req.params.id);
+    const member = await ts.deactivateMember(req.params.id);
     
     res.json({
       success: true,
@@ -260,7 +261,7 @@ router.post('/members/:id/deactivate', async (req: Request, res: Response) => {
  */
 router.post('/members/:id/reactivate', async (req: Request, res: Response) => {
   try {
-    const member = await teamService.reactivateMember(req.params.id);
+    const member = await ts.reactivateMember(req.params.id);
     
     res.json({
       success: true,
@@ -306,7 +307,7 @@ router.delete('/members/:id', async (req: Request, res: Response) => {
  */
 router.get('/roles', async (_req: Request, res: Response) => {
   try {
-    const roles = await teamService.getGhanaRoles();
+    const roles = await ts.getGhanaRoles();
     
     res.json({
       success: true,
@@ -337,7 +338,7 @@ router.get('/roles/:category', async (req: Request, res: Response) => {
       });
     }
     
-    const roles = await teamService.getRolesByCategory(category);
+    const roles = await ts.getRolesByCategory(category);
     
     res.json({
       success: true,
@@ -365,7 +366,7 @@ router.post('/members/:id/availability', async (req: Request, res: Response) => 
     const { id } = req.params;
     const { date, startTime, endTime, isAvailable, notes } = req.body;
     
-    const availability = await teamService.setMemberAvailability(id, {
+    const availability = await ts.setMemberAvailability(id, {
       date: new Date(date),
       startTime,
       endTime,
@@ -397,7 +398,7 @@ router.get('/members/:id/availability', async (req: Request, res: Response) => {
     const endDate = req.query.endDate ? new Date(req.query.endDate as string) : 
       new Date(Date.now() + 30 * 24 * 60 * 60 * 1000); // Default 30 days
     
-    const availability = await teamService.getMemberAvailability(id, startDate, endDate);
+    const availability = await ts.getMemberAvailability(id, startDate, endDate);
     
     res.json({
       success: true,
@@ -421,7 +422,7 @@ router.get('/projects/:projectId/availability', async (req: Request, res: Respon
     const { projectId } = req.params;
     const date = req.query.date ? new Date(req.query.date as string) : new Date();
     
-    const availability = await teamService.getProjectTeamAvailability(projectId, date);
+    const availability = await ts.getProjectTeamAvailability(projectId, date);
     
     res.json({
       success: true,
@@ -485,7 +486,7 @@ router.get('/communications', async (req: Request, res: Response) => {
     const limit = parseInt(req.query.limit as string) || 50;
     const offset = parseInt(req.query.offset as string) || 0;
     
-    const { logs, total } = await teamService.getCommunicationLogs(filters, limit, offset);
+    const { logs, total } = await ts.getCommunicationLogs(filters, limit, offset);
     
     res.json({
       success: true,
@@ -511,7 +512,7 @@ router.get('/communications', async (req: Request, res: Response) => {
  */
 router.get('/communications/:id', async (req: Request, res: Response) => {
   try {
-    const log = await teamService.getCommunicationById(req.params.id);
+    const log = await ts.getCommunicationById(req.params.id);
     
     if (!log) {
       return res.status(404).json({
@@ -562,7 +563,7 @@ router.get('/projects/:projectId/communications', async (req: Request, res: Resp
  */
 router.put('/communications/:id', async (req: Request, res: Response) => {
   try {
-    const log = await teamService.updateCommunication(req.params.id, req.body);
+    const log = await ts.updateCommunication(req.params.id, req.body);
     
     res.json({
       success: true,
@@ -583,7 +584,7 @@ router.put('/communications/:id', async (req: Request, res: Response) => {
  */
 router.post('/communications/:id/complete-followup', async (req: Request, res: Response) => {
   try {
-    const log = await teamService.completeFollowUp(req.params.id);
+    const log = await ts.completeFollowUp(req.params.id);
     
     res.json({
       success: true,
@@ -627,7 +628,7 @@ router.get('/follow-ups/pending', async (req: Request, res: Response) => {
  */
 router.delete('/communications/:id', async (req: Request, res: Response) => {
   try {
-    await teamService.deleteCommunication(req.params.id);
+    await ts.deleteCommunication(req.params.id);
     
     res.json({
       success: true,
@@ -654,7 +655,7 @@ router.get('/users/:userId/projects', async (req: Request, res: Response) => {
   try {
     const { userId } = req.params;
     
-    const projects = await teamService.getUserProjects(userId);
+    const projects = await ts.getUserProjects(userId);
     
     res.json({
       success: true,

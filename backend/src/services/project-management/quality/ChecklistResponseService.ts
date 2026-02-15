@@ -13,7 +13,7 @@
  */
 
 import { pool } from '../../../database';
-import { BaseService } from '../../base/BaseService';
+import { BaseService } from '../../../../shared-services/base/BaseService';
 import { UUID } from '../types';
 import { eventBus } from '../events/EventBus';
 
@@ -136,7 +136,7 @@ class ChecklistResponseServiceImpl extends BaseService {
 
     // Emit event for deficiencies
     if (input.result === 'fail' && input.deficiencyDescription) {
-      eventBus.emit('checklist.deficiency.recorded', {
+      eventBus.emit('checklist.deficiency.recorded' as any, {
         instanceId: input.instanceId,
         responseId: result.rows[0].id,
         deficiency: input.deficiencyDescription,
@@ -243,7 +243,7 @@ class ChecklistResponseServiceImpl extends BaseService {
 
     // Emit bulk event
     const instanceId = responses[0].instanceId;
-    eventBus.emit('checklist.responses.saved', {
+    eventBus.emit('checklist.responses.saved' as any, {
       instanceId,
       count: saved.length,
     });
@@ -337,7 +337,7 @@ class ChecklistResponseServiceImpl extends BaseService {
 
     const signature = this.mapSignatureRow(result.rows[0]);
 
-    eventBus.emit('checklist.signature.added', {
+    eventBus.emit('checklist.signature.added' as any, {
       instanceId: input.instanceId,
       signatureId: signature.id,
       type: input.signatureType,
@@ -362,7 +362,7 @@ class ChecklistResponseServiceImpl extends BaseService {
       `DELETE FROM qc_instance_signatures WHERE id = $1 RETURNING id`,
       [id]
     );
-    return result.rowCount > 0;
+    return (result.rowCount ?? 0) > 0;
   }
 
   // ==========================================================================

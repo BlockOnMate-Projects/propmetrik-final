@@ -19,7 +19,7 @@
 import { pool } from '../../database';
 import { PoolClient } from 'pg';
 import { v4 as uuidv4 } from 'uuid';
-import { BaseService } from '../base/BaseService';
+import { BaseService } from '../../../shared-services/base/BaseService';
 import { emitPhaseUpdated, emitPhaseRescheduled, emitMilestoneCompleted } from './projectRealtimeEvents';
 import { GovernanceError, ValidationError, NotFoundError, AuthorizationError } from './errors';
 import { eventBus, ProjectEventType } from './events';

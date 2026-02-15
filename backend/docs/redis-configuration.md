@@ -1,9 +1,9 @@
 # Redis Configuration
-# Propmetrik Platform
+# PROPMETRIK Platform
 
 ## Overview
 
-Redis is used for multiple purposes in the Propmetrik platform:
+Redis is used for multiple purposes in the PROPMETRIK platform:
 - Session management
 - Caching
 - Job queues (Bull)

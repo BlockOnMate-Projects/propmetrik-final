@@ -425,7 +425,7 @@ import hashlib
 import uuid
 from pathlib import Path
 
-class PropmetrikPartnerAPI:
+class PROPMETRIKPartnerAPI:
     def __init__(self, client_id, client_secret, base_url):
         self.client_id = client_id
         self.client_secret = client_secret
@@ -522,7 +522,7 @@ class PropmetrikPartnerAPI:
         return response.json()["data"]
 
 # Usage
-api = PropmetrikPartnerAPI(
+api = PROPMETRIKPartnerAPI(
     client_id="ghana-lands-commission-client",
     client_secret="your-secret-key",
     base_url="https://api.propmetrik.com/api/v1/ingestion"

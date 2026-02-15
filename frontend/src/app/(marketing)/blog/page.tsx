@@ -9,7 +9,7 @@ export default function BlogPage() {
         title: 'Ghana\'s Real Estate Market: 2026 Outlook and Investment Opportunities',
         excerpt: 'An in-depth analysis of emerging trends, growth sectors, and key investment opportunities in Ghana\'s evolving real estate landscape.',
         date: 'January 15, 2026',
-        author: 'PropMetrik Research Team',
+        author: 'PROPMETRIK Research Team',
         category: 'Market Analysis',
         readTime: '8 min read',
         image: 'https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?w=1200&q=80'
@@ -36,7 +36,7 @@ export default function BlogPage() {
             title: 'The Rise of Proptech in West Africa',
             excerpt: 'How technology is transforming real estate transactions across the region.',
             date: 'January 5, 2026',
-            author: 'PropMetrik Research Team',
+            author: 'PROPMETRIK Research Team',
             category: 'Technology',
             readTime: '6 min read'
         },
@@ -60,7 +60,7 @@ export default function BlogPage() {
             title: 'Commercial Real Estate Trends Q4 2025',
             excerpt: 'Office, retail, and industrial market performance across Greater Accra.',
             date: 'December 15, 2025',
-            author: 'PropMetrik Research Team',
+            author: 'PROPMETRIK Research Team',
             category: 'Commercial',
             readTime: '8 min read'
         },

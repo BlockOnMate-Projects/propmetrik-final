@@ -1,10 +1,10 @@
 # Ghana Housing Affordability Index (GHAI)
 
-## PropMetrik Proprietary Affordability Framework
+## PROPMETRIK Proprietary Affordability Framework
 
 **Version:** 1.0  
 **Last Updated:** January 2026  
-**Author:** PropMetrik Analytics  
+**Author:** PROPMETRIK Analytics  
 **Status:** Implementation Ready
 
 ---
@@ -95,7 +95,7 @@ Where:
 
 ### 2.2 Ghana Housing Market Characteristics
 
-**From PropMetrik Data (January 2026):**
+**From PROPMETRIK Data (January 2026):**
 
 | Indicator | Greater Accra | Kumasi | National |
 |-----------|---------------|--------|----------|
@@ -485,16 +485,16 @@ MAS = 0.45 × 0.25 × 0.60 × 0.70 × 100 = 4.73%
 
 | Data Category | Source | Current Status | Frequency |
 |---------------|--------|----------------|-----------|
-| **Median Home Prices** | PropMetrik Transactions | ✅ Available | Monthly |
+| **Median Home Prices** | PROPMETRIK Transactions | ✅ Available | Monthly |
 | **Mortgage Rates** | Bank of Ghana / Economic Service | ✅ Available | Monthly |
 | **Inflation/Policy Rate** | Bank of Ghana | ✅ Available | Monthly |
-| **Construction Costs** | PropMetrik Material Survey | ✅ Available | Weekly |
-| **Rental Prices** | PropMetrik Listings | ✅ Available | Daily |
+| **Construction Costs** | PROPMETRIK Material Survey | ✅ Available | Weekly |
+| **Rental Prices** | PROPMETRIK Listings | ✅ Available | Daily |
 | **Household Income** | GSS GLSS | ⚠️ Need Integration | Annual |
 | **Employment Rates** | GSS | ⚠️ Need Integration | Quarterly |
-| **Transaction Volume** | PropMetrik + Lands Commission | ⚠️ Partial | Monthly |
+| **Transaction Volume** | PROPMETRIK + Lands Commission | ⚠️ Partial | Monthly |
 
-### 6.2 Existing PropMetrik Data Assets
+### 6.2 Existing PROPMETRIK Data Assets
 
 **From economicIndicatorService.ts:**
 ```typescript
@@ -1331,9 +1331,9 @@ export const affordabilityIndexService = new AffordabilityIndexService();
 |--------|-----|-----------|-----------|
 | Ghana Statistical Service | statsghana.gov.gh | Income, Employment | Annual |
 | Bank of Ghana | bog.gov.gh | Interest rates, Mortgage data | Monthly |
-| PropMetrik Transactions | Internal | Property prices | Real-time |
-| PropMetrik Listings | Internal | Rental prices | Real-time |
-| PropMetrik Construction | Internal | Building costs | Weekly |
+| PROPMETRIK Transactions | Internal | Property prices | Real-time |
+| PROPMETRIK Listings | Internal | Rental prices | Real-time |
+| PROPMETRIK Construction | Internal | Building costs | Weekly |
 
 ### C. Sample Calculations
 
@@ -1387,4 +1387,4 @@ Interpretation: SEVERELY UNAFFORDABLE
 
 ---
 
-*This document is proprietary to PropMetrik and contains confidential methodology.*
+*This document is proprietary to PROPMETRIK and contains confidential methodology.*

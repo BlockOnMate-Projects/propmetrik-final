@@ -1,7 +1,7 @@
 /**
  * API Documentation Routes
  * 
- * Serves OpenAPI/Swagger documentation for the PropMetrik API
+ * Serves OpenAPI/Swagger documentation for the PROPMETRIK API
  */
 
 import { Router, Request, Response } from 'express';
@@ -18,7 +18,7 @@ const swaggerOptions: swaggerUi.SwaggerUiOptions = {
     .swagger-ui .info { margin: 20px 0; }
     .swagger-ui .scheme-container { padding: 15px 0; background: #fafafa; }
   `,
-  customSiteTitle: 'PropMetrik API Documentation',
+  customSiteTitle: 'PROPMETRIK API Documentation',
   customfavIcon: '/favicon.ico',
   swaggerOptions: {
     persistAuthorization: true,

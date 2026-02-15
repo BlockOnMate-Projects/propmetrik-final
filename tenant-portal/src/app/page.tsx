@@ -29,7 +29,7 @@ export default function Home() {
   return (
     <div className="flex min-h-screen flex-col items-center justify-center bg-slate-50 p-4">
       <div className="text-center mb-10 space-y-4">
-        <h1 className="text-4xl font-bold tracking-tight text-slate-900">PropMetrik Tenant Portal</h1>
+        <h1 className="text-4xl font-bold tracking-tight text-slate-900">PROPMETRIK Tenant Portal</h1>
         <p className="text-lg text-slate-600 max-w-2xl mx-auto">
           Welcome to the tenant experience. This portal allows you to apply for properties, 
           track your application status, and sign lease agreements completely online.
@@ -99,7 +99,7 @@ export default function Home() {
       </div>
 
       <div className="mt-12 text-center text-sm text-slate-400">
-        <p>PropMetrik Tenant Portal &copy; {new Date().getFullYear()}</p>
+        <p>PROPMETRIK Tenant Portal &copy; {new Date().getFullYear()}</p>
         <p>Development Version 0.1.0</p>
       </div>
     </div>

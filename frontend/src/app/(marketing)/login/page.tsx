@@ -74,7 +74,7 @@ export default function LoginPage() {
             <Link href="/" className="mb-8">
                 <Image
                     src="/branding/logo-full.png"
-                    alt="Propmetrik Logo"
+                    alt="PROPMETRIK Logo"
                     width={200}
                     height={55}
                     className="h-12 w-auto object-contain"

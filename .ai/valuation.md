@@ -1490,7 +1490,7 @@ The Market Context Panel provides a **read-only** view of current economic and m
 │  │                                                                         ││
 │  └─────────────────────────────────────────────────────────────────────────┘│
 │                                                                             │
-│  Data Sources: Bank of Ghana, Ghana Statistical Service, PropMetrik DB    │
+│  Data Sources: Bank of Ghana, Ghana Statistical Service, PROPMETRIK DB    │
 │  Last Updated: 08 Jan 2026, 09:45 GMT                                      │
 │                                                                             │
 └─────────────────────────────────────────────────────────────────────────────┘
@@ -1624,14 +1624,14 @@ The Cost Inputs Module provides a **shared data layer** for construction costs, 
 │  ┌─────────────────────────────────────────────────────────────────────────┐│
 │  │ COST DATA CONFIGURATION                                                 ││
 │  │ Region: Greater Accra │ Property Type: Residential │ Quality: Standard ││
-│  │ ⓘ Costs are pre-populated from PropMetrik's Ghana Construction Database││
+│  │ ⓘ Costs are pre-populated from PROPMETRIK's Ghana Construction Database││
 │  └─────────────────────────────────────────────────────────────────────────┘│
 │                                                                             │
 │  ┌───────────────────────────────────────────────┬─────────────────────────┐│
 │  │ CONSTRUCTION COST RATES                       │ METADATA                ││
 │  ├───────────────────────────────────────────────┼─────────────────────────┤│
 │  │                                               │                         ││
-│  │  Base Construction Cost                       │ Source: PropMetrik DB   ││
+│  │  Base Construction Cost                       │ Source: PROPMETRIK DB   ││
 │  │  ┌─────────────────────────────────────────┐  │ Last Updated: Dec 2025  ││
 │  │  │ System Default: GHS 4,000 / m²          │  │ Sample Size: 234 builds ││
 │  │  │ [●] Use Default  [ ] Override            │  │ Confidence: High        ││
@@ -3109,7 +3109,7 @@ interface ValuationReport {
 │  │ DELIVERY OPTIONS                                                        ││
 │  ├─────────────────────────────────────────────────────────────────────────┤│
 │  │                                                                         ││
-│  │  [✓] Save to ValuationHub (PropMetrik)                                 ││
+│  │  [✓] Save to ValuationHub (PROPMETRIK)                                 ││
 │  │  [✓] Email to Client (abc.bank@example.com)                            ││
 │  │  [ ] API Push to Client System                                         ││
 │  │  [ ] Print (Local Printer)                                             ││
@@ -3996,4 +3996,4 @@ POST   /api/overrides                     Record override
 
 *Document Version: 1.0*
 *Last Updated: January 2026*
-*Author: PropMetrik Engineering Team*
+*Author: PROPMETRIK Engineering Team*

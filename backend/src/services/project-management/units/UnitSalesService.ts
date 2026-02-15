@@ -11,7 +11,7 @@
  */
 
 import { pool } from '../../../database';
-import { BaseService } from '../BaseService';
+import { BaseService } from '../../../../shared-services/base/BaseService';
 import { eventBus } from '../events';
 import {
   ProjectUnit,
@@ -87,15 +87,11 @@ class UnitSalesService extends BaseService {
     const updatedUnit = mapRowToUnit(result.rows[0]);
     
     // Emit event
-    eventBus.emit({
-      type: 'unit.reserved',
-      payload: {
-        unitId: id,
-        projectId: updatedUnit.projectId,
-        buyerName: input.buyerName,
-        buyerPhone: input.buyerPhone
-      },
-      timestamp: new Date()
+    eventBus.emit('unit.reserved' as any, {
+      unitId: id,
+      projectId: updatedUnit.projectId,
+      buyerName: input.buyerName,
+      buyerPhone: input.buyerPhone
     });
     
     this.log('info', `Reserved unit ${updatedUnit.unitNumber} for ${input.buyerName}`);
@@ -143,14 +139,10 @@ class UnitSalesService extends BaseService {
     const updatedUnit = mapRowToUnit(result.rows[0]);
     
     // Emit event
-    eventBus.emit({
-      type: 'unit.reservation_cancelled',
-      payload: {
-        unitId: id,
-        projectId: updatedUnit.projectId,
-        reason
-      },
-      timestamp: new Date()
+    eventBus.emit('unit.reservation_cancelled' as any, {
+      unitId: id,
+      projectId: updatedUnit.projectId,
+      reason
     });
     
     this.log('info', `Cancelled reservation for unit ${updatedUnit.unitNumber}`);
@@ -191,15 +183,11 @@ class UnitSalesService extends BaseService {
     const updatedUnit = mapRowToUnit(result.rows[0]);
     
     // Emit event
-    eventBus.emit({
-      type: 'unit.under_contract',
-      payload: {
-        unitId: id,
-        projectId: updatedUnit.projectId,
-        salePrice: input.salePrice,
-        contractDate: input.contractDate
-      },
-      timestamp: new Date()
+    eventBus.emit('unit.under_contract' as any, {
+      unitId: id,
+      projectId: updatedUnit.projectId,
+      salePrice: input.salePrice,
+      contractDate: input.contractDate
     });
     
     this.log('info', `Unit ${updatedUnit.unitNumber} moved to under contract`);
@@ -238,15 +226,11 @@ class UnitSalesService extends BaseService {
     const updatedUnit = mapRowToUnit(result.rows[0]);
     
     // Emit event
-    eventBus.emit({
-      type: 'unit.sold',
-      payload: {
-        unitId: id,
-        projectId: updatedUnit.projectId,
-        buyerName: updatedUnit.buyerName,
-        salePrice: updatedUnit.salePrice
-      },
-      timestamp: new Date()
+    eventBus.emit('unit.sold' as any, {
+      unitId: id,
+      projectId: updatedUnit.projectId,
+      buyerName: updatedUnit.buyerName,
+      salePrice: updatedUnit.salePrice
     });
     
     this.log('info', `Unit ${updatedUnit.unitNumber} marked as sold`);
@@ -285,15 +269,11 @@ class UnitSalesService extends BaseService {
     const updatedUnit = mapRowToUnit(result.rows[0]);
     
     // Emit event
-    eventBus.emit({
-      type: 'unit.handed_over',
-      payload: {
-        unitId: id,
-        projectId: updatedUnit.projectId,
-        buyerName: updatedUnit.buyerName,
-        handoverDate
-      },
-      timestamp: new Date()
+    eventBus.emit('unit.handed_over' as any, {
+      unitId: id,
+      projectId: updatedUnit.projectId,
+      buyerName: updatedUnit.buyerName,
+      handoverDate
     });
     
     this.log('info', `Unit ${updatedUnit.unitNumber} handed over`);

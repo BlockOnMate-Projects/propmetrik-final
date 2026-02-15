@@ -345,8 +345,8 @@ export class PdfSigningService {
         if (usePercentage) {
             // Convert percentage to pixels
             x = (options.x / 100) * pageWidth;
-            // Y coordinate: PDF origin is bottom-left, but we measure from top
-            y = pageHeight - ((options.y / 100) * pageHeight) - options.height;
+            // Y set below after drawHeight is computed
+            y = 0; // placeholder
         } else {
             x = options.x;
             // Y coordinate from top
@@ -373,43 +373,40 @@ export class PdfSigningService {
             }
         }
 
+        // Calculate actual drawing dimensions (convert percentages to pixels if needed)
+        let drawWidth: number;
+        let drawHeight: number;
+        if (usePercentage) {
+            drawWidth = (options.width / 100) * pageWidth;
+            drawHeight = (options.height / 100) * pageHeight;
+        } else {
+            drawWidth = options.width;
+            drawHeight = options.height;
+        }
+
+        // Recalculate y with correct height for percentage mode
+        if (usePercentage) {
+            y = pageHeight - ((options.y / 100) * pageHeight) - drawHeight;
+        }
+
         // Draw signature
         page.drawImage(sigImage, {
             x,
             y,
-            width: options.width,
-            height: options.height,
+            width: drawWidth,
+            height: drawHeight,
         });
 
-        // Add signature ID, timestamp and hash below if provided
-        if (options.signatureId || options.signedAt || options.signatureHash) {
+        // Add PMT signer ID just above the signature (inside the signature area, top-right)
+        if (options.signatureId) {
             const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
-            const dateStr = options.signedAt
-                ? options.signedAt.toISOString().split('T')[0]
-                : new Date().toISOString().split('T')[0];
-
-            const line1 = options.signatureId
-                ? `Signed: ${dateStr} | ID: ${options.signatureId}`
-                : `Signed: ${dateStr}`;
-
-            page.drawText(line1, {
+            page.drawText(options.signatureId, {
                 x,
-                y: y - 8,
-                size: 5,
+                y: y - 8,  // Just below the signature image
+                size: 6,
                 font,
-                color: rgb(0.4, 0.4, 0.4),
+                color: rgb(0.12, 0.46, 0.71),  // Blue, matching PMT ID style
             });
-
-            if (options.signatureHash) {
-                const hashLabel = `DIGITAL HASH: ${options.signatureHash}`;
-                page.drawText(hashLabel, {
-                    x,
-                    y: y - 14,
-                    size: 4,
-                    font,
-                    color: rgb(0.6, 0.6, 0.6),
-                });
-            }
         }
 
         logger.info('Signature embedded at position', {
@@ -437,6 +434,7 @@ export class PdfSigningService {
             signatureId?: string;
             signatureHash?: string;
             signedAt?: Date;
+            usePercentage?: boolean;
         }>
     ): Promise<Uint8Array> {
         let currentPdfBytes = pdfBytes;
@@ -453,7 +451,8 @@ export class PdfSigningService {
                     height: sig.height,
                     signatureId: sig.signatureId,
                     signatureHash: sig.signatureHash,
-                    signedAt: sig.signedAt
+                    signedAt: sig.signedAt,
+                    usePercentage: sig.usePercentage,
                 }
             );
         }
@@ -515,7 +514,7 @@ export class PdfSigningService {
             color: rgb(1, 1, 1),
         });
 
-        page1.drawText('PropMetrik E-Sign Platform', {
+        page1.drawText('PROPMETRIK E-Sign Platform', {
             x: margin,
             y: 735,
             size: 10,
@@ -574,7 +573,7 @@ export class PdfSigningService {
             ['Document Title:', params.documentTitle],
             ['Envelope ID:', params.envelopeId],
             ['Organization:', params.organizationName],
-            ['Status:', '✓ COMPLETED'],
+            ['Status:', 'COMPLETED'],
             ['Completed On:', params.completedAt.toISOString().replace('T', ' ').replace(/\..+/, '') + ' UTC'],
         ];
 
@@ -689,12 +688,21 @@ export class PdfSigningService {
                 borderWidth: 1,
             });
 
-            // Checkmark
-            page1.drawText('✓', {
-                x: margin + 10,
-                y: yPos - 10,
-                size: 16,
-                font: fontBold,
+            // Green checkmark drawn with lines
+            const cx = margin + 16;
+            const cy = yPos - 12;
+            // Short stroke of checkmark (down-left to bottom)
+            page1.drawLine({
+                start: { x: cx - 5, y: cy + 2 },
+                end: { x: cx, y: cy - 3 },
+                thickness: 2.5,
+                color: rgb(0.02, 0.59, 0.41),
+            });
+            // Long stroke of checkmark (bottom to up-right)
+            page1.drawLine({
+                start: { x: cx, y: cy - 3 },
+                end: { x: cx + 8, y: cy + 7 },
+                thickness: 2.5,
                 color: rgb(0.02, 0.59, 0.41),
             });
 
@@ -746,6 +754,73 @@ export class PdfSigningService {
             yPos -= boxHeight + 10;
         }
 
+        // Verification QR Code Section
+        try {
+            const QRCode = await import('qrcode');
+            const verificationUrl = `https://app.propmetrik.com/verify/${params.envelopeId}`;
+            const qrDataUrl = await QRCode.toDataURL(verificationUrl, {
+                width: 100,
+                margin: 1,
+                color: { dark: '#1a365d', light: '#ffffff' },
+            });
+
+            const qrBase64 = qrDataUrl.replace(/^data:image\/\w+;base64,/, '');
+            const qrBytes = Buffer.from(qrBase64, 'base64');
+            const qrImage = await pdfDoc.embedPng(qrBytes);
+
+            const qrSize = 72;
+            const qrY = Math.max(yPos - qrSize - 10, 90);
+
+            // QR Section divider
+            page1.drawLine({
+                start: { x: margin, y: qrY + qrSize + 5 },
+                end: { x: 562, y: qrY + qrSize + 5 },
+                thickness: 1,
+                color: rgb(0.8, 0.8, 0.8),
+            });
+
+            // QR code image
+            page1.drawImage(qrImage, {
+                x: margin,
+                y: qrY,
+                width: qrSize,
+                height: qrSize,
+            });
+
+            // Verification text next to QR
+            page1.drawText('SCAN TO VERIFY', {
+                x: margin + qrSize + 15,
+                y: qrY + qrSize - 12,
+                size: 10,
+                font: fontBold,
+                color: rgb(0.102, 0.212, 0.365),
+            });
+            page1.drawText('Scan this QR code to verify the authenticity', {
+                x: margin + qrSize + 15,
+                y: qrY + qrSize - 28,
+                size: 8,
+                font,
+                color: rgb(0.4, 0.4, 0.4),
+            });
+            page1.drawText('of this document and its signatures.', {
+                x: margin + qrSize + 15,
+                y: qrY + qrSize - 40,
+                size: 8,
+                font,
+                color: rgb(0.4, 0.4, 0.4),
+            });
+            page1.drawText(verificationUrl, {
+                x: margin + qrSize + 15,
+                y: qrY + qrSize - 56,
+                size: 7,
+                font,
+                color: rgb(0.12, 0.46, 0.71),
+            });
+        } catch (qrErr) {
+            // QR code generation is optional — continue without it
+            logger.warn('QR code generation failed, skipping', { error: (qrErr as any)?.message });
+        }
+
         // Footer
         page1.drawLine({
             start: { x: margin, y: 70 },
@@ -762,7 +837,7 @@ export class PdfSigningService {
             color: rgb(0.5, 0.5, 0.5),
         });
 
-        page1.drawText('PropMetrik Ghana Ltd. | Compliant with Ghana Electronic Transactions Act (Act 772)', {
+        page1.drawText('PROPMETRIK Ghana Ltd. | Compliant with Ghana Electronic Transactions Act (Act 772)', {
             x: margin,
             y: 42,
             size: 8,
@@ -916,12 +991,42 @@ export class PdfSigningService {
             width: number;
             height: number;
             signatureId?: string;
+            signatureHash?: string;
             signedAt?: Date;
             signerName?: string;
             signerEmail?: string;
+            usePercentage?: boolean;
+        }>;
+        dateFields?: Array<{
+            value: string;
+            page: number;
+            x: number;
+            y: number;
+            width: number;
+            height: number;
+            usePercentage?: boolean;
         }>;
         appendCertificatePage?: boolean;
         documentHash?: string;
+        envelopeId?: string;
+        documentTitle?: string;
+        organizationName?: string;
+        signers?: Array<{
+            name: string;
+            email: string;
+            role: string;
+            signedAt: Date;
+            signatureId?: string;
+            ipAddress?: string;
+            userAgent?: string;
+        }>;
+        auditEvents?: Array<{
+            eventType: string;
+            timestamp: Date;
+            description: string;
+            actor?: string;
+            ipAddress?: string;
+        }>;
     }): Promise<Uint8Array> {
         // First, embed all signatures
         let pdfBytes = await this.embedAllSignatures(
@@ -929,8 +1034,82 @@ export class PdfSigningService {
             params.signatures
         );
 
-        // Optionally append a certificate summary page
+        // Embed date fields if provided
+        if (params.dateFields && params.dateFields.length > 0) {
+            const pdfDoc = await PDFDocument.load(pdfBytes);
+            const dateFont = await pdfDoc.embedFont(StandardFonts.Helvetica);
+            const pages = pdfDoc.getPages();
+
+            for (const df of params.dateFields) {
+                const pageIdx = (df.page || 1) - 1;
+                if (pageIdx < 0 || pageIdx >= pages.length) continue;
+                const pg = pages[pageIdx];
+                const { width: pgW, height: pgH } = pg.getSize();
+
+                const usePct = df.usePercentage !== false;
+                const dx = usePct ? (df.x / 100) * pgW : df.x;
+                const dw = usePct ? (df.width / 100) * pgW : df.width;
+                const dh = usePct ? (df.height / 100) * pgH : df.height;
+                const dy = usePct
+                    ? pgH - ((df.y / 100) * pgH) - dh
+                    : pgH - df.y - dh;
+
+                if (df.value.startsWith('data:image/')) {
+                    const b64 = df.value.replace(/^data:image\/\w+;base64,/, '');
+                    const imgBytes = Buffer.from(b64, 'base64');
+                    try {
+                        const img = await pdfDoc.embedPng(imgBytes);
+                        pg.drawImage(img, { x: dx, y: dy, width: dw, height: dh });
+                    } catch {
+                        try {
+                            const img = await pdfDoc.embedJpg(imgBytes);
+                            pg.drawImage(img, { x: dx, y: dy, width: dw, height: dh });
+                        } catch { /* skip */ }
+                    }
+                } else {
+                    pg.drawText(df.value, {
+                        x: dx,
+                        y: dy + (dh / 2) - 4,
+                        size: 9,
+                        font: dateFont,
+                        color: rgb(0.1, 0.1, 0.1),
+                    });
+                }
+            }
+            pdfBytes = await pdfDoc.save();
+        }
+
+        // Optionally append certificate page
         if (params.appendCertificatePage && params.documentHash) {
+            // Try the full certificate if we have envelope context
+            if (params.envelopeId && params.signers && params.signers.length > 0) {
+                try {
+                    const certPdfBytes = await this.generateCertificateOfCompletion({
+                        certificateId: `CERT-${params.envelopeId.substring(0, 8).toUpperCase()}`,
+                        documentTitle: params.documentTitle || 'Signed Document',
+                        documentHash: params.documentHash,
+                        envelopeId: params.envelopeId,
+                        organizationName: params.organizationName || 'PROPMETRIK Ghana Ltd.',
+                        completedAt: new Date(),
+                        signers: params.signers,
+                        auditEvents: params.auditEvents || [],
+                    });
+
+                    // Merge certificate pages into signed document
+                    const mainDoc = await PDFDocument.load(pdfBytes);
+                    const certDoc = await PDFDocument.load(certPdfBytes);
+                    const certPages = await mainDoc.copyPages(certDoc, certDoc.getPageIndices());
+                    for (const p of certPages) {
+                        mainDoc.addPage(p);
+                    }
+                    pdfBytes = await mainDoc.save();
+                    return pdfBytes;
+                } catch (certErr: any) {
+                    logger.warn('Full certificate failed, falling back to simple', { error: certErr?.message });
+                }
+            }
+
+            // Fallback: simple certificate
             const sigSummary = params.signatures
                 .filter(s => s.signerName && s.signerEmail && s.signedAt)
                 .map(s => ({

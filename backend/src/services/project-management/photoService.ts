@@ -518,7 +518,7 @@ class PhotoService {
       WHERE id = $1 AND deleted_at IS NULL
     `, [id]);
 
-    return result.rowCount > 0;
+    return (result.rowCount ?? 0) > 0;
   }
 
   /**
@@ -755,7 +755,7 @@ class PhotoService {
       WHERE album_id = $1 AND photo_id = ANY($2)
     `, [albumId, photoIds]);
 
-    return result.rowCount;
+    return result.rowCount ?? 0;
   }
 
   /**
@@ -782,7 +782,7 @@ class PhotoService {
       DELETE FROM photo_albums WHERE id = $1
     `, [id]);
 
-    return result.rowCount > 0;
+    return (result.rowCount ?? 0) > 0;
   }
 
   // -------------------------------------------------------------------------
@@ -851,7 +851,7 @@ class PhotoService {
       DELETE FROM photo_comments WHERE id = $1
     `, [commentId]);
 
-    return result.rowCount > 0;
+    return (result.rowCount ?? 0) > 0;
   }
 
   // -------------------------------------------------------------------------
@@ -949,7 +949,7 @@ class PhotoService {
       DELETE FROM photo_comparisons WHERE id = $1
     `, [id]);
 
-    return result.rowCount > 0;
+    return (result.rowCount ?? 0) > 0;
   }
 
   // -------------------------------------------------------------------------
@@ -1059,7 +1059,7 @@ class PhotoService {
       DELETE FROM photo_share_links WHERE id = $1
     `, [id]);
 
-    return result.rowCount > 0;
+    return (result.rowCount ?? 0) > 0;
   }
 
   // -------------------------------------------------------------------------

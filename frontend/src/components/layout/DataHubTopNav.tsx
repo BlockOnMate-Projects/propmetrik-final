@@ -36,7 +36,7 @@ const navigation = [
     { name: 'ECONOMIC', href: '/dashboard/admin/data-hub/economic', icon: DollarSign },
     { name: 'CONSTRUCTION', href: '/dashboard/admin/data-hub/construction', icon: Building2 },
     { name: 'INGESTION', href: '/dashboard/admin/data-hub/ingestion', icon: Layers },
-    { name: 'CALENDAR', href: '/dashboard/admin/data-hub/calendar', icon: Calendar },
+    { name: 'CALENDAR', href: '/dashboard/calendar', icon: Calendar },
     { name: 'VALUATION CONFIG', href: '/dashboard/admin/data-hub/valuation-config', icon: Settings },
 ]
 

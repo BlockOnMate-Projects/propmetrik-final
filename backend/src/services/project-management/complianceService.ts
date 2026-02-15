@@ -366,7 +366,7 @@ class ComplianceService {
     await this.calculateComplianceScore(input.project_id, input.organization_id);
 
     // Emit real-time update
-    emitProjectUpdated(input.project_id, input.organization_id, 'permit_created');
+    emitProjectUpdated(input.project_id, input.organization_id, 'permit_created' as any);
     emitDashboardRefresh(input.organization_id);
 
     return permit;
@@ -492,7 +492,7 @@ class ComplianceService {
     await this.calculateComplianceScore(permit.project_id, permit.organization_id);
 
     // Emit real-time update
-    emitProjectUpdated(permit.project_id, permit.organization_id, 'permit_updated');
+    emitProjectUpdated(permit.project_id, permit.organization_id, 'permit_updated' as any);
     emitDashboardRefresh(permit.organization_id);
 
     return permit;
@@ -508,7 +508,7 @@ class ComplianceService {
     await this.calculateComplianceScore(existing.project_id, existing.organization_id);
 
     // Emit real-time update
-    emitProjectUpdated(existing.project_id, existing.organization_id, 'permit_deleted');
+    emitProjectUpdated(existing.project_id, existing.organization_id, 'permit_deleted' as any);
     emitDashboardRefresh(existing.organization_id);
 
     return true;
@@ -557,7 +557,7 @@ class ComplianceService {
     // Emit real-time update
     const permit = await this.getPermitById(input.permit_id);
     if (permit) {
-      emitProjectUpdated(permit.project_id, permit.organization_id, 'inspection_logged');
+      emitProjectUpdated(permit.project_id, permit.organization_id, 'inspection_logged' as any);
     }
 
     return inspection;
@@ -640,7 +640,7 @@ class ComplianceService {
       'DELETE FROM permit_inspections WHERE id = $1 RETURNING id',
       [inspectionId]
     );
-    return result.rowCount > 0;
+    return (result.rowCount ?? 0) > 0;
   }
 
   // --------------------------------------------------------------------------

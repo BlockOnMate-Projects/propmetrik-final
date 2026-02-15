@@ -37,7 +37,7 @@ export class SigningService {
         // Calculate document hash (for now, we'll hash the URL as placeholder)
         // In production, fetch the PDF and hash its content
         const documentHash = pdfSigningService.calculateDocumentHash(
-            Buffer.from(dto.originalPdfUrl)
+            Buffer.from(dto.originalPdfUrl || '')
         );
 
         // Create the signing request
@@ -171,11 +171,11 @@ export class SigningService {
             dto.signingRequestId,
             dto.signeeId,
             signerIdentity,
-            dto.signatureMethod,
+            dto.signatureMethod || 'draw',
             dto.signatureImageBase64,
             signee.document_hash_original,
             userId,
-            dto.stepUpMethod,
+            dto.stepUpMethod || 'none',
             dto.sessionId,
             dto.ipAddress,
             dto.userAgent
@@ -187,7 +187,7 @@ export class SigningService {
      */
     async captureExternalSignature(dto: ExternalSignatureDto): Promise<SignatureEvidence> {
         // Validate magic link
-        const signee = await magicLinkService.validateMagicLink(dto.magicToken);
+        const signee = await magicLinkService.validateMagicLink(dto.magicToken!);
         if (!signee) {
             throw new Error('Invalid or expired signing link');
         }
@@ -212,7 +212,7 @@ export class SigningService {
             signee.signingRequestId,
             signee.id,
             signerIdentity,
-            dto.signatureMethod,
+            dto.signatureMethod || 'draw',
             dto.signatureImageBase64,
             documentHash,
             null, // No user ID for external

@@ -4,7 +4,7 @@
  * Comprehensive Property Form Component
  * 
  * Reusable form component for collecting detailed property information
- * following RICS Red Book standards and PropMetrik requirements.
+ * following RICS Red Book standards and PROPMETRIK requirements.
  * 
  * Features:
  * - Physical characteristics (size, rooms, age)

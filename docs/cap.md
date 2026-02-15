@@ -33,7 +33,7 @@ Per RICS Red Book guidance, comparable evidence is categorized:
 | B | Adjusted listings (asking prices) | **Moderate** | Tier 4: Verified delistings, Tier 5: Web scraped |
 | C | Indices, surveys, research | Lower | Ghana Valuation Society reports, GPC surveys |
 
-**Current State:** Propmetrik primarily operates with **Category B** evidence (listings) with limited Category A data from bank partners and the emerging Lands Commission integration.
+**Current State:** PROPMETRIK primarily operates with **Category B** evidence (listings) with limited Category A data from bank partners and the emerging Lands Commission integration.
 
 ---
 
@@ -1012,4 +1012,4 @@ The listing-derived cap rate methodology provides a **RICS-compliant fallback** 
 6. **Refresh regularly** - Weekly benchmark updates with latest market data
 7. **Transition path** - Systematically improve as transaction data increases
 
-This approach allows Propmetrik to provide compliant income approach valuations today while building toward market-extracted cap rates as Ghana's property market matures.
+This approach allows PROPMETRIK to provide compliant income approach valuations today while building toward market-extracted cap rates as Ghana's property market matures.

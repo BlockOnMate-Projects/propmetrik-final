@@ -141,7 +141,7 @@ export const screenTenantSchema = z.object({
 // TENANCY (LEASE) SCHEMAS
 // ============================================================================
 
-export const createTenancySchema = z.object({
+const createTenancyBaseSchema = z.object({
   tenantId: uuidSchema,
   unitId: uuidSchema,
   startDate: dateSchema,
@@ -155,12 +155,14 @@ export const createTenancySchema = z.object({
   leaseType: z.enum(['fixed', 'month_to_month', 'periodic']).default('fixed'),
   terms: z.string().max(5000).optional(),
   specialConditions: z.string().max(2000).optional(),
-}).refine(
+});
+
+export const createTenancySchema = createTenancyBaseSchema.refine(
   (data) => data.endDate > data.startDate,
   { message: 'End date must be after start date', path: ['endDate'] }
 );
 
-export const updateTenancySchema = createTenancySchema.partial();
+export const updateTenancySchema = createTenancyBaseSchema.partial();
 
 export const tenancyQuerySchema = paginationSchema.extend({
   status: z.enum(['active', 'pending', 'expired', 'terminated', 'renewed']).optional(),

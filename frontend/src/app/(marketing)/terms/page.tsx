@@ -9,11 +9,11 @@ export default function TermsOfServicePage() {
     const sections = [
         {
             title: '1. Acceptance of Terms',
-            content: `By accessing or using PropMetrik's platform and services ("Services"), you agree to be bound by these Terms of Service ("Terms"). If you do not agree to these Terms, do not use our Services. These Terms constitute a legally binding agreement between you and PropMetrik, a company registered in Ghana.`
+            content: `By accessing or using PROPMETRIK's platform and services ("Services"), you agree to be bound by these Terms of Service ("Terms"). If you do not agree to these Terms, do not use our Services. These Terms constitute a legally binding agreement between you and PROPMETRIK, a company registered in Ghana.`
         },
         {
             title: '2. Description of Services',
-            content: `PropMetrik provides:
+            content: `PROPMETRIK provides:
 • Property valuation and advisory services
 • Real estate data intelligence and analytics
 • Deal management and CRM tools
@@ -60,8 +60,8 @@ One-Time Services:
         },
         {
             title: '6. Intellectual Property Rights',
-            content: `PropMetrik Content:
-• All content, trademarks, and data on our platform are owned by PropMetrik
+            content: `PROPMETRIK Content:
+• All content, trademarks, and data on our platform are owned by PROPMETRIK
 • You receive a limited, non-exclusive license to access and use our Services
 • You may not copy, modify, distribute, or create derivative works
 
@@ -92,7 +92,7 @@ For mortgage, legal, or formal purposes, consult a licensed RICS-accredited valu
         {
             title: '9. Limitation of Liability',
             content: `To the maximum extent permitted by Ghanaian law:
-• PropMetrik is not liable for indirect, incidental, or consequential damages
+• PROPMETRIK is not liable for indirect, incidental, or consequential damages
 • Our total liability shall not exceed fees paid in the 12 months preceding the claim
 • We are not liable for third-party actions or content
 • Service interruptions or data loss due to factors beyond our control
@@ -101,7 +101,7 @@ This limitation applies even if we have been advised of the possibility of damag
         },
         {
             title: '10. Indemnification',
-            content: `You agree to indemnify and hold PropMetrik harmless from claims arising from:
+            content: `You agree to indemnify and hold PROPMETRIK harmless from claims arising from:
 • Your violation of these Terms
 • Your violation of any law or third-party rights
 • Your use of the Services
@@ -161,7 +161,7 @@ Force Majeure: We are not liable for delays or failures due to circumstances bey
             content: `For questions about these Terms:
 
 Email: legal@propmetrik.com
-Address: PropMetrik, Accra, Ghana
+Address: PROPMETRIK, Accra, Ghana
 Phone: [To be added]
 
 For service support: support@propmetrik.com`

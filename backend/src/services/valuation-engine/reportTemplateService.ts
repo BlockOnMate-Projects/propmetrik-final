@@ -1095,7 +1095,7 @@ class ReportTemplateService {
         qualifications: valuer.qualifications || 'BSc., MGhIS',
         title: valuer.title || 'Valuation & Estate Surveyor',
         registration_number: valuer.ghis_number || valuer.registration_number || '[GhIS Reg No]',
-        firm: valuer.firm_name || valuer.company || 'PropMetrik',
+        firm: valuer.firm_name || valuer.company || 'PROPMETRIK',
         email: valuer.contact_email || valuer.email,
         phone: valuer.contact_phone || valuer.phone,
         address: valuer.contact_address || valuer.address,

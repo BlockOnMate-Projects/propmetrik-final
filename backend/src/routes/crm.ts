@@ -3239,6 +3239,269 @@ router.delete('/document-requirements/:id', asyncHandler(async (req: Request, re
 }));
 
 // =====================================================
+// PAYMENT CONFIGURATION (Payout Account Setup)
+// =====================================================
+
+/**
+ * GET /api/v1/crm/payments/account
+ * Get current payout account config for the organization
+ */
+router.get('/payments/account', asyncHandler(async (req: Request, res: Response) => {
+    const organizationId = await getOrganizationId(req);
+
+    const { pool } = await import('../database');
+    const result = await pool.query(
+        `SELECT * FROM payment_accounts
+         WHERE entity_id = $1 AND entity_type = 'organization' AND is_active = TRUE
+         LIMIT 1`,
+        [organizationId]
+    );
+
+    if (result.rows.length === 0) {
+        const legacy = await pool.query(
+            `SELECT * FROM pm_payment_accounts
+             WHERE organization_id = $1 AND is_active = TRUE
+             LIMIT 1`,
+            [organizationId]
+        );
+
+        if (legacy.rows.length === 0) {
+            return res.json({ configured: false });
+        }
+
+        const row = legacy.rows[0];
+        return res.json({
+            configured: true,
+            settlementMethod: 'bank',
+            bankName: row.paystack_bank_name,
+            bankCode: row.paystack_bank_code,
+            accountNumber: row.paystack_account_number,
+            accountName: row.paystack_account_name,
+            subaccountCode: row.paystack_subaccount_code,
+            platformFeePercentage: parseFloat(row.platform_fee_percentage || 1),
+            platformFeeFlat: parseFloat(row.platform_fee_flat || 25),
+            isVerified: !!row.verified_at,
+            verifiedAt: row.verified_at,
+            createdAt: row.created_at
+        });
+    }
+
+    const row = result.rows[0];
+    res.json({
+        configured: true,
+        settlementMethod: row.settlement_method || 'bank',
+        bankName: row.bank_name,
+        bankCode: row.bank_code,
+        accountNumber: row.account_number,
+        accountName: row.account_name,
+        momoProvider: row.momo_provider,
+        momoNumber: row.momo_number,
+        subaccountCode: row.paystack_subaccount_code,
+        platformFeePercentage: parseFloat(row.platform_fee_percentage || 0.01) * 100,
+        platformFeeFlat: parseFloat(row.platform_fee_flat || 25),
+        isVerified: row.is_verified,
+        verifiedAt: row.verified_at,
+        createdAt: row.created_at
+    });
+}));
+
+/**
+ * GET /api/v1/crm/payments/banks
+ * Get list of supported banks for payout setup
+ */
+router.get('/payments/banks', asyncHandler(async (req: Request, res: Response) => {
+    const { paystackService } = await import('../services/property-management/payment/paystackService');
+    const banks = await paystackService.getBanks('ghana');
+    res.json(banks);
+}));
+
+/**
+ * POST /api/v1/crm/payments/register-account
+ * Register or update the organization's bank account for payouts
+ */
+router.post('/payments/register-account', asyncHandler(async (req: Request, res: Response) => {
+    const organizationId = await getOrganizationId(req);
+    const { bankCode, accountNumber, businessName, contactEmail, contactPhone } = req.body;
+
+    if (!bankCode || !accountNumber || !businessName) {
+        return res.status(400).json({ error: 'bankCode, accountNumber, and businessName are required' });
+    }
+
+    const { paystackService } = await import('../services/property-management/payment/paystackService');
+
+    const result = await paystackService.registerPropertyManagerAccount(
+        organizationId, bankCode, accountNumber, businessName, contactEmail, contactPhone
+    );
+
+    if (!result.success) {
+        return res.status(400).json({ error: result.error });
+    }
+
+    res.json({ success: true, subaccountCode: result.subaccountCode });
+}));
+
+/**
+ * POST /api/v1/crm/payments/resolve-account
+ * Verify a bank account number (name enquiry)
+ */
+router.post('/payments/resolve-account', asyncHandler(async (req: Request, res: Response) => {
+    const { accountNumber, bankCode } = req.body;
+
+    if (!accountNumber || !bankCode) {
+        return res.status(400).json({ error: 'accountNumber and bankCode are required' });
+    }
+
+    try {
+        const { paystackService } = await import('../services/property-management/payment/paystackService');
+        const result = await paystackService.resolveAccount(accountNumber, bankCode);
+        res.json(result);
+    } catch (err: any) {
+        const status = err.status || 422;
+        res.status(status).json({
+            status: false,
+            error: err.paystackMessage || err.message || 'Account verification failed',
+            meta: err.paystackMeta || undefined
+        });
+    }
+}));
+
+// =====================================================
+// CRYPTO WALLET CONFIGURATION
+// =====================================================
+
+/**
+ * GET /api/v1/crm/payments/crypto-wallet
+ * Get current crypto wallet configuration for the deal management org
+ */
+router.get('/payments/crypto-wallet', asyncHandler(async (req: Request, res: Response) => {
+    const organizationId = await getOrganizationId(req);
+
+    const { pool } = await import('../database');
+    const result = await pool.query(
+        `SELECT crypto_wallet_address, crypto_wallet_verified, crypto_wallet_registered_at
+         FROM payment_accounts
+         WHERE entity_id = $1 AND entity_type = 'organization' AND is_active = TRUE
+         LIMIT 1`,
+        [organizationId]
+    );
+
+    if (result.rows.length === 0 || !result.rows[0].crypto_wallet_address) {
+        return res.json({ configured: false });
+    }
+
+    const row = result.rows[0];
+    res.json({
+        configured: true,
+        walletAddress: row.crypto_wallet_address,
+        isVerified: row.crypto_wallet_verified || false,
+        registeredAt: row.crypto_wallet_registered_at,
+    });
+}));
+
+/**
+ * POST /api/v1/crm/payments/crypto-wallet
+ * Save/update crypto wallet address for the deal management org
+ */
+router.post('/payments/crypto-wallet', asyncHandler(async (req: Request, res: Response) => {
+    const organizationId = await getOrganizationId(req);
+    const { walletAddress } = req.body;
+
+    if (!walletAddress || !/^0x[a-fA-F0-9]{40}$/.test(walletAddress)) {
+        return res.status(400).json({ error: 'Invalid wallet address. Must be a valid Polygon address (0x + 40 hex chars)' });
+    }
+
+    const { pool } = await import('../database');
+    const upsertResult = await pool.query(`
+        INSERT INTO payment_accounts (id, entity_type, entity_id, crypto_wallet_address, crypto_wallet_registered_at, updated_at, is_active)
+        VALUES (gen_random_uuid(), 'organization', $1, $2, NOW(), NOW(), TRUE)
+        ON CONFLICT (entity_type, entity_id) DO UPDATE SET
+            crypto_wallet_address = $2,
+            crypto_wallet_registered_at = NOW(),
+            updated_at = NOW()
+        RETURNING id, crypto_wallet_address, crypto_wallet_verified, crypto_wallet_registered_at
+    `, [organizationId, walletAddress]);
+
+    const row = upsertResult.rows[0];
+
+    let onChainRegistered = false;
+    try {
+        const { cryptoPaymentService } = await import('../../shared-services/payments/crypto');
+        if (cryptoPaymentService.isConfigured()) {
+            await cryptoPaymentService.registerRecipientWallet('organization', organizationId, walletAddress);
+            onChainRegistered = true;
+            await pool.query(`UPDATE payment_accounts SET crypto_wallet_verified = true WHERE id = $1`, [row.id]);
+        }
+    } catch {
+        // On-chain registration is optional
+    }
+
+    res.json({
+        success: true,
+        walletAddress: row.crypto_wallet_address,
+        isVerified: onChainRegistered || row.crypto_wallet_verified || false,
+        registeredAt: row.crypto_wallet_registered_at,
+    });
+}));
+
+/**
+ * GET /api/v1/crm/payments/crypto-settlement
+ * Get current settlement preference for the deal management org
+ */
+router.get('/payments/crypto-settlement', asyncHandler(async (req: Request, res: Response) => {
+    const organizationId = await getOrganizationId(req);
+    const { nowPaymentsService } = await import('../../shared-services/payments/crypto/nowPaymentsService');
+    const pref = await nowPaymentsService.getClientSettlementPreference('organization', organizationId);
+    res.json(pref);
+}));
+
+/**
+ * PUT /api/v1/crm/payments/crypto-settlement
+ * Set preferred settlement coin and wallet for the deal management org
+ * Body: { coinSymbol, chain, walletAddress }
+ */
+router.put('/payments/crypto-settlement', asyncHandler(async (req: Request, res: Response) => {
+    const organizationId = await getOrganizationId(req);
+    const { coinSymbol, chain, walletAddress } = req.body;
+
+    if (!coinSymbol || !chain || !walletAddress) {
+        return res.status(400).json({ error: 'coinSymbol, chain, and walletAddress are required' });
+    }
+
+    const { nowPaymentsService } = await import('../../shared-services/payments/crypto/nowPaymentsService');
+    const result = await nowPaymentsService.setClientSettlementPreference({
+        entityType: 'organization',
+        entityId: organizationId,
+        coinSymbol,
+        chain,
+        walletAddress,
+    });
+
+    // If EVM-native, also register on-chain
+    if (!result.useNowPayments && /^0x[a-fA-F0-9]{40}$/.test(walletAddress)) {
+        try {
+            const { cryptoPaymentService } = await import('../../shared-services/payments/crypto');
+            if (cryptoPaymentService.isConfigured()) {
+                await cryptoPaymentService.registerRecipientWallet('organization', organizationId, walletAddress);
+            }
+        } catch {
+            // On-chain optional
+        }
+    }
+
+    res.json(result);
+}));
+
+/**
+ * GET /api/v1/crm/payments/crypto-settlement-coins
+ * Get supported settlement coins for the UI dropdown
+ */
+router.get('/payments/crypto-settlement-coins', asyncHandler(async (req: Request, res: Response) => {
+    const { nowPaymentsService } = await import('../../shared-services/payments/crypto/nowPaymentsService');
+    const coins = await nowPaymentsService.getSupportedSettlementCoins();
+    res.json({ coins });
+}));
+
+// =====================================================
 // ERROR HANDLING
 // =====================================================
 

@@ -28,7 +28,8 @@ import {
     AlertTriangle,
     User,
     Send,
-    Eye
+    Eye,
+    Wrench
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -71,10 +72,11 @@ import {
     DropdownMenuSeparator,
     DropdownMenuTrigger
 } from '@/components/ui/dropdown-menu'
-import { propertyManagementApi } from '@/lib/property-management-api'
+import { propertyManagementApi, UtilityCharge, UtilityType, RentScheduleItem, CreateUtilityChargeDto } from '@/lib/property-management-api'
 import { openLeaseAgreement, LeaseAgreementData } from '@/lib/lease-generator'
-import { Tenant, Tenancy, FinancialRecord } from '@/types/property-management'
+import { Tenant, Tenancy, FinancialRecord, WorkOrder } from '@/types/property-management'
 import { format, differenceInDays, addYears } from 'date-fns'
+import { Zap, Droplets, Flame, Wifi, Trash, Shield, Plus } from 'lucide-react'
 
 // Lease signing workflow states
 type LeaseSigningStatus = 'none' | 'draft' | 'pending_sign' | 'partially_signed' | 'signed' | 'expired' | 'voided'
@@ -89,29 +91,85 @@ interface LeaseSigningState {
     completedAt?: Date
 }
 
+const deriveLeaseSigningState = (tenancy?: Tenancy | null): LeaseSigningState => {
+    if (!tenancy) {
+        return {
+            status: 'none',
+            label: 'No Lease Document',
+            description: 'Generate a lease agreement to get started',
+            color: 'zinc'
+        }
+    }
+
+    const leaseStatus = (tenancy.leaseStatus || '').toLowerCase()
+    const esignStatus = (tenancy.esignStatus || '').toLowerCase()
+    const hasDraft = Boolean(tenancy.leaseDocumentUrl)
+    const hasSigned = Boolean(tenancy.leaseSignedUrl) || esignStatus === 'completed' || ['countersigned', 'active', 'tenant_signed'].includes(leaseStatus)
+
+    if (hasSigned) {
+        return {
+            status: 'signed',
+            label: 'Signed',
+            description: 'Lease is fully signed and available in Documents',
+            color: 'emerald',
+            completedAt: tenancy.esignCompletedAt ? new Date(tenancy.esignCompletedAt) : undefined
+        }
+    }
+
+    if (tenancy.status === 'pending_signature' || esignStatus === 'pending' || leaseStatus === 'sent_to_tenant') {
+        return {
+            status: 'pending_sign',
+            label: 'Awaiting Signature',
+            description: 'Lease has been sent and is awaiting signatures',
+            color: 'amber',
+            sentAt: tenancy.leaseSentAt ? new Date(tenancy.leaseSentAt) : undefined
+        }
+    }
+
+    if (hasDraft) {
+        return {
+            status: 'draft',
+            label: 'Draft',
+            description: 'Lease draft generated and ready to send',
+            color: 'blue'
+        }
+    }
+
+    return {
+        status: 'none',
+        label: 'No Lease Document',
+        description: 'Generate a lease agreement to get started',
+        color: 'zinc'
+    }
+}
+
 export default function TenantDetailsPage() {
     const router = useRouter()
     const params = useParams()
     const tenantId = params.id as string
-    
+
     const [tenant, setTenant] = useState<Tenant | null>(null)
     const [tenancies, setTenancies] = useState<Tenancy[]>([])
     const [payments, setPayments] = useState<FinancialRecord[]>([])
     const [isLoading, setIsLoading] = useState(true)
     const [error, setError] = useState<string | null>(null)
-    
-    // Lease signing status (would come from backend in production)
+
+    // Lease signing status
     const [leaseSigningState, setLeaseSigningState] = useState<LeaseSigningState>({
         status: 'none',
         label: 'No Lease Document',
         description: 'Generate a lease agreement to get started',
         color: 'zinc'
     })
-    
+
     // Active tenancy for quick access
     const activeTenancy = useMemo(() => {
         return tenancies.find(t => t.status === 'active')
     }, [tenancies])
+
+    useEffect(() => {
+        setLeaseSigningState(deriveLeaseSigningState(activeTenancy || null))
+    }, [activeTenancy])
 
     // Lease progress for active tenancy
     const leaseProgress = useMemo(() => {
@@ -124,26 +182,42 @@ export default function TenantDetailsPage() {
         const percent = Math.min(100, Math.max(0, ((total - remaining) / total) * 100))
         return { percent, remaining, total }
     }, [activeTenancy])
-    
+
     // Edit tenancy dialog
     const [selectedTenancy, setSelectedTenancy] = useState<Tenancy | null>(null)
     const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
     const [editForm, setEditForm] = useState({ monthlyRent: 0, leaseEndDate: '', paymentFreq: 'monthly' })
     const [isSavingEdit, setIsSavingEdit] = useState(false)
-    
+
     // Terminate dialog
     const [isTerminateDialogOpen, setIsTerminateDialogOpen] = useState(false)
     const [terminateForm, setTerminateForm] = useState({ terminationDate: format(new Date(), 'yyyy-MM-dd'), reason: '' })
     const [isTerminating, setIsTerminating] = useState(false)
-    
+
     // Renew dialog
     const [isRenewDialogOpen, setIsRenewDialogOpen] = useState(false)
     const [renewForm, setRenewForm] = useState({ newEndDate: '', newMonthlyRent: 0, duration: '1' })
     const [isRenewing, setIsRenewing] = useState(false)
-    
+
     // Delete tenant dialog
     const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
     const [isDeleting, setIsDeleting] = useState(false)
+    const [isInvitingPortal, setIsInvitingPortal] = useState(false)
+    const [portalInviteMessage, setPortalInviteMessage] = useState<string | null>(null)
+    const [maintenanceRequests, setMaintenanceRequests] = useState<WorkOrder[]>([])
+
+    // Utility charges state
+    const [utilityCharges, setUtilityCharges] = useState<UtilityCharge[]>([])
+    const [rentSchedules, setRentSchedules] = useState<RentScheduleItem[]>([])
+    const [isAddChargeOpen, setIsAddChargeOpen] = useState(false)
+    const [isSubmittingCharge, setIsSubmittingCharge] = useState(false)
+    const [chargeForm, setChargeForm] = useState({
+        utilityType: 'electricity' as UtilityType,
+        billingPeriodStart: '',
+        billingPeriodEnd: '',
+        amount: '',
+        description: ''
+    })
 
     // Load tenant data
     useEffect(() => {
@@ -155,17 +229,34 @@ export default function TenantDetailsPage() {
                     propertyManagementApi.getTenancies({ limit: 50 })
                 ])
                 setTenant(tenantData)
-                
+
                 const allTenancies = Array.isArray(tenanciesRes) ? tenanciesRes : tenanciesRes.data || []
                 const tenantTenancies = allTenancies.filter(t => t.tenantId === tenantId)
                 setTenancies(tenantTenancies)
-                
+
                 // Load payments if there's an active tenancy
                 const active = tenantTenancies.find(t => t.status === 'active')
                 if (active?.propertyId) {
-                    const financials = await propertyManagementApi.getFinancials({ propertyId: active.propertyId, limit: 20 })
+                    const [financials, workOrders] = await Promise.all([
+                        propertyManagementApi.getFinancials({ propertyId: active.propertyId, limit: 20 }),
+                        propertyManagementApi.getWorkOrders({ propertyId: active.propertyId, limit: 50 })
+                    ])
                     const data = Array.isArray(financials) ? financials : financials.data || []
                     setPayments(data.filter(f => f.recordType === 'income'))
+
+                    // Filter work orders to this tenant's tenancy
+                    const allWO = Array.isArray(workOrders) ? workOrders : workOrders.data || []
+                    setMaintenanceRequests(allWO.filter(wo => wo.tenancyId === active.id))
+
+                    // Load utility charges
+                    try {
+                        const [chargesRes, schedulesRes] = await Promise.all([
+                            propertyManagementApi.getUtilityCharges(active.id),
+                            propertyManagementApi.getRentSchedules(active.id)
+                        ])
+                        setUtilityCharges(chargesRes.charges || [])
+                        setRentSchedules(schedulesRes.schedules || [])
+                    } catch { /* utility charges may not be available yet */ }
                 }
             } catch (err) {
                 console.error('Failed to load tenant:', err)
@@ -306,6 +397,22 @@ export default function TenantDetailsPage() {
         }
     }
 
+    const handleInviteToPortal = async () => {
+        try {
+            setIsInvitingPortal(true)
+            setPortalInviteMessage(null)
+
+            const tenantPortalLoginUrl = `${process.env.NEXT_PUBLIC_TENANT_PORTAL_URL || 'http://localhost:3001'}/login`
+            await propertyManagementApi.inviteTenantPortal(tenantId, tenantPortalLoginUrl)
+
+            setPortalInviteMessage('Access invite email sent. Tenant must use the email link to verify and create a password before first login.')
+        } catch (err: any) {
+            setPortalInviteMessage(err?.message || 'Failed to send tenant portal invite')
+        } finally {
+            setIsInvitingPortal(false)
+        }
+    }
+
     // Handle generate lease agreement - navigates to e-sign page
     const handleGenerateLease = (tenancy?: Tenancy) => {
         const targetTenancy = tenancy || activeTenancy
@@ -314,8 +421,8 @@ export default function TenantDetailsPage() {
             return
         }
 
-        // Navigate to the e-sign page for the tenancy
-        router.push(`/dashboard/property-management/e-sign/${targetTenancy.id}`)
+        // Navigate to the tenancy/lease detail page for document management
+        router.push(`/dashboard/property-management/leases/${targetTenancy.id}`)
     }
 
     if (isLoading) {
@@ -343,7 +450,7 @@ export default function TenantDetailsPage() {
     }
 
     return (
-        <div className="space-y-6 max-w-6xl mx-auto">
+        <div className="space-y-6 max-w-7xl mx-auto">
             {/* Header */}
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                 <div className="flex items-center gap-4">
@@ -373,12 +480,25 @@ export default function TenantDetailsPage() {
                     </div>
                 </div>
                 <div className="flex items-center gap-2">
+                    <Button
+                        variant="outline"
+                        className="border-amber-800 text-amber-500 hover:bg-amber-950/30 font-mono text-xs"
+                        onClick={handleInviteToPortal}
+                        disabled={isInvitingPortal || !tenant.email}
+                    >
+                        {isInvitingPortal ? (
+                            <Loader2 className="mr-2 h-3 w-3 animate-spin" />
+                        ) : (
+                            <Send className="mr-2 h-3 w-3" />
+                        )}
+                        Send Access Invite (Email)
+                    </Button>
                     <Button variant="outline" className="border-zinc-800 text-zinc-400 hover:text-white hover:bg-zinc-800 font-mono text-xs">
                         <Edit2 className="mr-2 h-3 w-3" />
                         Edit Profile
                     </Button>
-                    <Button 
-                        variant="outline" 
+                    <Button
+                        variant="outline"
                         className="border-red-900 text-red-500 hover:bg-red-950/30 font-mono text-xs"
                         onClick={() => setIsDeleteDialogOpen(true)}
                     >
@@ -388,9 +508,15 @@ export default function TenantDetailsPage() {
                 </div>
             </div>
 
-            <div className="grid gap-6 md:grid-cols-3">
+            {portalInviteMessage && (
+                <div className="rounded-md border border-amber-900/40 bg-amber-950/20 px-3 py-2 text-xs font-mono text-amber-400">
+                    {portalInviteMessage}
+                </div>
+            )}
+
+            <div className="grid gap-6 md:grid-cols-12">
                 {/* Sidebar Info */}
-                <div className="space-y-6">
+                <div className="space-y-6 md:col-span-4 md:order-2">
                     {/* Active Lease Summary */}
                     {activeTenancy && (
                         <Card className="bg-gradient-to-br from-amber-950/30 to-zinc-900 border-amber-800/30">
@@ -408,7 +534,7 @@ export default function TenantDetailsPage() {
                                         <div className="text-zinc-500 text-xs font-mono">{activeTenancy.property?.address}</div>
                                     </div>
                                 </div>
-                                
+
                                 <div className="grid grid-cols-2 gap-3">
                                     <div className="bg-zinc-900/50 rounded p-2">
                                         <div className="text-zinc-500 text-[10px] font-mono uppercase">Monthly Rent</div>
@@ -423,7 +549,7 @@ export default function TenantDetailsPage() {
                                         </div>
                                     </div>
                                 </div>
-                                
+
                                 {leaseProgress && (
                                     <div>
                                         <div className="flex justify-between text-[10px] font-mono text-zinc-500 mb-1">
@@ -431,11 +557,10 @@ export default function TenantDetailsPage() {
                                             <span>{Math.round(leaseProgress.percent)}%</span>
                                         </div>
                                         <div className="h-2 bg-zinc-800 rounded-full overflow-hidden">
-                                            <div 
-                                                className={`h-full transition-all ${
-                                                    leaseProgress.remaining < 30 ? 'bg-red-500' : 
+                                            <div
+                                                className={`h-full transition-all ${leaseProgress.remaining < 30 ? 'bg-red-500' :
                                                     leaseProgress.remaining < 90 ? 'bg-amber-500' : 'bg-emerald-500'
-                                                }`}
+                                                    }`}
                                                 style={{ width: `${leaseProgress.percent}%` }}
                                             />
                                         </div>
@@ -521,253 +646,25 @@ export default function TenantDetailsPage() {
                         </CardContent>
                     </Card>
 
-                    {/* Lease Signing Workflow */}
-                    {activeTenancy && (
-                        <Card className="bg-zinc-900 border-zinc-800">
-                            <CardHeader className="pb-3">
-                                <div className="flex items-center justify-between">
-                                    <CardTitle className="text-sm font-mono uppercase text-amber-500">Lease Document</CardTitle>
-                                    <Badge className={`text-[10px] font-mono ${
-                                        leaseSigningState.status === 'none' ? 'bg-zinc-700 text-zinc-400' :
-                                        leaseSigningState.status === 'draft' ? 'bg-blue-900/50 text-blue-400 border-blue-800' :
-                                        leaseSigningState.status === 'pending_sign' ? 'bg-amber-900/50 text-amber-400 border-amber-800' :
-                                        leaseSigningState.status === 'partially_signed' ? 'bg-amber-900/50 text-amber-400 border-amber-800' :
-                                        leaseSigningState.status === 'signed' ? 'bg-emerald-900/50 text-emerald-400 border-emerald-800' :
-                                        leaseSigningState.status === 'expired' ? 'bg-red-900/50 text-red-400 border-red-800' :
-                                        'bg-zinc-700 text-zinc-400'
-                                    }`}>
-                                        {leaseSigningState.label}
-                                    </Badge>
-                                </div>
-                                <CardDescription className="text-zinc-500 text-xs font-mono mt-1">
-                                    {leaseSigningState.description}
-                                </CardDescription>
-                            </CardHeader>
-                            <CardContent className="space-y-3">
-                                {/* Workflow Steps Visual */}
-                                <div className="flex items-center justify-between text-[10px] font-mono">
-                                    <div className={`flex flex-col items-center ${leaseSigningState.status !== 'none' ? 'text-emerald-500' : 'text-zinc-600'}`}>
-                                        <div className={`w-6 h-6 rounded-full flex items-center justify-center mb-1 ${leaseSigningState.status !== 'none' ? 'bg-emerald-900/50 border border-emerald-700' : 'bg-zinc-800 border border-zinc-700'}`}>
-                                            {leaseSigningState.status !== 'none' ? <CheckCircle className="w-3 h-3" /> : '1'}
-                                        </div>
-                                        <span>Draft</span>
-                                    </div>
-                                    <div className={`flex-1 h-0.5 mx-2 ${['pending_sign', 'partially_signed', 'signed'].includes(leaseSigningState.status) ? 'bg-emerald-700' : 'bg-zinc-800'}`} />
-                                    <div className={`flex flex-col items-center ${['pending_sign', 'partially_signed', 'signed'].includes(leaseSigningState.status) ? 'text-amber-500' : 'text-zinc-600'}`}>
-                                        <div className={`w-6 h-6 rounded-full flex items-center justify-center mb-1 ${['pending_sign', 'partially_signed', 'signed'].includes(leaseSigningState.status) ? 'bg-amber-900/50 border border-amber-700' : 'bg-zinc-800 border border-zinc-700'}`}>
-                                            {['signed'].includes(leaseSigningState.status) ? <CheckCircle className="w-3 h-3" /> : '2'}
-                                        </div>
-                                        <span>Sent</span>
-                                    </div>
-                                    <div className={`flex-1 h-0.5 mx-2 ${leaseSigningState.status === 'signed' ? 'bg-emerald-700' : 'bg-zinc-800'}`} />
-                                    <div className={`flex flex-col items-center ${leaseSigningState.status === 'signed' ? 'text-emerald-500' : 'text-zinc-600'}`}>
-                                        <div className={`w-6 h-6 rounded-full flex items-center justify-center mb-1 ${leaseSigningState.status === 'signed' ? 'bg-emerald-900/50 border border-emerald-700' : 'bg-zinc-800 border border-zinc-700'}`}>
-                                            {leaseSigningState.status === 'signed' ? <CheckCircle className="w-3 h-3" /> : '3'}
-                                        </div>
-                                        <span>Signed</span>
-                                    </div>
-                                </div>
-
-                                {/* Signers Status (if sent) */}
-                                {leaseSigningState.signers && leaseSigningState.signers.length > 0 && (
-                                    <div className="bg-zinc-800/50 rounded p-2 space-y-2">
-                                        <p className="text-[10px] font-mono text-zinc-500 uppercase">Signers</p>
-                                        {leaseSigningState.signers.map((signer, i) => (
-                                            <div key={i} className="flex items-center justify-between text-xs">
-                                                <div className="flex items-center gap-2">
-                                                    <div className={`w-2 h-2 rounded-full ${signer.signed ? 'bg-emerald-500' : 'bg-amber-500'}`} />
-                                                    <span className="text-zinc-300 font-mono">{signer.name}</span>
-                                                </div>
-                                                <span className={`text-[10px] font-mono ${signer.signed ? 'text-emerald-500' : 'text-amber-500'}`}>
-                                                    {signer.signed ? 'Signed' : 'Pending'}
-                                                </span>
-                                            </div>
-                                        ))}
-                                    </div>
-                                )}
-
-                                {/* Action Buttons based on status */}
-                                <div className="space-y-2 pt-1">
-                                    {leaseSigningState.status === 'none' && (
-                                        <Button 
-                                            className="w-full bg-amber-600 hover:bg-amber-700 text-black font-mono text-xs"
-                                            onClick={() => handleGenerateLease()}
-                                        >
-                                            <FileText className="h-3 w-3 mr-2" />
-                                            Generate Lease Agreement
-                                        </Button>
-                                    )}
-                                    
-                                    {leaseSigningState.status === 'draft' && (
-                                        <>
-                                            <Button 
-                                                className="w-full bg-amber-600 hover:bg-amber-700 text-black font-mono text-xs"
-                                                onClick={() => handleGenerateLease()}
-                                            >
-                                                <Send className="h-3 w-3 mr-2" />
-                                                Send for Signing
-                                            </Button>
-                                            <Button 
-                                                variant="outline"
-                                                className="w-full border-zinc-800 text-zinc-400 hover:text-white font-mono text-xs"
-                                                onClick={() => handleGenerateLease()}
-                                            >
-                                                <Edit2 className="h-3 w-3 mr-2" />
-                                                Edit Draft
-                                            </Button>
-                                        </>
-                                    )}
-                                    
-                                    {(leaseSigningState.status === 'pending_sign' || leaseSigningState.status === 'partially_signed') && (
-                                        <>
-                                            <Button 
-                                                variant="outline"
-                                                className="w-full border-amber-800 text-amber-500 hover:bg-amber-950/30 font-mono text-xs"
-                                            >
-                                                <Send className="h-3 w-3 mr-2" />
-                                                Send Reminder
-                                            </Button>
-                                            <Button 
-                                                variant="outline"
-                                                className="w-full border-zinc-800 text-zinc-400 hover:text-white font-mono text-xs"
-                                                onClick={() => handleGenerateLease()}
-                                            >
-                                                <Eye className="h-3 w-3 mr-2" />
-                                                View Document
-                                            </Button>
-                                            <Button 
-                                                variant="outline"
-                                                className="w-full border-red-900/50 text-red-500 hover:bg-red-950/30 font-mono text-xs"
-                                                onClick={() => setLeaseSigningState({ 
-                                                    status: 'voided', 
-                                                    label: 'Voided', 
-                                                    description: 'This signing request was cancelled',
-                                                    color: 'red'
-                                                })}
-                                            >
-                                                <XCircle className="h-3 w-3 mr-2" />
-                                                Void Request
-                                            </Button>
-                                        </>
-                                    )}
-                                    
-                                    {leaseSigningState.status === 'signed' && (
-                                        <>
-                                            <Button 
-                                                variant="outline"
-                                                className="w-full border-zinc-800 text-zinc-400 hover:text-white font-mono text-xs"
-                                            >
-                                                <Download className="h-3 w-3 mr-2" />
-                                                Download Signed Lease
-                                            </Button>
-                                            <Button 
-                                                variant="outline"
-                                                className="w-full border-zinc-800 text-zinc-400 hover:text-white font-mono text-xs"
-                                                onClick={() => handleGenerateLease()}
-                                            >
-                                                <Eye className="h-3 w-3 mr-2" />
-                                                View Document
-                                            </Button>
-                                        </>
-                                    )}
-                                    
-                                    {(leaseSigningState.status === 'expired' || leaseSigningState.status === 'voided') && (
-                                        <Button 
-                                            className="w-full bg-amber-600 hover:bg-amber-700 text-black font-mono text-xs"
-                                            onClick={() => {
-                                                setLeaseSigningState({
-                                                    status: 'none',
-                                                    label: 'No Lease Document',
-                                                    description: 'Generate a lease agreement to get started',
-                                                    color: 'zinc'
-                                                })
-                                            }}
-                                        >
-                                            <FileText className="h-3 w-3 mr-2" />
-                                            Create New Lease
-                                        </Button>
-                                    )}
-                                </div>
-                            </CardContent>
-                        </Card>
-                    )}
-
-                    {/* Quick Actions */}
-                    <Card className="bg-zinc-900 border-zinc-800">
-                        <CardHeader>
-                            <CardTitle className="text-sm font-mono uppercase text-amber-500">Quick Actions</CardTitle>
-                        </CardHeader>
-                        <CardContent className="space-y-2">
-                            <Button variant="outline" className="w-full justify-start border-zinc-800 text-zinc-400 hover:text-white font-mono text-xs">
-                                <MessageSquare className="h-3 w-3 mr-2" />
-                                Send Message
-                            </Button>
-                            <Button variant="outline" className="w-full justify-start border-zinc-800 text-zinc-400 hover:text-white font-mono text-xs">
-                                <CreditCard className="h-3 w-3 mr-2" />
-                                Record Payment
-                            </Button>
-                            {activeTenancy && (
-                                <>
-                                    <Button 
-                                        variant="outline" 
-                                        className="w-full justify-start border-zinc-800 text-zinc-400 hover:text-white font-mono text-xs"
-                                        onClick={() => {
-                                            setSelectedTenancy(activeTenancy)
-                                            setRenewForm({
-                                                duration: '1',
-                                                newEndDate: format(addYears(new Date(activeTenancy.leaseEndDate), 1), 'yyyy-MM-dd'),
-                                                newMonthlyRent: activeTenancy.monthlyRent
-                                            })
-                                            setIsRenewDialogOpen(true)
-                                        }}
-                                    >
-                                        <RefreshCw className="h-3 w-3 mr-2" />
-                                        Renew Lease
-                                    </Button>
-                                    <Button 
-                                        variant="outline" 
-                                        className="w-full justify-start border-zinc-800 text-zinc-400 hover:text-white font-mono text-xs"
-                                        onClick={() => {
-                                            setSelectedTenancy(activeTenancy)
-                                            setEditForm({
-                                                monthlyRent: activeTenancy.monthlyRent,
-                                                leaseEndDate: format(new Date(activeTenancy.leaseEndDate), 'yyyy-MM-dd'),
-                                                paymentFreq: activeTenancy.paymentFreq || 'monthly'
-                                            })
-                                            setIsEditDialogOpen(true)
-                                        }}
-                                    >
-                                        <Edit2 className="h-3 w-3 mr-2" />
-                                        Edit Lease / Increase Rent
-                                    </Button>
-                                    <Button 
-                                        variant="outline" 
-                                        className="w-full justify-start border-red-900/50 text-red-500 hover:bg-red-950/30 font-mono text-xs"
-                                        onClick={() => {
-                                            setSelectedTenancy(activeTenancy)
-                                            setIsTerminateDialogOpen(true)
-                                        }}
-                                    >
-                                        <XCircle className="h-3 w-3 mr-2" />
-                                        Terminate Lease
-                                    </Button>
-                                </>
-                            )}
-                        </CardContent>
-                    </Card>
                 </div>
 
                 {/* Main Content Tabs */}
-                <div className="md:col-span-2">
+                <div className="md:col-span-8 md:order-1">
                     <Tabs defaultValue="tenancies" className="w-full">
-                        <TabsList className="bg-zinc-900 border border-zinc-800 w-full justify-start h-auto p-1">
-                            <TabsTrigger value="tenancies" className="data-[state=active]:bg-amber-600 data-[state=active]:text-black text-zinc-400 font-mono text-xs">
+                        <TabsList className="grid grid-cols-5 bg-zinc-900 border border-zinc-800 w-full h-auto p-1">
+                            <TabsTrigger value="tenancies" className="w-full data-[state=active]:bg-amber-600 data-[state=active]:text-black text-zinc-400 font-mono text-xs">
                                 Tenancies
                             </TabsTrigger>
-                            <TabsTrigger value="payments" className="data-[state=active]:bg-amber-600 data-[state=active]:text-black text-zinc-400 font-mono text-xs">
+                            <TabsTrigger value="utilities" className="w-full data-[state=active]:bg-amber-600 data-[state=active]:text-black text-zinc-400 font-mono text-xs">
+                                Utilities
+                            </TabsTrigger>
+                            <TabsTrigger value="payments" className="w-full data-[state=active]:bg-amber-600 data-[state=active]:text-black text-zinc-400 font-mono text-xs">
                                 Payments
                             </TabsTrigger>
-                            <TabsTrigger value="documents" className="data-[state=active]:bg-amber-600 data-[state=active]:text-black text-zinc-400 font-mono text-xs">
+                            <TabsTrigger value="maintenance" className="w-full data-[state=active]:bg-amber-600 data-[state=active]:text-black text-zinc-400 font-mono text-xs">
+                                Maintenance
+                            </TabsTrigger>
+                            <TabsTrigger value="documents" className="w-full data-[state=active]:bg-amber-600 data-[state=active]:text-black text-zinc-400 font-mono text-xs">
                                 Documents
                             </TabsTrigger>
                         </TabsList>
@@ -799,14 +696,14 @@ export default function TenantDetailsPage() {
                                                             </Button>
                                                         </DropdownMenuTrigger>
                                                         <DropdownMenuContent align="end" className="bg-zinc-950 border-zinc-800 w-48">
-                                                            <DropdownMenuItem 
+                                                            <DropdownMenuItem
                                                                 className="text-zinc-300 hover:text-white focus:bg-zinc-800 font-mono text-xs cursor-pointer"
                                                                 onClick={() => handleGenerateLease(tenancy)}
                                                             >
                                                                 <FileText className="h-3 w-3 mr-2" />
                                                                 Generate Lease
                                                             </DropdownMenuItem>
-                                                            <DropdownMenuItem 
+                                                            <DropdownMenuItem
                                                                 className="text-zinc-300 hover:text-white focus:bg-zinc-800 font-mono text-xs cursor-pointer"
                                                                 onClick={() => openEditDialog(tenancy)}
                                                             >
@@ -815,7 +712,7 @@ export default function TenantDetailsPage() {
                                                             </DropdownMenuItem>
                                                             {tenancy.status === 'active' && (
                                                                 <>
-                                                                    <DropdownMenuItem 
+                                                                    <DropdownMenuItem
                                                                         className="text-zinc-300 hover:text-white focus:bg-zinc-800 font-mono text-xs cursor-pointer"
                                                                         onClick={() => openRenewDialog(tenancy)}
                                                                     >
@@ -823,7 +720,7 @@ export default function TenantDetailsPage() {
                                                                         Renew Lease
                                                                     </DropdownMenuItem>
                                                                     <DropdownMenuSeparator className="bg-zinc-800" />
-                                                                    <DropdownMenuItem 
+                                                                    <DropdownMenuItem
                                                                         className="text-red-500 hover:text-red-400 focus:bg-red-950/30 font-mono text-xs cursor-pointer"
                                                                         onClick={() => openTerminateDialog(tenancy)}
                                                                     >
@@ -864,7 +761,7 @@ export default function TenantDetailsPage() {
                                                             <span>{leaseProgress.remaining} days remaining</span>
                                                         </div>
                                                         <div className="h-2 bg-zinc-800 rounded-full overflow-hidden">
-                                                            <div 
+                                                            <div
                                                                 className="h-full bg-amber-500 rounded-full transition-all"
                                                                 style={{ width: `${leaseProgress.percent}%` }}
                                                             />
@@ -887,14 +784,159 @@ export default function TenantDetailsPage() {
                                 </div>
                             </TabsContent>
 
-                            {/* Payments Tab */}
+
+                            {/* Utility Charges Tab */}
+                            <TabsContent value="utilities">
+                                <Card className="bg-zinc-900 border-zinc-800">
+                                    <CardHeader className="flex flex-row items-center justify-between">
+                                        <div>
+                                            <CardTitle className="text-sm font-mono uppercase text-amber-500">Utility Charges</CardTitle>
+                                            <CardDescription className="text-xs text-zinc-500 font-mono">Bill tenant for utilities — auto-applied to rent schedule</CardDescription>
+                                        </div>
+                                        <Button
+                                            size="sm"
+                                            className="bg-amber-600 hover:bg-amber-500 text-black font-mono text-xs"
+                                            onClick={() => setIsAddChargeOpen(true)}
+                                            disabled={!activeTenancy}
+                                        >
+                                            <Plus className="h-3 w-3 mr-1" /> Add Charge
+                                        </Button>
+                                    </CardHeader>
+                                    <CardContent>
+                                        {utilityCharges.length > 0 ? (
+                                            <div className="space-y-3">
+                                                {utilityCharges.map((charge) => {
+                                                    const utilIcons: Record<string, React.ReactNode> = {
+                                                        electricity: <Zap className="h-4 w-4 text-yellow-400" />,
+                                                        water: <Droplets className="h-4 w-4 text-blue-400" />,
+                                                        gas: <Flame className="h-4 w-4 text-orange-400" />,
+                                                        internet: <Wifi className="h-4 w-4 text-cyan-400" />,
+                                                        waste: <Trash className="h-4 w-4 text-green-400" />,
+                                                        security: <Shield className="h-4 w-4 text-purple-400" />,
+                                                    }
+                                                    const statusColors: Record<string, string> = {
+                                                        pending: 'bg-amber-900/40 text-amber-400 border-amber-900',
+                                                        applied: 'bg-blue-900/40 text-blue-400 border-blue-900',
+                                                        paid: 'bg-green-900/40 text-green-400 border-green-900',
+                                                        waived: 'bg-zinc-800 text-zinc-400 border-zinc-700',
+                                                        disputed: 'bg-red-900/40 text-red-400 border-red-900',
+                                                    }
+                                                    return (
+                                                        <div key={charge.id} className="bg-zinc-950 border border-zinc-800 rounded-lg p-4 flex items-center justify-between group hover:border-zinc-700 transition-colors">
+                                                            <div className="flex items-center gap-3">
+                                                                <div className="w-8 h-8 rounded-lg bg-zinc-800 flex items-center justify-center">
+                                                                    {utilIcons[charge.utility_type] || <Zap className="h-4 w-4 text-zinc-400" />}
+                                                                </div>
+                                                                <div>
+                                                                    <div className="text-sm font-medium text-zinc-300 font-mono capitalize">
+                                                                        {charge.utility_type.replace('_', ' ')}
+                                                                    </div>
+                                                                    <div className="text-xs text-zinc-500 font-mono">
+                                                                        {format(new Date(charge.billing_period_start), 'dd MMM')} – {format(new Date(charge.billing_period_end), 'dd MMM yyyy')}
+                                                                        {charge.description && ` • ${charge.description}`}
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                            <div className="flex items-center gap-3">
+                                                                <span className="text-sm font-bold text-white font-mono">
+                                                                    {charge.currency} {parseFloat(charge.amount).toFixed(2)}
+                                                                </span>
+                                                                <Badge className={`text-[10px] font-mono ${statusColors[charge.status] || statusColors.pending}`}>
+                                                                    {charge.status}
+                                                                </Badge>
+                                                                {charge.status === 'pending' && (
+                                                                    <DropdownMenu>
+                                                                        <DropdownMenuTrigger asChild>
+                                                                            <Button variant="ghost" size="icon" className="h-7 w-7 text-zinc-500 hover:text-white">
+                                                                                <MoreVertical className="h-3.5 w-3.5" />
+                                                                            </Button>
+                                                                        </DropdownMenuTrigger>
+                                                                        <DropdownMenuContent align="end" className="bg-zinc-900 border-zinc-800">
+                                                                            {rentSchedules
+                                                                                .filter(s => s.status !== 'paid' && s.status !== 'waived')
+                                                                                .slice(0, 6)
+                                                                                .map(schedule => (
+                                                                                    <DropdownMenuItem
+                                                                                        key={schedule.id}
+                                                                                        className="text-xs font-mono text-zinc-300 hover:text-white cursor-pointer"
+                                                                                        onClick={async () => {
+                                                                                            try {
+                                                                                                await propertyManagementApi.applyUtilityCharge(charge.id, schedule.id)
+                                                                                                // Refresh data
+                                                                                                const [chargesRes, schedulesRes] = await Promise.all([
+                                                                                                    propertyManagementApi.getUtilityCharges(activeTenancy!.id),
+                                                                                                    propertyManagementApi.getRentSchedules(activeTenancy!.id)
+                                                                                                ])
+                                                                                                setUtilityCharges(chargesRes.charges || [])
+                                                                                                setRentSchedules(schedulesRes.schedules || [])
+                                                                                            } catch (err) { console.error('Failed to apply charge', err) }
+                                                                                        }}
+                                                                                    >
+                                                                                        Apply to Period {schedule.period_number} ({format(new Date(schedule.period_start_date), 'MMM yyyy')})
+                                                                                    </DropdownMenuItem>
+                                                                                ))}
+                                                                            <DropdownMenuSeparator className="bg-zinc-800" />
+                                                                            <DropdownMenuItem
+                                                                                className="text-xs font-mono text-zinc-300 hover:text-white cursor-pointer"
+                                                                                onClick={async () => {
+                                                                                    try {
+                                                                                        await propertyManagementApi.updateUtilityCharge(charge.id, { status: 'waived' } as any)
+                                                                                        const res = await propertyManagementApi.getUtilityCharges(activeTenancy!.id)
+                                                                                        setUtilityCharges(res.charges || [])
+                                                                                    } catch { }
+                                                                                }}
+                                                                            >
+                                                                                Waive Charge
+                                                                            </DropdownMenuItem>
+                                                                            <DropdownMenuItem
+                                                                                className="text-xs font-mono text-red-400 hover:text-red-300 cursor-pointer"
+                                                                                onClick={async () => {
+                                                                                    try {
+                                                                                        await propertyManagementApi.deleteUtilityCharge(charge.id)
+                                                                                        setUtilityCharges(prev => prev.filter(c => c.id !== charge.id))
+                                                                                    } catch { }
+                                                                                }}
+                                                                            >
+                                                                                Delete
+                                                                            </DropdownMenuItem>
+                                                                        </DropdownMenuContent>
+                                                                    </DropdownMenu>
+                                                                )}
+                                                                {charge.status === 'applied' && charge.schedule_period_number && (
+                                                                    <span className="text-[10px] text-zinc-500 font-mono">
+                                                                        → Period {charge.schedule_period_number}
+                                                                    </span>
+                                                                )}
+                                                            </div>
+                                                        </div>
+                                                    )
+                                                })}
+                                                {/* Summary */}
+                                                <div className="border-t border-zinc-800 pt-3 mt-2 flex justify-between items-center">
+                                                    <span className="text-xs text-zinc-500 font-mono">{utilityCharges.length} charge{utilityCharges.length !== 1 ? 's' : ''}</span>
+                                                    <span className="text-sm font-bold text-amber-500 font-mono">
+                                                        Total: GHS {utilityCharges.reduce((sum, c) => sum + parseFloat(c.amount), 0).toFixed(2)}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        ) : (
+                                            <div className="py-12 text-center">
+                                                <Zap className="h-12 w-12 text-zinc-800 mx-auto mb-4" />
+                                                <p className="text-zinc-500 font-mono text-sm">No utility charges yet</p>
+                                                <p className="text-zinc-600 font-mono text-xs mt-1">Add a utility charge to bill the tenant</p>
+                                            </div>
+                                        )}
+                                    </CardContent>
+                                </Card>
+                            </TabsContent>
+
                             <TabsContent value="payments">
                                 <Card className="bg-zinc-900 border-zinc-800">
                                     <CardHeader className="flex flex-row items-center justify-between">
                                         <CardTitle className="text-sm font-mono uppercase text-amber-500">Payment History</CardTitle>
-                                        <Button variant="ghost" className="text-amber-500 hover:text-amber-400 font-mono text-xs">
-                                            Record Payment
-                                        </Button>
+                                        <Badge variant="outline" className="border-green-900 text-green-500 font-mono text-[10px]">
+                                            Auto-synced from Tenant Portal
+                                        </Badge>
                                     </CardHeader>
                                     <CardContent>
                                         {payments.length > 0 ? (
@@ -907,7 +949,7 @@ export default function TenantDetailsPage() {
                                                             </div>
                                                             <div>
                                                                 <div className="text-white font-medium font-mono">{payment.category || 'Rent'}</div>
-                                                                <div className="text-xs text-zinc-500 font-mono">{format(new Date(payment.recordDate), 'dd MMM yyyy')}</div>
+                                                                <div className="text-xs text-zinc-500 font-mono">{payment.transactionDate || payment.createdAt ? format(new Date(payment.transactionDate || payment.createdAt), 'dd MMM yyyy') : '—'}</div>
                                                             </div>
                                                         </div>
                                                         <div className="text-right">
@@ -928,6 +970,82 @@ export default function TenantDetailsPage() {
                                 </Card>
                             </TabsContent>
 
+                            {/* Maintenance Tab */}
+                            <TabsContent value="maintenance">
+                                <Card className="bg-zinc-900 border-zinc-800">
+                                    <CardHeader className="flex flex-row items-center justify-between">
+                                        <CardTitle className="text-sm font-mono uppercase text-amber-500">Maintenance Requests</CardTitle>
+                                        <Badge variant="outline" className="border-zinc-700 text-zinc-400 font-mono text-[10px]">
+                                            {maintenanceRequests.length} request{maintenanceRequests.length !== 1 ? 's' : ''}
+                                        </Badge>
+                                    </CardHeader>
+                                    <CardContent>
+                                        {maintenanceRequests.length > 0 ? (
+                                            <div className="space-y-4">
+                                                {maintenanceRequests.map((wo) => (
+                                                    <Link key={wo.id} href={`/dashboard/property-management/maintenance/${wo.id}`}>
+                                                        <div className="bg-zinc-950 border border-zinc-800 rounded-lg p-4 hover:border-amber-800 transition-colors cursor-pointer">
+                                                            <div className="flex items-start justify-between mb-3">
+                                                                <div className="flex items-center gap-3">
+                                                                    <div className="h-10 w-10 rounded-full bg-amber-900/20 flex items-center justify-center">
+                                                                        <Wrench className="h-5 w-5 text-amber-500" />
+                                                                    </div>
+                                                                    <div>
+                                                                        <div className="text-white font-medium font-mono text-sm">{wo.title}</div>
+                                                                        <div className="text-xs text-zinc-500 font-mono">{wo.referenceNumber}</div>
+                                                                    </div>
+                                                                </div>
+                                                                <div className="flex items-center gap-2">
+                                                                    <Badge variant="outline" className={`font-mono text-[10px] ${wo.priority === 'critical' ? 'border-red-900 text-red-500' :
+                                                                        wo.priority === 'high' ? 'border-orange-900 text-orange-500' :
+                                                                            wo.priority === 'medium' ? 'border-amber-900 text-amber-500' :
+                                                                                'border-zinc-700 text-zinc-400'
+                                                                        }`}>
+                                                                        {wo.priority}
+                                                                    </Badge>
+                                                                    <Badge variant="outline" className={`font-mono text-[10px] ${wo.status === 'open' ? 'border-cyan-900 text-cyan-500' :
+                                                                        wo.status === 'in_progress' ? 'border-blue-900 text-blue-500' :
+                                                                            wo.status === 'completed' ? 'border-green-900 text-green-500' :
+                                                                                wo.status === 'cancelled' ? 'border-red-900 text-red-500' :
+                                                                                    'border-zinc-700 text-zinc-400'
+                                                                        }`}>
+                                                                        {wo.status?.replace(/_/g, ' ')}
+                                                                    </Badge>
+                                                                </div>
+                                                            </div>
+                                                            {wo.description && (
+                                                                <p className="text-xs text-zinc-400 font-mono mb-3 line-clamp-2">{wo.description}</p>
+                                                            )}
+                                                            <div className="flex items-center gap-4 text-[11px] text-zinc-500 font-mono">
+                                                                <span className="capitalize">{wo.category?.replace(/_/g, ' ')}</span>
+                                                                {wo.scheduledDate && (
+                                                                    <>
+                                                                        <span>•</span>
+                                                                        <span>Scheduled: {format(new Date(wo.scheduledDate), 'dd MMM yyyy')}</span>
+                                                                    </>
+                                                                )}
+                                                                {wo.createdAt && (
+                                                                    <>
+                                                                        <span>•</span>
+                                                                        <span>Reported: {format(new Date(wo.createdAt), 'dd MMM yyyy')}</span>
+                                                                    </>
+                                                                )}
+                                                            </div>
+                                                        </div>
+                                                    </Link>
+                                                ))}
+                                            </div>
+                                        ) : (
+                                            <div className="py-12 text-center">
+                                                <Wrench className="h-12 w-12 text-zinc-800 mx-auto mb-4" />
+                                                <p className="text-zinc-500 font-mono text-sm">No maintenance requests from tenant</p>
+                                                <p className="text-zinc-600 font-mono text-xs mt-1">Requests submitted via the tenant portal will appear here</p>
+                                            </div>
+                                        )}
+                                    </CardContent>
+                                </Card>
+                            </TabsContent>
+
                             {/* Documents Tab */}
                             <TabsContent value="documents">
                                 <Card className="bg-zinc-900 border-zinc-800">
@@ -942,14 +1060,25 @@ export default function TenantDetailsPage() {
                                                         <FileText className="h-6 w-6 text-amber-500" />
                                                         <div>
                                                             <div className="text-sm font-medium text-zinc-300 group-hover:text-white font-mono">
-                                                                Tenancy Agreement
+                                                                {tenancy.leaseSignedUrl ? 'Signed Lease Agreement' : 'Tenancy Agreement'}
                                                             </div>
                                                             <div className="text-xs text-zinc-500 font-mono">
                                                                 {tenancy.referenceNumber} • {format(new Date(tenancy.leaseStartDate), 'MMM yyyy')}
                                                             </div>
                                                         </div>
                                                     </div>
-                                                    <Button variant="ghost" size="icon" className="h-8 w-8 text-zinc-500 hover:text-white">
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="icon"
+                                                        className="h-8 w-8 text-zinc-500 hover:text-white"
+                                                        disabled={!tenancy.leaseSignedUrl && !tenancy.leaseDocumentUrl}
+                                                        onClick={() => {
+                                                            const documentUrl = tenancy.leaseSignedUrl || tenancy.leaseDocumentUrl
+                                                            if (documentUrl) {
+                                                                window.open(documentUrl, '_blank', 'noopener,noreferrer')
+                                                            }
+                                                        }}
+                                                    >
                                                         <Download className="h-4 w-4" />
                                                     </Button>
                                                 </div>
@@ -965,6 +1094,236 @@ export default function TenantDetailsPage() {
                             </TabsContent>
                         </div>
                     </Tabs>
+
+                    <div className="mt-6 grid gap-6 xl:grid-cols-2">
+                        {/* Lease Signing Workflow */}
+                        {activeTenancy && (
+                            <Card className="bg-zinc-900 border-zinc-800">
+                                <CardHeader className="pb-3">
+                                    <div className="flex items-center justify-between">
+                                        <CardTitle className="text-sm font-mono uppercase text-amber-500">Lease Document</CardTitle>
+                                        <Badge className={`text-[10px] font-mono ${leaseSigningState.status === 'none' ? 'bg-zinc-700 text-zinc-400' :
+                                            leaseSigningState.status === 'draft' ? 'bg-blue-900/50 text-blue-400 border-blue-800' :
+                                                leaseSigningState.status === 'pending_sign' ? 'bg-amber-900/50 text-amber-400 border-amber-800' :
+                                                    leaseSigningState.status === 'partially_signed' ? 'bg-amber-900/50 text-amber-400 border-amber-800' :
+                                                        leaseSigningState.status === 'signed' ? 'bg-emerald-900/50 text-emerald-400 border-emerald-800' :
+                                                            leaseSigningState.status === 'expired' ? 'bg-red-900/50 text-red-400 border-red-800' :
+                                                                'bg-zinc-700 text-zinc-400'
+                                            }`}>
+                                            {leaseSigningState.label}
+                                        </Badge>
+                                    </div>
+                                    <CardDescription className="text-zinc-500 text-xs font-mono mt-1">
+                                        {leaseSigningState.description}
+                                    </CardDescription>
+                                </CardHeader>
+                                <CardContent className="space-y-3">
+                                    <div className="flex items-center justify-between text-[10px] font-mono">
+                                        <div className={`flex flex-col items-center ${leaseSigningState.status !== 'none' ? 'text-emerald-500' : 'text-zinc-600'}`}>
+                                            <div className={`w-6 h-6 rounded-full flex items-center justify-center mb-1 ${leaseSigningState.status !== 'none' ? 'bg-emerald-900/50 border border-emerald-700' : 'bg-zinc-800 border border-zinc-700'}`}>
+                                                {leaseSigningState.status !== 'none' ? <CheckCircle className="w-3 h-3" /> : '1'}
+                                            </div>
+                                            <span>Draft</span>
+                                        </div>
+                                        <div className={`flex-1 h-0.5 mx-2 ${['pending_sign', 'partially_signed', 'signed'].includes(leaseSigningState.status) ? 'bg-emerald-700' : 'bg-zinc-800'}`} />
+                                        <div className={`flex flex-col items-center ${['pending_sign', 'partially_signed', 'signed'].includes(leaseSigningState.status) ? 'text-amber-500' : 'text-zinc-600'}`}>
+                                            <div className={`w-6 h-6 rounded-full flex items-center justify-center mb-1 ${['pending_sign', 'partially_signed', 'signed'].includes(leaseSigningState.status) ? 'bg-amber-900/50 border border-amber-700' : 'bg-zinc-800 border border-zinc-700'}`}>
+                                                {['signed'].includes(leaseSigningState.status) ? <CheckCircle className="w-3 h-3" /> : '2'}
+                                            </div>
+                                            <span>Sent</span>
+                                        </div>
+                                        <div className={`flex-1 h-0.5 mx-2 ${leaseSigningState.status === 'signed' ? 'bg-emerald-700' : 'bg-zinc-800'}`} />
+                                        <div className={`flex flex-col items-center ${leaseSigningState.status === 'signed' ? 'text-emerald-500' : 'text-zinc-600'}`}>
+                                            <div className={`w-6 h-6 rounded-full flex items-center justify-center mb-1 ${leaseSigningState.status === 'signed' ? 'bg-emerald-900/50 border border-emerald-700' : 'bg-zinc-800 border border-zinc-700'}`}>
+                                                {leaseSigningState.status === 'signed' ? <CheckCircle className="w-3 h-3" /> : '3'}
+                                            </div>
+                                            <span>Signed</span>
+                                        </div>
+                                    </div>
+
+                                    {leaseSigningState.signers && leaseSigningState.signers.length > 0 && (
+                                        <div className="bg-zinc-800/50 rounded p-2 space-y-2">
+                                            <p className="text-[10px] font-mono text-zinc-500 uppercase">Signers</p>
+                                            {leaseSigningState.signers.map((signer, i) => (
+                                                <div key={i} className="flex items-center justify-between text-xs">
+                                                    <div className="flex items-center gap-2">
+                                                        <div className={`w-2 h-2 rounded-full ${signer.signed ? 'bg-emerald-500' : 'bg-amber-500'}`} />
+                                                        <span className="text-zinc-300 font-mono">{signer.name}</span>
+                                                    </div>
+                                                    <span className={`text-[10px] font-mono ${signer.signed ? 'text-emerald-500' : 'text-amber-500'}`}>
+                                                        {signer.signed ? 'Signed' : 'Pending'}
+                                                    </span>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+
+                                    <div className="space-y-2 pt-1">
+                                        {leaseSigningState.status === 'none' && (
+                                            <Button
+                                                className="w-full bg-amber-600 hover:bg-amber-700 text-black font-mono text-xs"
+                                                onClick={() => handleGenerateLease()}
+                                            >
+                                                <FileText className="h-3 w-3 mr-2" />
+                                                Generate Lease Agreement
+                                            </Button>
+                                        )}
+
+                                        {leaseSigningState.status === 'draft' && (
+                                            <>
+                                                <Button
+                                                    className="w-full bg-amber-600 hover:bg-amber-700 text-black font-mono text-xs"
+                                                    onClick={() => handleGenerateLease()}
+                                                >
+                                                    <Send className="h-3 w-3 mr-2" />
+                                                    Send for Signing
+                                                </Button>
+                                                <Button
+                                                    variant="outline"
+                                                    className="w-full border-zinc-800 text-zinc-400 hover:text-white font-mono text-xs"
+                                                    onClick={() => handleGenerateLease()}
+                                                >
+                                                    <Edit2 className="h-3 w-3 mr-2" />
+                                                    Edit Draft
+                                                </Button>
+                                            </>
+                                        )}
+
+                                        {(leaseSigningState.status === 'pending_sign' || leaseSigningState.status === 'partially_signed') && (
+                                            <>
+                                                <Button
+                                                    variant="outline"
+                                                    className="w-full border-amber-800 text-amber-500 hover:bg-amber-950/30 font-mono text-xs"
+                                                >
+                                                    <Send className="h-3 w-3 mr-2" />
+                                                    Send Reminder
+                                                </Button>
+                                                <Button
+                                                    variant="outline"
+                                                    className="w-full border-zinc-800 text-zinc-400 hover:text-white font-mono text-xs"
+                                                    onClick={() => handleGenerateLease()}
+                                                >
+                                                    <Eye className="h-3 w-3 mr-2" />
+                                                    View Document
+                                                </Button>
+                                                <Button
+                                                    variant="outline"
+                                                    className="w-full border-red-900/50 text-red-500 hover:bg-red-950/30 font-mono text-xs"
+                                                    onClick={() => setLeaseSigningState({
+                                                        status: 'voided',
+                                                        label: 'Voided',
+                                                        description: 'This signing request was cancelled',
+                                                        color: 'red'
+                                                    })}
+                                                >
+                                                    <XCircle className="h-3 w-3 mr-2" />
+                                                    Void Request
+                                                </Button>
+                                            </>
+                                        )}
+
+                                        {leaseSigningState.status === 'signed' && (
+                                            <>
+                                                <Button
+                                                    variant="outline"
+                                                    className="w-full border-zinc-800 text-zinc-400 hover:text-white font-mono text-xs"
+                                                >
+                                                    <Download className="h-3 w-3 mr-2" />
+                                                    Download Signed Lease
+                                                </Button>
+                                                <Button
+                                                    variant="outline"
+                                                    className="w-full border-zinc-800 text-zinc-400 hover:text-white font-mono text-xs"
+                                                    onClick={() => handleGenerateLease()}
+                                                >
+                                                    <Eye className="h-3 w-3 mr-2" />
+                                                    View Document
+                                                </Button>
+                                            </>
+                                        )}
+
+                                        {(leaseSigningState.status === 'expired' || leaseSigningState.status === 'voided') && (
+                                            <Button
+                                                className="w-full bg-amber-600 hover:bg-amber-700 text-black font-mono text-xs"
+                                                onClick={() => {
+                                                    setLeaseSigningState({
+                                                        status: 'none',
+                                                        label: 'No Lease Document',
+                                                        description: 'Generate a lease agreement to get started',
+                                                        color: 'zinc'
+                                                    })
+                                                }}
+                                            >
+                                                <FileText className="h-3 w-3 mr-2" />
+                                                Create New Lease
+                                            </Button>
+                                        )}
+                                    </div>
+                                </CardContent>
+                            </Card>
+                        )}
+
+                        {/* Quick Actions */}
+                        <Card className="bg-zinc-900 border-zinc-800">
+                            <CardHeader>
+                                <CardTitle className="text-sm font-mono uppercase text-amber-500">Quick Actions</CardTitle>
+                            </CardHeader>
+                            <CardContent className="space-y-2">
+                                <Button variant="outline" className="w-full justify-start border-zinc-800 text-zinc-400 hover:text-white font-mono text-xs">
+                                    <MessageSquare className="h-3 w-3 mr-2" />
+                                    Send Message
+                                </Button>
+
+                                {activeTenancy && (
+                                    <>
+                                        <Button
+                                            variant="outline"
+                                            className="w-full justify-start border-zinc-800 text-zinc-400 hover:text-white font-mono text-xs"
+                                            onClick={() => {
+                                                setSelectedTenancy(activeTenancy)
+                                                setRenewForm({
+                                                    duration: '1',
+                                                    newEndDate: format(addYears(new Date(activeTenancy.leaseEndDate), 1), 'yyyy-MM-dd'),
+                                                    newMonthlyRent: activeTenancy.monthlyRent
+                                                })
+                                                setIsRenewDialogOpen(true)
+                                            }}
+                                        >
+                                            <RefreshCw className="h-3 w-3 mr-2" />
+                                            Renew Lease
+                                        </Button>
+                                        <Button
+                                            variant="outline"
+                                            className="w-full justify-start border-zinc-800 text-zinc-400 hover:text-white font-mono text-xs"
+                                            onClick={() => {
+                                                setSelectedTenancy(activeTenancy)
+                                                setEditForm({
+                                                    monthlyRent: activeTenancy.monthlyRent,
+                                                    leaseEndDate: format(new Date(activeTenancy.leaseEndDate), 'yyyy-MM-dd'),
+                                                    paymentFreq: activeTenancy.paymentFreq || 'monthly'
+                                                })
+                                                setIsEditDialogOpen(true)
+                                            }}
+                                        >
+                                            <Edit2 className="h-3 w-3 mr-2" />
+                                            Edit Lease / Increase Rent
+                                        </Button>
+                                        <Button
+                                            variant="outline"
+                                            className="w-full justify-start border-red-900/50 text-red-500 hover:bg-red-950/30 font-mono text-xs"
+                                            onClick={() => {
+                                                setSelectedTenancy(activeTenancy)
+                                                setIsTerminateDialogOpen(true)
+                                            }}
+                                        >
+                                            <XCircle className="h-3 w-3 mr-2" />
+                                            Terminate Lease
+                                        </Button>
+                                    </>
+                                )}
+                            </CardContent>
+                        </Card>
+                    </div>
                 </div>
             </div>
 
@@ -1029,7 +1388,7 @@ export default function TenantDetailsPage() {
                             Terminate Tenancy
                         </AlertDialogTitle>
                         <AlertDialogDescription className="text-zinc-400 font-mono text-xs">
-                            This will end the tenancy <span className="text-amber-500">{selectedTenancy?.referenceNumber}</span>. 
+                            This will end the tenancy <span className="text-amber-500">{selectedTenancy?.referenceNumber}</span>.
                             The property will be marked as available.
                         </AlertDialogDescription>
                     </AlertDialogHeader>
@@ -1120,7 +1479,7 @@ export default function TenantDetailsPage() {
                             Delete Tenant
                         </AlertDialogTitle>
                         <AlertDialogDescription className="text-zinc-400 font-mono text-xs">
-                            Are you sure you want to delete <span className="text-amber-500">{tenant.fullName}</span>? 
+                            Are you sure you want to delete <span className="text-amber-500">{tenant.fullName}</span>?
                             This will also remove all associated tenancies and cannot be undone.
                         </AlertDialogDescription>
                     </AlertDialogHeader>
@@ -1133,6 +1492,113 @@ export default function TenantDetailsPage() {
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>
+
+            {/* Add Utility Charge Dialog */}
+            <Dialog open={isAddChargeOpen} onOpenChange={setIsAddChargeOpen}>
+                <DialogContent className="bg-zinc-900 border-zinc-800 text-white">
+                    <DialogHeader>
+                        <DialogTitle className="font-mono text-amber-500">Add Utility Charge</DialogTitle>
+                        <DialogDescription className="text-zinc-400 font-mono text-xs">
+                            Bill the tenant for a utility cost. Upload evidence in the Documents tab.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-4 py-2">
+                        <div>
+                            <Label className="text-xs font-mono text-zinc-400">Utility Type</Label>
+                            <Select value={chargeForm.utilityType} onValueChange={(v) => setChargeForm(f => ({ ...f, utilityType: v as UtilityType }))}>
+                                <SelectTrigger className="bg-zinc-950 border-zinc-800 text-white font-mono text-sm mt-1">
+                                    <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent className="bg-zinc-900 border-zinc-800">
+                                    {[
+                                        { value: 'electricity', label: 'Electricity' },
+                                        { value: 'water', label: 'Water' },
+                                        { value: 'gas', label: 'Gas' },
+                                        { value: 'internet', label: 'Internet / Cable' },
+                                        { value: 'waste', label: 'Waste Collection' },
+                                        { value: 'security', label: 'Security' },
+                                        { value: 'sewage', label: 'Sewage' },
+                                        { value: 'maintenance', label: 'Common Area Maintenance' },
+                                        { value: 'other', label: 'Other' },
+                                    ].map(opt => (
+                                        <SelectItem key={opt.value} value={opt.value} className="text-zinc-300 font-mono text-sm">{opt.label}</SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        </div>
+                        <div className="grid grid-cols-2 gap-3">
+                            <div>
+                                <Label className="text-xs font-mono text-zinc-400">Period Start</Label>
+                                <Input
+                                    type="date"
+                                    value={chargeForm.billingPeriodStart}
+                                    onChange={e => setChargeForm(f => ({ ...f, billingPeriodStart: e.target.value }))}
+                                    className="bg-zinc-950 border-zinc-800 text-white font-mono text-sm mt-1"
+                                />
+                            </div>
+                            <div>
+                                <Label className="text-xs font-mono text-zinc-400">Period End</Label>
+                                <Input
+                                    type="date"
+                                    value={chargeForm.billingPeriodEnd}
+                                    onChange={e => setChargeForm(f => ({ ...f, billingPeriodEnd: e.target.value }))}
+                                    className="bg-zinc-950 border-zinc-800 text-white font-mono text-sm mt-1"
+                                />
+                            </div>
+                        </div>
+                        <div>
+                            <Label className="text-xs font-mono text-zinc-400">Amount (GHS)</Label>
+                            <Input
+                                type="number"
+                                step="0.01"
+                                min="0.01"
+                                value={chargeForm.amount}
+                                onChange={e => setChargeForm(f => ({ ...f, amount: e.target.value }))}
+                                placeholder="0.00"
+                                className="bg-zinc-950 border-zinc-800 text-white font-mono text-sm mt-1"
+                            />
+                        </div>
+                        <div>
+                            <Label className="text-xs font-mono text-zinc-400">Description (optional)</Label>
+                            <Textarea
+                                value={chargeForm.description}
+                                onChange={e => setChargeForm(f => ({ ...f, description: e.target.value }))}
+                                placeholder="e.g. ECG bill for January 2026"
+                                className="bg-zinc-950 border-zinc-800 text-white font-mono text-sm mt-1 resize-none"
+                                rows={2}
+                            />
+                        </div>
+                    </div>
+                    <DialogFooter>
+                        <Button variant="ghost" onClick={() => setIsAddChargeOpen(false)} className="text-zinc-400 font-mono text-xs">Cancel</Button>
+                        <Button
+                            className="bg-amber-600 hover:bg-amber-500 text-black font-mono text-xs"
+                            disabled={!chargeForm.billingPeriodStart || !chargeForm.billingPeriodEnd || !chargeForm.amount || isSubmittingCharge}
+                            onClick={async () => {
+                                if (!activeTenancy) return
+                                setIsSubmittingCharge(true)
+                                try {
+                                    await propertyManagementApi.createUtilityCharge(activeTenancy.id, {
+                                        utilityType: chargeForm.utilityType,
+                                        billingPeriodStart: chargeForm.billingPeriodStart,
+                                        billingPeriodEnd: chargeForm.billingPeriodEnd,
+                                        amount: parseFloat(chargeForm.amount),
+                                        description: chargeForm.description || undefined
+                                    })
+                                    const res = await propertyManagementApi.getUtilityCharges(activeTenancy.id)
+                                    setUtilityCharges(res.charges || [])
+                                    setIsAddChargeOpen(false)
+                                    setChargeForm({ utilityType: 'electricity', billingPeriodStart: '', billingPeriodEnd: '', amount: '', description: '' })
+                                } catch (err) { console.error('Failed to create charge', err) }
+                                finally { setIsSubmittingCharge(false) }
+                            }}
+                        >
+                            {isSubmittingCharge ? <Loader2 className="h-3 w-3 mr-2 animate-spin" /> : <Plus className="h-3 w-3 mr-2" />}
+                            Add Charge
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </div>
     )
 }

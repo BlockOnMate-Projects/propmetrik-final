@@ -9,7 +9,7 @@
  * - Ghana-specific regulatory compliance
  */
 
-import { db } from '../../database';
+import { pool as db } from '../../database';
 import { redisCache as redis } from '../../database/redis';
 import { logger } from '../../utils/logger';
 import axios, { AxiosInstance } from 'axios';

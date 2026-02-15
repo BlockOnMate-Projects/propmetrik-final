@@ -133,12 +133,15 @@ export default function ApplicationStatusPage() {
                   <h4 className="font-semibold text-blue-900">Lease Ready to Sign</h4>
                   <p className="text-sm text-blue-700">Congratulations! Please review and sign your lease.</p>
                 </div>
-                <Link href={status.signerToken 
-                  ? `/lease/${status.id}?token=${status.signerToken}` 
-                  : `/lease/${status.id}`
-                }>
-                  <Button>Review Lease <ArrowRight className="ml-2 h-4 w-4" /></Button>
-                </Link>
+                {status.signerToken ? (
+                  <a href={`${process.env.NEXT_PUBLIC_MAIN_APP_URL || 'http://localhost:3000'}/sign/${status.signerToken}`}>
+                    <Button>Sign Lease <ArrowRight className="ml-2 h-4 w-4" /></Button>
+                  </a>
+                ) : (
+                  <Link href={`/lease/${status.id}`}>
+                    <Button>Review Lease <ArrowRight className="ml-2 h-4 w-4" /></Button>
+                  </Link>
+                )}
               </div>
             )}
           </CardContent>

@@ -420,6 +420,16 @@ export enum ComplianceType {
   OTHER = 'other'
 }
 
+/**
+ * Compliance status
+ */
+export type ComplianceStatus = string;
+
+/**
+ * Cost status
+ */
+export type CostStatus = string;
+
 // =============================================================================
 // DAILY OPERATIONS (MERGED)
 // =============================================================================

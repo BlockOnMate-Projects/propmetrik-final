@@ -15,7 +15,7 @@
 
 import { Pool, PoolClient } from 'pg';
 import { pool } from '../../../database';
-import { BaseService } from '../../base/BaseService';
+import { BaseService } from '../../../../shared-services/base/BaseService';
 import {
   UUID,
   ProjectType,

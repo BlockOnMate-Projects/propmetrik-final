@@ -1,5 +1,7 @@
 import { useState, useRef } from 'react';
 import { DocumentFile } from './EnvelopeWizard';
+import { getGoogleDriveStatus, listGoogleDriveFiles, importGoogleDriveDocument } from '../../api';
+import { toast } from 'react-toastify';
 import './DocumentSelector.css';
 
 interface DocumentSelectorProps {
@@ -10,6 +12,9 @@ interface DocumentSelectorProps {
 export default function DocumentSelector({ documents, onDocumentsChange }: DocumentSelectorProps) {
   const [isDragging, setIsDragging] = useState(false);
   const [showSourceMenu, setShowSourceMenu] = useState(false);
+  const [showGooglePicker, setShowGooglePicker] = useState(false);
+  const [driveFiles, setDriveFiles] = useState<any[]>([]);
+  const [isLoadingDrive, setIsLoadingDrive] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleDragOver = (e: React.DragEvent) => {
@@ -65,10 +70,57 @@ export default function DocumentSelector({ documents, onDocumentsChange }: Docum
     }
   };
 
-  const openGoogleDrivePicker = () => {
-    // TODO: Integrate with Google Drive API
-    // For now, show a placeholder
-    alert('Google Drive integration coming soon! Please use Desktop upload for now.');
+  const openGoogleDrivePicker = async () => {
+    setIsLoadingDrive(true);
+    try {
+      // Check if Google Drive is connected
+      const statusRes = await getGoogleDriveStatus();
+      if (!statusRes.data?.connected) {
+        toast.info('Please connect your Google Drive first in Settings');
+        setIsLoadingDrive(false);
+        return;
+      }
+      
+      // Load files from Google Drive
+      const filesRes = await listGoogleDriveFiles();
+      if (filesRes.data?.files) {
+        setDriveFiles(filesRes.data.files);
+        setShowGooglePicker(true);
+      } else {
+        toast.info('No files found in Google Drive');
+      }
+    } catch (error: any) {
+      console.error('Google Drive error:', error);
+      // If not connected, show info message
+      if (error.response?.status === 401 || error.response?.status === 403) {
+        toast.info('Google Drive integration requires authentication. Please use Desktop upload.');
+      } else {
+        toast.error('Failed to access Google Drive');
+      }
+    } finally {
+      setIsLoadingDrive(false);
+    }
+  };
+
+  const handleGoogleDriveFileSelect = async (file: any) => {
+    try {
+      toast.info(`Importing ${file.name}...`);
+      await importGoogleDriveDocument(file.id);
+      
+      const newDoc: DocumentFile = {
+        id: `gdoc-${file.id}`,
+        name: file.name,
+        source: 'google-drive' as const,
+        driveId: file.id,
+        previewUrl: file.thumbnailLink
+      };
+      
+      onDocumentsChange([...documents, newDoc]);
+      setShowGooglePicker(false);
+      toast.success(`${file.name} imported successfully`);
+    } catch {
+      toast.error('Failed to import document from Google Drive');
+    }
   };
 
   const removeDocument = (docId: string) => {
@@ -183,6 +235,7 @@ export default function DocumentSelector({ documents, onDocumentsChange }: Docum
                     <button 
                       className="source-option"
                       onClick={() => handleSourceSelect('google-drive')}
+                      disabled={isLoadingDrive}
                     >
                       <span className="source-icon">
                         <svg width="18" height="18" viewBox="0 0 24 24">
@@ -192,7 +245,7 @@ export default function DocumentSelector({ documents, onDocumentsChange }: Docum
                           <path fill="#EA4335" d="M7.5 18.5H17L22 9.5H12L7.5 18.5Z"/>
                         </svg>
                       </span>
-                      Google Drive
+                      {isLoadingDrive ? 'Loading...' : 'Google Drive'}
                     </button>
                   </div>
                 )}
@@ -214,6 +267,36 @@ export default function DocumentSelector({ documents, onDocumentsChange }: Docum
           </div>
         </div>
       </div>
+
+      {/* Google Drive Picker Modal */}
+      {showGooglePicker && (
+        <div className="modal-overlay">
+          <div className="modal-content google-picker-modal">
+            <div className="modal-header">
+              <h3>Select from Google Drive</h3>
+              <button className="close-btn" onClick={() => setShowGooglePicker(false)}>×</button>
+            </div>
+            <div className="modal-body">
+              {driveFiles.length === 0 ? (
+                <p className="empty-state">No documents found in Google Drive</p>
+              ) : (
+                <ul className="drive-file-list">
+                  {driveFiles.map((file: any) => (
+                    <li 
+                      key={file.id} 
+                      className="drive-file-item"
+                      onClick={() => handleGoogleDriveFileSelect(file)}
+                    >
+                      <span className="file-icon">📄</span>
+                      <span className="file-name">{file.name}</span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

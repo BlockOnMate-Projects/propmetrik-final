@@ -1,7 +1,7 @@
 import { DailyLogCapture } from '@/components/marketing/mobile/DailyLogCapture'
 
 export const metadata = {
-  title: 'Daily Log | PropMetrik',
+  title: 'Daily Log | PROPMETRIK',
   description: 'Capture daily construction logs',
 }
 

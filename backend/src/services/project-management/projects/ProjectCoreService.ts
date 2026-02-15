@@ -13,7 +13,7 @@
 
 import { v4 as uuidv4 } from 'uuid';
 import { pool } from '../../../database';
-import { BaseService } from '../../base/BaseService';
+import { BaseService } from '../../../../shared-services/base/BaseService';
 import {
   DevelopmentProject,
   CreateProjectInput,
@@ -344,7 +344,7 @@ class ProjectCoreServiceImpl extends BaseService {
       [id, organizationId, deletedBy]
     );
 
-    return result.rowCount > 0;
+    return (result.rowCount ?? 0) > 0;
   }
 
   /**
@@ -364,7 +364,7 @@ class ProjectCoreServiceImpl extends BaseService {
         [id, organizationId]
       );
 
-      return result.rowCount > 0;
+      return (result.rowCount ?? 0) > 0;
     });
   }
 
@@ -381,7 +381,7 @@ class ProjectCoreServiceImpl extends BaseService {
     }
 
     const result = await this.query(query, params);
-    return result.rowCount > 0;
+    return (result.rowCount ?? 0) > 0;
   }
 
   /**

@@ -303,7 +303,7 @@ export function ConstructionCostPanel({
           construction_cost_index: overallIndex,
           index_change_yoy: 0, // YoY change would need historical data comparison
           index_base_year: baseYear,
-          source: 'PropMetrik Data Hub',
+          source: 'PROPMETRIK Data Hub',
           last_updated: indexData?.last_updated || new Date().toISOString(),
         };
 

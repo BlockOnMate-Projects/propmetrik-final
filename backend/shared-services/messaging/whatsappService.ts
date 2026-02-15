@@ -389,7 +389,7 @@ export class WhatsAppService {
     const message = `Hello ${contactName},\n\n` +
       `Your deal "${dealTitle}" has been updated to: ${newStatus}\n\n` +
       `If you have any questions, please reach out to your agent ${agentName}.\n\n` +
-      `Best regards,\nPropMetrik Team`;
+      `Best regards,\nPROPMETRIK Team`;
 
     return this.sendTextMessage(contactPhone, message);
   }
@@ -423,7 +423,7 @@ export class WhatsAppService {
       `👤 Agent: ${agentName}\n` +
       `📞 Contact: ${agentPhone}\n\n` +
       `Please reply YES to confirm or contact your agent to reschedule.\n\n` +
-      `PropMetrik`;
+      `PROPMETRIK`;
 
     return this.sendTextMessage(contactPhone, message);
   }
@@ -442,7 +442,7 @@ export class WhatsAppService {
       `Document: ${documentName}\n\n` +
       `Click here to review and sign:\n${signUrl}\n\n` +
       `This link expires in 7 days.\n\n` +
-      `PropMetrik`;
+      `PROPMETRIK`;
 
     return this.sendTextMessage(contactPhone, message);
   }

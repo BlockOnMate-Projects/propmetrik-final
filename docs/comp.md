@@ -2,11 +2,11 @@
 
 ## Executive Summary
 
-PropMetrik implements a **Market Comparison Approach** with adjustment calculations across both frontend (TypeScript) and backend (Python) systems. The platform sources property data from multiple Ghanaian real estate portals via Scrapy spiders, with data stored in PostgreSQL and searchable via spatial queries.
+PROPMETRIK implements a **Market Comparison Approach** with adjustment calculations across both frontend (TypeScript) and backend (Python) systems. The platform sources property data from multiple Ghanaian real estate portals via Scrapy spiders, with data stored in PostgreSQL and searchable via spatial queries.
 
 ### ⚠️ Critical Data Reality
 
-**PropMetrik uses LISTING DATA (asking prices), NOT verified sales transactions.**
+**PROPMETRIK uses LISTING DATA (asking prices), NOT verified sales transactions.**
 
 All comparable properties are scraped from listing portals (Meqasa, GhanaPropertyCentre, Housemaster, RealtorGH). These represent:
 - **Asking prices** — NOT achieved sale prices

@@ -3,12 +3,14 @@
  * Phase 4.3: Tenancy/Lease Management Service
  * 
  * Handles lease creation, renewal, termination, and lifecycle management
+ * Phase 2 E-Sign Integration: Automatic lease signing on activation
  * 
  * @module services/property-management/leases
  */
 
 import { Pool } from 'pg';
 import { pool } from '../../../database';
+import { logger } from '../../../utils/logger';
 import {
     Tenancy,
     CreateTenancyDto,
@@ -18,6 +20,8 @@ import {
     PaginationParams,
     PaginatedResponse
 } from '../../../types/property-management.types';
+import { eSignIntegrationService, CompletionEvent } from '../../../../shared-services/e-sign/integration';
+import { leaseTemplateService } from './leaseTemplateService';
 
 /**
  * Service for managing tenancies/leases
@@ -99,7 +103,7 @@ export class TenancyService {
 
         const values = [
             data.propertyId,
-            data.tenantId,
+            data.tenantId || null, // Optional - tenant created after e-sign
             organizationId,
             data.unitNumber || null,
             new Date(data.leaseStartDate),
@@ -117,7 +121,7 @@ export class TenancyService {
             data.autoRenew || false,
             JSON.stringify(data.leaseTerms || {}),
             data.specialConditions || null,
-            TenancyStatus.PENDING,
+            data.status || TenancyStatus.PENDING, // Allow setting initial status (e.g., pending_signature)
             userId || null
         ];
 
@@ -355,15 +359,547 @@ export class TenancyService {
     }
 
     /**
-     * Activate a pending tenancy
+     * Activate a pending tenancy and trigger e-sign lease workflow
+     * Phase 2 E-Sign Integration: Generates lease PDF and sends for signing
      */
     async activateTenancy(
         tenancyId: string,
-        organizationId: string
+        organizationId: string,
+        userId?: string,
+        options?: {
+            skipEsign?: boolean;
+            templateId?: string;
+            witnessEmail?: string;
+            witnessName?: string;
+        }
     ): Promise<Tenancy | null> {
-        return this.updateTenancy(tenancyId, organizationId, {
+        // First update status to active
+        const tenancy = await this.updateTenancy(tenancyId, organizationId, {
             status: TenancyStatus.ACTIVE
         });
+
+        if (!tenancy) {
+            return null;
+        }
+
+        // Skip e-sign if explicitly requested
+        if (options?.skipEsign) {
+            logger.info('E-Sign skipped for tenancy activation', { tenancyId });
+            return tenancy;
+        }
+
+        // Trigger e-sign workflow
+        try {
+            await this.initiateLeaseEsign(tenancy, organizationId, userId, options);
+        } catch (error) {
+            // Log error but don't fail activation
+            logger.error('Failed to initiate e-sign for lease', { 
+                tenancyId, 
+                error: error instanceof Error ? error.message : 'Unknown error' 
+            });
+        }
+
+        return tenancy;
+    }
+
+    /**
+     * Initiate e-sign workflow for a tenancy lease
+     */
+    async initiateLeaseEsign(
+        tenancy: Tenancy,
+        organizationId: string,
+        userId?: string,
+        options?: {
+            templateId?: string;
+            witnessEmail?: string;
+            witnessName?: string;
+        }
+    ): Promise<{ envelopeId: string; signingUrls: Record<string, string> }> {
+        logger.info('Initiating e-sign for lease', { 
+            tenancyId: tenancy.id,
+            organizationId 
+        });
+
+        // Get full tenancy data with relations
+        const fullTenancy = await this.getTenancyById(tenancy.id, organizationId);
+        if (!fullTenancy || !fullTenancy.tenant || !fullTenancy.property) {
+            throw new Error('Tenancy data incomplete - missing tenant or property');
+        }
+
+        // Generate lease PDF
+        const leaseDoc = await leaseTemplateService.generateLease(organizationId, {
+            tenancyId: tenancy.id,
+            templateId: options?.templateId,
+            format: 'pdf'
+        });
+
+        // Download the generated PDF
+        const { documentService } = await import('../../../../shared-services/document-service');
+        const { buffer: pdfBuffer } = await documentService.storage.download(leaseDoc.documentKey);
+
+        // Get signature field placements for the template
+        const signatureFields = await this.getSignatureFieldPlacements(
+            leaseDoc.templateId, 
+            organizationId
+        );
+
+        // Get landlord info from organization
+        const orgInfo = await this.getOrganizationInfo(organizationId);
+
+        // Build signers list
+        const signers = [
+            { 
+                name: fullTenancy.tenant.fullName, 
+                email: fullTenancy.tenant.email || '', 
+                role: 'signer' as const, 
+                order: 1 
+            },
+            { 
+                name: orgInfo.name || 'Property Manager', 
+                email: orgInfo.email || '', 
+                role: 'signer' as const, 
+                order: 2 
+            }
+        ];
+
+        // Add witness if provided
+        if (options?.witnessEmail && options?.witnessName) {
+            signers.push({
+                name: options.witnessName,
+                email: options.witnessEmail,
+                role: 'signer' as const,
+                order: 3
+            });
+        }
+
+        // Build e-sign fields from template configuration
+        const eSignFields = this.buildEsignFields(signatureFields, signers);
+
+        // Create envelope via e-sign integration service
+        const envelope = await eSignIntegrationService.createEnvelope({
+            subject: `Lease Agreement - ${fullTenancy.property.title}`,
+            message: `Please sign the lease agreement for ${fullTenancy.property.addressStreet || fullTenancy.property.address}. This lease is effective from ${new Date(fullTenancy.leaseStartDate).toLocaleDateString()} to ${new Date(fullTenancy.leaseEndDate).toLocaleDateString()}.`,
+            documents: [{
+                name: leaseDoc.filename,
+                content: pdfBuffer,
+                mimeType: 'application/pdf',
+                source: 'system_generated'
+            }],
+            signers,
+            fields: eSignFields,
+            sourceModule: 'property_management',
+            sourceEntityType: 'tenancy',
+            sourceEntityId: tenancy.id,
+            expiresInDays: 30,
+            autoSend: true
+        });
+
+        // Update tenancy with envelope reference
+        await this.db.query(
+            `UPDATE tenancies 
+             SET esign_envelope_id = $1, 
+                 esign_status = $2, 
+                 esign_created_at = NOW(),
+                 lease_sent_at = NOW(),
+                 updated_at = NOW()
+             WHERE id = $3`,
+            [envelope.envelopeId, 'pending', tenancy.id]
+        );
+
+        logger.info('E-Sign envelope created for lease', {
+            tenancyId: tenancy.id,
+            envelopeId: envelope.envelopeId,
+            signerCount: signers.length
+        });
+
+        return {
+            envelopeId: envelope.envelopeId,
+            signingUrls: envelope.signingUrls
+        };
+    }
+
+    /**
+     * Handle e-sign completion webhook for tenancy
+     * Called from webhook handler when envelope is completed
+     */
+    async handleEsignCompletion(event: CompletionEvent): Promise<void> {
+        const tenancyId = event.sourceContext.entityId;
+        const normalizeEmail = (value?: string | null) => (value || '').trim().toLowerCase();
+        
+        logger.info('Processing e-sign completion for tenancy', {
+            tenancyId,
+            envelopeId: event.envelope.id
+        });
+
+        // Get signed document URL
+        const signedDocUrl = event.documents[0]?.signedUrl;
+        const certificateUrl = event.documents[0]?.certificateUrl;
+
+        // Resolve tenant/landlord signed timestamps from persisted signer records
+        // instead of relying on webhook signer ordering (which may vary).
+        const tenancyMetaResult = await this.db.query(
+            `SELECT t.tenant_id, t.organization_id,
+                    tenant.email AS tenant_email,
+                    org.email AS organization_email
+             FROM tenancies t
+             LEFT JOIN tenants tenant ON t.tenant_id = tenant.id
+             LEFT JOIN organizations org ON t.organization_id = org.id
+             WHERE t.id = $1`,
+            [tenancyId]
+        );
+
+        const tenancyMeta = tenancyMetaResult.rows[0] || {};
+        const tenantEmail = normalizeEmail(tenancyMeta.tenant_email);
+        const organizationEmail = normalizeEmail(tenancyMeta.organization_email);
+
+        const signerRowsResult = await this.db.query(
+            `SELECT id, name, email, signing_order, signed_at
+             FROM esign_signers
+             WHERE envelope_id = $1`,
+            [event.envelope.id]
+        );
+
+        const signerRows = signerRowsResult.rows;
+        const tenantSignerRow = signerRows.find(s => normalizeEmail(s.email) === tenantEmail);
+        const landlordSignerRow = signerRows.find(
+            s => normalizeEmail(s.email) === organizationEmail && s.id !== tenantSignerRow?.id
+        );
+
+        // Fallback to webhook payload if email matching isn't possible.
+        const tenantSignerFromEvent = event.signers.find(s => normalizeEmail(s.email) === tenantEmail);
+        const landlordSignerFromEvent = event.signers.find(
+            s => normalizeEmail(s.email) === organizationEmail && normalizeEmail(s.email) !== normalizeEmail(tenantSignerFromEvent?.email)
+        );
+
+        const tenantSignedAt = tenantSignerRow?.signed_at || tenantSignerFromEvent?.signedAt || null;
+        const landlordSignedAt = landlordSignerRow?.signed_at || landlordSignerFromEvent?.signedAt || null;
+
+        const client = await this.db.connect();
+
+        try {
+            await client.query('BEGIN');
+
+            const tenancyRecordResult = await client.query(
+                `SELECT id, organization_id, tenant_id, application_id, lease_terms, status
+                 FROM tenancies
+                 WHERE id = $1
+                 FOR UPDATE`,
+                [tenancyId]
+            );
+
+            if (tenancyRecordResult.rows.length === 0) {
+                await client.query('ROLLBACK');
+                logger.warn('Tenancy not found during e-sign completion', { tenancyId, envelopeId: event.envelope.id });
+                return;
+            }
+
+            const tenancyRecord = tenancyRecordResult.rows[0];
+            let tenantId = tenancyRecord.tenant_id as string | null;
+            let applicationId = tenancyRecord.application_id as string | null;
+
+            const parsedLeaseTerms = typeof tenancyRecord.lease_terms === 'string'
+                ? JSON.parse(tenancyRecord.lease_terms || '{}')
+                : (tenancyRecord.lease_terms || {});
+
+            if (!applicationId && parsedLeaseTerms.applicationId) {
+                applicationId = parsedLeaseTerms.applicationId;
+            }
+
+            if (!applicationId) {
+                const appByTenancyResult = await client.query(
+                    `SELECT id
+                     FROM applications
+                     WHERE tenancy_id = $1 AND organization_id = $2
+                     ORDER BY updated_at DESC
+                     LIMIT 1`,
+                    [tenancyId, tenancyRecord.organization_id]
+                );
+                applicationId = appByTenancyResult.rows[0]?.id || null;
+            }
+
+            let applicationRow: any = null;
+            if (applicationId) {
+                const applicationResult = await client.query(
+                    `SELECT id, applicant_full_name, applicant_email, applicant_phone,
+                            applicant_ghana_card, applicant_current_address, applicant_digital_address,
+                            applicant_date_of_birth, occupation, employer_name, employer_address,
+                            employer_phone, monthly_income, emergency_contact_name,
+                            emergency_contact_phone, emergency_contact_relationship
+                     FROM applications
+                     WHERE id = $1 AND organization_id = $2`,
+                    [applicationId, tenancyRecord.organization_id]
+                );
+                applicationRow = applicationResult.rows[0] || null;
+            }
+
+            if (!tenantId) {
+                const applicantEmail = parsedLeaseTerms.applicantEmail || applicationRow?.applicant_email || null;
+                const applicantName = parsedLeaseTerms.applicantFullName || applicationRow?.applicant_full_name || null;
+                const applicantPhone = parsedLeaseTerms.applicantPhone || applicationRow?.applicant_phone || null;
+
+                if (!applicantName || !applicantPhone) {
+                    throw new Error('Cannot complete tenancy activation: applicant name/phone is missing');
+                }
+
+                if (applicantEmail) {
+                    const existingTenantResult = await client.query(
+                        `SELECT id FROM tenants
+                         WHERE organization_id = $1 AND LOWER(email) = LOWER($2)
+                         LIMIT 1`,
+                        [tenancyRecord.organization_id, applicantEmail]
+                    );
+
+                    if (existingTenantResult.rows.length > 0) {
+                        tenantId = existingTenantResult.rows[0].id;
+                    }
+                }
+
+                if (!tenantId) {
+                    const tenantInsertResult = await client.query(
+                        `INSERT INTO tenants (
+                            organization_id,
+                            full_name,
+                            ghana_card_number,
+                            date_of_birth,
+                            phone_primary,
+                            email,
+                            current_address,
+                            digital_address,
+                            occupation,
+                            employer_name,
+                            employer_address,
+                            employer_phone,
+                            monthly_income,
+                            emergency_contact_name,
+                            emergency_contact_phone,
+                            emergency_contact_relationship,
+                            character_references,
+                            previous_addresses,
+                            status
+                         ) VALUES (
+                            $1, $2, $3, $4, $5, $6, $7, $8, $9, $10,
+                            $11, $12, $13, $14, $15, $16, $17, $18, $19
+                         )
+                         RETURNING id`,
+                        [
+                            tenancyRecord.organization_id,
+                            applicantName,
+                            parsedLeaseTerms.applicantGhanaCard || applicationRow?.applicant_ghana_card || null,
+                            parsedLeaseTerms.applicantDateOfBirth || applicationRow?.applicant_date_of_birth || null,
+                            applicantPhone,
+                            applicantEmail,
+                            parsedLeaseTerms.applicantCurrentAddress || applicationRow?.applicant_current_address || null,
+                            parsedLeaseTerms.applicantDigitalAddress || applicationRow?.applicant_digital_address || null,
+                            applicationRow?.occupation || null,
+                            applicationRow?.employer_name || null,
+                            applicationRow?.employer_address || null,
+                            applicationRow?.employer_phone || null,
+                            applicationRow?.monthly_income || null,
+                            parsedLeaseTerms.emergencyContactName || applicationRow?.emergency_contact_name || null,
+                            parsedLeaseTerms.emergencyContactPhone || applicationRow?.emergency_contact_phone || null,
+                            parsedLeaseTerms.emergencyContactRelationship || applicationRow?.emergency_contact_relationship || null,
+                            JSON.stringify([]),
+                            JSON.stringify([]),
+                            'active'
+                        ]
+                    );
+
+                    tenantId = tenantInsertResult.rows[0].id;
+                }
+            }
+
+            // Update tenancy with signed lease info
+            await client.query(
+                `UPDATE tenancies 
+                 SET tenant_id = COALESCE($1, tenant_id),
+                     status = CASE WHEN status = 'pending_signature' THEN 'active' ELSE status END,
+                     esign_status = 'completed',
+                     esign_completed_at = COALESCE($2, esign_completed_at),
+                     lease_signed_url = COALESCE($3, lease_signed_url),
+                     lease_status = 'countersigned',
+                     tenant_signed_at = COALESCE($4, tenant_signed_at),
+                     landlord_signed_at = COALESCE($5, landlord_signed_at),
+                     updated_at = NOW()
+                 WHERE id = $6`,
+                [
+                    tenantId,
+                    event.envelope.completedAt,
+                    signedDocUrl,
+                    tenantSignedAt,
+                    landlordSignedAt,
+                    tenancyId
+                ]
+            );
+
+            if (applicationId) {
+                await client.query(
+                    `UPDATE applications
+                     SET tenant_id = COALESCE($1, tenant_id),
+                         tenancy_id = COALESCE($2, tenancy_id),
+                         status = 'lease_generated',
+                         updated_at = NOW()
+                     WHERE id = $3 AND organization_id = $4`,
+                    [tenantId, tenancyId, applicationId, tenancyRecord.organization_id]
+                );
+            }
+
+            // Store security hash for verification
+            await client.query(
+                `INSERT INTO tenancy_document_audit (
+                    tenancy_id, 
+                    document_url, 
+                    certificate_url,
+                    security_hash, 
+                    hash_algorithm,
+                    completed_at,
+                    signer_details
+                ) VALUES ($1, $2, $3, $4, $5, $6, $7)
+                ON CONFLICT (tenancy_id) DO UPDATE SET
+                    document_url = EXCLUDED.document_url,
+                    certificate_url = EXCLUDED.certificate_url,
+                    security_hash = EXCLUDED.security_hash,
+                    completed_at = EXCLUDED.completed_at,
+                    signer_details = EXCLUDED.signer_details`,
+                [
+                    tenancyId,
+                    signedDocUrl,
+                    certificateUrl,
+                    event.security.hash,
+                    event.security.algorithm,
+                    event.envelope.completedAt,
+                    JSON.stringify(event.signers)
+                ]
+            );
+
+            await client.query('COMMIT');
+        } catch (error) {
+            await client.query('ROLLBACK');
+            throw error;
+        } finally {
+            client.release();
+        }
+
+        logger.info('Tenancy lease signing completed', {
+            tenancyId,
+            envelopeId: event.envelope.id,
+            signedDocUrl
+        });
+    }
+
+    /**
+     * Get signature field placements for a template
+     */
+    private async getSignatureFieldPlacements(
+        templateId: string,
+        organizationId: string
+    ): Promise<SignatureFieldPlacement[]> {
+        const result = await this.db.query(
+            `SELECT * FROM lease_template_signature_fields
+             WHERE template_id = $1 AND organization_id = $2
+             ORDER BY signer_role, display_order`,
+            [templateId, organizationId]
+        );
+
+        if (result.rows.length === 0) {
+            // Return default signature fields if none configured
+            return this.getDefaultSignatureFields();
+        }
+
+        return result.rows.map(row => ({
+            signerRole: row.signer_role,
+            fieldType: row.field_type,
+            pageNumber: row.page_number,
+            x: parseFloat(row.x_position),
+            y: parseFloat(row.y_position),
+            width: parseFloat(row.width),
+            height: parseFloat(row.height),
+            required: row.required,
+            label: row.label
+        }));
+    }
+
+    /**
+     * Get default signature field placements
+     */
+    private getDefaultSignatureFields(): SignatureFieldPlacement[] {
+        return [
+            // Tenant signature block
+            { signerRole: 'tenant', fieldType: 'signature', pageNumber: -1, x: 0.10, y: 0.70, width: 0.30, height: 0.08, required: true, label: 'Tenant Signature' },
+            { signerRole: 'tenant', fieldType: 'date', pageNumber: -1, x: 0.45, y: 0.70, width: 0.15, height: 0.05, required: true, label: 'Date' },
+            // Landlord signature block
+            { signerRole: 'landlord', fieldType: 'signature', pageNumber: -1, x: 0.10, y: 0.55, width: 0.30, height: 0.08, required: true, label: 'Landlord Signature' },
+            { signerRole: 'landlord', fieldType: 'date', pageNumber: -1, x: 0.45, y: 0.55, width: 0.15, height: 0.05, required: true, label: 'Date' },
+            // Witness signature (optional)
+            { signerRole: 'witness', fieldType: 'signature', pageNumber: -1, x: 0.55, y: 0.70, width: 0.30, height: 0.08, required: false, label: 'Witness Signature' }
+        ];
+    }
+
+    /**
+     * Build e-sign fields from signature placements
+     */
+    private buildEsignFields(
+        placements: SignatureFieldPlacement[],
+        signers: { name: string; email: string; role: string; order: number }[]
+    ): Array<{
+        type: 'signature' | 'initials' | 'date' | 'text';
+        recipientEmail: string;
+        documentIndex: number;
+        page: number;
+        x: number;
+        y: number;
+        width: number;
+        height: number;
+        required: boolean;
+    }> {
+        const signerMap: Record<string, string> = {
+            'tenant': signers[0]?.email || '',
+            'landlord': signers[1]?.email || '',
+            'witness': signers[2]?.email || ''
+        };
+
+        return placements
+            .filter(p => signerMap[p.signerRole]) // Only include fields for signers we have
+            .filter(p => p.signerRole !== 'witness' || signers.length > 2) // Skip witness if no witness signer
+            .map(p => ({
+                type: p.fieldType as 'signature' | 'initials' | 'date' | 'text',
+                recipientEmail: signerMap[p.signerRole],
+                documentIndex: 0,
+                page: p.pageNumber,
+                x: p.x,
+                y: p.y,
+                width: p.width,
+                height: p.height,
+                required: p.required
+            }));
+    }
+
+    /**
+     * Get organization info for landlord details
+     */
+    private async getOrganizationInfo(organizationId: string): Promise<{
+        name: string;
+        email: string;
+        phone: string;
+        address: string;
+    }> {
+        const result = await this.db.query(
+            `SELECT name, email, phone, address 
+             FROM organizations 
+             WHERE id = $1`,
+            [organizationId]
+        );
+
+        if (result.rows.length === 0) {
+            return { name: '', email: '', phone: '', address: '' };
+        }
+
+        const row = result.rows[0];
+        return {
+            name: row.name || '',
+            email: row.email || '',
+            phone: row.phone || '',
+            address: row.address || ''
+        };
     }
 
     /**
@@ -515,6 +1051,15 @@ export class TenancyService {
             leaseTerms: row.lease_terms as LeaseTerms || {},
             specialConditions: row.special_conditions as string | undefined,
             leaseDocumentUrl: row.lease_document_url as string | undefined,
+            leaseSignedUrl: row.lease_signed_url as string | undefined,
+            leaseStatus: row.lease_status as string | undefined,
+            leaseSentAt: row.lease_sent_at as Date | undefined,
+            tenantSignedAt: row.tenant_signed_at as Date | undefined,
+            landlordSignedAt: row.landlord_signed_at as Date | undefined,
+            esignEnvelopeId: row.esign_envelope_id as string | undefined,
+            esignStatus: row.esign_status as string | undefined,
+            esignCreatedAt: row.esign_created_at as Date | undefined,
+            esignCompletedAt: row.esign_completed_at as Date | undefined,
             terminatedAt: row.terminated_at as Date | undefined,
             terminationReason: row.termination_reason as string | undefined,
             createdBy: row.created_by as string | undefined,
@@ -579,6 +1124,18 @@ interface TenancyPaymentSummary {
     paymentCount: number;
     lastPaymentDate: Date | null;
     status: 'ARREARS' | 'CURRENT' | 'ADVANCE';
+}
+
+interface SignatureFieldPlacement {
+    signerRole: 'tenant' | 'landlord' | 'witness' | 'co_tenant';
+    fieldType: 'signature' | 'initials' | 'date' | 'text';
+    pageNumber: number; // -1 means last page
+    x: number; // 0-1 percentage
+    y: number;
+    width: number;
+    height: number;
+    required: boolean;
+    label?: string;
 }
 
 // Export singleton instance

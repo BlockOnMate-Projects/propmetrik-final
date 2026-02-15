@@ -10,7 +10,7 @@
  */
 
 import { pool } from '../../../database';
-import { BaseService } from '../BaseService';
+import { BaseService } from '../../../../shared-services/base/BaseService';
 import { v4 as uuidv4 } from 'uuid';
 import {
   ProjectUnit,

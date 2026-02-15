@@ -1100,7 +1100,7 @@ class WhatsAppPMBotService {
 
   private async sendHelpMessage(phone: string): Promise<void> {
     const message = 
-      `🏗️ *PropMetrik PM Bot*\n\n` +
+      `🏗️ *PROPMETRIK PM Bot*\n\n` +
       `Available Commands:\n\n` +
       `📋 *projects* - View your projects\n` +
       `📊 *status* - Current project status\n` +

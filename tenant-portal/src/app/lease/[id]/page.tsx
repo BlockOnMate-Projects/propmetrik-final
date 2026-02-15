@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useRef } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { getLeaseByApplicationId, submitLeaseSignature, LeaseAgreement } from "@/lib/api";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -12,6 +12,7 @@ import { Label } from "@/components/ui/label";
 export default function LeaseSigningPage() {
   const params = useParams();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [lease, setLease] = useState<LeaseAgreement | null>(null);
   const [loading, setLoading] = useState(true);
@@ -20,6 +21,15 @@ export default function LeaseSigningPage() {
   const [signatureData, setSignatureData] = useState<string | null>(null);
   const [showModal, setShowModal] = useState(false);
   const [isDrawing, setIsDrawing] = useState(false);
+
+  // If a signer token is provided, redirect to the main app's signing page
+  useEffect(() => {
+    const signerToken = searchParams.get('token');
+    if (signerToken) {
+      const mainAppUrl = process.env.NEXT_PUBLIC_MAIN_APP_URL || 'http://localhost:3000';
+      window.location.href = `${mainAppUrl}/sign/${signerToken}`;
+    }
+  }, [searchParams]);
 
   useEffect(() => {
     async function loadData() {

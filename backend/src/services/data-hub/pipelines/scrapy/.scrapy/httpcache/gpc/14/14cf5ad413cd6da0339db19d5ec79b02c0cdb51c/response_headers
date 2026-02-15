@@ -1,0 +1,13 @@
+Date: Tue, 06 Jan 2026 01:26:23 GMT
+Content-Type: text/html; charset=utf-8
+Location: https://ghanapropertycentre.com/robots.txt
+Apigw-Requestid: WvSt7g15DoEEP-g=
+Cache-Control: max-age=31536000
+Cf-Cache-Status: EXPIRED
+Nel: {"report_to":"cf-nel","success_fraction":0.0,"max_age":604800}
+Vary: accept-encoding
+Server-Timing: cfCacheStatus;desc="EXPIRED"
+Server-Timing: cfEdge;dur=33,cfOrigin;dur=300
+Report-To: {"group":"cf-nel","max_age":604800,"endpoints":[{"url":"https://a.nel.cloudflare.com/report/v4?s=nKGGbndbp38BqYzBCETpTsNpiMWOA%2F5JcT8JDQNftqVz698JLmVieJuQlUWjx4dVZb5LyMJo%2F9RYiQECo0qBJfvKenF%2BLmZTX0hGKREmRAvzf5S7LTj5Ww%3D%3D"}]}
+Server: cloudflare
+Cf-Ray: 9b976d493b8cf24a-IAD

@@ -47,6 +47,13 @@ const nextConfig = {
       },
     ];
   },
+  webpack: (config, { isServer }) => {
+    if (!isServer) {
+      // pdfjs-dist optional dependencies
+      config.resolve.alias.canvas = false;
+    }
+    return config;
+  },
 };
 
 module.exports = nextConfig;

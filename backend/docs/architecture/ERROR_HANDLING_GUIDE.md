@@ -1,6 +1,6 @@
 # Error Handling Guide
 
-This document describes the error types, handling patterns, and client responses used throughout the PropMetrik service layer.
+This document describes the error types, handling patterns, and client responses used throughout the PROPMETRIK service layer.
 
 ---
 

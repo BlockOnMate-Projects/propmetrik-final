@@ -10,6 +10,7 @@
  * - Renewal deadline tracking
  */
 
+// @ts-ignore
 import { Queue, Worker, Job } from 'bullmq';
 import { pool } from '../database';
 import { logger } from '../utils/logger';
@@ -566,15 +567,15 @@ export async function queueScoreRecalculation(projectId: string): Promise<void> 
 // WORKER EVENT HANDLERS
 // =====================================================
 
-complianceWorker.on('completed', (job) => {
+complianceWorker.on('completed', (job: any) => {
   logger.debug({ jobId: job.id }, 'Compliance job completed');
 });
 
-complianceWorker.on('failed', (job, err) => {
+complianceWorker.on('failed', (job: any, err: any) => {
   logger.error({ jobId: job?.id, error: err.message }, 'Compliance job failed');
 });
 
-complianceWorker.on('error', (err) => {
+complianceWorker.on('error', (err: any) => {
   logger.error({ error: err.message }, 'Compliance worker error');
 });
 

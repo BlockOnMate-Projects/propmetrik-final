@@ -1,4 +1,4 @@
-# PropMetrik ML Model Serving API
+# PROPMETRIK ML Model Serving API
 # Dependencies for model serving infrastructure
 
 # Web framework

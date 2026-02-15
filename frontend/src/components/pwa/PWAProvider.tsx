@@ -252,7 +252,7 @@ export function InstallPrompt() {
             </svg>
           </div>
           <div className="flex-1 min-w-0">
-            <h3 className="font-mono text-sm text-white">Install PropMetrik</h3>
+            <h3 className="font-mono text-sm text-white">Install PROPMETRIK</h3>
             <p className="font-mono text-xs text-zinc-400 mt-1">
               Install for quick access and offline support
             </p>

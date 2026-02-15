@@ -1,0 +1,30 @@
+# PROPMETRIK Scrapers - Python Dependencies
+# 
+# Install with: pip install -r requirements.txt
+
+# Core Scrapy framework
+Scrapy==2.13.3
+itemloaders>=1.1.0
+
+# Database connectors
+psycopg2-binary>=2.9.9
+opensearch-py>=2.4.0
+redis>=5.0.0
+
+# HTTP utilities
+requests>=2.31.0
+w3lib>=2.1.0
+
+# Data processing
+python-dotenv>=1.0.0
+
+# Optional: For proxy rotation
+# scrapy-rotating-proxies>=0.6.0
+
+
+
+# Development
+pytest>=7.4.0
+pytest-cov>=4.1.0
+black>=23.0.0
+flake8>=6.1.0

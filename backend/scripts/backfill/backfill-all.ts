@@ -67,7 +67,7 @@ async function main(): Promise<void> {
   console.log('');
   console.log('╔═══════════════════════════════════════════════════════════════╗');
   console.log('║                                                               ║');
-  console.log('║         PropMetrik Full Economic Data Backfill               ║');
+  console.log('║         PROPMETRIK Full Economic Data Backfill               ║');
   console.log('║                                                               ║');
   console.log('╚═══════════════════════════════════════════════════════════════╝');
   console.log('');

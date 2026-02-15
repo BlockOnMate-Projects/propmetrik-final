@@ -171,7 +171,7 @@ export async function calculateTenantScore(tenantId: string): Promise<TenantScor
 
   // Calculate each score component
   const paymentHistory = await calculatePaymentHistoryScore(tenantId, riskFactors);
-  const incomeVerification = calculateIncomeScore(tenant, riskFactors);
+  const incomeVerification = await calculateIncomeScore(tenant, riskFactors);
   const employmentStability = calculateEmploymentScore(tenant, riskFactors);
   const rentalHistory = calculateRentalHistoryScore(tenant, riskFactors);
   const identityVerification = calculateIdentityScore(tenant, riskFactors);

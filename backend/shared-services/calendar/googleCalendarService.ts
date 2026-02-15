@@ -451,7 +451,7 @@ export class GoogleCalendarService {
 ${options.notes ? `Notes:\n${options.notes}` : ''}
 
 Property ID: ${options.propertyId}
-Scheduled by PropMetrik CRM`,
+Scheduled by PROPMETRIK CRM`,
       location: options.propertyAddress,
       startTime: options.viewingTime,
       endTime: endTime,
@@ -512,7 +512,7 @@ Scheduled by PropMetrik CRM`,
 ${options.agenda ? `📝 Agenda:\n${options.agenda}` : ''}
 
 Deal ID: ${options.dealId}
-Scheduled by PropMetrik CRM`,
+Scheduled by PROPMETRIK CRM`,
       location: options.location,
       startTime: options.meetingTime,
       endTime: endTime,
@@ -555,7 +555,7 @@ ${options.dealTitle ? `🏠 Deal: ${options.dealTitle}` : ''}
 ${options.description ? `Description:\n${options.description}` : ''}
 
 Task ID: ${options.taskId}
-Created by PropMetrik CRM`,
+Created by PROPMETRIK CRM`,
       startTime: reminderTime,
       endTime: options.deadline,
       attendees: [

@@ -48,7 +48,7 @@ import {
     Area
 } from 'recharts'
 import Link from 'next/link'
-import { EnterpriseNav } from '@/components/layout/EnterpriseNav'
+import PaymentSettings from '@/components/property-management/PaymentSettings'
 
 interface PropertyPerformance {
     propertyId: string;
@@ -76,10 +76,12 @@ export default function FinancialsPage() {
     const [propertyPerformance, setPropertyPerformance] = useState<PropertyPerformance[]>([])
     const [receivablesSummary, setReceivablesSummary] = useState<AgedReceivablesSummary | null>(null)
     const [portfolioValue, setPortfolioValue] = useState<number>(0)
+    const [monthlyTrendData, setMonthlyTrendData] = useState<{month: string; income: number; expenses: number; expectedRent: number; projectedIncome: number}[]>([])
     const [isLoading, setIsLoading] = useState(true)
     const [error, setError] = useState<string | null>(null)
     const [period, setPeriod] = useState('this_month')
     const [mounted, setMounted] = useState(false)
+    const [activeTab, setActiveTab] = useState<'overview' | 'payment-settings'>('overview')
 
     useEffect(() => {
         setMounted(true)
@@ -114,7 +116,7 @@ export default function FinancialsPage() {
                 }
 
                 // Load all financial data in parallel
-                const [recordsRes, performanceRes, receivablesRes, portfolioRes] = await Promise.all([
+                const [recordsRes, performanceRes, receivablesRes, portfolioRes, cashFlowRes] = await Promise.all([
                     propertyManagementApi.getFinancials({
                         limit: 100,
                         dateFrom: startDate.toISOString().split('T')[0],
@@ -125,7 +127,11 @@ export default function FinancialsPage() {
                         endDate: endDate.toISOString().split('T')[0]
                     }),
                     propertyManagementApi.getAgedReceivablesReport(),
-                    propertyManagementApi.getPortfolioValue()
+                    propertyManagementApi.getPortfolioValue(),
+                    propertyManagementApi.getCashFlow({
+                        startDate: new Date(new Date().getFullYear(), 0, 1).toISOString().split('T')[0],
+                        endDate: new Date(new Date().getFullYear(), 11, 31).toISOString().split('T')[0]
+                    })
                 ])
 
                 const recordsData = Array.isArray(recordsRes) ? recordsRes : recordsRes.data || []
@@ -133,6 +139,31 @@ export default function FinancialsPage() {
                 setPropertyPerformance(Array.isArray(performanceRes) ? performanceRes : [])
                 setReceivablesSummary(receivablesRes?.summary || null)
                 setPortfolioValue(portfolioRes?.totalValue || 0)
+
+                // Set real monthly trend data from cash-flow API
+                const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+                if (cashFlowRes?.monthlyBreakdown?.length > 0) {
+                    const rawData = cashFlowRes.monthlyBreakdown.map((m: any) => {
+                        const [year, monthNum] = m.month.split('-')
+                        return {
+                            month: monthNames[parseInt(monthNum) - 1] || m.month,
+                            income: m.income || 0,
+                            expenses: m.expenses || 0,
+                            expectedRent: m.expectedRent || 0
+                        }
+                    })
+                    // Find last month with actual income to project forward from
+                    let lastIncomeIdx = -1
+                    rawData.forEach((d: any, i: number) => { if (d.income > 0) lastIncomeIdx = i })
+                    
+                    setMonthlyTrendData(rawData.map((d: any, i: number) => ({
+                        ...d,
+                        // Project expected rent forward from the month after last actual income
+                        projectedIncome: i > lastIncomeIdx && d.expectedRent > 0 ? d.expectedRent : 0
+                    })))
+                } else {
+                    setMonthlyTrendData([])
+                }
 
             } catch (err) {
                 console.error('Failed to load financials:', err)
@@ -168,51 +199,68 @@ export default function FinancialsPage() {
         { name: '90+ Days', value: receivablesSummary.over90Days || 0, color: '#ef4444' },
     ].filter(r => r.value > 0) : []
 
-    // Monthly trend data (simulated from records)
-    const monthlyTrendData = [
-        { month: 'Jan', income: 45000, expenses: 12000 },
-        { month: 'Feb', income: 48000, expenses: 15000 },
-        { month: 'Mar', income: 52000, expenses: 11000 },
-        { month: 'Apr', income: 50000, expenses: 18000 },
-        { month: 'May', income: 55000, expenses: 14000 },
-        { month: 'Jun', income: totalIncome || 58000, expenses: totalExpenses || 16000 },
-    ]
-
     const formatCurrency = (val: number) => `₵${val.toLocaleString('en-GH', { maximumFractionDigits: 0 })}`
 
     if (!mounted) return null
 
     return (
         <div className="space-y-6">
-            {/* Enterprise Navigation */}
-            <EnterpriseNav />
-
             {/* Page Header */}
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                 <div>
                     <h1 className="text-2xl font-bold tracking-tight text-white font-mono">FINANCIAL CENTER</h1>
                     <p className="text-sm text-zinc-500 font-mono">Revenue, expenses, receivables & portfolio performance</p>
                 </div>
-                <div className="flex items-center gap-2">
-                    <Select value={period} onValueChange={setPeriod}>
-                        <SelectTrigger className="w-[180px] bg-black border-zinc-800 text-zinc-300 font-mono text-xs uppercase h-8">
-                            <Calendar className="mr-2 h-3 w-3" />
-                            <SelectValue placeholder="Select period" />
-                        </SelectTrigger>
-                        <SelectContent className="bg-black border-zinc-800 text-zinc-300 font-mono text-xs uppercase">
-                            <SelectItem value="this_month">This Month</SelectItem>
-                            <SelectItem value="last_month">Last Month</SelectItem>
-                            <SelectItem value="this_quarter">This Quarter</SelectItem>
-                            <SelectItem value="this_year">This Year</SelectItem>
-                        </SelectContent>
-                    </Select>
-                    <Button variant="outline" className="border-zinc-800 text-zinc-400 hover:text-amber-500 hover:border-amber-900 bg-black font-mono text-xs uppercase">
-                        <Download className="mr-2 h-3 w-3" />
-                        Export
-                    </Button>
-                </div>
+                {activeTab === 'overview' && <div className="flex items-center gap-2">
+                        <Select value={period} onValueChange={setPeriod}>
+                                <SelectTrigger className="w-[180px] bg-black border-zinc-800 text-zinc-300 font-mono text-xs uppercase h-8">
+                                    <Calendar className="mr-2 h-3 w-3" />
+                                    <SelectValue placeholder="Select period" />
+                                </SelectTrigger>
+                                <SelectContent className="bg-black border-zinc-800 text-zinc-300 font-mono text-xs uppercase">
+                                    <SelectItem value="this_month">This Month</SelectItem>
+                                    <SelectItem value="last_month">Last Month</SelectItem>
+                                    <SelectItem value="this_quarter">This Quarter</SelectItem>
+                                    <SelectItem value="this_year">This Year</SelectItem>
+                                </SelectContent>
+                            </Select>
+                            <Button variant="outline" className="border-zinc-800 text-zinc-400 hover:text-amber-500 hover:border-amber-900 bg-black font-mono text-xs uppercase">
+                                <Download className="mr-2 h-3 w-3" />
+                                Export
+                            </Button>
+                </div>}
             </div>
 
+            {/* Tab Navigation */}
+            <div className="flex items-center gap-6 border-b border-zinc-800">
+                <button
+                    onClick={() => setActiveTab('overview')}
+                    className={`pb-2 font-mono text-xs uppercase tracking-wider transition-colors ${
+                        activeTab === 'overview'
+                            ? 'text-white border-b-2 border-amber-500'
+                            : 'text-zinc-500 hover:text-zinc-300'
+                    }`}
+                >
+                    Overview
+                </button>
+                <button
+                    onClick={() => setActiveTab('payment-settings')}
+                    className={`pb-2 font-mono text-xs uppercase tracking-wider transition-colors flex items-center gap-2 ${
+                        activeTab === 'payment-settings'
+                            ? 'text-white border-b-2 border-amber-500'
+                            : 'text-zinc-500 hover:text-zinc-300'
+                    }`}
+                >
+                    <CreditCard className="h-3 w-3" />
+                    Payment Settings
+                </button>
+            </div>
+
+            {/* Payment Settings Tab */}
+            {activeTab === 'payment-settings' && <PaymentSettings />}
+
+            {/* Overview Tab Content */}
+            {activeTab === 'overview' && <>
             {/* Loading State */}
             {isLoading && (
                 <div className="flex items-center justify-center py-12">
@@ -389,24 +437,36 @@ export default function FinancialsPage() {
                     <Card className="bg-zinc-900 border-zinc-800">
                         <CardHeader>
                             <CardTitle className="text-sm font-mono uppercase text-amber-500">Revenue Trend</CardTitle>
-                            <CardDescription className="text-zinc-500 font-mono text-xs">Monthly income and expense comparison</CardDescription>
+                            <CardDescription className="text-zinc-500 font-mono text-xs">Actual & projected income vs expenses</CardDescription>
                         </CardHeader>
                         <CardContent>
-                            <ResponsiveContainer width="100%" height={250}>
-                                <AreaChart data={monthlyTrendData}>
-                                    <CartesianGrid strokeDasharray="3 3" stroke="#27272a" />
-                                    <XAxis dataKey="month" tick={{ fontSize: 11, fill: '#71717a' }} />
-                                    <YAxis tick={{ fontSize: 10, fill: '#71717a' }} tickFormatter={(v) => `₵${(v / 1000).toFixed(0)}k`} />
-                                    <Tooltip
-                                        contentStyle={{ backgroundColor: '#18181b', border: '1px solid #27272a', borderRadius: '8px' }}
-                                        labelStyle={{ color: '#fbbf24', fontFamily: 'monospace' }}
-                                        formatter={(value: number) => [`₵${value.toLocaleString()}`, '']}
-                                    />
-                                    <Legend wrapperStyle={{ fontSize: '10px', fontFamily: 'monospace' }} />
-                                    <Area type="monotone" dataKey="income" name="Income" stroke="#10b981" fill="#10b981" fillOpacity={0.2} />
-                                    <Area type="monotone" dataKey="expenses" name="Expenses" stroke="#ef4444" fill="#ef4444" fillOpacity={0.2} />
-                                </AreaChart>
-                            </ResponsiveContainer>
+                            {monthlyTrendData.length > 0 ? (
+                                <ResponsiveContainer width="100%" height={280}>
+                                    <AreaChart data={monthlyTrendData}>
+                                        <CartesianGrid strokeDasharray="3 3" stroke="#27272a" />
+                                        <XAxis dataKey="month" tick={{ fontSize: 11, fill: '#71717a' }} />
+                                        <YAxis tick={{ fontSize: 10, fill: '#71717a' }} tickFormatter={(v) => `₵${v >= 1000 ? (v / 1000).toFixed(0) + 'k' : v}`} />
+                                        <Tooltip
+                                            contentStyle={{ backgroundColor: '#18181b', border: '1px solid #27272a', borderRadius: '8px' }}
+                                            labelStyle={{ color: '#fbbf24', fontFamily: 'monospace' }}
+                                            formatter={(value: number, name: string) => [value > 0 ? `₵${value.toLocaleString()}` : '-', name]}
+                                        />
+                                        <Legend wrapperStyle={{ fontSize: '10px', fontFamily: 'monospace' }} />
+                                        <Area type="monotone" dataKey="expectedRent" name="Expected Rent" stroke="#fbbf24" fill="none" strokeDasharray="6 3" strokeWidth={2} dot={false} />
+                                        <Area type="monotone" dataKey="income" name="Actual Income" stroke="#10b981" fill="#10b981" fillOpacity={0.25} strokeWidth={2} />
+                                        <Area type="monotone" dataKey="projectedIncome" name="Projected Income" stroke="#10b981" fill="#10b981" fillOpacity={0.1} strokeDasharray="6 3" strokeWidth={2} dot={false} />
+                                        <Area type="monotone" dataKey="expenses" name="Expenses" stroke="#ef4444" fill="#ef4444" fillOpacity={0.15} strokeWidth={1.5} />
+                                    </AreaChart>
+                                </ResponsiveContainer>
+                            ) : (
+                                <div className="h-[280px] flex items-center justify-center bg-black/50 rounded-lg border border-zinc-800 border-dashed">
+                                    <div className="text-center text-zinc-600 font-mono">
+                                        <TrendingUp className="h-10 w-10 mx-auto mb-2 opacity-30" />
+                                        <p className="text-xs">No trend data for this period</p>
+                                        <p className="text-[10px]">Data builds as transactions are recorded monthly</p>
+                                    </div>
+                                </div>
+                            )}
                         </CardContent>
                     </Card>
 
@@ -543,6 +603,7 @@ export default function FinancialsPage() {
                     </Card>
                 </>
             )}
+            </>}
         </div>
     )
 }

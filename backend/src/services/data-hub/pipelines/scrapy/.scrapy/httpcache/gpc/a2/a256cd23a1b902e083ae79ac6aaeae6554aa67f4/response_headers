@@ -1,0 +1,17 @@
+Date: Tue, 06 Jan 2026 02:11:21 GMT
+Content-Type: text/html; charset=UTF-8
+Report-To: {"group":"cf-nel","max_age":604800,"endpoints":[{"url":"https://a.nel.cloudflare.com/report/v4?s=KqoVtB7ZK0mawMnXwtmTQ0SbZtTTgP172eBj5EIplRdsgKjsBocbH4uUj%2FabR0jbRUoG%2BFv3BjPDv%2BqRKhh7zUM8d0%2BwOm%2B5mUmibYKAlOdV4P4T"}]}
+X-Vapor-Base64-Encode: True
+Cache-Control: no-cache, private
+Apigw-Requestid: WvZTlihoDoEEP8Q=
+Set-Cookie: XSRF-TOKEN=eyJpdiI6Ik15aXhGREltTks0WFNaNEtxd0ZDemc9PSIsInZhbHVlIjoiR2M1RGcwc2dST3JyekwreVNkQTZhbmFZTURBQWpBc0R2TGlUams5emFuSGxEZk40bmQ2ZGhBaGMrT0RrczJ2blhQSk9WWVpuY0c3Q2xRbWpGd1dXWDF4dU9md243M0VhRnlmUzFuNTd3R3E5YnRGTFcwTlJ3UE1oWnU3OE9xQlMiLCJtYWMiOiI1MmEwYTdiYWY4NmRhNjQ4MzM5NzgzN2RmMGMzNGNjMDliZTQ4NTM1NzdhNzI5ZmFmYzUyYzQ4ODkzODg3NDc2IiwidGFnIjoiIn0%3D; expires=Tue, 06 Jan 2026 04:11:21 GMT; Max-Age=7200; path=/; secure; samesite=lax
+Set-Cookie: ghana_property_centre_session=eyJpdiI6ImNpVUlZQW5jTm9EM28xam13WFBGOGc9PSIsInZhbHVlIjoiWG5QendnemR6bUhSRmcrQlpCSG16alFvcURwUThha1cyZ0pSTnQyVjFaSXliZVdabVcrTEdSVlVIV0lMdkF5SWJXK0YwTzhON3NDWVNGL1JPdkkzUEdXZkt0VGI1Zk9zRk5Zd3drZEx2eThuUnBQQnd1UzZzck5Kamhuakt5MDEiLCJtYWMiOiJmNTdjYmU0NGUwOWYzZTFjYjBiMWY3N2VlNzc1OTA5NDM2ODczYjYwOThkYjIyMzgxMDM4ZGQ4NWE0Yzg5NjM0IiwidGFnIjoiIn0%3D; expires=Tue, 06 Jan 2026 04:11:21 GMT; Max-Age=7200; path=/; secure; httponly; samesite=lax
+Set-Cookie: user_search_history=eyJpdiI6ImJCc0cyUDh2YzluOWtUVTNrRUtzdlE9PSIsInZhbHVlIjoicFd1UzZ1UHJCcnlDRnhvTlAvMEp6RXZLeGxkQVpJaVQwVHZCN2xHUjhZbUdUREhCMjc4MFZoQ1dQSkxuOE5GWjZDY3ErQ1MvbjA5aU91VVpneVVhdFVSbE00YWdUVVRPZWYzbGQ5eitMMVhpdFltZGlhaG1wM0xadEJPQ3BKV1VJa3BpY0N4MW1xK21QR0xmS3RHTFFxQkVpY0JmZkYydllmRFRiYXVhVy9BYU8wZW5MTTUvNzFFWTNVVnJVd2lWIiwibWFjIjoiODFiOGU3YWRhMTNlYmMzNWIwY2NkOTdiMjFmYTVlN2JjNmNiNjMyYjMzZGYyY2Y4M2ZjYWI5YzI0MTYzYTEzMSIsInRhZyI6IiJ9; expires=Mon, 02 Aug 2055 02:11:21 GMT; Max-Age=933120000; path=/; secure; httponly; samesite=lax
+Cf-Cache-Status: DYNAMIC
+Vary: accept-encoding
+Nel: {"report_to":"cf-nel","success_fraction":0.0,"max_age":604800}
+Server-Timing: cfCacheStatus;desc="DYNAMIC"
+Server-Timing: cfEdge;dur=6,cfOrigin;dur=251
+Content-Encoding: gzip
+Server: cloudflare
+Cf-Ray: 9b97af2cb8d1d649-IAD

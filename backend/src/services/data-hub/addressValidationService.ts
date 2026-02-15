@@ -24,7 +24,17 @@ export interface AddressValidationResult {
     district?: string;
     area?: string;
     street?: string;
+    city?: string;
     postCode?: string;
+  };
+  normalized?: {
+    street?: string;
+    city?: string;
+    region?: string;
+  };
+  coordinates?: {
+    latitude: number;
+    longitude: number;
   };
   issues: AddressIssue[];
   enrichments: AddressEnrichment[];

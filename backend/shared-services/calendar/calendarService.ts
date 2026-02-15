@@ -226,12 +226,8 @@ class CalendarService {
     }
   ): Promise<CalendarEvent[]> {
     let query = `
-      SELECT ce.*, 
-             d.title as deal_title,
-             c.first_name || ' ' || c.last_name as contact_name
+      SELECT ce.*
       FROM calendar_events ce
-      LEFT JOIN crm_deals d ON ce.deal_id = d.id
-      LEFT JOIN crm_contacts c ON ce.contact_id = c.id
       WHERE ce.organization_id = $1
         AND ce.start_time >= $2
         AND ce.end_time <= $3
@@ -276,12 +272,8 @@ class CalendarService {
    */
   async getEventById(eventId: string): Promise<CalendarEvent | null> {
     const result = await pool.query(
-      `SELECT ce.*, 
-              d.title as deal_title,
-              c.first_name || ' ' || c.last_name as contact_name
+      `SELECT ce.*
        FROM calendar_events ce
-       LEFT JOIN crm_deals d ON ce.deal_id = d.id
-       LEFT JOIN crm_contacts c ON ce.contact_id = c.id
        WHERE ce.id = $1`,
       [eventId]
     );
@@ -297,12 +289,8 @@ class CalendarService {
     limit = 10
   ): Promise<CalendarEvent[]> {
     const result = await pool.query(
-      `SELECT ce.*, 
-              d.title as deal_title,
-              c.first_name || ' ' || c.last_name as contact_name
+      `SELECT ce.*
        FROM calendar_events ce
-       LEFT JOIN crm_deals d ON ce.deal_id = d.id
-       LEFT JOIN crm_contacts c ON ce.contact_id = c.id
        WHERE ce.organization_id = $1
          AND ce.user_id = $2
          AND ce.start_time >= NOW()

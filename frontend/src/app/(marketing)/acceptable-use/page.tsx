@@ -26,7 +26,7 @@ export default function AcceptableUsePage() {
                         <section className="mb-12">
                             <h2 className="text-2xl font-bold text-white mb-4">1. Purpose</h2>
                             <p className="text-zinc-300 leading-relaxed">
-                                This Acceptable Use Policy ("Policy") governs your use of PropMetrik's platform and services. By using our Services, you agree to comply with this Policy. Violation may result in suspension or termination of your account.
+                                This Acceptable Use Policy ("Policy") governs your use of PROPMETRIK's platform and services. By using our Services, you agree to comply with this Policy. Violation may result in suspension or termination of your account.
                             </p>
                         </section>
 
@@ -65,7 +65,7 @@ export default function AcceptableUsePage() {
                             <h3 className="text-xl font-bold text-white mb-3 mt-6">2.4 Commercial Misuse</h3>
                             <ul className="list-disc list-inside text-zinc-300 space-y-2 ml-4">
                                 <li>Resell or redistribute our data without authorization</li>
-                                <li>Use Services to compete with PropMetrik</li>
+                                <li>Use Services to compete with PROPMETRIK</li>
                                 <li>Share account credentials with unauthorized parties</li>
                                 <li>Use a single account for multiple businesses (unless Enterprise plan)</li>
                             </ul>
@@ -118,7 +118,7 @@ export default function AcceptableUsePage() {
                         <section className="mb-12">
                             <h2 className="text-2xl font-bold text-white mb-4">6. Monitoring and Enforcement</h2>
                             <p className="text-zinc-300 mb-4">
-                                PropMetrik reserves the right to:
+                                PROPMETRIK reserves the right to:
                             </p>
                             <ul className="list-disc list-inside text-zinc-300 space-y-2 ml-4">
                                 <li>Monitor usage patterns for compliance and security</li>
@@ -144,7 +144,7 @@ export default function AcceptableUsePage() {
                             <p className="text-zinc-300">
                                 Questions about this Policy? Contact us at:<br /><br />
                                 Email: legal@propmetrik.com<br />
-                                Address: PropMetrik, Accra, Ghana
+                                Address: PROPMETRIK, Accra, Ghana
                             </p>
                         </section>
                     </div>

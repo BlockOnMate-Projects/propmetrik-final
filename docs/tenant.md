@@ -1,4 +1,4 @@
-# PropMetrik Tenant Architecture
+# PROPMETRIK Tenant Architecture
 
 > Internal architecture document for the tenant-facing experience.  
 > Version: 1.0  

@@ -39,7 +39,7 @@ export class IngestionService {
       // We'll queue this directly to the processing queue
 
       await this.queueManager.addJob(
-        DataHubQueueManager.QUEUES.PROPERTY_PROCESS,
+        (DataHubQueueManager.QUEUES as any).PROPERTY_PROCESS || 'property-process',
         {
           rawProperty: payload,
           jobId: jobId

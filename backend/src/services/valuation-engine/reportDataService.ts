@@ -329,7 +329,7 @@ class ReportDataService {
         qualifications: valuer?.qualifications || 'BSc., MGhIS',
         title: valuer?.title || 'Valuation & Estate Surveyor',
         license_number: valuer?.license_number || null,
-        address: valuer?.contact_address || 'PropMetrik Ghana',
+        address: valuer?.contact_address || 'PROPMETRIK Ghana',
       },
       date: this.formatDate(report.effective_date || new Date()),
       company_logo_url: null, // TODO: Add company logo support

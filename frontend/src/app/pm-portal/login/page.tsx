@@ -36,7 +36,7 @@ export default function PMLoginPage() {
             <div className="h-8 w-8 bg-amber-500 rounded flex items-center justify-center text-black font-bold">
               <HardHat className="h-5 w-5" />
             </div>
-            <span className="text-xl font-bold text-white">PropMetrik PM</span>
+            <span className="text-xl font-bold text-white">PROPMETRIK PM</span>
           </div>
           <CardTitle className="text-2xl text-white">PM Portal Sign in</CardTitle>
           <CardDescription className="text-zinc-400">

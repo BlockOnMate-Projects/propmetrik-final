@@ -21,7 +21,7 @@ import { Router, Request, Response, NextFunction } from 'express';
 import { authenticate, requireOrganization, requireRoles } from '../middleware/auth';
 import { body, param, query, validationResult } from 'express-validator';
 import { logger } from '../utils/logger';
-import workflowService, { TriggerEvent, ExecutionContext } from '../../shared-services/workflow/workflowService';
+import workflowService, { TriggerEvent, ExecutionContext, ExecutionStatus } from '../../shared-services/workflow/workflowService';
 import workflowExecutionEngine from '../../shared-services/workflow/workflowExecutionEngine';
 
 const router = Router();
@@ -300,7 +300,7 @@ router.put(
     // Update steps if provided
     if (steps) {
       await workflowService.updateSteps(id, steps);
-      workflow.steps = await workflowService.getSteps(id);
+      workflow!.steps = await workflowService.getSteps(id);
     }
 
     logger.info({ workflowId: id, userId }, 'Workflow updated');
@@ -560,9 +560,9 @@ router.get(
     }
 
     const executions = await workflowService.getExecutionHistory(id, {
-      status: status as string,
+      status: status as ExecutionStatus | undefined,
       limit: Number(limit),
-      offset: (Number(page) - 1) * Number(limit)
+      page: Number(page)
     });
 
     res.json({
@@ -644,7 +644,7 @@ router.post(
       });
     }
 
-    await workflowService.cancelExecution(executionId);
+    await workflowService.cancelExecution(executionId, userId);
 
     logger.info({ executionId, userId }, 'Workflow execution cancelled');
 

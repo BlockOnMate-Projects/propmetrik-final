@@ -17,7 +17,8 @@ import { logger } from '../../../utils/logger';
 export enum AuthMethod {
     MAGIC_LINK = 'magic_link',
     OTP_SMS = 'otp_sms',
-    OTP_EMAIL = 'otp_email'
+    OTP_EMAIL = 'otp_email',
+    KEYCLOAK = 'keycloak'
 }
 
 // Interfaces
@@ -52,6 +53,7 @@ export interface TenancySummary {
     propertyId: string;
     propertyTitle: string;
     propertyAddress: string;
+    organizationId: string;
     leaseStartDate: Date;
     leaseEndDate: Date;
     monthlyRent: number;
@@ -73,8 +75,20 @@ export interface SessionResult {
     error?: string;
 }
 
+export interface MagicLinkConsumeResult {
+    success: boolean;
+    tenant?: TenantProfile;
+    error?: string;
+}
+
+export interface MagicLinkValidationResult {
+    success: boolean;
+    tenant?: TenantProfile;
+    error?: string;
+}
+
 // Configuration
-const TOKEN_EXPIRY_MINUTES = 15; // Magic links expire in 15 minutes
+const TOKEN_EXPIRY_MINUTES = 1440; // Magic links expire in 24 hours (portal invites)
 const OTP_EXPIRY_MINUTES = 5; // OTPs expire in 5 minutes
 const SESSION_EXPIRY_DAYS = 30; // Sessions last 30 days
 const OTP_LENGTH = 6;
@@ -122,7 +136,7 @@ export class TenantAuthService {
                 ]
             );
 
-            const magicLink = `${baseUrl}/auth/verify?token=${token}`;
+            const magicLink = `${baseUrl}/login?token=${token}`;
 
             logger.info('Generated magic link for tenant', { tenantId: tenant.id });
 
@@ -234,6 +248,78 @@ export class TenantAuthService {
     }
 
     /**
+     * Consume magic link token for invite/setup flow (no session creation)
+     */
+    async consumeMagicLink(token: string): Promise<MagicLinkConsumeResult> {
+        try {
+            const tokenHash = this.hashToken(token);
+
+            const result = await this.db.query(
+                `SELECT * FROM tenant_auth_tokens
+                 WHERE token_hash = $1
+                 AND token_type = $2
+                 AND expires_at > NOW()
+                 AND used_at IS NULL`,
+                [tokenHash, AuthMethod.MAGIC_LINK]
+            );
+
+            if (result.rows.length === 0) {
+                return { success: false, error: 'Invalid or expired token' };
+            }
+
+            const authToken = result.rows[0];
+
+            await this.db.query(
+                `UPDATE tenant_auth_tokens SET used_at = NOW() WHERE id = $1`,
+                [authToken.id]
+            );
+
+            const tenant = await this.getTenantProfile(authToken.tenant_id);
+            if (!tenant) {
+                return { success: false, error: 'Tenant profile not found' };
+            }
+
+            return { success: true, tenant };
+        } catch (error: any) {
+            logger.error('Error consuming magic link', { error: error.message });
+            return { success: false, error: error.message };
+        }
+    }
+
+    /**
+     * Validate magic link token for setup flow (without consuming token)
+     */
+    async validateMagicLink(token: string): Promise<MagicLinkValidationResult> {
+        try {
+            const tokenHash = this.hashToken(token);
+
+            const result = await this.db.query(
+                `SELECT * FROM tenant_auth_tokens
+                 WHERE token_hash = $1
+                 AND token_type = $2
+                 AND expires_at > NOW()
+                 AND used_at IS NULL`,
+                [tokenHash, AuthMethod.MAGIC_LINK]
+            );
+
+            if (result.rows.length === 0) {
+                return { success: false, error: 'Invalid or expired token' };
+            }
+
+            const authToken = result.rows[0];
+            const tenant = await this.getTenantProfile(authToken.tenant_id);
+            if (!tenant) {
+                return { success: false, error: 'Tenant profile not found' };
+            }
+
+            return { success: true, tenant };
+        } catch (error: any) {
+            logger.error('Error validating magic link', { error: error.message });
+            return { success: false, error: error.message };
+        }
+    }
+
+    /**
      * Verify OTP and create session
      */
     async verifyOTP(
@@ -303,9 +389,9 @@ export class TenantAuthService {
     }
 
     /**
-     * Create a new session for a tenant
+     * Create a new session for a tenant (30-day DB session)
      */
-    private async createSession(
+    async createSession(
         tenantId: string,
         authMethod: AuthMethod,
         userAgent?: string,
@@ -434,7 +520,63 @@ export class TenantAuthService {
                 return null;
             }
 
-            const tenant = tenantResult.rows[0];
+            let tenant = tenantResult.rows[0];
+
+            const hasMissingCoreProfile = !tenant.full_name || !tenant.email || !tenant.phone_primary || !tenant.current_address || !tenant.occupation;
+            if (hasMissingCoreProfile) {
+                const appResult = await this.db.query(
+                    `SELECT applicant_full_name,
+                            applicant_email,
+                            applicant_phone,
+                            applicant_phone_secondary,
+                            applicant_current_address,
+                            occupation
+                     FROM applications
+                     WHERE tenant_id = $1
+                        OR (applicant_email IS NOT NULL AND LOWER(applicant_email) = LOWER($2))
+                     ORDER BY updated_at DESC NULLS LAST, created_at DESC
+                     LIMIT 1`,
+                    [tenantId, tenant.email || '']
+                );
+
+                const application = appResult.rows[0];
+                if (application) {
+                    const merged = {
+                        full_name: tenant.full_name || application.applicant_full_name,
+                        email: tenant.email || application.applicant_email,
+                        phone_primary: tenant.phone_primary || application.applicant_phone,
+                        phone_secondary: tenant.phone_secondary || application.applicant_phone_secondary,
+                        current_address: tenant.current_address || application.applicant_current_address,
+                        occupation: tenant.occupation || application.occupation,
+                    };
+
+                    await this.db.query(
+                        `UPDATE tenants
+                         SET full_name = COALESCE(NULLIF(full_name, ''), $2),
+                             email = COALESCE(NULLIF(email, ''), $3),
+                             phone_primary = COALESCE(NULLIF(phone_primary, ''), $4),
+                             phone_secondary = COALESCE(NULLIF(phone_secondary, ''), $5),
+                             current_address = COALESCE(NULLIF(current_address, ''), $6),
+                             occupation = COALESCE(NULLIF(occupation, ''), $7),
+                             updated_at = NOW()
+                         WHERE id = $1`,
+                        [
+                            tenantId,
+                            merged.full_name || null,
+                            merged.email || null,
+                            merged.phone_primary || null,
+                            merged.phone_secondary || null,
+                            merged.current_address || null,
+                            merged.occupation || null,
+                        ]
+                    );
+
+                    tenant = {
+                        ...tenant,
+                        ...merged,
+                    };
+                }
+            }
 
             // Get active tenancies
             const tenanciesResult = await this.db.query(
@@ -451,6 +593,7 @@ export class TenantAuthService {
                 propertyId: row.property_id,
                 propertyTitle: row.property_title,
                 propertyAddress: `${row.address_street || ''}, ${row.address_city || ''}`.trim(),
+                organizationId: row.organization_id,
                 leaseStartDate: new Date(row.lease_start_date),
                 leaseEndDate: new Date(row.lease_end_date),
                 monthlyRent: parseFloat(row.monthly_rent),

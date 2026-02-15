@@ -13,7 +13,7 @@
  */
 
 import { PoolClient } from 'pg';
-import { BaseService } from '../../base/BaseService';
+import { BaseService } from '../../../../shared-services/base/BaseService';
 import {
   UUID,
   ApprovalStatus,

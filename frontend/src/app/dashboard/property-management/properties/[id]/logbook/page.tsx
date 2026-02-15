@@ -73,7 +73,7 @@ export default function AssetLogbookPage() {
                     date: new Date(propRes.createdAt),
                     type: 'creation',
                     title: 'Asset Initialized',
-                    description: `Property "${propRes.title}" was registered in the Propmetrik Terminal with reference ${propRes.referenceNumber}.`
+                    description: `Property "${propRes.title}" was registered in the PROPMETRIK Terminal with reference ${propRes.referenceNumber}.`
                 })
 
                 // 2. Tenancies

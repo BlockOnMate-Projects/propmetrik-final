@@ -232,7 +232,7 @@ class ValuationReportService {
         valuer: {
           name: options.valuerName || 'System Valuation',
           qualifications: options.valuerQualifications || 'MRICS, RV (GhIS)',
-          company: 'PropMetrik',
+          company: 'PROPMETRIK',
           date: new Date().toISOString().split('T')[0],
         },
         

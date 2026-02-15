@@ -9,7 +9,7 @@ import {
     Activity,
     Package,
     FileText,
-    Briefcase
+    Briefcase,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 

@@ -7,25 +7,25 @@ import { Calendar, ExternalLink, Award, Users } from 'lucide-react';
 export default function PressPage() {
     const pressReleases = [
         {
-            title: 'PropMetrik Raises $2M in Seed Funding to Expand Across West Africa',
+            title: 'PROPMETRIK Raises $2M in Seed Funding to Expand Across West Africa',
             date: 'January 10, 2026',
             excerpt: 'Leading proptech platform secures funding from prominent African VCs to accelerate growth and product development.',
             category: 'Funding'
         },
         {
-            title: 'PropMetrik Partners with Ghana Lands Commission for Digital Title Verification',
+            title: 'PROPMETRIK Partners with Ghana Lands Commission for Digital Title Verification',
             date: 'December 15, 2025',
             excerpt: 'Strategic partnership aims to streamline property transactions and reduce land disputes through technology.',
             category: 'Partnership'
         },
         {
-            title: 'PropMetrik Surpasses 5,000 Property Valuations Milestone',
+            title: 'PROPMETRIK Surpasses 5,000 Property Valuations Milestone',
             date: 'November 28, 2025',
             excerpt: 'Platform celebrates major milestone as adoption accelerates among banks, developers, and investors.',
             category: 'Milestone'
         },
         {
-            title: 'PropMetrik Wins "Best Proptech Innovation" at Ghana Tech Awards',
+            title: 'PROPMETRIK Wins "Best Proptech Innovation" at Ghana Tech Awards',
             date: 'October 20, 2025',
             excerpt: 'Recognition highlights platform\'s impact on modernizing Ghana\'s real estate industry.',
             category: 'Award'
@@ -42,7 +42,7 @@ export default function PressPage() {
     const coverage = [
         {
             outlet: 'Ghana Business News',
-            headline: 'How PropMetrik is Revolutionizing Real Estate Valuations',
+            headline: 'How PROPMETRIK is Revolutionizing Real Estate Valuations',
             date: 'January 2026',
             link: '#'
         },
@@ -60,7 +60,7 @@ export default function PressPage() {
         },
         {
             outlet: 'Ventures Africa',
-            headline: 'Ghana\'s PropMetrik Secures Strategic Partnerships',
+            headline: 'Ghana\'s PROPMETRIK Secures Strategic Partnerships',
             date: 'October 2025',
             link: '#'
         },
@@ -83,7 +83,7 @@ export default function PressPage() {
                             </span>
                         </h1>
                         <p className="text-xl text-zinc-400 leading-relaxed mb-8">
-                            Latest news, announcements, and media coverage of PropMetrik's mission to transform real estate in Ghana and beyond.
+                            Latest news, announcements, and media coverage of PROPMETRIK's mission to transform real estate in Ghana and beyond.
                         </p>
                         <Link href="/contact">
                             <motion.button
@@ -223,7 +223,7 @@ export default function PressPage() {
                                     </div>
                                     <div>
                                         <div className="text-sm text-zinc-500 mb-1">Office Address</div>
-                                        <div className="text-white font-medium">PropMetrik<br />Accra, Ghana</div>
+                                        <div className="text-white font-medium">PROPMETRIK<br />Accra, Ghana</div>
                                     </div>
                                 </div>
 

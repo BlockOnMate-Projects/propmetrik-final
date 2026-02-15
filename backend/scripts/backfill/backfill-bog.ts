@@ -24,7 +24,7 @@ import { syncLogRepository } from '../../src/services/data-hub/scrapers/syncLogR
  */
 async function runBackfill(): Promise<void> {
   console.log('==========================================');
-  console.log('  PropMetrik BOG Historical Backfill');
+  console.log('  PROPMETRIK BOG Historical Backfill');
   console.log('==========================================');
   console.log('Source: Bank of Ghana (https://bog.gov.gh)');
   console.log('');

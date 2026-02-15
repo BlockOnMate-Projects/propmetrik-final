@@ -14,7 +14,7 @@
 
 import { v4 as uuidv4 } from 'uuid';
 import { pool } from '../../../database';
-import { BaseService } from '../../base/BaseService';
+import { BaseService } from '../../../../shared-services/base/BaseService';
 import { reportDataService } from './ReportDataService';
 import { reportGeneratorService } from './ReportGeneratorService';
 import {
@@ -113,8 +113,8 @@ class ReportManagementServiceImpl extends BaseService {
           title: `Compliance Report - ${reportData.project.name}`,
           description: `Compliance status report generated on ${new Date().toLocaleDateString()}`,
           signees: input.signees.map((s, i) => ({
-            name: s.name,
-            email: s.email,
+            name: s.name!,
+            email: s.email!,
             role: s.role || 'Signatory',
             order: i + 1,
           })),

@@ -13,7 +13,7 @@
  */
 
 import { pool } from '../../../database';
-import { BaseService } from '../../base/BaseService';
+import { BaseService } from '../../../../shared-services/base/BaseService';
 import { eventBus } from '../events/EventBus';
 import { v4 as uuidv4 } from 'uuid';
 import * as crypto from 'crypto';
@@ -66,7 +66,7 @@ class PhotoOrganizationServiceImpl extends BaseService {
 
     const album = this.mapAlbum(result.rows[0]);
 
-    eventBus.emit('photo.album.created', {
+    eventBus.emit('photo.album.created' as any, {
       albumId: album.id,
       projectId: album.projectId,
       createdBy: input.createdBy,
@@ -199,7 +199,7 @@ class PhotoOrganizationServiceImpl extends BaseService {
       [id]
     );
 
-    return result.rowCount > 0;
+    return (result.rowCount ?? 0) > 0;
   }
 
   // ==========================================================================
@@ -263,7 +263,7 @@ class PhotoOrganizationServiceImpl extends BaseService {
       [albumId, photoIds]
     );
 
-    return result.rowCount || 0;
+    return result.rowCount ?? 0;
   }
 
   /**
@@ -306,7 +306,7 @@ class PhotoOrganizationServiceImpl extends BaseService {
       ]
     );
 
-    eventBus.emit('photo.comparison.created', {
+    eventBus.emit('photo.comparison.created' as any, {
       comparisonId: result.rows[0].id,
       projectId: input.projectId,
     });
@@ -382,7 +382,7 @@ class PhotoOrganizationServiceImpl extends BaseService {
       [id]
     );
 
-    return result.rowCount > 0;
+    return (result.rowCount ?? 0) > 0;
   }
 
   // ==========================================================================
@@ -508,7 +508,7 @@ class PhotoOrganizationServiceImpl extends BaseService {
       [id]
     );
 
-    return result.rowCount > 0;
+    return (result.rowCount ?? 0) > 0;
   }
 
   /**

@@ -514,14 +514,4 @@ export class PaystackService {
 // Singleton instance
 export const paystackService = new PaystackService();
 
-// Export types
-export type {
-    PaystackConfig,
-    PaystackInitializeParams,
-    PaystackInitializeResponse,
-    PaystackVerifyResponse,
-    CreateSubaccountParams,
-    SubaccountResponse,
-    BankListResponse,
-    ResolveAccountResponse
-};
+// Types are already exported via interface declarations above

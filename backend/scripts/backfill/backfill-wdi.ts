@@ -52,7 +52,7 @@ function parseArgs(): BackfillOptions {
  */
 async function runBackfill(options: BackfillOptions): Promise<void> {
   console.log('==========================================');
-  console.log('  PropMetrik WDI Historical Backfill');
+  console.log('  PROPMETRIK WDI Historical Backfill');
   console.log('==========================================');
   console.log(`Date range: ${options.startYear} - ${options.endYear}`);
   console.log(`Indicators: ${options.indicators?.join(', ') || 'All'}`);

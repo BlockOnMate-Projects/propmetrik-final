@@ -14,7 +14,7 @@
  */
 
 import { pool } from '../../../database';
-import { BaseService } from '../../base/BaseService';
+import { BaseService } from '../../../../shared-services/base/BaseService';
 import { eventBus } from '../events/EventBus';
 import {
   ChangeOrderStatus,
@@ -65,7 +65,7 @@ class ChangeApprovalServiceImpl extends BaseService {
       await changeRequestService.logHistory(client, id, 'submit', 'draft', 'pending_review', userId);
     });
 
-    eventBus.emit('changeOrder.submitted', {
+    eventBus.emit('changeOrder.submitted' as any, {
       changeOrderId: id,
       submittedBy: userId,
     });
@@ -95,7 +95,7 @@ class ChangeApprovalServiceImpl extends BaseService {
       await changeRequestService.logHistory(client, id, 'request_approval', 'pending_review', 'pending_approval', userId);
     });
 
-    eventBus.emit('changeOrder.approvalRequested', {
+    eventBus.emit('changeOrder.approvalRequested' as any, {
       changeOrderId: id,
       requestedBy: userId,
     });
@@ -136,7 +136,7 @@ class ChangeApprovalServiceImpl extends BaseService {
       );
     });
 
-    eventBus.emit('changeOrder.signed', {
+    eventBus.emit('changeOrder.signed' as any, {
       changeOrderId: request.changeOrderId,
       signatureId: request.signatureId,
       signedBy: request.userId,
@@ -174,7 +174,7 @@ class ChangeApprovalServiceImpl extends BaseService {
       await changeRequestService.logHistory(client, id, 'approve', 'pending_approval', 'approved', userId, comment);
     });
 
-    eventBus.emit('changeOrder.approved', {
+    eventBus.emit('changeOrder.approved' as any, {
       changeOrderId: id,
       approvedBy: userId,
       amount: co.thisChangeAmount,
@@ -207,7 +207,7 @@ class ChangeApprovalServiceImpl extends BaseService {
       await changeRequestService.logHistory(client, id, 'reject', co.status, 'rejected', userId, reason);
     });
 
-    eventBus.emit('changeOrder.rejected', {
+    eventBus.emit('changeOrder.rejected' as any, {
       changeOrderId: id,
       rejectedBy: userId,
       reason,
@@ -256,7 +256,7 @@ class ChangeApprovalServiceImpl extends BaseService {
       await changeRequestService.logHistory(client, id, 'execute', 'approved', 'executed', userId);
     });
 
-    eventBus.emit('changeOrder.executed', {
+    eventBus.emit('changeOrder.executed' as any, {
       changeOrderId: id,
       executedBy: userId,
       amount: co.thisChangeAmount,
@@ -294,7 +294,7 @@ class ChangeApprovalServiceImpl extends BaseService {
       await changeRequestService.logHistory(client, id, 'void', co.status, 'void', userId, reason);
     });
 
-    eventBus.emit('changeOrder.voided', {
+    eventBus.emit('changeOrder.voided' as any, {
       changeOrderId: id,
       voidedBy: userId,
       reason,
@@ -368,7 +368,7 @@ class ChangeApprovalServiceImpl extends BaseService {
       [signatureId]
     );
 
-    return result.rowCount > 0;
+    return (result.rowCount ?? 0) > 0;
   }
 
   /**

@@ -12,7 +12,7 @@
  */
 
 import { pool } from '../../../database';
-import { BaseService } from '../../base/BaseService';
+import { BaseService } from '../../../../shared-services/base/BaseService';
 import { eventBus } from '../events/EventBus';
 import {
   Vendor,
@@ -348,7 +348,7 @@ class VendorServiceImpl extends BaseService {
   // PRIVATE HELPERS
   // ==========================================================================
 
-  private mapRow(row: any): Vendor {
+  protected mapRow(row: any): Vendor {
     return {
       id: row.id,
       organizationId: row.organization_id,

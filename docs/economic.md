@@ -1,4 +1,4 @@
-# PropMetrik Economic Data Architecture
+# PROPMETRIK Economic Data Architecture
 
 ## Comprehensive Data Acquisition & Integration Framework
 
@@ -10,7 +10,7 @@
 
 ## Executive Summary
 
-This document defines PropMetrik's economic data architecture, combining multiple authoritative sources to provide reliable, timely macroeconomic indicators for Ghana's real estate market. The system uses a **hybrid approach**:
+This document defines PROPMETRIK's economic data architecture, combining multiple authoritative sources to provide reliable, timely macroeconomic indicators for Ghana's real estate market. The system uses a **hybrid approach**:
 
 1. **Bank of Ghana (BoG)** - Primary source for monetary/financial data via web scraping
 2. **World Bank WDI** - Secondary source for historical data and validation via REST API
@@ -76,7 +76,7 @@ type EconomicIndicatorType =
   | 'exchange_rate_eur'   // GHS per EUR
   | 'unemployment_rate'   // ILO unemployment
   | 'construction_pmi'    // Construction PMI
-  | 'property_price_index'; // PropMetrik PPI
+  | 'property_price_index'; // PROPMETRIK PPI
 ```
 
 ---
@@ -379,7 +379,7 @@ export class BOGScraper {
   async scrapeExchangeRates(): Promise<BOGIndicator[]> {
     const response = await axios.get(BOG_URLS.exchangeRates, {
       headers: {
-        'User-Agent': 'PropMetrik Economic Data Bot/1.0 (+https://propmetrik.com)',
+        'User-Agent': 'PROPMETRIK Economic Data Bot/1.0 (+https://propmetrik.com)',
       },
     });
 
@@ -426,7 +426,7 @@ export class BOGScraper {
   async scrapeInterestRates(): Promise<BOGIndicator[]> {
     const response = await axios.get(BOG_URLS.interestRates, {
       headers: {
-        'User-Agent': 'PropMetrik Economic Data Bot/1.0 (+https://propmetrik.com)',
+        'User-Agent': 'PROPMETRIK Economic Data Bot/1.0 (+https://propmetrik.com)',
       },
     });
 
@@ -470,7 +470,7 @@ export class BOGScraper {
   async scrapeRealSector(): Promise<BOGIndicator[]> {
     const response = await axios.get(BOG_URLS.realSector, {
       headers: {
-        'User-Agent': 'PropMetrik Economic Data Bot/1.0 (+https://propmetrik.com)',
+        'User-Agent': 'PROPMETRIK Economic Data Bot/1.0 (+https://propmetrik.com)',
       },
     });
 
@@ -1262,7 +1262,7 @@ CREATE INDEX idx_sync_log_source ON economic_data_sync_log(source_name, started_
 # .env additions
 
 # Bank of Ghana Scraper
-BOG_SCRAPER_USER_AGENT="PropMetrik Economic Data Bot/1.0"
+BOG_SCRAPER_USER_AGENT="PROPMETRIK Economic Data Bot/1.0"
 BOG_SCRAPER_TIMEOUT_MS=30000
 
 # World Bank WDI
@@ -1395,7 +1395,7 @@ async function checkEconomicDataHealth(): Promise<HealthStatus> {
 
 ---
 
-*This architecture ensures PropMetrik has reliable, timely, and authoritative economic data to power the Housing Affordability Index and market intelligence features.*
+*This architecture ensures PROPMETRIK has reliable, timely, and authoritative economic data to power the Housing Affordability Index and market intelligence features.*
 
 Week 1: Core scrapers (BoG, WDI, FX)
 Week 2: Integration (scheduler, endpoints, tests)

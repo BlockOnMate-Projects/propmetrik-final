@@ -5,7 +5,7 @@
  */
 
 import { Router, Request, Response } from 'express';
-import { advancedAnalyticsService } from '../services/analytics';
+import { advancedAnalyticsService } from '../../shared-services/analytics';
 import { logger } from '../utils/logger';
 import ExcelJS from 'exceljs';
 import PDFDocument from 'pdfkit';
@@ -187,7 +187,7 @@ router.get('/export/excel', async (req: Request, res: Response) => {
     const { type } = req.query;
     
     const workbook = new ExcelJS.Workbook();
-    workbook.creator = 'PropMetrik';
+    workbook.creator = 'PROPMETRIK';
     workbook.created = new Date();
     
     // Get data based on type
@@ -314,7 +314,7 @@ router.get('/export/pdf', async (req: Request, res: Response) => {
     // Header
     doc
       .fontSize(24)
-      .text('PropMetrik Analytics Report', { align: 'center' })
+      .text('PROPMETRIK Analytics Report', { align: 'center' })
       .moveDown(0.5);
     
     doc
@@ -378,7 +378,7 @@ router.get('/export/pdf', async (req: Request, res: Response) => {
     doc
       .fontSize(8)
       .fillColor('#999')
-      .text('PropMetrik - Real Estate Intelligence Platform', 50, 750, { align: 'center' });
+      .text('PROPMETRIK - Real Estate Intelligence Platform', 50, 750, { align: 'center' });
     
     doc.end();
     

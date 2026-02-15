@@ -205,7 +205,7 @@ export default function PortfolioBrochurePage() {
                         <div className="flex justify-between items-end">
                             <div>
                                 <p className="text-[9px] font-mono text-zinc-600 uppercase tracking-wider mb-1">
-                                    Generated via Propmetrik
+                                    Generated via PROPMETRIK
                                 </p>
                                 <p className="text-[9px] font-mono text-zinc-600">
                                     Your personal property portfolio report
@@ -603,7 +603,7 @@ export default function PortfolioBrochurePage() {
                         <div className="border border-zinc-200 rounded-lg p-6">
                             <p className="text-[10px] text-zinc-600 leading-relaxed mb-4">
                                 This portfolio report is generated based on the property data you have entered into the 
-                                Propmetrik platform. Property values shown are based on your input and may not reflect 
+                                PROPMETRIK platform. Property values shown are based on your input and may not reflect 
                                 current market conditions.
                             </p>
                             <p className="text-[10px] text-zinc-600 leading-relaxed mb-4">
@@ -619,11 +619,11 @@ export default function PortfolioBrochurePage() {
 
                     {/* Platform Info */}
                     <div className="bg-zinc-900 text-white rounded-xl p-8">
-                        <h3 className="text-sm font-bold uppercase text-amber-500 mb-6">Powered by Propmetrik</h3>
+                        <h3 className="text-sm font-bold uppercase text-amber-500 mb-6">Powered by PROPMETRIK</h3>
                         <div className="grid grid-cols-2 gap-8">
                             <div>
                                 <p className="text-xs font-bold text-white uppercase mb-2">About This Report</p>
-                                <p className="text-xs text-zinc-400">This portfolio report was generated using Propmetrik&apos;s property management platform.</p>
+                                <p className="text-xs text-zinc-400">This portfolio report was generated using PROPMETRIK&apos;s property management platform.</p>
                                 <p className="text-xs text-zinc-400 mt-4">All data reflects your current portfolio status as of the report date.</p>
                             </div>
                             <div>

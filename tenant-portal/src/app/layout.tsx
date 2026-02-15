@@ -2,6 +2,8 @@ import type { Metadata } from 'next'
 import { Inter, Dancing_Script } from 'next/font/google'
 import './globals.css'
 import { cn } from '@/lib/utils'
+import { ToastProvider } from '@/contexts/ToastContext'
+import { Web3Provider } from '@/components/Web3Provider'
 
 const inter = Inter({ subsets: ['latin'] })
 const dancingScript = Dancing_Script({
@@ -10,8 +12,8 @@ const dancingScript = Dancing_Script({
 })
 
 export const metadata: Metadata = {
-  title: 'PropMetrik Tenant Portal',
-  description: 'Manage your tenancy with PropMetrik',
+  title: 'PROPMETRIK Tenant Portal',
+  description: 'Manage your tenancy with PROPMETRIK',
 }
 
 export default function RootLayout({
@@ -22,9 +24,13 @@ export default function RootLayout({
   return (
     <html lang="en" className="h-full">
       <body className={cn(inter.className, dancingScript.variable, "h-full bg-gray-50 dark:bg-zinc-950")}>
-        <main className="min-h-screen flex flex-col">
-          {children}
-        </main>
+        <ToastProvider>
+          <Web3Provider>
+            <main className="min-h-screen flex flex-col">
+              {children}
+            </main>
+          </Web3Provider>
+        </ToastProvider>
       </body>
     </html>
   )

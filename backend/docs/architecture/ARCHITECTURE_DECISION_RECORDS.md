@@ -37,7 +37,7 @@ Implement a `BaseService` abstract class that all project-management services ex
 **Date:** 2024-12-20
 
 ### Context
-PropMetrik serves Ghana's real estate development market where projects require strict governance:
+PROPMETRIK serves Ghana's real estate development market where projects require strict governance:
 - Regulatory compliance (EPA, Fire, Land Title)
 - Multi-stakeholder approval workflows
 - Role-based access control

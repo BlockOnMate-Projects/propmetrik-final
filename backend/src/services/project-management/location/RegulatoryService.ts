@@ -13,7 +13,7 @@
  */
 
 import { pool } from '../../../database';
-import { BaseService } from '../../base/BaseService';
+import { BaseService } from '../../../../shared-services/base/BaseService';
 import { eventBus } from '../events/EventBus';
 import {
   ProjectPermit,
@@ -162,7 +162,7 @@ class RegulatoryServiceImpl extends BaseService {
 
     const permit = this.mapPermitRow(result.rows[0]);
 
-    eventBus.emit('project.permit.added', {
+    eventBus.emit('project.permit.added' as any, {
       projectId: input.projectId,
       permitId: permit.id,
       permitType: input.permitType,
@@ -219,7 +219,7 @@ class RegulatoryServiceImpl extends BaseService {
     if (result.rows.length) {
       const permit = this.mapPermitRow(result.rows[0]);
       
-      eventBus.emit('project.permit.status_changed', {
+      eventBus.emit('project.permit.status_changed' as any, {
         permitId: permit.id,
         projectId: permit.projectId,
         status,

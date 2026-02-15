@@ -14,7 +14,7 @@
  */
 
 import { pool } from '../../../database';
-import { BaseService } from '../../base/BaseService';
+import { BaseService } from '../../../../shared-services/base/BaseService';
 import { eventBus } from '../events/EventBus';
 
 // Import existing Data Hub services - DO NOT DUPLICATE
@@ -169,9 +169,9 @@ class LocationValidationServiceImpl extends BaseService {
         result.validated = {
           latitude,
           longitude,
-          city: reverseResult.city,
-          region: reverseResult.region,
-          ghana_region: reverseResult.region,
+          city: reverseResult.city ?? undefined,
+          region: reverseResult.region ?? undefined,
+          ghana_region: reverseResult.region ?? undefined,
         };
 
         if (reverseResult.district) {
@@ -218,12 +218,7 @@ class LocationValidationServiceImpl extends BaseService {
     ].filter(Boolean).join(', ');
 
     try {
-      const validationResult = await addressValidationService.validateAddress({
-        address: input.address_line1 || '',
-        city: input.city || '',
-        region: input.region || '',
-        country: 'Ghana',
-      });
+      const validationResult = await addressValidationService.validateAddress(fullAddress);
 
       if (validationResult.isValid) {
         result.isValid = true;
@@ -346,7 +341,9 @@ class LocationValidationServiceImpl extends BaseService {
    * Get neighborhoods/areas for a district
    */
   async getNeighborhoodsByDistrict(district: string): Promise<string[]> {
-    return GHANA_NEIGHBORHOODS[district] || [];
+    return Object.entries(GHANA_NEIGHBORHOODS)
+      .filter(([_, data]) => data.district === district)
+      .map(([name]) => name);
   }
 }
 

@@ -21,7 +21,7 @@ Each partner organization (e.g., Ghana Lands Commission, Agricultural Developmen
 ### 1.1 Create New Client
 
 1. Login to Keycloak Admin Console: `https://auth.propmetrik.com/admin`
-2. Select **Propmetrik** realm
+2. Select **PROPMETRIK** realm
 3. Navigate to **Clients** → **Create Client**
 
 **Client Settings:**

@@ -1,6 +1,6 @@
 # Economic Data Backfill Scripts
 
-These scripts populate the PropMetrik database with historical economic data from various sources.
+These scripts populate the PROPMETRIK database with historical economic data from various sources.
 
 ## Prerequisites
 

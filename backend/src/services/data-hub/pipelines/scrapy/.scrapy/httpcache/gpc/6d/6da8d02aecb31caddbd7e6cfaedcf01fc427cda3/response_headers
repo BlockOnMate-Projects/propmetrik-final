@@ -1,0 +1,11 @@
+Date: Tue, 06 Jan 2026 01:36:39 GMT
+Content-Type: text/html; charset=utf-8
+Location: https://ghanapropertycentre.com/for-rent
+Apigw-Requestid: WvUOPjzwjoEEPcw=
+Cf-Cache-Status: DYNAMIC
+Nel: {"report_to":"cf-nel","success_fraction":0.0,"max_age":604800}
+Server-Timing: cfCacheStatus;desc="DYNAMIC"
+Server-Timing: cfEdge;dur=26,cfOrigin;dur=299
+Report-To: {"group":"cf-nel","max_age":604800,"endpoints":[{"url":"https://a.nel.cloudflare.com/report/v4?s=%2BLxx13H3%2B5HiaQIhiWIWlGyyXCb%2BgNazGruL4ScYk%2FSQzqa0q83Kubg%2Bmzp5M5H9Yj0qNH3F%2FzzRgtIgX5cqud5cdyPNlEhnjwwpLuSVqpUd7tPIx6eNfg%3D%3D"}]}
+Server: cloudflare
+Cf-Ray: 9b977c554823f508-IAD

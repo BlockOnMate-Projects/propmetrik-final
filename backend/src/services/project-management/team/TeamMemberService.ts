@@ -12,7 +12,7 @@
  */
 
 import { pool } from '../../../database';
-import { BaseService } from '../../base/BaseService';
+import { BaseService } from '../../../../shared-services/base/BaseService';
 import { eventBus } from '../events/EventBus';
 import {
   ProjectTeamMember,
@@ -401,7 +401,7 @@ class TeamMemberServiceImpl extends BaseService {
     return mapping[permission];
   }
 
-  private mapRow(row: any): ProjectTeamMember {
+  protected mapRow(row: any): ProjectTeamMember {
     return {
       id: row.id,
       projectId: row.project_id,

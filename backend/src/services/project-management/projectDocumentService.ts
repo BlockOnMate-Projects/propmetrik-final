@@ -520,7 +520,7 @@ class ProjectDocumentService {
     const id = uuidv4();
 
     // Auto-categorize to folder if no folder specified
-    let folderId = input.folder_id;
+    let folderId: string | null | undefined = input.folder_id;
     if (!folderId && input.document_type) {
       folderId = await this.findFolderByDocumentType(
         input.project_id,
@@ -571,7 +571,7 @@ class ProjectDocumentService {
     const document = result.rows[0];
 
     // Emit real-time update
-    emitProjectUpdated(input.project_id, input.organization_id, 'document_uploaded');
+    emitProjectUpdated(input.project_id, input.organization_id, { action: { old: '', new: 'document_uploaded' } } as any);
 
     return document;
   }
@@ -699,7 +699,7 @@ class ProjectDocumentService {
         'DELETE FROM project_documents WHERE id = $1 RETURNING id',
         [documentId]
       );
-      return result.rowCount > 0;
+      return (result.rowCount ?? 0) > 0;
     }
 
     const result = await pool.query(
@@ -709,7 +709,7 @@ class ProjectDocumentService {
        RETURNING id`,
       [documentId]
     );
-    return result.rowCount > 0;
+    return (result.rowCount ?? 0) > 0;
   }
 
   async archiveDocument(documentId: string): Promise<ProjectDocument | null> {
@@ -799,7 +799,7 @@ class ProjectDocumentService {
       emitProjectUpdated(
         document.project_id,
         document.organization_id,
-        'document_version_uploaded'
+        { action: { old: '', new: 'document_version_uploaded' } } as any
       );
 
       return updatedDocument;
@@ -964,7 +964,7 @@ class ProjectDocumentService {
       'DELETE FROM document_shares WHERE id = $1 RETURNING id',
       [shareId]
     );
-    return result.rowCount > 0;
+    return (result.rowCount ?? 0) > 0;
   }
 
   async getSharesByDocument(documentId: string): Promise<DocumentShare[]> {
