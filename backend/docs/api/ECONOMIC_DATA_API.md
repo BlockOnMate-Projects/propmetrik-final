@@ -1,4 +1,4 @@
-# PropMetrik Economic Data API
+# PROPMETRIK Economic Data API
 
 ## Overview
 

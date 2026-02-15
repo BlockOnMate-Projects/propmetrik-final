@@ -1,5 +1,5 @@
 """
-PropMetrik ML Model Training Pipeline
+PROPMETRIK ML Model Training Pipeline
 
 Comprehensive training pipeline for property valuation ensemble models.
 Trains Random Forest, Gradient Boosting, and Neural Network models
@@ -638,7 +638,7 @@ class TrainingPipeline:
         
         # Save metadata
         metadata = {
-            "name": "PropMetrik AVM",
+            "name": "PROPMETRIK AVM",
             "version": version,
             "model_type": "ensemble",
             "trained_at": datetime.now().isoformat(),
@@ -700,7 +700,7 @@ def main():
     """Main entry point for training pipeline."""
     import argparse
     
-    parser = argparse.ArgumentParser(description="PropMetrik ML Model Training Pipeline")
+    parser = argparse.ArgumentParser(description="PROPMETRIK ML Model Training Pipeline")
     parser.add_argument("--data-path", type=str, help="Path to training data")
     parser.add_argument("--output-path", type=str, help="Path to save trained models")
     parser.add_argument("--version", type=str, help="Model version name")

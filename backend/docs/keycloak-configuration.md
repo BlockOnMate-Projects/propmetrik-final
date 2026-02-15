@@ -1,4 +1,4 @@
-# Propmetrik Keycloak Configuration
+# PROPMETRIK Keycloak Configuration
 # Realm: propmetrik
 
 ## Realm Settings
@@ -7,7 +7,7 @@ The propmetrik realm should be configured with the following settings:
 
 ### General Settings
 - **Realm name**: `propmetrik`
-- **Display name**: `Propmetrik - Ghana Property Platform`
+- **Display name**: `PROPMETRIK - Ghana Property Platform`
 - **Enabled**: Yes
 - **User registration**: Enabled
 - **Email as username**: Yes
@@ -34,8 +34,8 @@ The propmetrik realm should be configured with the following settings:
 ```json
 {
   "clientId": "propmetrik-api",
-  "name": "Propmetrik API Backend",
-  "description": "Backend API service for Propmetrik platform",
+  "name": "PROPMETRIK API Backend",
+  "description": "Backend API service for PROPMETRIK platform",
   "enabled": true,
   "clientAuthenticatorType": "client-secret",
   "protocol": "openid-connect",
@@ -52,8 +52,8 @@ The propmetrik realm should be configured with the following settings:
 ```json
 {
   "clientId": "propmetrik-web",
-  "name": "Propmetrik Web Application",
-  "description": "Web frontend for Propmetrik platform",
+  "name": "PROPMETRIK Web Application",
+  "description": "Web frontend for PROPMETRIK platform",
   "enabled": true,
   "protocol": "openid-connect",
   "publicClient": true,
@@ -79,8 +79,8 @@ The propmetrik realm should be configured with the following settings:
 ```json
 {
   "clientId": "propmetrik-mobile",
-  "name": "Propmetrik Mobile Application",
-  "description": "Mobile app for Propmetrik platform",
+  "name": "PROPMETRIK Mobile Application",
+  "description": "Mobile app for PROPMETRIK platform",
   "enabled": true,
   "protocol": "openid-connect",
   "publicClient": true,
@@ -95,6 +95,67 @@ The propmetrik realm should be configured with the following settings:
   }
 }
 ```
+
+### 4. propmetrik-tenant-portal (Tenant Portal)
+```json
+{
+  "clientId": "propmetrik-tenant-portal",
+  "name": "PROPMETRIK Tenant Portal",
+  "enabled": true,
+  "protocol": "openid-connect",
+  "publicClient": false,
+  "clientAuthenticatorType": "client-secret",
+  "standardFlowEnabled": true,
+  "directAccessGrantsEnabled": false,
+  "redirectUris": [
+    "https://tenant.propmetrik.com/*",
+    "http://localhost:3001/*"
+  ],
+  "webOrigins": [
+    "https://tenant.propmetrik.com",
+    "http://localhost:3001"
+  ],
+  "attributes": {
+    "pkce.code.challenge.method": "S256"
+  }
+}
+```
+
+---
+
+## Automated Client Provisioning
+
+Use backend automation to create/update required clients with production-safe defaults:
+
+```bash
+cd backend
+npm run keycloak:provision
+```
+
+Script file: `scripts/provision-keycloak-clients.js`
+
+### Required env vars
+- `KEYCLOAK_URL`
+- `KEYCLOAK_REALM`
+- Admin auth (choose one)
+  - `KEYCLOAK_ADMIN_CLIENT_ID` + `KEYCLOAK_ADMIN_SECRET`
+    - fallback: `KEYCLOAK_CLIENT_ID` + `KEYCLOAK_CLIENT_SECRET`
+  - or `KEYCLOAK_ADMIN_USERNAME` + `KEYCLOAK_ADMIN_PASSWORD`
+    - default admin realm: `master` (override with `KEYCLOAK_ADMIN_REALM`)
+
+### Optional env vars
+- `KEYCLOAK_WEB_CLIENT_ID`
+- `KEYCLOAK_TENANT_CLIENT_ID`
+- `KEYCLOAK_TENANT_CLIENT_SECRET`
+- `KEYCLOAK_ESIGN_CLIENT_ID`
+- `KEYCLOAK_ADMIN_REALM` (default: `master`)
+- `TENANT_PORTAL_URL` (used for default login redirect URI)
+- `KEYCLOAK_WEB_REDIRECT_URIS` (CSV)
+- `KEYCLOAK_WEB_ORIGINS` (CSV)
+- `KEYCLOAK_TENANT_REDIRECT_URIS` (CSV)
+- `KEYCLOAK_TENANT_WEB_ORIGINS` (CSV)
+- `KEYCLOAK_ESIGN_REDIRECT_URIS` (CSV)
+- `KEYCLOAK_ESIGN_WEB_ORIGINS` (CSV)
 
 ---
 
@@ -262,7 +323,7 @@ Include representation: true
 Host: smtp.sendgrid.net
 Port: 587
 From: noreply@propmetrik.com
-From Display Name: Propmetrik
+From Display Name: PROPMETRIK
 Enable SSL: false
 Enable StartTLS: true
 Auth: true

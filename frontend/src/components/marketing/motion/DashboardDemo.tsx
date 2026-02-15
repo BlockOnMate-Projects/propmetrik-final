@@ -22,7 +22,7 @@ export default function DashboardDemo() {
                     <div className="flex items-center gap-3">
                         <div className="w-8 h-8 rounded bg-gradient-to-br from-primary to-yellow-400" />
                         <div>
-                            <div className="text-sm font-bold text-white">PropMetrik</div>
+                            <div className="text-sm font-bold text-white">PROPMETRIK</div>
                             <div className="text-xs text-zinc-500">Platform Dashboard</div>
                         </div>
                     </div>

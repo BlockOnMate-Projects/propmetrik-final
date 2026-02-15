@@ -202,7 +202,7 @@ Only application workflow is implemented. Missing:
 
 [MicroRealEstate](https://github.com/microrealestate/microrealestate) is a mature open-source PM system.
 
-| Feature | MicroRealEstate | PropMetrik PM | Gap |
+| Feature | MicroRealEstate | PROPMETRIK PM | Gap |
 |---------|-----------------|---------------|-----|
 | Multi-organization | ✅ | ✅ | None |
 | Property Management | ✅ | ✅ | None |
@@ -577,7 +577,7 @@ Current state:
 
 ## Summary
 
-The PropMetrik Property Management module is **65% production ready**. The core CRUD operations, application workflow, and data model are solid. Critical gaps exist in:
+The PROPMETRIK Property Management module is **65% production ready**. The core CRUD operations, application workflow, and data model are solid. Critical gaps exist in:
 
 1. **Rent schedule automation** - Manual payment tracking is incomplete
 2. **Tenant portal** - Only applications work, no post-move-in features  

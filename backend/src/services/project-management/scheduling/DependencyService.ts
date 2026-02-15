@@ -13,7 +13,7 @@
  */
 
 import { pool } from '../../../database';
-import { BaseService } from '../../base/BaseService';
+import { BaseService } from '../../../../shared-services/base/BaseService';
 import { eventBus } from '../events/EventBus';
 import {
   PhaseDependency,
@@ -153,7 +153,7 @@ class DependencyServiceImpl extends BaseService {
       [phaseId, dependsOnPhaseId]
     );
 
-    return result.rowCount > 0;
+    return (result.rowCount ?? 0) > 0;
   }
 
   // ==========================================================================

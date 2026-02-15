@@ -1,10 +1,10 @@
 /**
- * PropMetrik Authentication for E-Sign UI
- * Replaces Keycloak authentication with PropMetrik JWT token handling
+ * PROPMETRIK Authentication for E-Sign UI
+ * Replaces Keycloak authentication with PROPMETRIK JWT token handling
  * 
  * Integration Pattern:
- * - E-Sign UI is embedded within PropMetrik frontend (iframe or component)
- * - PropMetrik passes JWT token via URL parameter or postMessage
+ * - E-Sign UI is embedded within PROPMETRIK frontend (iframe or component)
+ * - PROPMETRIK passes JWT token via URL parameter or postMessage
  * - E-Sign UI uses this token for all API requests
  */
 
@@ -15,6 +15,7 @@ let tokenPayload: TokenPayload | null = null;
 interface TokenPayload {
   userId: string;
   email: string;
+  name?: string;
   role: string;
   organizationId: string;
   tier: string;
@@ -32,7 +33,7 @@ interface UserInfo {
 }
 
 /**
- * Initialize authentication from PropMetrik
+ * Initialize authentication from PROPMETRIK
  * Call this on app startup
  */
 export const initAuth = (): boolean => {
@@ -55,7 +56,7 @@ export const initAuth = (): boolean => {
     return true;
   }
   
-  // Method 3: Listen for postMessage from parent (PropMetrik main app)
+  // Method 3: Listen for postMessage from parent (PROPMETRIK main app)
   window.addEventListener('message', handlePostMessage);
   
   // Request token from parent if in iframe
@@ -67,7 +68,7 @@ export const initAuth = (): boolean => {
 };
 
 /**
- * Handle postMessage from PropMetrik parent app
+ * Handle postMessage from PROPMETRIK parent app
  */
 const handlePostMessage = (event: MessageEvent) => {
   // In production, validate event.origin against allowed domains
@@ -89,7 +90,7 @@ export const setToken = (token: string): void => {
     if (parts.length === 3) {
       payload = JSON.parse(atob(parts[1]));
     } else {
-      // PropMetrik simple base64 format
+      // PROPMETRIK simple base64 format
       payload = JSON.parse(atob(token));
     }
     
@@ -129,7 +130,7 @@ export const setToken = (token: string): void => {
  * NOTE: Always returns false - expiration disabled for internal service communication
  */
 const isTokenExpired = (_token: string): boolean => {
-  // Expiration disabled - PropMetrik tokens don't expire for E-Sign
+  // Expiration disabled - PROPMETRIK tokens don't expire for E-Sign
   return false;
 };
 
@@ -162,7 +163,7 @@ export const getUserInfo = (): UserInfo | null => {
   return {
     id: tokenPayload.userId,
     email: tokenPayload.email,
-    name: tokenPayload.email.split('@')[0], // Use email prefix as name
+    name: tokenPayload.name || tokenPayload.email.split('@')[0], // Use name from token, fallback to email prefix
     role: tokenPayload.role,
     organizationId: tokenPayload.organizationId,
     tier: tokenPayload.tier,
@@ -189,16 +190,16 @@ export const logout = (): void => {
     window.parent.postMessage({ type: 'ESIGN_LOGOUT' }, '*');
   }
   
-  // Redirect to PropMetrik login or close modal
+  // Redirect to PROPMETRIK login or close modal
   console.log('🚪 User logged out from E-Sign');
 };
 
 /**
- * Update token - for PropMetrik to push new tokens
+ * Update token - for PROPMETRIK to push new tokens
  * Returns true to match Keycloak interface
  */
 export const updateToken = async (_minValidity: number = 30): Promise<boolean> => {
-  // PropMetrik handles token refresh - we just validate current token
+  // PROPMETRIK handles token refresh - we just validate current token
   if (!authToken || !tokenPayload) return false;
   
   const now = Math.floor(Date.now() / 1000);

@@ -27,12 +27,13 @@ import { ganttDataService } from './GanttDataService';
 import { dependencyService } from './DependencyService';
 import { baselineService } from './BaselineService';
 import {
-  GanttDataQuery,
   GanttData,
+  GanttPhase,
   PhaseDependency,
-  DependencyUpdateInput,
-  DependencyCreateInput,
-  PhaseDatesUpdateInput,
+  DependencyUpdate,
+  DependencyType,
+  UpdatePhaseDatesInput,
+  CascadeResult,
   CriticalPathResult,
   BaselineCreateInput,
   Baseline,
@@ -53,8 +54,8 @@ export class SchedulingFacade {
   /**
    * Get Gantt chart data for a project
    */
-  async getGanttData(query: GanttDataQuery): Promise<GanttData> {
-    return ganttDataService.getGanttData(query);
+  async getGanttData(projectId: string): Promise<GanttData | null> {
+    return ganttDataService.getGanttData(projectId);
   }
 
   /**
@@ -65,10 +66,18 @@ export class SchedulingFacade {
   }
 
   /**
-   * Get phase progress summary
+   * Get phase progress breakdown
    */
-  async getPhaseProgress(projectId: string): Promise<any[]> {
-    return ganttDataService.getPhaseProgress(projectId);
+  async getPhaseProgress(phaseId: string): Promise<{
+    phase: GanttPhase | null;
+    taskBreakdown: Array<{
+      taskId: string;
+      taskName: string;
+      progress: number;
+      status: string;
+    }>;
+  }> {
+    return ganttDataService.getPhaseProgress(phaseId);
   }
 
   // ==========================================================================
@@ -85,15 +94,20 @@ export class SchedulingFacade {
   /**
    * Update dependencies (bulk replace)
    */
-  async updateDependencies(phaseId: string, dependencies: DependencyUpdateInput[]): Promise<PhaseDependency[]> {
-    return dependencyService.updateDependencies(phaseId, dependencies);
+  async updateDependencies(update: DependencyUpdate): Promise<void> {
+    return dependencyService.updateDependencies(update);
   }
 
   /**
    * Add a single dependency
    */
-  async addDependency(input: DependencyCreateInput): Promise<PhaseDependency | null> {
-    return dependencyService.addDependency(input);
+  async addDependency(
+    phaseId: string,
+    dependsOnPhaseId: string,
+    dependencyType?: DependencyType,
+    lagDays?: number
+  ): Promise<PhaseDependency> {
+    return dependencyService.addDependency(phaseId, dependsOnPhaseId, dependencyType, lagDays);
   }
 
   /**
@@ -106,8 +120,8 @@ export class SchedulingFacade {
   /**
    * Update phase dates (with dependency cascade)
    */
-  async updatePhaseDates(input: PhaseDatesUpdateInput): Promise<boolean> {
-    return dependencyService.updatePhaseDates(input);
+  async updatePhaseDates(phaseId: string, input: UpdatePhaseDatesInput): Promise<CascadeResult> {
+    return dependencyService.updatePhaseDates(phaseId, input);
   }
 
   /**
@@ -115,13 +129,6 @@ export class SchedulingFacade {
    */
   async calculateCriticalPath(projectId: string): Promise<CriticalPathResult> {
     return dependencyService.calculateCriticalPath(projectId);
-  }
-
-  /**
-   * Check if adding a dependency would create a cycle
-   */
-  async wouldCreateCycle(successorPhaseId: string, predecessorPhaseId: string): Promise<boolean> {
-    return dependencyService.wouldCreateCycle(successorPhaseId, predecessorPhaseId);
   }
 
   // ==========================================================================
@@ -184,20 +191,17 @@ export class SchedulingFacade {
   /**
    * @deprecated Use updatePhaseDates instead
    */
-  async cascadePhaseShift(phaseId: string, daysDelta: number): Promise<boolean> {
+  async cascadePhaseShift(phaseId: string, daysDelta: number): Promise<CascadeResult> {
     const result = await this.query(
       `SELECT project_id FROM project_phases WHERE id = $1`,
       [phaseId]
     );
     
-    if (!result.rows.length) return false;
+    if (!result.rows.length) return { updatedPhases: [], affectedMilestones: [] };
     
     // Just trigger recalculation through dependency service
-    return dependencyService.updatePhaseDates({
-      phaseId,
-      startDate: undefined,
-      endDate: undefined,
-      cascade: true,
+    return dependencyService.updatePhaseDates(phaseId, {
+      cascadeToSuccessors: true,
     });
   }
 

@@ -1,1 +1,41 @@
-{}
+{
+  "name": "propmetrik",
+  "version": "1.0.0",
+  "private": true,
+  "description": "PROPMETRIK Real Estate Platform - Unified Monorepo",
+  "workspaces": [
+    "backend",
+    "frontend",
+    "tenant-portal",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "turbo run dev --parallel",
+    "dev:backend": "turbo run dev --filter=@propmetrik/backend",
+    "dev:frontend": "turbo run dev --filter=@propmetrik/frontend",
+    "dev:tenant": "turbo run dev --filter=@propmetrik/tenant-portal",
+    "dev:esign-ui": "turbo run dev --filter=@propmetrik/e-sign-ui",
+    "dev:app": "turbo run dev --parallel --filter=@propmetrik/backend --filter=@propmetrik/frontend --filter=@propmetrik/e-sign-ui",
+    "build": "turbo run build",
+    "build:frontend": "turbo run build --filter=@propmetrik/frontend",
+    "build:backend": "turbo run build --filter=@propmetrik/backend",
+    "lint": "turbo run lint",
+    "test": "turbo run test",
+    "clean": "turbo run clean && rm -rf node_modules",
+    "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,md}\""
+  },
+  "devDependencies": {
+    "turbo": "^2.3.0",
+    "prettier": "^3.3.3"
+  },
+  "packageManager": "npm@10.0.0",
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Cedyn-Group/propmetrik"
+  },
+  "author": "Cedyn Group",
+  "license": "UNLICENSED"
+}

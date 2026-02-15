@@ -170,7 +170,7 @@ export default function DataServicePage() {
                         className="text-center max-w-3xl mx-auto mb-16"
                     >
                         <h2 className="text-4xl md:text-5xl font-bold text-white mb-6">
-                            Why PropMetrik Data
+                            Why PROPMETRIK Data
                         </h2>
                         <p className="text-xl text-zinc-400">
                             The most reliable, comprehensive, and accessible real estate data for Ghana
@@ -362,7 +362,7 @@ export default function DataServicePage() {
             {/* CTA Section */}
             <PremiumCTASection
                 title="Start Accessing Ghana's Best Real Estate Data"
-                description="Join leading banks, developers, and investors who rely on PropMetrik data for confident decision-making."
+                description="Join leading banks, developers, and investors who rely on PROPMETRIK data for confident decision-making."
                 primaryCTA={{
                     text: "Get Started",
                     href: "/contact"

@@ -167,7 +167,7 @@ export default function ValuationServicePage() {
                         className="text-center max-w-3xl mx-auto mb-16"
                     >
                         <h2 className="text-4xl md:text-5xl font-bold text-white mb-6">
-                            Why Choose PropMetrik
+                            Why Choose PROPMETRIK
                         </h2>
                         <p className="text-xl text-zinc-400">
                             The most trusted valuation platform in Ghana, combining technology with expert oversight
@@ -264,7 +264,7 @@ export default function ValuationServicePage() {
             {/* CTA Section */}
             <PremiumCTASection
                 title="Ready to Get Started?"
-                description="Join thousands of satisfied clients across Ghana who trust PropMetrik for accurate, reliable property valuations."
+                description="Join thousands of satisfied clients across Ghana who trust PROPMETRIK for accurate, reliable property valuations."
                 primaryCTA={{
                     text: "Request Valuation",
                     href: "/contact"

@@ -13,7 +13,7 @@
  */
 
 import { pool } from '../../../database';
-import { BaseService } from '../../base/BaseService';
+import { BaseService } from '../../../../shared-services/base/BaseService';
 import {
   ChangeOrder,
   ChangeOrderWithDetails,

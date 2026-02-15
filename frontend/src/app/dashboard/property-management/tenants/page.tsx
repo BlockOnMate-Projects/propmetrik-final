@@ -442,11 +442,11 @@ export default function TenantsPage() {
                                                             className="text-foreground hover:bg-secondary focus:bg-secondary font-mono text-xs cursor-pointer"
                                                             onClick={(e) => {
                                                                 e.stopPropagation()
-                                                                router.push(`/dashboard/property-management/e-sign/${activeTenancy.id}`)
+                                                                router.push(`/dashboard/property-management/leases/${activeTenancy.id}`)
                                                             }}
                                                         >
                                                             <FileText className="h-3 w-3 mr-2" />
-                                                            Generate Lease
+                                                            View Lease
                                                         </DropdownMenuItem>
                                                     )}
                                                     {activeTenancy && (

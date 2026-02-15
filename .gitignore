@@ -9,6 +9,47 @@
 .env.staging
 *.env
 
+# Turbo build cache
+.turbo/
+
+# Redis dumps
+dump.rdb
+
+# Server logs and debug output
+nohup.out
+*.log
+server_log.txt
+test_output.txt
+api-test-results.txt
+
+# Seed/test data dumps
+seed_error.json
+seed_final_error.json
+nadmo_sample.csv
+
+# Debug/scratch files
+**/debug_*.py
+**/debug_*.json
+**/calendar_debug.json
+*.bak
+*.bak2
+*.tmp
+
+# Python virtual environments
+venv/
+.venv/
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyo
+.Python
+*.so
+
+# Hardhat / Blockchain build artifacts
+blockchain/artifacts/
+blockchain/cache/
+blockchain/typechain-types/
+
 # Node.js
 node_modules/
 npm-debug.log*

@@ -337,7 +337,7 @@ class ProjectCostCurrencyService {
       
       baseCostPerSqm = projectBaseRate * finishMultiplier * regionFactor * floorPremium;
       
-      dataSources.push('PropMetrik Cost Calculator');
+      dataSources.push('PROPMETRIK Cost Calculator');
       assumptions.push('Using standard Ghana construction cost indices');
       assumptions.push(`Finish level: ${input.finish_level} (${finishMultiplier}x multiplier)`);
       assumptions.push(`Regional factor for ${input.region}: ${regionFactor}x`);

@@ -1,6 +1,6 @@
 # Event Catalog
 
-This document catalogs all event types, their payloads, and typical subscribers in the PropMetrik service layer.
+This document catalogs all event types, their payloads, and typical subscribers in the PROPMETRIK service layer.
 
 ---
 

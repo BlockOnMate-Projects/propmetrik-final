@@ -10,7 +10,7 @@
  */
 
 import { pool } from '../../../database';
-import { BaseService } from '../BaseService';
+import { BaseService } from '../../../../shared-services/base/BaseService';
 import { eventBus } from '../events';
 import {
   ProjectUnit,
@@ -252,17 +252,13 @@ class UnitStatsService extends BaseService {
     const updatedUnit = mapRowToUnit(result.rows[0]);
     
     // Emit event
-    eventBus.emit({
-      type: 'unit.payment_received',
-      payload: {
-        unitId,
-        projectId: updatedUnit.projectId,
-        amount,
-        totalPaid: newTotalPaid,
-        paymentPercentage: updatedUnit.paymentPercentage,
-        paymentRef
-      },
-      timestamp: new Date()
+    eventBus.emit('unit.payment_received' as any, {
+      unitId,
+      projectId: updatedUnit.projectId,
+      amount,
+      totalPaid: newTotalPaid,
+      paymentPercentage: updatedUnit.paymentPercentage,
+      paymentRef
     });
     
     this.log('info', `Recorded payment of ${amount} for unit ${updatedUnit.unitNumber}`);

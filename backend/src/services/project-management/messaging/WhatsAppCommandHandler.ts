@@ -10,7 +10,7 @@
  */
 
 import { pool } from '../../../database';
-import { BaseService } from '../../base/BaseService';
+import { BaseService } from '../../../../shared-services/base/BaseService';
 import { CommandContext, CommandResult, ConversationSession } from './types';
 import { whatsAppTemplates } from './WhatsAppTemplates';
 

@@ -55,7 +55,7 @@ function parseArgs(): BackfillOptions {
  */
 async function runBackfill(options: BackfillOptions): Promise<void> {
   console.log('==========================================');
-  console.log('  PropMetrik FX Historical Backfill');
+  console.log('  PROPMETRIK FX Historical Backfill');
   console.log('==========================================');
   console.log('Source: ForexRate-API');
   console.log(`Date range: ${options.startDate.toISOString().split('T')[0]} to ${options.endDate.toISOString().split('T')[0]}`);

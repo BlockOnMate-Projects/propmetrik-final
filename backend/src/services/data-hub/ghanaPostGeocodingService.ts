@@ -375,7 +375,7 @@ class GhanaPostGeocodingService {
     this.httpClient = axios.create({
       timeout: 10000,
       headers: {
-        'User-Agent': 'PropMetrik/1.0 (https://propmetrik.com)',
+        'User-Agent': 'PROPMETRIK/1.0 (https://propmetrik.com)',
         'Accept': 'application/json',
       },
     });

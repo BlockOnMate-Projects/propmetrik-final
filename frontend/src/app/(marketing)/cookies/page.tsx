@@ -26,7 +26,7 @@ export default function CookiePolicyPage() {
                         <section className="mb-12">
                             <h2 className="text-2xl font-bold text-white mb-4">1. What Are Cookies?</h2>
                             <p className="text-zinc-300 leading-relaxed">
-                                Cookies are small text files stored on your device when you visit websites. They help websites remember your preferences and provide a better user experience. PropMetrik uses cookies and similar technologies (web beacons, pixels, local storage) to enhance your experience on our platform.
+                                Cookies are small text files stored on your device when you visit websites. They help websites remember your preferences and provide a better user experience. PROPMETRIK uses cookies and similar technologies (web beacons, pixels, local storage) to enhance your experience on our platform.
                             </p>
                         </section>
 
@@ -118,7 +118,7 @@ export default function CookiePolicyPage() {
                                 </div>
 
                                 <div>
-                                    <h3 className="text-lg font-bold text-white mb-2">PropMetrik Cookie Preferences</h3>
+                                    <h3 className="text-lg font-bold text-white mb-2">PROPMETRIK Cookie Preferences</h3>
                                     <p className="text-zinc-300 mb-4">
                                         You can manage your cookie preferences directly in our platform:
                                     </p>
@@ -191,7 +191,7 @@ export default function CookiePolicyPage() {
                             </p>
                             <p className="text-zinc-300">
                                 Email: privacy@propmetrik.com<br />
-                                Address: PropMetrik, Accra, Ghana
+                                Address: PROPMETRIK, Accra, Ghana
                             </p>
                         </section>
                     </div>

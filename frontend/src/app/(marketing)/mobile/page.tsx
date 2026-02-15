@@ -1,7 +1,7 @@
 import { MobileDashboard } from '@/components/marketing/mobile/MobileDashboard'
 
 export const metadata = {
-  title: 'PropMetrik Mobile',
+  title: 'PROPMETRIK Mobile',
   description: 'Construction management on the go',
 }
 

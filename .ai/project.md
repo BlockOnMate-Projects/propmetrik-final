@@ -132,7 +132,7 @@ Build Africa's most sophisticated real estate project management platform, purpo
 
 #### 2.4.1 Global Standard vs. Ghana Reality
 
-| Feature | Global Standard (Procore/Buildertrend) | Ghana Reality Gap | PropMetrik Solution |
+| Feature | Global Standard (Procore/Buildertrend) | Ghana Reality Gap | PROPMETRIK Solution |
 |---------|----------------------------------------|-------------------|---------------------|
 | **Labor Tracking** | Timecards, hourly rates, union rules | Informal labor, daily "chop money", head porters (Kayayei) | Daily Labor Ledger with Cash/MoMo payouts |
 | **Procurement** | Purchase Orders, established catalogs | Market volatility, roadside purchasing, varying cement prices | Real-time Material Rate Tracker linked to Budget |
@@ -4743,7 +4743,7 @@ Western:       WR, WS, WN
 
 ### 14.1 Competitor Landscape (2026)
 
-| Competitor | Strengths | Target Market | Pricing | PropMetrik Differentiation |
+| Competitor | Strengths | Target Market | Pricing | PROPMETRIK Differentiation |
 |------------|-----------|---------------|---------|----------------------------|
 | **Procore** | Field-office sync, real-time visibility, risk mitigation, enterprise document control | Large commercial/enterprise | $375-$999+/month | Ghana-first regulatory, Mobile Money integration, offline-first |
 | **Buildertrend** | CRM integration, lead tracking, client portals, e-signatures, email marketing | Residential builders | $99-$599/month | Multi-currency GHS native, WhatsApp integration, land tenure tracking |
@@ -5272,7 +5272,7 @@ router.get('/portfolio/timeline/critical', getCriticalMilestones);
 
 ### 16.1 Portal Overview
 
-PropMetrik requires four specialized portals, each tailored to specific user roles with distinct feature sets:
+PROPMETRIK requires four specialized portals, each tailored to specific user roles with distinct feature sets:
 
 | Portal | Primary Users | Purpose | Authentication |
 |--------|--------------|---------|----------------|
@@ -5451,7 +5451,7 @@ PropMetrik requires four specialized portals, each tailored to specific user rol
 
 ```
 ┌─────────────────────────────────────────────────────────────────────┐
-│                    PropMetrik Platform Architecture                  │
+│                    PROPMETRIK Platform Architecture                  │
 ├─────────────────────────────────────────────────────────────────────┤
 │                                                                      │
 │  ┌─────────────────────────────────────────────────────────────────┐│
@@ -5533,7 +5533,7 @@ PropMetrik requires four specialized portals, each tailored to specific user rol
 
 ### 17.1 Overview
 
-This section outlines the prioritized enhancements to the PropMetrik project-management module based on competitive analysis with OpenProject, industry standards, and Ghana-specific requirements.
+This section outlines the prioritized enhancements to the PROPMETRIK project-management module based on competitive analysis with OpenProject, industry standards, and Ghana-specific requirements.
 
 ### 17.2 Phase 1: Gantt & Scheduling Improvements (4 Weeks)
 
@@ -5746,9 +5746,9 @@ The monolithic services have been refactored into focused modules:
 
 ### 19.1 Evaluation Summary
 
-A comprehensive evaluation was conducted comparing OpenProject (open-source PM software) against PropMetrik's custom implementation. Key findings:
+A comprehensive evaluation was conducted comparing OpenProject (open-source PM software) against PROPMETRIK's custom implementation. Key findings:
 
-| Factor | OpenProject | PropMetrik |
+| Factor | OpenProject | PROPMETRIK |
 |--------|-------------|------------|
 | Real Estate Features | ❌ None | ✅ Complete |
 | Ghana Compliance | ❌ None | ✅ Complete |
@@ -5757,7 +5757,7 @@ A comprehensive evaluation was conducted comparing OpenProject (open-source PM s
 | Customization Cost | $448K-$608K | Already built |
 | Time to Parity | 18-24 months | - |
 
-### 19.2 Decision: Keep PropMetrik
+### 19.2 Decision: Keep PROPMETRIK
 
 **Rationale:**
 1. **Domain Fit**: 17,000+ lines of real estate-specific code

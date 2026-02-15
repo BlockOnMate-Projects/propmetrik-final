@@ -40,7 +40,7 @@ export default function HeroSection() {
                         </span>
                     </h1>
                     <p className="text-xl md:text-2xl text-zinc-400 max-w-2xl mb-10 leading-relaxed font-light">
-                        Propmetrik delivers confident valuations, verified data, and institutional-grade analytics for the Ghanaian market.
+                        PROPMETRIK delivers confident valuations, verified data, and institutional-grade analytics for the Ghanaian market.
                     </p>
 
                     <div className="flex flex-col sm:flex-row gap-4">

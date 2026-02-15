@@ -101,7 +101,7 @@ export class FXFeedService {
       timeout: FX_CONFIG.timeout_ms,
       headers: {
         'Accept': 'application/json',
-        'User-Agent': 'PropMetrik Economic Data Bot/1.0',
+        'User-Agent': 'PROPMETRIK Economic Data Bot/1.0',
       },
     });
 

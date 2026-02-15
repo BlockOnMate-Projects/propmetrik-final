@@ -99,6 +99,7 @@ router.post('/login', async (req: Request, res: Response) => {
       {
         userId: user.id,
         email: user.email,
+        name: user.name,
         role: user.role,
         organizationId: user.organization_id,
         tier: user.subscription_tier,
@@ -318,6 +319,7 @@ router.post('/refresh', async (req: Request, res: Response) => {
         {
           userId: user.id,
           email: decoded.email,
+          name: user.name,
           role: user.role,
           organizationId: user.organization_id,
           tier: user.subscription_tier,

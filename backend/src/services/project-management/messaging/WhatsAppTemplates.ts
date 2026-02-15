@@ -458,7 +458,7 @@ class WhatsAppTemplatesServiceImpl {
    */
   buildHelpMessage(): string {
     return (
-      `🤖 *PropMetrik PM Bot Commands*\n\n` +
+      `🤖 *PROPMETRIK PM Bot Commands*\n\n` +
       `📊 *STATUS* - View project status\n` +
       `📋 *RFI* - View pending RFIs\n` +
       `📄 *SUBMITTALS* - View pending submittals\n` +

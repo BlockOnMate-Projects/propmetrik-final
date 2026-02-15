@@ -1,0 +1,5 @@
+      ✔ isReferenceProcessed returns false for new reference
+
+
+  62 passing (750ms)
+

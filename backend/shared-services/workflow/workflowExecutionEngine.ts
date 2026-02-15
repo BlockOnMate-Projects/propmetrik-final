@@ -69,7 +69,7 @@ const actionHandlers: Record<ActionType, ActionHandler> = {
         dueDate.setDate(dueDate.getDate() + parseInt(config.due_in_days));
       }
       
-      const task = await taskService.create({
+      const task = await (taskService as any).createTask(execution.organization_id, {
         organization_id: execution.organization_id,
         title: config.title || 'Automated Task',
         description: config.description,
@@ -206,7 +206,7 @@ const actionHandlers: Record<ActionType, ActionHandler> = {
       const value = workflowService.interpolateVariables(String(config.value), context);
       
       if (entityType === 'deal') {
-        await dealService.update(entityId, { [field]: value });
+        await (dealService as any).updateDeal(entityId, execution.organization_id, { [field]: value });
         logger.info({ entityId, field, value }, 'Workflow updated deal field');
       } else if (entityType === 'contact') {
         await pool.query(`
@@ -282,7 +282,7 @@ const actionHandlers: Record<ActionType, ActionHandler> = {
       
       // Assign to deal
       if (execution.entity_type === 'deal') {
-        await dealService.update(execution.entity_id, { agent_id: agentId });
+        await (dealService as any).updateDeal(execution.entity_id, execution.organization_id, { agent_id: agentId });
       } else if (execution.entity_type === 'contact') {
         await pool.query(`
           UPDATE crm_contacts SET owner_id = $1, updated_at = NOW() WHERE id = $2
@@ -314,7 +314,7 @@ const actionHandlers: Record<ActionType, ActionHandler> = {
     try {
       const config = workflowService.interpolateConfig(step.action_config, context);
       
-      const note = await noteService.create({
+      const note = await (noteService as any).createNote(execution.organization_id, {
         organization_id: execution.organization_id,
         deal_id: context.deal?.id,
         contact_id: context.contact?.id,
@@ -396,7 +396,7 @@ const actionHandlers: Record<ActionType, ActionHandler> = {
     try {
       const config = workflowService.interpolateConfig(step.action_config, context);
       
-      const activity = await activityService.create({
+      const activity = await (activityService as any).createActivity(execution.organization_id, {
         organization_id: execution.organization_id,
         deal_id: context.deal?.id,
         contact_id: context.contact?.id,
@@ -428,7 +428,7 @@ const actionHandlers: Record<ActionType, ActionHandler> = {
       
       const stageId = config.stage_id;
       
-      await dealService.update(execution.entity_id, { stage_id: stageId });
+      await (dealService as any).updateDeal(execution.entity_id, execution.organization_id, { stage_id: stageId });
       
       logger.info({ dealId: execution.entity_id, stageId }, 'Workflow moved deal stage');
       
@@ -734,7 +734,7 @@ class WorkflowExecutionEngine {
     
     // Load entity data
     if (event.entity_type === 'deal') {
-      const deal = await dealService.getById(event.entity_id);
+      const deal = await (dealService as any).getDealById(event.entity_id, event.organization_id);
       if (deal) {
         context.deal = deal;
         context.entity = deal;
@@ -770,7 +770,7 @@ class WorkflowExecutionEngine {
         
         // Load related deal/contact
         if (activityResult.rows[0].deal_id) {
-          const deal = await dealService.getById(activityResult.rows[0].deal_id);
+          const deal = await (dealService as any).getDealById(activityResult.rows[0].deal_id, event.organization_id);
           context.deal = deal;
         }
       }

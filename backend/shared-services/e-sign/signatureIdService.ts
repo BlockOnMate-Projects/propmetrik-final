@@ -7,7 +7,7 @@
  * 
  * Where:
  *   YYYY = Year (e.g., 2026)
- *   ORG = Organization code (e.g., PM for PropMetrik)
+ *   ORG = Organization code (e.g., PM for PROPMETRIK)
  *   NNNNNN = 6-digit sequence number
  *   CCCC = 4-character HMAC checksum for verification
  */

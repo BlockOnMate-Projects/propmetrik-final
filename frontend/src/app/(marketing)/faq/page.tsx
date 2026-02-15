@@ -13,11 +13,11 @@ export default function FAQPage() {
             category: 'General',
             questions: [
                 {
-                    question: 'What is PropMetrik?',
-                    answer: 'PropMetrik is Ghana\'s leading proptech platform providing automated property valuations, real estate data intelligence, deal management tools, and market research. We serve banks, developers, investors, and real estate professionals across Ghana.'
+                    question: 'What is PROPMETRIK?',
+                    answer: 'PROPMETRIK is Ghana\'s leading proptech platform providing automated property valuations, real estate data intelligence, deal management tools, and market research. We serve banks, developers, investors, and real estate professionals across Ghana.'
                 },
                 {
-                    question: 'Who can use PropMetrik?',
+                    question: 'Who can use PROPMETRIK?',
                     answer: 'Our platform serves financial institutions, property developers, real estate agencies, investors, property managers, and individuals looking for property valuations or market data in Ghana.'
                 },
                 {

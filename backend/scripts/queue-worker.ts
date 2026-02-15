@@ -58,7 +58,7 @@ async function shutdown(signal: string): Promise<void> {
 // Initialize and start queue worker
 async function startWorker(): Promise<void> {
   try {
-    logger.info('Starting PropMetrik Data Hub Queue Worker...');
+    logger.info('Starting PROPMETRIK Data Hub Queue Worker...');
     
     // Check database connections
     logger.info('Checking database connections...');

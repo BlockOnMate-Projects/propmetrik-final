@@ -1,5 +1,5 @@
 """
-PropMetrik ML Model Serving API
+PROPMETRIK ML Model Serving API
 
 FastAPI-based model serving infrastructure for property valuation ML models.
 Supports multiple model types including ensemble models (Random Forest, XGBoost, Neural Networks).
@@ -421,7 +421,7 @@ class PredictionService:
 # =====================================================
 
 app = FastAPI(
-    title="PropMetrik ML Model Serving API",
+    title="PROPMETRIK ML Model Serving API",
     description="Property valuation model serving with ensemble predictions",
     version="1.0.0"
 )
@@ -542,7 +542,7 @@ async def get_model_metrics(version: str):
 @app.on_event("startup")
 async def startup():
     """Initialize the application on startup."""
-    logger.info("Starting PropMetrik ML Model Serving API")
+    logger.info("Starting PROPMETRIK ML Model Serving API")
     
     # Try to load the latest model
     try:
@@ -555,7 +555,7 @@ async def startup():
 @app.on_event("shutdown")
 async def shutdown():
     """Cleanup on shutdown."""
-    logger.info("Shutting down PropMetrik ML Model Serving API")
+    logger.info("Shutting down PROPMETRIK ML Model Serving API")
     if redis_client:
         redis_client.close()
 

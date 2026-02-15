@@ -1,4 +1,4 @@
-# PropMetrik Data Hub Dashboard - Design Document
+# PROPMETRIK Data Hub Dashboard - Design Document
 
 ## Design Philosophy
 
@@ -27,7 +27,7 @@ Muted:       #94A3B8 (Slate 400)
 
 ```
 ┌─────────────────────────────────────────────────────────────────────┐
-│  ┌──────┐  PropMetrik Data Hub           [Search] [🔔] [👤 Admin]  │
+│  ┌──────┐  PROPMETRIK Data Hub           [Search] [🔔] [👤 Admin]  │
 │  │ LOGO │                                                           │
 ├──┴──────┴───────────────────────────────────────────────────────────┤
 │  │                                                                  │

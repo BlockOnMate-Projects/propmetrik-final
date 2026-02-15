@@ -1,6 +1,6 @@
 # Valuation Engine
 
-Propmetrik's hybrid valuation engine combining TypeScript orchestration with Python calculations.
+PROPMETRIK's hybrid valuation engine combining TypeScript orchestration with Python calculations.
 
 ## Architecture
 

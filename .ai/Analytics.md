@@ -1,4 +1,4 @@
-# Propmetrik Analytics Platform
+# PROPMETRIK Analytics Platform
 
 **Version:** 3.0  
 **Date:** January 2026  
@@ -9,7 +9,7 @@
 
 ## Executive Summary
 
-The Propmetrik Analytics Platform is a comprehensive, subscription-based analytics service providing deep market intelligence for Ghana's real estate and construction sectors. This document consolidates all analytics capabilities across five major domains:
+The PROPMETRIK Analytics Platform is a comprehensive, subscription-based analytics service providing deep market intelligence for Ghana's real estate and construction sectors. This document consolidates all analytics capabilities across five major domains:
 
 1. **Construction & Labour Analytics** - Real-time cost monitoring and forecasting
 2. **Housing Affordability Index (GHAI)** - Multi-path affordability measurement
@@ -45,7 +45,7 @@ The Propmetrik Analytics Platform is a comprehensive, subscription-based analyti
 13. [UI/UX Design](#13-uiux-design)
 14. [Implementation Roadmap](#14-implementation-roadmap)
 
-> **Architecture Principle**: All analytics domains integrate with the **Centralized ML/NLP Services** layer. PropMetrik provides CBRE/RICS/JLL-grade analytics purpose-built for Ghana.
+> **Architecture Principle**: All analytics domains integrate with the **Centralized ML/NLP Services** layer. PROPMETRIK provides CBRE/RICS/JLL-grade analytics purpose-built for Ghana.
 
 ---
 
@@ -1416,7 +1416,7 @@ interface DeveloperPipeline {
 
 ## 7. Ghana-Specific Analytics
 
-> **Unique to PropMetrik**: Analytics addressing Ghana's specific market characteristics not found in global platforms.
+> **Unique to PROPMETRIK**: Analytics addressing Ghana's specific market characteristics not found in global platforms.
 
 ### 7.1 Diaspora Investment Analytics ⭐
 
@@ -2164,7 +2164,7 @@ interface NERResponse {
 ```
 
 **Training Data**:
-- Ghana property listings (PropMetrik database)
+- Ghana property listings (PROPMETRIK database)
 - Construction permits and approvals
 - Bank of Ghana reports
 - News articles on real estate
@@ -2828,7 +2828,7 @@ interface ShortStayAnalytics {
 
 | Source | Data Type | Refresh Rate |
 |--------|-----------|--------------|
-| PropMetrik Transactions | Sales, listings, valuations | Real-time |
+| PROPMETRIK Transactions | Sales, listings, valuations | Real-time |
 | Floor Plan Service | GFA, NIA, room data | Real-time |
 | Valuation Engine | Method results, confidence | Real-time |
 | Rental Comparables | Rental listings, agreements | Daily |
@@ -3479,5 +3479,5 @@ CREATE INDEX idx_mam_period ON market_activity_metrics(period_date, region);
 
 ---
 
-*Document maintained by Propmetrik Analytics Team*  
+*Document maintained by PROPMETRIK Analytics Team*  
 *Last updated: January 2026*

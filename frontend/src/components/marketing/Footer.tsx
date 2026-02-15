@@ -12,7 +12,7 @@ export default function Footer() {
                         <Link href="/" className="inline-block mb-8">
                             <Image
                                 src="/branding/logo-full.png"
-                                alt="Propmetrik Logo"
+                                alt="PROPMETRIK Logo"
                                 width={180}
                                 height={50}
                                 className="h-12 w-auto object-contain"

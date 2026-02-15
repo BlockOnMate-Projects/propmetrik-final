@@ -1,19 +1,19 @@
-# Phase12 E-Sign Integration with PropMetrik
+# Phase12 E-Sign Integration with PROPMETRIK
 
 ## 1. Executive Summary
 
 | Aspect | Current State | Target State |
 |--------|--------------|--------------|
-| **E-Sign Platform** | `phase12-esign/` (standalone) | Integrated with PropMetrik |
+| **E-Sign Platform** | `phase12-esign/` (standalone) | Integrated with PROPMETRIK |
 | **Backend** | Python FastAPI on port 8000 | Keep as-is, disable Keycloak auth |
-| **Frontend** | React + Vite on port 3001 | Keep as-is, accept PropMetrik JWT |
-| **Database** | Separate esign_db | PropMetrik PostgreSQL (p12_* tables) |
-| **Authentication** | Keycloak (RS256 JWT) | PropMetrik JWT (HS256) |
+| **Frontend** | React + Vite on port 3001 | Keep as-is, accept PROPMETRIK JWT |
+| **Database** | Separate esign_db | PROPMETRIK PostgreSQL (p12_* tables) |
+| **Authentication** | Keycloak (RS256 JWT) | PROPMETRIK JWT (HS256) |
 
-**Goal:** Integrate Phase12 E-Sign with PropMetrik by:
+**Goal:** Integrate Phase12 E-Sign with PROPMETRIK by:
 1. Disabling Keycloak authentication
-2. Accepting PropMetrik JWT tokens for authentication
-3. Using PropMetrik's PostgreSQL database with `p12_*` prefixed tables
+2. Accepting PROPMETRIK JWT tokens for authentication
+3. Using PROPMETRIK's PostgreSQL database with `p12_*` prefixed tables
 
 ---
 
@@ -21,11 +21,11 @@
 
 ```
 ┌─────────────────────────────────────────────────────────────────────┐
-│                           PropMetrik                                 │
+│                           PROPMETRIK                                 │
 ├─────────────────────────────────────────────────────────────────────┤
 │                                                                      │
 │  ┌──────────────────────┐         ┌───────────────────────────────┐│
-│  │  PropMetrik Frontend │         │     Phase12 E-Sign Frontend   ││
+│  │  PROPMETRIK Frontend │         │     Phase12 E-Sign Frontend   ││
 │  │   (Next.js :3000)    │         │     (React+Vite :3001)        ││
 │  │                      │         │                               ││
 │  │  - Dashboard         │         │  - Document Upload            ││
@@ -38,10 +38,10 @@
 │             │ JWT Token                           │ Same JWT Token  │
 │             ▼                                     ▼                 │
 │  ┌──────────────────────┐         ┌───────────────────────────────┐│
-│  │  PropMetrik Backend  │         │   Phase12 E-Sign Backend      ││
+│  │  PROPMETRIK Backend  │         │   Phase12 E-Sign Backend      ││
 │  │   (Express :4000)    │         │   (FastAPI :8000)             ││
 │  │                      │         │                               ││
-│  │  - JWT Auth (HS256)  │         │  - PropMetrik JWT Auth        ││
+│  │  - JWT Auth (HS256)  │         │  - PROPMETRIK JWT Auth        ││
 │  │  - User Management   │         │  - Document Processing        ││
 │  │  - All Modules       │         │  - Signature Workflow         ││
 │  │                      │         │  - PDF Signing                ││
@@ -51,7 +51,7 @@
 │                           │                                         │
 │                           ▼                                         │
 │             ┌───────────────────────────────────────┐              │
-│             │        PropMetrik PostgreSQL          │              │
+│             │        PROPMETRIK PostgreSQL          │              │
 │             │                                       │              │
 │             │   Existing tables + p12_* tables     │              │
 │             │                                       │              │
@@ -67,20 +67,20 @@
 ### 3.1 Current Flow (Keycloak)
 
 ```
-User → PropMetrik Frontend → Keycloak Login → Keycloak JWT (RS256)
+User → PROPMETRIK Frontend → Keycloak Login → Keycloak JWT (RS256)
 User → E-Sign Frontend → Keycloak Login → Keycloak JWT (RS256)
 ```
 
-### 3.2 Target Flow (PropMetrik SSO Passthrough)
+### 3.2 Target Flow (PROPMETRIK SSO Passthrough)
 
 ```
-User → PropMetrik Frontend → PropMetrik Login → PropMetrik JWT (HS256)
-User → E-Sign Frontend → Receives PropMetrik JWT → No separate login
+User → PROPMETRIK Frontend → PROPMETRIK Login → PROPMETRIK JWT (HS256)
+User → E-Sign Frontend → Receives PROPMETRIK JWT → No separate login
 ```
 
 ### 3.3 JWT Token Comparison
 
-| Property | PropMetrik JWT | Keycloak JWT (current) |
+| Property | PROPMETRIK JWT | Keycloak JWT (current) |
 |----------|---------------|----------------------|
 | Algorithm | HS256 | RS256 |
 | Secret | `JWT_SECRET` env var | Public key from JWKS endpoint |
@@ -89,10 +89,10 @@ User → E-Sign Frontend → Receives PropMetrik JWT → No separate login
 | Payload.organizationId | ✅ | ✅ (custom claim) |
 | Payload.role | ✅ | ✅ (realm_access.roles) |
 
-### 3.4 PropMetrik JWT Payload Structure
+### 3.4 PROPMETRIK JWT Payload Structure
 
 ```typescript
-// PropMetrik JWT payload (from backend/src/routes/auth.ts)
+// PROPMETRIK JWT payload (from backend/src/routes/auth.ts)
 {
   userId: "uuid-string",       // User ID
   email: "user@example.com",   // User email
@@ -110,12 +110,12 @@ User → E-Sign Frontend → Receives PropMetrik JWT → No separate login
 
 ### 4.1 Modified auth.py
 
-Replace the entire `auth.py` with PropMetrik JWT verification:
+Replace the entire `auth.py` with PROPMETRIK JWT verification:
 
 ```python
 """
-PropMetrik Authentication for E-Signature Platform
-Replaces Keycloak authentication with PropMetrik JWT verification
+PROPMETRIK Authentication for E-Signature Platform
+Replaces Keycloak authentication with PROPMETRIK JWT verification
 """
 import jwt
 from fastapi import HTTPException, Security, Depends
@@ -128,10 +128,10 @@ security = HTTPBearer()
 
 def verify_propmetrik_token(token: str) -> Dict[str, Any]:
     """
-    Verify and decode PropMetrik JWT token (HS256)
+    Verify and decode PROPMETRIK JWT token (HS256)
     """
     try:
-        print(f"🔐 Verifying PropMetrik token...")
+        print(f"🔐 Verifying PROPMETRIK token...")
         
         payload = jwt.decode(
             token,
@@ -161,7 +161,7 @@ async def get_current_user(
     credentials: HTTPAuthorizationCredentials = Security(security)
 ) -> Dict[str, Any]:
     """
-    FastAPI dependency to get current authenticated user from PropMetrik JWT
+    FastAPI dependency to get current authenticated user from PROPMETRIK JWT
     
     Usage:
         @app.get("/protected")
@@ -230,7 +230,7 @@ def require_role(allowed_roles: list[str]):
 
 ### 4.2 Modified config.py
 
-Add PropMetrik JWT secret configuration:
+Add PROPMETRIK JWT secret configuration:
 
 ```python
 # Add to Settings class in config.py
@@ -238,23 +238,23 @@ Add PropMetrik JWT secret configuration:
 class Settings(BaseSettings):
     # ... existing settings ...
     
-    # PropMetrik JWT Configuration
-    # This must match JWT_SECRET in PropMetrik backend
+    # PROPMETRIK JWT Configuration
+    # This must match JWT_SECRET in PROPMETRIK backend
     JWT_SECRET: str = os.getenv("JWT_SECRET", "propmetrik-jwt-secret-change-in-production")
     
-    # PropMetrik API URL (for callbacks)
+    # PROPMETRIK API URL (for callbacks)
     PROPMETRIK_API_URL: str = os.getenv("PROPMETRIK_API_URL", "http://localhost:4000")
     
-    # Database - Use PropMetrik PostgreSQL
+    # Database - Use PROPMETRIK PostgreSQL
     POSTGRES_USER: str = os.getenv("POSTGRES_USER", "postgres")
     POSTGRES_PASSWORD: str = os.getenv("POSTGRES_PASSWORD", "dev_password_123")
-    POSTGRES_DB: str = os.getenv("POSTGRES_DB", "propmetrik")  # Main PropMetrik DB
+    POSTGRES_DB: str = os.getenv("POSTGRES_DB", "propmetrik")  # Main PROPMETRIK DB
     POSTGRES_HOST: str = os.getenv("POSTGRES_HOST", "localhost")
     POSTGRES_PORT: int = int(os.getenv("POSTGRES_PORT", "5432"))
     
     @property
     def DATABASE_URL(self) -> str:
-        """PropMetrik database URL"""
+        """PROPMETRIK database URL"""
         return f"postgresql://{self.POSTGRES_USER}:{self.POSTGRES_PASSWORD}@{self.POSTGRES_HOST}:{self.POSTGRES_PORT}/{self.POSTGRES_DB}"
     
     # Disable Keycloak
@@ -316,21 +316,21 @@ Delete or disable:
 - All `keycloak.init()` calls in `App.tsx`
 - Keycloak login/logout buttons
 
-### 5.2 New PropMetrik Token Handler
+### 5.2 New PROPMETRIK Token Handler
 
 Create `src/propmetrik-auth.ts`:
 
 ```typescript
 /**
- * PropMetrik Authentication for E-Sign Frontend
- * Receives JWT token from PropMetrik and stores it for API calls
+ * PROPMETRIK Authentication for E-Sign Frontend
+ * Receives JWT token from PROPMETRIK and stores it for API calls
  */
 
 // Token storage key
 const TOKEN_KEY = 'propmetrik_token';
 const USER_KEY = 'propmetrik_user';
 
-// Check for token in URL params (passed from PropMetrik)
+// Check for token in URL params (passed from PROPMETRIK)
 export function checkForTokenInUrl(): boolean {
   const params = new URLSearchParams(window.location.search);
   const token = params.get('token');
@@ -404,7 +404,7 @@ export function getAuthHeader(): { Authorization: string } | {} {
   return token ? { Authorization: `Bearer ${token}` } : {};
 }
 
-// Redirect to PropMetrik login if not authenticated
+// Redirect to PROPMETRIK login if not authenticated
 export function redirectToLogin(): void {
   const returnUrl = encodeURIComponent(window.location.href);
   window.location.href = `${import.meta.env.VITE_PROPMETRIK_URL || 'http://localhost:3000'}/login?returnTo=${returnUrl}`;
@@ -415,7 +415,7 @@ export function redirectToLogin(): void {
 
 ```typescript
 /**
- * API client with PropMetrik authentication
+ * API client with PROPMETRIK authentication
  */
 import axios from 'axios';
 import { getAuthHeader, isAuthenticated, redirectToLogin } from './propmetrik-auth';
@@ -441,7 +441,7 @@ api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
-      // Redirect to PropMetrik login
+      // Redirect to PROPMETRIK login
       redirectToLogin();
     }
     return Promise.reject(error);
@@ -455,7 +455,7 @@ export default api;
 
 ```tsx
 /**
- * Main App component with PropMetrik authentication
+ * Main App component with PROPMETRIK authentication
  */
 import { useEffect, useState } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
@@ -479,7 +479,7 @@ function App() {
   const [isReady, setIsReady] = useState(false);
 
   useEffect(() => {
-    // Check for token in URL (passed from PropMetrik)
+    // Check for token in URL (passed from PROPMETRIK)
     checkForTokenInUrl();
     setIsReady(true);
   }, []);
@@ -532,11 +532,11 @@ export default App;
 
 ---
 
-## 6. PropMetrik Frontend Integration
+## 6. PROPMETRIK Frontend Integration
 
 ### 6.1 Add E-Sign Navigation Link
 
-Add to PropMetrik sidebar/navigation:
+Add to PROPMETRIK sidebar/navigation:
 
 ```tsx
 // frontend/src/components/Sidebar.tsx
@@ -563,7 +563,7 @@ function getEsignUrl(): string {
 
 ### 6.2 E-Sign API Service
 
-Create service for PropMetrik to interact with E-Sign:
+Create service for PROPMETRIK to interact with E-Sign:
 
 ```typescript
 // frontend/src/services/esign-api.ts
@@ -738,7 +738,7 @@ The migration file `126_phase12_esign_migration.sql` handles:
 ### 7.2 Run Migration
 
 ```bash
-# From PropMetrik backend directory
+# From PROPMETRIK backend directory
 cd backend
 psql -U postgres -d propmetrik -f database/migrations/126_phase12_esign_migration.sql
 ```
@@ -750,17 +750,17 @@ psql -U postgres -d propmetrik -f database/migrations/126_phase12_esign_migratio
 ### 8.1 Phase12 E-Sign Backend (.env)
 
 ```env
-# Database (PropMetrik's PostgreSQL)
+# Database (PROPMETRIK's PostgreSQL)
 POSTGRES_USER=postgres
 POSTGRES_PASSWORD=your_password
 POSTGRES_DB=propmetrik
 POSTGRES_HOST=localhost
 POSTGRES_PORT=5432
 
-# PropMetrik JWT Secret (MUST MATCH PropMetrik backend)
+# PROPMETRIK JWT Secret (MUST MATCH PROPMETRIK backend)
 JWT_SECRET=propmetrik-jwt-secret-change-in-production
 
-# PropMetrik API URL
+# PROPMETRIK API URL
 PROPMETRIK_API_URL=http://localhost:4000
 
 # Frontend URL
@@ -784,10 +784,10 @@ GOOGLE_REDIRECT_URI=http://localhost:8000/api/google/callback
 # API URL
 VITE_API_URL=http://localhost:8000
 
-# PropMetrik URL (for login redirect)
+# PROPMETRIK URL (for login redirect)
 VITE_PROPMETRIK_URL=http://localhost:3000
 
-# Enable PropMetrik auth (disable Keycloak)
+# Enable PROPMETRIK auth (disable Keycloak)
 VITE_AUTH_MODE=propmetrik
 ```
 
@@ -856,9 +856,9 @@ export async function sendReportForSignature(reportId: string, token: string) {
 
 ## 10. Webhook Callbacks
 
-### 10.1 E-Sign to PropMetrik Callbacks
+### 10.1 E-Sign to PROPMETRIK Callbacks
 
-Configure Phase12 E-Sign to notify PropMetrik when events occur:
+Configure Phase12 E-Sign to notify PROPMETRIK when events occur:
 
 ```python
 # phase12-esign/backend/callbacks.py
@@ -867,7 +867,7 @@ import httpx
 from config import settings
 
 async def notify_propmetrik(event_type: str, data: dict):
-    """Send webhook to PropMetrik when e-sign events occur"""
+    """Send webhook to PROPMETRIK when e-sign events occur"""
     if not settings.PROPMETRIK_API_URL:
         return
     
@@ -882,7 +882,7 @@ async def notify_propmetrik(event_type: str, data: dict):
                 timeout=10.0,
             )
     except Exception as e:
-        print(f"Failed to notify PropMetrik: {e}")
+        print(f"Failed to notify PROPMETRIK: {e}")
 
 
 # Usage in envelope completion
@@ -896,7 +896,7 @@ async def on_envelope_completed(envelope_id: str, envelope_data: dict):
     })
 ```
 
-### 10.2 PropMetrik Webhook Handler
+### 10.2 PROPMETRIK Webhook Handler
 
 ```typescript
 // backend/src/routes/webhooks.ts
@@ -944,7 +944,7 @@ async function handleEnvelopeCompleted(data: any) {
 # docker-compose.yml
 
 services:
-  # PropMetrik services
+  # PROPMETRIK services
   propmetrik-backend:
     # ... existing config
     environment:
@@ -987,9 +987,9 @@ services:
 1. ✅ Keep Phase12 E-Sign backend (FastAPI) as-is on port 8000
 2. ✅ Keep Phase12 E-Sign frontend (React+Vite) as-is on port 3001
 3. ✅ Disable Keycloak authentication
-4. ✅ Accept PropMetrik JWT tokens (HS256) for authentication
-5. ✅ Use PropMetrik's PostgreSQL database with `p12_*` prefixed tables
-6. ✅ Pass token via URL when navigating from PropMetrik to E-Sign
+4. ✅ Accept PROPMETRIK JWT tokens (HS256) for authentication
+5. ✅ Use PROPMETRIK's PostgreSQL database with `p12_*` prefixed tables
+6. ✅ Pass token via URL when navigating from PROPMETRIK to E-Sign
 7. ✅ Add webhook callbacks for envelope completion
 
 ### What We're NOT Doing
@@ -1004,12 +1004,12 @@ services:
 
 | File | Change |
 |------|--------|
-| `phase12-esign/backend/auth.py` | Replace Keycloak with PropMetrik JWT |
+| `phase12-esign/backend/auth.py` | Replace Keycloak with PROPMETRIK JWT |
 | `phase12-esign/backend/config.py` | Add JWT_SECRET, disable Keycloak |
 | `phase12-esign/backend/models.py` | Update table names to p12_* prefix |
 | `phase12-esign/frontend/src/keycloak.ts` | Delete (not needed) |
-| `phase12-esign/frontend/src/propmetrik-auth.ts` | New file for PropMetrik auth |
-| `phase12-esign/frontend/src/api.ts` | Use PropMetrik auth |
-| `phase12-esign/frontend/src/App.tsx` | Remove Keycloak, use PropMetrik auth |
+| `phase12-esign/frontend/src/propmetrik-auth.ts` | New file for PROPMETRIK auth |
+| `phase12-esign/frontend/src/api.ts` | Use PROPMETRIK auth |
+| `phase12-esign/frontend/src/App.tsx` | Remove Keycloak, use PROPMETRIK auth |
 | `backend/database/migrations/126_*.sql` | Drop old tables, create p12_* tables |
 | `frontend/src/services/esign-api.ts` | E-Sign API client |

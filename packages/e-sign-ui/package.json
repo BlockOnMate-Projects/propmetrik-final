@@ -1,8 +1,8 @@
 {
-  "name": "propmetrik-esign-ui",
+  "name": "@propmetrik/e-sign-ui",
   "version": "1.0.0",
   "private": true,
-  "description": "PropMetrik E-Signature Platform - React Frontend",
+  "description": "PROPMETRIK E-Signature Platform - React Frontend",
   "dependencies": {
     "@react-oauth/google": "^0.12.1",
     "@types/react-router-dom": "^5.3.3",
@@ -30,7 +30,8 @@
     "dev": "vite --host 0.0.0.0 --port 3001",
     "build": "tsc && vite build",
     "preview": "vite preview --port 3001",
-    "type-check": "tsc --noEmit"
+    "type-check": "tsc --noEmit",
+    "clean": "rm -rf dist node_modules"
   },
   "browserslist": {
     "production": [

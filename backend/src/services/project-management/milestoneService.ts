@@ -12,7 +12,7 @@
 
 import { pool } from '../../database';
 import { QueryResult } from 'pg';
-import { BaseService } from '../base/BaseService';
+import { BaseService } from '../../../shared-services/base/BaseService';
 import { eventBus, ProjectEventType } from './events';
 
 // ============================================================================

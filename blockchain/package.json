@@ -1,0 +1,29 @@
+{
+  "name": "@propmetrik/blockchain",
+  "version": "1.0.0",
+  "description": "PROPMETRIK USDT Payment Smart Contract on Polygon",
+  "scripts": {
+    "compile": "hardhat compile",
+    "test": "hardhat test",
+    "test:gas": "REPORT_GAS=true hardhat test",
+    "test:coverage": "hardhat coverage",
+    "deploy:testnet": "hardhat run scripts/deploy.ts --network amoy",
+    "deploy:mainnet": "hardhat run scripts/deploy.ts --network polygon",
+    "verify:testnet": "hardhat run scripts/verify.ts --network amoy",
+    "verify:mainnet": "hardhat run scripts/verify.ts --network polygon",
+    "node": "hardhat node",
+    "clean": "hardhat clean"
+  },
+  "devDependencies": {
+    "@nomicfoundation/hardhat-toolbox": "^4.0.0",
+    "@nomicfoundation/hardhat-verify": "^2.0.0",
+    "@openzeppelin/contracts": "^5.0.0",
+    "hardhat": "^2.19.0",
+    "hardhat-gas-reporter": "^1.0.9",
+    "solidity-coverage": "^0.8.5",
+    "typescript": "^5.3.0",
+    "ts-node": "^10.9.0",
+    "@types/node": "^20.0.0",
+    "dotenv": "^16.3.0"
+  }
+}

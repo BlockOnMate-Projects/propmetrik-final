@@ -21,7 +21,7 @@ import { syncLogRepository } from '../../src/services/data-hub/scrapers/syncLogR
  */
 async function runBackfill(): Promise<void> {
   console.log('==========================================');
-  console.log('  PropMetrik FX Rate Backfill');
+  console.log('  PROPMETRIK FX Rate Backfill');
   console.log('==========================================');
   console.log('Source: ForexRate-API');
   console.log('');

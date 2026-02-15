@@ -16,6 +16,7 @@ export enum TenantStatus {
 }
 
 export enum TenancyStatus {
+    PENDING_SIGNATURE = 'pending_signature', // Lease generated, awaiting e-signatures
     PENDING = 'pending',
     ACTIVE = 'active',
     EXPIRED = 'expired',
@@ -248,6 +249,16 @@ export interface Tenancy {
     monthlyRent: number;
     rentCurrency: string;
     status: TenancyStatus;
+    leaseStatus?: string;
+    leaseDocumentUrl?: string;
+    leaseSignedUrl?: string;
+    leaseSentAt?: string;
+    tenantSignedAt?: string;
+    landlordSignedAt?: string;
+    esignEnvelopeId?: string;
+    esignStatus?: string;
+    esignCreatedAt?: string;
+    esignCompletedAt?: string;
     paymentFreq?: string;
     advancePaymentMonths?: number;
     rentDueDay?: number;
@@ -328,6 +339,36 @@ export interface PropertyDocument {
         title: string;
     };
     [key: string]: any;
+}
+
+/** Unified document vault item — aggregated from multiple tables */
+export interface VaultDocument {
+    id: string;
+    title: string;
+    fileName: string;
+    fileUrl: string;
+    fileSizeBytes?: number;
+    mimeType?: string;
+    documentType: string;
+    source: 'upload' | 'lease' | 'signed_lease';
+    propertyId?: string;
+    propertyTitle?: string;
+    tenancyId?: string;
+    tenantName?: string;
+    signingStatus?: string;
+    isVerified: boolean;
+    tags?: string[];
+    createdAt: string;
+    updatedAt?: string;
+}
+
+export interface VaultSummary {
+    totalFiles: number;
+    totalStorageBytes: number;
+    leaseDocuments: number;
+    signedLeases: number;
+    tenantUploads: number;
+    byType: Record<string, number>;
 }
 
 export interface FinancialRecord {

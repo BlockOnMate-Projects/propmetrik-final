@@ -112,10 +112,16 @@ export class ReportingService {
             expected_rent AS (
                 SELECT 
                     ps.*,
-                    (
-                        EXTRACT(YEAR FROM AGE(LEAST(CURRENT_DATE, ps.lease_end_date), ps.lease_start_date)) * 12 +
-                        EXTRACT(MONTH FROM AGE(LEAST(CURRENT_DATE, ps.lease_end_date), ps.lease_start_date)) + 1
-                    ) * ps.monthly_rent as expected_amount
+                    COALESCE(
+                        (SELECT SUM(rs.expected_amount) 
+                         FROM rent_schedules rs 
+                         WHERE rs.tenancy_id = ps.tenancy_id 
+                           AND rs.period_start_date <= CURRENT_DATE),
+                        (
+                            EXTRACT(YEAR FROM AGE(LEAST(CURRENT_DATE, ps.lease_end_date), ps.lease_start_date)) * 12 +
+                            EXTRACT(MONTH FROM AGE(LEAST(CURRENT_DATE, ps.lease_end_date), ps.lease_start_date)) + 1
+                        ) * ps.monthly_rent
+                    ) as expected_amount
                 FROM payment_summary ps
             )
             SELECT 
@@ -283,6 +289,19 @@ export class ReportingService {
                 WHERE p.organization_id = $1 AND p.status NOT IN ('withdrawn', 'sold', 'rented')
                 GROUP BY p.id
             ),
+            utility_expenses AS (
+                SELECT 
+                    t.property_id,
+                    COALESCE(SUM(uc.amount), 0) as utility_total
+                FROM utility_charges uc
+                JOIN tenancies t ON uc.tenancy_id = t.id
+                LEFT JOIN rent_schedules rs ON rs.id = uc.applied_to_schedule_id
+                WHERE uc.organization_id = $1
+                  AND uc.status IN ('applied', 'paid')
+                  AND COALESCE(rs.period_start_date, uc.billing_period_start) <= $3::date
+                  AND COALESCE(rs.period_start_date, uc.billing_period_start) >= $2::date
+                GROUP BY t.property_id
+            ),
             tenancy_stats AS (
                 SELECT 
                     p.id as property_id,
@@ -299,16 +318,18 @@ export class ReportingService {
                 p.region,
                 p.price as property_value,
                 pi.total_income,
-                pi.total_expenses,
-                pi.total_income - pi.total_expenses as noi,
+                pi.total_expenses + COALESCE(ue.utility_total, 0) as total_expenses,
+                pi.total_income - (pi.total_expenses + COALESCE(ue.utility_total, 0)) as noi,
                 pi.maintenance_costs,
+                COALESCE(ue.utility_total, 0) as utility_costs,
                 ts.average_rent,
                 CASE WHEN ts.active_tenancies > 0 THEN 100 ELSE 0 END as occupancy_rate
             FROM properties p
             JOIN property_income pi ON p.id = pi.property_id
+            LEFT JOIN utility_expenses ue ON p.id = ue.property_id
             LEFT JOIN tenancy_stats ts ON p.id = ts.property_id
             WHERE p.organization_id = $1 AND p.status NOT IN ('withdrawn', 'sold', 'rented')
-            ORDER BY (pi.total_income - pi.total_expenses) DESC
+            ORDER BY (pi.total_income - (pi.total_expenses + COALESCE(ue.utility_total, 0))) DESC
         `;
 
         const result = await db.query(query, [organizationId, startDate, endDate]);

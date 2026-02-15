@@ -369,7 +369,7 @@ function printReport(report: MigrationReport): void {
 // ============================================================================
 
 async function main(): Promise<void> {
-  console.log('\n🏗️  PropMetrik Floor Plan Migration Tool\n');
+  console.log('\n🏗️  PROPMETRIK Floor Plan Migration Tool\n');
 
   // Parse command line arguments
   const args = process.argv.slice(2);

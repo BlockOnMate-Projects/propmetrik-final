@@ -10,9 +10,9 @@
  * Uses WhatsApp Business Cloud API via shared whatsappService
  */
 
-import { whatsappService, TemplateComponent, WhatsAppResponse } from '../../../shared-services/messaging/whatsappService';
-import { pool } from '../../../src/database';
-import { logger } from '../../../src/utils/logger';
+import { whatsappService, TemplateComponent, WhatsAppResponse } from '../../../../shared-services/messaging/whatsappService';
+import { pool } from '../../../database';
+import { logger } from '../../../utils/logger';
 
 // ============================================================================
 // Types
@@ -118,7 +118,7 @@ export class TenantWhatsAppService {
     
     message += `\nPlease ensure timely payment to avoid late fees.\n\n`;
     message += `Questions? Reply to this message or contact your property manager.\n\n`;
-    message += `PropMetrik Property Management`;
+    message += `PROPMETRIK Property Management`;
 
     const result = await whatsappService.sendTextMessage(tenant.phoneNumber, message);
     
@@ -150,7 +150,7 @@ export class TenantWhatsAppService {
     }
     
     message += `\nIf you're experiencing financial difficulties, please contact your property manager to discuss options.\n\n`;
-    message += `PropMetrik Property Management`;
+    message += `PROPMETRIK Property Management`;
 
     const result = await whatsappService.sendTextMessage(tenant.phoneNumber, message);
     
@@ -192,7 +192,7 @@ export class TenantWhatsAppService {
     }
     
     message += `\nThank you for being a valued tenant.\n\n`;
-    message += `PropMetrik Property Management`;
+    message += `PROPMETRIK Property Management`;
 
     const result = await whatsappService.sendTextMessage(tenant.phoneNumber, message);
     
@@ -225,7 +225,7 @@ export class TenantWhatsAppService {
     
     message += `\nOur team will review and assign a technician shortly. You'll receive updates on the progress.\n\n`;
     message += `For urgent issues, please call the emergency line.\n\n`;
-    message += `PropMetrik Property Management`;
+    message += `PROPMETRIK Property Management`;
 
     const result = await whatsappService.sendTextMessage(tenant.phoneNumber, message);
     
@@ -274,7 +274,7 @@ export class TenantWhatsAppService {
     
     message += `\n*Please ensure someone is available to provide access.*\n\n`;
     message += `If you need to reschedule, please reply to this message or contact your property manager.\n\n`;
-    message += `PropMetrik Property Management`;
+    message += `PROPMETRIK Property Management`;
 
     const result = await whatsappService.sendTextMessage(tenant.phoneNumber, message);
     
@@ -302,7 +302,7 @@ export class TenantWhatsAppService {
     }
     
     message += `\nWe'll notify you once the work is complete.\n\n`;
-    message += `PropMetrik Property Management`;
+    message += `PROPMETRIK Property Management`;
 
     const result = await whatsappService.sendTextMessage(tenant.phoneNumber, message);
     
@@ -331,7 +331,7 @@ export class TenantWhatsAppService {
     
     message += `\nIf you have any concerns about the work performed, please reply to this message within 48 hours.\n\n`;
     message += `Thank you for your patience!\n\n`;
-    message += `PropMetrik Property Management`;
+    message += `PROPMETRIK Property Management`;
 
     const result = await whatsappService.sendTextMessage(tenant.phoneNumber, message);
     
@@ -373,7 +373,7 @@ export class TenantWhatsAppService {
     }
     
     message += `\nPlease contact your property manager to discuss renewal options or move-out arrangements.\n\n`;
-    message += `PropMetrik Property Management`;
+    message += `PROPMETRIK Property Management`;
 
     const result = await whatsappService.sendTextMessage(tenant.phoneNumber, message);
     
@@ -414,7 +414,7 @@ export class TenantWhatsAppService {
     
     message += `\nA copy of your signed lease will be sent to your email.\n\n`;
     message += `Welcome to your new home! 🏡\n\n`;
-    message += `PropMetrik Property Management`;
+    message += `PROPMETRIK Property Management`;
 
     const result = await whatsappService.sendTextMessage(tenant.phoneNumber, message);
     
@@ -459,7 +459,7 @@ export class TenantWhatsAppService {
     }
     
     message += `Please follow emergency procedures and stay safe!\n\n`;
-    message += `PropMetrik Property Management`;
+    message += `PROPMETRIK Property Management`;
 
     const result = await whatsappService.sendTextMessage(tenant.phoneNumber, message);
     
@@ -477,7 +477,7 @@ export class TenantWhatsAppService {
     let message = `Hello ${tenant.fullName},\n\n`;
     message += `📢 *${subject}*\n\n`;
     message += `${content}\n\n`;
-    message += `PropMetrik Property Management`;
+    message += `PROPMETRIK Property Management`;
 
     const result = await whatsappService.sendTextMessage(tenant.phoneNumber, message);
     

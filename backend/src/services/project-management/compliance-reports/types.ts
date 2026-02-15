@@ -32,7 +32,7 @@ export interface ProjectPermit {
   permitType: string;
   permitNumber?: string;
   issuingAuthority: string;
-  status: 'pending' | 'submitted' | 'approved' | 'rejected' | 'expired';
+  status: 'pending' | 'submitted' | 'approved' | 'rejected' | 'expired' | 'not_started';
   applicationDate?: string;
   issueDate?: string;
   expiryDate?: string;
@@ -119,18 +119,25 @@ export interface ComplianceReportResult {
 export interface ComplianceReport {
   id: string;
   projectId: string;
-  organizationId: string;
-  reportType: 'compliance' | 'inspection' | 'permit_status' | 'full_audit';
-  title: string;
-  pdfUrl: string;
+  organizationId?: string;
+  reportType?: 'compliance' | 'inspection' | 'permit_status' | 'full_audit';
+  title?: string;
+  pdfUrl?: string;
+  fileUrl?: string;
+  fileKey?: string;
   signingRequestId?: string;
-  status: 'draft' | 'generated' | 'pending_signatures' | 'signed' | 'archived';
-  score?: number;
+  signingStatus?: string;
+  status?: 'draft' | 'generated' | 'pending_signatures' | 'signed' | 'archived';
+  score?: any;
+  permitCount?: number;
+  inspectionCount?: number;
+  expiringCount?: number;
   generatedBy: string;
   generatedByName?: string;
   generatedAt: string;
   signedAt?: string;
   expiresAt?: string;
+  generationTimeMs?: number;
   metadata?: Record<string, any>;
 }
 
@@ -139,7 +146,7 @@ export interface ComplianceReport {
 // =============================================================================
 
 export const PDF_COLORS = {
-  primary: rgb(0.09, 0.45, 0.67),      // PropMetrik blue
+  primary: rgb(0.09, 0.45, 0.67),      // PROPMETRIK blue
   secondary: rgb(0.8, 0.6, 0.2),        // Ghana gold
   success: rgb(0.16, 0.65, 0.31),
   warning: rgb(0.85, 0.65, 0.13),
@@ -157,10 +164,7 @@ export const PDF_MARGINS = {
   right: 50,
 };
 
-export const PAGE_SIZE = {
-  width: 595.28,  // A4
-  height: 841.89,
-};
+export const PAGE_SIZE: [number, number] = [595.28, 841.89]; // A4 width x height
 
 // =============================================================================
 // FILTER INTERFACES

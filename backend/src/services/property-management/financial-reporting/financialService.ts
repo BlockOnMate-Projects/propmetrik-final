@@ -175,7 +175,7 @@ export class FinancialService {
         startDate: string,
         endDate: string
     ): Promise<CashFlowAnalysis> {
-        // 1. Get Totals
+        // 1. Get Totals from financial records
         const query = `
       SELECT 
         record_type, 
@@ -209,27 +209,100 @@ export class FinancialService {
             }
         });
 
-        // 2. Get Monthly Breakdown
+        // 1b. Include utility charges as expenses (use rent schedule period date, not billing period)
+        const utilityQuery = `
+      SELECT COALESCE(SUM(uc.amount), 0) as utility_total
+      FROM utility_charges uc
+      JOIN tenancies t ON uc.tenancy_id = t.id
+      LEFT JOIN rent_schedules rs ON rs.id = uc.applied_to_schedule_id
+      WHERE uc.organization_id = $1
+        AND uc.status IN ('applied', 'paid')
+        AND COALESCE(rs.period_start_date, uc.billing_period_start) <= $3::date
+        AND COALESCE(rs.period_start_date, uc.billing_period_start) >= $2::date
+        ${propertyId ? 'AND t.property_id = $4' : ''}
+    `;
+        const utilityResult = await db.query(utilityQuery, params);
+        const utilityTotal = parseFloat(utilityResult.rows[0]?.utility_total) || 0;
+        if (utilityTotal > 0) {
+            totalExpenses += utilityTotal;
+            expensesByCategory['utilities'] = (expensesByCategory['utilities'] || 0) + utilityTotal;
+        }
+
+        // 2. Get Monthly Breakdown (financial records + utility charges combined)
         const monthlyQuery = `
+      WITH financial_monthly AS (
+        SELECT 
+          TO_CHAR(transaction_date, 'YYYY-MM') as month,
+          SUM(CASE WHEN record_type = 'income' THEN amount ELSE 0 END) as income,
+          SUM(CASE WHEN record_type = 'expense' THEN amount ELSE 0 END) as expenses
+        FROM property_financial_records
+        WHERE organization_id = $1
+        AND transaction_date BETWEEN $2 AND $3
+        ${propertyId ? 'AND property_id = $4' : ''}
+        GROUP BY month
+      ),
+      utility_monthly AS (
+        SELECT 
+          TO_CHAR(COALESCE(rs.period_start_date, uc.billing_period_start), 'YYYY-MM') as month,
+          SUM(uc.amount) as utility_expenses
+        FROM utility_charges uc
+        JOIN tenancies t ON uc.tenancy_id = t.id
+        LEFT JOIN rent_schedules rs ON rs.id = uc.applied_to_schedule_id
+        WHERE uc.organization_id = $1
+          AND uc.status IN ('applied', 'paid')
+          AND COALESCE(rs.period_start_date, uc.billing_period_start) <= $3::date
+          AND COALESCE(rs.period_start_date, uc.billing_period_start) >= $2::date
+          ${propertyId ? 'AND t.property_id = $4' : ''}
+        GROUP BY month
+      )
       SELECT 
-        TO_CHAR(transaction_date, 'YYYY-MM') as month,
-        SUM(CASE WHEN record_type = 'income' THEN amount ELSE 0 END) as income,
-        SUM(CASE WHEN record_type = 'expense' THEN amount ELSE 0 END) as expenses
-      FROM property_financial_records
-      WHERE organization_id = $1
-      AND transaction_date BETWEEN $2 AND $3
-      ${propertyId ? 'AND property_id = $4' : ''}
-      GROUP BY month
+        COALESCE(fm.month, um.month) as month,
+        COALESCE(fm.income, 0) as income,
+        COALESCE(fm.expenses, 0) + COALESCE(um.utility_expenses, 0) as expenses
+      FROM financial_monthly fm
+      FULL OUTER JOIN utility_monthly um ON fm.month = um.month
       ORDER BY month ASC
     `;
 
         const monthlyResult = await db.query(monthlyQuery, params);
-        const monthlyBreakdown: MonthlyFinancials[] = monthlyResult.rows.map(row => ({
-            month: row.month,
-            income: parseFloat(row.income),
-            expenses: parseFloat(row.expenses),
-            netCashFlow: parseFloat(row.income) - parseFloat(row.expenses)
-        }));
+
+        // 3. Get expected rent from rent_schedules (projected monthly rent)
+        const expectedRentQuery = `
+      SELECT 
+        TO_CHAR(rs.period_start_date, 'YYYY-MM') as month,
+        SUM(rs.expected_amount) as expected_rent
+      FROM rent_schedules rs
+      JOIN tenancies t ON rs.tenancy_id = t.id
+      WHERE t.organization_id = $1
+        AND rs.period_start_date >= $2::date
+        AND rs.period_start_date <= $3::date
+        ${propertyId ? 'AND t.property_id = $4' : ''}
+      GROUP BY month
+      ORDER BY month ASC
+    `;
+        const expectedRentResult = await db.query(expectedRentQuery, params);
+        const expectedRentByMonth: Record<string, number> = {};
+        expectedRentResult.rows.forEach(row => {
+            expectedRentByMonth[row.month] = parseFloat(row.expected_rent) || 0;
+        });
+
+        // Merge actual data with expected rent
+        const allMonths = new Set<string>();
+        monthlyResult.rows.forEach(row => allMonths.add(row.month));
+        Object.keys(expectedRentByMonth).forEach(m => allMonths.add(m));
+
+        const monthlyBreakdown: MonthlyFinancials[] = Array.from(allMonths).sort().map(month => {
+            const actual = monthlyResult.rows.find(r => r.month === month);
+            const income = actual ? parseFloat(actual.income) : 0;
+            const expenses = actual ? parseFloat(actual.expenses) : 0;
+            return {
+                month,
+                income,
+                expenses,
+                netCashFlow: income - expenses,
+                expectedRent: expectedRentByMonth[month] || 0
+            };
+        });
 
         return {
             period: {

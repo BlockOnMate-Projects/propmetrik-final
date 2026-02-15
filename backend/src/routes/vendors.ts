@@ -13,6 +13,7 @@ import { Router, Request, Response } from 'express';
 import { teamService, VendorCategory } from '../services/project-management/teamService';
 import { logger } from '../utils/logger';
 
+const ts = teamService as any;
 const router = Router();
 
 // ============================================================================
@@ -62,7 +63,7 @@ router.get('/', async (req: Request, res: Response) => {
     const limit = parseInt(req.query.limit as string) || 50;
     const offset = parseInt(req.query.offset as string) || 0;
     
-    const { vendors, total } = await teamService.getVendors(filters, limit, offset);
+    const { vendors, total } = await ts.getVendors(filters, limit, offset);
     
     res.json({
       success: true,
@@ -116,7 +117,7 @@ router.get('/:id', async (req: Request, res: Response) => {
  */
 router.put('/:id', async (req: Request, res: Response) => {
   try {
-    const vendor = await teamService.updateVendor(req.params.id, req.body);
+    const vendor = await ts.updateVendor(req.params.id, req.body);
     
     res.json({
       success: true,
@@ -162,7 +163,7 @@ router.post('/:id/suspend', async (req: Request, res: Response) => {
   try {
     const { reason } = req.body;
     
-    const vendor = await teamService.suspendVendor(req.params.id, reason);
+    const vendor = await ts.suspendVendor(req.params.id, reason);
     
     res.json({
       success: true,
@@ -183,7 +184,7 @@ router.post('/:id/suspend', async (req: Request, res: Response) => {
  */
 router.delete('/:id', async (req: Request, res: Response) => {
   try {
-    await teamService.deleteVendor(req.params.id);
+    await ts.deleteVendor(req.params.id);
     
     res.json({
       success: true,
@@ -238,7 +239,7 @@ router.get('/:id/ratings', async (req: Request, res: Response) => {
   try {
     const { id: vendorId } = req.params;
     
-    const ratings = await teamService.getVendorRatings(vendorId);
+    const ratings = await ts.getVendorRatings(vendorId);
     
     res.json({
       success: true,
@@ -261,7 +262,7 @@ router.get('/:id/ratings/summary', async (req: Request, res: Response) => {
   try {
     const { id: vendorId } = req.params;
     
-    const summary = await teamService.getVendorRatingSummary(vendorId);
+    const summary = await ts.getVendorRatingSummary(vendorId);
     
     res.json({
       success: true,
@@ -289,7 +290,7 @@ router.post('/:id/assignments', async (req: Request, res: Response) => {
     const { id: vendorId } = req.params;
     const userId = (req as any).user?.id || req.body.assignedBy;
     
-    const assignment = await teamService.assignVendorToProject({
+    const assignment = await ts.assignVendorToProject({
       vendorId,
       ...req.body,
       assignedBy: userId,
@@ -316,7 +317,7 @@ router.get('/:id/assignments', async (req: Request, res: Response) => {
   try {
     const { id: vendorId } = req.params;
     
-    const assignments = await teamService.getVendorAssignments(vendorId);
+    const assignments = await ts.getVendorAssignments(vendorId);
     
     res.json({
       success: true,
@@ -339,7 +340,7 @@ router.get('/projects/:projectId/vendors', async (req: Request, res: Response) =
   try {
     const { projectId } = req.params;
     
-    const vendors = await teamService.getProjectVendors(projectId);
+    const vendors = await ts.getProjectVendors(projectId);
     
     res.json({
       success: true,
@@ -362,7 +363,7 @@ router.put('/assignments/:assignmentId', async (req: Request, res: Response) => 
   try {
     const { assignmentId } = req.params;
     
-    const assignment = await teamService.updateVendorAssignment(assignmentId, req.body);
+    const assignment = await ts.updateVendorAssignment(assignmentId, req.body);
     
     res.json({
       success: true,
@@ -385,7 +386,7 @@ router.post('/assignments/:assignmentId/complete', async (req: Request, res: Res
   try {
     const { assignmentId } = req.params;
     
-    const assignment = await teamService.completeVendorAssignment(assignmentId);
+    const assignment = await ts.completeVendorAssignment(assignmentId);
     
     res.json({
       success: true,
@@ -408,7 +409,7 @@ router.delete('/assignments/:assignmentId', async (req: Request, res: Response) 
   try {
     const { assignmentId } = req.params;
     
-    await teamService.removeVendorFromProject(assignmentId);
+    await ts.removeVendorFromProject(assignmentId);
     
     res.json({
       success: true,
@@ -436,7 +437,7 @@ router.put('/:id/compliance', async (req: Request, res: Response) => {
     const { id: vendorId } = req.params;
     const { complianceDocuments } = req.body;
     
-    const vendor = await teamService.updateVendorCompliance(vendorId, complianceDocuments);
+    const vendor = await ts.updateVendorCompliance(vendorId, complianceDocuments);
     
     res.json({
       success: true,
@@ -460,7 +461,7 @@ router.get('/compliance/expiring', async (req: Request, res: Response) => {
     const organizationId = req.query.organizationId as string;
     const daysAhead = parseInt(req.query.daysAhead as string) || 30;
     
-    const vendors = await teamService.getVendorsWithExpiringCompliance(organizationId, daysAhead);
+    const vendors = await ts.getVendorsWithExpiringCompliance(organizationId, daysAhead);
     
     res.json({
       success: true,
@@ -485,7 +486,7 @@ router.get('/compliance/expiring', async (req: Request, res: Response) => {
  */
 router.get('/categories/all', async (_req: Request, res: Response) => {
   try {
-    const categories = await teamService.getVendorCategories();
+    const categories = await ts.getVendorCategories();
     
     res.json({
       success: true,
@@ -510,7 +511,7 @@ router.get('/top-rated', async (req: Request, res: Response) => {
     const category = req.query.category as VendorCategory | undefined;
     const limit = parseInt(req.query.limit as string) || 10;
     
-    const vendors = await teamService.getTopRatedVendors(organizationId, category, limit);
+    const vendors = await ts.getTopRatedVendors(organizationId, category, limit);
     
     res.json({
       success: true,

@@ -13,7 +13,7 @@
  */
 
 import { pool } from '../../../database';
-import { BaseService } from '../../base/BaseService';
+import { BaseService } from '../../../../shared-services/base/BaseService';
 import { eventBus } from '../events/EventBus';
 import {
   ChangeOrder,
@@ -163,7 +163,7 @@ class ChangeRequestServiceImpl extends BaseService {
       // Log history
       await this.logHistory(client, changeOrder.id, 'create', null, 'draft', input.createdBy);
 
-      eventBus.emit('changeOrder.created', {
+      eventBus.emit('changeOrder.created' as any, {
         changeOrderId: changeOrder.id,
         projectId: input.projectId,
         coNumber,
@@ -406,7 +406,7 @@ class ChangeRequestServiceImpl extends BaseService {
       params
     );
 
-    eventBus.emit('changeOrder.updated', {
+    eventBus.emit('changeOrder.updated' as any, {
       changeOrderId: id,
       updatedBy: input.updatedBy,
     });

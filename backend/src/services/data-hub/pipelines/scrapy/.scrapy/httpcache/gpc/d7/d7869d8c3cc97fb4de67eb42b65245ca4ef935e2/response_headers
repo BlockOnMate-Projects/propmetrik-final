@@ -1,0 +1,16 @@
+Date: Tue, 06 Jan 2026 02:35:03 GMT
+Content-Type: text/html; charset=UTF-8
+Report-To: {"group":"cf-nel","max_age":604800,"endpoints":[{"url":"https://a.nel.cloudflare.com/report/v4?s=iT7XuAdwB3aBPf7W3d2xzXr5e86Gw8rRm5xOJbpO9d0G77gRu668QdU02XALAQxDx6SW%2BRZcWf%2FAnGbBEoV4tO15Z6v63jofBcFZG8e2UJ1MwaLm"}]}
+X-Vapor-Base64-Encode: True
+Cache-Control: no-cache, private
+Apigw-Requestid: WvcxxhSmjoEEMUg=
+Set-Cookie: XSRF-TOKEN=eyJpdiI6ImdYL3FLaklTQkczeWRtejFNQkhPa0E9PSIsInZhbHVlIjoiUll2SFFiTmx1bnBRbE1qVllFQmQyLzZSbVJ5VW9xVzd2L0xuVjJMSlFYTUM4elJrZmM3RnJWZTFiZGltZzZMNjArdGhIY0Y3ZE5qUk5LM0ZJdUFSSFVtV0YvVlg3enV2YS9Gc2pPWlZST2NHZ3pLcXA4MHNwQ0tKVEd0SnB1blMiLCJtYWMiOiJmZTFkZjFiN2Q2ODE2NDVkMDUyNjE4YWNjNzZmYjNkZTFkNTBhMTk2ZDI5N2ZhZmI3NzMxMzZjM2Q3YjU5YzE0IiwidGFnIjoiIn0%3D; expires=Tue, 06 Jan 2026 04:35:03 GMT; Max-Age=7200; path=/; secure; samesite=lax
+Set-Cookie: ghana_property_centre_session=eyJpdiI6InJmQ2Jubnh6WDl2UElmQ1p0Sld6RVE9PSIsInZhbHVlIjoiUCtYVlJIazBjcVdSeEVENjAzVlNIOW5HdEIrRE9FOHBrSUZNM2JMeW9Nang4NVhEK1JIUzM1QWJlUU5FSUI2bCtJQ0YxNkxTdndlL1FvZE0vb3R3YTdZR0czclpzWjFnY1V0TGZWS05WSUhRSnpRSHRiTjVwSENjMW4ydFBmMGYiLCJtYWMiOiI4YWRiZGQ3YThkOTM4YzgwMDNmNGVhOWQzNmRkODljZjJmYzc5ZGQwZjIyYjJmMzNkZWM0NjVkY2E1OWM1YTc0IiwidGFnIjoiIn0%3D; expires=Tue, 06 Jan 2026 04:35:03 GMT; Max-Age=7200; path=/; secure; httponly; samesite=lax
+Cf-Cache-Status: DYNAMIC
+Vary: accept-encoding
+Nel: {"report_to":"cf-nel","success_fraction":0.0,"max_age":604800}
+Server-Timing: cfCacheStatus;desc="DYNAMIC"
+Server-Timing: cfEdge;dur=7,cfOrigin;dur=186
+Content-Encoding: gzip
+Server: cloudflare
+Cf-Ray: 9b97d1e3da7c1eda-IAD

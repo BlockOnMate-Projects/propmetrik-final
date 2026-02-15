@@ -12,7 +12,7 @@
  */
 
 import { pool } from '../../../database';
-import { BaseService } from '../BaseService';
+import { BaseService } from '../../../../shared-services/base/BaseService';
 import { eventBus } from '../events';
 import {
   Rfi,
@@ -79,15 +79,11 @@ class RfiWorkflowService extends BaseService {
       const rfi = mapRowToRfi(result.rows[0]);
 
       // Emit event
-      eventBus.emit({
-        type: 'rfi.submitted',
-        payload: {
-          rfiId: id,
-          rfiNumber: rfi.rfiNumber,
-          projectId: rfi.projectId,
-          submittedBy: userId
-        },
-        timestamp: new Date()
+      eventBus.emit('rfi.submitted' as any, {
+        rfiId: id,
+        rfiNumber: rfi.rfiNumber,
+        projectId: rfi.projectId,
+        submittedBy: userId
       });
 
       this.log('info', `RFI submitted: ${rfi.rfiNumber}`);
@@ -139,16 +135,12 @@ class RfiWorkflowService extends BaseService {
       const rfi = mapRowToRfi(result.rows[0]);
 
       // Emit event
-      eventBus.emit({
-        type: 'rfi.assigned',
-        payload: {
-          rfiId: id,
-          rfiNumber: rfi.rfiNumber,
-          projectId: rfi.projectId,
-          assignedTo: assigneeId,
-          assignedBy
-        },
-        timestamp: new Date()
+      eventBus.emit('rfi.assigned' as any, {
+        rfiId: id,
+        rfiNumber: rfi.rfiNumber,
+        projectId: rfi.projectId,
+        assignedTo: assigneeId,
+        assignedBy
       });
 
       this.log('info', `RFI assigned: ${rfi.rfiNumber} to ${assigneeId}`);
@@ -239,17 +231,13 @@ class RfiWorkflowService extends BaseService {
       const rfi = mapRowToRfi(result.rows[0]);
 
       // Emit event
-      eventBus.emit({
-        type: 'rfi.responded',
-        payload: {
-          rfiId: id,
-          rfiNumber: rfi.rfiNumber,
-          projectId: rfi.projectId,
-          answeredBy: input.answeredBy,
-          costImpact: input.costImpact,
-          scheduleImpactDays: input.scheduleImpactDays
-        },
-        timestamp: new Date()
+      eventBus.emit('rfi.responded' as any, {
+        rfiId: id,
+        rfiNumber: rfi.rfiNumber,
+        projectId: rfi.projectId,
+        answeredBy: input.answeredBy,
+        costImpact: input.costImpact,
+        scheduleImpactDays: input.scheduleImpactDays
       });
 
       this.log('info', `RFI responded: ${rfi.rfiNumber}`);
@@ -291,15 +279,11 @@ class RfiWorkflowService extends BaseService {
       const rfi = mapRowToRfi(result.rows[0]);
 
       // Emit event
-      eventBus.emit({
-        type: 'rfi.closed',
-        payload: {
-          rfiId: id,
-          rfiNumber: rfi.rfiNumber,
-          projectId: rfi.projectId,
-          closedBy: userId
-        },
-        timestamp: new Date()
+      eventBus.emit('rfi.closed' as any, {
+        rfiId: id,
+        rfiNumber: rfi.rfiNumber,
+        projectId: rfi.projectId,
+        closedBy: userId
       });
 
       this.log('info', `RFI closed: ${rfi.rfiNumber}`);
@@ -375,16 +359,12 @@ class RfiWorkflowService extends BaseService {
       const rfi = mapRowToRfi(result.rows[0]);
 
       // Emit event
-      eventBus.emit({
-        type: 'rfi.reopened',
-        payload: {
-          rfiId: id,
-          rfiNumber: rfi.rfiNumber,
-          projectId: rfi.projectId,
-          reopenedBy: userId,
-          reason
-        },
-        timestamp: new Date()
+      eventBus.emit('rfi.reopened' as any, {
+        rfiId: id,
+        rfiNumber: rfi.rfiNumber,
+        projectId: rfi.projectId,
+        reopenedBy: userId,
+        reason
       });
 
       this.log('info', `RFI reopened: ${rfi.rfiNumber}`);

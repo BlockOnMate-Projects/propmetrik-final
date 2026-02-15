@@ -1,0 +1,23 @@
+Content-Type: text/html; charset=utf-8
+Access-Control-Allow-Origin: *
+Content-Encoding: gzip
+Content-Language: en
+Date: Tue, 06 Jan 2026 02:07:33 GMT
+Etag: "3a858-35DOpHcwg7rJd5yOMrci2vkOzqU"
+Server: nginx
+Vary: Accept-Encoding
+X-Content-Type-Options: nosniff
+X-Frame-Options: DENY
+X-Powered-By: Next.js
+X-Xss-Protection: 1
+Set-Cookie: split=n; Max-Age=1209600; Path=/
+Set-Cookie: split_tcv=200; Max-Age=1209600; Path=/
+Set-Cookie: __vst=9b4df65a-58e8-4bed-acb2-cfd502dd86fc; Max-Age=31536000; Path=/
+Set-Cookie: __bot=false; Max-Age=31536000; Path=/
+Via: 1.1 36b04143ac1626bb30bb225fb2cccb1e.cloudfront.net (CloudFront)
+Alt-Svc: h3=":443"; ma=86400
+Referrer-Policy: strict-origin-when-cross-origin
+Strict-Transport-Security: max-age=31536000
+X-Cache: Miss from cloudfront
+X-Amz-Cf-Pop: IAD12-P3
+X-Amz-Cf-Id: fdRj-wyP1io5kg4791NH-p4bZYXU3yOMy4sHmRMcNgw-cxEUYxajug==

@@ -1,300 +1,393 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import PortalShell, { usePortal } from '@/components/portal/PortalShell';
 import {
-  getTenantProfile,
   getPaymentSummary,
   getMaintenanceRequests,
-  getSessionToken,
-  TenantProfile,
   PaymentSummary,
   MaintenanceRequest
 } from '@/lib/api';
+import {
+  CreditCard,
+  Wrench,
+  FileText,
+  User,
+  Calendar,
+  TrendingUp,
+  ArrowRight,
+  AlertCircle,
+  CheckCircle2,
+  Clock,
+  ChevronRight,
+  Zap,
+  RefreshCw,
+} from 'lucide-react';
 
-export default function TenantDashboard() {
-  const router = useRouter();
-  const [profile, setProfile] = useState<TenantProfile | null>(null);
+function DashboardContent() {
+  const { profile, activeTenancy } = usePortal();
   const [paymentSummary, setPaymentSummary] = useState<PaymentSummary | null>(null);
   const [maintenanceRequests, setMaintenanceRequests] = useState<MaintenanceRequest[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const token = getSessionToken();
-    if (!token) {
-      router.push('/login');
-      return;
-    }
+    if (!activeTenancy) { setLoading(false); return; }
 
-    async function loadDashboard() {
-      try {
-        const profileData = await getTenantProfile();
-        setProfile(profileData);
+    Promise.all([
+      getPaymentSummary(activeTenancy.id).catch(() => null),
+      getMaintenanceRequests(activeTenancy.id).catch(() => []),
+    ]).then(([summary, requests]) => {
+      setPaymentSummary(summary);
+      setMaintenanceRequests(requests);
+    }).finally(() => setLoading(false));
+  }, [activeTenancy]);
 
-        // Load data for first active tenancy
-        const activeTenancy = profileData.tenancies.find(t => t.status === 'active');
-        if (activeTenancy) {
-          const [summary, requests] = await Promise.all([
-            getPaymentSummary(activeTenancy.id),
-            getMaintenanceRequests(activeTenancy.id)
-          ]);
-          setPaymentSummary(summary);
-          setMaintenanceRequests(requests);
-        }
-      } catch (err: any) {
-        setError(err.message);
-        if (err.message === 'Session expired') {
-          router.push('/login');
-        }
-      } finally {
-        setLoading(false);
-      }
-    }
-
-    loadDashboard();
-  }, [router]);
-
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="text-center">
-          <p className="text-red-600 mb-4">{error}</p>
-          <button
-            onClick={() => router.push('/login')}
-            className="text-blue-600 hover:underline"
-          >
-            Return to login
-          </button>
-        </div>
-      </div>
-    );
-  }
-
-  const activeTenancy = profile?.tenancies.find(t => t.status === 'active');
   const openRequests = maintenanceRequests.filter(r => r.status !== 'completed' && r.status !== 'cancelled');
+  const highPriority = openRequests.filter(r => r.priority === 'high' || r.priority === 'emergency');
+  const firstName = profile.fullName?.split(' ')[0] || 'Tenant';
+
+  // Lease progress calculation
+  const leaseProgress = activeTenancy ? (() => {
+    const start = new Date(activeTenancy.startDate).getTime();
+    const end = new Date(activeTenancy.endDate).getTime();
+    const now = Date.now();
+    return Math.min(100, Math.max(0, ((now - start) / (end - start)) * 100));
+  })() : 0;
+
+  const daysRemaining = activeTenancy
+    ? Math.max(0, Math.ceil((new Date(activeTenancy.endDate).getTime() - Date.now()) / (1000 * 60 * 60 * 24)))
+    : 0;
+
+  // Next payment countdown
+  const nextPaymentDays = paymentSummary?.nextPaymentDue
+    ? Math.max(0, Math.ceil((new Date(paymentSummary.nextPaymentDue.dueDate).getTime() - Date.now()) / (1000 * 60 * 60 * 24)))
+    : null;
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <header className="bg-white shadow">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-          <div className="flex justify-between items-center">
-            <h1 className="text-2xl font-bold text-gray-900">Tenant Portal</h1>
-            <div className="flex items-center gap-4">
-              <span className="text-gray-600">{profile?.fullName}</span>
-              <Link
-                href="/profile"
-                className="text-sm text-blue-600 hover:underline"
-              >
-                Profile
-              </Link>
+    <div className="space-y-6 lg:space-y-8 animate-fade-in">
+      {/* ── Welcome Section ── */}
+      <div>
+        <h2 className="text-2xl lg:text-3xl font-bold text-gray-900">
+          Welcome back, {firstName}!
+        </h2>
+        {activeTenancy && (
+          <p className="text-gray-500 mt-1">
+            {activeTenancy.propertyTitle} • {activeTenancy.propertyAddress}
+          </p>
+        )}
+      </div>
+
+      {/* ── Stat Cards (Bento Grid) ── */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-6">
+        {/* Outstanding Balance */}
+        <div className="bg-white rounded-2xl border border-gray-100 p-5 shadow-sm hover:shadow-md transition-shadow">
+          <div className="flex items-center justify-between mb-3">
+            <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Balance</span>
+            <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${
+              (paymentSummary?.totalOutstanding || 0) > 0 ? 'bg-red-50' : 'bg-emerald-50'
+            }`}>
+              <TrendingUp className={`w-4 h-4 ${
+                (paymentSummary?.totalOutstanding || 0) > 0 ? 'text-red-500' : 'text-emerald-500'
+              }`} />
             </div>
           </div>
-        </div>
-      </header>
-
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Welcome Section */}
-        <div className="mb-8">
-          <h2 className="text-xl font-semibold text-gray-900">
-            Welcome back, {profile?.fullName?.split(' ')[0]}!
-          </h2>
-          {activeTenancy && (
-            <p className="text-gray-600 mt-1">
-              {activeTenancy.propertyTitle} • {activeTenancy.propertyAddress}
+          <p className={`text-2xl lg:text-3xl font-bold ${
+            (paymentSummary?.totalOutstanding || 0) > 0 ? 'text-red-600' : 'text-emerald-600'
+          }`}>
+            {paymentSummary?.currency || 'GHS'} {(paymentSummary?.totalOutstanding || 0).toLocaleString()}
+          </p>
+          {paymentSummary?.overdueSchedules && paymentSummary.overdueSchedules > 0 ? (
+            <p className="text-xs text-red-500 mt-1 flex items-center gap-1">
+              <AlertCircle className="w-3 h-3" /> {paymentSummary.overdueSchedules} overdue
+            </p>
+          ) : (
+            <p className="text-xs text-emerald-600 mt-1 flex items-center gap-1">
+              <CheckCircle2 className="w-3 h-3" /> All clear
             </p>
           )}
+          <Link href="/payments" className="text-xs text-cyan-600 hover:text-cyan-700 font-medium mt-3 inline-flex items-center gap-1">
+            View details <ChevronRight className="w-3 h-3" />
+          </Link>
         </div>
 
-        {/* Quick Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-          {/* Payment Status */}
-          <div className="bg-white rounded-lg shadow p-6">
-            <h3 className="text-sm font-medium text-gray-500 uppercase tracking-wider">
-              Outstanding Balance
-            </h3>
-            <p className={`text-3xl font-bold mt-2 ${
-              (paymentSummary?.totalOutstanding || 0) > 0 ? 'text-red-600' : 'text-green-600'
-            }`}>
-              {paymentSummary?.currency || 'GHS'} {(paymentSummary?.totalOutstanding || 0).toLocaleString()}
-            </p>
-            {paymentSummary?.overdueSchedules && paymentSummary.overdueSchedules > 0 && (
-              <p className="text-sm text-red-500 mt-1">
-                {paymentSummary.overdueSchedules} overdue payment(s)
-              </p>
-            )}
-            <Link
-              href="/payments"
-              className="text-blue-600 text-sm hover:underline mt-4 inline-block"
-            >
-              View payment details →
-            </Link>
-          </div>
-
-          {/* Next Payment */}
-          <div className="bg-white rounded-lg shadow p-6">
-            <h3 className="text-sm font-medium text-gray-500 uppercase tracking-wider">
-              Next Payment Due
-            </h3>
-            {paymentSummary?.nextPaymentDue ? (
-              <>
-                <p className="text-3xl font-bold mt-2 text-gray-900">
-                  {paymentSummary.currency} {paymentSummary.nextPaymentDue.amount.toLocaleString()}
-                </p>
-                <p className="text-sm text-gray-500 mt-1">
-                  Due: {new Date(paymentSummary.nextPaymentDue.dueDate).toLocaleDateString()}
-                </p>
-              </>
-            ) : (
-              <p className="text-gray-500 mt-2">No upcoming payments</p>
-            )}
-            <Link
-              href="/payments/make"
-              className="text-blue-600 text-sm hover:underline mt-4 inline-block"
-            >
-              Make a payment →
-            </Link>
-          </div>
-
-          {/* Maintenance Requests */}
-          <div className="bg-white rounded-lg shadow p-6">
-            <h3 className="text-sm font-medium text-gray-500 uppercase tracking-wider">
-              Open Maintenance Requests
-            </h3>
-            <p className="text-3xl font-bold mt-2 text-gray-900">
-              {openRequests.length}
-            </p>
-            <p className="text-sm text-gray-500 mt-1">
-              {openRequests.filter(r => r.priority === 'high' || r.priority === 'emergency').length} high priority
-            </p>
-            <Link
-              href="/maintenance"
-              className="text-blue-600 text-sm hover:underline mt-4 inline-block"
-            >
-              View requests →
-            </Link>
-          </div>
-        </div>
-
-        {/* Quick Actions */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-          <div className="bg-white rounded-lg shadow p-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Quick Actions</h3>
-            <div className="grid grid-cols-2 gap-4">
-              <Link
-                href="/payments/make"
-                className="flex items-center justify-center p-4 bg-blue-50 rounded-lg hover:bg-blue-100 transition-colors"
-              >
-                <div className="text-center">
-                  <svg className="w-8 h-8 mx-auto text-blue-600 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
-                  </svg>
-                  <span className="text-sm font-medium text-gray-900">Pay Rent</span>
-                </div>
-              </Link>
-              
-              <Link
-                href="/maintenance/new"
-                className="flex items-center justify-center p-4 bg-green-50 rounded-lg hover:bg-green-100 transition-colors"
-              >
-                <div className="text-center">
-                  <svg className="w-8 h-8 mx-auto text-green-600 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                  </svg>
-                  <span className="text-sm font-medium text-gray-900">Report Issue</span>
-                </div>
-              </Link>
-              
-              <Link
-                href="/documents"
-                className="flex items-center justify-center p-4 bg-purple-50 rounded-lg hover:bg-purple-100 transition-colors"
-              >
-                <div className="text-center">
-                  <svg className="w-8 h-8 mx-auto text-purple-600 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                  </svg>
-                  <span className="text-sm font-medium text-gray-900">Documents</span>
-                </div>
-              </Link>
-              
-              <Link
-                href="/profile"
-                className="flex items-center justify-center p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
-              >
-                <div className="text-center">
-                  <svg className="w-8 h-8 mx-auto text-gray-600 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                  </svg>
-                  <span className="text-sm font-medium text-gray-900">My Profile</span>
-                </div>
-              </Link>
+        {/* Next Payment */}
+        <div className="bg-white rounded-2xl border border-gray-100 p-5 shadow-sm hover:shadow-md transition-shadow">
+          <div className="flex items-center justify-between mb-3">
+            <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Next Due</span>
+            <div className="w-8 h-8 rounded-lg bg-amber-50 flex items-center justify-center">
+              <Calendar className="w-4 h-4 text-amber-500" />
             </div>
           </div>
+          {paymentSummary?.nextPaymentDue ? (
+            <>
+              <p className="text-2xl lg:text-3xl font-bold text-gray-900">
+                {paymentSummary.currency} {paymentSummary.nextPaymentDue.amount.toLocaleString()}
+              </p>
+              <p className="text-xs text-gray-500 mt-1">
+                {nextPaymentDays !== null && nextPaymentDays <= 7 ? (
+                  <span className="text-amber-600 font-medium">
+                    <Clock className="w-3 h-3 inline" /> in {nextPaymentDays} days
+                  </span>
+                ) : (
+                  new Date(paymentSummary.nextPaymentDue.dueDate).toLocaleDateString('en-GB', { month: 'short', day: 'numeric', year: 'numeric' })
+                )}
+              </p>
+            </>
+          ) : (
+            <>
+              <p className="text-lg font-medium text-gray-400 mt-1">No upcoming</p>
+              <p className="text-xs text-gray-400">payments</p>
+            </>
+          )}
+          <Link href="/payments" className="text-xs text-cyan-600 hover:text-cyan-700 font-medium mt-3 inline-flex items-center gap-1">
+            Make payment <ChevronRight className="w-3 h-3" />
+          </Link>
+        </div>
 
-          {/* Recent Activity */}
-          <div className="bg-white rounded-lg shadow p-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Recent Maintenance</h3>
-            {maintenanceRequests.length > 0 ? (
-              <div className="space-y-3">
-                {maintenanceRequests.slice(0, 3).map((request) => (
-                  <div key={request.id} className="flex items-center justify-between py-2 border-b last:border-0">
-                    <div>
-                      <p className="font-medium text-gray-900">{request.title}</p>
-                      <p className="text-sm text-gray-500">{request.category}</p>
+        {/* Maintenance */}
+        <div className="bg-white rounded-2xl border border-gray-100 p-5 shadow-sm hover:shadow-md transition-shadow">
+          <div className="flex items-center justify-between mb-3">
+            <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Maintenance</span>
+            <div className="w-8 h-8 rounded-lg bg-cyan-50 flex items-center justify-center">
+              <Wrench className="w-4 h-4 text-cyan-500" />
+            </div>
+          </div>
+          <p className="text-2xl lg:text-3xl font-bold text-gray-900">{openRequests.length}</p>
+          <p className="text-xs text-gray-500 mt-1">
+            {highPriority.length > 0 ? (
+              <span className="text-orange-600 font-medium">{highPriority.length} high priority</span>
+            ) : (
+              'open requests'
+            )}
+          </p>
+          <Link href="/maintenance" className="text-xs text-cyan-600 hover:text-cyan-700 font-medium mt-3 inline-flex items-center gap-1">
+            View requests <ChevronRight className="w-3 h-3" />
+          </Link>
+        </div>
+
+        {/* Lease Status */}
+        <div className="bg-white rounded-2xl border border-gray-100 p-5 shadow-sm hover:shadow-md transition-shadow">
+          <div className="flex items-center justify-between mb-3">
+            <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Lease</span>
+            <div className="w-8 h-8 rounded-lg bg-purple-50 flex items-center justify-center">
+              <FileText className="w-4 h-4 text-purple-500" />
+            </div>
+          </div>
+          {activeTenancy ? (
+            <>
+              <p className="text-lg font-bold text-gray-900">
+                {daysRemaining > 0 ? `${daysRemaining} days` : 'Expired'}
+              </p>
+              <div className="mt-2">
+                <div className="w-full bg-gray-100 rounded-full h-1.5">
+                  <div
+                    className={`h-1.5 rounded-full transition-all ${
+                      leaseProgress > 85 ? 'bg-amber-500' : 'bg-cyan-500'
+                    }`}
+                    style={{ width: `${leaseProgress}%` }}
+                  />
+                </div>
+                <p className="text-[10px] text-gray-400 mt-1">
+                  {Math.round(leaseProgress)}% elapsed
+                </p>
+              </div>
+            </>
+          ) : (
+            <p className="text-lg font-medium text-gray-400">No active lease</p>
+          )}
+          <Link href="/documents" className="text-xs text-cyan-600 hover:text-cyan-700 font-medium mt-2 inline-flex items-center gap-1">
+            View lease <ChevronRight className="w-3 h-3" />
+          </Link>
+        </div>
+      </div>
+
+      {/* ── Quick Actions ── */}
+      <div>
+        <h3 className="text-lg font-semibold text-gray-900 mb-4">Quick Actions</h3>
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 lg:gap-4">
+          {[
+            { href: '/payments', label: 'Pay Rent', icon: CreditCard, gradient: 'from-cyan-500 to-cyan-600', bgLight: 'bg-cyan-50' },
+            { href: '/maintenance/new', label: 'Report Issue', icon: Wrench, gradient: 'from-emerald-500 to-emerald-600', bgLight: 'bg-emerald-50' },
+            { href: '/documents', label: 'Documents', icon: FileText, gradient: 'from-purple-500 to-purple-600', bgLight: 'bg-purple-50' },
+            { href: '/payments', label: 'Auto-Pay', icon: RefreshCw, gradient: 'from-amber-500 to-amber-600', bgLight: 'bg-amber-50', hash: '#autopay' },
+            { href: '/messages', label: 'Messages', icon: Zap, gradient: 'from-blue-500 to-blue-600', bgLight: 'bg-blue-50' },
+            { href: '/profile', label: 'My Profile', icon: User, gradient: 'from-gray-500 to-gray-600', bgLight: 'bg-gray-50' },
+          ].map((action) => (
+            <Link
+              key={action.label}
+              href={action.href}
+              className="group flex flex-col items-center justify-center p-4 lg:p-5 bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200"
+            >
+              <div className={`w-11 h-11 rounded-xl bg-gradient-to-br ${action.gradient} flex items-center justify-center mb-2.5 group-hover:scale-110 transition-transform`}>
+                <action.icon className="w-5 h-5 text-white" />
+              </div>
+              <span className="text-xs font-medium text-gray-700">{action.label}</span>
+            </Link>
+          ))}
+        </div>
+      </div>
+
+      {/* ── Two Column: Activity + Maintenance ── */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Recent Activity */}
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+          <div className="px-6 py-4 border-b border-gray-50 flex items-center justify-between">
+            <h3 className="font-semibold text-gray-900">Recent Activity</h3>
+            <Link href="/payments" className="text-xs text-cyan-600 hover:underline font-medium">View all</Link>
+          </div>
+          <div className="divide-y divide-gray-50">
+            {loading ? (
+              <div className="p-6 space-y-4">
+                {[...Array(3)].map((_, i) => (
+                  <div key={i} className="flex items-center gap-3">
+                    <div className="skeleton w-10 h-10 rounded-full" />
+                    <div className="flex-1">
+                      <div className="skeleton h-4 w-3/4 rounded" />
+                      <div className="skeleton h-3 w-1/2 rounded mt-2" />
                     </div>
-                    <span className={`px-2 py-1 text-xs rounded-full ${
-                      request.status === 'completed' ? 'bg-green-100 text-green-800' :
-                      request.status === 'in_progress' ? 'bg-blue-100 text-blue-800' :
-                      request.status === 'assigned' ? 'bg-yellow-100 text-yellow-800' :
-                      'bg-gray-100 text-gray-800'
-                    }`}>
-                      {request.status.replace('_', ' ')}
-                    </span>
                   </div>
                 ))}
               </div>
             ) : (
-              <p className="text-gray-500 text-center py-4">No maintenance requests</p>
+              <>
+                {/* Payment activity */}
+                {paymentSummary && paymentSummary.totalPaid > 0 && (
+                  <div className="px-6 py-3.5 flex items-center gap-3.5">
+                    <div className="w-9 h-9 rounded-full bg-emerald-50 flex items-center justify-center">
+                      <CheckCircle2 className="w-4 h-4 text-emerald-500" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-gray-900">Rent payment received</p>
+                      <p className="text-xs text-gray-500">{paymentSummary.currency} {paymentSummary.totalPaid.toLocaleString()} total paid</p>
+                    </div>
+                    <span className="text-xs text-gray-400">Recent</span>
+                  </div>
+                )}
+                {/* Maintenance activity */}
+                {maintenanceRequests.slice(0, 3).map(req => (
+                  <Link key={req.id} href={`/maintenance/${req.id}`} className="px-6 py-3.5 flex items-center gap-3.5 hover:bg-gray-50 transition-colors">
+                    <div className={`w-9 h-9 rounded-full flex items-center justify-center ${
+                      req.status === 'completed' ? 'bg-emerald-50' :
+                      req.status === 'in_progress' ? 'bg-blue-50' :
+                      'bg-amber-50'
+                    }`}>
+                      <Wrench className={`w-4 h-4 ${
+                        req.status === 'completed' ? 'text-emerald-500' :
+                        req.status === 'in_progress' ? 'text-blue-500' :
+                        'text-amber-500'
+                      }`} />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-gray-900 truncate">{req.title}</p>
+                      <p className="text-xs text-gray-500 capitalize">{req.status.replace('_', ' ')} • {req.category}</p>
+                    </div>
+                    <ChevronRight className="w-4 h-4 text-gray-300" />
+                  </Link>
+                ))}
+                {maintenanceRequests.length === 0 && !paymentSummary?.totalPaid && (
+                  <div className="py-12 text-center">
+                    <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-3">
+                      <Clock className="w-5 h-5 text-gray-400" />
+                    </div>
+                    <p className="text-sm text-gray-500">No recent activity</p>
+                    <p className="text-xs text-gray-400 mt-1">Your activity will appear here</p>
+                  </div>
+                )}
+              </>
             )}
           </div>
         </div>
 
-        {/* Lease Info */}
-        {activeTenancy && (
-          <div className="bg-white rounded-lg shadow p-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Your Lease</h3>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <div>
-                <p className="text-sm text-gray-500">Property</p>
-                <p className="font-medium">{activeTenancy.propertyTitle}</p>
+        {/* Recent Maintenance */}
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+          <div className="px-6 py-4 border-b border-gray-50 flex items-center justify-between">
+            <h3 className="font-semibold text-gray-900">Maintenance Requests</h3>
+            <Link href="/maintenance" className="text-xs text-cyan-600 hover:underline font-medium">View all</Link>
+          </div>
+          <div className="divide-y divide-gray-50">
+            {loading ? (
+              <div className="p-6 space-y-4">
+                {[...Array(3)].map((_, i) => (
+                  <div key={i} className="skeleton h-16 rounded-xl" />
+                ))}
               </div>
-              <div>
-                <p className="text-sm text-gray-500">Monthly Rent</p>
-                <p className="font-medium">{activeTenancy.rentCurrency} {activeTenancy.rentAmount.toLocaleString()}</p>
+            ) : maintenanceRequests.length > 0 ? (
+              maintenanceRequests.slice(0, 4).map(req => (
+                <Link key={req.id} href={`/maintenance/${req.id}`} className="px-6 py-3.5 flex items-center gap-3.5 hover:bg-gray-50 transition-colors">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-gray-900 truncate">{req.title}</p>
+                    <p className="text-xs text-gray-500">{req.category} • {new Date(req.createdAt).toLocaleDateString()}</p>
+                  </div>
+                  <span className={`px-2.5 py-1 rounded-full text-[10px] font-semibold uppercase tracking-wider ${
+                    req.status === 'completed' ? 'bg-emerald-50 text-emerald-700' :
+                    req.status === 'in_progress' ? 'bg-blue-50 text-blue-700' :
+                    req.status === 'assigned' ? 'bg-amber-50 text-amber-700' :
+                    'bg-gray-100 text-gray-600'
+                  }`}>
+                    {req.status.replace('_', ' ')}
+                  </span>
+                </Link>
+              ))
+            ) : (
+              <div className="py-12 text-center">
+                <div className="w-12 h-12 bg-emerald-50 rounded-full flex items-center justify-center mx-auto mb-3">
+                  <CheckCircle2 className="w-5 h-5 text-emerald-400" />
+                </div>
+                <p className="text-sm font-medium text-gray-700">All good!</p>
+                <p className="text-xs text-gray-400 mt-1">No active maintenance requests</p>
+                <Link href="/maintenance/new" className="inline-flex items-center gap-1.5 mt-3 text-xs font-medium text-cyan-600 hover:text-cyan-700">
+                  Submit a request <ArrowRight className="w-3 h-3" />
+                </Link>
               </div>
-              <div>
-                <p className="text-sm text-gray-500">Lease Start</p>
-                <p className="font-medium">{new Date(activeTenancy.startDate).toLocaleDateString()}</p>
-              </div>
-              <div>
-                <p className="text-sm text-gray-500">Lease End</p>
-                <p className="font-medium">{new Date(activeTenancy.endDate).toLocaleDateString()}</p>
-              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* ── Lease Info Bar ── */}
+      {activeTenancy && (
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="font-semibold text-gray-900">Your Lease</h3>
+            <Link href="/documents" className="text-xs text-cyan-600 hover:underline font-medium inline-flex items-center gap-1">
+              View full lease <ChevronRight className="w-3 h-3" />
+            </Link>
+          </div>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+            <div>
+              <p className="text-xs font-medium text-gray-500 uppercase tracking-wider">Property</p>
+              <p className="text-sm font-semibold text-gray-900 mt-1">{activeTenancy.propertyTitle}</p>
+            </div>
+            <div>
+              <p className="text-xs font-medium text-gray-500 uppercase tracking-wider">Monthly Rent</p>
+              <p className="text-sm font-semibold text-gray-900 mt-1">
+                {activeTenancy.rentCurrency} {activeTenancy.rentAmount.toLocaleString()}
+              </p>
+            </div>
+            <div>
+              <p className="text-xs font-medium text-gray-500 uppercase tracking-wider">Lease Start</p>
+              <p className="text-sm font-semibold text-gray-900 mt-1">
+                {new Date(activeTenancy.startDate).toLocaleDateString('en-GB', { month: 'short', day: 'numeric', year: 'numeric' })}
+              </p>
+            </div>
+            <div>
+              <p className="text-xs font-medium text-gray-500 uppercase tracking-wider">Lease End</p>
+              <p className="text-sm font-semibold text-gray-900 mt-1">
+                {new Date(activeTenancy.endDate).toLocaleDateString('en-GB', { month: 'short', day: 'numeric', year: 'numeric' })}
+              </p>
             </div>
           </div>
-        )}
-      </main>
+        </div>
+      )}
     </div>
+  );
+}
+
+export default function DashboardPage() {
+  return (
+    <PortalShell>
+      <DashboardContent />
+    </PortalShell>
   );
 }

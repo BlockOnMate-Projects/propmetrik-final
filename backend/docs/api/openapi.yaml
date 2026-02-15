@@ -1,8 +1,8 @@
 openapi: 3.0.3
 info:
-  title: PropMetrik Construction Management API
+  title: PROPMETRIK Construction Management API
   description: |
-    PropMetrik is a comprehensive construction project management platform designed for the Ghana market.
+    PROPMETRIK is a comprehensive construction project management platform designed for the Ghana market.
     
     ## Features
     - **Project Management**: Create, track, and manage construction projects
@@ -22,7 +22,7 @@ info:
     
   version: 1.0.0
   contact:
-    name: PropMetrik Support
+    name: PROPMETRIK Support
     email: support@propmetrik.com
     url: https://propmetrik.com/support
   license:

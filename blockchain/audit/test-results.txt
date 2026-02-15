@@ -1,0 +1,82 @@
+
+  PropMetrikPayments
+    Deployment
+      ✔ should set USDT address as immutable
+      ✔ should set PropMetrik wallet
+      ✔ should set owner
+      ✔ should initialize RENT fee config (100 bps, $1.65 min)
+      ✔ should initialize DEAL fee config (25 bps, no min)
+      ✔ should initialize PROJECT fee config (25 bps, no min)
+      ✔ should revert if USDT address is zero
+      ✔ should revert if platform wallet is zero
+    Fee Calculation
+      ✔ RENT: 1% when percentage > minimum ($1.65)
+      ✔ RENT: uses minimum $1.65 when 1% < minimum
+      ✔ RENT: exact boundary — $165 rent -> 1% = $1.65 = minimum
+      ✔ DEAL: 0.25% of principal, no minimum
+      ✔ PROJECT: 0.25% of principal, no minimum
+      ✔ DEAL: small amount $10 -> fee = $0.025
+      ✔ RENT: large amount $50,000 -> 1% = $500
+      ✔ should revert for disabled payment type
+    Payment Processing
+      ✔ RENT: happy path — splits principal to recipient, fee to platform
+      ✔ DEAL: happy path — 0.25% fee
+      ✔ PROJECT: happy path — 0.25% fee
+      ✔ should update recipient analytics
+      ✔ should mark reference as processed
+      ✔ should include metadata in calldata (not stored, but accessible)
+      ✔ should revert on zero amount
+      ✔ should revert for unregistered recipient
+      ✔ should revert for inactive recipient
+      ✔ should revert for disabled payment type
+      ✔ should revert on duplicate reference (double-spend prevention)
+      ✔ should revert on insufficient USDT allowance
+      ✔ should revert on insufficient USDT balance
+      ✔ should revert when contract is paused
+    Admin Functions
+      Fee Configuration
+        ✔ should update fee config
+        ✔ should revert if basis points > 10000
+        ✔ should toggle payment type enabled
+      Recipient Management
+        ✔ should register a new recipient
+        ✔ should revert on duplicate registration
+        ✔ should revert on zero-address wallet
+        ✔ should deactivate a recipient
+        ✔ should revert deactivating non-registered entity
+        ✔ should revert deactivating already deactivated
+        ✔ should reactivate a deactivated recipient
+        ✔ should update recipient wallet
+        ✔ should revert wallet update to same address
+        ✔ should revert wallet update for non-registered entity
+      PropMetrik Wallet
+        ✔ should update platform wallet
+        ✔ should revert on zero address
+        ✔ should revert on same address
+      Pause / Unpause
+        ✔ should pause and unpause
+        ✔ should allow payments after unpause
+    Access Control
+      ✔ should revert unauthorized fee update
+      ✔ should revert unauthorized recipient registration
+      ✔ should revert unauthorized deactivation
+      ✔ should revert unauthorized wallet update
+      ✔ should revert unauthorized pause
+      ✔ should revert unauthorized platform wallet update
+      ✔ Ownable2Step: pending owner must accept
+    Multi-Payment Scenarios
+      ✔ should process multiple payments and track analytics correctly
+      ✔ should handle payments to multiple recipients
+    Gas Usage
+    Gas used (RENT payment): 134934
+      ✔ RENT payment should cost < 150k gas
+    Gas used (DEAL payment): 134888
+      ✔ DEAL payment should cost < 150k gas
+    View Functions
+      ✔ getRecipientWallet returns correct address
+      ✔ getRecipientWallet returns zero for unregistered
+      ✔ isReferenceProcessed returns false for new reference
+
+
+  62 passing (700ms)
+

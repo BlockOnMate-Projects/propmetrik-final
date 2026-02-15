@@ -103,6 +103,11 @@
   color: #1e40af;
 }
 
+.role-badge.signed {
+  background: #d1fae5;
+  color: #065f46;
+}
+
 .role-badge.cc {
   background: #e0e0e0;
   color: #666;

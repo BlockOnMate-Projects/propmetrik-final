@@ -58,7 +58,7 @@ describe('MobileDashboard', () => {
 
   it('renders the dashboard header', async () => {
     await renderWithAct(<MobileDashboard />)
-    expect(screen.getByText('PropMetrik')).toBeInTheDocument()
+    expect(screen.getByText('PROPMETRIK')).toBeInTheDocument()
     expect(screen.getByText('Construction Management')).toBeInTheDocument()
   })
 

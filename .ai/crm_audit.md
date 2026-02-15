@@ -25,7 +25,7 @@ The backend services (`dealService.ts`, `pipelineService.ts`, `contactService.ts
 The frontend code for `DealsPage` and `NewDealPage` exists and is fully functional. The implementation is clean and React-standard.
 
 **The Issue**: The UI Design.
-*   **Aesthetic**: It rigidly adheres to the "Bloomberg Terminal" look of PropMetrik:
+*   **Aesthetic**: It rigidly adheres to the "Bloomberg Terminal" look of PROPMETRIK:
     *   **Font**: `font-mono` (Monospace) used everywhere. This is great for Traders/Quants, but **fatiguing** for Sales Agents.
     *   **Colors**: High contrast `text-amber-500` on `bg-zinc-900`. "Dark Mode Only".
     *   **Density**: High information density (borders, tight padding).

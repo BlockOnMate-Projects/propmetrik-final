@@ -228,7 +228,7 @@ export default function ResearchPage() {
                             Get Full Access to Our Research
                         </h2>
                         <p className="text-xl text-zinc-400 mb-8">
-                            Subscribe to PropMetrik Market Intelligence for unlimited access to all reports, custom research, and real-time market data.
+                            Subscribe to PROPMETRIK Market Intelligence for unlimited access to all reports, custom research, and real-time market data.
                         </p>
                         <div className="flex flex-col sm:flex-row gap-4 justify-center">
                             <Link href="/services/market-intelligence">

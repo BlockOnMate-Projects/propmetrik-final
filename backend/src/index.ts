@@ -50,10 +50,20 @@ import procurementRoutes from './routes/procurement';
 import siteDiaryRoutes from './routes/siteDiaries';
 import governanceRoutes from './routes/governance';
 import docsRoutes from './routes/docs';
+import litigationRoutes from './routes/litigation';
+import shortStayRoutes from './routes/shortStay';
+import ricsComplianceRoutes from './routes/ricsCompliance';
+import floodRiskRoutes from './routes/floodRisk';
+import eSignRoutes from './routes/eSign';
+import tenantPortalRoutes from './routes/tenantPortal';
+import adminRoutes from './routes/admin';
 
 // Import shared services
 import { realtimeEmitter } from '../shared-services/realtime';
 import { notificationRoutes } from '../shared-services/notifications/in-mail';
+import { blockchainListenerService, loadCryptoConfig } from '../shared-services/payments/crypto';
+import { escrowPayoutService } from '../shared-services/payments/crypto/escrowPayoutService';
+import { nowPaymentsService } from '../shared-services/payments/crypto/nowPaymentsService';
 
 // Import Data Hub queue manager
 import { dataHubQueueManager } from './services/data-hub';
@@ -77,7 +87,7 @@ app.use(cors({
   origin: config.cors.origins,
   credentials: config.cors.credentials,
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Request-ID', 'X-User-Id', 'X-Organization-Id', 'X-PropMetrik-Token'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Request-ID', 'X-User-Id', 'X-User-Email', 'X-Organization-Id', 'X-PROPMETRIK-Token'],
   exposedHeaders: ['X-Request-ID', 'X-RateLimit-Limit', 'X-RateLimit-Remaining'],
 }));
 
@@ -175,16 +185,57 @@ app.use('/api/v1/site-diaries', siteDiaryRoutes);
 app.use('/api/site-diaries', siteDiaryRoutes);  // Also mount for frontend compatibility
 app.use('/api/v1', governanceRoutes);  // Governance: milestone-frameworks, framework-phases, milestone-templates
 
+// Critical Data Gaps: Litigation Risk & Short-Stay Metrics
+app.use('/api/v1/litigation', litigationRoutes);
+app.use('/api/litigation', litigationRoutes);  // Also mount for frontend compatibility
+app.use('/api/v1/short-stay', shortStayRoutes);
+app.use('/api/short-stay', shortStayRoutes);  // Also mount for frontend compatibility
+app.use('/api/v1/rics-compliance', ricsComplianceRoutes);
+app.use('/api/rics-compliance', ricsComplianceRoutes);  // Also mount for frontend compatibility
+app.use('/api/v1/flood-risk', floodRiskRoutes);
+app.use('/api/flood-risk', floodRiskRoutes);  // Also mount for frontend compatibility
+
 // In-Mail Notification System
 app.use('/api/v1/notifications', notificationRoutes);
 app.use('/api/notifications', notificationRoutes);  // Also mount for frontend compatibility
 
+// E-Signature Service
+app.use('/api/v1/esign', eSignRoutes);
+app.use('/api/esign', eSignRoutes);  // Also mount for frontend compatibility
 
+// Tenant Portal API (public/tenant-auth routes)
+app.use('/api/v1/tenant-portal', tenantPortalRoutes);
+app.use('/api/tenant-portal', tenantPortalRoutes);  // Also mount for frontend compatibility
+
+// Admin API
+app.use('/api/v1/admin', adminRoutes);
 
 // TODO: Add more route modules as they are created
 // app.use('/api/v1/users', userRoutes);
 // app.use('/api/v1/search', searchRoutes);
 
+
+// File proxy — stream files from MinIO
+import { getFile, buckets as minioBuckets, getPresignedDownloadUrl } from './database/minio';
+
+app.get('/api/v1/files/:bucket/*', async (req, res) => {
+  try {
+    const bucket = req.params.bucket;
+    const key = (req.params as any)[0]; // everything after /bucket/
+    if (!key) return res.status(400).json({ error: 'File key required' });
+
+    const { body, contentType } = await getFile(bucket, key);
+    res.setHeader('Content-Type', contentType || 'application/octet-stream');
+    res.setHeader('Cache-Control', 'private, max-age=3600');
+    res.send(Buffer.from(body));
+  } catch (err: any) {
+    if (err?.name === 'NoSuchKey' || err?.$metadata?.httpStatusCode === 404) {
+      return res.status(404).json({ error: 'File not found' });
+    }
+    logger.error('File proxy error', { error: err?.message });
+    res.status(500).json({ error: 'Failed to retrieve file' });
+  }
+});
 
 // 404 handler
 app.use((req, res) => {
@@ -213,6 +264,14 @@ async function shutdown(signal: string): Promise<void> {
       // Shutdown realtime connections
       realtimeEmitter.shutdown();
       logger.info('Realtime connections closed');
+
+      // Shutdown blockchain listener
+      await blockchainListenerService.stop();
+      logger.info('Blockchain listener stopped');
+
+      // Shutdown Escrow payout service
+      escrowPayoutService.stop();
+      logger.info('Escrow payout service stopped');
 
       // Shutdown Data Hub queues
       await dataHubQueueManager.shutdown();
@@ -244,7 +303,7 @@ async function shutdown(signal: string): Promise<void> {
 // Initialize services and start server
 async function bootstrap(): Promise<void> {
   try {
-    logger.info('Starting Propmetrik API server...');
+    logger.info('Starting PROPMETRIK API server...');
 
     // Connect Redis clients first (they use lazyConnect)
     logger.info('Connecting to Redis...');
@@ -317,6 +376,35 @@ async function bootstrap(): Promise<void> {
       logger.warn('Failed to initialize Data Hub queues', { error: queueError });
     }
 
+    // Start blockchain listener (USDT/Polygon) if configured
+    const cryptoConfig = loadCryptoConfig();
+    if (cryptoConfig) {
+      try {
+        await blockchainListenerService.start();
+        logger.info('Blockchain listener started', {
+          chainId: cryptoConfig.chainId,
+          contract: cryptoConfig.contractAddress,
+        });
+      } catch (listenerError) {
+        logger.warn('Failed to start blockchain listener — crypto payments will use verify-only mode', {
+          error: listenerError,
+        });
+      }
+    }
+
+    // Start NOWPayments + Escrow services (independent of on-chain crypto rail)
+    try {
+      const npConfig = nowPaymentsService.loadConfig();
+      if (npConfig) {
+        escrowPayoutService.start();
+        logger.info('NOWPayments + Escrow payout service started', { sandbox: npConfig.sandbox });
+      } else {
+        logger.info('NOWPayments not configured — off-chain crypto payments unavailable');
+      }
+    } catch (npError) {
+      logger.warn('Failed to start NOWPayments/Escrow services', { error: npError });
+    }
+
     logger.info('All services initialized');
 
   } catch (error) {
@@ -357,7 +445,7 @@ process.on('SIGINT', () => shutdown('SIGINT'));
 // Start server
 const server = app.listen(config.port, async () => {
   await bootstrap();
-  logger.info(`Propmetrik API server running on port ${config.port}`, {
+  logger.info(`PROPMETRIK API server running on port ${config.port}`, {
     env: config.env,
     version: process.env.npm_package_version || '1.0.0',
   });

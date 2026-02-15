@@ -1,4 +1,4 @@
-# Propmetrik Development Docker Compose
+# PROPMETRIK Development Docker Compose
 # For local development with external services (PostgreSQL, Redis, etc. on remote servers)
 
 version: '3.8'

@@ -23,6 +23,7 @@ import { v4 as uuidv4 } from 'uuid';
 export type TriggerType =
   | 'deal_stage_changed'
   | 'deal_created'
+  | 'deal_updated'
   | 'deal_won'
   | 'deal_lost'
   | 'contact_created'

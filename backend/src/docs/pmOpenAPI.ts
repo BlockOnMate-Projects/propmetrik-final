@@ -735,7 +735,7 @@ const generator = new OpenApiGeneratorV3(registry.definitions);
 export const openAPIDocument = generator.generateDocument({
   openapi: '3.0.3',
   info: {
-    title: 'PropMetrik Property Management API',
+    title: 'PROPMETRIK Property Management API',
     version: '1.0.0',
     description: `
 # Property Management API
@@ -762,7 +762,7 @@ All endpoints require:
 - Advance rent payment tracking (1-2 years)
     `,
     contact: {
-      name: 'PropMetrik Support',
+      name: 'PROPMETRIK Support',
       email: 'support@propmetrik.com',
     },
     license: {

@@ -335,7 +335,7 @@ export default function DealManagementPage() {
                                 Seamless Integrations
                             </h2>
                             <p className="text-xl text-zinc-400 mb-8">
-                                Connect with the tools you already use. PropMetrik integrates with leading platforms to streamline your workflow.
+                                Connect with the tools you already use. PROPMETRIK integrates with leading platforms to streamline your workflow.
                             </p>
 
                             <div className="space-y-6">
@@ -388,7 +388,7 @@ export default function DealManagementPage() {
             {/* CTA Section */}
             <PremiumCTASection
                 title="Ready to Transform Your Workflow?"
-                description="Join hundreds of Ghanaian real estate professionals who've accelerated their sales with PropMetrik Deal Management."
+                description="Join hundreds of Ghanaian real estate professionals who've accelerated their sales with PROPMETRIK Deal Management."
                 primaryCTA={{
                     text: "Start Free Trial",
                     href: "/signup"

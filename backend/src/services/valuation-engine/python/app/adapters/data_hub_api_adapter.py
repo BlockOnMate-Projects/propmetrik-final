@@ -157,7 +157,7 @@ class DataHubAPIAdapter:
                 unskilled_labor_rate_per_day=0,
                 utilities_connection_cost=5000.0,
                 site_preparation_cost_per_sqm=50.0,
-                data_source="PropMetrik Data Hub API",
+                data_source="PROPMETRIK Data Hub API",
                 regional_multiplier=regional_multiplier.get("value", 1.0),
                 material_costs={}
             )

@@ -1,10 +1,10 @@
-PropMetrik Phase 5: CRM & Deal Management Service Implementation Plan
+PROPMETRIK Phase 5: CRM & Deal Management Service Implementation Plan
 Executive Summary
-This plan details the complete implementation of PropMetrik's CRM & Deal Management Service as outlined in the predefined architecture. This service is designed as a production-grade, institutional real estate CRM with data integrity, auditability, and long-lived record management at its core.
+This plan details the complete implementation of PROPMETRIK's CRM & Deal Management Service as outlined in the predefined architecture. This service is designed as a production-grade, institutional real estate CRM with data integrity, auditability, and long-lived record management at its core.
 
 Architecture Alignment
 Service Positioning
-PropMetrik follows a monolithic backend with service-segmented architecture:
+PROPMETRIK follows a monolithic backend with service-segmented architecture:
 
 api.propmetrik.com (Single Backend)
         |
@@ -215,7 +215,7 @@ No updates allowed - activities are append-only logs.
 
 Document & E-Sign Integration
 Shared E-Sign Service Integration
-PropMetrik uses its own e-signature capability via shared services.
+PROPMETRIK uses its own e-signature capability via shared services.
 
 Shared E-Sign Service Responsibilities
 Located at: backend/shared-services/e-sign/

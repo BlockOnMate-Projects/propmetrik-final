@@ -222,7 +222,14 @@ export class PaystackService {
             return response.data;
         } catch (error: any) {
             this.handleError(error, 'resolveAccount');
-            throw error;
+            // Return Paystack's actual error response so frontend can show a meaningful message
+            const paystackMessage = error.response?.data?.message;
+            const paystackMeta = error.response?.data?.meta;
+            const err: any = new Error(paystackMessage || 'Account resolution failed');
+            err.status = error.response?.status || 422;
+            err.paystackMessage = paystackMessage;
+            err.paystackMeta = paystackMeta;
+            throw err;
         }
     }
 
@@ -286,33 +293,31 @@ export class PaystackService {
 
     /**
      * Initialize a transaction with split payment to sub-account
-     * Rent goes to property manager, platform fee goes to main account
+     * Rent goes to property manager, platform fee goes to main account.
+     *
+     * IMPORTANT: `transactionChargeSubunits` is the ALREADY-COMPUTED platform fee in pesewas,
+     * produced by the FeeEngine. Do NOT re-calculate here.
      */
     async initializeWithSubaccount(
         params: PaystackInitializeParams,
         subaccountCode: string,
-        platformFeePercentage: number = 2,
-        platformFeeFlat: number = 0
+        transactionChargeSubunits: number
     ): Promise<PaystackInitializeResponse> {
         try {
-            // Calculate platform fee
-            // Paystack's transaction_charge is a flat fee taken from the subaccount's share
-            // If we want 2% platform fee, we calculate it from the total amount
             const amountInPesewas = Math.round(params.amount);
-            const platformFee = Math.round((amountInPesewas * platformFeePercentage / 100) + (platformFeeFlat * 100));
 
             const payload = {
                 ...params,
                 amount: amountInPesewas,
                 subaccount: subaccountCode,
-                transaction_charge: platformFee,
-                bearer: 'subaccount' as const // Subaccount bears the Paystack fees
+                transaction_charge: transactionChargeSubunits,
+                bearer: 'subaccount' as const // Subaccount bears Paystack fees
             };
 
             logger.info('Initializing split payment', {
-                amount: amountInPesewas / 100,
-                platformFee: platformFee / 100,
-                toSubaccount: (amountInPesewas - platformFee) / 100,
+                totalAmount: amountInPesewas / 100,
+                platformFee: transactionChargeSubunits / 100,
+                toSubaccount: (amountInPesewas - transactionChargeSubunits) / 100,
                 subaccountCode
             });
 
@@ -325,27 +330,52 @@ export class PaystackService {
     }
 
     /**
-     * Get or create payment account config for an organization
+     * Get payment account config for an entity.
+     * Checks the new `payment_accounts` table first, then falls back to legacy `pm_payment_accounts`.
      */
-    async getPaymentAccountConfig(organizationId: string): Promise<PaymentAccountConfig | null> {
+    async getPaymentAccountConfig(
+        entityId: string,
+        entityType: string = 'organization'
+    ): Promise<PaymentAccountConfig | null> {
         try {
-            const result = await pool.query(
-                `SELECT * FROM pm_payment_accounts 
-                 WHERE organization_id = $1 AND is_active = TRUE`,
-                [organizationId]
+            // 1. Try new unified payment_accounts table
+            const newResult = await pool.query(
+                `SELECT * FROM payment_accounts
+                 WHERE entity_id = $1 AND entity_type = $2 AND is_active = TRUE
+                 LIMIT 1`,
+                [entityId, entityType]
             );
 
-            if (result.rows.length === 0) {
-                return null;
+            if (newResult.rows.length > 0) {
+                const row = newResult.rows[0];
+                return {
+                    organizationId: row.entity_id,
+                    subaccountCode: row.paystack_subaccount_code,
+                    platformFeePercentage: parseFloat(row.platform_fee_percentage || 1),
+                    platformFeeFlat: parseFloat(row.platform_fee_flat || 25)
+                };
             }
 
-            const row = result.rows[0];
-            return {
-                organizationId: row.organization_id,
-                subaccountCode: row.paystack_subaccount_code,
-                platformFeePercentage: parseFloat(row.platform_fee_percentage || 2),
-                platformFeeFlat: parseFloat(row.platform_fee_flat || 0)
-            };
+            // 2. Fallback: legacy pm_payment_accounts (for orgs only)
+            if (entityType === 'organization') {
+                const legacyResult = await pool.query(
+                    `SELECT * FROM pm_payment_accounts
+                     WHERE organization_id = $1 AND is_active = TRUE`,
+                    [entityId]
+                );
+
+                if (legacyResult.rows.length > 0) {
+                    const row = legacyResult.rows[0];
+                    return {
+                        organizationId: row.organization_id,
+                        subaccountCode: row.paystack_subaccount_code,
+                        platformFeePercentage: parseFloat(row.platform_fee_percentage || 1),
+                        platformFeeFlat: parseFloat(row.platform_fee_flat || 25)
+                    };
+                }
+            }
+
+            return null;
         } catch (error: any) {
             this.handleError(error, 'getPaymentAccountConfig');
             return null;
@@ -370,12 +400,15 @@ export class PaystackService {
                 return { success: false, error: 'Could not verify bank account' };
             }
 
-            // Create sub-account with 98% going to property manager (2% platform fee)
+            // Create sub-account with 99% going to recipient (platform fee via transaction_charge)
+            // We use percentage_charge = 0.2 (i.e., Paystack sees 0.2% to integrator)
+            // but the REAL platform fee is applied per-transaction via transaction_charge from FeeEngine.
+            // Setting percentage_charge low ensures most funds flow to the subaccount.
             const subaccountResponse = await this.createSubaccount({
                 business_name: businessName,
                 settlement_bank: bankCode,
                 account_number: accountNumber,
-                percentage_charge: 98, // 98% to PM, 2% to platform
+                percentage_charge: 0.2, // Minimal; real fee is via transaction_charge per-txn
                 primary_contact_email: contactEmail,
                 primary_contact_phone: contactPhone,
                 metadata: {
@@ -388,7 +421,39 @@ export class PaystackService {
                 return { success: false, error: 'Failed to create sub-account with Paystack' };
             }
 
-            // Store in database
+            // Store in BOTH tables (new + legacy) for backward compatibility
+            // New unified table
+            await pool.query(
+                `INSERT INTO payment_accounts (
+                    entity_id, entity_type,
+                    paystack_subaccount_code,
+                    account_number, bank_code, bank_name, account_name,
+                    settlement_method,
+                    platform_fee_percentage, platform_fee_flat,
+                    is_verified, verified_at, verification_method
+                ) VALUES ($1, 'organization', $2, $3, $4, $5, $6, 'bank', 0.0100, 25.00, TRUE, NOW(), 'paystack_resolve')
+                ON CONFLICT (entity_id, entity_type)
+                DO UPDATE SET
+                    paystack_subaccount_code = EXCLUDED.paystack_subaccount_code,
+                    account_number = EXCLUDED.account_number,
+                    bank_code = EXCLUDED.bank_code,
+                    bank_name = EXCLUDED.bank_name,
+                    account_name = EXCLUDED.account_name,
+                    settlement_method = 'bank',
+                    is_verified = TRUE,
+                    verified_at = NOW(),
+                    updated_at = NOW()`,
+                [
+                    organizationId,
+                    subaccountResponse.data.subaccount_code,
+                    accountNumber,
+                    bankCode,
+                    subaccountResponse.data.settlement_bank,
+                    verification.data.account_name
+                ]
+            );
+
+            // Legacy table (for existing queries)
             await pool.query(
                 `INSERT INTO pm_payment_accounts (
                     organization_id,
@@ -399,9 +464,10 @@ export class PaystackService {
                     paystack_account_name,
                     paystack_percentage_charge,
                     platform_fee_percentage,
+                    platform_fee_flat,
                     verified_at
-                ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW())
-                ON CONFLICT (organization_id) 
+                ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW())
+                ON CONFLICT (organization_id)
                 DO UPDATE SET
                     paystack_subaccount_code = EXCLUDED.paystack_subaccount_code,
                     paystack_account_number = EXCLUDED.paystack_account_number,
@@ -418,7 +484,8 @@ export class PaystackService {
                     subaccountResponse.data.settlement_bank,
                     verification.data.account_name,
                     subaccountResponse.data.percentage_charge,
-                    2.0 // 2% platform fee
+                    1.0, // 1% platform fee percentage
+                    25.0  // GH₵25 flat minimum
                 ]
             );
 

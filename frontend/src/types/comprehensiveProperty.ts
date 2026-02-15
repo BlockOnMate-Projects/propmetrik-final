@@ -1,6 +1,6 @@
 // =====================================================
 // COMPREHENSIVE PROPERTY FORM FIELDS
-// Based on RICS Red Book Standards & PropMetrik Demo
+// Based on RICS Red Book Standards & PROPMETRIK Demo
 // =====================================================
 
 export const PROPERTY_TYPES = [

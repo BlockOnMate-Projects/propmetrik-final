@@ -3,11 +3,9 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import PortalShell, { usePortal } from '@/components/portal/PortalShell';
 import {
-  getTenantProfile,
   createMaintenanceRequest,
-  getSessionToken,
-  TenantProfile
 } from '@/lib/api';
 
 const CATEGORIES = [
@@ -30,13 +28,12 @@ const PRIORITIES = [
   { value: 'emergency', label: 'Emergency', description: 'Critical - safety hazard or major damage', color: 'text-red-600' }
 ];
 
-export default function NewMaintenanceRequest() {
+function NewMaintenanceContent() {
   const router = useRouter();
-  const [profile, setProfile] = useState<TenantProfile | null>(null);
-  const [loading, setLoading] = useState(true);
+  const { profile, activeTenancy } = usePortal();
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  
+
   // Form state
   const [title, setTitle] = useState('');
   const [category, setCategory] = useState('');
@@ -46,30 +43,6 @@ export default function NewMaintenanceRequest() {
   const [preferredContactMethod, setPreferredContactMethod] = useState('phone');
   const [preferredTimeSlot, setPreferredTimeSlot] = useState('');
   const [images, setImages] = useState<File[]>([]);
-
-  useEffect(() => {
-    const token = getSessionToken();
-    if (!token) {
-      router.push('/login');
-      return;
-    }
-
-    async function loadProfile() {
-      try {
-        const data = await getTenantProfile();
-        setProfile(data);
-      } catch (err: any) {
-        setError(err.message);
-        if (err.message === 'Session expired') {
-          router.push('/login');
-        }
-      } finally {
-        setLoading(false);
-      }
-    }
-
-    loadProfile();
-  }, [router]);
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
@@ -84,8 +57,7 @@ export default function NewMaintenanceRequest() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    const activeTenancy = profile?.tenancies.find(t => t.status === 'active');
+
     if (!activeTenancy) {
       setError('No active tenancy found');
       return;
@@ -114,49 +86,20 @@ export default function NewMaintenanceRequest() {
     }
   };
 
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-      </div>
-    );
-  }
-
-  const activeTenancy = profile?.tenancies.find(t => t.status === 'active');
-
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <header className="bg-white shadow">
-        <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-          <div className="flex items-center gap-4">
-            <Link href="/maintenance" className="text-gray-500 hover:text-gray-700">
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-              </svg>
-            </Link>
-            <h1 className="text-2xl font-bold text-gray-900">Submit Maintenance Request</h1>
-          </div>
-        </div>
-      </header>
-
-      <main className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {error && (
-          <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
-            <p className="text-red-600">{error}</p>
-          </div>
-        )}
-
+    <div className="max-w-3xl mx-auto space-y-6 animate-fade-in">
+      <div>
+        <h2 className="text-2xl font-bold text-gray-900">Submit Maintenance Request</h2>
         {activeTenancy && (
-          <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-            <p className="text-sm text-blue-800">
-              <span className="font-medium">Property:</span> {activeTenancy.propertyTitle}
-            </p>
-            <p className="text-sm text-blue-800">
-              <span className="font-medium">Address:</span> {activeTenancy.propertyAddress}
-            </p>
-          </div>
+          <p className="text-gray-500 text-sm mt-1">{activeTenancy.propertyTitle} &bull; {activeTenancy.propertyAddress}</p>
         )}
+      </div>
+
+      {error && (
+        <div className="p-4 bg-red-50 border border-red-200 rounded-xl">
+          <p className="text-sm text-red-600">{error}</p>
+        </div>
+      )}
 
         <form onSubmit={handleSubmit} className="space-y-6">
           {/* Title */}
@@ -379,7 +322,14 @@ export default function NewMaintenanceRequest() {
             </button>
           </div>
         </form>
-      </main>
     </div>
+  );
+}
+
+export default function NewMaintenanceRequest() {
+  return (
+    <PortalShell title="New Maintenance Request">
+      <NewMaintenanceContent />
+    </PortalShell>
   );
 }

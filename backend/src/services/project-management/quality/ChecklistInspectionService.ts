@@ -12,7 +12,7 @@
  */
 
 import { pool } from '../../../database';
-import { BaseService } from '../../base/BaseService';
+import { BaseService } from '../../../../shared-services/base/BaseService';
 import { UUID } from '../types';
 import { eventBus } from '../events/EventBus';
 
@@ -152,7 +152,7 @@ class ChecklistInspectionServiceImpl extends BaseService {
     await this.initializeResponses(instance.id, input.templateId);
 
     // Emit event
-    eventBus.emit('checklist.instance.created', {
+    eventBus.emit('checklist.instance.created' as any, {
       instanceId: instance.id,
       templateId: input.templateId,
       projectId: input.projectId,
@@ -314,7 +314,7 @@ class ChecklistInspectionServiceImpl extends BaseService {
 
     if (result.rows.length) {
       await this.logActivity(id, 'started', startedBy);
-      eventBus.emit('checklist.instance.started', { instanceId: id, startedBy });
+      eventBus.emit('checklist.instance.started' as any, { instanceId: id, startedBy });
     }
 
     return result.rows[0] ? this.mapInstanceRow(result.rows[0]) : null;
@@ -346,7 +346,7 @@ class ChecklistInspectionServiceImpl extends BaseService {
 
     if (result.rows.length) {
       await this.logActivity(id, `status_changed_to_${status}`, changedBy, notes);
-      eventBus.emit('checklist.instance.status_changed', { instanceId: id, status, changedBy });
+      eventBus.emit('checklist.instance.status_changed' as any, { instanceId: id, status, changedBy });
     }
 
     return result.rows[0] ? this.mapInstanceRow(result.rows[0]) : null;

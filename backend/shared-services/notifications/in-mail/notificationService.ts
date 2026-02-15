@@ -1,7 +1,7 @@
 /**
  * In-Mail Notification Service
  * 
- * Provides a unified notification inbox for all PropMetrik users.
+ * Provides a unified notification inbox for all PROPMETRIK users.
  * Aggregates notifications from all services: E-Sign, Property Management, Valuation, CRM, Projects
  */
 
@@ -137,7 +137,7 @@ export async function createNotification(input: CreateNotificationInput): Promis
   try {
     realtimeEmitter.sendToUser(userId, {
       type: 'notification:new',
-      payload: notification,
+      payload: notification as unknown as Record<string, unknown>,
       organizationId: organizationId || '',
     });
   } catch (error) {

@@ -4,11 +4,11 @@
 
 **Recommendation: RETAIN and EXTEND the existing implementation.**
 
-We strongly advise **against** determining to delete the current `backend/src/services/crm-deal-management` implementation in favor of cloning the `prolinkinfo/RealEstateCRM` repository. The existing code is a high-quality, domain-specific foundation that is significantly better aligned with PropMetrik's strategic goals than the generic open-source alternative.
+We strongly advise **against** determining to delete the current `backend/src/services/crm-deal-management` implementation in favor of cloning the `prolinkinfo/RealEstateCRM` repository. The existing code is a high-quality, domain-specific foundation that is significantly better aligned with PROPMETRIK's strategic goals than the generic open-source alternative.
 
 ## Comparative Analysis
 
-| Feature | Existing PropMetrik Implementation | RealEstateCRM (Open Source) |
+| Feature | Existing PROPMETRIK Implementation | RealEstateCRM (Open Source) |
 | :--- | :--- | :--- |
 | **Technology Stack** | **TypeScript / Node.js / PostgreSQL**<br>Aligned with core architecture. | **MERN Stack (MongoDB)**<br>Incompatible database; requires rewrite. |
 | **Domain Context** | **Highly Localized (Ghana)**<br>Native support for `diaspora_buyer`, `stool_land`, local languages (Twi, Ga), and GHS currency handling. | **Generic / Global**<br>Standard fields only. Would require massive refactoring to "Africanize". |
@@ -30,18 +30,18 @@ The current implementation is not a placeholder; it is a robust backend service 
 ## Recommendations
 
 1.  **Do Not Clone**: Do not clone the external repository code into the main codebase. It will introduce technical debt.
-2.  **UI Inspiration**: You *may* reference the open-source project's **frontend UI patterns** (dashboard layout, kanban views) if they have a demo or screenshot gallery, but implement them using the existing PropMetrik design system and React stack.
+2.  **UI Inspiration**: You *may* reference the open-source project's **frontend UI patterns** (dashboard layout, kanban views) if they have a demo or screenshot gallery, but implement them using the existing PROPMETRIK design system and React stack.
 3.  **Feature Integration**:
     *   The external repo mentions "Communication Tools". Ensure the current `activityService.ts` fully supports this by verifying it handles `whatsapp` and `sms` logs effectively, which are crucial for the local market.
     *   **Workflow Automation**: If the external tool has "Action Plans" or "Drip Campaigns", this is a feature to implement on top of the existing `taskService.ts` and `pipelineService.ts`.
 
 ## Alternative Open Source Options
 
-If PropMetrik decides to leverage an existing platform instead of a custom build, these are the only viable open-source candidates:
+If PROPMETRIK decides to leverage an existing platform instead of a custom build, these are the only viable open-source candidates:
 
 | Platform | Tech Stack | Pros | Cons |
 | :--- | :--- | :--- | :--- |
-| **Twenty CRM** | **Node.js / TypeScript / React** | Modern stack matches PropMetrik. Hackable, good UI. | Not Real Estate specific. Requires manually building "Property" object models. |
+| **Twenty CRM** | **Node.js / TypeScript / React** | Modern stack matches PROPMETRIK. Hackable, good UI. | Not Real Estate specific. Requires manually building "Property" object models. |
 | **Odoo** | Python | Extremely feature-rich (Accounting, HR, CRM). | Massive/Complex. Uses Python/XML. different architecture. |
 | **EspoCRM** | PHP | Good "Real Estate" extension available. | PHP stack. Older architecture. |
 

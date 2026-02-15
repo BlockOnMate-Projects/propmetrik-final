@@ -5,7 +5,9 @@
 
 import fs from 'fs';
 import path from 'path';
+// @ts-ignore
 import csvParser from 'csv-parser';
+// @ts-ignore
 import XLSX from 'xlsx';
 const pdfParse = require('pdf-parse');
 import { pool } from '../../database';

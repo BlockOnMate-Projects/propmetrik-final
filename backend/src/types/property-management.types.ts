@@ -18,6 +18,7 @@ export enum TenantStatus {
 }
 
 export enum TenancyStatus {
+    PENDING_SIGNATURE = 'pending_signature', // Lease generated, awaiting e-signatures
     PENDING = 'pending',
     ACTIVE = 'active',
     EXPIRED = 'expired',
@@ -304,6 +305,15 @@ export interface Tenancy {
     leaseTerms: LeaseTerms;
     specialConditions?: string;
     leaseDocumentUrl?: string;
+    leaseSignedUrl?: string;
+    leaseStatus?: string;
+    leaseSentAt?: Date;
+    tenantSignedAt?: Date;
+    landlordSignedAt?: Date;
+    esignEnvelopeId?: string;
+    esignStatus?: string;
+    esignCreatedAt?: Date;
+    esignCompletedAt?: Date;
     terminatedAt?: Date;
     terminationReason?: string;
     createdBy?: string;
@@ -338,12 +348,31 @@ export interface LeaseTerms {
     sublettingAllowed?: boolean;
     maxOccupants?: number;
     utilitiesIncluded?: string[];
+    tenantUtilities?: string[];
+    landlordUtilities?: string[];
     additionalTerms?: string[];
+    isUserLandlord?: boolean;
+    landlordWillSign?: boolean;
+    landlordName?: string;
+    landlordEmail?: string;
+    signers?: any[];
+    noticePeriodDays?: number;
+    applicationId?: string;
+    applicantFullName?: string;
+    applicantEmail?: string;
+    applicantPhone?: string;
+    applicantGhanaCard?: string;
+    applicantCurrentAddress?: string;
+    applicantDigitalAddress?: string;
+    emergencyContactName?: string;
+    emergencyContactPhone?: string;
+    emergencyContactRelationship?: string;
+    [key: string]: any;
 }
 
 export interface CreateTenancyDto {
     propertyId: string;
-    tenantId: string;
+    tenantId?: string; // Optional - tenant is created after lease is signed
     unitNumber?: string;
     leaseStartDate: string;
     leaseEndDate: string;
@@ -360,6 +389,7 @@ export interface CreateTenancyDto {
     autoRenew?: boolean;
     leaseTerms?: LeaseTerms;
     specialConditions?: string;
+    status?: TenancyStatus | string; // Allow setting initial status
 }
 
 export interface UpdateTenancyDto extends Partial<CreateTenancyDto> {
@@ -735,6 +765,7 @@ export interface MonthlyFinancials {
     income: number;
     expenses: number;
     netCashFlow: number;
+    expectedRent?: number;
 }
 
 export interface ROIAnalysis {

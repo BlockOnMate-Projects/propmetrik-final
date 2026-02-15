@@ -34,7 +34,7 @@ import {
 
 const DEFAULT_CONFIG: BOGScraperConfig = {
   base_url: 'https://www.bog.gov.gh',
-  user_agent: 'PropMetrik Economic Data Bot/1.0 (+https://propmetrik.com/bot)',
+  user_agent: 'PROPMETRIK Economic Data Bot/1.0 (+https://propmetrik.com/bot)',
   timeout_ms: 30000,
   retry_attempts: 3,
   retry_delay_ms: 2000,
@@ -172,7 +172,7 @@ export class BOGScraper {
       return indicators;
     }
 
-    rows.each((_: number, row: cheerio.Element) => {
+    rows.each((_: number, row: any) => {
       try {
         const cells = $(row).find('td');
         if (cells.length < 3) return; // Need at least year, indicator, and one value

@@ -13,7 +13,7 @@
  */
 
 import { pool } from '../../../database';
-import { BaseService } from '../../base/BaseService';
+import { BaseService } from '../../../../shared-services/base/BaseService';
 import { eventBus } from '../events/EventBus';
 import {
   PhotoComment,
@@ -58,7 +58,7 @@ class PhotoAnnotationServiceImpl extends BaseService {
 
     const comment = this.mapComment(result.rows[0]);
 
-    eventBus.emit('photo.comment.added', {
+    eventBus.emit('photo.comment.added' as any, {
       photoId: input.photoId,
       commentId: comment.id,
       createdBy: input.createdBy,
@@ -132,7 +132,7 @@ class PhotoAnnotationServiceImpl extends BaseService {
       [commentId]
     );
 
-    return result.rowCount > 0;
+    return (result.rowCount ?? 0) > 0;
   }
 
   // ==========================================================================
@@ -153,7 +153,7 @@ class PhotoAnnotationServiceImpl extends BaseService {
 
     // Remove duplicates
     if (result.rows[0]) {
-      const uniqueTags = [...new Set(result.rows[0].manual_tags)];
+      const uniqueTags = [...new Set(result.rows[0].manual_tags)] as string[];
       await this.query(
         `UPDATE site_photos SET manual_tags = $1 WHERE id = $2`,
         [uniqueTags, photoId]
@@ -251,7 +251,7 @@ class PhotoAnnotationServiceImpl extends BaseService {
     );
 
     if (result.rows[0]) {
-      eventBus.emit('photo.ai.tagged', {
+      eventBus.emit('photo.ai.tagged' as any, {
         photoId,
         tags: aiTags,
         confidence,

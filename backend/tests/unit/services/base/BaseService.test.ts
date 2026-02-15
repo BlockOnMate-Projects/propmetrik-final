@@ -69,7 +69,7 @@ class TestService extends BaseService {
     id: string,
     entityName: string
   ): Promise<T> {
-    return this.getByIdOrThrow(table, id, entityName);
+    return this.findByIdOrThrow(table, id, entityName);
   }
 
   public async testGetById<T>(table: string, id: string): Promise<T | null> {

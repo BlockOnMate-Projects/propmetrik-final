@@ -112,9 +112,58 @@ export enum ProjectEventType {
   FRAMEWORK_APPLIED = 'framework.applied',
   FRAMEWORK_MODIFIED = 'framework.modified',
   
+  // E-Sign events (Phase 5)
+  CONTRACTOR_CONTRACT_SIGNED = 'contractor.contract_signed',
+  DRAW_ESIGN_COMPLETED = 'draw.esign_completed',
+  CHANGE_ORDER_ESIGN_COMPLETED = 'change_order.esign_completed',
+  
   // System events
   SYSTEM_ERROR = 'system.error',
-  SYNC_REQUIRED = 'sync.required'
+  SYNC_REQUIRED = 'sync.required',
+
+  // Alert events
+  ALERT_CRITICAL_CREATED = 'alert.critical.created',
+  ALERT_ACKNOWLEDGED = 'alert.acknowledged',
+  ALERT_RESOLVED = 'alert.resolved',
+
+  // Health events
+  PROJECT_HEALTH_CRITICAL = 'project.health.critical',
+
+  // Notification events
+  NOTIFICATION_WHATSAPP_SENT = 'notification.whatsapp.sent',
+
+  // Baseline & dependency events
+  PROJECT_BASELINE_CREATED = 'project.baseline.created',
+  PROJECT_BASELINE_ACTIVATED = 'project.baseline.activated',
+  PHASE_DEPENDENCIES_UPDATED = 'phase.dependencies.updated',
+  PHASE_DATES_UPDATED = 'phase.dates.updated',
+
+  // Communication events
+  COMMUNICATION_LOGGED = 'communication.logged',
+  COMMUNICATION_FOLLOWUP_SCHEDULED = 'communication.followup_scheduled',
+  COMMUNICATION_FOLLOWUP_COMPLETED = 'communication.followup_completed',
+  COMMUNICATION_FOLLOWUP_RESCHEDULED = 'communication.followup_rescheduled',
+
+  // Team member events
+  TEAM_MEMBER_ADDED_EXT = 'team.member.added',
+  TEAM_MEMBER_ROLE_CHANGED = 'team.member.role_changed',
+  TEAM_MEMBER_PERMISSIONS_CHANGED = 'team.member.permissions_changed',
+  TEAM_MEMBER_DEACTIVATED = 'team.member.deactivated',
+  TEAM_MEMBER_REMOVED_EXT = 'team.member.removed',
+
+  // Vendor events
+  VENDOR_CREATED = 'vendor.created',
+  VENDOR_RATED = 'vendor.rated',
+  VENDOR_APPROVED = 'vendor.approved',
+  VENDOR_SUSPENDED = 'vendor.suspended',
+  VENDOR_PREFERRED_STATUS_CHANGED = 'vendor.preferred_status_changed',
+
+  // Compliance checkpoint events
+  COMPLIANCE_CHECKPOINT_VERIFIED = 'compliance.checkpoint_verified',
+
+  // Payment events
+  PAYMENT_SUBMITTED = 'payment.submitted',
+  PAYMENT_COMPLETED = 'payment.completed'
 }
 
 // =============================================================================
@@ -132,6 +181,7 @@ export interface BaseEventPayload {
   organizationId?: UUID;
   projectId?: UUID;
   metadata?: Record<string, any>;
+  [key: string]: any;
 }
 
 /**
@@ -280,7 +330,7 @@ class ProjectEventBus {
   /**
    * Emit an event to all subscribed handlers
    */
-  emit<T extends EventPayload>(eventType: ProjectEventType, payload: Omit<T, 'eventId' | 'eventType' | 'timestamp'>): void {
+  emit<T extends EventPayload>(eventType: ProjectEventType | string, payload: Omit<T, 'eventId' | 'eventType' | 'timestamp'>): void {
     const fullPayload: EventPayload = {
       eventId: this.generateEventId(),
       eventType,
@@ -299,10 +349,10 @@ class ProjectEventBus {
     }
 
     // Emit to native EventEmitter for simple subscriptions
-    this.emitter.emit(eventType, processedPayload);
+    this.emitter.emit(eventType as string, processedPayload);
     
     // Emit to filtered handlers
-    const handlerSet = this.handlers.get(eventType);
+    const handlerSet = this.handlers.get(eventType as ProjectEventType);
     if (handlerSet) {
       for (const { handler, options } of handlerSet) {
         // Apply filters

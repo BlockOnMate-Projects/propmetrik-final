@@ -36,20 +36,29 @@ export class ScrapyScheduler {
   private isInitialized = false;
 
   constructor() {
+    const scrapyConfig = (config as any).scrapy;
     this.config = {
-      autoStart: config.scrapy?.autoStart ?? true,
-      initialDelay: config.scrapy?.initialDelay ?? 30000, // 30 seconds after startup
-      weeklySchedule: config.scrapy?.weeklySchedule ?? '0 2 * * 0', // Sunday 2 AM
-      dailyUpdates: config.scrapy?.dailyUpdates ?? true,
-      dailySchedule: config.scrapy?.dailySchedule ?? '0 3 * * *', // Daily 3 AM
-      enabledSpiders: config.scrapy?.enabledSpiders ?? ['meqasa', 'housemaster', 'gpc', 'realtor', 'jiji'],
-      concurrentSpiders: config.scrapy?.concurrentSpiders ?? 2,
-      retryFailed: config.scrapy?.retryFailed ?? true,
-      maxRetries: config.scrapy?.maxRetries ?? 3,
+      autoStart: scrapyConfig?.autoStart ?? true,
+      initialDelay: scrapyConfig?.initialDelay ?? 30000, // 30 seconds after startup
+      weeklySchedule: scrapyConfig?.weeklySchedule ?? '0 2 * * 0', // Sunday 2 AM
+      dailyUpdates: scrapyConfig?.dailyUpdates ?? true,
+      dailySchedule: scrapyConfig?.dailySchedule ?? '0 3 * * *', // Daily 3 AM
+      enabledSpiders: scrapyConfig?.enabledSpiders ?? [
+        'meqasa',
+        'housemaster',
+        'gpc',
+        'realtor',
+        'jiji',
+        'daily_graphic_legal',  // Critical data: Litigation risk
+        'airbnb_ghana',         // Critical data: Short-stay metrics
+      ],
+      concurrentSpiders: scrapyConfig?.concurrentSpiders ?? 2,
+      retryFailed: scrapyConfig?.retryFailed ?? true,
+      maxRetries: scrapyConfig?.maxRetries ?? 3,
     };
 
-    logger.info('Scrapy scheduler initialized', { 
-      config: this.config 
+    logger.info('Scrapy scheduler initialized', {
+      config: this.config
     });
   }
 
@@ -76,9 +85,9 @@ export class ScrapyScheduler {
             logger.error('Initial scrape failed', { error });
           });
         }, this.config.initialDelay);
-        
-        logger.info('Initial scrape scheduled', { 
-          delayMs: this.config.initialDelay 
+
+        logger.info('Initial scrape scheduled', {
+          delayMs: this.config.initialDelay
         });
       }
 
@@ -90,8 +99,8 @@ export class ScrapyScheduler {
       });
 
       this.scheduledJobs.set('weekly', weeklyJob);
-      logger.info('Weekly scrape scheduled', { 
-        cron: this.config.weeklySchedule 
+      logger.info('Weekly scrape scheduled', {
+        cron: this.config.weeklySchedule
       });
 
       // Schedule daily updates if enabled
@@ -103,8 +112,8 @@ export class ScrapyScheduler {
         });
 
         this.scheduledJobs.set('daily', dailyJob);
-        logger.info('Daily update scrape scheduled', { 
-          cron: this.config.dailySchedule 
+        logger.info('Daily update scrape scheduled', {
+          cron: this.config.dailySchedule
         });
       }
 
@@ -301,10 +310,10 @@ export class ScrapyScheduler {
       });
 
     } catch (error) {
-      logger.error('Failed to execute spider job', { 
-        spider, 
-        jobType, 
-        error 
+      logger.error('Failed to execute spider job', {
+        spider,
+        jobType,
+        error
       });
     } finally {
       this.runningSpiders.delete(spider);

@@ -1,6 +1,6 @@
-# PropMetrik Tenant Portal (Phase 4)
+# PROPMETRIK Tenant Portal (Phase 4)
 
-This is the standalone Tenant Portal application for PropMetrik, designed to provide a dedicated experience for potential and active tenants.
+This is the standalone Tenant Portal application for PROPMETRIK, designed to provide a dedicated experience for potential and active tenants.
 
 ## Architecture
 
@@ -42,4 +42,4 @@ This is the standalone Tenant Portal application for PropMetrik, designed to pro
 
 ## Environment Variables
 
-- `NEXT_PUBLIC_API_URL`: URL of the main PropMetrik backend (default: `http://localhost:4000`)
+- `NEXT_PUBLIC_API_URL`: URL of the main PROPMETRIK backend (default: `http://localhost:4000`)

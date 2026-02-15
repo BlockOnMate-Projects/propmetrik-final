@@ -335,12 +335,13 @@ export class RentScheduleService {
         const appliedPayments: RentSchedulePayment[] = [];
 
         // Get outstanding schedules for this tenancy, ordered by due date (FIFO)
+        // Include UPCOMING so advance payments can be applied to future periods
         const schedulesResult = await this.db.query(
             `SELECT * FROM rent_schedules
              WHERE tenancy_id = $1
-             AND status IN ($2, $3, $4)
+             AND status IN ($2, $3, $4, $5)
              ORDER BY due_date ASC`,
-            [payment.tenancy_id, RentScheduleStatus.DUE, RentScheduleStatus.OVERDUE, RentScheduleStatus.PARTIALLY_PAID]
+            [payment.tenancy_id, RentScheduleStatus.DUE, RentScheduleStatus.OVERDUE, RentScheduleStatus.PARTIALLY_PAID, RentScheduleStatus.UPCOMING]
         );
 
         for (const schedule of schedulesResult.rows) {

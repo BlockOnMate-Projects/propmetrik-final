@@ -13,6 +13,8 @@ interface EnvelopeReviewProps {
   onSubjectChange: (subject: string) => void;
   onMessageChange: (message: string) => void;
   onComplete: () => void;
+  currentUserSigned?: boolean;
+  currentUserRecipientId?: string | null;
 }
 
 export default function EnvelopeReview({
@@ -24,6 +26,8 @@ export default function EnvelopeReview({
   onSubjectChange,
   onMessageChange,
   onComplete,
+  currentUserSigned = false,
+  currentUserRecipientId = null,
 }: EnvelopeReviewProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [reminderFrequency, setReminderFrequency] = useState('3');
@@ -122,19 +126,26 @@ export default function EnvelopeReview({
           <div className="summary-section">
             <h3>👥 Recipients ({recipients.length})</h3>
             <div className="summary-list">
-              {signers.map(signer => (
-                <div key={signer.id} className="summary-item">
-                  <span 
-                    className="recipient-dot"
-                    style={{ backgroundColor: signer.color }}
-                  />
-                  <div className="recipient-info">
-                    <span className="item-name">{signer.name}</span>
-                    <span className="item-email">{signer.email}</span>
+              {signers.map(signer => {
+                const hasSigned = currentUserSigned && signer.id === currentUserRecipientId;
+                return (
+                  <div key={signer.id} className="summary-item">
+                    <span 
+                      className="recipient-dot"
+                      style={{ backgroundColor: signer.color }}
+                    />
+                    <div className="recipient-info">
+                      <span className="item-name">{signer.name}</span>
+                      <span className="item-email">{signer.email}</span>
+                    </div>
+                    {hasSigned ? (
+                      <span className="role-badge signed">✓ Signed</span>
+                    ) : (
+                      <span className="role-badge signer">Signer</span>
+                    )}
                   </div>
-                  <span className="role-badge signer">Signer</span>
-                </div>
-              ))}
+                );
+              })}
               {ccRecipients.map(cc => (
                 <div key={cc.id} className="summary-item">
                   <span 

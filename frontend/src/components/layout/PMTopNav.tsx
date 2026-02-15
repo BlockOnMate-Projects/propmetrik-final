@@ -8,13 +8,15 @@ import { cn } from '@/lib/utils'
 const navigation = [
     { name: 'OVERVIEW', href: '/dashboard/property-management', exact: true, key: '1' },
     { name: 'PROPERTIES', href: '/dashboard/property-management/properties', key: '2' },
-    { name: 'PORTFOLIOS', href: '/dashboard/property-management/portfolios', key: '3' },
-    { name: 'APPLICATIONS', href: '/dashboard/property-management/applications', key: '4' },
-    { name: 'TENANTS', href: '/dashboard/property-management/tenants', key: '5' },
-    { name: 'MAINTENANCE', href: '/dashboard/property-management/maintenance', key: '6' },
-    { name: 'DOCUMENTS', href: '/dashboard/property-management/documents', key: '7' },
-    { name: 'VENDORS', href: '/dashboard/property-management/vendors', key: '8' },
-    { name: 'CALENDAR', href: '/dashboard/property-management/calendar', key: '9' },
+    { name: 'MESSAGES', href: '/dashboard/property-management/messages', key: '3' },
+    { name: 'PORTFOLIOS', href: '/dashboard/property-management/portfolios', key: '4' },
+    { name: 'APPLICATIONS', href: '/dashboard/property-management/applications', key: '5' },
+    { name: 'TENANTS', href: '/dashboard/property-management/tenants', key: '6' },
+    { name: 'MAINTENANCE', href: '/dashboard/property-management/maintenance', key: '7' },
+    { name: 'DOCUMENTS', href: '/dashboard/property-management/documents', key: '8' },
+    { name: 'VENDORS', href: '/dashboard/property-management/vendors', key: '9' },
+    { name: 'FINANCIALS', href: '/dashboard/property-management/financials', key: '10' },
+    { name: 'CALENDAR', href: '/dashboard/calendar', key: '0' },
 ]
 
 export function PMTopNav() {

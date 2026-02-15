@@ -7,6 +7,7 @@ import { Router, Request, Response, NextFunction } from 'express';
 import multer from 'multer';
 import path from 'path';
 import fs from 'fs';
+import { createHash } from 'crypto';
 import {
     signingService,
     auditLogService,
@@ -24,7 +25,7 @@ import {
 } from '../../shared-services/e-sign/types';
 import { logger } from '../utils/logger';
 import { pool, query as dbQuery } from '../database';
-import { getFile, buckets } from '../database/minio';
+import { getFile, uploadFile, buckets } from '../database/minio';
 import { PDFDocument } from 'pdf-lib';
 
 // Multer configuration for PDF uploads
@@ -89,6 +90,269 @@ const getUserEmail = (req: Request): string | undefined => {
 
 const getOrganizationId = (req: Request): string | undefined => {
     return req.headers['x-organization-id'] as string || undefined;
+};
+
+const maybeProcessPropertyManagementCompletion = async (envelopeId: string): Promise<void> => {
+    const envelopeResult = await dbQuery(
+        `SELECT id, name, status, completed_at, context_type, context_entity_id, context_entity_name,
+                signed_pdf_url, document_pdf_url, document_image_url
+         FROM esign_envelopes
+         WHERE id = $1`,
+        [envelopeId]
+    );
+
+    if (envelopeResult.rows.length === 0) {
+        return;
+    }
+
+    const envelopeRow = envelopeResult.rows[0];
+    if (envelopeRow.status !== 'completed') {
+        return;
+    }
+
+    // --- Generate and store signed PDF if not already done ---
+    let signedDocumentUrl = envelopeRow.signed_pdf_url;
+
+    if (!signedDocumentUrl && (envelopeRow.document_pdf_url || envelopeRow.document_image_url)) {
+        try {
+            // 1. Get the original PDF bytes
+            let originalPdfBytes: Uint8Array;
+
+            if (envelopeRow.document_pdf_url) {
+                let bucket = buckets.documents;
+                let key = envelopeRow.document_pdf_url;
+
+                if (envelopeRow.document_pdf_url.includes('/')) {
+                    const parts = envelopeRow.document_pdf_url.split('/');
+                    if (parts[0] === buckets.documents || parts[0] === buckets.uploads) {
+                        bucket = parts[0];
+                        key = parts.slice(1).join('/');
+                    }
+                }
+
+                const { body } = await getFile(bucket, key);
+                originalPdfBytes = body;
+            } else {
+                // Generate PDF from document image
+                const pdfDoc = await PDFDocument.create();
+                const imageBase64 = envelopeRow.document_image_url.replace(/^data:image\/\w+;base64,/, '');
+                const imageBytes = Buffer.from(imageBase64, 'base64');
+
+                let image;
+                if (envelopeRow.document_image_url.includes('image/png')) {
+                    image = await pdfDoc.embedPng(imageBytes);
+                } else {
+                    image = await pdfDoc.embedJpg(imageBytes);
+                }
+
+                const page = pdfDoc.addPage([image.width, image.height]);
+                page.drawImage(image, { x: 0, y: 0, width: image.width, height: image.height });
+                originalPdfBytes = await pdfDoc.save();
+            }
+
+            // 2. Get signature AND date_signed fields from esign_fields
+            const fieldsResult = await dbQuery(
+                `SELECT ef.id, ef.field_type, ef.value, ef.page, ef.x_position, ef.y_position,
+                        ef.width, ef.height, ef.signature_hash, ef.signed_at, ef.signer_id,
+                        es.name as signer_name, es.email as signer_email, es.permanent_signer_id
+                 FROM esign_fields ef
+                 LEFT JOIN esign_signers es ON es.id = ef.signer_id
+                 WHERE ef.envelope_id = $1 AND ef.field_type IN ('signature', 'date_signed') AND ef.value IS NOT NULL`,
+                [envelopeId]
+            );
+
+            const sigRows = fieldsResult.rows.filter((f: any) => f.field_type === 'signature');
+            const dateRows = fieldsResult.rows.filter((f: any) => f.field_type === 'date_signed');
+
+            if (sigRows.length > 0) {
+                // Resolve PMT signer IDs when permanent_signer_id is empty
+                const resolveSignerId = async (email: string, existingId: string | null): Promise<string> => {
+                    if (existingId) return existingId;
+                    if (!email) return '';
+                    const userRes = await dbQuery(`SELECT id FROM users WHERE email = $1 LIMIT 1`, [email]).catch(() => ({ rows: [] }));
+                    if (userRes.rows.length > 0) {
+                        const raw = userRes.rows[0].id.replace(/-/g, '');
+                        return `PMT-${raw.substring(0, 4).toUpperCase()}-${raw.substring(4, 8).toUpperCase()}`;
+                    }
+                    const tenantRes = await dbQuery(`SELECT id FROM tenants WHERE email = $1 LIMIT 1`, [email]).catch(() => ({ rows: [] }));
+                    if (tenantRes.rows.length > 0) {
+                        const raw = tenantRes.rows[0].id.replace(/-/g, '');
+                        return `PMT-${raw.substring(0, 4).toUpperCase()}-${raw.substring(4, 8).toUpperCase()}`;
+                    }
+                    return '';
+                };
+
+                const signatureFields = await Promise.all(sigRows.map(async (f: any) => ({
+                    signatureData: f.value,
+                    page: f.page || 1,
+                    x: f.x_position,
+                    y: f.y_position,
+                    width: f.width,
+                    height: f.height,
+                    signatureId: await resolveSignerId(f.signer_email, f.permanent_signer_id),
+                    signatureHash: f.signature_hash,
+                    signedAt: f.signed_at ? new Date(f.signed_at) : undefined,
+                    signerName: f.signer_name,
+                    signerEmail: f.signer_email,
+                    usePercentage: false,
+                })));
+
+                const dateFields = dateRows.map((f: any) => ({
+                    value: f.value,
+                    page: f.page || 1,
+                    x: f.x_position,
+                    y: f.y_position,
+                    width: f.width,
+                    height: f.height,
+                    usePercentage: false,
+                }));
+
+                // Get signers and audit for full certificate
+                const signersRes = await dbQuery(
+                    `SELECT name, email, role, signed_at, permanent_signer_id, signed_from_ip, signed_user_agent
+                     FROM esign_signers WHERE envelope_id = $1 AND status = 'signed' ORDER BY signing_order`,
+                    [envelopeId]
+                ).catch(() => ({ rows: [] }));
+
+                const auditRes = await dbQuery(
+                    `SELECT event_type, created_at as timestamp, event_data, ip_address
+                     FROM esign_audit_log WHERE envelope_id = $1 ORDER BY created_at ASC`,
+                    [envelopeId]
+                ).catch(() => ({ rows: [] }));
+
+                // 3. Generate the signed PDF with embedded signatures
+                const documentHash = pdfSigningService.calculateDocumentHash(originalPdfBytes);
+                const signedPdfBytes = await pdfSigningService.generateFinalSignedPdf({
+                    originalPdfBytes,
+                    signatures: signatureFields,
+                    dateFields,
+                    appendCertificatePage: true,
+                    documentHash,
+                    envelopeId,
+                    documentTitle: envelopeRow.name,
+                    signers: await Promise.all(signersRes.rows.map(async (s: any) => ({
+                        name: s.name,
+                        email: s.email,
+                        role: s.role || 'signer',
+                        signedAt: new Date(s.signed_at),
+                        signatureId: await resolveSignerId(s.email, s.permanent_signer_id),
+                        ipAddress: s.signed_from_ip,
+                        userAgent: s.signed_user_agent,
+                    }))),
+                    auditEvents: auditRes.rows.map((e: any) => ({
+                        eventType: e.event_type,
+                        timestamp: new Date(e.timestamp),
+                        description: e.event_type,
+                        actor: typeof e.event_data === 'object' ? e.event_data?.actor : undefined,
+                        ipAddress: e.ip_address,
+                    })),
+                });
+
+                // 4. Upload signed PDF to MinIO
+                const signedKey = `esign/signed/${envelopeId}_signed.pdf`;
+                await uploadFile(
+                    buckets.documents,
+                    signedKey,
+                    Buffer.from(signedPdfBytes),
+                    'application/pdf',
+                    { envelopeId, type: 'signed-lease' }
+                );
+
+                // 5. Update the envelope with the signed PDF URL
+                await dbQuery(
+                    `UPDATE esign_envelopes SET signed_pdf_url = $2, updated_at = NOW() WHERE id = $1`,
+                    [envelopeId, signedKey]
+                );
+
+                signedDocumentUrl = signedKey;
+                logger.info('Generated and stored signed PDF for envelope', { envelopeId, signedKey });
+            }
+        } catch (pdfError: any) {
+            logger.error('Failed to generate signed PDF during completion', {
+                envelopeId,
+                error: pdfError?.message || 'Unknown error'
+            });
+            // Fall back to unsigned PDF URL
+            signedDocumentUrl = envelopeRow.document_pdf_url;
+        }
+    }
+
+    // If we still don't have a URL, use the document_pdf_url as fallback
+    if (!signedDocumentUrl) {
+        signedDocumentUrl = envelopeRow.document_pdf_url;
+    }
+
+    let tenancyId: string | null = null;
+
+    if (
+        envelopeRow.context_type === 'property_management' &&
+        envelopeRow.context_entity_name === 'tenancy' &&
+        envelopeRow.context_entity_id
+    ) {
+        tenancyId = envelopeRow.context_entity_id;
+    }
+
+    if (!tenancyId && envelopeRow.context_type === 'lease' && envelopeRow.context_entity_id) {
+        const applicationLinkResult = await dbQuery(
+            `SELECT tenancy_id
+             FROM applications
+             WHERE id = $1`,
+            [envelopeRow.context_entity_id]
+        );
+        tenancyId = applicationLinkResult.rows[0]?.tenancy_id || null;
+    }
+
+    if (!tenancyId) {
+        return;
+    }
+
+    const signerRowsResult = await dbQuery(
+        `SELECT id, email, name, signed_at
+         FROM esign_signers
+         WHERE envelope_id = $1 AND status = 'signed'
+         ORDER BY signing_order ASC`,
+        [envelopeId]
+    );
+
+    const completedAt = envelopeRow.completed_at || new Date();
+    const securityHash = createHash('sha256')
+        .update([envelopeId, signedDocumentUrl || '', new Date(completedAt).toISOString()].join('|'))
+        .digest('hex');
+
+    const completionEvent = {
+        event: 'envelope.completed' as const,
+        timestamp: new Date(),
+        envelope: {
+            id: envelopeId,
+            subject: envelopeRow.name || 'Signed Document',
+            completedAt: new Date(completedAt)
+        },
+        sourceContext: {
+            module: 'property_management' as const,
+            entityType: 'tenancy' as const,
+            entityId: tenancyId
+        },
+        documents: [{
+            id: envelopeId,
+            name: envelopeRow.name || 'Signed Document',
+            signedUrl: signedDocumentUrl,
+            certificateUrl: undefined
+        }],
+        signers: signerRowsResult.rows.map((row: any) => ({
+            email: row.email,
+            name: row.name,
+            pmtId: row.id,
+            signedAt: row.signed_at ? new Date(row.signed_at) : new Date(completedAt)
+        })),
+        security: {
+            hash: securityHash,
+            algorithm: 'SHA-256' as const,
+            verifyUrl: `/api/v1/esign/envelopes/${envelopeId}/certificate`
+        }
+    };
+
+    const { tenancyService } = await import('../services/property-management/leases/tenancyService');
+    await tenancyService.handleEsignCompletion(completionEvent);
 };
 
 // =====================================================
@@ -433,7 +697,7 @@ router.post('/submit', asyncHandler(async (req: Request, res: Response) => {
 
         try {
             const evidence = await signingService.captureExternalSignature(dto);
-            evidenceIds.push(evidence.id);
+            evidenceIds.push(evidence.id!);
         } catch (err) {
             logger.error('Failed to capture signature', { fieldId, error: err });
         }
@@ -627,7 +891,7 @@ router.post('/test/certificate', asyncHandler(async (req: Request, res: Response
             documentTitle: 'Test Lease Agreement - Unit 101',
             documentHash: 'a1b2c3d4e5f6789012345678901234567890abcdef1234567890abcdef123456',
             envelopeId: '12345678-1234-1234-1234-123456789abc',
-            organizationName: 'PropMetrik Test Organization',
+            organizationName: 'PROPMETRIK Test Organization',
             completedAt: now,
             signers: [
                 {
@@ -994,6 +1258,42 @@ router.post('/envelopes', esignUpload.single('file'), asyncHandler(async (req: R
             const pdfBuffer = fs.readFileSync(req.file.path);
             const pdfBase64 = pdfBuffer.toString('base64');
             const pdfDataUrl = `data:application/pdf;base64,${pdfBase64}`;
+
+            // Map frontend field types to DB enum values
+            const mapFieldType = (t: string): string => {
+                switch (t) {
+                    case 'initial': return 'initials';
+                    case 'name': return 'text';
+                    default: return t;
+                }
+            };
+
+            // Extract fields from signers payload into a flat array with signerEmail
+            const flatFields: any[] = [];
+            for (const s of signers) {
+                if (Array.isArray(s.fields)) {
+                    for (const f of s.fields) {
+                        const isSignatureField = f.type === 'signature' || f.type === 'initial';
+                        const fieldValue = isSignatureField
+                            ? (f.value || f.signatureData?.data || null)
+                            : (f.value || null);
+
+                        flatFields.push({
+                            signerEmail: s.email,
+                            type: mapFieldType(f.type || 'signature'),
+                            page: f.page || 1,
+                            x: f.x ?? 0,
+                            y: f.y ?? 0,
+                            width: f.width ?? 200,
+                            height: f.height ?? 50,
+                            required: f.required !== false,
+                            label: f.label || null,
+                            value: fieldValue,
+                            signed: f.signed === true,
+                        });
+                    }
+                }
+            }
             
             envelopeData = {
                 name: req.body.name || req.body.title || 'Untitled Document',
@@ -1003,13 +1303,16 @@ router.post('/envelopes', esignUpload.single('file'), asyncHandler(async (req: R
                 contextType: req.body.contextType || 'document',
                 contextEntityId: req.body.contextEntityId || null,
                 contextEntityName: req.body.contextEntityName || req.body.name || req.file.originalname,
+                // For self-signed documents, mark as already completed
+                autoSend: req.body.contextType === 'self_signed' ? false : true,
+                initialStatus: req.body.contextType === 'self_signed' ? 'completed' : undefined,
                 signers: signers.length > 0 ? signers : [{
                     name: 'Signer',
                     email: req.body.signerEmail || 'signer@example.com',
                     role: 'signer',
                     order: 1
                 }],
-                fields: [], // No predefined fields for uploaded PDFs
+                fields: flatFields,
                 expiresInDays: 30
             };
             
@@ -1077,6 +1380,15 @@ router.get('/envelopes/:id', asyncHandler(async (req: Request, res: Response) =>
     const envelope = await esignEnvelopeService.getEnvelopeById(req.params.id, organizationId);
     if (!envelope) {
         return res.status(404).json({ error: 'Envelope not found' });
+    }
+
+    // Build signing URLs for each signer from their access tokens
+    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+    if ((envelope as any).signers) {
+        (envelope as any).signers = (envelope as any).signers.map((s: any) => ({
+            ...s,
+            signing_url: s.accessToken ? `${frontendUrl}/sign/${s.accessToken}` : undefined,
+        }));
     }
 
     res.json(envelope);
@@ -1162,8 +1474,15 @@ router.get('/envelopes/:id/audit', asyncHandler(async (req: Request, res: Respon
 }));
 
 /**
- * Get envelope for external signing (public endpoint)
- * GET /api/v1/esign/sign/:token
+ * ─── PUBLIC SIGNING ENDPOINTS ─────────────────────────────────────
+ * These endpoints use the esign_envelopes / esign_signers / esign_fields
+ * system and are accessed via the signer's access_token (no auth required).
+ */
+
+/**
+ * Get envelope info for external signing
+ * GET /api/v1/esign/sign-envelope/:token
+ * Returns { envelope, signer, fields } shaped for the /sign/[token] frontend page
  */
 router.get('/sign-envelope/:token', asyncHandler(async (req: Request, res: Response) => {
     const data = await esignEnvelopeService.getEnvelopeByAccessToken(req.params.token);
@@ -1171,35 +1490,239 @@ router.get('/sign-envelope/:token', asyncHandler(async (req: Request, res: Respo
         return res.status(404).json({ error: 'Invalid or expired signing link' });
     }
 
-    res.json(data);
+    const { envelope, signer } = data;
+    const fields = (envelope as any).fields || [];
+
+    // Shape response for the frontend signing page
+    res.json({
+        envelope: {
+            id: envelope.id,
+            name: envelope.name,
+            message: envelope.message,
+            status: envelope.status,
+            documentPdfUrl: `/esign/sign-envelope/${req.params.token}/document`,
+        },
+        signer: {
+            id: signer.id,
+            name: signer.name,
+            email: signer.email,
+            status: signer.status,
+        },
+        fields: fields.map((f: any) => ({
+            id: f.id,
+            type: f.type,
+            page: f.page,
+            x: f.x,
+            y: f.y,
+            width: f.width,
+            height: f.height,
+            required: f.required,
+            label: f.label,
+            value: f.value,
+            signedAt: f.signedAt,
+            signerId: f.signerId,
+            signerName: f.signerName,
+            readOnly: f.signerId !== signer.id,
+        })),
+    });
+}));
+
+/**
+ * Serve PDF document for external signing
+ * GET /api/v1/esign/sign-envelope/:token/document
+ */
+router.get('/sign-envelope/:token/document', asyncHandler(async (req: Request, res: Response) => {
+    const data = await esignEnvelopeService.getEnvelopeByAccessToken(req.params.token);
+    if (!data) {
+        return res.status(404).json({ error: 'Invalid or expired signing link' });
+    }
+
+    const { envelope } = data;
+    const pdfUrl = envelope.documentPdfUrl;
+
+    if (!pdfUrl) {
+        return res.status(404).json({ error: 'No PDF document associated with this envelope' });
+    }
+
+    try {
+        // Handle base64 data URL
+        if (pdfUrl.startsWith('data:')) {
+            const matches = pdfUrl.match(/^data:([^;]+);base64,(.+)$/);
+            if (!matches) {
+                return res.status(400).json({ error: 'Invalid document data format' });
+            }
+            const contentType = matches[1];
+            const base64Data = matches[2];
+            const buffer = Buffer.from(base64Data, 'base64');
+            res.setHeader('Content-Type', contentType);
+            res.setHeader('Content-Disposition', 'inline; filename="document.pdf"');
+            res.setHeader('Cache-Control', 'no-cache');
+            return res.send(buffer);
+        }
+
+        // Handle MinIO path (minio://bucket/path or just path)
+        const objectName = pdfUrl.replace('minio://', '');
+        const fileBuffer = await getFile(buckets.documents, objectName);
+        res.setHeader('Content-Type', 'application/pdf');
+        res.setHeader('Content-Disposition', `inline; filename="document.pdf"`);
+        res.setHeader('Cache-Control', 'no-cache');
+        res.send(fileBuffer);
+    } catch (err: any) {
+        logger.error('Error serving signing document', { error: err.message, pdfUrlPrefix: pdfUrl.substring(0, 50) });
+        return res.status(404).json({ error: 'Document file not found' });
+    }
+}));
+
+/**
+ * Bulk complete signing — signs all fields and marks signer as signed
+ * POST /api/v1/esign/sign-envelope/:token/complete
+ *
+ * Body: { fields: [{ fieldId, value, signatureImage }], consentGiven, consentText }
+ */
+router.post('/sign-envelope/:token/complete', asyncHandler(async (req: Request, res: Response) => {
+    const data = await esignEnvelopeService.getEnvelopeByAccessToken(req.params.token);
+    if (!data) {
+        return res.status(404).json({ error: 'Invalid or expired signing link' });
+    }
+
+    const { envelope, signer } = data;
+
+    if (signer.status === 'signed') {
+        return res.status(400).json({ error: 'You have already signed this document' });
+    }
+    if (signer.status === 'declined') {
+        return res.status(400).json({ error: 'You have declined this signing request' });
+    }
+    if (envelope.status === 'voided') {
+        return res.status(400).json({ error: 'This envelope has been voided' });
+    }
+
+    const { fields: fieldValues, consentGiven, consentText } = req.body;
+    const ipAddress = req.ip || (req.headers['x-forwarded-for'] as string) || 'unknown';
+    const userAgent = req.headers['user-agent'] || 'unknown';
+
+    if (!fieldValues || !Array.isArray(fieldValues)) {
+        return res.status(400).json({ error: 'fields array is required' });
+    }
+
+    try {
+        // Sign each field in a single transaction
+        for (const fv of fieldValues) {
+            const value = fv.signatureImage || fv.value || '';
+            await esignEnvelopeService.signField(
+                envelope.id,
+                fv.fieldId,
+                signer.id,
+                value,
+                ipAddress,
+                userAgent
+            );
+        }
+
+        // Log the signing event
+        await auditLogService.createAuditEvent({
+            eventType: 'signer.completed',
+            actorType: 'signer',
+            actorId: signer.id,
+            metadata: {
+                envelopeId: envelope.id,
+                signerEmail: signer.email,
+                fieldCount: fieldValues.length,
+                consentGiven,
+                consentText,
+                ipAddress,
+                userAgent,
+            },
+        });
+
+        try {
+            await maybeProcessPropertyManagementCompletion(envelope.id);
+        } catch (completionError: any) {
+            logger.error('Post-sign completion processing failed', {
+                envelopeId: envelope.id,
+                signerId: signer.id,
+                error: completionError?.message || 'Unknown error'
+            });
+        }
+
+        res.json({ success: true, message: 'Document signed successfully' });
+    } catch (error: any) {
+        logger.error('Error completing signing', { error: error.message, signerId: signer.id });
+        res.status(400).json({ error: error.message });
+    }
+}));
+
+/**
+ * Decline signing
+ * POST /api/v1/esign/sign-envelope/:token/decline
+ *
+ * Body: { reason: string }
+ */
+router.post('/sign-envelope/:token/decline', asyncHandler(async (req: Request, res: Response) => {
+    const data = await esignEnvelopeService.getEnvelopeByAccessToken(req.params.token);
+    if (!data) {
+        return res.status(404).json({ error: 'Invalid or expired signing link' });
+    }
+
+    const { envelope, signer } = data;
+    const reason = req.body.reason || 'Declined by signer';
+
+    if (signer.status === 'signed') {
+        return res.status(400).json({ error: 'You have already signed this document' });
+    }
+    if (signer.status === 'declined') {
+        return res.status(400).json({ error: 'You have already declined this signing request' });
+    }
+
+    // Update signer status to declined
+    await dbQuery(
+        `UPDATE esign_signers
+         SET status = 'declined', declined_at = NOW(), decline_reason = $1
+         WHERE id = $2`,
+        [reason, signer.id]
+    );
+
+    // Log the decline
+    await auditLogService.createAuditEvent({
+        eventType: 'signer.declined',
+        actorType: 'signer',
+        actorId: signer.id,
+        metadata: {
+            envelopeId: envelope.id,
+            signerEmail: signer.email,
+            reason,
+        },
+    });
+
+    res.json({ success: true, message: 'Signature declined' });
 }));
 
 /**
  * Sign a specific field (public endpoint)
- * POST /api/v1/esign/sign/:token/fields/:fieldId
+ * POST /api/v1/esign/sign-envelope/:token/fields/:fieldId
  */
 router.post('/sign-envelope/:token/fields/:fieldId', asyncHandler(async (req: Request, res: Response) => {
-    const { value, fontFamily } = req.body;
-    const ipAddress = req.ip || req.headers['x-forwarded-for'] as string;
-    const userAgent = req.headers['user-agent'];
+    const data = await esignEnvelopeService.getEnvelopeByAccessToken(req.params.token);
+    if (!data) {
+        return res.status(404).json({ error: 'Invalid or expired signing link' });
+    }
+
+    const { envelope, signer } = data;
+    const { value } = req.body;
+    const ipAddress = req.ip || (req.headers['x-forwarded-for'] as string) || 'unknown';
+    const userAgent = req.headers['user-agent'] || 'unknown';
 
     try {
         const field = await esignEnvelopeService.signField(
-            req.params.token,
+            envelope.id,
             req.params.fieldId,
+            signer.id,
             value,
-            fontFamily,
             ipAddress,
             userAgent
         );
-        
-        // Return field with signature details
-        res.json({
-            success: true,
-            ...field,
-            signatureHash: field.signatureHash,
-            signerIdentityId: field.signerIdentityId,
-        });
+
+        res.json({ success: true, field });
     } catch (error: any) {
         res.status(400).json({ success: false, error: error.message });
     }
@@ -1341,17 +1864,66 @@ router.get('/envelopes/:id/download', asyncHandler(async (req: Request, res: Res
                     usePercentage: false      // Tells pdfSigningService these are absolute pixels
                 };
 
-                logger.info('Prepared signature field for embedding:', {
-                    fieldId: f.id,
-                    signerName: signer?.name,
-                    permanentSignerId: signer?.permanentSignerId,
-                    signatureHash: f.signatureHash,
-                    coords: { x: f.xPosition, y: f.yPosition },
-                    dimensions: { width: f.width, height: f.height }
-                });
-
                 return signatureField;
             });
+
+        // Collect date fields
+        const dateFields = (envelope.fields || [])
+            .filter(f => f.fieldType === 'date_signed' && f.value)
+            .map(f => ({
+                value: f.value!,
+                page: f.page || 1,
+                x: f.xPosition,
+                y: f.yPosition,
+                width: f.width,
+                height: f.height,
+                usePercentage: false,
+            }));
+
+        // Resolve PMT IDs for signers
+        const resolveSignerId = async (email: string, existingId: string | undefined): Promise<string> => {
+            if (existingId) return existingId;
+            if (!email) return '';
+            const userRes = await dbQuery(`SELECT id FROM users WHERE email = $1 LIMIT 1`, [email]).catch(() => ({ rows: [] }));
+            if (userRes.rows.length > 0) {
+                const raw = userRes.rows[0].id.replace(/-/g, '');
+                return `PMT-${raw.substring(0, 4).toUpperCase()}-${raw.substring(4, 8).toUpperCase()}`;
+            }
+            const tenantRes = await dbQuery(`SELECT id FROM tenants WHERE email = $1 LIMIT 1`, [email]).catch(() => ({ rows: [] }));
+            if (tenantRes.rows.length > 0) {
+                const raw = tenantRes.rows[0].id.replace(/-/g, '');
+                return `PMT-${raw.substring(0, 4).toUpperCase()}-${raw.substring(4, 8).toUpperCase()}`;
+            }
+            return '';
+        };
+
+        // Resolve PMT IDs in signature fields
+        for (const sf of signatureFields) {
+            if (!sf.signatureId && sf.signerEmail) {
+                sf.signatureId = await resolveSignerId(sf.signerEmail, sf.signatureId);
+            }
+        }
+
+        // Get signers and audit for full certificate
+        const signersForCert = await Promise.all(
+            (envelope.signers || [])
+                .filter(s => s.status === 'signed')
+                .map(async (s) => ({
+                    name: s.name,
+                    email: s.email,
+                    role: s.role || 'signer',
+                    signedAt: s.signedAt instanceof Date ? s.signedAt : new Date(s.signedAt!),
+                    signatureId: await resolveSignerId(s.email, s.permanentSignerId),
+                    ipAddress: (s as any).signedFromIp,
+                    userAgent: (s as any).signedUserAgent,
+                }))
+        );
+
+        const auditRes = await dbQuery(
+            `SELECT event_type, created_at as timestamp, event_data, ip_address
+             FROM esign_audit_log WHERE envelope_id = $1 ORDER BY created_at ASC`,
+            [envelope.id]
+        ).catch(() => ({ rows: [] }));
 
         // Generate the signed PDF with embedded signatures
         const documentHash = pdfSigningService.calculateDocumentHash(originalPdfBytes);
@@ -1359,8 +1931,19 @@ router.get('/envelopes/:id/download', asyncHandler(async (req: Request, res: Res
         const signedPdfBytes = await pdfSigningService.generateFinalSignedPdf({
             originalPdfBytes,
             signatures: signatureFields,
+            dateFields,
             appendCertificatePage: includeAuditPage,
-            documentHash
+            documentHash,
+            envelopeId: envelope.id,
+            documentTitle: envelope.name,
+            signers: signersForCert,
+            auditEvents: auditRes.rows.map((e: any) => ({
+                eventType: e.event_type,
+                timestamp: new Date(e.timestamp),
+                description: e.event_type,
+                actor: typeof e.event_data === 'object' ? e.event_data?.actor : undefined,
+                ipAddress: e.ip_address,
+            })),
         });
 
         // Set response headers for PDF download
@@ -1411,7 +1994,7 @@ router.get('/envelopes/:id/certificate', asyncHandler(async (req: Request, res: 
 
         // Get organization name
         const orgResult = await dbQuery('SELECT name FROM organizations WHERE id = $1', [organizationId]);
-        const organizationName = orgResult.rows[0]?.name || 'PropMetrik';
+        const organizationName = orgResult.rows[0]?.name || 'PROPMETRIK';
 
         // Check for existing certificate or generate a new ID
         const certResult = await dbQuery(
@@ -1538,5 +2121,364 @@ async function getDefaultOrgId(): Promise<string> {
     const result = await dbQuery('SELECT id FROM organizations LIMIT 1');
     return result.rows[0]?.id || '00000000-0000-0000-0000-000000000000';
 }
+
+// =====================================================
+// COMPATIBILITY ROUTES (Python FastAPI parity)
+// These routes provide backward compatibility for e-sign-ui
+// which was originally built for the Python FastAPI backend
+// =====================================================
+
+/**
+ * Documents upload (creates envelope with document)
+ * POST /api/v1/esign/documents/upload
+ */
+router.post('/documents/upload', esignUpload.single('file'), asyncHandler(async (req: Request, res: Response) => {
+    if (!req.file) {
+        return res.status(400).json({ error: 'No file uploaded' });
+    }
+
+    const organizationId = getOrganizationId(req) || await getDefaultOrgId();
+    const userId = getUserId(req);
+    const userEmail = getUserEmail(req) || 'unknown@propmetrik.com';
+    const filename = req.file.originalname;
+
+    // First, ensure we have an esign.users record
+    let esignUserResult = await dbQuery(`
+        SELECT id FROM esign.users WHERE propmetrik_user_id = $1
+    `, [userId]);
+
+    let esignUserId: number;
+    if (esignUserResult.rows.length === 0) {
+        // Create esign user linked to propmetrik user
+        const insertResult = await dbQuery(`
+            INSERT INTO esign.users (propmetrik_user_id, organization_id, email, full_name)
+            VALUES ($1, $2, $3, $4)
+            RETURNING id
+        `, [userId, organizationId, userEmail, 'User']);
+        esignUserId = insertResult.rows[0].id;
+    } else {
+        esignUserId = esignUserResult.rows[0].id;
+    }
+
+    // Store document in esign.documents
+    const docResult = await dbQuery(`
+        INSERT INTO esign.documents (
+            owner_id, organization_id, title, original_format, 
+            file_path, file_size, mime_type, status
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, 'pending')
+        RETURNING *
+    `, [
+        esignUserId,
+        organizationId,
+        filename,
+        'pdf',
+        req.file.path,
+        req.file.size,
+        'application/pdf'
+    ]);
+
+    const doc = docResult.rows[0];
+
+    res.status(201).json({
+        id: doc.id,
+        filename: doc.title,
+        status: doc.status,
+        created_at: doc.created_at,
+        message: 'Document uploaded successfully'
+    });
+}));
+
+/**
+ * List documents
+ * GET /api/v1/esign/documents/
+ */
+router.get('/documents/', asyncHandler(async (req: Request, res: Response) => {
+    const organizationId = getOrganizationId(req) || await getDefaultOrgId();
+    const skip = parseInt(req.query.skip as string) || 0;
+    const limit = Math.min(parseInt(req.query.limit as string) || 50, 100);
+
+    const result = await dbQuery(`
+        SELECT d.*, u.email as owner_email, u.full_name as owner_name
+        FROM esign.documents d
+        LEFT JOIN esign.users u ON d.owner_id = u.id
+        WHERE d.organization_id = $1 
+        ORDER BY d.created_at DESC 
+        LIMIT $2 OFFSET $3
+    `, [organizationId, limit, skip]);
+
+    res.json(result.rows.map((r: any) => ({
+        id: r.id,
+        filename: r.title,
+        status: r.status,
+        file_size: r.file_size,
+        created_at: r.created_at,
+        owner: { email: r.owner_email, name: r.owner_name }
+    })));
+}));
+
+/**
+ * Get document by ID
+ * GET /api/v1/esign/documents/:id
+ */
+router.get('/documents/:id', asyncHandler(async (req: Request, res: Response) => {
+    const result = await dbQuery(`SELECT * FROM esign.documents WHERE id = $1`, [req.params.id]);
+    if (result.rows.length === 0) {
+        return res.status(404).json({ error: 'Document not found' });
+    }
+    const doc = result.rows[0];
+    res.json({
+        id: doc.id,
+        filename: doc.title,
+        status: doc.status,
+        file_size: doc.file_size,
+        created_at: doc.created_at,
+        updated_at: doc.updated_at
+    });
+}));
+
+/**
+ * Delete document
+ * DELETE /api/v1/esign/documents/:id
+ */
+router.delete('/documents/:id', asyncHandler(async (req: Request, res: Response) => {
+    const result = await dbQuery(`DELETE FROM esign.documents WHERE id = $1 RETURNING *`, [req.params.id]);
+    if (result.rows.length === 0) {
+        return res.status(404).json({ error: 'Document not found' });
+    }
+    res.json({ message: 'Document deleted' });
+}));
+
+/**
+ * Signature requests alias (maps to /requests)
+ * POST /api/v1/esign/signature-requests/
+ */
+router.post('/signature-requests/', asyncHandler(async (req: Request, res: Response) => {
+    const userId = getUserId(req);
+    const { document_id, title, message, signers, expires_in_days } = req.body;
+
+    const signingRequest = await signingService.createSigningRequest({
+        documentId: document_id?.toString(),
+        documentType: 'standalone',
+        documentTitle: title || 'Signature Request',
+        signees: signers?.map((s: any, idx: number) => ({
+            signeeType: 'external',
+            externalName: s.full_name || s.name,
+            externalEmail: s.email,
+            signingOrder: s.order || idx + 1,
+            signeeRole: 'signer'
+        })) || [],
+        message,
+        expiresInDays: expires_in_days || 30
+    }, userId);
+
+    res.status(201).json({
+        id: signingRequest.id,
+        status: signingRequest.status,
+        created_at: signingRequest.createdAt
+    });
+}));
+
+/**
+ * List signature requests
+ * GET /api/v1/esign/signature-requests/
+ */
+router.get('/signature-requests/', asyncHandler(async (req: Request, res: Response) => {
+    const userId = getUserId(req);
+    const requests = await signingService.getSigningRequestsForUser(userId);
+    res.json(requests);
+}));
+
+/**
+ * Get inbox (requests where user is a signer)
+ * GET /api/v1/esign/signature-requests/inbox
+ */
+router.get('/signature-requests/inbox', asyncHandler(async (req: Request, res: Response) => {
+    const userId = getUserId(req);
+    const result = await dbQuery(`
+        SELECT sr.* FROM signing_requests sr
+        INNER JOIN signing_request_signees srs ON sr.id = srs.signing_request_id
+        WHERE srs.user_id = $1 AND srs.status = 'pending'
+        ORDER BY sr.created_at DESC
+    `, [userId]);
+    res.json(result.rows);
+}));
+
+/**
+ * Public signing access (for external signers)
+ * GET /api/v1/esign/signing/access/:token
+ */
+router.get('/signing/access/:token', asyncHandler(async (req: Request, res: Response) => {
+    const signee = await magicLinkService.validateMagicLink(req.params.token);
+    if (!signee) {
+        return res.status(404).json({ error: 'Invalid or expired signing link' });
+    }
+
+    const signingRequest = await signingService.getSigningRequest(signee.signingRequestId);
+    if (!signingRequest) {
+        return res.status(404).json({ error: 'Signing request not found' });
+    }
+
+    res.json({
+        signer: {
+            id: signee.id,
+            name: signee.externalName,
+            email: signee.externalEmail,
+            role: signee.signeeRole,
+            status: signee.status
+        },
+        document: {
+            id: signingRequest.id,
+            title: signingRequest.documentTitle,
+            status: signingRequest.status
+        }
+    });
+}));
+
+/**
+ * Public sign document
+ * POST /api/v1/esign/signing/sign/:token
+ */
+router.post('/signing/sign/:token', asyncHandler(async (req: Request, res: Response) => {
+    const { signature_data, signature_type, page, x, y, width, height } = req.body;
+
+    const evidence = await signingService.captureExternalSignature({
+        magicToken: req.params.token,
+        signatureMethod: signature_type || 'drawn',
+        signatureImageBase64: signature_data,
+        ipAddress: req.ip,
+        userAgent: req.headers['user-agent']
+    });
+
+    res.json({
+        success: true,
+        message: 'Document signed successfully',
+        evidenceId: evidence.id
+    });
+}));
+
+/**
+ * Decline signature
+ * POST /api/v1/esign/signing/decline/:token
+ */
+router.post('/signing/decline/:token', asyncHandler(async (req: Request, res: Response) => {
+    const signee = await magicLinkService.validateMagicLink(req.params.token);
+    if (!signee) {
+        return res.status(404).json({ error: 'Invalid or expired signing link' });
+    }
+
+    await dbQuery(`
+        UPDATE signing_request_signees 
+        SET status = 'declined', declined_at = NOW(), decline_reason = $1
+        WHERE id = $2
+    `, [req.body.decline_reason || 'Declined by signer', signee.id]);
+
+    await magicLinkService.invalidateMagicLink(signee.id);
+
+    res.json({ success: true, message: 'Signature declined' });
+}));
+
+/**
+ * Get document for signing (PDF)
+ * GET /api/v1/esign/signing/signature-request/:token/document
+ */
+router.get('/signing/signature-request/:token/document', asyncHandler(async (req: Request, res: Response) => {
+    const signee = await magicLinkService.validateMagicLink(req.params.token);
+    if (!signee) {
+        return res.status(404).json({ error: 'Invalid or expired signing link' });
+    }
+
+    const signingRequest = await signingService.getSigningRequest(signee.signingRequestId);
+    if (!signingRequest || !signingRequest.originalPdfUrl) {
+        return res.status(404).json({ error: 'Document not found' });
+    }
+
+    // Get document from MinIO
+    const objectName = signingRequest.originalPdfUrl.replace('minio://', '');
+    const fileBuffer = await getFile(buckets.documents, objectName);
+
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `inline; filename="document.pdf"`);
+    res.send(fileBuffer);
+}));
+
+/**
+ * Reports stats
+ * GET /api/v1/esign/reports/stats
+ */
+router.get('/reports/stats', asyncHandler(async (req: Request, res: Response) => {
+    const days = parseInt(req.query.days as string) || 30;
+    const organizationId = getOrganizationId(req) || await getDefaultOrgId();
+
+    const result = await dbQuery(`
+        SELECT 
+            COUNT(*) FILTER (WHERE status = 'completed') as completed,
+            COUNT(*) FILTER (WHERE status = 'sent') as pending,
+            COUNT(*) FILTER (WHERE status = 'voided') as voided,
+            COUNT(*) as total
+        FROM esign_envelopes
+        WHERE organization_id = $1 
+        AND created_at >= NOW() - INTERVAL '${days} days'
+    `, [organizationId]);
+
+    res.json(result.rows[0] || { completed: 0, pending: 0, voided: 0, total: 0 });
+}));
+
+/**
+ * Reports activity
+ * GET /api/v1/esign/reports/activity
+ */
+router.get('/reports/activity', asyncHandler(async (req: Request, res: Response) => {
+    const limit = parseInt(req.query.limit as string) || 20;
+    const offset = parseInt(req.query.offset as string) || 0;
+
+    const result = await dbQuery(`
+        SELECT al.*, e.name as envelope_name
+        FROM esign_audit_log al
+        LEFT JOIN esign_envelopes e ON al.envelope_id = e.id
+        ORDER BY al.created_at DESC
+        LIMIT $1 OFFSET $2
+    `, [limit, offset]);
+
+    res.json(result.rows);
+}));
+
+/**
+ * Auth/me - current user info
+ * GET /api/v1/esign/auth/me
+ */
+router.get('/auth/me', asyncHandler(async (req: Request, res: Response) => {
+    const userId = getUserId(req);
+    const email = getUserEmail(req);
+
+    const result = await dbQuery(`
+        SELECT id, email, first_name, last_name, role, organization_id 
+        FROM users WHERE id = $1
+    `, [userId]);
+
+    if (result.rows.length === 0) {
+        return res.json({
+            id: userId,
+            email: email || 'unknown',
+            name: 'User'
+        });
+    }
+
+    const user = result.rows[0];
+    res.json({
+        id: user.id,
+        email: user.email,
+        name: `${user.first_name || ''} ${user.last_name || ''}`.trim() || 'User',
+        role: user.role,
+        organizationId: user.organization_id
+    });
+}));
+
+/**
+ * Auth groups
+ * GET /api/v1/esign/auth/groups
+ */
+router.get('/auth/groups', asyncHandler(async (req: Request, res: Response) => {
+    res.json(['users', 'esign_users']);
+}));
 
 export default router;

@@ -38,7 +38,7 @@ export function ZoneValuation({ valuation, dataQuality }: ZoneValuationProps) {
         <div>
           <div className="flex items-center gap-2 text-primary font-semibold mb-3">
             <TrendingUp className="w-5 h-5" />
-            <span>{isAVM ? 'PropMetrik Estimate™' : 'Listed Price Range'}</span>
+            <span>{isAVM ? 'PROPMETRIK Estimate™' : 'Listed Price Range'}</span>
             <TooltipProvider>
               <Tooltip>
                 <TooltipTrigger>

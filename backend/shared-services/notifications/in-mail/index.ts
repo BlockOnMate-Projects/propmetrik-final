@@ -1,7 +1,7 @@
 /**
  * In-Mail Notification System
  * 
- * Provides a unified inbox for all PropMetrik notifications:
+ * Provides a unified inbox for all PROPMETRIK notifications:
  * - E-Sign documents
  * - Property updates
  * - Valuation reports

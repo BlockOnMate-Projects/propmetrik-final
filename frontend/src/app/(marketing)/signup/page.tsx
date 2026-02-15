@@ -54,7 +54,7 @@ function SignupForm() {
         <div className="w-full max-w-md bg-card border border-border rounded-xl p-8 shadow-2xl">
             <div className="text-center mb-8">
                 <h1 className="text-2xl font-bold mb-2">Create an account</h1>
-                <p className="text-zinc-400 text-sm mb-6">Get started with Propmetrik today</p>
+                <p className="text-zinc-400 text-sm mb-6">Get started with PROPMETRIK today</p>
 
                 <div className="text-left">
                     <label className="block text-xs font-bold uppercase tracking-wider text-muted-foreground mb-2">Selected Plan</label>
@@ -226,7 +226,7 @@ export default function SignupPage() {
             <Link href="/" className="mb-8">
                 <Image
                     src="/branding/logo-full.png"
-                    alt="Propmetrik Logo"
+                    alt="PROPMETRIK Logo"
                     width={200}
                     height={55}
                     className="h-12 w-auto object-contain"

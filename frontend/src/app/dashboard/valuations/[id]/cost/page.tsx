@@ -895,7 +895,7 @@ export default function CostApproachPage() {
                 <div className="flex items-center gap-2">
                   <Info className="w-3 h-3 text-amber-500" />
                   <span className="font-mono text-[10px] text-zinc-400">
-                    Data from PropMetrik Data Hub • Base Year: {dataSourceInfo.baseYear}
+                    Data from PROPMETRIK Data Hub • Base Year: {dataSourceInfo.baseYear}
                     {regionalFactor.factor !== 1.0 && ` • ${regionalFactor.name} Factor: ${regionalFactor.factor}x`}
                   </span>
                 </div>

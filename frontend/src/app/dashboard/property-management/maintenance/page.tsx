@@ -36,10 +36,12 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { propertyManagementApi } from '@/lib/property-management-api'
 import { WorkOrder, WorkOrderStatus } from '@/types/property-management'
 
 export default function MaintenancePage() {
+    const router = useRouter()
     const [workOrders, setWorkOrders] = useState<WorkOrder[]>([])
     const [isLoading, setIsLoading] = useState(true)
     const [error, setError] = useState<string | null>(null)
@@ -187,7 +189,7 @@ export default function MaintenancePage() {
                                     </TableRow>
                                 ) : (
                                     workOrders.map((wo) => (
-                                        <TableRow key={wo.id} className="border-zinc-800 hover:bg-zinc-900/50 group">
+                                        <TableRow key={wo.id} className="border-zinc-800 hover:bg-zinc-900/50 group cursor-pointer" onClick={() => router.push(`/dashboard/property-management/maintenance/${wo.id}`)}>
                                             <TableCell>
                                                 <span className="font-mono text-xs text-zinc-500 group-hover:text-amber-500 transition-colors">
                                                     {wo.id.substring(0, 8).toUpperCase()}
@@ -243,14 +245,22 @@ export default function MaintenancePage() {
                                                     </DropdownMenuTrigger>
                                                     <DropdownMenuContent align="end" className="bg-black border-zinc-800 text-zinc-300">
                                                         <DropdownMenuLabel className="text-xs font-mono uppercase text-zinc-500">Actions</DropdownMenuLabel>
-                                                        <DropdownMenuItem className="hover:bg-zinc-900 focus:bg-zinc-900 cursor-pointer text-xs font-mono">
+                                                        <DropdownMenuItem className="hover:bg-zinc-900 focus:bg-zinc-900 cursor-pointer text-xs font-mono" onClick={(e) => { e.stopPropagation(); router.push(`/dashboard/property-management/maintenance/${wo.id}`) }}>
                                                             View details
                                                         </DropdownMenuItem>
-                                                        <DropdownMenuItem className="hover:bg-zinc-900 focus:bg-zinc-900 cursor-pointer text-xs font-mono">
+                                                        <DropdownMenuItem className="hover:bg-zinc-900 focus:bg-zinc-900 cursor-pointer text-xs font-mono" onClick={(e) => { e.stopPropagation(); router.push(`/dashboard/property-management/maintenance/${wo.id}`) }}>
                                                             Update Status
                                                         </DropdownMenuItem>
                                                         <DropdownMenuSeparator className="bg-zinc-800" />
-                                                        <DropdownMenuItem className="text-amber-500 hover:bg-zinc-900 focus:bg-zinc-900 cursor-pointer text-xs font-mono">
+                                                        <DropdownMenuItem className="text-amber-500 hover:bg-zinc-900 focus:bg-zinc-900 cursor-pointer text-xs font-mono" onClick={async (e) => {
+                                                            e.stopPropagation();
+                                                            if (confirm('Close this ticket?')) {
+                                                                try {
+                                                                    await propertyManagementApi.updateWorkOrder(wo.id, { status: WorkOrderStatus.COMPLETED } as any);
+                                                                    setWorkOrders(prev => prev.map(w => w.id === wo.id ? { ...w, status: WorkOrderStatus.COMPLETED } : w));
+                                                                } catch (err: any) { alert(err.message || 'Failed to close ticket'); }
+                                                            }
+                                                        }}>
                                                             Close Ticket
                                                         </DropdownMenuItem>
                                                     </DropdownMenuContent>

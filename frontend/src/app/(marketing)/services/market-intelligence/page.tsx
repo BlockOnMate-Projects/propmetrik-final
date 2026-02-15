@@ -258,7 +258,7 @@ export default function MarketIntelligencePage() {
             {/* CTA Section */}
             <PremiumCTASection
                 title="Get the Intelligence Edge"
-                description="Join Ghana's leading investors, banks, and developers who rely on PropMetrik for market-leading intelligence."
+                description="Join Ghana's leading investors, banks, and developers who rely on PROPMETRIK for market-leading intelligence."
                 primaryCTA={{
                     text: "Subscribe Now",
                     href: "/signup"

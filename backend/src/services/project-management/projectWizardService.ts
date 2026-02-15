@@ -19,7 +19,7 @@
 import { pool } from '../../database';
 import { v4 as uuidv4 } from 'uuid';
 import { logger } from '../../utils/logger';
-import { BaseService } from '../base/BaseService';
+import { BaseService } from '../../../shared-services/base/BaseService';
 import { eventBus, ProjectEventType } from './events';
 
 // Import related services
@@ -880,7 +880,7 @@ class ProjectWizardService extends BaseService {
     });
     
     // Return the full project object (frontend expects DevelopmentProject with 'id' property)
-    return project;
+    return { projectId: project.id, projectNumber: project.project_number };
   }
 
   /**

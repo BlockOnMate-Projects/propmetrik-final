@@ -32,7 +32,7 @@ router.get('/webhook', (req: Request, res: Response) => {
   const token = req.query['hub.verify_token'];
   const challenge = req.query['hub.challenge'];
 
-  const verifyToken = config.whatsapp?.verifyToken || process.env.WHATSAPP_VERIFY_TOKEN || 'propmetrik-pm-bot';
+  const verifyToken = config.whatsapp?.webhookVerifyToken || process.env.WHATSAPP_VERIFY_TOKEN || 'propmetrik-pm-bot';
 
   if (mode === 'subscribe' && token === verifyToken) {
     logger.info('WhatsApp webhook verified successfully');
@@ -199,8 +199,7 @@ router.post('/notify/rfi', async (req: Request, res: Response) => {
     }
 
     // Get RFI details and assigned user
-    const { getPool } = await import('../database');
-    const db = getPool();
+    const { pool: db } = await import('../database');
     
     const rfiResult = await db.query(`
       SELECT 
@@ -282,8 +281,7 @@ router.post('/notify/submittal', async (req: Request, res: Response) => {
       });
     }
 
-    const { getPool } = await import('../database');
-    const db = getPool();
+    const { pool: db } = await import('../database');
     
     const submittalResult = await db.query(`
       SELECT 
@@ -367,8 +365,7 @@ router.post('/notify/change-order', async (req: Request, res: Response) => {
       });
     }
 
-    const { getPool } = await import('../database');
-    const db = getPool();
+    const { pool: db } = await import('../database');
     
     const coResult = await db.query(`
       SELECT 
@@ -504,7 +501,7 @@ router.post('/notify/delivery', async (req: Request, res: Response) => {
 router.post('/triggers/daily-log-reminders', async (req: Request, res: Response) => {
   try {
     // Verify cron secret if configured
-    const cronSecret = config.cronSecret || process.env.CRON_SECRET;
+    const cronSecret = (config as any).cronSecret || process.env.CRON_SECRET;
     if (cronSecret && req.headers['x-cron-secret'] !== cronSecret) {
       return res.status(403).json({ success: false, error: 'Unauthorized' });
     }
@@ -524,7 +521,7 @@ router.post('/triggers/daily-log-reminders', async (req: Request, res: Response)
  */
 router.post('/triggers/overdue-rfi-reminders', async (req: Request, res: Response) => {
   try {
-    const cronSecret = config.cronSecret || process.env.CRON_SECRET;
+    const cronSecret = (config as any).cronSecret || process.env.CRON_SECRET;
     if (cronSecret && req.headers['x-cron-secret'] !== cronSecret) {
       return res.status(403).json({ success: false, error: 'Unauthorized' });
     }
@@ -544,7 +541,7 @@ router.post('/triggers/overdue-rfi-reminders', async (req: Request, res: Respons
  */
 router.post('/triggers/delivery-notifications', async (req: Request, res: Response) => {
   try {
-    const cronSecret = config.cronSecret || process.env.CRON_SECRET;
+    const cronSecret = (config as any).cronSecret || process.env.CRON_SECRET;
     if (cronSecret && req.headers['x-cron-secret'] !== cronSecret) {
       return res.status(403).json({ success: false, error: 'Unauthorized' });
     }
@@ -579,7 +576,7 @@ router.get('/status', (req: Request, res: Response) => {
       interactiveCommands: true
     },
     notificationTypes: Object.values(PMNotificationType),
-    webhookConfigured: !!(config.whatsapp?.apiToken && config.whatsapp?.phoneNumberId)
+    webhookConfigured: !!(config.whatsapp?.accessToken && config.whatsapp?.phoneNumberId)
   });
 });
 
@@ -626,7 +623,7 @@ router.post('/test', async (req: Request, res: Response) => {
     const { whatsappService } = await import('../../shared-services/notifications/whatsapp/whatsapp.service');
     const success = await whatsappService.sendMessage(
       phone,
-      message || '🧪 Test message from PropMetrik PM Bot'
+      message || '🧪 Test message from PROPMETRIK PM Bot'
     );
 
     res.json({ success, message: success ? 'Test message sent' : 'Failed to send' });

@@ -1,6 +1,7 @@
 /**
  * Deal Service
  * Phase 5.2: CRM Service Layer
+ * Phase 4 E-Sign Integration: Automatic contract signing on stage transitions
  * 
  * Handles deal lifecycle management with pipeline validation
  */
@@ -17,6 +18,8 @@ import {
 } from './types';
 import { pipelineValidator } from './pipelineValidator';
 import { activityService } from './activityService';
+import { eSignIntegrationService } from '../../../shared-services/e-sign/integration/eSignIntegrationService';
+import { CompletionEvent, ESignField } from '../../../shared-services/e-sign/integration/types';
 
 export class DealService {
     /**
@@ -380,6 +383,7 @@ export class DealService {
 
     /**
      * Update deal stage with validation
+     * Phase 4 E-Sign: Triggers e-sign workflow if stage has trigger_esign = true
      */
     async updateDealStage(
         dealId: string,
@@ -448,6 +452,20 @@ export class DealService {
                 oldStageId,
                 newStageId,
             });
+
+            // ================================================================
+            // Phase 4 E-Sign: Check if new stage triggers e-sign workflow
+            // ================================================================
+            try {
+                await this.checkAndTriggerEsign(dealId, newStageId, organizationId, userId);
+            } catch (esignError: any) {
+                // Don't fail the stage update if e-sign fails, just log it
+                logger.error('Failed to trigger e-sign for deal stage', {
+                    dealId,
+                    stageId: newStageId,
+                    error: esignError.message,
+                });
+            }
 
             return updatedDeal;
         } catch (error) {
@@ -591,6 +609,568 @@ export class DealService {
             logger.error('Error fetching deal metrics', { error, organizationId });
             throw error;
         }
+    }
+
+    // ================================================================
+    // E-SIGN INTEGRATION (Phase 4)
+    // ================================================================
+
+    /**
+     * Check if stage triggers e-sign and initiate workflow if so
+     */
+    private async checkAndTriggerEsign(
+        dealId: string,
+        stageId: string,
+        organizationId: string,
+        userId?: string
+    ): Promise<void> {
+        // Get stage configuration
+        const stageResult = await db.query(
+            `SELECT 
+                trigger_esign, 
+                esign_template_id,
+                esign_document_subject,
+                esign_document_message,
+                signer_config,
+                field_placements,
+                auto_advance_on_sign,
+                next_stage_on_sign,
+                stage_name
+             FROM deal_stages 
+             WHERE id = $1`,
+            [stageId]
+        );
+
+        if (stageResult.rows.length === 0) {
+            return;
+        }
+
+        const stage = stageResult.rows[0];
+
+        // Check if this stage triggers e-sign
+        if (!stage.trigger_esign) {
+            return;
+        }
+
+        logger.info('Stage triggers e-sign workflow', {
+            dealId,
+            stageId,
+            stageName: stage.stage_name,
+        });
+
+        // Trigger e-sign workflow
+        await this.triggerDealEsign(
+            dealId,
+            organizationId,
+            {
+                templateId: stage.esign_template_id,
+                subject: stage.esign_document_subject,
+                message: stage.esign_document_message,
+                signerConfig: stage.signer_config || [],
+                fieldPlacements: stage.field_placements || [],
+                autoAdvanceOnSign: stage.auto_advance_on_sign,
+                nextStageOnSign: stage.next_stage_on_sign,
+            },
+            userId
+        );
+    }
+
+    /**
+     * Trigger e-sign workflow for a deal
+     */
+    async triggerDealEsign(
+        dealId: string,
+        organizationId: string,
+        config: {
+            templateId?: string;
+            subject?: string;
+            message?: string;
+            signerConfig: any[];
+            fieldPlacements: any[];
+            autoAdvanceOnSign?: boolean;
+            nextStageOnSign?: string;
+        },
+        userId?: string
+    ): Promise<{ envelopeId: string } | null> {
+        try {
+            // Get deal with full details
+            const deal = await this.getDealById(dealId, organizationId);
+            if (!deal) {
+                throw new Error(`Deal not found: ${dealId}`);
+            }
+
+            // Generate or get document
+            let documentBuffer: Buffer;
+            let documentName: string;
+
+            if (config.templateId) {
+                // Generate document from template
+                const { documentGenerationService } = await import('./documentGenerationService');
+                const generatedDoc = await documentGenerationService.generate(
+                    organizationId,
+                    { templateId: config.templateId, dealId },
+                    userId || deal.assigned_agent
+                );
+                documentBuffer = await this.fetchDocumentFromUrl(generatedDoc.file_url);
+                documentName = generatedDoc.file_name;
+            } else {
+                // Look for existing document to sign
+                const docResult = await db.query(
+                    `SELECT * FROM crm_generated_documents 
+                     WHERE deal_id = $1 AND organization_id = $2 AND is_signed = false
+                     ORDER BY created_at DESC LIMIT 1`,
+                    [dealId, organizationId]
+                );
+
+                if (docResult.rows.length === 0) {
+                    throw new Error('No document available for signing');
+                }
+
+                const doc = docResult.rows[0];
+                documentBuffer = await this.fetchDocumentFromUrl(doc.file_url);
+                documentName = doc.document_name;
+            }
+
+            // Resolve signers from config
+            const signers = await this.resolveSigners(deal, config.signerConfig, organizationId);
+
+            if (signers.length === 0) {
+                throw new Error('No valid signers could be resolved for this deal');
+            }
+
+            // Build signature fields
+            const fields = this.buildSignatureFields(signers, config.fieldPlacements);
+
+            // Create envelope
+            const envelope = await eSignIntegrationService.createEnvelope({
+                subject: config.subject || `Contract - ${deal.title}`,
+                message: config.message || `Please review and sign the contract for ${deal.title}.`,
+                documents: [{
+                    name: documentName,
+                    content: documentBuffer,
+                    mimeType: 'application/pdf',
+                    source: 'system_generated',
+                }],
+                signers: signers.map((s, idx) => ({
+                    name: s.name,
+                    email: s.email,
+                    role: 'signer',
+                    order: s.order || idx + 1,
+                })),
+                fields,
+                sourceModule: 'crm',
+                sourceEntityType: 'deal',
+                sourceEntityId: dealId,
+                expiresInDays: 30,
+            });
+
+            // Update deal with envelope reference
+            await db.query(
+                `UPDATE deals 
+                 SET current_esign_envelope_id = $1,
+                     esign_status = 'pending',
+                     esign_triggered_at = NOW(),
+                     updated_at = NOW()
+                 WHERE id = $2`,
+                [envelope.envelopeId, dealId]
+            );
+
+            // Store auto-advance config if set
+            if (config.autoAdvanceOnSign && config.nextStageOnSign) {
+                await db.query(
+                    `UPDATE deals 
+                     SET custom_fields = COALESCE(custom_fields, '{}'::jsonb) || $1
+                     WHERE id = $2`,
+                    [
+                        JSON.stringify({
+                            esign_auto_advance: true,
+                            esign_next_stage: config.nextStageOnSign,
+                        }),
+                        dealId,
+                    ]
+                );
+            }
+
+            // Log audit event
+            await this.logCrmEsignAudit(dealId, envelope.envelopeId, 'esign_triggered', {
+                signers: signers.map(s => ({ email: s.email, name: s.name, role: s.role })),
+                documentName,
+                subject: config.subject,
+            }, userId);
+
+            // Log activity
+            await activityService.createActivity({
+                deal_id: dealId,
+                user_id: userId || deal.assigned_agent,
+                activity_type: 'document_request',
+                subject: 'Contract sent for e-signature',
+                description: `Contract "${documentName}" sent to ${signers.map(s => s.name).join(', ')} for signing`,
+                new_value: {
+                    envelope_id: envelope.envelopeId,
+                    signers: signers.map(s => ({ email: s.email, name: s.name })),
+                },
+            });
+
+            logger.info('E-sign envelope created for deal', {
+                dealId,
+                envelopeId: envelope.envelopeId,
+                signerCount: signers.length,
+            });
+
+            return { envelopeId: envelope.envelopeId };
+        } catch (error: any) {
+            logger.error('Failed to trigger e-sign for deal', {
+                dealId,
+                error: error.message,
+            });
+            throw error;
+        }
+    }
+
+    /**
+     * Handle e-sign completion webhook for CRM deals
+     */
+    async handleEsignCompletion(event: CompletionEvent): Promise<void> {
+        const { envelope, sourceContext, documents, signers } = event;
+
+        if (sourceContext.entityType !== 'deal') {
+            logger.warn('Invalid entity type for CRM e-sign completion', {
+                expected: 'deal',
+                received: sourceContext.entityType,
+            });
+            return;
+        }
+
+        const dealId = sourceContext.entityId;
+
+        try {
+            // Get deal with custom fields
+            const dealResult = await db.query(
+                `SELECT * FROM deals WHERE id = $1`,
+                [dealId]
+            );
+
+            if (dealResult.rows.length === 0) {
+                throw new Error(`Deal not found: ${dealId}`);
+            }
+
+            const deal = dealResult.rows[0];
+            const customFields = deal.custom_fields || {};
+            const signedDoc = documents?.[0];
+
+            // Update deal with completion info
+            await db.query(
+                `UPDATE deals 
+                 SET esign_status = 'completed',
+                     esign_completed_at = NOW(),
+                     signed_contract_url = $1,
+                     esign_certificate_url = $2,
+                     updated_at = NOW()
+                 WHERE id = $3`,
+                [
+                    signedDoc?.signedUrl || null,
+                    signedDoc?.certificateUrl || null,
+                    dealId,
+                ]
+            );
+
+            // Log audit event for each signer
+            for (const signer of signers || []) {
+                await this.logCrmEsignAudit(dealId, envelope.id, 'signer_signed', {
+                    signerEmail: signer.email,
+                    signerName: signer.name,
+                    signedAt: signer.signedAt,
+                    pmtId: signer.pmtId,
+                }, undefined, signer.email, signer.name, signer.ipAddress);
+            }
+
+            // Log completion audit event
+            await this.logCrmEsignAudit(dealId, envelope.id, 'completed', {
+                completedAt: envelope.completedAt,
+                signedDocumentUrl: signedDoc?.signedUrl,
+                certificateUrl: signedDoc?.certificateUrl,
+            });
+
+            // Log activity
+            await activityService.createActivity({
+                deal_id: dealId,
+                user_id: deal.assigned_agent,
+                activity_type: 'document_received',
+                subject: 'Contract fully signed',
+                description: `All parties have signed the contract`,
+                new_value: {
+                    envelope_id: envelope.id,
+                    signed_url: signedDoc?.signedUrl,
+                    signers: signers?.map(s => ({ name: s.name, email: s.email, signedAt: s.signedAt })),
+                },
+            });
+
+            // Auto-advance stage if configured
+            if (customFields.esign_auto_advance && customFields.esign_next_stage) {
+                try {
+                    await this.updateDealStage(
+                        dealId,
+                        customFields.esign_next_stage,
+                        deal.organization_id,
+                        undefined,
+                        'Auto-advanced after contract signing'
+                    );
+
+                    await this.logCrmEsignAudit(dealId, envelope.id, 'auto_advanced', {
+                        newStageId: customFields.esign_next_stage,
+                    });
+
+                    logger.info('Deal auto-advanced after e-sign completion', {
+                        dealId,
+                        newStageId: customFields.esign_next_stage,
+                    });
+                } catch (advanceError: any) {
+                    logger.error('Failed to auto-advance deal stage', {
+                        dealId,
+                        error: advanceError.message,
+                    });
+                }
+            }
+
+            logger.info('CRM deal e-sign completion processed', {
+                dealId,
+                envelopeId: envelope.id,
+            });
+        } catch (error: any) {
+            logger.error('Failed to process CRM deal e-sign completion', {
+                dealId,
+                envelopeId: envelope.id,
+                error: error.message,
+            });
+            throw error;
+        }
+    }
+
+    /**
+     * Resolve signers from signer configuration
+     */
+    private async resolveSigners(
+        deal: Deal & { primary_contact_name?: string; primary_contact_email?: string },
+        signerConfig: any[],
+        organizationId: string
+    ): Promise<Array<{ name: string; email: string; role: string; order: number }>> {
+        const signers: Array<{ name: string; email: string; role: string; order: number }> = [];
+
+        // Import contactService dynamically to avoid circular deps
+        const { contactService } = await import('./contactService');
+
+        for (const config of signerConfig) {
+            try {
+                let name = '';
+                let email = '';
+
+                switch (config.source || config.data_source) {
+                    case 'primary_contact':
+                        if (deal.primary_contact_id) {
+                            const contact = await contactService.getContactById(
+                                deal.primary_contact_id,
+                                organizationId
+                            );
+                            if (contact) {
+                                name = `${contact.first_name} ${contact.last_name}`;
+                                email = contact.email || '';
+                            }
+                        }
+                        break;
+
+                    case 'secondary_contact':
+                        if (deal.secondary_contacts && deal.secondary_contacts.length > 0) {
+                            const contactId = deal.secondary_contacts[0];
+                            const contact = await contactService.getContactById(contactId, organizationId);
+                            if (contact) {
+                                name = `${contact.first_name} ${contact.last_name}`;
+                                email = contact.email || '';
+                            }
+                        }
+                        break;
+
+                    case 'assigned_agent':
+                        if (deal.assigned_agent) {
+                            const agentResult = await db.query(
+                                `SELECT first_name, last_name, email 
+                                 FROM agents WHERE id = $1`,
+                                [deal.assigned_agent]
+                            );
+                            if (agentResult.rows.length > 0) {
+                                const agent = agentResult.rows[0];
+                                name = `${agent.first_name} ${agent.last_name}`;
+                                email = agent.email || '';
+                            }
+                        }
+                        break;
+
+                    case 'property_owner':
+                        if (deal.property_ids && deal.property_ids.length > 0) {
+                            const propResult = await db.query(
+                                `SELECT owner_name, owner_email 
+                                 FROM crm_properties WHERE id = $1`,
+                                [deal.property_ids[0]]
+                            );
+                            if (propResult.rows.length > 0) {
+                                const prop = propResult.rows[0];
+                                name = prop.owner_name || '';
+                                email = prop.owner_email || '';
+                            }
+                        }
+                        break;
+
+                    case 'company_contact':
+                        if (deal.company_id) {
+                            const compResult = await db.query(
+                                `SELECT c.first_name, c.last_name, c.email
+                                 FROM companies comp
+                                 JOIN contacts c ON comp.primary_contact_id = c.id
+                                 WHERE comp.id = $1`,
+                                [deal.company_id]
+                            );
+                            if (compResult.rows.length > 0) {
+                                const contact = compResult.rows[0];
+                                name = `${contact.first_name} ${contact.last_name}`;
+                                email = contact.email || '';
+                            }
+                        }
+                        break;
+
+                    case 'manual':
+                        // Manual signers should have name and email in config
+                        name = config.name || '';
+                        email = config.email || '';
+                        break;
+                }
+
+                // Only add if we have valid name and email
+                if (name && email) {
+                    signers.push({
+                        name,
+                        email,
+                        role: config.role || 'signer',
+                        order: config.order || signers.length + 1,
+                    });
+                } else {
+                    logger.warn('Could not resolve signer', {
+                        config,
+                        dealId: deal.id,
+                    });
+                }
+            } catch (resolveError: any) {
+                logger.error('Error resolving signer', {
+                    config,
+                    error: resolveError.message,
+                });
+            }
+        }
+
+        return signers;
+    }
+
+    /**
+     * Build signature fields from placements config
+     */
+    private buildSignatureFields(
+        signers: Array<{ email: string; role: string }>,
+        fieldPlacements: any[]
+    ): ESignField[] {
+        const fields: ESignField[] = [];
+
+        for (const placement of fieldPlacements) {
+            // Find the signer for this field placement
+            const signer = signers.find(s => s.role === placement.role) || signers[0];
+            if (!signer) continue;
+
+            fields.push({
+                type: placement.type || 'signature',
+                recipientEmail: signer.email,
+                documentIndex: placement.documentIndex || 0,
+                page: placement.page || 1,
+                x: placement.x || 0.10,
+                y: placement.y || 0.70,
+                width: placement.width || 0.30,
+                height: placement.height || 0.10,
+                required: placement.required ?? true,
+                label: placement.label,
+            });
+        }
+
+        // If no field placements configured, add default signature fields for each signer
+        if (fields.length === 0) {
+            signers.forEach((signer, idx) => {
+                fields.push({
+                    type: 'signature',
+                    recipientEmail: signer.email,
+                    documentIndex: 0,
+                    page: 1,
+                    x: 0.10,
+                    y: 0.70 - (idx * 0.15), // Stack signatures vertically
+                    width: 0.30,
+                    height: 0.10,
+                    required: true,
+                });
+            });
+        }
+
+        return fields;
+    }
+
+    /**
+     * Fetch document from URL
+     */
+    private async fetchDocumentFromUrl(url: string): Promise<Buffer> {
+        try {
+            // If it's a storage key, use document service
+            if (!url.startsWith('http')) {
+                const { documentService } = await import('../../../shared-services/document-service');
+                const { buffer } = await documentService.storage.download(url);
+                return buffer;
+            }
+
+            // Otherwise fetch from URL
+            const response = await fetch(url);
+            if (!response.ok) {
+                throw new Error(`Failed to fetch document: ${response.statusText}`);
+            }
+            const arrayBuffer = await response.arrayBuffer();
+            return Buffer.from(arrayBuffer);
+        } catch (error: any) {
+            logger.error('Failed to fetch document', { url, error: error.message });
+            throw error;
+        }
+    }
+
+    /**
+     * Log e-sign audit event for CRM
+     */
+    private async logCrmEsignAudit(
+        dealId: string,
+        envelopeId: string | null,
+        eventType: string,
+        eventData: Record<string, any>,
+        userId?: string,
+        signerEmail?: string,
+        signerName?: string,
+        signerIp?: string
+    ): Promise<void> {
+        await db.query(
+            `INSERT INTO crm_esign_audit (
+                id, deal_id, envelope_id, event_type, event_data,
+                signer_email, signer_name, signer_ip_address, created_by
+            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
+            [
+                uuidv4(),
+                dealId,
+                envelopeId,
+                eventType,
+                JSON.stringify(eventData),
+                signerEmail || null,
+                signerName || null,
+                signerIp || null,
+                userId || null,
+            ]
+        );
     }
 }
 

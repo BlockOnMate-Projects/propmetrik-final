@@ -133,11 +133,12 @@ export class LeaseTemplateService {
 
     /**
      * Get a template by ID
+     * Allows fetching both org-specific and global templates (organization_id IS NULL)
      */
     async getTemplate(templateId: string, organizationId: string): Promise<LeaseTemplate | null> {
         const result = await pool.query(
             `SELECT * FROM lease_templates 
-             WHERE id = $1 AND organization_id = $2`,
+             WHERE id = $1 AND (organization_id = $2 OR organization_id IS NULL)`,
             [templateId, organizationId]
         );
 
@@ -150,6 +151,7 @@ export class LeaseTemplateService {
 
     /**
      * Get all templates for an organization
+     * Includes both organization-specific templates AND global system templates (organization_id IS NULL)
      */
     async listTemplates(
         organizationId: string,
@@ -160,7 +162,8 @@ export class LeaseTemplateService {
             offset?: number;
         }
     ): Promise<{ templates: LeaseTemplate[]; total: number }> {
-        let whereClause = 'WHERE organization_id = $1';
+        // Include both org-specific AND global templates (organization_id IS NULL)
+        let whereClause = 'WHERE (organization_id = $1 OR organization_id IS NULL)';
         const params: any[] = [organizationId];
         let paramIndex = 2;
 
@@ -182,10 +185,11 @@ export class LeaseTemplateService {
         const total = parseInt(countResult.rows[0].count);
 
         // Get templates with pagination
+        // Order: org-specific first, then global, then by default flag and name
         let query = `
             SELECT * FROM lease_templates 
             ${whereClause}
-            ORDER BY is_default DESC, name ASC
+            ORDER BY (organization_id IS NOT NULL) DESC, is_default DESC, name ASC
         `;
 
         if (options?.limit) {
@@ -337,11 +341,13 @@ export class LeaseTemplateService {
                 throw new Error('Template not found');
             }
         } else {
-            // Get default template for category
+            // Get default template for category - check org-specific first, then global
             const category = tenancyData.propertyType === 'commercial' ? 'commercial' : 'residential';
             const result = await pool.query(
                 `SELECT * FROM lease_templates 
-                 WHERE organization_id = $1 AND category = $2 AND is_default = TRUE AND is_active = TRUE
+                 WHERE (organization_id = $1 OR organization_id IS NULL) 
+                 AND category = $2 AND is_default = TRUE AND is_active = TRUE
+                 ORDER BY (organization_id IS NOT NULL) DESC
                  LIMIT 1`,
                 [organizationId, category]
             );
@@ -363,6 +369,8 @@ export class LeaseTemplateService {
             rentCurrency: tenancyData.rentCurrency,
             securityDeposit: tenancyData.securityDeposit,
             paymentDueDay: tenancyData.paymentDueDay || 1,
+            advanceMonths: tenancyData.advanceMonths,
+            advanceAmount: tenancyData.rentAmount * (tenancyData.advanceMonths || 1),
             
             // Property
             propertyTitle: tenancyData.propertyTitle,
@@ -378,12 +386,50 @@ export class LeaseTemplateService {
             tenantPhone: tenancyData.tenantPhone,
             tenantIdType: tenancyData.tenantIdType,
             tenantIdNumber: tenancyData.tenantIdNumber,
+            tenantAddress: tenancyData.tenantAddress,
             
             // Landlord/Organization
-            landlordName: tenancyData.organizationName,
+            landlordName: tenancyData.landlordNameOverride || tenancyData.organizationName,
             landlordAddress: tenancyData.organizationAddress,
             landlordPhone: tenancyData.organizationPhone,
             landlordEmail: tenancyData.organizationEmail,
+            landlordIdNumber: tenancyData.organizationIdNumber || '',
+            
+            // Utilities (from lease_terms) - keep as arrays for Handlebars iteration
+            tenantUtilities: tenancyData.tenantUtilities || [],
+            landlordUtilities: tenancyData.landlordUtilities || [],
+            // Formatted utilities for display (comma-separated string with human-readable labels)
+            tenantUtilitiesText: this.formatUtilityLabels(tenancyData.tenantUtilities || []),
+            landlordUtilitiesText: this.formatUtilityLabels(tenancyData.landlordUtilities || []),
+            // Check if all utilities are paid by one party
+            tenantPaysAllUtilities: (tenancyData.tenantUtilities?.length > 0 && !tenancyData.landlordUtilities?.length),
+            landlordPaysAllUtilities: (tenancyData.landlordUtilities?.length > 0 && !tenancyData.tenantUtilities?.length),
+            noUtilitiesSpecified: (!tenancyData.tenantUtilities?.length && !tenancyData.landlordUtilities?.length),
+            
+            // Signing scenario (from lease_terms)
+            isUserLandlord: tenancyData.isUserLandlord || false,
+            landlordWillSign: tenancyData.landlordWillSign || false,
+            propertyManagerName: tenancyData.propertyManagerName || tenancyData.organizationName,
+            propertyManagerSignsOnBehalf: !tenancyData.isUserLandlord && !tenancyData.landlordWillSign,
+            signers: tenancyData.signers || [],
+            
+            // Additional terms
+            additionalTerms: tenancyData.specialConditions,
+            
+            // Lease term details
+            leaseDurationMonths: this.calculateLeaseDurationMonths(tenancyData.startDate, tenancyData.endDate),
+            noticePeriodDays: tenancyData.noticePeriodDays || 30,
+            lateFeePercentage: 5, // Default 5%
+            paymentMethod: 'Bank Transfer / Mobile Money',
+            
+            // Property additional details
+            propertyCity: tenancyData.propertyCity || 'Accra',
+            furnishing: tenancyData.furnishing || 'Unfurnished',
+            amenities: tenancyData.amenities || '',
+            maxOccupants: tenancyData.maxOccupants,
+            
+            // Rent in words (for legal documents)
+            monthlyRentWords: this.numberToWords(tenancyData.rentAmount),
             
             // Dates
             today: new Date(),
@@ -463,30 +509,35 @@ export class LeaseTemplateService {
         const result = await pool.query(`
             SELECT 
                 t.id,
-                t.start_date,
-                t.end_date,
-                t.rent_amount,
+                t.lease_start_date as start_date,
+                t.lease_end_date as end_date,
+                t.monthly_rent as rent_amount,
                 t.rent_currency,
                 t.security_deposit,
-                t.payment_due_day,
+                t.rent_due_day as payment_due_day,
+                t.advance_payment_months,
+                t.lease_terms,
+                t.special_conditions,
                 p.title as property_title,
-                p.address as property_address,
+                CONCAT_WS(', ', p.address_street, p.address_city, p.address_district) as property_address,
+                p.address_city as property_city,
                 p.property_type,
-                p.unit_number,
+                p.features,
+                t.unit_number,
                 p.bedrooms,
                 p.bathrooms,
                 tn.full_name as tenant_name,
                 tn.email as tenant_email,
-                tn.phone as tenant_phone,
-                tn.id_type as tenant_id_type,
-                tn.id_number as tenant_id_number,
+                tn.phone_primary as tenant_phone,
+                tn.ghana_card_number as tenant_id_number,
+                tn.current_address as tenant_address,
                 o.name as organization_name,
-                o.address as organization_address,
+                CONCAT_WS(', ', o.address_street, o.address_city, o.address_region) as organization_address,
                 o.phone as organization_phone,
                 o.email as organization_email
             FROM tenancies t
             JOIN properties p ON t.property_id = p.id
-            JOIN tenants tn ON t.tenant_id = tn.id
+            LEFT JOIN tenants tn ON t.tenant_id = tn.id
             JOIN organizations o ON t.organization_id = o.id
             WHERE t.id = $1 AND t.organization_id = $2
         `, [tenancyId, organizationId]);
@@ -496,6 +547,26 @@ export class LeaseTemplateService {
         }
 
         const row = result.rows[0];
+        const leaseTerms = row.lease_terms || {};
+        const features = row.features || [];
+        
+        // Extract furnishing from features array (e.g., ["furnished", "air_conditioning"])
+        let furnishing = 'Unfurnished';
+        if (Array.isArray(features)) {
+            if (features.includes('furnished') || features.includes('fully_furnished')) {
+                furnishing = 'Furnished';
+            } else if (features.includes('semi_furnished') || features.includes('partially_furnished')) {
+                furnishing = 'Semi-Furnished';
+            }
+        }
+
+        // Use applicant info from lease_terms if tenant doesn't exist yet (pending_signature status)
+        const tenantName = row.tenant_name || leaseTerms.applicantFullName || 'Tenant';
+        const tenantEmail = row.tenant_email || leaseTerms.applicantEmail || '';
+        const tenantPhone = row.tenant_phone || leaseTerms.applicantPhone || '';
+        const tenantIdNumber = row.tenant_id_number || leaseTerms.applicantGhanaCard || '';
+        const tenantAddress = row.tenant_address || leaseTerms.applicantCurrentAddress || '';
+        
         return {
             id: row.id,
             startDate: row.start_date,
@@ -504,21 +575,39 @@ export class LeaseTemplateService {
             rentCurrency: row.rent_currency,
             securityDeposit: parseFloat(row.security_deposit || 0),
             paymentDueDay: row.payment_due_day,
+            advanceMonths: row.advance_payment_months,
             propertyTitle: row.property_title,
             propertyAddress: row.property_address,
+            propertyCity: row.property_city || 'Accra',
             propertyType: row.property_type,
+            furnishing: furnishing,
             unitNumber: row.unit_number,
             bedrooms: row.bedrooms,
             bathrooms: row.bathrooms,
-            tenantName: row.tenant_name,
-            tenantEmail: row.tenant_email,
-            tenantPhone: row.tenant_phone,
-            tenantIdType: row.tenant_id_type,
-            tenantIdNumber: row.tenant_id_number,
+            tenantName: tenantName,
+            tenantEmail: tenantEmail,
+            tenantPhone: tenantPhone,
+            tenantIdType: 'Ghana Card',
+            tenantIdNumber: tenantIdNumber,
+            tenantAddress: tenantAddress,
             organizationName: row.organization_name,
             organizationAddress: row.organization_address,
             organizationPhone: row.organization_phone,
-            organizationEmail: row.organization_email
+            organizationEmail: row.organization_email,
+            // Utility responsibilities from lease_terms
+            tenantUtilities: leaseTerms.tenantUtilities || [],
+            landlordUtilities: leaseTerms.landlordUtilities || [],
+            specialConditions: row.special_conditions,
+            // Additional fields from lease_terms
+            amenities: leaseTerms.amenities || '',
+            maxOccupants: leaseTerms.maxOccupants,
+            // Signing scenario from lease_terms
+            isUserLandlord: leaseTerms.isUserLandlord || false,
+            landlordWillSign: leaseTerms.landlordWillSign || false,
+            propertyManagerName: row.organization_name,
+            landlordNameOverride: leaseTerms.landlordName || '',
+            signers: leaseTerms.signers || [],
+            noticePeriodDays: leaseTerms.noticePeriodDays || 30
         };
     }
 
@@ -536,6 +625,80 @@ export class LeaseTemplateService {
             return `${years} year${years > 1 ? 's' : ''} and ${remainingMonths} month${remainingMonths > 1 ? 's' : ''}`;
         }
         return `${months} month${months > 1 ? 's' : ''}`;
+    }
+
+    private calculateLeaseDurationMonths(startDate: Date, endDate: Date): number {
+        const start = new Date(startDate);
+        const end = new Date(endDate);
+        return (end.getFullYear() - start.getFullYear()) * 12 + (end.getMonth() - start.getMonth());
+    }
+
+    private numberToWords(num: number): string {
+        const ones = ['', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine',
+            'Ten', 'Eleven', 'Twelve', 'Thirteen', 'Fourteen', 'Fifteen', 'Sixteen', 'Seventeen', 'Eighteen', 'Nineteen'];
+        const tens = ['', '', 'Twenty', 'Thirty', 'Forty', 'Fifty', 'Sixty', 'Seventy', 'Eighty', 'Ninety'];
+        const thousands = ['', 'Thousand', 'Million', 'Billion'];
+
+        if (num === 0) return 'Zero';
+        if (num < 0) return 'Negative ' + this.numberToWords(Math.abs(num));
+
+        let words = '';
+        let i = 0;
+        const n = Math.floor(num);
+
+        const convertHundreds = (n: number): string => {
+            let str = '';
+            if (n >= 100) {
+                str += ones[Math.floor(n / 100)] + ' Hundred ';
+                n %= 100;
+            }
+            if (n >= 20) {
+                str += tens[Math.floor(n / 10)] + ' ';
+                n %= 10;
+            }
+            if (n > 0) {
+                str += ones[n] + ' ';
+            }
+            return str.trim();
+        };
+
+        let remaining = n;
+        while (remaining > 0) {
+            if (remaining % 1000 !== 0) {
+                words = convertHundreds(remaining % 1000) + ' ' + thousands[i] + ' ' + words;
+            }
+            remaining = Math.floor(remaining / 1000);
+            i++;
+        }
+
+        // Handle decimals (cents)
+        const decimal = Math.round((num - n) * 100);
+        if (decimal > 0) {
+            words = words.trim() + ' and ' + decimal + '/100';
+        }
+
+        return words.trim();
+    }
+
+    private formatUtilityLabels(utilities: string[]): string {
+        if (!Array.isArray(utilities) || utilities.length === 0) {
+            return '';
+        }
+
+        const UTILITY_LABELS: Record<string, string> = {
+            'electricity': 'Electricity',
+            'water': 'Water',
+            'gas': 'Gas',
+            'internet': 'Internet/Cable',
+            'waste': 'Waste Collection',
+            'security': 'Security',
+            'sewage': 'Sewage',
+            'maintenance': 'Common Area Maintenance',
+        };
+
+        return utilities
+            .map(u => UTILITY_LABELS[u.toLowerCase()] || u)
+            .join(', ');
     }
 
     private generateSampleData(): Record<string, any> {

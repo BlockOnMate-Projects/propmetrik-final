@@ -225,7 +225,7 @@ class BudgetAnalyticsService {
    */
   async calculateVariance(projectId: string): Promise<BudgetVarianceAnalysis> {
     try {
-      const project = await projectService.getById(projectId);
+      const project = await (projectService as any).getById(projectId);
       if (!project) {
         throw new Error(`Project not found: ${projectId}`);
       }
@@ -248,7 +248,7 @@ class BudgetAnalyticsService {
         try {
           const historicalRate = await economicDataService.getExchangeRate(
             'USD',
-            project.planned_start_date
+            project.planned_start_date as any
           );
           
           if (historicalRate && historicalRate.rate) {
@@ -301,7 +301,7 @@ class BudgetAnalyticsService {
    */
   async forecastBudget(projectId: string): Promise<BudgetForecast> {
     try {
-      const project = await projectService.getById(projectId);
+      const project = await (projectService as any).getById(projectId);
       if (!project) {
         throw new Error(`Project not found: ${projectId}`);
       }
@@ -314,8 +314,8 @@ class BudgetAnalyticsService {
       let avgMaterialInflation = 0;
       
       try {
-        costIndex = await constructionCostService.getCostIndex(region as any);
-        const materialTrends = await constructionCostService.getMaterialPriceTrends(
+        costIndex = await (constructionCostService as any).getCostIndex(region as any);
+        const materialTrends = await (constructionCostService as any).getMaterialPrices(
           region as any,
           90
         );
@@ -523,7 +523,7 @@ class BudgetAnalyticsService {
       }
       
       // Get category breakdown
-      const costs = await projectCostService.getCostsByProject(projectId);
+      const costs = await projectCostService.getByProject(projectId);
       const categoryBreakdown: Record<string, { budget: number; actual: number }> = {};
       
       for (const cost of costs) {

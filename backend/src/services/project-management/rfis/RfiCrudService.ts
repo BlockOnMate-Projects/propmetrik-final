@@ -10,7 +10,7 @@
  */
 
 import { pool } from '../../../database';
-import { BaseService } from '../BaseService';
+import { BaseService } from '../../../../shared-services/base/BaseService';
 import {
   Rfi,
   RfiWithDetails,

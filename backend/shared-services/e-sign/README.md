@@ -1,12 +1,12 @@
-# PropMetrik E-Signature Service
+# PROPMETRIK E-Signature Service
 
-E-signature service integrated with PropMetrik authentication. This service provides document signing capabilities within the PropMetrik platform.
+E-signature service integrated with PROPMETRIK authentication. This service provides document signing capabilities within the PROPMETRIK platform.
 
 ## Architecture
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│                     PropMetrik Platform                          │
+│                     PROPMETRIK Platform                          │
 ├─────────────────────────────────────────────────────────────────┤
 │                                                                   │
 │  ┌───────────────┐    ┌───────────────┐    ┌───────────────┐    │
@@ -63,20 +63,20 @@ docker-compose up -d
 
 | Service | Port | Description |
 |---------|------|-------------|
-| PropMetrik Frontend | 3000 | Main Next.js application |
+| PROPMETRIK Frontend | 3000 | Main Next.js application |
 | E-Sign UI | 3001 | E-signature React frontend |
-| PropMetrik API | 4000 | Express.js backend |
+| PROPMETRIK API | 4000 | Express.js backend |
 | Valuation Service | 8001 | Python valuation engine |
 | **E-Sign API** | **8002** | **Python FastAPI e-sign service** |
 
 ## Authentication
 
-E-Sign uses **PropMetrik JWT tokens** (HS256) for authentication. Keycloak is **disabled**.
+E-Sign uses **PROPMETRIK JWT tokens** (HS256) for authentication. Keycloak is **disabled**.
 
 ### Token Flow
 
-1. User logs into PropMetrik (gets JWT token)
-2. PropMetrik frontend opens E-Sign UI (passes token via URL or postMessage)
+1. User logs into PROPMETRIK (gets JWT token)
+2. PROPMETRIK frontend opens E-Sign UI (passes token via URL or postMessage)
 3. E-Sign UI stores token and includes in API requests
 4. E-Sign API validates token using shared `JWT_SECRET`
 
@@ -96,12 +96,12 @@ E-Sign uses **PropMetrik JWT tokens** (HS256) for authentication. Keycloak is **
 
 ## Database
 
-E-Sign uses the **same PostgreSQL database** as PropMetrik, with tables in the `esign` schema.
+E-Sign uses the **same PostgreSQL database** as PROPMETRIK, with tables in the `esign` schema.
 
 ### Schema
 
 All E-Sign tables are in the `esign` schema:
-- `esign.users` - E-sign users (links to PropMetrik users)
+- `esign.users` - E-sign users (links to PROPMETRIK users)
 - `esign.documents` - Uploaded documents
 - `esign.signature_requests` - Signing workflows
 - `esign.signers` - Recipients for signing
@@ -126,10 +126,10 @@ npm run migrate
 Required in `.env`:
 
 ```env
-# PropMetrik Integration (REQUIRED)
+# PROPMETRIK Integration (REQUIRED)
 JWT_SECRET=your-shared-jwt-secret-with-propmetrik
 
-# Database (uses PropMetrik database)
+# Database (uses PROPMETRIK database)
 POSTGRES_HOST=localhost
 POSTGRES_PORT=5432
 POSTGRES_DB=propmetrik
@@ -157,12 +157,12 @@ Once running, access:
 - **Swagger UI:** http://localhost:8002/docs
 - **ReDoc:** http://localhost:8002/redoc
 
-## Integration with PropMetrik Frontend
+## Integration with PROPMETRIK Frontend
 
 ### Embed E-Sign UI
 
 ```tsx
-// In PropMetrik frontend
+// In PROPMETRIK frontend
 import { getAuthToken } from '@/lib/auth';
 
 const ESignModal = () => {
@@ -181,7 +181,7 @@ const ESignModal = () => {
 ### Direct API Integration
 
 ```typescript
-// Call E-Sign API from PropMetrik backend
+// Call E-Sign API from PROPMETRIK backend
 import axios from 'axios';
 
 const esignApi = axios.create({
@@ -196,21 +196,21 @@ const createEnvelope = async (token: string, data: EnvelopeData) => {
 };
 ```
 
-## Files Modified for PropMetrik Integration
+## Files Modified for PROPMETRIK Integration
 
 | File | Changes |
 |------|---------|
-| `auth.py` | Replaced Keycloak with PropMetrik JWT (HS256) |
+| `auth.py` | Replaced Keycloak with PROPMETRIK JWT (HS256) |
 | `config.py` | Added JWT_SECRET, PROPMETRIK_API_URL, changed DB to propmetrik |
 | `models.py` | Added esign schema to all tables |
-| `main.py` | Updated to port 8002, PropMetrik CORS |
+| `main.py` | Updated to port 8002, PROPMETRIK CORS |
 | `docker-compose.yml` | Created for standalone deployment |
-| `start.sh` | Updated for PropMetrik environment |
+| `start.sh` | Updated for PROPMETRIK environment |
 
 ## Troubleshooting
 
 ### Token Validation Fails
-- Ensure `JWT_SECRET` matches PropMetrik backend
+- Ensure `JWT_SECRET` matches PROPMETRIK backend
 - Check token expiration
 
 ### Database Connection Fails

@@ -269,30 +269,9 @@ router.post(
 );
 
 // =====================================================
-// PAYSTACK WEBHOOK (Unified callback for Vodafone/AirtelTigo)
+// PAYSTACK WEBHOOK — handled by /api/v1/pm/payments/webhook (propertyManagement.ts)
+// Do NOT add Paystack webhook routes here. The canonical handler verifies
+// signatures and processes events. See propertyManagement.ts.
 // =====================================================
-
-router.post(
-  '/webhooks/paystack',
-  async (req: Request, res: Response) => {
-    try {
-      const payload = req.body;
-      
-      // Verify Paystack signature
-      const signature = req.headers['x-paystack-signature'];
-      // TODO: Verify signature using crypto
-      
-      // Process based on event type
-      if (payload.event?.startsWith('charge.')) {
-        await mobileMoneyService.handleCallback('vodafone_cash', payload);
-      }
-      
-      res.status(200).json({ received: true });
-    } catch (error: any) {
-      console.error('Paystack webhook error:', error);
-      res.status(500).json({ error: error.message });
-    }
-  }
-);
 
 export default router;
