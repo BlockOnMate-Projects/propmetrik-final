@@ -5,7 +5,7 @@
  */
 
 import { Router } from 'express';
-import { ricsComplianceService } from '../../shared-services/compliance/ricsComplianceService';
+import { ricsComplianceService } from '../services/compliance/ricsComplianceService';
 import { logger } from '../utils/logger';
 import multer from 'multer';
 import path from 'path';

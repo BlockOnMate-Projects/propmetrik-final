@@ -5,7 +5,7 @@
  */
 
 import { Router } from 'express';
-import { floodRiskService } from '../../shared-services/risk/floodRiskService';
+import { floodRiskService } from '../services/risk/floodRiskService';
 import { nadmoIngestionService } from '../services/data-hub/ingestion/nadmoIngestion';
 import { logger } from '../utils/logger';
 import multer from 'multer';

@@ -18,8 +18,8 @@ import {
 } from './types';
 import { pipelineValidator } from './pipelineValidator';
 import { activityService } from './activityService';
-import { eSignIntegrationService } from '../../../shared-services/e-sign/integration/eSignIntegrationService';
-import { CompletionEvent, ESignField } from '../../../shared-services/e-sign/integration/types';
+import { eSignIntegrationService } from '../e-sign/eSignIntegrationService';
+import { CompletionEvent, ESignField } from '../e-sign/types';
 
 export class DealService {
     /**

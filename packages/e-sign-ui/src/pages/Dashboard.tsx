@@ -7,7 +7,7 @@ import api from '../api';
 import { EnvelopeWizard } from '../components/envelope';
 import './Dashboard.css';
 
-// External document data received from parent (PROPMETRIK main app)
+// External document data received from parent (PropMetrik main app)
 interface ExternalDocumentData {
   documentUrl: string;
   documentKey: string;
@@ -59,11 +59,11 @@ export default function Dashboard() {
   }, [envelopes]);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Handle external document loading from parent window (PROPMETRIK main app)
+  // Handle external document loading from parent window (PropMetrik main app)
   useEffect(() => {
     const handleExternalDocument = (event: MessageEvent) => {
       if (event.data?.type === 'LOAD_DOCUMENT' && event.data?.data) {
-        console.log('📄 Received external document from PROPMETRIK:', event.data.data);
+        console.log('📄 Received external document from PropMetrik:', event.data.data);
         setExternalDocument(event.data.data);
         setShowEnvelopeWizard(true);
         

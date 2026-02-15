@@ -54,7 +54,6 @@ export default function ApplicationDetailPage() {
     const [history, setHistory] = useState<ApplicationStatusChange[]>([])
     const [isLoading, setIsLoading] = useState(true)
     const [error, setError] = useState<string | null>(null)
-    const [showEsignBanner, setShowEsignBanner] = useState(false)
     
     // Action dialogs
     const [isApproveDialogOpen, setIsApproveDialogOpen] = useState(false)
@@ -68,18 +67,6 @@ export default function ApplicationDetailPage() {
             loadApplication()
         }
     }, [applicationId])
-
-    // Show success banner when redirected from e-sign
-    useEffect(() => {
-        if (typeof window !== 'undefined' && window.location.search.includes('esign=success')) {
-            setShowEsignBanner(true)
-            // Clean up URL param
-            router.replace(`/dashboard/property-management/applications/${applicationId}`, { scroll: false })
-            // Auto-dismiss after 8 seconds
-            const t = setTimeout(() => setShowEsignBanner(false), 8000)
-            return () => clearTimeout(t)
-        }
-    }, [])
 
     const loadApplication = async () => {
         try {
@@ -300,32 +287,6 @@ export default function ApplicationDetailPage() {
             </div>
 
             {/* Status Messages */}
-            {showEsignBanner && (
-                <Card className="bg-green-900/20 border-green-900">
-                    <CardContent className="pt-4">
-                        <div className="flex items-center justify-between">
-                            <div className="flex items-start gap-3">
-                                <CheckCircle2 className="h-5 w-5 text-green-400 mt-0.5" />
-                                <div>
-                                    <p className="font-medium text-green-400">Lease Sent for Signing!</p>
-                                    <p className="text-zinc-400 mt-1">
-                                        Your signature has been applied and the lease has been sent to the tenant for signing.
-                                    </p>
-                                </div>
-                            </div>
-                            <Button 
-                                variant="ghost" 
-                                size="sm" 
-                                onClick={() => setShowEsignBanner(false)}
-                                className="text-zinc-400"
-                            >
-                                <X className="h-4 w-4" />
-                            </Button>
-                        </div>
-                    </CardContent>
-                </Card>
-            )}
-
             {application.status === ApplicationStatus.REJECTED && application.rejectionReason && (
                 <Card className="bg-red-900/20 border-red-900">
                     <CardContent className="pt-4">
@@ -356,7 +317,7 @@ export default function ApplicationDetailPage() {
 
             {/* Lease Signed - Tenant Created Banner */}
             {/* Only show when lease is actually signed (has envelopeId with completed status or explicit signed flag) */}
-            {application.tenantId && application.tenancyId && application.envelopeId && application.status === ApplicationStatus.LEASE_GENERATED && (
+            {application.tenantId && application.envelopeId && application.status === 'lease_signed' && (
                 <Card className="bg-emerald-900/20 border-emerald-900">
                     <CardContent className="pt-4">
                         <div className="flex items-center justify-between">
@@ -383,7 +344,7 @@ export default function ApplicationDetailPage() {
 
             {/* Lease Generated - Awaiting Signature Banner */}
             {/* Show only when status is lease_generated */}
-            {application.status === ApplicationStatus.LEASE_GENERATED && !application.tenantId && !!application.envelopeId && (
+            {application.status === ApplicationStatus.LEASE_GENERATED && (
                 <Card className="bg-amber-900/20 border-amber-900">
                     <CardContent className="pt-4">
                         <div className="flex items-center justify-between">
@@ -423,7 +384,7 @@ export default function ApplicationDetailPage() {
             )}
 
             {/* Lease Sent - Awaiting Signature Banner (legacy - for old leases without tenantId set during generation) */}
-            {application.status === ApplicationStatus.LEASE_GENERATED && !application.tenantId && !application.envelopeId && (
+            {application.status === ApplicationStatus.LEASE_GENERATED && !application.tenantId && (
                 <Card className="bg-amber-900/20 border-amber-900">
                     <CardContent className="pt-4">
                         <div className="flex items-center justify-between">

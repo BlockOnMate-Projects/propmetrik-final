@@ -488,22 +488,6 @@ export class ApplicationService {
     }
     
     const application = this.mapRowToApplication(result.rows[0]);
-
-    // If the application has an envelope, include the tenant's signer access token
-    if (application.envelopeId) {
-      try {
-        const signerResult = await this.db.query(
-          `SELECT access_token FROM esign_signers 
-           WHERE envelope_id = $1 AND email = $2 LIMIT 1`,
-          [application.envelopeId, application.applicantEmail]
-        );
-        if (signerResult.rows.length > 0) {
-          (application as any).signerToken = signerResult.rows[0].access_token;
-        }
-      } catch {
-        // Non-critical — signing link just won't be available
-      }
-    }
     
     return application;
   }
@@ -902,7 +886,7 @@ export class ApplicationService {
 
     // If lease data includes start/end dates, we can create a tenancy
     let tenancyId: string | null = null;
-    let tenantId: string | null = application.tenantId ?? null;
+    let tenantId: string | null = application.tenantId;
     let envelopeId: string | null = leaseData?.envelopeId || null;
 
     // If we have comprehensive lease data and no existing tenant, create tenant and tenancy
