@@ -490,6 +490,133 @@ export class PaymentProcessor {
         }
     }
 
+    // ─── Crypto Rent Completion ─────────────────────────────────
+
+    /**
+     * Record a completed crypto rent payment in the legacy rent_payments table
+     * and apply it to rent schedules (FIFO).
+     *
+     * Called from:
+     *  - NOWPayments IPN webhook handler (webhooks.ts) after processIpnCallback returns 'completed'
+     *  - NOWPayments polling endpoint (tenantPortal.ts) after status transitions to 'finished'
+     *
+     * Idempotent: skips if a rent_payment with the same crypto reference already exists.
+     */
+    async recordCryptoRentCompletion(paymentReference: string): Promise<{ recorded: boolean; schedulesUpdated: number }> {
+        try {
+            // 1. Idempotency: check if already recorded
+            const existing = await pool.query(
+                `SELECT id FROM rent_payments WHERE bank_reference = $1`,
+                [paymentReference]
+            );
+            if (existing.rows.length > 0) {
+                logger.info('Crypto rent already recorded in rent_payments, skipping', { paymentReference });
+                return { recorded: false, schedulesUpdated: 0 };
+            }
+
+            // 2. Get the payment_transaction for this reference
+            const txResult = await pool.query(
+                `SELECT reference, payment_type, status, principal_amount, service_fee,
+                        domain_record_id, metadata, created_at
+                 FROM payment_transactions WHERE reference = $1`,
+                [paymentReference]
+            );
+
+            if (txResult.rows.length === 0) {
+                logger.warn('No payment_transaction found for crypto completion', { paymentReference });
+                return { recorded: false, schedulesUpdated: 0 };
+            }
+
+            const tx = txResult.rows[0];
+
+            // Only process rent payments that are successful
+            if (tx.payment_type !== 'rent' || tx.status !== 'success') {
+                logger.info('Crypto payment is not a successful rent payment, skipping rent_payment recording', {
+                    paymentReference,
+                    paymentType: tx.payment_type,
+                    status: tx.status,
+                });
+                return { recorded: false, schedulesUpdated: 0 };
+            }
+
+            const tenancyId = tx.metadata?.tenancy_id || tx.domain_record_id;
+            const organizationId = tx.metadata?.organization_id;
+
+            if (!tenancyId || !organizationId) {
+                logger.error('Missing tenancy_id or organization_id for crypto rent completion', {
+                    paymentReference,
+                    tenancyId,
+                    organizationId,
+                });
+                return { recorded: false, schedulesUpdated: 0 };
+            }
+
+            // principal_amount is stored in pesewas → convert to GHS
+            const principalGHS = Number(tx.principal_amount) / 100;
+            const feeGHS = Number(tx.service_fee || 0) / 100;
+
+            // 3. Determine period dates from schedule_ids if available
+            let periodStartDate = new Date(tx.created_at);
+            let periodEndDate = new Date(tx.created_at);
+            const scheduleIds = tx.metadata?.schedule_ids || [];
+
+            if (scheduleIds.length > 0) {
+                const schedResult = await pool.query(
+                    `SELECT MIN(period_start_date) as start_date, MAX(period_end_date) as end_date
+                     FROM rent_schedules WHERE id = ANY($1)`,
+                    [scheduleIds]
+                );
+                if (schedResult.rows.length > 0 && schedResult.rows[0].start_date) {
+                    periodStartDate = new Date(schedResult.rows[0].start_date);
+                    periodEndDate = new Date(schedResult.rows[0].end_date);
+                }
+            }
+
+            // 4. Record in legacy rent_payments
+            const paymentData = {
+                tenancyId,
+                paymentAmount: principalGHS,
+                currency: 'GHS',
+                paymentDate: tx.created_at,
+                paymentMethod: PaymentMethod.CRYPTO,
+                bankReference: paymentReference,
+                periodStartDate: periodStartDate.toISOString(),
+                periodEndDate: periodEndDate.toISOString(),
+                notes: `Crypto (NOWPayments): ${paymentReference} | Fee: GHS ${feeGHS.toFixed(2)}`,
+                otherCharges: [],
+            };
+
+            const recordedPayment = await rentCollectionService.recordPayment(
+                organizationId,
+                paymentData,
+                undefined
+            );
+
+            // 5. Apply to rent schedules (FIFO)
+            const appliedPayments = await rentScheduleService.applyPayment(
+                recordedPayment.id,
+                organizationId
+            );
+
+            logger.info('Crypto rent payment recorded and applied to schedules', {
+                paymentReference,
+                paymentId: recordedPayment.id,
+                principalGHS,
+                feeGHS,
+                schedulesUpdated: appliedPayments.length,
+            });
+
+            return { recorded: true, schedulesUpdated: appliedPayments.length };
+        } catch (error: any) {
+            logger.error('Error recording crypto rent completion', {
+                paymentReference,
+                error: error.message,
+                stack: error.stack,
+            });
+            return { recorded: false, schedulesUpdated: 0 };
+        }
+    }
+
     // ─── Payment Summary ───────────────────────────────────────
 
     /**
@@ -502,11 +629,37 @@ export class PaymentProcessor {
     }> {
         const arrears = await rentScheduleService.calculateArrears(tenancyId, organizationId);
 
+        // Combine legacy rent_payments with any un-recorded crypto payments (safety net)
         const paymentsResult = await pool.query(
-            `SELECT * FROM rent_payments
-             WHERE tenancy_id = $1
-             ORDER BY payment_date DESC
-             LIMIT 10`,
+            `SELECT * FROM (
+                SELECT
+                    id, payment_date, payment_amount,
+                    payment_method::text as payment_method,
+                    COALESCE(mobile_money_reference, bank_reference) as reference,
+                    receipt_number, status::text as status
+                FROM rent_payments
+                WHERE tenancy_id = $1
+
+                UNION ALL
+
+                SELECT
+                    pt.id, pt.created_at as payment_date,
+                    pt.principal_amount / 100.0 as payment_amount,
+                    'crypto' as payment_method,
+                    pt.reference, pt.reference as receipt_number,
+                    pt.status::text as status
+                FROM payment_transactions pt
+                WHERE (pt.domain_record_id = $1 OR pt.metadata->>'tenancy_id' = $1::text)
+                  AND pt.payment_type = 'rent'
+                  AND pt.status = 'success'
+                  AND pt.channel = 'crypto_nowpayments'
+                  AND NOT EXISTS (
+                      SELECT 1 FROM rent_payments rp
+                      WHERE rp.bank_reference = pt.reference AND rp.tenancy_id = $1
+                  )
+            ) combined
+            ORDER BY payment_date DESC
+            LIMIT 10`,
             [tenancyId]
         );
 

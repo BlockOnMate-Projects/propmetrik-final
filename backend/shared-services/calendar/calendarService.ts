@@ -223,6 +223,7 @@ class CalendarService {
       contactId?: string;
       propertyId?: string;
       projectId?: string;
+      service?: string;
     }
   ): Promise<CalendarEvent[]> {
     let query = `
@@ -259,6 +260,25 @@ class CalendarService {
     if (filters?.projectId) {
       query += ` AND (ce.metadata->>'projectId' = $${paramIndex++})`;
       params.push(filters.projectId);
+    }
+
+    // Service-based filtering: show only events relevant to a specific service
+    if (filters?.service) {
+      switch (filters.service) {
+        case 'property-management':
+          query += ` AND (ce.property_id IS NOT NULL OR ce.event_type IN ('viewing','inspection','reminder','maintenance'))`;
+          break;
+        case 'deals':
+          query += ` AND (ce.deal_id IS NOT NULL OR ce.contact_id IS NOT NULL)`;
+          break;
+        case 'projects':
+          query += ` AND (ce.metadata->>'projectId' IS NOT NULL OR ce.event_type = 'milestone')`;
+          break;
+        case 'valuations':
+          query += ` AND (ce.event_type IN ('viewing','inspection','deadline') OR ce.metadata->>'valuationId' IS NOT NULL)`;
+          break;
+        // analytics, data-hub, or empty → show all events
+      }
     }
     
     query += ' ORDER BY ce.start_time ASC';

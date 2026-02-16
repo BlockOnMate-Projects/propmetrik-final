@@ -25,7 +25,7 @@ const projectsNavItems = [
     { href: '/dashboard/projects/costs', label: 'COSTS', icon: DollarSign },
     { href: '/dashboard/projects/financials', label: 'FINANCIALS', icon: CreditCard },
     { href: '/dashboard/projects/punch-lists', label: 'PUNCH LISTS', icon: ClipboardList },
-    { href: '/dashboard/calendar', label: 'CALENDAR', icon: Calendar },
+    { href: '/dashboard/calendar?service=projects', label: 'CALENDAR', icon: Calendar },
     { href: '/dashboard/projects/analytics', label: 'ANALYTICS', icon: BarChart3 },
     { href: '/dashboard/projects/settings', label: 'SETTINGS', icon: Settings },
 ]

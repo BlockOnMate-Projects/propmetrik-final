@@ -5136,4 +5136,161 @@ router.post('/payments/crypto-wallet', async (req: Request, res: Response, next:
   }
 });
 
+// =====================================================
+// PROJECT PAYMENT INITIATION
+// =====================================================
+
+/**
+ * POST /api/v1/projects/payments/initiate
+ * Initialize a project payment via Paystack (card / mobile money).
+ * Applies the project fee rule: 0.25% of payment value.
+ *
+ * Use cases:
+ * - Milestone payments from buyer/client to developer
+ * - Contractor payments
+ * - Payment plan installments
+ *
+ * Body: {
+ *   projectId: string,
+ *   amount: number (GHS — principal amount),
+ *   email: string (payer email),
+ *   description?: string,
+ *   channel?: 'mobile_money' | 'card',
+ *   callbackUrl?: string,
+ *   milestoneId?: string,
+ *   paymentPlanId?: string
+ * }
+ */
+router.post('/payments/initiate', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const organizationId = getOrgId(req);
+    const { projectId, amount, email, description, channel, callbackUrl, milestoneId, paymentPlanId } = req.body;
+
+    if (!projectId || !amount || !email) {
+      return res.status(400).json({ error: 'projectId, amount, and email are required' });
+    }
+
+    const { paymentProcessor } = await import('../services/property-management/payment/paymentProcessor');
+
+    const result = await paymentProcessor.initializeGenericPayment({
+      entityId: projectId,
+      entityType: 'project',
+      recipientId: organizationId,
+      recipientType: 'organization',
+      amount: parseFloat(amount),
+      email,
+      description: description || 'Project payment',
+      channel: channel || 'mobile_money',
+      callbackUrl,
+      metadata: {
+        project_id: projectId,
+        milestone_id: milestoneId || null,
+        payment_plan_id: paymentPlanId || null,
+      },
+    });
+
+    res.json(result);
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
+ * POST /api/v1/projects/payments/crypto/initiate
+ * Initialize a project payment via crypto (unified — any coin).
+ * Applies the project fee rule: 0.25% of payment value.
+ *
+ * Body: {
+ *   projectId: string,
+ *   amount: number (GHS — principal amount),
+ *   payerCurrency: string (e.g. 'btc', 'eth', 'usdt'),
+ *   payerChain: string (e.g. 'bitcoin', 'ethereum', 'polygon'),
+ *   payerWalletAddress?: string,
+ *   requiresEscrow?: boolean,
+ *   description?: string,
+ *   milestoneId?: string,
+ *   paymentPlanId?: string
+ * }
+ */
+router.post('/payments/crypto/initiate', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const organizationId = getOrgId(req);
+    const {
+      projectId, amount, payerCurrency, payerChain,
+      payerWalletAddress, requiresEscrow, description,
+      milestoneId, paymentPlanId,
+    } = req.body;
+
+    if (!projectId || !amount || !payerCurrency || !payerChain) {
+      return res.status(400).json({
+        error: 'projectId, amount, payerCurrency, and payerChain are required'
+      });
+    }
+
+    if (payerWalletAddress && /^0x/.test(payerWalletAddress) && !/^0x[a-fA-F0-9]{40}$/.test(payerWalletAddress)) {
+      return res.status(400).json({ error: 'Invalid EVM wallet address format' });
+    }
+
+    const { paymentProcessor } = await import('../services/property-management/payment/paymentProcessor');
+
+    const result = await paymentProcessor.initializeUnifiedCryptoPayment({
+      paymentType: 'project',
+      entityId: projectId,
+      entityType: 'project',
+      recipientId: organizationId,
+      recipientType: 'organization',
+      amount: parseFloat(amount),
+      payerCurrency,
+      payerChain,
+      payerWalletAddress,
+      requiresEscrow: requiresEscrow ?? false,
+      description: description || 'Project crypto payment',
+      metadata: {
+        project_id: projectId,
+        organization_id: organizationId,
+        milestone_id: milestoneId || null,
+        payment_plan_id: paymentPlanId || null,
+      },
+    });
+
+    res.json(result);
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
+ * GET /api/v1/projects/payments/crypto/estimate
+ * Get fee estimate for a project crypto payment.
+ * Returns fee breakdown showing the 0.25% platform fee.
+ */
+router.get('/payments/crypto/estimate', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { amount } = req.query;
+
+    if (!amount) {
+      return res.status(400).json({ error: 'amount (GHS) is required' });
+    }
+
+    const { feeEngine } = await import('../../shared-services/payments/feeEngine');
+    const organizationId = getOrgId(req);
+    const fee = await feeEngine.calculate('project', parseFloat(amount as string), organizationId, 'organization');
+
+    const { exchangeRateService } = await import('../../shared-services/payments/crypto/exchangeRateService');
+    const usdAmount = await exchangeRateService.convertGhsToUsd(fee.totalCharge);
+
+    res.json({
+      principalGhs: fee.principalAmount,
+      serviceFeeGhs: fee.serviceFee,
+      totalChargeGhs: fee.totalCharge,
+      usdAmount,
+      feeMode: fee.feeMode,
+      feePercentage: fee.percentageRateApplied,
+      feeDescription: fee.feeDescription,
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
 export default router;

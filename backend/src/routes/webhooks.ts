@@ -2,6 +2,7 @@
  * Webhook Routes
  * 
  * Handles incoming webhooks from:
+ * - NOWPayments (IPN - Instant Payment Notifications for crypto payments)
  * - WhatsApp Business API (message delivery, incoming messages)
  * - E-Sign Service (envelope completion, voided, expired)
  * - Google Calendar (event updates - future)
@@ -228,6 +229,117 @@ router.post('/whatsapp', async (req: Request, res: Response) => {
     logger.error('WhatsApp webhook processing error', { error });
     // Still respond 200 to prevent retries
     res.status(200).send('EVENT_RECEIVED');
+  }
+});
+
+// ============================================================================
+// NOWPayments IPN (Instant Payment Notification) Webhook
+// ============================================================================
+
+/**
+ * POST /api/v1/webhooks/nowpayments/ipn
+ * 
+ * Receives payment status change notifications from NOWPayments.
+ * NOWPayments sends IPNs when a payment status changes:
+ *   waiting → confirming → confirmed → sending → finished
+ *   waiting → failed / expired / refunded
+ *
+ * IPN payloads are signed with HMAC-SHA512 using the IPN secret.
+ * We verify the signature before processing.
+ *
+ * On 'finished':
+ *   - Direct mode: marks payment_transactions as 'success', triggers fee collection
+ *   - Escrow mode: triggers escrow deposit into the smart contract
+ */
+router.post('/nowpayments/ipn', async (req: Request, res: Response) => {
+  try {
+    const { nowPaymentsService } = await import('../../shared-services/payments/crypto/nowPaymentsService');
+
+    // 1. Verify IPN signature
+    const signature = req.headers['x-nowpayments-sig'] as string;
+    if (!signature) {
+      logger.warn('NOWPayments IPN: missing x-nowpayments-sig header');
+      // In sandbox mode, signature may be absent — still process but log warning
+      const isSandbox = process.env.NOWPAYMENTS_SANDBOX === 'true';
+      if (!isSandbox) {
+        return res.status(400).json({ error: 'Missing IPN signature' });
+      }
+      logger.warn('NOWPayments IPN: proceeding without signature (sandbox mode)');
+    } else {
+      const isValid = nowPaymentsService.verifyIpnSignature(req.body, signature);
+      if (!isValid) {
+        logger.error('NOWPayments IPN: INVALID signature — potential replay/forgery attack', {
+          paymentId: req.body?.payment_id,
+          orderId: req.body?.order_id,
+        });
+        return res.status(403).json({ error: 'Invalid IPN signature' });
+      }
+    }
+
+    // 2. Extract payload
+    const payload = req.body;
+    logger.info('NOWPayments IPN received', {
+      paymentId: payload.payment_id,
+      status: payload.payment_status,
+      orderId: payload.order_id,
+      actuallyPaid: payload.actually_paid,
+      outcomeAmount: payload.outcome_amount,
+      outcomeCurrency: payload.outcome_currency,
+    });
+
+    // 3. Process the callback (updates DB, triggers downstream actions)
+    const result = await nowPaymentsService.processIpnCallback(payload);
+
+    logger.info('NOWPayments IPN processed', {
+      action: result.action,
+      paymentReference: result.paymentReference,
+    });
+
+    // 4. Handle downstream actions
+    if (result.action === 'escrow_deposit') {
+      // Trigger escrow deposit into the smart contract
+      try {
+        const { escrowPayoutService } = await import('../../shared-services/payments/crypto/escrowPayoutService');
+        await escrowPayoutService.processEscrowDeposit(result.paymentReference);
+        logger.info('Escrow deposit triggered', { paymentReference: result.paymentReference });
+      } catch (escrowErr: any) {
+        logger.error('Escrow deposit failed (will retry via polling)', {
+          paymentReference: result.paymentReference,
+          error: escrowErr.message,
+          stack: escrowErr.stack,
+        });
+      }
+    }
+
+    // 5. For completed rent payments, record in rent_payments + apply to schedules
+    if (result.action === 'completed' || result.action === 'escrow_deposit') {
+      try {
+        const { paymentProcessor } = await import('../services/property-management/payment/paymentProcessor');
+        const rentResult = await paymentProcessor.recordCryptoRentCompletion(result.paymentReference);
+        logger.info('Crypto rent completion (IPN)', {
+          paymentReference: result.paymentReference,
+          recorded: rentResult.recorded,
+          schedulesUpdated: rentResult.schedulesUpdated,
+        });
+      } catch (rentErr: any) {
+        logger.error('Crypto rent completion failed (IPN, non-blocking)', {
+          paymentReference: result.paymentReference,
+          error: rentErr.message,
+        });
+      }
+    }
+
+    // Always return 200 to NOWPayments (they retry on non-200)
+    res.status(200).json({ status: 'ok', action: result.action });
+  } catch (error: any) {
+    logger.error('NOWPayments IPN webhook error', {
+      error: error.message,
+      stack: error.stack,
+      body: JSON.stringify(req.body).substring(0, 500),
+    });
+    console.error('NOWPayments IPN ERROR:', error.message, error.stack);
+    // Still return 200 to prevent NOWPayments from retrying on our app errors
+    res.status(200).json({ status: 'error', message: error.message });
   }
 });
 

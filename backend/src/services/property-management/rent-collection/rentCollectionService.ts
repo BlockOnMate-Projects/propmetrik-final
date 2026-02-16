@@ -251,20 +251,20 @@ export class RentCollectionService {
         const query = `
       SELECT 
         COUNT(*) as total_payments,
-        SUM(payment_amount) as total_collected,
-        SUM(late_fees) as total_late_fees,
-        COUNT(CASE WHEN status = 'completed' THEN 1 END) as successful_payments,
-        COUNT(CASE WHEN status = 'failed' THEN 1 END) as failed_payments,
-        payment_method,
-        SUM(CASE WHEN payment_method LIKE 'mobile_money%' THEN payment_amount ELSE 0 END) as mobile_money_total,
-        SUM(CASE WHEN payment_method IN ('bank_transfer', 'bank_deposit') THEN payment_amount ELSE 0 END) as bank_total,
-        SUM(CASE WHEN payment_method = 'cash' THEN payment_amount ELSE 0 END) as cash_total
+        SUM(rp.payment_amount) as total_collected,
+        SUM(rp.late_fees) as total_late_fees,
+        COUNT(CASE WHEN rp.status = 'completed' THEN 1 END) as successful_payments,
+        COUNT(CASE WHEN rp.status = 'failed' THEN 1 END) as failed_payments,
+        rp.payment_method::text as payment_method,
+        SUM(CASE WHEN rp.payment_method::text LIKE 'mobile_money%' THEN rp.payment_amount ELSE 0 END) as mobile_money_total,
+        SUM(CASE WHEN rp.payment_method::text IN ('bank_transfer', 'bank_deposit') THEN rp.payment_amount ELSE 0 END) as bank_total,
+        SUM(CASE WHEN rp.payment_method::text = 'cash' THEN rp.payment_amount ELSE 0 END) as cash_total
       FROM rent_payments rp
       JOIN tenancies t ON rp.tenancy_id = t.id
       WHERE t.organization_id = $1
         AND rp.payment_date >= $2
         AND rp.payment_date <= $3
-      GROUP BY payment_method
+      GROUP BY rp.payment_method
     `;
 
         const result = await this.db.query(query, [organizationId, startDate, endDate]);

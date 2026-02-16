@@ -128,11 +128,18 @@ export interface MinAmountResult {
 }
 
 export interface AvailableCurrency {
+  id?: number;
+  code: string;
   currency: string;
-  min_amount: number;
-  max_amount: number;
-  network?: string;
   name?: string;
+  network?: string;
+  logo_url?: string;
+  ticker?: string;
+  is_popular?: boolean;
+  is_stable?: boolean;
+  available_for_payment?: boolean;
+  min_amount?: number;
+  max_amount?: number;
 }
 
 export interface NowPayoutParams {
@@ -238,6 +245,7 @@ class NowPaymentsService {
     endpoint: string,
     body?: Record<string, any>,
   ): Promise<T> {
+    if (!this.config) this.loadConfig();
     if (!this.config) throw new Error('NOWPayments not configured');
 
     const url = `${this.config.apiBaseUrl}${endpoint}`;
@@ -258,7 +266,7 @@ class NowPaymentsService {
 
     if (!response.ok) {
       const errMsg = data?.message || data?.statusCode || response.statusText;
-      logger.error('NOWPayments API error', { endpoint, status: response.status, error: errMsg });
+      logger.error('NOWPayments API error', { endpoint, status: response.status, error: errMsg, responseBody: JSON.stringify(data), requestBody: body ? JSON.stringify(body) : undefined });
       throw new Error(`NOWPayments API error (${response.status}): ${errMsg}`);
     }
 
@@ -281,8 +289,12 @@ class NowPaymentsService {
     if (this.currencyCache.length > 0 && Date.now() < this.currencyCacheExpiry) {
       return this.currencyCache;
     }
-    const result = await this.request<{ currencies: AvailableCurrency[] }>('GET', '/currencies');
-    this.currencyCache = result.currencies || [];
+    const result = await this.request<{ currencies: AvailableCurrency[] }>('GET', '/full-currencies');
+    // Normalize: ensure `currency` field is set from `code` if missing
+    this.currencyCache = (result.currencies || []).map(c => ({
+      ...c,
+      currency: c.currency || (c.code || '').toLowerCase(),
+    }));
     this.currencyCacheExpiry = Date.now() + this.CACHE_TTL_MS;
     return this.currencyCache;
   }
@@ -466,21 +478,23 @@ class NowPaymentsService {
     });
 
     // Update our payment record
+    const isTerminal = ['finished', 'failed', 'expired', 'refunded'].includes(payment_status);
     await pool.query(`
       UPDATE nowpayments_payments SET
         status = $1,
-        actually_paid = $2,
-        outcome_amount = COALESCE($3, outcome_amount),
-        outcome_currency = COALESCE($4, outcome_currency),
-        nowpayments_id = COALESCE($5, nowpayments_id),
-        finished_at = CASE WHEN $1 IN ('finished', 'failed', 'expired', 'refunded') THEN NOW() ELSE finished_at END
-      WHERE payment_reference = $6
+        actually_paid = $2::numeric,
+        outcome_amount = COALESCE($3::numeric, outcome_amount),
+        outcome_currency = COALESCE($4::varchar, outcome_currency),
+        nowpayments_id = COALESCE($5::bigint, nowpayments_id),
+        finished_at = CASE WHEN $6::boolean THEN NOW() ELSE finished_at END
+      WHERE payment_reference = $7
     `, [
       payment_status,
       actually_paid || 0,
-      outcome_amount,
-      outcome_currency,
+      outcome_amount || null,
+      outcome_currency || null,
       payment_id,
+      isTerminal,
       order_id,
     ]);
 
@@ -513,15 +527,34 @@ class NowPaymentsService {
         await pool.query(`
           UPDATE payment_transactions SET
             status = 'success',
+            verified_at = NOW(),
             channel = 'crypto_nowpayments',
             metadata = metadata || jsonb_build_object(
-              'nowpayments_id', $1,
-              'pay_currency', $2,
-              'outcome_currency', $3,
-              'outcome_amount', $4
+              'nowpayments_id', $1::text,
+              'pay_currency', $2::text,
+              'outcome_currency', $3::text,
+              'outcome_amount', $4::text
             )
           WHERE reference = $5 AND status = 'pending'
-        `, [payment_id, payload.pay_currency, outcome_currency, outcome_amount, order_id]);
+        `, [String(payment_id), payload.pay_currency, outcome_currency, String(outcome_amount), order_id]);
+
+        // Trigger platform fee collection
+        try {
+          const { feeCollectionService } = await import('./feeCollectionService');
+          const feeResult = await feeCollectionService.collectFeeForPayment(order_id);
+          logger.info('Fee collection result for direct-mode payment', {
+            paymentReference: order_id,
+            feeStatus: feeResult.status,
+            feeAmountGhs: feeResult.feeAmountGhs,
+            reason: feeResult.reason,
+          });
+        } catch (feeErr: any) {
+          logger.error('Fee collection failed (non-blocking)', {
+            paymentReference: order_id,
+            error: feeErr.message,
+            stack: feeErr.stack,
+          });
+        }
 
         return { action: 'completed', paymentReference: order_id };
       }

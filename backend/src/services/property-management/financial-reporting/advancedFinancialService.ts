@@ -111,10 +111,15 @@ export interface PortfolioFinancialSummary {
   totalValue: number;
   currency: string;
   aggregateNOI: number;
+  portfolioNOI: number; // alias for aggregateNOI (frontend compat)
   weightedCapRate: number;
   weightedCashOnCash: number;
   totalDebtService: number;
   portfolioDSCR: number;
+  averageOccupancy: number;
+  totalMonthlyIncome: number;
+  totalMonthlyExpenses: number;
+  netMonthlyCashFlow: number;
   performanceByProperty: Array<{
     propertyId: string;
     propertyName: string;
@@ -147,28 +152,27 @@ export class AdvancedFinancialService {
     );
     if (propRes.rows.length === 0) throw new AppError('Property not found', 404);
 
-    // Get gross potential rent (all units at full capacity)
+    // Get gross potential rent (all tenancies for this property)
     const rentQuery = `
       SELECT 
-        COALESCE(SUM(t.rent_amount * 
-          EXTRACT(MONTH FROM AGE(
-            LEAST(t.end_date, $3::date), 
-            GREATEST(t.start_date, $2::date)
-          )) + 1
+        COALESCE(SUM(t.monthly_rent * 
+          GREATEST(EXTRACT(MONTH FROM AGE(
+            LEAST(t.lease_end_date, $3::date), 
+            GREATEST(t.lease_start_date, $2::date)
+          )) + 1, 0)
         ), 0) as potential_rent,
         COALESCE(SUM(
           CASE WHEN t.status = 'active' THEN 
-            t.rent_amount * EXTRACT(MONTH FROM AGE(
-              LEAST(t.end_date, $3::date), 
-              GREATEST(t.start_date, $2::date)
-            )) + 1
+            t.monthly_rent * GREATEST(EXTRACT(MONTH FROM AGE(
+              LEAST(t.lease_end_date, $3::date), 
+              GREATEST(t.lease_start_date, $2::date)
+            )) + 1, 0)
           ELSE 0 END
         ), 0) as actual_rent
       FROM tenancies t
-      JOIN units u ON t.unit_id = u.id
-      WHERE u.property_id = $1
-      AND t.start_date <= $3::date
-      AND t.end_date >= $2::date
+      WHERE t.property_id = $1
+      AND t.lease_start_date <= $3::date
+      AND t.lease_end_date >= $2::date
     `;
     
     const rentRes = await db.query(rentQuery, [propertyId, startDate, endDate]);
@@ -182,7 +186,7 @@ export class AdvancedFinancialService {
       FROM property_financial_records
       WHERE property_id = $1
       AND record_type = 'income'
-      AND income_category NOT IN ('rent', 'rent_payment')
+      AND income_category NOT IN ('rental_income')
       AND transaction_date BETWEEN $2 AND $3
     `;
     const otherIncomeRes = await db.query(otherIncomeQuery, [propertyId, startDate, endDate]);
@@ -326,13 +330,13 @@ export class AdvancedFinancialService {
   private async getMarketCapRate(organizationId: string, propertyId: string): Promise<number> {
     // Get property type and location
     const propRes = await db.query(
-      `SELECT property_type, address_city, address_region FROM properties WHERE id = $1`,
+      `SELECT property_type, address_city, region FROM properties WHERE id = $1`,
       [propertyId]
     );
 
     if (propRes.rows.length === 0) return 8.0; // Default Ghana cap rate
 
-    const { property_type, address_region } = propRes.rows[0];
+    const { property_type, region } = propRes.rows[0];
 
     // Ghana market cap rate benchmarks by property type and region
     const capRateBenchmarks: Record<string, Record<string, number>> = {
@@ -362,7 +366,7 @@ export class AdvancedFinancialService {
     };
 
     const typeRates = capRateBenchmarks[property_type] || capRateBenchmarks.residential;
-    return typeRates[address_region] || typeRates.default;
+    return typeRates[region] || typeRates.default;
   }
 
   /**
@@ -676,18 +680,17 @@ export class AdvancedFinancialService {
     // Get benchmarks
     const marketCapRate = await this.getMarketCapRate(organizationId, propertyId);
 
-    // Get occupancy rate
+    // Get occupancy rate (based on tenancies directly linked to property)
     const occQuery = `
       SELECT 
-        COUNT(DISTINCT u.id) as total_units,
-        COUNT(DISTINCT CASE WHEN t.status = 'active' THEN u.id END) as occupied_units
-      FROM units u
-      LEFT JOIN tenancies t ON u.id = t.unit_id AND t.status = 'active'
-      WHERE u.property_id = $1
+        GREATEST(COUNT(*), 1) as total_tenancies,
+        COUNT(CASE WHEN t.status = 'active' THEN 1 END) as active_tenancies
+      FROM tenancies t
+      WHERE t.property_id = $1
     `;
     const occRes = await db.query(occQuery, [propertyId]);
-    const totalUnits = parseInt(occRes.rows[0].total_units || '1');
-    const occupiedUnits = parseInt(occRes.rows[0].occupied_units || '0');
+    const totalUnits = parseInt(occRes.rows[0].total_tenancies || '1');
+    const occupiedUnits = parseInt(occRes.rows[0].active_tenancies || '0');
     const occupancyRate = totalUnits > 0 ? (occupiedUnits / totalUnits) * 100 : 0;
 
     // Get property size for NOI per sqft
@@ -733,6 +736,10 @@ export class AdvancedFinancialService {
     let totalDebtService = 0;
     let weightedCapRateSum = 0;
     let weightedCashOnCashSum = 0;
+    let totalMonthlyIncome = 0;
+    let totalMonthlyExpenses = 0;
+    let occupancySum = 0;
+    let occupancyCount = 0;
 
     for (const prop of properties) {
       try {
@@ -742,12 +749,22 @@ export class AdvancedFinancialService {
         totalValue += propValue;
         aggregateNOI += summary.noi.netOperatingIncome;
         
+        // Track monthly income & expenses from NOI breakdown
+        totalMonthlyIncome += (summary.noi.effectiveGrossIncome || 0) / 12;
+        totalMonthlyExpenses += (summary.noi.operatingExpenses?.total || 0) / 12;
+
         if (summary.dscr) {
           totalDebtService += summary.dscr.annualDebtService;
         }
 
         weightedCapRateSum += summary.capRate.capRate * propValue;
         weightedCashOnCashSum += summary.cashOnCash.cashOnCashReturn * summary.cashOnCash.totalCashInvested;
+
+        // Track occupancy from actual benchmarks
+        if (summary.benchmarks?.occupancyRate !== undefined) {
+          occupancySum += summary.benchmarks.occupancyRate;
+          occupancyCount += 1;
+        }
 
         performanceByProperty.push({
           propertyId: prop.id,
@@ -775,16 +792,24 @@ export class AdvancedFinancialService {
     const weightedCashOnCash = totalCashInvested > 0 ? weightedCashOnCashSum / totalCashInvested : 0;
     const portfolioDSCR = totalDebtService > 0 ? aggregateNOI / totalDebtService : Infinity;
 
+    const averageOccupancy = occupancyCount > 0 ? occupancySum / occupancyCount : 0;
+    const netMonthlyCashFlow = totalMonthlyIncome - totalMonthlyExpenses;
+
     return {
       organizationId,
       totalProperties: properties.length,
       totalValue,
       currency: 'GHS',
       aggregateNOI,
+      portfolioNOI: aggregateNOI, // alias for frontend compat
       weightedCapRate: parseFloat(weightedCapRate.toFixed(2)),
       weightedCashOnCash: parseFloat(weightedCashOnCash.toFixed(2)),
       totalDebtService,
       portfolioDSCR: parseFloat((portfolioDSCR === Infinity ? 0 : portfolioDSCR).toFixed(2)),
+      averageOccupancy: parseFloat(averageOccupancy.toFixed(1)),
+      totalMonthlyIncome: parseFloat(totalMonthlyIncome.toFixed(2)),
+      totalMonthlyExpenses: parseFloat(totalMonthlyExpenses.toFixed(2)),
+      netMonthlyCashFlow: parseFloat(netMonthlyCashFlow.toFixed(2)),
       performanceByProperty
     };
   }

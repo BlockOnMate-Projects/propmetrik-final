@@ -7,6 +7,7 @@
  */
 
 import { useState } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { CalendarView } from '@/components/calendar/CalendarView';
 import { ViewingSchedulerDialog } from '@/components/calendar/ViewingScheduler';
 import { CalendarEvent, calendarApi } from '@/lib/realtime-api';
@@ -27,6 +28,8 @@ import {
 } from 'lucide-react';
 
 export default function CalendarPage() {
+  const searchParams = useSearchParams();
+  const service = searchParams.get('service') || '';
   const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null);
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [createDate, setCreateDate] = useState<Date | null>(null);
@@ -103,6 +106,7 @@ export default function CalendarPage() {
         <CalendarView
           onEventClick={handleEventClick}
           onCreateEvent={handleCreateEvent}
+          filterService={service}
           className="h-full"
         />
       </div>

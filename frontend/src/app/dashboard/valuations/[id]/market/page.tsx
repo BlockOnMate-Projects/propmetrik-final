@@ -790,7 +790,7 @@ export default function MarketDataPage() {
             valueRange: ricsValueRange,
           },
         },
-        current_step: 4,
+        current_step: 7, // Market analysis complete, advance to next method step
         // Also update summary fields on the main valuation record
         sales_comparison_value: indicatedValue,
         sales_comparison_confidence: confidenceValue,

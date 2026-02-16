@@ -620,7 +620,7 @@ export default function CostApproachPage() {
           },
         },
         methods_applied: updatedMethods,
-        current_step: 5,
+        current_step: 6,
         // Also update summary fields on the main valuation record
         cost_approach_value: finalValue,
         cost_approach_confidence: finalConfidence,

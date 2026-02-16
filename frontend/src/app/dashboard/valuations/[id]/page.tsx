@@ -41,8 +41,9 @@ import {
 // Core workflow steps (always shown)
 const CORE_STEPS = [
   { id: 1, label: 'Property Setup', icon: Home, path: 'property' },
-  { id: 2, label: 'HBU Analysis', icon: TrendingUp, path: 'hbu' },
-  { id: 3, label: 'Method Selection', icon: Calculator, path: 'methods' },
+  { id: 2, label: 'Floor Plans', icon: Maximize, path: 'floor-plan' },
+  { id: 3, label: 'HBU Analysis', icon: TrendingUp, path: 'hbu' },
+  { id: 4, label: 'Method Selection', icon: Calculator, path: 'methods' },
 ]
 
 // Method-specific steps - only shown when that method is selected
@@ -166,20 +167,25 @@ export default function ValuationDetailPage() {
     fetchData()
   }, [valuationId])
 
-  // Navigate to step
-  const goToStep = (stepId: number) => {
+  // Navigate to step (uses 1-based position index)
+  const goToStep = (stepNumber: number) => {
     const steps = getWorkflowSteps()
-    let step = steps.find(s => s.id === stepId)
-    
-    // If step not found (current_step exceeds max), go to the last step or reconciliation
-    if (!step) {
-      // Find reconciliation or the last step
-      step = steps.find(s => s.path === 'reconciliation') || steps[steps.length - 1]
-    }
-    
+    // Use index-based lookup (step numbers are 1-based positions)
+    // This aligns with getStepStatus which uses currentStep - 1 as the index
+    const idx = Math.max(0, Math.min(stepNumber - 1, steps.length - 1))
+    const step = steps[idx]
     if (step) {
       router.push(`/dashboard/valuations/${valuationId}/${step.path}`)
     }
+  }
+
+  // Determine the correct step path to resume from
+  // Uses the current_step stored in the DB (set by each page on save & continue)
+  const getResumeStepPath = (): string => {
+    const steps = getWorkflowSteps()
+    const cs = valuation?.current_step || 1
+    const idx = Math.max(0, Math.min(cs - 1, steps.length - 1))
+    return steps[idx]?.path || 'property'
   }
   
   // Build dynamic workflow steps based on selected methods
@@ -190,7 +196,7 @@ export default function ValuationDetailPage() {
     const steps = [...CORE_STEPS]
     
     // Add method-specific steps based on what's selected
-    let stepId = 4
+    let stepId = 5
     selectedMethods.forEach((method: string) => {
       const methodSteps = METHOD_STEPS[method]
       if (methodSteps) {
@@ -205,7 +211,7 @@ export default function ValuationDetailPage() {
     
     // If no methods selected yet, show a placeholder
     if (selectedMethods.length === 0) {
-      steps.push({ id: 4, label: 'Select Methods', icon: Calculator, path: 'methods' })
+      steps.push({ id: stepId++, label: 'Select Methods', icon: Calculator, path: 'methods' })
     }
     
     // Add final steps with adjusted IDs
@@ -316,14 +322,15 @@ export default function ValuationDetailPage() {
           {getWorkflowSteps().map((step, i) => {
             const StepIcon = step.icon
             const status = getStepStatus(step.id, step.path)
-            const isActive = step.id === activeStep
+            const stepPosition = i + 1 // 1-based position
+            const isActive = stepPosition === activeStep
             const isCompleted = status === 'completed'
             const isCurrent = status === 'current'
 
             return (
               <div key={step.id} className="flex items-center">
                 <button
-                  onClick={() => goToStep(step.id)}
+                  onClick={() => goToStep(stepPosition)}
                   className={`flex flex-col items-center gap-2 p-3 transition-colors ${
                     status === 'upcoming' ? 'opacity-50 cursor-not-allowed' : 'hover:bg-zinc-800/50 cursor-pointer'
                   }`}
@@ -571,13 +578,21 @@ export default function ValuationDetailPage() {
 
       {/* Continue Workflow CTA */}
       <div className="mt-6 flex justify-center">
-        <button
-          onClick={() => goToStep(valuation?.current_step || 1)}
-          className="flex items-center gap-2 px-6 py-3 bg-amber-500 text-black font-mono text-sm font-bold hover:bg-amber-400 transition-colors"
-        >
-          CONTINUE WORKFLOW
-          <ChevronRight className="w-4 h-4" />
-        </button>
+        {(() => {
+          const resumePath = getResumeStepPath()
+          const steps = getWorkflowSteps()
+          const resumeStep = steps.find(s => s.path === resumePath)
+          const resumeLabel = resumeStep?.label?.toUpperCase() || 'NEXT STEP'
+          return (
+            <button
+              onClick={() => router.push(`/dashboard/valuations/${valuationId}/${resumePath}`)}
+              className="flex items-center gap-2 px-6 py-3 bg-amber-500 text-black font-mono text-sm font-bold hover:bg-amber-400 transition-colors"
+            >
+              CONTINUE: {resumeLabel}
+              <ChevronRight className="w-4 h-4" />
+            </button>
+          )
+        })()}
       </div>
     </div>
   )

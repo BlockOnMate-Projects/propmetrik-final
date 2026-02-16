@@ -35,7 +35,8 @@ export enum PaymentMethod {
     MOBILE_MONEY_VODAFONE = 'mobile_money_vodafone',
     MOBILE_MONEY_AIRTELTIGO = 'mobile_money_airteltigo',
     PAYSTACK = 'paystack',
-    FLUTTERWAVE = 'flutterwave'
+    FLUTTERWAVE = 'flutterwave',
+    CRYPTO = 'crypto'
 }
 
 export enum PaymentStatus {

@@ -18,10 +18,12 @@ const navigation: { name: string; href: string; key: string; badge?: string; adm
 ]
 
 function Clock() {
+  const [mounted, setMounted] = useState(false)
   const [time, setTime] = useState<string>('')
   const [date, setDate] = useState<string>('')
 
   useEffect(() => {
+    setMounted(true)
     const updateTime = () => {
       const now = new Date()
       setTime(now.toLocaleTimeString('en-US', { hour12: false }))
@@ -31,6 +33,8 @@ function Clock() {
     const interval = setInterval(updateTime, 1000)
     return () => clearInterval(interval)
   }, [])
+
+  if (!mounted) return <div className="flex items-center gap-3 font-mono text-xs" style={{ minWidth: 160 }} />
 
   return (
     <div className="flex items-center gap-3 font-mono text-xs">

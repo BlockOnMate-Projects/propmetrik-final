@@ -90,6 +90,13 @@ export default function PropertyDetailPage() {
     const [roiData, setRoiData] = useState<any>(null)
     const [assetPhotos, setAssetPhotos] = useState<PropertyDocument[]>([])
 
+    // Advanced financial analytics state
+    const [financialSummary, setFinancialSummary] = useState<any>(null)
+    const [noiData, setNoiData] = useState<any>(null)
+    const [capRateData, setCapRateData] = useState<any>(null)
+    const [irrData, setIrrData] = useState<any>(null)
+    const [dscrData, setDscrData] = useState<any>(null)
+
     const [isLoading, setIsLoading] = useState(true)
     const [isUploading, setIsUploading] = useState(false)
     const [newPhotoUrl, setNewPhotoUrl] = useState('')
@@ -144,7 +151,12 @@ export default function PropertyDetailPage() {
                 financialsRes,
                 roiRes,
                 photosRes,
-                linksRes
+                linksRes,
+                summaryRes,
+                noiRes,
+                capRateRes,
+                irrRes,
+                dscrRes
             ] = await Promise.all([
                 propertyManagementApi.getPropertyById(propertyId),
                 propertyManagementApi.getTenancies({ propertyId }),
@@ -153,7 +165,12 @@ export default function PropertyDetailPage() {
                 propertyManagementApi.getFinancials({ propertyId, limit: 10 }),
                 propertyManagementApi.getROI(propertyId).catch(() => null),
                 propertyManagementApi.getDocuments({ propertyId, type: 'property_photos' }),
-                propertyManagementApi.getApplicationLinks({ propertyId }).catch(() => [])
+                propertyManagementApi.getApplicationLinks({ propertyId }).catch(() => []),
+                propertyManagementApi.getFinancialSummary(propertyId).catch(() => null),
+                propertyManagementApi.getNOI(propertyId).catch(() => null),
+                propertyManagementApi.getCapRate(propertyId).catch(() => null),
+                propertyManagementApi.getIRR(propertyId).catch(() => null),
+                propertyManagementApi.getDSCR(propertyId).catch(() => null)
             ])
 
             setProperty(propRes)
@@ -164,6 +181,11 @@ export default function PropertyDetailPage() {
             setRoiData(roiRes)
             setAssetPhotos(Array.isArray(photosRes) ? photosRes : photosRes.data || [])
             setApplicationLinks(Array.isArray(linksRes) ? linksRes : [])
+            setFinancialSummary(summaryRes)
+            setNoiData(noiRes)
+            setCapRateData(capRateRes)
+            setIrrData(irrRes)
+            setDscrData(dscrRes)
 
         } catch (err) {
             console.error('Failed to load property details:', err)
@@ -664,6 +686,46 @@ export default function PropertyDetailPage() {
 
                 {/* OVERVIEW TAB */}
                 <TabsContent value="overview" className="mt-6">
+                    {/* ─── Financial KPI Strip ──────────────────────── */}
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+                        <Card className="bg-card border-border">
+                            <CardContent className="p-4">
+                                <p className="text-[10px] text-muted-foreground font-mono uppercase mb-1">Net Operating Income</p>
+                                <p className={`text-lg font-bold font-mono ${(noiData?.netOperatingIncome ?? 0) >= 0 ? 'text-green-500' : 'text-destructive'}`}>
+                                    {noiData ? `GHS ${noiData.netOperatingIncome?.toLocaleString()}` : '—'}
+                                </p>
+                                {noiData && <p className="text-[9px] font-mono text-muted-foreground mt-1">Margin: {noiData.noiMargin?.toFixed(1)}%</p>}
+                            </CardContent>
+                        </Card>
+                        <Card className="bg-card border-border">
+                            <CardContent className="p-4">
+                                <p className="text-[10px] text-muted-foreground font-mono uppercase mb-1">Cap Rate</p>
+                                <p className="text-lg font-bold text-primary font-mono">
+                                    {capRateData ? `${capRateData.capRate?.toFixed(2)}%` : '—'}
+                                </p>
+                                {capRateData && <p className="text-[9px] font-mono text-muted-foreground mt-1">{capRateData.recommendation?.toUpperCase()}</p>}
+                            </CardContent>
+                        </Card>
+                        <Card className="bg-card border-border">
+                            <CardContent className="p-4">
+                                <p className="text-[10px] text-muted-foreground font-mono uppercase mb-1">IRR</p>
+                                <p className={`text-lg font-bold font-mono ${(irrData?.irr ?? 0) >= 10 ? 'text-green-500' : (irrData?.irr ?? 0) >= 5 ? 'text-primary' : 'text-destructive'}`}>
+                                    {irrData ? `${irrData.irr?.toFixed(2)}%` : '—'}
+                                </p>
+                                {irrData && <p className="text-[9px] font-mono text-muted-foreground mt-1">Payback: {irrData.paybackPeriodYears?.toFixed(1)} yrs</p>}
+                            </CardContent>
+                        </Card>
+                        <Card className="bg-card border-border">
+                            <CardContent className="p-4">
+                                <p className="text-[10px] text-muted-foreground font-mono uppercase mb-1">DSCR</p>
+                                <p className={`text-lg font-bold font-mono ${dscrData?.dscr === null ? 'text-green-500' : (dscrData?.dscr ?? 0) >= 1.25 ? 'text-green-500' : (dscrData?.dscr ?? 0) >= 1.0 ? 'text-primary' : 'text-destructive'}`}>
+                                    {dscrData ? (dscrData.dscr !== null ? `${dscrData.dscr?.toFixed(2)}x` : 'No Debt') : '—'}
+                                </p>
+                                {dscrData && <p className="text-[9px] font-mono text-muted-foreground mt-1">{dscrData.interpretation || dscrData.riskLevel}</p>}
+                            </CardContent>
+                        </Card>
+                    </div>
+
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                         <Card className="bg-card border-border col-span-2">
                             <CardHeader>
@@ -673,7 +735,7 @@ export default function PropertyDetailPage() {
                                 <div className="space-y-1">
                                     <p className="text-[10px] text-muted-foreground font-mono uppercase">Asset Class</p>
                                     <p className="text-sm text-foreground font-mono uppercase flex items-center gap-2">
-                                        {property.propertyType.replace('_', ' ')}
+                                        {(property.propertyType || 'unknown').replace(/_/g, ' ')}
                                     </p>
                                 </div>
                                 <div className="space-y-1">
@@ -780,6 +842,167 @@ export default function PropertyDetailPage() {
                             </div>
                         )
                     })()}
+
+                    {/* ─── Advanced Financial Analytics ─────────────── */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+                        {/* NOI Card */}
+                        <Card className="bg-card border-border">
+                            <CardContent className="p-4">
+                                <div className="flex items-center justify-between mb-2">
+                                    <p className="text-[10px] text-muted-foreground font-mono uppercase">Net Operating Income</p>
+                                    <Badge variant="outline" className="text-[8px] font-mono border-border text-muted-foreground">NOI</Badge>
+                                </div>
+                                <p className={`text-xl font-bold font-mono ${(noiData?.netOperatingIncome ?? 0) >= 0 ? 'text-green-500' : 'text-destructive'}`}>
+                                    {noiData ? `GHS ${noiData.netOperatingIncome.toLocaleString()}` : '—'}
+                                </p>
+                                {noiData && (
+                                    <div className="mt-2 space-y-1">
+                                        <div className="flex justify-between">
+                                            <span className="text-[9px] font-mono text-muted-foreground">EGI</span>
+                                            <span className="text-[9px] font-mono text-foreground">GHS {noiData.effectiveGrossIncome?.toLocaleString()}</span>
+                                        </div>
+                                        <div className="flex justify-between">
+                                            <span className="text-[9px] font-mono text-muted-foreground">Margin</span>
+                                            <span className={`text-[9px] font-mono font-bold ${noiData.noiMargin >= 60 ? 'text-green-500' : noiData.noiMargin >= 40 ? 'text-primary' : 'text-destructive'}`}>
+                                                {noiData.noiMargin?.toFixed(1)}%
+                                            </span>
+                                        </div>
+                                    </div>
+                                )}
+                            </CardContent>
+                        </Card>
+
+                        {/* Cap Rate Card */}
+                        <Card className="bg-card border-border">
+                            <CardContent className="p-4">
+                                <div className="flex items-center justify-between mb-2">
+                                    <p className="text-[10px] text-muted-foreground font-mono uppercase">Capitalization Rate</p>
+                                    <Badge variant="outline" className="text-[8px] font-mono border-border text-muted-foreground">CAP</Badge>
+                                </div>
+                                <p className="text-xl font-bold text-primary font-mono">
+                                    {capRateData ? `${capRateData.capRate?.toFixed(2)}%` : '—'}
+                                </p>
+                                {capRateData && (
+                                    <div className="mt-2 space-y-1">
+                                        <div className="flex justify-between">
+                                            <span className="text-[9px] font-mono text-muted-foreground">Market Cap</span>
+                                            <span className="text-[9px] font-mono text-foreground">{capRateData.marketCapRate?.toFixed(1)}%</span>
+                                        </div>
+                                        <div className="flex justify-between">
+                                            <span className="text-[9px] font-mono text-muted-foreground">Signal</span>
+                                            <Badge className={`text-[8px] font-mono ${capRateData.recommendation === 'undervalued' ? 'bg-green-950/30 text-green-500 border-green-900' : capRateData.recommendation === 'overvalued' ? 'bg-red-950/30 text-red-500 border-red-900' : 'bg-secondary text-secondary-foreground border-border'}`}>
+                                                {capRateData.recommendation?.toUpperCase()}
+                                            </Badge>
+                                        </div>
+                                    </div>
+                                )}
+                            </CardContent>
+                        </Card>
+
+                        {/* IRR Card */}
+                        <Card className="bg-card border-border">
+                            <CardContent className="p-4">
+                                <div className="flex items-center justify-between mb-2">
+                                    <p className="text-[10px] text-muted-foreground font-mono uppercase">Internal Rate of Return</p>
+                                    <Badge variant="outline" className="text-[8px] font-mono border-border text-muted-foreground">IRR</Badge>
+                                </div>
+                                <p className={`text-xl font-bold font-mono ${(irrData?.irr ?? 0) >= 10 ? 'text-green-500' : (irrData?.irr ?? 0) >= 5 ? 'text-primary' : 'text-destructive'}`}>
+                                    {irrData ? `${irrData.irr?.toFixed(2)}%` : '—'}
+                                </p>
+                                {irrData && (
+                                    <div className="mt-2 space-y-1">
+                                        <div className="flex justify-between">
+                                            <span className="text-[9px] font-mono text-muted-foreground">NPV</span>
+                                            <span className="text-[9px] font-mono text-foreground">GHS {irrData.npv?.toLocaleString()}</span>
+                                        </div>
+                                        <div className="flex justify-between">
+                                            <span className="text-[9px] font-mono text-muted-foreground">Payback</span>
+                                            <span className="text-[9px] font-mono text-foreground">{irrData.paybackPeriodYears?.toFixed(1)} yrs</span>
+                                        </div>
+                                    </div>
+                                )}
+                            </CardContent>
+                        </Card>
+
+                        {/* DSCR Card */}
+                        <Card className="bg-card border-border">
+                            <CardContent className="p-4">
+                                <div className="flex items-center justify-between mb-2">
+                                    <p className="text-[10px] text-muted-foreground font-mono uppercase">Debt Service Coverage</p>
+                                    <Badge variant="outline" className="text-[8px] font-mono border-border text-muted-foreground">DSCR</Badge>
+                                </div>
+                                <p className={`text-xl font-bold font-mono ${dscrData?.dscr === null ? 'text-green-500' : (dscrData?.dscr ?? 0) >= 1.25 ? 'text-green-500' : (dscrData?.dscr ?? 0) >= 1.0 ? 'text-primary' : 'text-destructive'}`}>
+                                    {dscrData ? (dscrData.dscr !== null ? `${dscrData.dscr?.toFixed(2)}x` : dscrData.dscrFormatted || 'No Debt') : '—'}
+                                </p>
+                                {dscrData && (
+                                    <div className="mt-2 space-y-1">
+                                        {dscrData.dscr !== null ? (
+                                            <>
+                                                <div className="flex justify-between">
+                                                    <span className="text-[9px] font-mono text-muted-foreground">Rating</span>
+                                                    <Badge className={`text-[8px] font-mono ${dscrData.rating === 'strong' || dscrData.rating === 'excellent' ? 'bg-green-950/30 text-green-500 border-green-900' : dscrData.rating === 'adequate' ? 'bg-secondary text-secondary-foreground border-border' : 'bg-red-950/30 text-red-500 border-red-900'}`}>
+                                                        {dscrData.rating?.toUpperCase()}
+                                                    </Badge>
+                                                </div>
+                                                <div className="flex justify-between">
+                                                    <span className="text-[9px] font-mono text-muted-foreground">Debt Yield</span>
+                                                    <span className="text-[9px] font-mono text-foreground">{dscrData.debtYield?.toFixed(1)}%</span>
+                                                </div>
+                                            </>
+                                        ) : (
+                                            <div className="flex justify-between">
+                                                <span className="text-[9px] font-mono text-muted-foreground">Status</span>
+                                                <Badge className="text-[8px] font-mono bg-green-950/30 text-green-500 border-green-900">DEBT FREE</Badge>
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
+                            </CardContent>
+                        </Card>
+                    </div>
+
+                    {/* ─── Financial Summary Bar ───────────────────── */}
+                    {financialSummary && (
+                        <Card className="bg-card border-border mb-6">
+                            <CardHeader className="pb-2">
+                                <CardTitle className="text-sm font-mono text-primary uppercase">Financial Intelligence Summary</CardTitle>
+                                <CardDescription className="text-[10px] font-mono text-muted-foreground uppercase">
+                                    Computed as of {financialSummary.asOfDate ? new Date(financialSummary.asOfDate).toLocaleDateString() : 'today'} · {financialSummary.currency || 'GHS'}
+                                </CardDescription>
+                            </CardHeader>
+                            <CardContent>
+                                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                                    <div className="p-3 rounded bg-secondary/30 border border-border">
+                                        <p className="text-[9px] font-mono text-muted-foreground uppercase mb-1">Occupancy Rate</p>
+                                        <p className={`text-lg font-bold font-mono ${(financialSummary.occupancy?.rate ?? 0) >= 90 ? 'text-green-500' : 'text-primary'}`}>
+                                            {financialSummary.occupancy?.rate?.toFixed(0) ?? 0}%
+                                        </p>
+                                        <p className="text-[9px] font-mono text-muted-foreground">
+                                            {financialSummary.occupancy?.occupiedUnits ?? 0}/{financialSummary.occupancy?.totalUnits ?? 0} units
+                                        </p>
+                                    </div>
+                                    <div className="p-3 rounded bg-secondary/30 border border-border">
+                                        <p className="text-[9px] font-mono text-muted-foreground uppercase mb-1">Total Income</p>
+                                        <p className="text-lg font-bold text-green-500 font-mono">
+                                            GHS {(financialSummary.cashFlow?.totalIncome ?? 0).toLocaleString()}
+                                        </p>
+                                    </div>
+                                    <div className="p-3 rounded bg-secondary/30 border border-border">
+                                        <p className="text-[9px] font-mono text-muted-foreground uppercase mb-1">Total Expenses</p>
+                                        <p className="text-lg font-bold text-destructive/80 font-mono">
+                                            GHS {(financialSummary.cashFlow?.totalExpenses ?? 0).toLocaleString()}
+                                        </p>
+                                    </div>
+                                    <div className="p-3 rounded bg-secondary/30 border border-border">
+                                        <p className="text-[9px] font-mono text-muted-foreground uppercase mb-1">Net Cash Flow</p>
+                                        <p className={`text-lg font-bold font-mono ${(financialSummary.cashFlow?.netCashFlow ?? 0) >= 0 ? 'text-green-500' : 'text-destructive'}`}>
+                                            GHS {(financialSummary.cashFlow?.netCashFlow ?? 0).toLocaleString()}
+                                        </p>
+                                    </div>
+                                </div>
+                            </CardContent>
+                        </Card>
+                    )}
 
                     <Card className="bg-card border-border">
                         <CardHeader className="flex flex-row items-center justify-between">
@@ -910,13 +1133,13 @@ export default function PropertyDetailPage() {
                                                 <DollarSign className={`h-4 w-4 ${record.recordType === 'income' ? 'text-green-500' : 'text-red-500'}`} />
                                             </div>
                                             <div>
-                                                <p className="text-xs text-white font-mono uppercase">{record.category.replace('_', ' ')}</p>
-                                                <p className="text-[10px] text-zinc-500 font-mono">{format(new Date(record.transactionDate), 'dd MMM yyyy')}</p>
+                                                <p className="text-xs text-white font-mono uppercase">{(record.category || 'uncategorized').replace(/_/g, ' ')}</p>
+                                                <p className="text-[10px] text-zinc-500 font-mono">{record.transactionDate ? format(new Date(record.transactionDate), 'dd MMM yyyy') : '—'}</p>
                                             </div>
                                         </div>
                                         <div className="text-right">
                                             <p className={`text-sm font-bold font-mono ${record.recordType === 'income' ? 'text-green-500' : 'text-destructive/90'}`}>
-                                                {record.recordType === 'income' ? '+' : '-'}{record.currency} {record.amount.toLocaleString()}
+                                                {record.recordType === 'income' ? '+' : '-'}{record.currency} {(record.amount ?? 0).toLocaleString()}
                                             </p>
                                             <Badge variant="outline" className="text-[8px] font-mono border-border text-muted-foreground uppercase">
                                                 {record.status}

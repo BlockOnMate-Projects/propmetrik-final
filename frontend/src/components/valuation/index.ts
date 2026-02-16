@@ -4,14 +4,14 @@
  * Exports all valuation-related components for property assessment.
  */
 
-export { default as FloorPlanBuilder } from './FloorPlanBuilder';
+export { default as FloorPlanBuilder } from './KonvaFloorPlanBuilder';
 export type {
   RoomType,
   Point,
   RoomMeasurement,
   FloorPlanSpecs,
   PropertyMeasurements,
-} from './FloorPlanBuilder';
+} from './KonvaFloorPlanBuilder';
 
 export {
   GapAnalysisAlert,

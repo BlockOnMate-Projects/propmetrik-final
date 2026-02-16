@@ -3502,6 +3502,131 @@ router.get('/payments/crypto-settlement-coins', asyncHandler(async (req: Request
 }));
 
 // =====================================================
+// DEAL PAYMENT INITIATION
+// =====================================================
+
+/**
+ * POST /api/v1/crm/payments/initiate
+ * Initialize a deal payment via Paystack (card / mobile money).
+ * Applies the deal fee rule: 0.25% of transaction value.
+ *
+ * Body: {
+ *   dealId: string,
+ *   amount: number (GHS — principal amount),
+ *   email: string (payer email),
+ *   description?: string,
+ *   channel?: 'mobile_money' | 'card',
+ *   callbackUrl?: string
+ * }
+ */
+router.post('/payments/initiate', asyncHandler(async (req: Request, res: Response) => {
+    const organizationId = await getOrganizationId(req);
+    const { dealId, amount, email, description, channel, callbackUrl } = req.body;
+
+    if (!dealId || !amount || !email) {
+        return res.status(400).json({ error: 'dealId, amount, and email are required' });
+    }
+
+    const { paymentProcessor } = await import('../services/property-management/payment/paymentProcessor');
+
+    const result = await paymentProcessor.initializeGenericPayment({
+        entityId: dealId,
+        entityType: 'deal',
+        recipientId: organizationId,
+        recipientType: 'organization',
+        amount: parseFloat(amount),
+        email,
+        description: description || 'Deal payment',
+        channel: channel || 'mobile_money',
+        callbackUrl,
+    });
+
+    res.json(result);
+}));
+
+/**
+ * POST /api/v1/crm/payments/crypto/initiate
+ * Initialize a deal payment via crypto (unified — any coin).
+ * Applies the deal fee rule: 0.25% of transaction value.
+ *
+ * Body: {
+ *   dealId: string,
+ *   amount: number (GHS — principal amount),
+ *   payerCurrency: string (e.g. 'btc', 'eth', 'usdt'),
+ *   payerChain: string (e.g. 'bitcoin', 'ethereum', 'polygon'),
+ *   payerWalletAddress?: string,
+ *   requiresEscrow?: boolean,
+ *   description?: string
+ * }
+ */
+router.post('/payments/crypto/initiate', asyncHandler(async (req: Request, res: Response) => {
+    const organizationId = await getOrganizationId(req);
+    const { dealId, amount, payerCurrency, payerChain, payerWalletAddress, requiresEscrow, description } = req.body;
+
+    if (!dealId || !amount || !payerCurrency || !payerChain) {
+        return res.status(400).json({
+            error: 'dealId, amount, payerCurrency, and payerChain are required'
+        });
+    }
+
+    if (payerWalletAddress && /^0x/.test(payerWalletAddress) && !/^0x[a-fA-F0-9]{40}$/.test(payerWalletAddress)) {
+        return res.status(400).json({ error: 'Invalid EVM wallet address format' });
+    }
+
+    const { paymentProcessor } = await import('../services/property-management/payment/paymentProcessor');
+
+    const result = await paymentProcessor.initializeUnifiedCryptoPayment({
+        paymentType: 'deal',
+        entityId: dealId,
+        entityType: 'deal',
+        recipientId: organizationId,
+        recipientType: 'organization',
+        amount: parseFloat(amount),
+        payerCurrency,
+        payerChain,
+        payerWalletAddress,
+        requiresEscrow: requiresEscrow ?? false,
+        description: description || 'Deal crypto payment',
+        metadata: {
+            deal_id: dealId,
+            organization_id: organizationId,
+        },
+    });
+
+    res.json(result);
+}));
+
+/**
+ * GET /api/v1/crm/payments/crypto/estimate
+ * Get fee estimate for a deal crypto payment.
+ * Returns fee breakdown showing the 0.25% platform fee.
+ */
+router.get('/payments/crypto/estimate', asyncHandler(async (req: Request, res: Response) => {
+    const { amount } = req.query;
+
+    if (!amount) {
+        return res.status(400).json({ error: 'amount (GHS) is required' });
+    }
+
+    const { feeEngine } = await import('../../shared-services/payments/feeEngine');
+    const organizationId = await getOrganizationId(req);
+    const fee = await feeEngine.calculate('deal', parseFloat(amount as string), organizationId, 'organization');
+
+    const { exchangeRateService } = await import('../../shared-services/payments/crypto/exchangeRateService');
+    const usdAmount = await exchangeRateService.convertGhsToUsd(fee.totalCharge);
+
+    res.json({
+        principalGhs: fee.principalAmount,
+        serviceFeeGhs: fee.serviceFee,
+        totalChargeGhs: fee.totalCharge,
+        usdAmount,
+        feeMode: fee.feeMode,
+        feePercentage: fee.percentageRateApplied,
+        feeDescription: fee.feeDescription,
+    });
+}));
+
+// =====================================================
 // ERROR HANDLING
 // =====================================================
 

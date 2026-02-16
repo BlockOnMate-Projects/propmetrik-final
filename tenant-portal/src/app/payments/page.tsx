@@ -533,15 +533,16 @@ function PaymentsContent() {
       {showPaymentModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/50" onClick={resetPaymentModal} />
-          <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-md animate-slide-up overflow-hidden">
+          <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-md animate-slide-up overflow-hidden max-h-[90vh] flex flex-col">
             {/* Header */}
-            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 flex-shrink-0">
               <h3 className="text-lg font-semibold text-gray-900">Make a Payment</h3>
               <button onClick={resetPaymentModal} className="p-1.5 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-100">
                 <X className="w-5 h-5" />
               </button>
             </div>
 
+            <div className="overflow-y-auto flex-1">
             {paymentStep === 'form' && (
               <div className="p-6 space-y-5">
                 {/* Amount */}
@@ -718,6 +719,7 @@ function PaymentsContent() {
                 </div>
               </div>
             )}
+            </div>{/* end scrollable body */}
           </div>
         </div>
       )}

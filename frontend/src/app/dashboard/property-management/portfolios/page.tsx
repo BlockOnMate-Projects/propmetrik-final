@@ -79,6 +79,7 @@ export default function PortfoliosPage() {
     const [composition, setComposition] = useState<PortfolioComposition | null>(null);
     const [leaseSummary, setLeaseSummary] = useState<LeasePortfolioSummary | null>(null);
     const [properties, setProperties] = useState<Property[]>([]);
+    const [portfolioFinancials, setPortfolioFinancials] = useState<any>(null);
     const [loading, setLoading] = useState(true);
     const [mounted, setMounted] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
@@ -87,15 +88,17 @@ export default function PortfoliosPage() {
         setMounted(true);
         async function loadData() {
             try {
-                const [m, c, l, p] = await Promise.all([
+                const [m, c, l, p, pf] = await Promise.all([
                     propertyManagementApi.getPortfolioOverview(),
                     propertyManagementApi.getPortfolioComposition(),
                     propertyManagementApi.getLeasePortfolioSummary(),
-                    propertyManagementApi.getProperties({ limit: 100 })
+                    propertyManagementApi.getProperties({ limit: 100 }),
+                    propertyManagementApi.getPortfolioFinancialSummary().catch(() => null),
                 ]);
                 setMetrics(m);
                 setComposition(c);
                 setLeaseSummary(l);
+                setPortfolioFinancials(pf);
 
                 const propertyData = Array.isArray(p) ? p : (p as any).data || [];
                 setProperties(propertyData);
@@ -318,6 +321,57 @@ export default function PortfoliosPage() {
                     </div>
                 </div>
             </div>
+
+            {/* Financial Analytics Row */}
+            {portfolioFinancials && (
+                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
+                    <Card className="bg-zinc-900 border-zinc-800">
+                        <CardContent className="pt-5 pb-4">
+                            <p className="text-[10px] text-zinc-500 font-mono uppercase mb-1">Portfolio NOI</p>
+                            <p className={`text-xl font-bold font-mono ${(portfolioFinancials.portfolioNOI ?? 0) >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                                {formatCurrency(portfolioFinancials.portfolioNOI ?? 0)}
+                            </p>
+                            <p className="text-[9px] font-mono text-zinc-600 mt-1">Net Operating Income</p>
+                        </CardContent>
+                    </Card>
+                    <Card className="bg-zinc-900 border-zinc-800">
+                        <CardContent className="pt-5 pb-4">
+                            <p className="text-[10px] text-zinc-500 font-mono uppercase mb-1">Wtd. Cap Rate</p>
+                            <p className="text-xl font-bold text-amber-400 font-mono">
+                                {(portfolioFinancials.weightedCapRate ?? 0).toFixed(2)}%
+                            </p>
+                            <p className="text-[9px] font-mono text-zinc-600 mt-1">Weighted Capitalization</p>
+                        </CardContent>
+                    </Card>
+                    <Card className="bg-zinc-900 border-zinc-800">
+                        <CardContent className="pt-5 pb-4">
+                            <p className="text-[10px] text-zinc-500 font-mono uppercase mb-1">Monthly Income</p>
+                            <p className="text-xl font-bold text-green-400 font-mono">
+                                {formatCurrency(portfolioFinancials.totalMonthlyIncome ?? 0)}
+                            </p>
+                            <p className="text-[9px] font-mono text-zinc-600 mt-1">Gross Monthly</p>
+                        </CardContent>
+                    </Card>
+                    <Card className="bg-zinc-900 border-zinc-800">
+                        <CardContent className="pt-5 pb-4">
+                            <p className="text-[10px] text-zinc-500 font-mono uppercase mb-1">Net Monthly</p>
+                            <p className={`text-xl font-bold font-mono ${(portfolioFinancials.netMonthlyCashFlow ?? 0) >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                                {formatCurrency(portfolioFinancials.netMonthlyCashFlow ?? 0)}
+                            </p>
+                            <p className="text-[9px] font-mono text-zinc-600 mt-1">After Expenses</p>
+                        </CardContent>
+                    </Card>
+                    <Card className="bg-zinc-900 border-zinc-800">
+                        <CardContent className="pt-5 pb-4">
+                            <p className="text-[10px] text-zinc-500 font-mono uppercase mb-1">Avg Occupancy</p>
+                            <p className={`text-xl font-bold font-mono ${(portfolioFinancials.averageOccupancy ?? 0) >= 90 ? 'text-green-400' : (portfolioFinancials.averageOccupancy ?? 0) >= 70 ? 'text-amber-400' : 'text-red-400'}`}>
+                                {(portfolioFinancials.averageOccupancy ?? 0).toFixed(0)}%
+                            </p>
+                            <p className="text-[9px] font-mono text-zinc-600 mt-1">Portfolio Average</p>
+                        </CardContent>
+                    </Card>
+                </div>
+            )}
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 {/* Asset Distribution Charts */}

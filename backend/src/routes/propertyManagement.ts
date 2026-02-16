@@ -19,6 +19,32 @@ import { FinancialService } from '../services/property-management/financial-repo
 import { advancedFinancialService } from '../services/property-management/financial-reporting/advancedFinancialService';
 import { PortfolioService } from '../services/property-management/portfolios/portfolioService';
 import { propertyService } from '../services/property-management/properties/propertyService';
+import {
+    validate,
+    clampPagination,
+    pmCreatePropertySchema,
+    pmCreateTenantSchema,
+    pmCreateTenancySchema,
+    pmTerminateTenancySchema,
+    pmRenewTenancySchema,
+    pmRecordPaymentSchema,
+    pmInitializePaymentSchema,
+    pmCreateWorkOrderSchema,
+    pmAssignWorkOrderSchema,
+    pmCompleteWorkOrderSchema,
+    pmCreateVendorSchema,
+    pmCreateDocumentSchema,
+    pmCreateFinancialSchema,
+    pmBulkRentIncreaseSchema,
+    pmBulkStatusUpdateSchema,
+    pmBulkImportSchema,
+    pmCreateApplicationSchema,
+    pmRejectApplicationSchema,
+    pmCreateApplicationLinkSchema,
+    pmSignLeaseSchema,
+    pmSendMessageSchema,
+    pmRegisterAccountSchema,
+} from '../middleware/validation';
 import db from '../database';
 import config from '../config';
 import {
@@ -33,8 +59,30 @@ import {
     PropertyDocumentType,
     FinancialFilters
 } from '../types/property-management.types';
+import { createCustomRateLimiter } from '../middleware/rateLimiter';
 
 const router = Router();
+
+// =====================================================
+// SENSITIVE ENDPOINT RATE LIMITERS
+// =====================================================
+const paymentRateLimit = createCustomRateLimiter('pm-payment', {
+    points: 10,      // 10 payment initializations
+    duration: 60,    // per minute
+    blockDuration: 120,
+});
+
+const bulkOpRateLimit = createCustomRateLimiter('pm-bulk', {
+    points: 5,       // 5 bulk operations
+    duration: 60,    // per minute
+    blockDuration: 120,
+});
+
+const cryptoRateLimit = createCustomRateLimiter('pm-crypto', {
+    points: 10,      // 10 crypto operations
+    duration: 60,    // per minute
+    blockDuration: 60,
+});
 
 // Service instances
 const tenantService = new TenantService();
@@ -129,7 +177,7 @@ router.get('/properties', asyncHandler(async (req: Request, res: Response) => {
  * POST /api/v1/pm/properties
  * Create a new property
  */
-router.post('/properties', asyncHandler(async (req: Request, res: Response) => {
+router.post('/properties', validate(pmCreatePropertySchema), asyncHandler(async (req: Request, res: Response) => {
     const organizationId = await getOrganizationId(req);
     const userId = await getUserId(req);
 
@@ -163,7 +211,7 @@ router.get('/properties/:id', asyncHandler(async (req: Request, res: Response) =
  * GET /api/v1/pm/tenants
  * List tenants with pagination and filtering
  */
-router.get('/tenants', asyncHandler(async (req: Request, res: Response) => {
+router.get('/tenants', clampPagination, asyncHandler(async (req: Request, res: Response) => {
     const organizationId = await getOrganizationId(req);
     if (!organizationId) {
         return res.status(401).json({ error: 'Organization not found' });
@@ -191,7 +239,7 @@ router.get('/tenants', asyncHandler(async (req: Request, res: Response) => {
  * POST /api/v1/pm/tenants
  * Create a new tenant
  */
-router.post('/tenants', asyncHandler(async (req: Request, res: Response) => {
+router.post('/tenants', validate(pmCreateTenantSchema), asyncHandler(async (req: Request, res: Response) => {
     const organizationId = await getOrganizationId(req);
     const userId = await getUserId(req);
 
@@ -221,7 +269,7 @@ router.get('/tenants/:id', asyncHandler(async (req: Request, res: Response) => {
  * PATCH /api/v1/pm/tenants/:id
  * Update tenant
  */
-router.patch('/tenants/:id', asyncHandler(async (req: Request, res: Response) => {
+router.patch('/tenants/:id', validate(pmCreateTenantSchema.partial()), asyncHandler(async (req: Request, res: Response) => {
     const organizationId = await getOrganizationId(req);
 
     const tenant = await tenantService.updateTenant(req.params.id, organizationId, req.body);
@@ -286,7 +334,7 @@ router.post('/tenants/:id/verify', asyncHandler(async (req: Request, res: Respon
  * GET /api/v1/pm/tenancies
  * List tenancies with pagination and filtering
  */
-router.get('/tenancies', asyncHandler(async (req: Request, res: Response) => {
+router.get('/tenancies', clampPagination, asyncHandler(async (req: Request, res: Response) => {
     const organizationId = await getOrganizationId(req);
 
     const filters = {
@@ -312,7 +360,7 @@ router.get('/tenancies', asyncHandler(async (req: Request, res: Response) => {
  * POST /api/v1/pm/tenancies
  * Create a new tenancy
  */
-router.post('/tenancies', asyncHandler(async (req: Request, res: Response) => {
+router.post('/tenancies', validate(pmCreateTenancySchema), asyncHandler(async (req: Request, res: Response) => {
     const organizationId = await getOrganizationId(req);
     const userId = await getUserId(req);
 
@@ -342,7 +390,7 @@ router.get('/tenancies/:id', asyncHandler(async (req: Request, res: Response) =>
  * PATCH /api/v1/pm/tenancies/:id
  * Update tenancy
  */
-router.patch('/tenancies/:id', asyncHandler(async (req: Request, res: Response) => {
+router.patch('/tenancies/:id', validate(pmCreateTenancySchema.partial()), asyncHandler(async (req: Request, res: Response) => {
     const organizationId = await getOrganizationId(req);
 
     const tenancy = await tenancyService.updateTenancy(req.params.id, organizationId, req.body);
@@ -370,7 +418,7 @@ router.post('/tenancies/:id/activate', asyncHandler(async (req: Request, res: Re
  * POST /api/v1/pm/tenancies/:id/terminate
  * Terminate a tenancy
  */
-router.post('/tenancies/:id/terminate', asyncHandler(async (req: Request, res: Response) => {
+router.post('/tenancies/:id/terminate', validate(pmTerminateTenancySchema), asyncHandler(async (req: Request, res: Response) => {
     const organizationId = await getOrganizationId(req);
 
     try {
@@ -392,7 +440,7 @@ router.post('/tenancies/:id/terminate', asyncHandler(async (req: Request, res: R
  * POST /api/v1/pm/tenancies/:id/renew
  * Renew a tenancy
  */
-router.post('/tenancies/:id/renew', asyncHandler(async (req: Request, res: Response) => {
+router.post('/tenancies/:id/renew', validate(pmRenewTenancySchema), asyncHandler(async (req: Request, res: Response) => {
     const organizationId = await getOrganizationId(req);
 
     try {
@@ -445,7 +493,7 @@ router.get('/tenancies-expiring', asyncHandler(async (req: Request, res: Respons
  * POST /api/v1/pm/payments
  * Record a rent payment
  */
-router.post('/payments', asyncHandler(async (req: Request, res: Response) => {
+router.post('/payments', validate(pmRecordPaymentSchema), asyncHandler(async (req: Request, res: Response) => {
     const organizationId = await getOrganizationId(req);
     const userId = await getUserId(req);
 
@@ -455,6 +503,320 @@ router.post('/payments', asyncHandler(async (req: Request, res: Response) => {
     } catch (error: any) {
         res.status(400).json({ error: error.message });
     }
+}));
+
+// =====================================================
+// PAYMENT CONFIGURATION (Payout Account Setup)
+// These routes power the "Payment Settings" tab in
+// the Property Management Financial Center.
+// IMPORTANT: Must be registered BEFORE /payments/:id
+// to avoid the param route catching static paths.
+// =====================================================
+
+/**
+ * GET /api/v1/pm/payments/account
+ * Get current payout account config for the organization
+ */
+router.get('/payments/account', asyncHandler(async (req: Request, res: Response) => {
+    const organizationId = await getOrganizationId(req);
+
+    const result = await db.query(
+        `SELECT * FROM payment_accounts
+         WHERE entity_id = $1 AND entity_type = 'organization' AND is_active = TRUE
+         LIMIT 1`,
+        [organizationId]
+    );
+
+    if (result.rows.length === 0) {
+        const legacy = await db.query(
+            `SELECT * FROM pm_payment_accounts
+             WHERE organization_id = $1 AND is_active = TRUE
+             LIMIT 1`,
+            [organizationId]
+        );
+
+        if (legacy.rows.length === 0) {
+            return res.json({ configured: false });
+        }
+
+        const row = legacy.rows[0];
+        return res.json({
+            configured: true,
+            settlementMethod: 'bank',
+            bankName: row.paystack_bank_name,
+            bankCode: row.paystack_bank_code,
+            accountNumber: row.paystack_account_number,
+            accountName: row.paystack_account_name,
+            subaccountCode: row.paystack_subaccount_code,
+            platformFeePercentage: parseFloat(row.platform_fee_percentage || 1),
+            platformFeeFlat: parseFloat(row.platform_fee_flat || 25),
+            isVerified: !!row.verified_at,
+            verifiedAt: row.verified_at,
+            createdAt: row.created_at
+        });
+    }
+
+    const row = result.rows[0];
+    res.json({
+        configured: true,
+        settlementMethod: row.settlement_method || 'bank',
+        bankName: row.bank_name,
+        bankCode: row.bank_code,
+        accountNumber: row.account_number,
+        accountName: row.account_name,
+        momoProvider: row.momo_provider,
+        momoNumber: row.momo_number,
+        subaccountCode: row.paystack_subaccount_code,
+        platformFeePercentage: parseFloat(row.platform_fee_percentage || 0.01) * 100,
+        platformFeeFlat: parseFloat(row.platform_fee_flat || 25),
+        isVerified: row.is_verified,
+        verifiedAt: row.verified_at,
+        createdAt: row.created_at
+    });
+}));
+
+/**
+ * GET /api/v1/pm/payments/banks
+ * Get list of supported banks for payout setup
+ */
+router.get('/payments/banks', asyncHandler(async (req: Request, res: Response) => {
+    const { paystackService } = await import('../services/property-management/payment/paystackService');
+    const banks = await paystackService.getBanks('ghana');
+    res.json(banks);
+}));
+
+/**
+ * POST /api/v1/pm/payments/register-account
+ * Register or update the organization's bank account for payouts
+ */
+router.post('/payments/register-account', paymentRateLimit, validate(pmRegisterAccountSchema), asyncHandler(async (req: Request, res: Response) => {
+    const organizationId = await getOrganizationId(req);
+    const { bankCode, accountNumber, businessName, contactEmail, contactPhone } = req.body;
+
+    if (!bankCode || !accountNumber || !businessName) {
+        return res.status(400).json({ error: 'bankCode, accountNumber, and businessName are required' });
+    }
+
+    const { paystackService } = await import('../services/property-management/payment/paystackService');
+    const result = await paystackService.registerPropertyManagerAccount(
+        organizationId, bankCode, accountNumber, businessName, contactEmail, contactPhone
+    );
+
+    if (!result.success) {
+        return res.status(400).json({ error: result.error });
+    }
+
+    res.json({ success: true, subaccountCode: result.subaccountCode });
+}));
+
+/**
+ * POST /api/v1/pm/payments/resolve-account
+ * Verify a bank account number (name enquiry)
+ */
+router.post('/payments/resolve-account', asyncHandler(async (req: Request, res: Response) => {
+    const { accountNumber, bankCode } = req.body;
+
+    if (!accountNumber || !bankCode) {
+        return res.status(400).json({ error: 'accountNumber and bankCode are required' });
+    }
+
+    try {
+        const { paystackService } = await import('../services/property-management/payment/paystackService');
+        const result = await paystackService.resolveAccount(accountNumber, bankCode);
+        res.json(result);
+    } catch (err: any) {
+        const status = err.status || 422;
+        res.status(status).json({
+            status: false,
+            error: err.paystackMessage || err.message || 'Account verification failed',
+            meta: err.paystackMeta || undefined
+        });
+    }
+}));
+
+// =====================================================
+// CRYPTO WALLET CONFIGURATION
+// =====================================================
+
+/**
+ * GET /api/v1/pm/payments/crypto-wallet
+ * Get current crypto wallet configuration for the PM org
+ */
+router.get('/payments/crypto-wallet', asyncHandler(async (req: Request, res: Response) => {
+    const organizationId = await getOrganizationId(req);
+
+    const result = await db.query(
+        `SELECT crypto_wallet_address, crypto_wallet_verified, crypto_wallet_registered_at
+         FROM payment_accounts
+         WHERE entity_id = $1 AND entity_type = 'organization' AND is_active = TRUE
+         LIMIT 1`,
+        [organizationId]
+    );
+
+    if (result.rows.length === 0 || !result.rows[0].crypto_wallet_address) {
+        return res.json({ configured: false });
+    }
+
+    const row = result.rows[0];
+    res.json({
+        configured: true,
+        walletAddress: row.crypto_wallet_address,
+        isVerified: row.crypto_wallet_verified || false,
+        registeredAt: row.crypto_wallet_registered_at,
+    });
+}));
+
+/**
+ * POST /api/v1/pm/payments/crypto-wallet
+ * Save/update crypto wallet address for the PM org
+ */
+router.post('/payments/crypto-wallet', cryptoRateLimit, asyncHandler(async (req: Request, res: Response) => {
+    const organizationId = await getOrganizationId(req);
+    const { walletAddress } = req.body;
+
+    if (!walletAddress || !/^0x[a-fA-F0-9]{40}$/.test(walletAddress)) {
+        return res.status(400).json({ error: 'Invalid wallet address. Must be a valid Polygon address (0x + 40 hex chars)' });
+    }
+
+    const upsertResult = await db.query(`
+        INSERT INTO payment_accounts (id, entity_type, entity_id, crypto_wallet_address, crypto_wallet_registered_at, updated_at, is_active)
+        VALUES (gen_random_uuid(), 'organization', $1, $2, NOW(), NOW(), TRUE)
+        ON CONFLICT (entity_type, entity_id) DO UPDATE SET
+            crypto_wallet_address = $2,
+            crypto_wallet_registered_at = NOW(),
+            updated_at = NOW()
+        RETURNING id, crypto_wallet_address, crypto_wallet_verified, crypto_wallet_registered_at
+    `, [organizationId, walletAddress]);
+
+    const row = upsertResult.rows[0];
+
+    let onChainRegistered = false;
+    try {
+        const { cryptoPaymentService } = await import('../../shared-services/payments/crypto');
+        if (cryptoPaymentService.isConfigured()) {
+            await cryptoPaymentService.registerRecipientWallet('organization', organizationId, walletAddress);
+            onChainRegistered = true;
+            await db.query(`UPDATE payment_accounts SET crypto_wallet_verified = true WHERE id = $1`, [row.id]);
+        }
+    } catch {
+        // On-chain registration is optional
+    }
+
+    res.json({
+        success: true,
+        walletAddress: row.crypto_wallet_address,
+        isVerified: onChainRegistered || row.crypto_wallet_verified || false,
+        registeredAt: row.crypto_wallet_registered_at,
+    });
+}));
+
+/**
+ * GET /api/v1/pm/payments/settlement-coins
+ * Get supported settlement coins for the crypto wallet UI dropdown
+ */
+router.get('/payments/settlement-coins', asyncHandler(async (req: Request, res: Response) => {
+    const { nowPaymentsService } = await import('../../shared-services/payments/crypto/nowPaymentsService');
+    const coins = await nowPaymentsService.getSupportedSettlementCoins();
+    res.json(coins);
+}));
+
+// =====================================================
+// CRYPTO REVENUE SUMMARY
+// =====================================================
+
+/**
+ * GET /api/v1/pm/payments/crypto-revenue
+ * Get crypto payment and fee revenue summary for the organization.
+ * Shows: total crypto rent received, fees collected, payment breakdown.
+ */
+router.get('/payments/crypto-revenue', asyncHandler(async (req: Request, res: Response) => {
+    const organizationId = await getOrganizationId(req);
+
+    // Get all crypto rent payments for this org's tenancies
+    const cryptoPayments = await db.query(`
+        SELECT
+            pt.reference,
+            pt.principal_amount,
+            pt.service_fee,
+            pt.gross_amount,
+            pt.created_at,
+            pt.metadata->>'tenancy_id' as tenancy_id,
+            np.pay_currency,
+            np.actually_paid as crypto_amount_paid,
+            np.outcome_currency,
+            np.outcome_amount
+        FROM payment_transactions pt
+        LEFT JOIN nowpayments_payments np ON np.payment_reference = pt.reference
+        JOIN tenancies t ON t.id = (pt.metadata->>'tenancy_id')::uuid
+        WHERE t.organization_id = $1
+          AND pt.payment_type = 'rent'
+          AND pt.status = 'success'
+          AND pt.channel = 'crypto_nowpayments'
+        ORDER BY pt.created_at DESC
+    `, [organizationId]);
+
+    // Get fee payouts for these payments
+    const feePayouts = await db.query(`
+        SELECT
+            fp.payment_reference,
+            fp.fee_amount_ghs,
+            fp.status as payout_status,
+            fp.payout_address,
+            fp.created_at
+        FROM nowpayments_fee_payouts fp
+        JOIN payment_transactions pt ON pt.reference = fp.payment_reference
+        JOIN tenancies t ON t.id = (pt.metadata->>'tenancy_id')::uuid
+        WHERE t.organization_id = $1
+          AND pt.payment_type = 'rent'
+        ORDER BY fp.created_at DESC
+    `, [organizationId]);
+
+    // Aggregate stats
+    const totalCryptoRentPesewas = cryptoPayments.rows.reduce(
+        (sum: number, r: any) => sum + Number(r.principal_amount || 0), 0
+    );
+    const totalCryptoFeesPesewas = cryptoPayments.rows.reduce(
+        (sum: number, r: any) => sum + Number(r.service_fee || 0), 0
+    );
+
+    // Fee payout summary
+    const totalFeesCollectedGhs = feePayouts.rows.reduce(
+        (sum: number, r: any) => sum + Number(r.fee_amount_ghs || 0), 0
+    );
+
+    // Settlement currencies (what the PM actually receives, e.g. USDT)
+    const currenciesUsed = [...new Set(
+        cryptoPayments.rows
+            .map((r: any) => r.outcome_currency?.toUpperCase())
+            .filter(Boolean)
+    )];
+
+    res.json({
+        totalCryptoPayments: cryptoPayments.rows.length,
+        totalCryptoRentGhs: totalCryptoRentPesewas / 100,
+        totalCryptoFeesGhs: totalCryptoFeesPesewas / 100,
+        totalFeesCollectedGhs,
+        currenciesAccepted: currenciesUsed,
+        platformFeeWallet: feePayouts.rows[0]?.payout_address || null,
+        payments: cryptoPayments.rows.map((r: any) => ({
+            reference: r.reference,
+            principalGhs: Number(r.principal_amount || 0) / 100,
+            feeGhs: Number(r.service_fee || 0) / 100,
+            grossGhs: Number(r.gross_amount || 0) / 100,
+            cryptoCurrency: r.pay_currency?.toUpperCase() || null,
+            cryptoAmountPaid: r.crypto_amount_paid ? Number(r.crypto_amount_paid) : null,
+            settlementCurrency: r.outcome_currency?.toUpperCase() || null,
+            settlementAmount: r.outcome_amount ? Number(r.outcome_amount) : null,
+            date: r.created_at,
+        })),
+        feePayouts: feePayouts.rows.map((r: any) => ({
+            paymentReference: r.payment_reference,
+            feeAmountGhs: Number(r.fee_amount_ghs),
+            status: r.payout_status,
+            payoutAddress: r.payout_address,
+            date: r.created_at,
+        })),
+    });
 }));
 
 /**
@@ -475,7 +837,7 @@ router.get('/payments/:id', asyncHandler(async (req: Request, res: Response) => 
  * GET /api/v1/pm/tenancies/:id/payments
  * Get payment history for a tenancy
  */
-router.get('/tenancies/:id/payments', asyncHandler(async (req: Request, res: Response) => {
+router.get('/tenancies/:id/payments', clampPagination, asyncHandler(async (req: Request, res: Response) => {
     const organizationId = await getOrganizationId(req);
 
     const pagination = {
@@ -599,7 +961,7 @@ router.post('/tenancies/:id/regenerate-lease', asyncHandler(async (req: Request,
  * GET /api/v1/pm/work-orders
  * List work orders with pagination and filtering
  */
-router.get('/work-orders', asyncHandler(async (req: Request, res: Response) => {
+router.get('/work-orders', clampPagination, asyncHandler(async (req: Request, res: Response) => {
     const organizationId = await getOrganizationId(req);
 
     const filters = {
@@ -627,7 +989,7 @@ router.get('/work-orders', asyncHandler(async (req: Request, res: Response) => {
  * POST /api/v1/pm/work-orders
  * Create a new work order
  */
-router.post('/work-orders', asyncHandler(async (req: Request, res: Response) => {
+router.post('/work-orders', validate(pmCreateWorkOrderSchema), asyncHandler(async (req: Request, res: Response) => {
     const organizationId = await getOrganizationId(req);
     const userId = await getUserId(req);
 
@@ -653,7 +1015,7 @@ router.get('/work-orders/:id', asyncHandler(async (req: Request, res: Response) 
  * PATCH /api/v1/pm/work-orders/:id
  * Update work order
  */
-router.patch('/work-orders/:id', asyncHandler(async (req: Request, res: Response) => {
+router.patch('/work-orders/:id', validate(pmCreateWorkOrderSchema.partial()), asyncHandler(async (req: Request, res: Response) => {
     const organizationId = await getOrganizationId(req);
 
     const workOrder = await workOrderService.updateWorkOrder(req.params.id, organizationId, req.body);
@@ -667,7 +1029,7 @@ router.patch('/work-orders/:id', asyncHandler(async (req: Request, res: Response
  * POST /api/v1/pm/work-orders/:id/assign
  * Assign work order to vendor
  */
-router.post('/work-orders/:id/assign', asyncHandler(async (req: Request, res: Response) => {
+router.post('/work-orders/:id/assign', validate(pmAssignWorkOrderSchema), asyncHandler(async (req: Request, res: Response) => {
     const organizationId = await getOrganizationId(req);
 
     const { vendorId } = req.body;
@@ -694,7 +1056,7 @@ router.post('/work-orders/:id/assign', asyncHandler(async (req: Request, res: Re
  * POST /api/v1/pm/work-orders/:id/complete
  * Complete work order
  */
-router.post('/work-orders/:id/complete', asyncHandler(async (req: Request, res: Response) => {
+router.post('/work-orders/:id/complete', validate(pmCompleteWorkOrderSchema), asyncHandler(async (req: Request, res: Response) => {
     const organizationId = await getOrganizationId(req);
 
     const { actualCost, completionNotes, photosAfter } = req.body;
@@ -755,7 +1117,7 @@ router.get('/work-orders-stats', asyncHandler(async (req: Request, res: Response
  * GET /api/v1/pm/vendors
  * List vendors
  */
-router.get('/vendors', asyncHandler(async (req: Request, res: Response) => {
+router.get('/vendors', clampPagination, asyncHandler(async (req: Request, res: Response) => {
     const organizationId = await getOrganizationId(req);
 
     const filters = {
@@ -779,7 +1141,7 @@ router.get('/vendors', asyncHandler(async (req: Request, res: Response) => {
  * POST /api/v1/pm/vendors
  * Create vendor
  */
-router.post('/vendors', asyncHandler(async (req: Request, res: Response) => {
+router.post('/vendors', validate(pmCreateVendorSchema), asyncHandler(async (req: Request, res: Response) => {
     const organizationId = await getOrganizationId(req);
     const userId = await getUserId(req);
 
@@ -805,7 +1167,7 @@ router.get('/vendors/:id', asyncHandler(async (req: Request, res: Response) => {
  * PATCH /api/v1/pm/vendors/:id
  * Update vendor
  */
-router.patch('/vendors/:id', asyncHandler(async (req: Request, res: Response) => {
+router.patch('/vendors/:id', validate(pmCreateVendorSchema.partial()), asyncHandler(async (req: Request, res: Response) => {
     const organizationId = await getOrganizationId(req);
     const vendor = await vendorService.updateVendor(req.params.id, organizationId, req.body);
     res.json(vendor);
@@ -829,7 +1191,7 @@ router.delete('/vendors/:id', asyncHandler(async (req: Request, res: Response) =
  * POST /api/v1/pm/documents
  * Upload/Record document
  */
-router.post('/documents', asyncHandler(async (req: Request, res: Response) => {
+router.post('/documents', validate(pmCreateDocumentSchema), asyncHandler(async (req: Request, res: Response) => {
     const organizationId = await getOrganizationId(req);
     const userId = await getUserId(req);
 
@@ -841,10 +1203,39 @@ router.post('/documents', asyncHandler(async (req: Request, res: Response) => {
 }));
 
 /**
+ * GET /api/v1/pm/documents/vault
+ * Unified document vault — merges uploads, lease docs, and signed leases
+ */
+router.get('/documents/vault', clampPagination, asyncHandler(async (req: Request, res: Response) => {
+    const organizationId = await getOrganizationId(req);
+    if (!organizationId || organizationId === '00000000-0000-0000-0000-000000000000') {
+        return res.status(401).json({ error: 'Organization not found' });
+    }
+
+    const filters = {
+        search: req.query.search as string,
+        source: (req.query.source as 'upload' | 'lease' | 'signed_lease' | 'all') || 'all',
+        category: (req.query.category as 'legal' | 'financial' | 'tenant' | 'all') || 'all',
+        propertyId: req.query.propertyId as string,
+        tenancyId: req.query.tenancyId as string,
+    };
+
+    const pagination = {
+        page: parseInt(req.query.page as string) || 1,
+        limit: parseInt(req.query.limit as string) || 50,
+        sortBy: req.query.sortBy as string || 'created_at',
+        sortOrder: (req.query.sortOrder as 'asc' | 'desc') || 'desc',
+    };
+
+    const result = await documentService.listVaultDocuments(organizationId, filters, pagination);
+    res.json(result);
+}));
+
+/**
  * GET /api/v1/pm/documents
  * List documents
  */
-router.get('/documents', asyncHandler(async (req: Request, res: Response) => {
+router.get('/documents', clampPagination, asyncHandler(async (req: Request, res: Response) => {
     const organizationId = await getOrganizationId(req);
 
     const filters = {
@@ -898,7 +1289,7 @@ router.delete('/documents/:id', asyncHandler(async (req: Request, res: Response)
  * POST /api/v1/pm/financials
  * Record financial transaction
  */
-router.post('/financials', asyncHandler(async (req: Request, res: Response) => {
+router.post('/financials', validate(pmCreateFinancialSchema), asyncHandler(async (req: Request, res: Response) => {
     const organizationId = await getOrganizationId(req);
     const userId = await getUserId(req);
 
@@ -912,7 +1303,7 @@ router.post('/financials', asyncHandler(async (req: Request, res: Response) => {
  * GET /api/v1/pm/financials
  * List financial records
  */
-router.get('/financials', asyncHandler(async (req: Request, res: Response) => {
+router.get('/financials', clampPagination, asyncHandler(async (req: Request, res: Response) => {
     const organizationId = await getOrganizationId(req);
 
     const filters: FinancialFilters = {
@@ -1012,7 +1403,7 @@ router.get('/portfolio/leases', asyncHandler(async (req: Request, res: Response)
  * POST /api/v1/pm/payments/initialize
  * Initialize a Paystack transaction
  */
-router.post('/payments/initialize', asyncHandler(async (req: Request, res: Response) => {
+router.post('/payments/initialize', paymentRateLimit, validate(pmInitializePaymentSchema), asyncHandler(async (req: Request, res: Response) => {
     const organizationId = await getOrganizationId(req);
 
     const { tenancyId, amount, email, channel, callbackUrl } = req.body;
@@ -1024,14 +1415,14 @@ router.post('/payments/initialize', asyncHandler(async (req: Request, res: Respo
     const { paymentProcessor } = await import('../services/property-management/payment/paymentProcessor');
 
     try {
-        const result = await paymentProcessor.initializeRentPayment(
+        const result = await paymentProcessor.initializeRentPayment({
             tenancyId,
             organizationId,
             amount,
             email,
             channel,
             callbackUrl
-        );
+        });
         res.json(result);
     } catch (error: any) {
         res.status(400).json({ error: error.message });
@@ -1083,7 +1474,7 @@ router.post('/payments/webhook', asyncHandler(async (req: Request, res: Response
  * PATCH /api/v1/pm/properties/:id
  * Update an existing property
  */
-router.patch('/properties/:id', asyncHandler(async (req: Request, res: Response) => {
+router.patch('/properties/:id', validate(pmCreatePropertySchema.partial()), asyncHandler(async (req: Request, res: Response) => {
     const organizationId = await getOrganizationId(req);
     const userId = await getUserId(req);
 
@@ -1134,7 +1525,7 @@ router.delete('/properties/:id', asyncHandler(async (req: Request, res: Response
  * GET /api/v1/pm/audit
  * Get audit logs with filtering
  */
-router.get('/audit', asyncHandler(async (req: Request, res: Response) => {
+router.get('/audit', clampPagination, asyncHandler(async (req: Request, res: Response) => {
     const organizationId = await getOrganizationId(req);
     const { auditTrailService } = await import('../services/property-management/audit/auditTrailService');
 
@@ -1299,7 +1690,7 @@ router.post('/notifications/lease-warnings', asyncHandler(async (req: Request, r
  * POST /api/v1/pm/bulk/rent-increase
  * Bulk rent increase operation
  */
-router.post('/bulk/rent-increase', asyncHandler(async (req: Request, res: Response) => {
+router.post('/bulk/rent-increase', bulkOpRateLimit, validate(pmBulkRentIncreaseSchema), asyncHandler(async (req: Request, res: Response) => {
     const organizationId = await getOrganizationId(req);
     const userId = await getUserId(req);
     const { bulkOperationsService } = await import('../services/property-management/bulk/bulkOperationsService');
@@ -1352,7 +1743,7 @@ router.post('/bulk/work-orders', asyncHandler(async (req: Request, res: Response
  * POST /api/v1/pm/bulk/status-update
  * Bulk status update for resources
  */
-router.post('/bulk/status-update', asyncHandler(async (req: Request, res: Response) => {
+router.post('/bulk/status-update', bulkOpRateLimit, validate(pmBulkStatusUpdateSchema), asyncHandler(async (req: Request, res: Response) => {
     const organizationId = await getOrganizationId(req);
     const userId = await getUserId(req);
     const { bulkOperationsService } = await import('../services/property-management/bulk/bulkOperationsService');
@@ -1374,7 +1765,7 @@ router.post('/bulk/status-update', asyncHandler(async (req: Request, res: Respon
  * POST /api/v1/pm/bulk/import
  * Bulk import data from CSV/JSON
  */
-router.post('/bulk/import', asyncHandler(async (req: Request, res: Response) => {
+router.post('/bulk/import', bulkOpRateLimit, validate(pmBulkImportSchema), asyncHandler(async (req: Request, res: Response) => {
     const organizationId = await getOrganizationId(req);
     const userId = await getUserId(req);
     const { bulkOperationsService } = await import('../services/property-management/bulk/bulkOperationsService');
@@ -1550,7 +1941,7 @@ router.get('/leases/:tenancyId/signing-status', asyncHandler(async (req: Request
  * Submit a signature for a lease document
  * This endpoint handles both legacy lease IDs and application-based lease IDs
  */
-router.post('/leases/:id/sign', asyncHandler(async (req: Request, res: Response) => {
+router.post('/leases/:id/sign', validate(pmSignLeaseSchema), asyncHandler(async (req: Request, res: Response) => {
     const leaseId = req.params.id;
     const { signatureDataUrl, signerToken, fieldId } = req.body;
 
@@ -1566,7 +1957,7 @@ router.post('/leases/:id/sign', asyncHandler(async (req: Request, res: Response)
 
     // Find the envelope for this application
     const appResult = await db.query(
-        `SELECT envelope_id FROM pm_rental_applications WHERE id = $1`,
+        `SELECT envelope_id FROM applications WHERE id = $1`,
         [applicationId]
     );
 
@@ -1674,7 +2065,7 @@ import { applicationService, ApplicationStatus, StateMachineError } from '../ser
  * GET /api/v1/pm/applications
  * List applications with pagination and filtering
  */
-router.get('/applications', asyncHandler(async (req: Request, res: Response) => {
+router.get('/applications', clampPagination, asyncHandler(async (req: Request, res: Response) => {
     const organizationId = await getOrganizationId(req);
     if (!organizationId || organizationId === '00000000-0000-0000-0000-000000000000') {
         return res.status(401).json({ error: 'Organization not found' });
@@ -1718,7 +2109,7 @@ router.get('/applications/stats', asyncHandler(async (req: Request, res: Respons
  * POST /api/v1/pm/applications
  * Create a new application (internal)
  */
-router.post('/applications', asyncHandler(async (req: Request, res: Response) => {
+router.post('/applications', validate(pmCreateApplicationSchema), asyncHandler(async (req: Request, res: Response) => {
     const organizationId = await getOrganizationId(req);
     const userId = await getUserId(req);
 
@@ -1890,7 +2281,7 @@ router.post('/applications/:id/approve', asyncHandler(async (req: Request, res: 
  * POST /api/v1/pm/applications/:id/reject
  * Reject an application
  */
-router.post('/applications/:id/reject', asyncHandler(async (req: Request, res: Response) => {
+router.post('/applications/:id/reject', validate(pmRejectApplicationSchema), asyncHandler(async (req: Request, res: Response) => {
     const organizationId = await getOrganizationId(req);
     const userId = await getUserId(req);
     
@@ -1923,16 +2314,27 @@ router.post('/applications/:id/reject', asyncHandler(async (req: Request, res: R
 /**
  * GET /api/v1/pm/applications/:id/lease
  * Get lease details for tenant portal - returns e-sign envelope data if available
+ * Requires either: authenticated session OR valid ?token query param matching a signer access_token
  */
 router.get('/applications/:id/lease', asyncHandler(async (req: Request, res: Response) => {
     const applicationId = req.params.id;
+    const queryToken = req.query.token as string | undefined;
+    const isAuthenticated = !!(req as any).user?.sub;
+    const isDevMode = config.app.env === 'development';
 
-    // First, try to find the application (public access for tenants)
+    // Fast-reject: no auth AND no token → 401 immediately (no DB queries)
+    // In dev mode, allow access without auth (consistent with other PM endpoints)
+    if (!isAuthenticated && !queryToken && !isDevMode) {
+        return res.status(401).json({ error: 'Authentication required. Pass ?token=<signerToken> or sign in.' });
+    }
+
+    // First, try to find the application
     const appResult = await db.query(
-        `SELECT a.id, a.status, a.envelope_id, a.applicant_data,
+        `SELECT a.id, a.status, a.envelope_id,
+                a.applicant_full_name, a.applicant_email,
                 p.title as property_title, p.address_street
-         FROM pm_rental_applications a
-         LEFT JOIN pm_properties p ON p.id = a.property_id
+         FROM applications a
+         LEFT JOIN properties p ON p.id = a.property_id
          WHERE a.id = $1`,
         [applicationId]
     );
@@ -1951,10 +2353,25 @@ router.get('/applications/:id/lease', asyncHandler(async (req: Request, res: Res
         });
     }
 
+    // Token-based access control: require auth or valid signer token (skip in dev mode)
+    if (!isAuthenticated && !isDevMode) {
+        if (!queryToken) {
+            return res.status(401).json({ error: 'Authentication required. Pass ?token=<signerToken> or sign in.' });
+        }
+        // Verify the token matches a signer on this envelope
+        const tokenCheck = await db.query(
+            `SELECT id FROM esign_signers WHERE envelope_id = $1 AND access_token = $2`,
+            [application.envelope_id, queryToken]
+        );
+        if (tokenCheck.rows.length === 0) {
+            return res.status(403).json({ error: 'Invalid or expired access token' });
+        }
+    }
+
     // Get the e-sign envelope with signer info
     const envelopeResult = await db.query(
-        `SELECT e.id, e.name, e.status, e.document_html, e.document_image,
-                e.metadata, e.created_at
+        `SELECT e.id, e.name, e.status, e.document_html, e.document_image_url,
+                e.created_at
          FROM esign_envelopes e
          WHERE e.id = $1`,
         [application.envelope_id]
@@ -1995,11 +2412,11 @@ router.get('/applications/:id/lease', asyncHandler(async (req: Request, res: Res
         applicationId,
         envelopeId: envelope.id,
         content: envelope.document_html || '',
-        documentUrl: envelope.document_image,
+        documentUrl: envelope.document_image_url,
         status: envelope.status,
-        terms: envelope.metadata || {},
+        terms: {},
         hasSigned: fieldsResult.rows.some((f: any) => f.value != null),
-        tenantName: tenantSigner?.name || application.applicant_data?.fullName,
+        tenantName: tenantSigner?.name || application.applicant_full_name,
         signerToken: tenantSigner?.access_token,
         signerId: tenantSigner?.id,
         fields: fieldsResult.rows.map((f: any) => ({
@@ -2197,7 +2614,7 @@ router.get('/application-links', asyncHandler(async (req: Request, res: Response
  * POST /api/v1/pm/application-links
  * Create a new application link
  */
-router.post('/application-links', asyncHandler(async (req: Request, res: Response) => {
+router.post('/application-links', validate(pmCreateApplicationLinkSchema), asyncHandler(async (req: Request, res: Response) => {
     const organizationId = await getOrganizationId(req);
     const userId = await getUserId(req);
     
@@ -2295,9 +2712,11 @@ import { leaseTemplateService } from '../services/property-management/leases/lea
  * GET /api/v1/pm/lease-templates
  * List all lease templates for organization
  */
-router.get('/lease-templates', asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
+router.get('/lease-templates', asyncHandler(async (req: Request, res: Response) => {
+    const organizationId = await getOrganizationId(req);
+    if (!organizationId) return res.status(401).json({ error: 'Organization not found' });
     const { category, activeOnly, limit, offset } = req.query;
-    const result = await leaseTemplateService.listTemplates(req.organizationId!, {
+    const result = await leaseTemplateService.listTemplates(organizationId, {
         category: category as string,
         activeOnly: activeOnly !== 'false',
         limit: limit ? parseInt(limit as string) : undefined,
@@ -2310,8 +2729,10 @@ router.get('/lease-templates', asyncHandler(async (req: AuthenticatedRequest, re
  * GET /api/v1/pm/lease-templates/:id
  * Get a specific lease template
  */
-router.get('/lease-templates/:id', asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
-    const template = await leaseTemplateService.getTemplate(req.params.id, req.organizationId!);
+router.get('/lease-templates/:id', asyncHandler(async (req: Request, res: Response) => {
+    const organizationId = await getOrganizationId(req);
+    if (!organizationId) return res.status(401).json({ error: 'Organization not found' });
+    const template = await leaseTemplateService.getTemplate(req.params.id, organizationId);
     if (!template) {
         return res.status(404).json({ error: 'Template not found' });
     }
@@ -2322,11 +2743,14 @@ router.get('/lease-templates/:id', asyncHandler(async (req: AuthenticatedRequest
  * POST /api/v1/pm/lease-templates
  * Create a new lease template
  */
-router.post('/lease-templates', asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
+router.post('/lease-templates', asyncHandler(async (req: Request, res: Response) => {
+    const organizationId = await getOrganizationId(req);
+    const userId = await getUserId(req);
+    if (!organizationId || !userId) return res.status(401).json({ error: 'Auth required' });
     const template = await leaseTemplateService.createTemplate(
-        req.organizationId!,
+        organizationId,
         req.body,
-        req.userId!
+        userId
     );
     res.status(201).json(template);
 }));
@@ -2335,10 +2759,12 @@ router.post('/lease-templates', asyncHandler(async (req: AuthenticatedRequest, r
  * PATCH /api/v1/pm/lease-templates/:id
  * Update a lease template
  */
-router.patch('/lease-templates/:id', asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
+router.patch('/lease-templates/:id', asyncHandler(async (req: Request, res: Response) => {
+    const organizationId = await getOrganizationId(req);
+    if (!organizationId) return res.status(401).json({ error: 'Organization not found' });
     const template = await leaseTemplateService.updateTemplate(
         req.params.id,
-        req.organizationId!,
+        organizationId,
         req.body
     );
     if (!template) {
@@ -2351,8 +2777,10 @@ router.patch('/lease-templates/:id', asyncHandler(async (req: AuthenticatedReque
  * DELETE /api/v1/pm/lease-templates/:id
  * Delete (soft) a lease template
  */
-router.delete('/lease-templates/:id', asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
-    const deleted = await leaseTemplateService.deleteTemplate(req.params.id, req.organizationId!);
+router.delete('/lease-templates/:id', asyncHandler(async (req: Request, res: Response) => {
+    const organizationId = await getOrganizationId(req);
+    if (!organizationId) return res.status(401).json({ error: 'Organization not found' });
+    const deleted = await leaseTemplateService.deleteTemplate(req.params.id, organizationId);
     if (!deleted) {
         return res.status(404).json({ error: 'Template not found' });
     }
@@ -2363,10 +2791,12 @@ router.delete('/lease-templates/:id', asyncHandler(async (req: AuthenticatedRequ
  * POST /api/v1/pm/lease-templates/:id/preview
  * Preview a template with sample data
  */
-router.post('/lease-templates/:id/preview', asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
+router.post('/lease-templates/:id/preview', asyncHandler(async (req: Request, res: Response) => {
+    const organizationId = await getOrganizationId(req);
+    if (!organizationId) return res.status(401).json({ error: 'Organization not found' });
     const html = await leaseTemplateService.previewTemplate(
         req.params.id,
-        req.organizationId!,
+        organizationId,
         req.body.sampleData
     );
     res.setHeader('Content-Type', 'text/html');
@@ -2377,14 +2807,16 @@ router.post('/lease-templates/:id/preview', asyncHandler(async (req: Authenticat
  * POST /api/v1/pm/lease-documents/generate
  * Generate a lease document for a tenancy
  */
-router.post('/lease-documents/generate', asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
+router.post('/lease-documents/generate', asyncHandler(async (req: Request, res: Response) => {
+    const organizationId = await getOrganizationId(req);
+    if (!organizationId) return res.status(401).json({ error: 'Organization not found' });
     const { tenancyId, templateId, additionalData, format } = req.body;
     
     if (!tenancyId) {
         return res.status(400).json({ error: 'tenancyId is required' });
     }
 
-    const result = await leaseTemplateService.generateLease(req.organizationId!, {
+    const result = await leaseTemplateService.generateLease(organizationId, {
         tenancyId,
         templateId,
         additionalData,
@@ -2402,7 +2834,9 @@ router.post('/lease-documents/generate', asyncHandler(async (req: AuthenticatedR
  * GET /api/v1/pm/financials/noi/:propertyId
  * Calculate Net Operating Income for a property
  */
-router.get('/financials/noi/:propertyId', asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
+router.get('/financials/noi/:propertyId', asyncHandler(async (req: Request, res: Response) => {
+    const organizationId = await getOrganizationId(req);
+    if (!organizationId) return res.status(401).json({ error: 'Organization not found' });
     const { startDate, endDate } = req.query;
     
     // Default to last 12 months
@@ -2414,7 +2848,7 @@ router.get('/financials/noi/:propertyId', asyncHandler(async (req: Authenticated
     })();
     
     const noi = await advancedFinancialService.calculateNOI(
-        req.organizationId!,
+        organizationId,
         req.params.propertyId,
         start,
         end
@@ -2427,11 +2861,13 @@ router.get('/financials/noi/:propertyId', asyncHandler(async (req: Authenticated
  * GET /api/v1/pm/financials/cap-rate/:propertyId
  * Calculate Cap Rate for a property
  */
-router.get('/financials/cap-rate/:propertyId', asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
+router.get('/financials/cap-rate/:propertyId', asyncHandler(async (req: Request, res: Response) => {
+    const organizationId = await getOrganizationId(req);
+    if (!organizationId) return res.status(401).json({ error: 'Organization not found' });
     const marketValue = req.query.marketValue ? parseFloat(req.query.marketValue as string) : undefined;
     
     const capRate = await advancedFinancialService.calculateCapRate(
-        req.organizationId!,
+        organizationId,
         req.params.propertyId,
         marketValue
     );
@@ -2443,12 +2879,14 @@ router.get('/financials/cap-rate/:propertyId', asyncHandler(async (req: Authenti
  * GET /api/v1/pm/financials/irr/:propertyId
  * Calculate Internal Rate of Return for a property
  */
-router.get('/financials/irr/:propertyId', asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
+router.get('/financials/irr/:propertyId', asyncHandler(async (req: Request, res: Response) => {
+    const organizationId = await getOrganizationId(req);
+    if (!organizationId) return res.status(401).json({ error: 'Organization not found' });
     const holdingPeriod = req.query.holdingPeriod ? parseInt(req.query.holdingPeriod as string) : 5;
     const discountRate = req.query.discountRate ? parseFloat(req.query.discountRate as string) : 10;
     
     const irr = await advancedFinancialService.calculateIRR(
-        req.organizationId!,
+        organizationId,
         req.params.propertyId,
         holdingPeriod,
         discountRate
@@ -2461,7 +2899,9 @@ router.get('/financials/irr/:propertyId', asyncHandler(async (req: Authenticated
  * POST /api/v1/pm/financials/cash-on-cash/:propertyId
  * Calculate Cash-on-Cash Return with investment details
  */
-router.post('/financials/cash-on-cash/:propertyId', asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
+router.post('/financials/cash-on-cash/:propertyId', asyncHandler(async (req: Request, res: Response) => {
+    const organizationId = await getOrganizationId(req);
+    if (!organizationId) return res.status(401).json({ error: 'Organization not found' });
     const { downPayment, closingCosts, renovationCosts, annualDebtService, year } = req.body;
     
     if (downPayment === undefined) {
@@ -2469,7 +2909,7 @@ router.post('/financials/cash-on-cash/:propertyId', asyncHandler(async (req: Aut
     }
     
     const cashOnCash = await advancedFinancialService.calculateCashOnCash(
-        req.organizationId!,
+        organizationId,
         req.params.propertyId,
         {
             downPayment,
@@ -2487,17 +2927,35 @@ router.post('/financials/cash-on-cash/:propertyId', asyncHandler(async (req: Aut
  * GET /api/v1/pm/financials/dscr/:propertyId
  * Calculate Debt Service Coverage Ratio
  */
-router.get('/financials/dscr/:propertyId', asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
+router.get('/financials/dscr/:propertyId', asyncHandler(async (req: Request, res: Response) => {
+    const organizationId = await getOrganizationId(req);
+    if (!organizationId) return res.status(401).json({ error: 'Organization not found' });
     const annualDebtService = req.query.annualDebtService 
         ? parseFloat(req.query.annualDebtService as string) 
         : 0;
     
-    if (!annualDebtService) {
-        return res.status(400).json({ error: 'annualDebtService query parameter is required' });
+    if (req.query.annualDebtService !== undefined && isNaN(annualDebtService)) {
+        return res.status(400).json({ error: 'annualDebtService must be a valid number' });
+    }
+    
+    if (annualDebtService === 0) {
+        // No debt service means infinite coverage — return a clear response
+        const noi = await advancedFinancialService.calculateNOI(
+            organizationId,
+            req.params.propertyId
+        );
+        return res.json({
+            dscr: null,
+            dscrFormatted: 'N/A (No Debt)',
+            noi: noi?.noi ?? 0,
+            annualDebtService: 0,
+            interpretation: 'No debt service — property is debt-free',
+            riskLevel: 'low'
+        });
     }
     
     const dscr = await advancedFinancialService.calculateDSCR(
-        req.organizationId!,
+        organizationId,
         req.params.propertyId,
         annualDebtService
     );
@@ -2509,7 +2967,9 @@ router.get('/financials/dscr/:propertyId', asyncHandler(async (req: Authenticate
  * GET /api/v1/pm/financials/summary/:propertyId
  * Get comprehensive financial summary for a property
  */
-router.get('/financials/summary/:propertyId', asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
+router.get('/financials/summary/:propertyId', asyncHandler(async (req: Request, res: Response) => {
+    const organizationId = await getOrganizationId(req);
+    if (!organizationId) return res.status(401).json({ error: 'Organization not found' });
     const investmentDetails = req.query.downPayment ? {
         downPayment: parseFloat(req.query.downPayment as string),
         closingCosts: parseFloat(req.query.closingCosts as string || '0'),
@@ -2518,7 +2978,7 @@ router.get('/financials/summary/:propertyId', asyncHandler(async (req: Authentic
     } : undefined;
     
     const summary = await advancedFinancialService.getPropertyFinancialSummary(
-        req.organizationId!,
+        organizationId,
         req.params.propertyId,
         investmentDetails
     );
@@ -2530,21 +2990,170 @@ router.get('/financials/summary/:propertyId', asyncHandler(async (req: Authentic
  * GET /api/v1/pm/financials/portfolio-summary
  * Get portfolio-level financial summary
  */
-router.get('/financials/portfolio-summary', asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
-    const summary = await advancedFinancialService.getPortfolioFinancialSummary(req.organizationId!);
+router.get('/financials/portfolio-summary', asyncHandler(async (req: Request, res: Response) => {
+    const organizationId = await getOrganizationId(req);
+    if (!organizationId) return res.status(401).json({ error: 'Organization not found' });
+    const summary = await advancedFinancialService.getPortfolioFinancialSummary(organizationId);
     res.json(summary);
 }));
 
 // =====================================================
 // ERROR HANDLER
 // =====================================================
+// TENANT MESSAGES — LANDLORD SIDE
+// =====================================================
+
+/**
+ * GET /api/v1/pm/tenant-messages/conversations
+ * List all tenant conversations for the landlord's organization
+ */
+router.get('/tenant-messages/conversations', asyncHandler(async (req: Request, res: Response) => {
+    const organizationId = await getOrganizationId(req);
+    if (!organizationId || organizationId === '00000000-0000-0000-0000-000000000000') {
+        return res.status(401).json({ error: 'Organization not found' });
+    }
+
+    const result = await db.query(
+        `SELECT c.*,
+            t.full_name AS tenant_name,
+            t.email AS tenant_email,
+            tn.tenant_id,
+            p.title AS property_title,
+            (SELECT content FROM tenant_messages WHERE conversation_id = c.id ORDER BY created_at DESC LIMIT 1) AS last_message
+         FROM tenant_conversations c
+         LEFT JOIN tenancies tn ON tn.id = c.tenancy_id
+         LEFT JOIN tenants t ON t.id = tn.tenant_id
+         LEFT JOIN properties p ON p.id = tn.property_id
+         WHERE c.organization_id = $1 AND c.is_archived = FALSE
+         ORDER BY c.last_message_at DESC NULLS LAST`,
+        [organizationId]
+    );
+
+    res.json({
+        conversations: result.rows.map((r: any) => ({
+            id: r.id,
+            tenancyId: r.tenancy_id,
+            tenantId: r.tenant_id,
+            tenantName: r.tenant_name,
+            tenantEmail: r.tenant_email,
+            propertyTitle: r.property_title,
+            subject: r.subject,
+            status: 'active',
+            lastMessage: r.last_message,
+            lastMessageAt: r.last_message_at,
+            unreadCount: r.landlord_unread_count || 0,
+            createdAt: r.created_at,
+        }))
+    });
+}));
+
+/**
+ * GET /api/v1/pm/tenant-messages/conversations/:conversationId/messages
+ * Get messages in a conversation (landlord view)
+ */
+router.get('/tenant-messages/conversations/:conversationId/messages', asyncHandler(async (req: Request, res: Response) => {
+    const organizationId = await getOrganizationId(req);
+    const { conversationId } = req.params;
+
+    // Verify conversation belongs to this organization
+    const convCheck = await db.query(
+        `SELECT * FROM tenant_conversations WHERE id = $1 AND organization_id = $2`,
+        [conversationId, organizationId]
+    );
+    if (convCheck.rows.length === 0) {
+        return res.status(404).json({ error: 'Conversation not found' });
+    }
+
+    const result = await db.query(
+        `SELECT * FROM tenant_messages
+         WHERE conversation_id = $1
+         ORDER BY created_at ASC`,
+        [conversationId]
+    );
+
+    // Mark landlord-side as read
+    await db.query(
+        `UPDATE tenant_conversations SET landlord_unread_count = 0 WHERE id = $1`,
+        [conversationId]
+    );
+    await db.query(
+        `UPDATE tenant_messages SET is_read = TRUE WHERE conversation_id = $1 AND sender_type = 'tenant'`,
+        [conversationId]
+    );
+
+    res.json({
+        messages: result.rows.map((r: any) => ({
+            id: r.id,
+            senderType: r.sender_type,
+            senderId: r.sender_id,
+            content: r.content,
+            attachmentUrl: r.attachment_url,
+            attachmentName: r.attachment_name,
+            attachmentType: r.attachment_type,
+            isRead: r.is_read,
+            createdAt: r.created_at,
+        }))
+    });
+}));
+
+/**
+ * POST /api/v1/pm/tenant-messages/conversations/:conversationId/messages
+ * Send a message as landlord
+ */
+router.post('/tenant-messages/conversations/:conversationId/messages', validate(pmSendMessageSchema), asyncHandler(async (req: Request, res: Response) => {
+    const organizationId = await getOrganizationId(req);
+    const userId = (req as any).user?.id || req.headers['x-user-id'] as string || 'system';
+    const { conversationId } = req.params;
+    const { content } = req.body;
+
+    if (!content) {
+        return res.status(400).json({ error: 'Message content is required' });
+    }
+
+    // Verify conversation belongs to this organization
+    const convCheck = await db.query(
+        `SELECT * FROM tenant_conversations WHERE id = $1 AND organization_id = $2`,
+        [conversationId, organizationId]
+    );
+    if (convCheck.rows.length === 0) {
+        return res.status(404).json({ error: 'Conversation not found' });
+    }
+
+    const result = await db.query(
+        `INSERT INTO tenant_messages (conversation_id, sender_type, sender_id, content)
+         VALUES ($1, 'landlord', $2, $3)
+         RETURNING *`,
+        [conversationId, userId, content]
+    );
+
+    // Update conversation timestamps and tenant unread count
+    await db.query(
+        `UPDATE tenant_conversations
+         SET last_message_at = NOW(), tenant_unread_count = tenant_unread_count + 1, updated_at = NOW()
+         WHERE id = $1`,
+        [conversationId]
+    );
+
+    const msg = result.rows[0];
+    res.json({
+        success: true,
+        message: {
+            id: msg.id,
+            senderType: msg.sender_type,
+            senderId: msg.sender_id,
+            content: msg.content,
+            isRead: msg.is_read,
+            createdAt: msg.created_at,
+        }
+    });
+}));
+
+// =====================================================
 
 router.use((err: Error, req: Request, res: Response, next: NextFunction) => {
-    console.error('Property Management Error:', err);
-    res.status(500).json({
-        error: 'Internal server error',
-        message: process.env.NODE_ENV === 'development' ? err.message : undefined
-    });
+    // Delegate to the global error handler which properly handles
+    // ValidationError (400), AppError subclasses, ZodError, etc.
+    next(err);
 });
 
 export default router;

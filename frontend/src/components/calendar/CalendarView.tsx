@@ -42,6 +42,7 @@ interface CalendarViewProps {
   onCreateEvent?: (date: Date) => void;
   filterUserId?: string;
   filterDealId?: string;
+  filterService?: string;
   className?: string;
 }
 
@@ -71,6 +72,7 @@ export function CalendarView({
   onCreateEvent,
   filterUserId,
   filterDealId,
+  filterService,
   className = '',
 }: CalendarViewProps) {
   const [currentDate, setCurrentDate] = useState(new Date());
@@ -114,6 +116,7 @@ export function CalendarView({
         const data = await calendarApi.getEvents(dateRange.start, dateRange.end, {
           userId: filterUserId,
           dealId: filterDealId,
+          service: filterService,
         });
         setEvents(data);
       } catch (error) {
@@ -124,7 +127,7 @@ export function CalendarView({
     };
     
     fetchEvents();
-  }, [dateRange.start, dateRange.end, filterUserId, filterDealId]);
+  }, [dateRange.start, dateRange.end, filterUserId, filterDealId, filterService]);
   
   // Listen for real-time updates
   useRealtime(

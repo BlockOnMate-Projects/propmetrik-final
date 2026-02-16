@@ -39,6 +39,7 @@ router.get('/events', async (req: Request, res: Response) => {
       dealId,
       contactId,
       propertyId,
+      service,
     } = req.query;
     
     if (!start || !end) {
@@ -58,6 +59,7 @@ router.get('/events', async (req: Request, res: Response) => {
         dealId: dealId as string || undefined,
         contactId: contactId as string || undefined,
         propertyId: propertyId as string || undefined,
+        service: service as string || undefined,
       }
     );
     

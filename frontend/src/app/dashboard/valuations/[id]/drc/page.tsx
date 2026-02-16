@@ -379,7 +379,7 @@ export default function DRCMethodPage() {
             calculated_by: pythonResult ? 'python_rics_engine' : 'frontend_calculation',
           },
         },
-        current_step: 6,
+        current_step: 7,
       })
 
       // Navigate to next step
