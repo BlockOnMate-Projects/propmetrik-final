@@ -22,9 +22,21 @@ function LoginContent() {
   const [verifyingSetupLink, setVerifyingSetupLink] = useState(false);
   const [setupMode, setSetupMode] = useState(false);
   const [setupToken, setSetupToken] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setErrorRaw] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const authCallbackHandledRef = useRef(false);
+
+  /** Safely extract error string — backend may return { code, message } objects */
+  const setError = (err: unknown) => {
+    if (!err) { setErrorRaw(null); return; }
+    if (typeof err === 'string') { setErrorRaw(err); return; }
+    if (typeof err === 'object' && err !== null) {
+      const obj = err as Record<string, unknown>;
+      setErrorRaw(String(obj.message || obj.error || JSON.stringify(err)));
+      return;
+    }
+    setErrorRaw(String(err));
+  };
 
   // Check for magic link token in URL
   const token = searchParams.get('token');

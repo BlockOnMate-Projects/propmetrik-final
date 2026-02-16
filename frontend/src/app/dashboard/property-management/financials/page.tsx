@@ -16,7 +16,8 @@ import {
     PieChart as PieChartIcon,
     BarChart3,
     Wallet,
-    Receipt
+    Receipt,
+    Bitcoin
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
@@ -31,6 +32,7 @@ import {
 } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
 import { propertyManagementApi } from '@/lib/property-management-api'
+import { cryptoRevenueApi, CryptoRevenueSummary } from '@/lib/property-management-api'
 import { FinancialRecord } from '@/types/property-management'
 import {
     BarChart,
@@ -77,6 +79,8 @@ export default function FinancialsPage() {
     const [receivablesSummary, setReceivablesSummary] = useState<AgedReceivablesSummary | null>(null)
     const [portfolioValue, setPortfolioValue] = useState<number>(0)
     const [monthlyTrendData, setMonthlyTrendData] = useState<{month: string; income: number; expenses: number; expectedRent: number; projectedIncome: number}[]>([])
+    const [cryptoRevenue, setCryptoRevenue] = useState<CryptoRevenueSummary | null>(null)
+    const [portfolioFinancials, setPortfolioFinancials] = useState<any>(null)
     const [isLoading, setIsLoading] = useState(true)
     const [error, setError] = useState<string | null>(null)
     const [period, setPeriod] = useState('this_month')
@@ -116,7 +120,7 @@ export default function FinancialsPage() {
                 }
 
                 // Load all financial data in parallel
-                const [recordsRes, performanceRes, receivablesRes, portfolioRes, cashFlowRes] = await Promise.all([
+                const [recordsRes, performanceRes, receivablesRes, portfolioRes, cashFlowRes, portfolioFin] = await Promise.all([
                     propertyManagementApi.getFinancials({
                         limit: 100,
                         dateFrom: startDate.toISOString().split('T')[0],
@@ -131,7 +135,8 @@ export default function FinancialsPage() {
                     propertyManagementApi.getCashFlow({
                         startDate: new Date(new Date().getFullYear(), 0, 1).toISOString().split('T')[0],
                         endDate: new Date(new Date().getFullYear(), 11, 31).toISOString().split('T')[0]
-                    })
+                    }),
+                    propertyManagementApi.getPortfolioFinancialSummary().catch(() => null),
                 ])
 
                 const recordsData = Array.isArray(recordsRes) ? recordsRes : recordsRes.data || []
@@ -139,6 +144,15 @@ export default function FinancialsPage() {
                 setPropertyPerformance(Array.isArray(performanceRes) ? performanceRes : [])
                 setReceivablesSummary(receivablesRes?.summary || null)
                 setPortfolioValue(portfolioRes?.totalValue || 0)
+                setPortfolioFinancials(portfolioFin)
+
+                // Load crypto revenue separately to avoid interference
+                try {
+                    const crypto = await cryptoRevenueApi.getSummary()
+                    setCryptoRevenue(crypto)
+                } catch (err: any) {
+                    console.error('[CryptoRevenue] fetch failed:', err)
+                }
 
                 // Set real monthly trend data from cash-flow API
                 const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
@@ -349,6 +363,139 @@ export default function FinancialsPage() {
                             </CardContent>
                         </Card>
                     </div>
+
+                    {/* Advanced Financial Analytics */}
+                    {portfolioFinancials && (
+                        <div className="grid gap-4 md:grid-cols-4">
+                            <Card className="bg-zinc-900 border-zinc-800">
+                                <CardContent className="pt-5 pb-4">
+                                    <div className="flex items-center justify-between mb-1">
+                                        <p className="text-[10px] text-zinc-500 font-mono uppercase">Portfolio NOI</p>
+                                        <Badge variant="outline" className="text-[8px] font-mono border-zinc-700 text-zinc-500">NOI</Badge>
+                                    </div>
+                                    <p className={`text-xl font-bold font-mono ${(portfolioFinancials.portfolioNOI ?? 0) >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                                        {formatCurrency(portfolioFinancials.portfolioNOI ?? 0)}
+                                    </p>
+                                    <p className="text-[9px] font-mono text-zinc-600 mt-1">Annual Net Operating Income</p>
+                                </CardContent>
+                            </Card>
+                            <Card className="bg-zinc-900 border-zinc-800">
+                                <CardContent className="pt-5 pb-4">
+                                    <div className="flex items-center justify-between mb-1">
+                                        <p className="text-[10px] text-zinc-500 font-mono uppercase">Wtd. Cap Rate</p>
+                                        <Badge variant="outline" className="text-[8px] font-mono border-zinc-700 text-zinc-500">CAP</Badge>
+                                    </div>
+                                    <p className="text-xl font-bold text-amber-400 font-mono">
+                                        {(portfolioFinancials.weightedCapRate ?? 0).toFixed(2)}%
+                                    </p>
+                                    <p className="text-[9px] font-mono text-zinc-600 mt-1">Weighted Capitalization Rate</p>
+                                </CardContent>
+                            </Card>
+                            <Card className="bg-zinc-900 border-zinc-800">
+                                <CardContent className="pt-5 pb-4">
+                                    <div className="flex items-center justify-between mb-1">
+                                        <p className="text-[10px] text-zinc-500 font-mono uppercase">Monthly Income</p>
+                                        <Badge variant="outline" className="text-[8px] font-mono border-zinc-700 text-zinc-500">REV</Badge>
+                                    </div>
+                                    <p className="text-xl font-bold text-green-400 font-mono">
+                                        {formatCurrency(portfolioFinancials.totalMonthlyIncome ?? 0)}
+                                    </p>
+                                    <p className="text-[9px] font-mono text-zinc-600 mt-1">Effective Gross Income / 12</p>
+                                </CardContent>
+                            </Card>
+                            <Card className="bg-zinc-900 border-zinc-800">
+                                <CardContent className="pt-5 pb-4">
+                                    <div className="flex items-center justify-between mb-1">
+                                        <p className="text-[10px] text-zinc-500 font-mono uppercase">Net Monthly</p>
+                                        <Badge variant="outline" className="text-[8px] font-mono border-zinc-700 text-zinc-500">NET</Badge>
+                                    </div>
+                                    <p className={`text-xl font-bold font-mono ${(portfolioFinancials.netMonthlyCashFlow ?? 0) >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                                        {formatCurrency(portfolioFinancials.netMonthlyCashFlow ?? 0)}
+                                    </p>
+                                    <p className="text-[9px] font-mono text-zinc-600 mt-1">After Operating Expenses</p>
+                                </CardContent>
+                            </Card>
+                        </div>
+                    )}
+
+                    {/* Crypto Revenue Card */}
+                    {cryptoRevenue && cryptoRevenue.totalCryptoPayments > 0 && (
+                        <Card className="bg-gradient-to-r from-amber-950/30 via-black to-orange-950/20 border border-amber-900/40">
+                            <CardHeader className="pb-3">
+                                <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-2">
+                                        <div className="p-1.5 rounded bg-amber-500/10 border border-amber-500/20">
+                                            <Bitcoin className="h-4 w-4 text-amber-500" />
+                                        </div>
+                                        <CardTitle className="text-sm font-mono uppercase tracking-wider text-amber-500">
+                                            Crypto Revenue
+                                        </CardTitle>
+                                    </div>
+                                    {cryptoRevenue.currenciesAccepted.length > 0 && (
+                                        <div className="flex items-center gap-1">
+                                            {cryptoRevenue.currenciesAccepted.map((c) => (
+                                                <Badge key={c} variant="outline" className="border-amber-800/50 text-amber-400 bg-amber-900/10 font-mono text-[9px] uppercase px-1.5 py-0">
+                                                    {c}
+                                                </Badge>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+                            </CardHeader>
+                            <CardContent>
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <p className="text-[10px] text-zinc-500 font-mono uppercase">Crypto Payments</p>
+                                        <p className="text-xl font-bold text-white font-mono">{cryptoRevenue.totalCryptoPayments}</p>
+                                    </div>
+                                    <div>
+                                        <p className="text-[10px] text-zinc-500 font-mono uppercase">Total Rent Received</p>
+                                        <p className="text-xl font-bold text-green-400 font-mono">{formatCurrency(cryptoRevenue.totalCryptoRentGhs)}</p>
+                                    </div>
+                                </div>
+                                {/* Crypto payment details table */}
+                                {cryptoRevenue.payments.length > 0 && (
+                                    <div className="mt-4 border-t border-amber-900/30 pt-3">
+                                        <p className="text-[10px] text-zinc-500 font-mono uppercase mb-2">Payment Breakdown</p>
+                                        <Table>
+                                            <TableHeader>
+                                                <TableRow className="border-amber-900/20 hover:bg-transparent">
+                                                    <TableHead className="text-zinc-500 font-mono text-[9px] uppercase">Date</TableHead>
+                                                    <TableHead className="text-zinc-500 font-mono text-[9px] uppercase">Reference</TableHead>
+                                                    <TableHead className="text-zinc-500 font-mono text-[9px] uppercase">Settled In</TableHead>
+                                                    <TableHead className="text-right text-zinc-500 font-mono text-[9px] uppercase">Settlement Amount</TableHead>
+                                                    <TableHead className="text-right text-zinc-500 font-mono text-[9px] uppercase">Rent (GHS)</TableHead>
+                                                </TableRow>
+                                            </TableHeader>
+                                            <TableBody>
+                                                {cryptoRevenue.payments.map((p) => (
+                                                    <TableRow key={p.reference} className="border-amber-900/15 hover:bg-amber-900/5">
+                                                        <TableCell className="font-mono text-[10px] text-zinc-400">
+                                                            {new Date(p.date).toLocaleDateString('en-GH')}
+                                                        </TableCell>
+                                                        <TableCell className="font-mono text-[10px] text-zinc-300">
+                                                            {p.reference.slice(0, 12)}...
+                                                        </TableCell>
+                                                        <TableCell>
+                                                            <Badge variant="outline" className="border-amber-700/40 text-amber-400 bg-amber-900/10 font-mono text-[9px] px-1 py-0">
+                                                                {p.settlementCurrency || p.cryptoCurrency || '—'}
+                                                            </Badge>
+                                                        </TableCell>
+                                                        <TableCell className="text-right font-mono text-[10px] text-zinc-300">
+                                                            {p.settlementAmount != null ? `${p.settlementAmount.toFixed(4)} ${p.settlementCurrency || ''}` : '—'}
+                                                        </TableCell>
+                                                        <TableCell className="text-right font-mono text-xs text-green-400 font-bold">
+                                                            {formatCurrency(p.principalGhs)}
+                                                        </TableCell>
+                                                    </TableRow>
+                                                ))}
+                                            </TableBody>
+                                        </Table>
+                                    </div>
+                                )}
+                            </CardContent>
+                        </Card>
+                    )}
 
                     {/* Charts Section */}
                     <div className="grid gap-6 md:grid-cols-3">

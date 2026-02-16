@@ -28,8 +28,9 @@ const statusFilters = [
   { value: 'completed', label: 'COMPLETED' },
 ]
 
-// Format relative time
-function formatRelativeTime(dateString: string): string {
+// Format relative time (client-only to avoid hydration mismatch)
+function formatRelativeTime(dateString: string, isMounted: boolean): string {
+  if (!isMounted) return '—'
   const date = new Date(dateString)
   const now = new Date()
   const diffMs = now.getTime() - date.getTime()
@@ -39,7 +40,7 @@ function formatRelativeTime(dateString: string): string {
   if (diffHours < 1) return 'Just now'
   if (diffHours < 24) return `${diffHours}h ago`
   if (diffDays < 7) return `${diffDays}d ago`
-  return date.toLocaleDateString()
+  return date.toLocaleDateString('en-US')
 }
 
 export default function ValuationsPage() {
@@ -373,7 +374,7 @@ export default function ValuationsPage() {
                     {item.current_step || 1}/8
                   </td>
                   <td className="py-2 text-right text-zinc-500">
-                    {formatRelativeTime(item.updated_at || new Date().toISOString())}
+                    {formatRelativeTime(item.updated_at || '', mounted)}
                   </td>
                   <td className="py-2 text-center">
                     <div className="flex items-center justify-center gap-1">

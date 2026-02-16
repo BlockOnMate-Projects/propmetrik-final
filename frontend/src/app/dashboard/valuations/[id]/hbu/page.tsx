@@ -350,7 +350,7 @@ export default function HBUAnalysisPage() {
 
       // Update valuation progress
       await valuationsApi.update(valuationId, {
-        current_step: 3,
+        current_step: 4,
       })
 
       // Navigate to next step
@@ -430,11 +430,12 @@ export default function HBUAnalysisPage() {
         <StepIndicator
           steps={[
             { id: 1, label: 'Property Setup', status: 'completed' },
-            { id: 2, label: 'HBU Analysis', status: 'current' },
-            { id: 3, label: 'Method Selection', status: 'upcoming' },
-            { id: 4, label: 'Valuation', status: 'upcoming' },
-            { id: 5, label: 'Reconciliation', status: 'upcoming' },
-            { id: 6, label: 'Report', status: 'upcoming' },
+            { id: 2, label: 'Floor Plans', status: 'completed' },
+            { id: 3, label: 'HBU Analysis', status: 'current' },
+            { id: 4, label: 'Method Selection', status: 'upcoming' },
+            { id: 5, label: 'Valuation', status: 'upcoming' },
+            { id: 6, label: 'Reconciliation', status: 'upcoming' },
+            { id: 7, label: 'Report', status: 'upcoming' },
           ]}
         />
       </div>
@@ -764,10 +765,10 @@ export default function HBUAnalysisPage() {
       {/* Navigation */}
       <div className="mt-6 flex justify-between">
         <Link
-          href={`/dashboard/valuations/${valuationId}/property`}
+          href={`/dashboard/valuations/${valuationId}/floor-plan`}
           className="px-6 py-3 bg-zinc-800 text-zinc-400 font-mono text-sm hover:text-white transition-colors"
         >
-          ← BACK TO PROPERTY SETUP
+          ← BACK TO FLOOR PLANS
         </Link>
         <div className="flex gap-3">
           <button

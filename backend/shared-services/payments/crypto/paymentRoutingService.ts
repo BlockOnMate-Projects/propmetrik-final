@@ -341,15 +341,16 @@ class PaymentRoutingService {
       }
     }
 
-    // Create payment
+    // Create payment — skip payout params in sandbox mode (sandbox doesn't validate addresses)
+    const isSandbox = process.env.NOWPAYMENTS_SANDBOX === 'true';
     const createParams: CreatePaymentParams = {
       priceAmount: usdAmount,
       priceCurrency: 'usd',
       payCurrency: payerTicker,
       orderId: params.paymentReference,
       orderDescription: `PROPMETRIK ${params.paymentType} payment`,
-      outcomeCurrency,
-      outcomeAddress,
+      outcomeCurrency: isSandbox ? undefined : outcomeCurrency,
+      outcomeAddress: isSandbox ? undefined : outcomeAddress,
     };
 
     const nowPayResult = await nowPaymentsService.createPayment(createParams);
@@ -464,6 +465,7 @@ class PaymentRoutingService {
 
   /**
    * Record a pending entry in the unified payment_transactions ledger.
+   * Amounts stored in pesewas (GHS × 100) matching the existing convention.
    */
   private async recordPendingPaymentTransaction(
     params: UnifiedPaymentInitParams,
@@ -471,26 +473,45 @@ class PaymentRoutingService {
     usdAmount: number,
   ): Promise<void> {
     try {
+      // Calculate platform fee via FeeEngine (same as non-crypto)
+      const { feeEngine } = await import('../feeEngine');
+      const fee = await feeEngine.calculate(
+        params.paymentType as any,
+        params.principalAmountGHS,
+        params.entityId,
+        params.entityType
+      );
+
+      // Store in pesewas (GHS × 100) — consistent with existing payment_transactions records
+      const principalPesewas = Math.round(params.principalAmountGHS * 100);
+      const serviceFeePesewas = Math.round(fee.serviceFee * 100);
+      const grossPesewas = principalPesewas + serviceFeePesewas;
+
       await pool.query(`
         INSERT INTO payment_transactions (
           reference, payment_type,
           domain_record_id, domain_record_type,
           recipient_id, recipient_type,
           gross_amount, principal_amount, service_fee, currency,
+          fee_mode, fee_percentage_applied, fee_flat_applied,
           status, channel, provider,
           payer_wallet, crypto_currency,
           metadata
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 0, 'USD', 'pending', 'crypto_nowpayments', 'nowpayments', $9, $10, $11)
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, 'GHS', $10, $11, $12, 'pending', 'crypto_nowpayments', 'nowpayments', $13, $14, $15)
         ON CONFLICT (reference) DO NOTHING
       `, [
         params.paymentReference,
         params.paymentType,
-        params.metadata?.domain_record_id || params.entityId,
+        params.metadata?.tenancy_id || params.metadata?.domain_record_id || params.entityId,
         `${params.paymentType}_payment`,
         params.entityId,
         params.entityType,
-        usdAmount,
-        usdAmount,
+        grossPesewas,
+        principalPesewas,
+        serviceFeePesewas,
+        fee.feeMode,
+        fee.percentageRateApplied,
+        fee.flatAmountApplied,
         params.payerWalletAddress || null,
         nowPayResult.pay_currency,
         JSON.stringify({
@@ -500,10 +521,25 @@ class PaymentRoutingService {
           pay_amount: nowPayResult.pay_amount,
           pay_currency: nowPayResult.pay_currency,
           principal_ghs: params.principalAmountGHS,
+          service_fee_ghs: fee.serviceFee,
+          total_charge_ghs: fee.totalCharge,
+          usd_amount: usdAmount,
         }),
       ]);
+
+      logger.info('Recorded pending crypto payment in ledger', {
+        reference: params.paymentReference,
+        principalGhs: params.principalAmountGHS,
+        serviceFeeGhs: fee.serviceFee,
+        totalChargeGhs: fee.totalCharge,
+        grossPesewas,
+      });
     } catch (err: any) {
-      logger.warn('Failed to record pending payment transaction', { error: err.message });
+      logger.error('Failed to record pending payment transaction', {
+        error: err.message,
+        stack: err.stack,
+        reference: params.paymentReference,
+      });
     }
   }
 
@@ -517,6 +553,7 @@ class PaymentRoutingService {
     chain?: string;
     useNowPayments?: boolean;
   }> {
+    // 1. Try platform_settings table (admin-level config)
     try {
       const result = await pool.query(
         `SELECT setting_value FROM platform_settings WHERE setting_key = 'platform_settlement_wallet'`
@@ -532,11 +569,39 @@ class PaymentRoutingService {
         };
       }
     } catch {
-      // Table might not exist yet — fall through to env var
+      // Table might not exist yet — fall through
     }
 
-    // Fallback to env var
+    // 2. Try nowpayments_config table (synced from platform_settings by admin endpoint)
+    try {
+      const result = await pool.query(
+        `SELECT config_value FROM nowpayments_config WHERE config_key = 'platform_payout_wallet'`
+      );
+      if (result.rows.length > 0 && result.rows[0].config_value?.configured) {
+        const val = result.rows[0].config_value;
+        if (val.walletAddress) {
+          return {
+            configured: true,
+            walletAddress: val.walletAddress,
+            coinSymbol: val.coinSymbol || val.coin,
+            chain: val.chain,
+            useNowPayments: val.useNowPayments,
+          };
+        }
+      }
+    } catch (err: any) {
+      logger.warn('nowpayments_config lookup failed', { error: err.message });
+    }
+
+    // 3. Fallback to env var — log a warning for audit visibility
     const envWallet = process.env.PLATFORM_SETTLEMENT_WALLET || process.env.PROPMETRIK_PLATFORM_WALLET;
+    if (envWallet) {
+      logger.warn('Using env var fallback for platform settlement wallet — configure via Admin UI for SOC compliance', {
+        envVar: envWallet ? `${envWallet.substring(0, 10)}...` : 'not set',
+      });
+    } else {
+      logger.error('Platform settlement wallet NOT CONFIGURED — fees cannot be routed. Configure via Admin → Crypto → Platform Settlement.');
+    }
     return {
       configured: !!envWallet,
       walletAddress: envWallet || null,

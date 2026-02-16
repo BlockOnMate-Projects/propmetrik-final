@@ -35,7 +35,8 @@ export default function LeaseSigningPage() {
     async function loadData() {
       try {
         if (!params.id) return;
-        const data = await getLeaseByApplicationId(params.id as string);
+        const token = searchParams.get('token') || undefined;
+        const data = await getLeaseByApplicationId(params.id as string, token);
         setLease(data);
       } catch (err) {
         console.error(err);

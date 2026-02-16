@@ -12,6 +12,7 @@ import { checkHealth as checkMinioHealth, initializeBuckets } from './database/m
 import { errorHandler } from './middleware/errorHandler';
 import { rateLimiter } from './middleware/rateLimiter';
 import { requestIdMiddleware } from './middleware/requestId';
+import { authenticate, optionalAuth } from './middleware/auth';
 
 // Import routes
 import healthRoutes from './routes/health';
@@ -54,6 +55,8 @@ import litigationRoutes from './routes/litigation';
 import shortStayRoutes from './routes/shortStay';
 import ricsComplianceRoutes from './routes/ricsCompliance';
 import floodRiskRoutes from './routes/floodRisk';
+import adminRoutes from './routes/admin';
+import tenantPortalRoutes from './routes/tenantPortal';
 
 // Import shared services
 import { realtimeEmitter } from '../shared-services/realtime';
@@ -81,7 +84,7 @@ app.use(cors({
   origin: config.cors.origins,
   credentials: config.cors.credentials,
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Request-ID', 'X-User-Id', 'X-Organization-Id', 'X-PropMetrik-Token'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Request-ID', 'X-User-Id', 'X-Organization-Id', 'X-PropMetrik-Token', 'Cache-Control'],
   exposedHeaders: ['X-Request-ID', 'X-RateLimit-Limit', 'X-RateLimit-Remaining'],
 }));
 
@@ -132,7 +135,7 @@ app.use('/api/v1/reports', reportRoutes);
 app.use('/api/reports', reportRoutes);  // Also mount for frontend compatibility
 app.use('/api/v1/valuers', valuersRoutes);
 app.use('/api/valuers', valuersRoutes);  // Also mount for frontend compatibility
-app.use('/api/v1/pm', propertyManagementRoutes);
+app.use('/api/v1/pm', optionalAuth, propertyManagementRoutes);
 app.use('/api/v1/crm', crmRoutes);
 app.use('/api/crm', crmRoutes);  // Also mount for frontend compatibility
 app.use('/api/v1/webhooks', webhooksRoutes);
@@ -192,6 +195,14 @@ app.use('/api/flood-risk', floodRiskRoutes);  // Also mount for frontend compati
 // In-Mail Notification System
 app.use('/api/v1/notifications', notificationRoutes);
 app.use('/api/notifications', notificationRoutes);  // Also mount for frontend compatibility
+
+// Admin Routes (fee config, crypto payments admin, platform settings)
+app.use('/api/v1/admin', adminRoutes);
+app.use('/api/admin', adminRoutes);  // Also mount for frontend compatibility
+
+// Tenant Portal Routes (auth, conversations, payments, maintenance, documents)
+app.use('/api/v1/tenant-portal', tenantPortalRoutes);
+app.use('/api/tenant-portal', tenantPortalRoutes);  // Also mount for frontend compatibility
 
 
 

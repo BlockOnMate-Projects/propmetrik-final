@@ -184,6 +184,12 @@ router.post('/auth/keycloak/password-login', asyncHandler(async (req: Request, r
             tenant: result.tenant
         });
     } catch (error: any) {
+        console.error('=== TENANT LOGIN ERROR ===');
+        console.error('Message:', error?.message);
+        console.error('Response status:', error?.response?.status);
+        console.error('Response data:', JSON.stringify(error?.response?.data));
+        console.error('Stack:', error?.stack?.split('\n').slice(0, 5).join('\n'));
+        console.error('=== END TENANT LOGIN ERROR ===');
         const detail = error?.response?.data;
         const invalidGrant = detail?.error === 'invalid_grant';
         const msg = invalidGrant
@@ -653,17 +659,65 @@ router.get('/payments/history/:tenancyId', requireTenantAuth, asyncHandler(async
     }
 
     const { page = '1', limit = '20' } = req.query;
+    const limitNum = parseInt(limit as string, 10);
+    const offsetNum = (parseInt(page as string, 10) - 1) * limitNum;
 
+    // UNION rent_payments (legacy) with any crypto payments in payment_transactions
+    // that may not yet have a rent_payments record (safety net).
+    // De-duplicate: exclude payment_transactions entries whose reference already appears
+    // as bank_reference in rent_payments.
     const result = await db.query(
-        `SELECT * FROM rent_payments
-         WHERE tenancy_id = $1
-         ORDER BY payment_date DESC
-         LIMIT $2 OFFSET $3`,
-        [tenancyId, parseInt(limit as string, 10), (parseInt(page as string, 10) - 1) * parseInt(limit as string, 10)]
+        `SELECT * FROM (
+            SELECT
+                id,
+                payment_date,
+                payment_amount,
+                payment_method::text as payment_method,
+                COALESCE(mobile_money_reference, bank_reference) as reference,
+                receipt_number,
+                status::text as status
+            FROM rent_payments
+            WHERE tenancy_id = $1
+
+            UNION ALL
+
+            SELECT
+                pt.id,
+                pt.created_at as payment_date,
+                pt.principal_amount / 100.0 as payment_amount,
+                'crypto' as payment_method,
+                pt.reference,
+                pt.reference as receipt_number,
+                pt.status::text as status
+            FROM payment_transactions pt
+            WHERE (pt.domain_record_id = $1 OR pt.metadata->>'tenancy_id' = $1::text)
+              AND pt.payment_type = 'rent'
+              AND pt.status = 'success'
+              AND pt.channel = 'crypto_nowpayments'
+              AND NOT EXISTS (
+                  SELECT 1 FROM rent_payments rp
+                  WHERE rp.bank_reference = pt.reference AND rp.tenancy_id = $1
+              )
+        ) combined
+        ORDER BY payment_date DESC
+        LIMIT $2 OFFSET $3`,
+        [tenancyId, limitNum, offsetNum]
     );
 
     const countResult = await db.query(
-        `SELECT COUNT(*) FROM rent_payments WHERE tenancy_id = $1`,
+        `SELECT (
+            (SELECT COUNT(*) FROM rent_payments WHERE tenancy_id = $1)
+            +
+            (SELECT COUNT(*) FROM payment_transactions pt
+             WHERE (pt.domain_record_id = $1 OR pt.metadata->>'tenancy_id' = $1::text)
+               AND pt.payment_type = 'rent'
+               AND pt.status = 'success'
+               AND pt.channel = 'crypto_nowpayments'
+               AND NOT EXISTS (
+                   SELECT 1 FROM rent_payments rp
+                   WHERE rp.bank_reference = pt.reference AND rp.tenancy_id = $1
+               ))
+        ) as count`,
         [tenancyId]
     );
 
@@ -865,21 +919,69 @@ router.post('/payments/crypto/verify', requireTenantAuth, asyncHandler(async (re
 /**
  * GET /api/v1/tenant-portal/payments/crypto/settlement-coins
  * Get the list of supported settlement/payment coins.
- * Used by the UI to show payer which coins they can pay with.
+ * Returns on-chain (Polygon) coins from DB + all available NOWPayments currencies.
  */
 router.get('/payments/crypto/settlement-coins', requireTenantAuth, asyncHandler(async (req: Request, res: Response) => {
     const { nowPaymentsService } = await import('../../shared-services/payments/crypto/nowPaymentsService');
-    const coins = await nowPaymentsService.getSupportedSettlementCoins();
-    res.json({ coins });
+
+    // Get on-chain (Polygon) coins from DB
+    const dbCoins = await nowPaymentsService.getSupportedSettlementCoins();
+    // Add display_name alias (DB has coin_name, frontend expects display_name)
+    const dbCoinsNormalized = dbCoins.map((c: any) => ({
+        ...c,
+        display_name: c.display_name || c.coin_name || c.coin_symbol.toUpperCase(),
+    }));
+    const onChainCoins = dbCoinsNormalized.filter((c: any) => c.is_evm_native);
+
+    // Get all available NOWPayments currencies dynamically
+    let nowPaymentsCoins: any[] = [];
+    try {
+        if (nowPaymentsService.isConfigured()) {
+            const allCurrencies = await nowPaymentsService.getAvailableCurrencies();
+            // Only include coins available for payment, exclude on-chain coins
+            const onChainSymbols = new Set(onChainCoins.map((c: any) => c.coin_symbol));
+            const NP_LOGO_BASE = 'https://nowpayments.io';
+            nowPaymentsCoins = allCurrencies
+                .filter((c: any) => c.available_for_payment !== false && !onChainSymbols.has((c.code || c.currency || '').toLowerCase()))
+                .map((c: any) => {
+                    const symbol = (c.code || c.currency || '').toLowerCase();
+                    const ticker = c.ticker || symbol;
+                    return {
+                        id: `np-${symbol}-${c.network || 'default'}`,
+                        coin_symbol: ticker,
+                        coin_name: c.name || symbol.toUpperCase(),
+                        display_name: c.name || symbol.toUpperCase(),
+                        chain: c.network || ticker,
+                        nowpayments_ticker: symbol,
+                        is_evm_native: false,
+                        is_enabled: true,
+                        logo_url: c.logo_url ? `${NP_LOGO_BASE}${c.logo_url}` : null,
+                        is_popular: c.is_popular || false,
+                        is_stable: c.is_stable || false,
+                    };
+                });
+            // Sort: popular first, then stablecoins, then alphabetical
+            nowPaymentsCoins.sort((a: any, b: any) => {
+                if (a.is_popular !== b.is_popular) return a.is_popular ? -1 : 1;
+                if (a.is_stable !== b.is_stable) return a.is_stable ? -1 : 1;
+                return a.coin_name.localeCompare(b.coin_name);
+            });
+        }
+    } catch (err: any) {
+        logger.warn('Failed to fetch NOWPayments currencies, using DB coins only:', err.message);
+    }
+
+    res.json({ coins: [...onChainCoins, ...nowPaymentsCoins] });
 }));
 
 /**
  * GET /api/v1/tenant-portal/payments/crypto/estimate
  * Get estimated conversion amount before initiating payment.
- * Query: amount (in GHS), payCurrency, payChain
+ * Query: amount (in GHS), payCurrency, payChain, tenancyId (optional, for fee calc)
  */
 router.get('/payments/crypto/estimate', requireTenantAuth, asyncHandler(async (req: Request, res: Response) => {
-    const { amount, payCurrency, payChain } = req.query;
+    const tenant = (req as any).tenant;
+    const { amount, payCurrency, payChain, tenancyId } = req.query;
 
     if (!amount || !payCurrency) {
         return res.status(400).json({ error: 'amount and payCurrency are required' });
@@ -887,8 +989,33 @@ router.get('/payments/crypto/estimate', requireTenantAuth, asyncHandler(async (r
 
     const { exchangeRateService } = await import('../../shared-services/payments/crypto');
     const { nowPaymentsService } = await import('../../shared-services/payments/crypto/nowPaymentsService');
+    const { feeEngine } = await import('../../shared-services/payments/feeEngine');
 
-    const usdAmount = await exchangeRateService.convertGhsToUsd(parseFloat(amount as string));
+    const amountGhs = parseFloat(amount as string);
+
+    // Calculate platform fee
+    let platformFeeGhs = 0;
+    let feeDescription = '';
+    try {
+        let orgId: string | undefined;
+        if (tenancyId) {
+            const tenancy = tenant.activeTenancies?.find((t: any) => t.id === tenancyId);
+            orgId = tenancy?.organizationId;
+        }
+        if (!orgId && tenant.activeTenancies?.length > 0) {
+            orgId = tenant.activeTenancies[0].organizationId;
+        }
+        const fee = await feeEngine.calculate('rent', amountGhs, orgId, 'organization');
+        platformFeeGhs = fee.serviceFee;
+        feeDescription = fee.feeDescription;
+    } catch (feeErr: any) {
+        console.warn('Fee calculation failed for crypto estimate:', feeErr.message);
+    }
+
+    const totalChargeGhs = amountGhs + platformFeeGhs;
+    const usdAmount = await exchangeRateService.convertGhsToUsd(totalChargeGhs);
+    const rentOnlyUsd = await exchangeRateService.convertGhsToUsd(amountGhs);
+    const platformFeeUsd = usdAmount - rentOnlyUsd;
 
     // Resolve to NOWPayments ticker
     const ticker = (payCurrency as string).toLowerCase();
@@ -898,8 +1025,13 @@ router.get('/payments/crypto/estimate', requireTenantAuth, asyncHandler(async (r
         const minAmount = await nowPaymentsService.getMinimumAmount(ticker, 'usd');
 
         res.json({
-            amountGhs: parseFloat(amount as string),
-            amountUsd: usdAmount,
+            amountGhs,
+            amountUsd: rentOnlyUsd,
+            platformFeeGhs,
+            platformFeeUsd,
+            totalChargeGhs,
+            totalChargeUsd: usdAmount,
+            feeDescription,
             payCurrency: ticker,
             estimatedPayAmount: estimate.estimated_amount,
             minimumPayAmount: minAmount.min_amount,
@@ -907,8 +1039,13 @@ router.get('/payments/crypto/estimate', requireTenantAuth, asyncHandler(async (r
         });
     } catch (err: any) {
         res.json({
-            amountGhs: parseFloat(amount as string),
-            amountUsd: usdAmount,
+            amountGhs,
+            amountUsd: rentOnlyUsd,
+            platformFeeGhs,
+            platformFeeUsd,
+            totalChargeGhs,
+            totalChargeUsd: usdAmount,
+            feeDescription,
             payCurrency: ticker,
             error: err.message,
         });
@@ -976,6 +1113,7 @@ router.post('/payments/crypto/unified-initiate', requireTenantAuth, asyncHandler
 /**
  * GET /api/v1/tenant-portal/payments/crypto/nowpayments-status/:paymentId
  * Check the status of a NOWPayments payment (polling endpoint for UI).
+ * Also syncs the status back to our DB when it changes.
  */
 router.get('/payments/crypto/nowpayments-status/:paymentId', requireTenantAuth, asyncHandler(async (req: Request, res: Response) => {
     const { nowPaymentsService } = await import('../../shared-services/payments/crypto/nowPaymentsService');
@@ -986,6 +1124,86 @@ router.get('/payments/crypto/nowpayments-status/:paymentId', requireTenantAuth, 
     }
 
     const status = await nowPaymentsService.getPaymentStatus(paymentId);
+
+    // Sync status back to our DB
+    try {
+        // Update nowpayments_payments table
+        await db.query(`
+            UPDATE nowpayments_payments SET
+                status = $1,
+                actually_paid = COALESCE($2, actually_paid),
+                outcome_amount = COALESCE($3, outcome_amount),
+                outcome_currency = COALESCE($4, outcome_currency),
+                updated_at = NOW()
+            WHERE nowpayments_id = $5
+        `, [
+            status.payment_status,
+            status.actually_paid || null,
+            status.outcome_amount || null,
+            status.outcome_currency || null,
+            paymentId,
+        ]);
+
+        // If finished/confirmed, also update payment_transactions ledger
+        if (status.payment_status === 'finished' || status.payment_status === 'confirmed') {
+            // Find the payment reference from nowpayments_payments
+            const npRow = await db.query(
+                `SELECT payment_reference, settlement_mode FROM nowpayments_payments WHERE nowpayments_id = $1`,
+                [paymentId]
+            );
+            if (npRow.rows.length > 0) {
+                const paymentRef = npRow.rows[0].payment_reference;
+                const settlementMode = npRow.rows[0].settlement_mode;
+
+                await db.query(
+                    `UPDATE payment_transactions SET status = 'success', verified_at = NOW() WHERE reference = $1 AND status = 'pending'`,
+                    [paymentRef]
+                );
+
+                // Mark as settled in nowpayments_payments
+                await db.query(
+                    `UPDATE nowpayments_payments SET settled_at = COALESCE(settled_at, NOW()) WHERE nowpayments_id = $1`,
+                    [paymentId]
+                );
+
+                // Trigger fee collection for direct-mode payments
+                if (settlementMode === 'direct') {
+                    try {
+                        const { feeCollectionService } = await import('../../shared-services/payments/crypto/feeCollectionService');
+                        const feeResult = await feeCollectionService.collectFeeForPayment(paymentRef);
+                        console.log(`Fee collection (polling): ${feeResult.status} - GHS ${feeResult.feeAmountGhs} for ${paymentRef}`);
+                    } catch (feeErr: any) {
+                        console.error('Fee collection via polling failed (non-blocking):', feeErr.message);
+                    }
+                }
+
+                // Record in rent_payments + apply to schedules (idempotent)
+                try {
+                    const rentResult = await paymentProcessor.recordCryptoRentCompletion(paymentRef);
+                    if (rentResult.recorded) {
+                        console.log(`Crypto rent recorded (polling): ${paymentRef}, schedules updated: ${rentResult.schedulesUpdated}`);
+                    }
+                } catch (rentErr: any) {
+                    console.error('Crypto rent completion via polling failed (non-blocking):', rentErr.message);
+                }
+            }
+        } else if (status.payment_status === 'failed' || status.payment_status === 'expired' || status.payment_status === 'refunded') {
+            const npRow = await db.query(
+                `SELECT payment_reference FROM nowpayments_payments WHERE nowpayments_id = $1`,
+                [paymentId]
+            );
+            if (npRow.rows.length > 0) {
+                const txStatus = status.payment_status === 'refunded' ? 'refunded' : 'failed';
+                await db.query(
+                    `UPDATE payment_transactions SET status = $1 WHERE reference = $2 AND status = 'pending'`,
+                    [txStatus, npRow.rows[0].payment_reference]
+                );
+            }
+        }
+    } catch (syncErr: any) {
+        console.error('Failed to sync NOWPayments status to DB:', syncErr.message);
+    }
+
     res.json({
         paymentId: status.payment_id,
         status: status.payment_status,

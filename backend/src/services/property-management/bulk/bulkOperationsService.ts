@@ -498,12 +498,11 @@ export class BulkOperationsService {
                 query = `
                     SELECT 
                         t.id,
-                        COALESCE(t.first_name, split_part(t.full_name, ' ', 1)) as first_name,
-                        COALESCE(t.last_name, split_part(t.full_name, ' ', 2)) as last_name,
+                        split_part(t.full_name, ' ', 1) as first_name,
+                        COALESCE(NULLIF(split_part(t.full_name, ' ', 2), ''), '') as last_name,
                         t.email,
-                        COALESCE(t.phone, t.phone_primary) as phone,
-                        t.id_type,
-                        t.id_number,
+                        t.phone_primary as phone,
+                        t.ghana_card_number as id_number,
                         t.status,
                         t.created_at
                     FROM tenants t
@@ -511,7 +510,7 @@ export class BulkOperationsService {
                     ORDER BY t.full_name
                 `;
                 columns = ['id', 'first_name', 'last_name', 'email', 'phone', 
-                           'id_type', 'id_number', 'status', 'created_at'];
+                           'id_number', 'status', 'created_at'];
                 break;
 
             case 'tenancies':
@@ -556,7 +555,7 @@ export class BulkOperationsService {
                     JOIN properties p ON t.property_id = p.id
                     JOIN tenants ten ON t.tenant_id = ten.id
                     WHERE rp.organization_id = $1
-                    ORDER BY rc.due_date DESC
+                    ORDER BY rp.due_date DESC
                 `;
                 columns = ['id', 'property_name', 'unit_number', 'tenant_name', 'amount_due',
                            'amount_paid', 'payment_date', 'payment_method', 'status', 'due_date', 'created_at'];

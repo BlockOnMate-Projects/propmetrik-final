@@ -293,7 +293,7 @@ export interface ConstrainedFloorPlanBuilderProps {
 }
 
 export interface AdjustmentModeProps {
-  canvas: fabric.Canvas;
+  canvas: any; // Previously fabric.Canvas — now library-agnostic
   selectedElement: string | null;
   constraint: AdjustmentConstraint | null;
   onAdjustment: (delta: AdjustmentDelta) => void;

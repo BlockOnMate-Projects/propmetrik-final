@@ -2,69 +2,23 @@
 
 import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { useState, useEffect, Suspense, lazy } from 'react'
+import { useState, useEffect } from 'react'
 import {
   TerminalPanel,
   StatusBadge,
   PropertyTypeBadge,
   AlertBanner,
-  Currency,
   StepIndicator,
 } from '@/components/ui/terminal'
-import { valuationsApi, floorPlanApi } from '@/lib/valuation-api'
-import type { Valuation, FloorPlan, FloorPlanRoom, RoomType } from '@/types/valuation'
-import type { PropertyMeasurements } from '@/components/valuation/professional-floor-plan/types'
+import { valuationsApi } from '@/lib/valuation-api'
+import type { Valuation } from '@/types/valuation'
 import {
   ArrowLeft,
   ArrowRight,
   Loader2,
-  Plus,
-  Trash2,
-  Maximize,
   Save,
-  Home,
-  CheckCircle2,
-  Pencil,
   Edit,
 } from 'lucide-react'
-
-// Lazy load the Professional FloorPlanBuilder (heavy component with Fabric.js)
-const ProfessionalFloorPlanBuilder = lazy(() => 
-  import('@/components/valuation/professional-floor-plan').then(m => ({ default: m.ProfessionalFloorPlanBuilder }))
-)
-
-// Room types for Ghana Building Code
-const ROOM_TYPES: { value: RoomType; label: string; minArea: number }[] = [
-  { value: 'living', label: 'Living Room', minArea: 13 },
-  { value: 'dining', label: 'Dining Room', minArea: 9 },
-  { value: 'bedroom', label: 'Bedroom', minArea: 9 },
-  { value: 'kitchen', label: 'Kitchen', minArea: 4.5 },
-  { value: 'bathroom', label: 'Bathroom', minArea: 2.5 },
-  { value: 'toilet', label: 'Toilet', minArea: 1.5 },
-  { value: 'corridor', label: 'Corridor', minArea: 1.2 },
-  { value: 'storage', label: 'Storage', minArea: 1 },
-  { value: 'garage', label: 'Garage', minArea: 15 },
-  { value: 'balcony', label: 'Balcony', minArea: 2 },
-]
-
-// Local simplified room type for floor plan state
-interface LocalFloorRoom {
-  type: RoomType;
-  name: string;
-  area: number;
-  length: number;
-  width: number;
-}
-
-interface FloorPlanState {
-  floorNumber: number
-  name: string
-  totalArea: number
-  rooms: LocalFloorRoom[]
-  isComplete: boolean
-  canvasData?: string  // Stores the Fabric.js canvas JSON for this floor
-  imageDataUrl?: string  // Stores the PNG image data URL for report appendices
-}
 
 export default function PropertySetupPage() {
   const params = useParams()
@@ -75,21 +29,6 @@ export default function PropertySetupPage() {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
-
-  // Floor plans state
-  const [floorPlans, setFloorPlans] = useState<FloorPlanState[]>([
-    { floorNumber: 0, name: 'Ground Floor', totalArea: 0, rooms: [], isComplete: false }
-  ])
-  const [activeFloor, setActiveFloor] = useState(0)
-  const [showFloorPlanBuilder, setShowFloorPlanBuilder] = useState(false)
-  const [currentMeasurements, setCurrentMeasurements] = useState<PropertyMeasurements | null>(null)
-  const [currentFloorPlanImage, setCurrentFloorPlanImage] = useState<string | null>(null)
-
-  // Handle floor plan changes including image capture
-  const handleFloorPlanChange = (data: { json: string; imageDataUrl: string; measurements: PropertyMeasurements }) => {
-    setCurrentMeasurements(data.measurements)
-    setCurrentFloorPlanImage(data.imageDataUrl)
-  }
 
   // Fetch valuation data
   useEffect(() => {
@@ -103,19 +42,6 @@ export default function PropertySetupPage() {
         if (!valuationRes.data) throw new Error('Valuation not found')
 
         setValuation(valuationRes.data as Valuation)
-
-        // Fetch existing floor plans from backend
-        const floorPlansRes = await floorPlanApi.getByValuation(valuationId)
-        if (floorPlansRes.data && floorPlansRes.data.length > 0) {
-          setFloorPlans(floorPlansRes.data.map((fp: any) => ({
-            floorNumber: fp.floor_number ?? fp.floorNumber ?? 0,
-            name: fp.floor_label || (fp.floor_number === 0 ? 'Ground Floor' : `Floor ${fp.floor_number}`),
-            totalArea: fp.total_area ?? fp.totalArea ?? 0,
-            rooms: fp.rooms || [],
-            isComplete: true,
-            canvasData: fp.canvas_json || fp.canvasData,  // Restore canvas data for editing
-          })))
-        }
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to load valuation')
       } finally {
@@ -126,96 +52,11 @@ export default function PropertySetupPage() {
     fetchData()
   }, [valuationId])
 
-  // Add new floor
-  const addFloor = () => {
-    const nextFloorNum = Math.max(...floorPlans.map(f => f.floorNumber)) + 1
-    setFloorPlans([
-      ...floorPlans,
-      { floorNumber: nextFloorNum, name: `Floor ${nextFloorNum}`, totalArea: 0, rooms: [], isComplete: false }
-    ])
-    setActiveFloor(nextFloorNum)
-  }
-
-  // Remove floor
-  const removeFloor = (floorNumber: number) => {
-    if (floorPlans.length === 1) return
-    setFloorPlans(floorPlans.filter(f => f.floorNumber !== floorNumber))
-    if (activeFloor === floorNumber) {
-      setActiveFloor(floorPlans[0].floorNumber)
-    }
-  }
-
-  // Handle floor plan builder save
-  const handleFloorPlanSave = (data: { totalArea: number; rooms: LocalFloorRoom[] }) => {
-    setFloorPlans(floorPlans.map(fp =>
-      fp.floorNumber === activeFloor
-        ? { ...fp, totalArea: data.totalArea, rooms: data.rooms, isComplete: true }
-        : fp
-    ))
-    setShowFloorPlanBuilder(false)
-  }
-
-  // Handle DONE button - save current floor plan
-  const handleDoneFloorPlan = () => {
-    if (currentMeasurements) {
-      // Save floor plan with canvas data and image for persistence
-      setFloorPlans(floorPlans.map(fp =>
-        fp.floorNumber === activeFloor
-          ? {
-            ...fp,
-            totalArea: currentMeasurements.builtArea,
-            rooms: currentMeasurements.roomBreakdown.map((r) => ({
-              type: r.type as RoomType,
-              name: r.name,
-              area: r.area,
-              length: r.dimensions.length,
-              width: r.dimensions.width,
-            })),
-            isComplete: true,
-            canvasData: currentMeasurements.floorPlanData,  // Store the canvas JSON
-            imageDataUrl: currentFloorPlanImage || undefined,  // Store the PNG image for report
-          }
-          : fp
-      ));
-      setShowFloorPlanBuilder(false);
-      // Reset current image state
-      setCurrentFloorPlanImage(null);
-    } else {
-      // Just close if no measurements
-      setShowFloorPlanBuilder(false);
-    }
-  }
-
-  // Calculate totals
-  const totalGFA = floorPlans.reduce((sum, fp) => sum + fp.totalArea, 0)
-  const totalRooms = floorPlans.reduce((sum, fp) => sum + fp.rooms.length, 0)
-  const completedFloors = floorPlans.filter(fp => fp.isComplete).length
-
   // Save and continue
   const handleSaveAndContinue = async () => {
     try {
       setSaving(true)
       setError(null)
-
-      // Save floor plans to backend
-      for (const floorPlan of floorPlans) {
-        // Only save if there's canvas data (floor plan was drawn)
-        const canvasJson = floorPlan.canvasData || JSON.stringify({ objects: [], version: '5.3.0' });
-
-        const result = await floorPlanApi.create(valuationId, {
-          canvas_json: canvasJson,
-          floor_number: floorPlan.floorNumber,
-          floor_label: floorPlan.name,
-          scale_pixels_per_meter: 100,  // Default scale
-          total_area_sqm: floorPlan.totalArea,
-          rooms: floorPlan.rooms,
-        })
-
-        // Upload floor plan image if available
-        if (result.success && result.data?.id && floorPlan.imageDataUrl) {
-          await floorPlanApi.uploadImage(result.data.id, floorPlan.imageDataUrl)
-        }
-      }
 
       // Update valuation progress
       await valuationsApi.update(valuationId, {
@@ -223,8 +64,8 @@ export default function PropertySetupPage() {
         status: 'in_progress',
       })
 
-      // Navigate to next step
-      router.push(`/dashboard/valuations/${valuationId}/hbu`)
+      // Navigate to floor plans step
+      router.push(`/dashboard/valuations/${valuationId}/floor-plan`)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to save property data')
     } finally {
@@ -252,52 +93,6 @@ export default function PropertySetupPage() {
   // Cast property to any to handle both camelCase (from backend) and snake_case field names
   const property = valuation.property as any
 
-  // Floor plan builder modal
-  if (showFloorPlanBuilder) {
-    return (
-      <div className="fixed inset-0 bg-black z-50">
-        <div className="flex items-center justify-between p-4 border-b border-zinc-800">
-          <div className="flex items-center gap-4">
-            <button
-              onClick={() => setShowFloorPlanBuilder(false)}
-              className="p-2 hover:bg-zinc-800 transition-colors"
-            >
-              <ArrowLeft className="w-4 h-4 text-zinc-400" />
-            </button>
-            <div>
-              <h2 className="font-mono text-lg text-white">PROFESSIONAL FLOOR PLAN BUILDER</h2>
-              <p className="font-mono text-[10px] text-zinc-500">
-                {floorPlans.find(f => f.floorNumber === activeFloor)?.name || `Floor ${activeFloor}`}
-              </p>
-            </div>
-          </div>
-          <button
-            onClick={handleDoneFloorPlan}
-            className="px-4 py-2 bg-amber-500 text-black font-mono text-xs font-bold hover:bg-amber-400 transition-colors"
-          >
-            DONE
-          </button>
-        </div>
-        <div className="h-[calc(100vh-64px)]">
-          <Suspense fallback={
-            <div className="flex items-center justify-center h-full bg-zinc-900">
-              <Loader2 className="w-8 h-8 text-amber-500 animate-spin" />
-            </div>
-          }>
-            <ProfessionalFloorPlanBuilder
-              onMeasurementsChange={setCurrentMeasurements}
-              onFloorPlanChange={handleFloorPlanChange}
-              initialFloorPlan={floorPlans.find(f => f.floorNumber === activeFloor)?.canvasData}
-              readonly={false}
-              width={1200}
-              height={700}
-            />
-          </Suspense>
-        </div>
-      </div>
-    )
-  }
-
   return (
     <div className="min-h-screen bg-black text-white p-4 pb-10">
       {/* Header */}
@@ -322,7 +117,7 @@ export default function PropertySetupPage() {
         <div className="flex items-center gap-3">
           <button
             onClick={handleSaveAndContinue}
-            disabled={saving || completedFloors === 0}
+            disabled={saving}
             className="flex items-center gap-2 px-4 py-2 bg-amber-500 text-black font-mono text-xs font-bold hover:bg-amber-400 transition-colors disabled:opacity-50"
           >
             {saving ? (
@@ -345,11 +140,12 @@ export default function PropertySetupPage() {
         <StepIndicator
           steps={[
             { id: 1, label: 'Property Setup', status: 'current' },
-            { id: 2, label: 'HBU Analysis', status: 'upcoming' },
-            { id: 3, label: 'Method Selection', status: 'upcoming' },
-            { id: 4, label: 'Valuation', status: 'upcoming' },
-            { id: 5, label: 'Reconciliation', status: 'upcoming' },
-            { id: 6, label: 'Report', status: 'upcoming' },
+            { id: 2, label: 'Floor Plans', status: 'upcoming' },
+            { id: 3, label: 'HBU Analysis', status: 'upcoming' },
+            { id: 4, label: 'Method Selection', status: 'upcoming' },
+            { id: 5, label: 'Valuation', status: 'upcoming' },
+            { id: 6, label: 'Reconciliation', status: 'upcoming' },
+            { id: 7, label: 'Report', status: 'upcoming' },
           ]}
         />
       </div>
@@ -359,8 +155,8 @@ export default function PropertySetupPage() {
 
       {/* Main Content Grid */}
       <div className="grid grid-cols-3 gap-4">
-        {/* Property Summary - Subject Property Info from Step 1 */}
-        <TerminalPanel title="SUBJECT PROPERTY" className="col-span-1">
+        {/* Property Summary - Subject Property Info */}
+        <TerminalPanel title="SUBJECT PROPERTY" className="col-span-2">
           <div className="space-y-4">
             <div className="flex justify-end -mt-2 -mr-2">
               <Link
@@ -368,24 +164,27 @@ export default function PropertySetupPage() {
                 className="px-2 py-1 bg-zinc-800 text-amber-400 font-mono text-[10px] hover:bg-zinc-700 transition-colors flex items-center gap-1"
               >
                 <Edit className="w-3 h-3" />
-                EDIT
+                EDIT PROPERTY DETAILS
               </Link>
             </div>
-            <div>
-              <div className="font-mono text-[10px] text-zinc-500 mb-1">ADDRESS</div>
-              <div className="font-mono text-sm text-white">{property?.address || property?.address_street || '—'}</div>
-            </div>
-            <div>
-              <div className="font-mono text-[10px] text-zinc-500 mb-1">LOCATION</div>
-              <div className="font-mono text-xs text-zinc-400">
-                {property?.city || property?.address_city || '—'}, {(property?.region || '')?.replace('_', ' ').toUpperCase() || '—'}
+            <div className="grid grid-cols-3 gap-6">
+              <div>
+                <div className="font-mono text-[10px] text-zinc-500 mb-1">ADDRESS</div>
+                <div className="font-mono text-sm text-white">{property?.address || property?.address_street || '—'}</div>
+                <div className="font-mono text-xs text-zinc-400 mt-1">
+                  {property?.city || property?.address_city || '—'}, {(property?.region || '')?.replace('_', ' ').toUpperCase() || '—'}
+                </div>
               </div>
-            </div>
-            <div>
-              <div className="font-mono text-[10px] text-zinc-500 mb-1">TYPE</div>
-              <PropertyTypeBadge type={property?.propertyType || property?.property_type || 'residential'} />
-            </div>
-            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <div className="font-mono text-[10px] text-zinc-500 mb-1">TYPE</div>
+                <PropertyTypeBadge type={property?.propertyType || property?.property_type || 'residential'} />
+              </div>
+              <div>
+                <div className="font-mono text-[10px] text-zinc-500 mb-1">PLOT SIZE</div>
+                <div className="font-mono text-lg text-white">
+                  {(property?.plotSize || property?.plot_size || property?.landArea || property?.land_area)?.toLocaleString() || '—'} sqm
+                </div>
+              </div>
               <div>
                 <div className="font-mono text-[10px] text-zinc-500 mb-1">BEDROOMS</div>
                 <div className="font-mono text-lg text-white">{property?.bedrooms || '—'}</div>
@@ -394,168 +193,48 @@ export default function PropertySetupPage() {
                 <div className="font-mono text-[10px] text-zinc-500 mb-1">BATHROOMS</div>
                 <div className="font-mono text-lg text-white">{property?.bathrooms || '—'}</div>
               </div>
-            </div>
-            <div className="grid grid-cols-2 gap-3">
               <div>
                 <div className="font-mono text-[10px] text-zinc-500 mb-1">YEAR BUILT</div>
-                <div className="font-mono text-sm text-white">{property?.yearBuilt || property?.year_built || '—'}</div>
-              </div>
-              <div>
-                <div className="font-mono text-[10px] text-zinc-500 mb-1">FLOORS</div>
-                <div className="font-mono text-sm text-white">{property?.floors || property?.total_floors || floorPlans.length}</div>
+                <div className="font-mono text-lg text-white">{property?.yearBuilt || property?.year_built || '—'}</div>
               </div>
             </div>
           </div>
         </TerminalPanel>
 
-        {/* Measurement Summary */}
-        <TerminalPanel title="MEASUREMENTS" className="col-span-2">
-          <div className="grid grid-cols-4 gap-4">
-            <div className="p-4 bg-zinc-800/30 border border-zinc-700">
+        {/* Property Details */}
+        <TerminalPanel title="PROPERTY DETAILS">
+          <div className="space-y-4">
+            <div>
+              <div className="font-mono text-[10px] text-zinc-500 mb-1">CONDITION</div>
+              <div className="font-mono text-sm text-white">{property?.condition || '—'}</div>
+            </div>
+            <div>
+              <div className="font-mono text-[10px] text-zinc-500 mb-1">CONSTRUCTION</div>
+              <div className="font-mono text-sm text-white">{property?.construction_type || property?.constructionType || '—'}</div>
+            </div>
+            <div>
               <div className="font-mono text-[10px] text-zinc-500 mb-1">FLOORS</div>
-              <div className="font-mono text-2xl text-white">{floorPlans.length}</div>
-              <div className="font-mono text-[10px] text-zinc-500">{completedFloors} completed</div>
+              <div className="font-mono text-sm text-white">{property?.floors || property?.total_floors || '—'}</div>
             </div>
-            <div className="p-4 bg-zinc-800/30 border border-zinc-700">
-              <div className="font-mono text-[10px] text-zinc-500 mb-1">TOTAL GFA</div>
-              <div className="font-mono text-2xl text-amber-400">{totalGFA.toLocaleString()}</div>
-              <div className="font-mono text-[10px] text-zinc-500">sqm</div>
-            </div>
-            <div className="p-4 bg-zinc-800/30 border border-zinc-700">
-              <div className="font-mono text-[10px] text-zinc-500 mb-1">TOTAL ROOMS</div>
-              <div className="font-mono text-2xl text-white">{totalRooms}</div>
-              <div className="font-mono text-[10px] text-zinc-500">across all floors</div>
-            </div>
-            <div className="p-4 bg-zinc-800/30 border border-zinc-700">
-              <div className="font-mono text-[10px] text-zinc-500 mb-1">PLOT SIZE</div>
-              <div className="font-mono text-2xl text-white">{(property?.plotSize || property?.plot_size || property?.landArea || property?.land_area)?.toLocaleString() || '—'}</div>
-              <div className="font-mono text-[10px] text-zinc-500">sqm</div>
+            <div>
+              <div className="font-mono text-[10px] text-zinc-500 mb-1">TENURE</div>
+              <div className="font-mono text-sm text-white">{property?.tenure || '—'}</div>
             </div>
           </div>
         </TerminalPanel>
       </div>
 
-      {/* Floor Plans Section */}
-      <TerminalPanel title="FLOOR PLANS" className="mt-4">
-        {/* Floor Tabs */}
-        <div className="flex items-center gap-2 mb-4">
-          {floorPlans.map((floor) => (
-            <button
-              key={floor.floorNumber}
-              onClick={() => setActiveFloor(floor.floorNumber)}
-              className={`flex items-center gap-2 px-3 py-2 font-mono text-xs transition-colors ${activeFloor === floor.floorNumber
-                  ? 'bg-amber-500 text-black font-bold'
-                  : 'bg-zinc-800 text-zinc-400 hover:text-white'
-                }`}
-            >
-              {floor.isComplete && <CheckCircle2 className="w-3 h-3" />}
-              {floor.name.toUpperCase()}
-            </button>
-          ))}
-          <button
-            onClick={addFloor}
-            className="flex items-center gap-1 px-3 py-2 bg-zinc-900 border border-zinc-800 text-zinc-500 font-mono text-xs hover:text-white hover:border-zinc-700 transition-colors"
-          >
-            <Plus className="w-3 h-3" />
-            ADD FLOOR
-          </button>
-        </div>
-
-        {/* Active Floor Content */}
-        {floorPlans.map((floor) => (
-          floor.floorNumber === activeFloor && (
-            <div key={floor.floorNumber} className="space-y-4">
-              {/* Floor Actions */}
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <span className="font-mono text-sm text-zinc-400">
-                    {floor.totalArea > 0
-                      ? `${floor.totalArea.toLocaleString()} sqm • ${floor.rooms.length} rooms`
-                      : 'No measurements yet'
-                    }
-                  </span>
-                </div>
-                <div className="flex items-center gap-2">
-                  {floorPlans.length > 1 && (
-                    <button
-                      onClick={() => removeFloor(floor.floorNumber)}
-                      className="flex items-center gap-1 px-3 py-2 bg-red-900/30 text-red-400 font-mono text-xs hover:bg-red-900/50 transition-colors"
-                    >
-                      <Trash2 className="w-3 h-3" />
-                      REMOVE
-                    </button>
-                  )}
-                  <button
-                    onClick={() => setShowFloorPlanBuilder(true)}
-                    className="flex items-center gap-2 px-4 py-2 bg-amber-500 text-black font-mono text-xs font-bold hover:bg-amber-400 transition-colors"
-                  >
-                    <Pencil className="w-3 h-3" />
-                    {floor.isComplete ? 'EDIT FLOOR PLAN' : 'DRAW FLOOR PLAN'}
-                  </button>
-                </div>
-              </div>
-
-              {/* Room Summary */}
-              {floor.rooms.length > 0 ? (
-                <div className="grid grid-cols-6 gap-3">
-                  {floor.rooms.map((room, idx) => {
-                    const roomType = ROOM_TYPES.find(r => r.value === room.type)
-                    const roomArea = room.area ?? 0
-                    const meetsMinArea = roomArea >= (roomType?.minArea || 0)
-
-                    return (
-                      <div
-                        key={idx}
-                        className={`p-3 border ${meetsMinArea ? 'border-zinc-700 bg-zinc-800/30' : 'border-red-500/50 bg-red-900/10'
-                          }`}
-                      >
-                        <div className="font-mono text-[10px] text-zinc-500 mb-1">{(room.type || 'room').toUpperCase()}</div>
-                        <div className={`font-mono text-lg ${meetsMinArea ? 'text-white' : 'text-red-400'}`}>
-                          {roomArea.toFixed(1)} sqm
-                        </div>
-                        {!meetsMinArea && (
-                          <div className="font-mono text-[9px] text-red-400 mt-1">
-                            Min: {roomType?.minArea || 0} sqm
-                          </div>
-                        )}
-                      </div>
-                    )
-                  })}
-                </div>
-              ) : (
-                <div className="text-center py-12 border border-dashed border-zinc-800">
-                  <Home className="w-8 h-8 text-zinc-600 mx-auto mb-3" />
-                  <div className="font-mono text-sm text-zinc-500 mb-1">No floor plan created yet</div>
-                  <div className="font-mono text-[10px] text-zinc-600 mb-4">
-                    Use the professional floor plan builder to draw walls, add doors/windows, and define rooms
-                  </div>
-                  <div className="flex items-center justify-center gap-3">
-                    <button
-                      onClick={() => setShowFloorPlanBuilder(true)}
-                      className="flex items-center gap-2 px-4 py-2 bg-amber-500 text-black font-mono text-xs font-bold hover:bg-amber-400 transition-colors"
-                    >
-                      <Pencil className="w-3 h-3" />
-                      DRAW FLOOR PLAN
-                    </button>
-                  </div>
-                </div>
-              )}
-            </div>
-          )
-        ))}
-      </TerminalPanel>
-
       {/* Navigation */}
       <div className="mt-6 flex justify-between">
         <Link
-          href={`/dashboard/valuations/${valuationId}/subject`}
+          href={`/dashboard/valuations/${valuationId}`}
           className="px-6 py-3 bg-zinc-800 text-zinc-400 font-mono text-sm hover:text-white transition-colors"
         >
-          ← BACK TO SUBJECT PROPERTY
+          ← BACK TO VALUATION
         </Link>
         <button
           onClick={handleSaveAndContinue}
-          disabled={saving || completedFloors === 0}
+          disabled={saving}
           className="flex items-center gap-2 px-6 py-3 bg-amber-500 text-black font-mono text-sm font-bold hover:bg-amber-400 transition-colors disabled:opacity-50"
         >
           {saving ? (
@@ -565,7 +244,7 @@ export default function PropertySetupPage() {
             </>
           ) : (
             <>
-              CONTINUE TO HBU ANALYSIS
+              CONTINUE TO FLOOR PLANS
               <ArrowRight className="w-4 h-4" />
             </>
           )}

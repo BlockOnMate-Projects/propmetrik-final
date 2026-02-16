@@ -115,7 +115,7 @@ export function Metric({
   return (
     <div className="text-center">
       <div className={cn('font-mono', sizeClasses[size], colorClasses[color])}>
-        {typeof value === 'number' ? value.toLocaleString() : value}
+        {typeof value === 'number' ? value.toLocaleString('en-US') : value}
         {unit && <span className="text-zinc-500 text-sm ml-1">{unit}</span>}
       </div>
       <div className="font-mono text-[10px] text-zinc-500 uppercase">{label}</div>
@@ -533,10 +533,10 @@ export function Currency({
     } else if (value >= 1_000) {
       displayValue = `${(value / 1_000).toFixed(0)}K`;
     } else {
-      displayValue = value.toLocaleString();
+      displayValue = value.toLocaleString('en-US');
     }
   } else {
-    displayValue = value.toLocaleString();
+    displayValue = value.toLocaleString('en-US');
   }
 
   const sizeClasses = {
@@ -795,7 +795,7 @@ export function DataMetricCard({
       </div>
       
       <div className={cn('font-mono text-3xl mb-1', colorClasses[color])}>
-        {typeof value === 'number' ? value.toLocaleString() : value}
+        {typeof value === 'number' ? value.toLocaleString('en-US') : value}
       </div>
       
       {subtitle && (
@@ -910,7 +910,7 @@ export function LiveDataFeed({ items, maxItems = 10, autoScroll = true }: LiveDa
           <span className={cn('flex-shrink-0', getTypeColor(item.type))}>
             {getTypeIcon(item.type)}
           </span>
-          <span className="text-zinc-500 text-[10px] flex-shrink-0 w-16">
+          <span className="text-zinc-500 text-[10px] flex-shrink-0 w-16" suppressHydrationWarning>
             {new Date(item.timestamp).toLocaleTimeString('en-US', { 
               hour: '2-digit', 
               minute: '2-digit',

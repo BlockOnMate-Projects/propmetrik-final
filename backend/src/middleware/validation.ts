@@ -346,3 +346,196 @@ export type LandComparablesQuery = z.infer<typeof landComparablesQuerySchema>;
 export type LandValueResponse = z.infer<typeof landValueResponseSchema>;
 export type LandComparableSummary = z.infer<typeof landComparableSummarySchema>;
 export type ComparableStrength = z.infer<typeof comparableStrengthSchema>;
+
+// ==========================================
+// Pagination Clamp Middleware
+// ==========================================
+export function clampPagination(req: Request, _res: Response, next: NextFunction) {
+    if (req.query.page) {
+        const page = parseInt(req.query.page as string, 10);
+        (req.query as any).page = String(Math.max(1, isNaN(page) ? 1 : page));
+    }
+    if (req.query.limit) {
+        const limit = parseInt(req.query.limit as string, 10);
+        (req.query as any).limit = String(Math.min(100, Math.max(1, isNaN(limit) ? 10 : limit)));
+    }
+    next();
+}
+
+// ==========================================
+// Property Management Validation Schemas
+// ==========================================
+
+export const pmCreatePropertySchema = z.object({
+    name: z.string().min(1, 'Property name is required').max(255),
+    propertyType: z.string().max(100).optional(),
+    status: z.string().max(50).optional(),
+    addressLine1: z.string().max(255).optional(),
+    addressLine2: z.string().max(255).optional(),
+    city: z.string().max(100).optional(),
+    region: z.string().max(100).optional(),
+    country: z.string().max(100).optional(),
+    postalCode: z.string().max(20).optional(),
+    latitude: z.number().min(-90).max(90).optional(),
+    longitude: z.number().min(-180).max(180).optional(),
+    price: z.number().min(0).optional(),
+    currency: z.string().max(10).optional(),
+    bedrooms: z.number().int().min(0).max(100).optional(),
+    bathrooms: z.number().min(0).max(100).optional(),
+    totalAreaSqm: z.number().min(0).optional(),
+    floors: z.number().int().min(0).max(200).optional(),
+    yearBuilt: z.number().int().min(1800).max(2100).optional(),
+    description: z.string().max(5000).optional(),
+    amenities: z.array(z.string()).optional(),
+    unitNumber: z.string().max(50).optional(),
+    monthlyRent: z.number().min(0).optional(),
+}).passthrough();
+
+export const pmCreateTenantSchema = z.object({
+    fullName: z.string().min(1, 'Full name is required').max(255),
+    email: z.string().email().optional(),
+    phone: z.string().min(6).max(20).optional(),
+    nationalId: z.string().max(50).optional(),
+    notes: z.string().max(2000).optional(),
+}).passthrough();
+
+export const pmCreateTenancySchema = z.object({
+    propertyId: uuidSchema,
+    tenantId: uuidSchema,
+    leaseStartDate: z.string().min(1),
+    leaseEndDate: z.string().min(1),
+    monthlyRent: z.number().min(0),
+    securityDeposit: z.number().min(0).optional(),
+    currency: z.string().max(10).optional(),
+}).passthrough();
+
+export const pmTerminateTenancySchema = z.object({
+    reason: z.string().max(1000).optional(),
+    terminationDate: z.string().optional(),
+});
+
+export const pmRenewTenancySchema = z.object({
+    newEndDate: z.string().min(1, 'New end date is required'),
+    newMonthlyRent: z.number().min(0).optional(),
+    advancePaymentAmount: z.number().min(0).optional(),
+});
+
+export const pmRecordPaymentSchema = z.object({
+    tenancyId: uuidSchema,
+    amount: z.number().min(0.01, 'Amount must be positive'),
+    paymentMethod: z.string().max(50).optional(),
+    paymentDate: z.string().optional(),
+    referenceNumber: z.string().max(100).optional(),
+    notes: z.string().max(1000).optional(),
+    currency: z.string().max(10).optional(),
+}).passthrough();
+
+export const pmInitializePaymentSchema = z.object({
+    tenancyId: uuidSchema,
+    amount: z.number().min(0.01),
+    email: z.string().email(),
+    channel: z.string().optional(),
+    callbackUrl: z.string().url().optional(),
+});
+
+export const pmCreateWorkOrderSchema = z.object({
+    propertyId: uuidSchema,
+    title: z.string().min(1, 'Title is required').max(255),
+    description: z.string().max(5000).optional(),
+    category: z.string().max(100).optional(),
+    priority: z.enum(['low', 'medium', 'high', 'urgent']).optional(),
+    estimatedCost: z.number().min(0).optional(),
+}).passthrough();
+
+export const pmAssignWorkOrderSchema = z.object({
+    vendorId: uuidSchema,
+});
+
+export const pmCompleteWorkOrderSchema = z.object({
+    actualCost: z.number().min(0).optional(),
+    completionNotes: z.string().max(2000).optional(),
+    photosAfter: z.array(z.string()).optional(),
+});
+
+export const pmCreateVendorSchema = z.object({
+    name: z.string().min(1).max(255),
+    email: z.string().email().optional(),
+    phone: z.string().min(6).max(20).optional(),
+    category: z.string().max(100).optional(),
+}).passthrough();
+
+export const pmCreateDocumentSchema = z.object({
+    propertyId: uuidSchema.optional(),
+    tenancyId: uuidSchema.optional(),
+    documentType: z.string().min(1).max(100),
+    title: z.string().min(1).max(255),
+    fileUrl: z.string().min(1),
+    fileName: z.string().min(1).max(255),
+}).passthrough();
+
+export const pmCreateFinancialSchema = z.object({
+    propertyId: uuidSchema,
+    recordType: z.enum(['income', 'expense']),
+    category: z.string().min(1).max(100),
+    amount: z.number().min(0.01, 'Amount must be positive'),
+    currency: z.string().max(10).optional(),
+    description: z.string().max(1000).optional(),
+    transactionDate: z.string().optional(),
+}).passthrough();
+
+export const pmBulkRentIncreaseSchema = z.object({
+    tenancyIds: z.array(uuidSchema).optional(),
+    propertyIds: z.array(uuidSchema).optional(),
+    increaseType: z.enum(['percentage', 'fixed']),
+    increaseValue: z.number().min(0),
+    effectiveDate: z.string().min(1),
+    notifyTenants: z.boolean().optional(),
+    reason: z.string().max(500).optional(),
+});
+
+export const pmBulkStatusUpdateSchema = z.object({
+    resource: z.string().min(1),
+    ids: z.array(uuidSchema).min(1),
+    status: z.string().min(1).max(50),
+});
+
+export const pmBulkImportSchema = z.object({
+    type: z.string().min(1),
+    data: z.array(z.record(z.unknown())).min(1).max(1000),
+    validateOnly: z.boolean().optional(),
+});
+
+export const pmCreateApplicationSchema = z.object({
+    propertyId: uuidSchema,
+    applicationType: z.enum(['rental', 'purchase']).optional(),
+}).passthrough();
+
+export const pmRejectApplicationSchema = z.object({
+    reason: z.string().min(1, 'Rejection reason is required').max(1000),
+});
+
+export const pmCreateApplicationLinkSchema = z.object({
+    propertyId: uuidSchema,
+    applicationType: z.enum(['rental', 'purchase']).optional(),
+    maxUses: z.number().int().min(1).max(1000).optional(),
+    expiresInDays: z.number().int().min(1).max(365).optional(),
+});
+
+export const pmSignLeaseSchema = z.object({
+    signatureDataUrl: z.string().min(1),
+    signerToken: z.string().min(1),
+    fieldId: z.string().optional(),
+});
+
+export const pmSendMessageSchema = z.object({
+    content: z.string().min(1, 'Message content is required').max(5000),
+});
+
+export const pmRegisterAccountSchema = z.object({
+    bankCode: z.string().min(1),
+    accountNumber: z.string().min(1).max(30),
+    businessName: z.string().min(1).max(255),
+    contactEmail: z.string().email(),
+    contactPhone: z.string().optional(),
+});
+

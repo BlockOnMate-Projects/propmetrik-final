@@ -23,6 +23,14 @@ import {
   Layers,
   ChevronRight,
   Plus,
+  CheckCircle,
+  Circle,
+  FileText,
+  BarChart3,
+  Lightbulb,
+  Calculator,
+  Scale,
+  ClipboardCheck,
 } from 'lucide-react'
 
 // Property type options
@@ -93,7 +101,7 @@ export default function NewValuationPage() {
         const data = await response.json()
         if (data.data) {
           setSelectedProperty(data.data)
-          setStep(2) // Auto-advance to next step
+          // Stay on step 1 — user still needs to select valuation purpose
         }
       } catch (err) {
         console.error('Failed to load initial property:', err)
@@ -220,8 +228,8 @@ export default function NewValuationPage() {
         throw new Error('Failed to create valuation')
       }
 
-      // Navigate to the valuation workflow
-      router.push(`/dashboard/valuations/${valuationResponse.data.id}/property`)
+      // Navigate to the valuation workflow — skip property setup (already filled), go to floor plan
+      router.push(`/dashboard/valuations/${valuationResponse.data.id}/floor-plan`)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to create valuation')
     } finally {
@@ -276,28 +284,23 @@ export default function NewValuationPage() {
       <div className="flex items-center gap-4 mb-6">
         <button
           onClick={() => setStep(1)}
-          className={`flex items-center gap-2 px-4 py-2 font-mono text-xs transition-colors ${step === 1 ? 'bg-amber-500 text-black font-bold' : 'bg-zinc-800 text-zinc-400 hover:text-white'
+          className={`flex items-center gap-2 px-4 py-2 font-mono text-xs transition-colors ${step === 1 ? 'bg-amber-500 text-black font-bold' :
+            step > 1 ? 'bg-zinc-800 text-emerald-400 hover:text-white' : 'bg-zinc-800 text-zinc-400 hover:text-white'
             }`}
         >
+          {step > 1 ? <CheckCircle className="w-3 h-3" /> : null}
           1. SELECT PROPERTY
         </button>
         <ChevronRight className="w-4 h-4 text-zinc-600" />
         <button
-          onClick={() => selectedProperty || createNewProperty ? setStep(2) : null}
-          disabled={!selectedProperty && !createNewProperty}
+          onClick={() => (selectedProperty || createNewProperty) && valuationPurpose ? setStep(2) : null}
+          disabled={(!selectedProperty && !createNewProperty) || !valuationPurpose}
           className={`flex items-center gap-2 px-4 py-2 font-mono text-xs transition-colors ${step === 2 ? 'bg-amber-500 text-black font-bold' :
-            (selectedProperty || createNewProperty) ? 'bg-zinc-800 text-zinc-400 hover:text-white' :
+            (selectedProperty || createNewProperty) && valuationPurpose ? 'bg-zinc-800 text-zinc-400 hover:text-white' :
               'bg-zinc-900 text-zinc-600 cursor-not-allowed'
             }`}
         >
-          2. VALUATION TYPE
-        </button>
-        <ChevronRight className="w-4 h-4 text-zinc-600" />
-        <button
-          disabled
-          className="flex items-center gap-2 px-4 py-2 font-mono text-xs bg-zinc-900 text-zinc-600 cursor-not-allowed"
-        >
-          3. START WORKFLOW
+          2. REVIEW & START
         </button>
       </div>
 
@@ -332,7 +335,6 @@ export default function NewValuationPage() {
                     onClick={() => {
                       setSelectedProperty(property)
                       setCreateNewProperty(false)
-                      setStep(2)
                     }}
                     className={`w-full p-4 text-left border transition-colors ${selectedProperty?.id === property.id
                       ? 'border-amber-500 bg-amber-500/10'
@@ -389,10 +391,16 @@ export default function NewValuationPage() {
 
             {createNewProperty && (
               <div className="mt-4 space-y-4">
-                {/* Comprehensive Property Form */}
+                {/* Comprehensive Property Form - includes Purpose of Valuation */}
                 <ComprehensivePropertyForm
                   data={newProperty}
-                  onChange={setNewProperty}
+                  onChange={(data) => {
+                    setNewProperty(data)
+                    // Sync purpose from form to local state
+                    if (data.valuation_purpose) {
+                      setValuationPurpose(data.valuation_purpose as ValuationPurpose)
+                    }
+                  }}
                   mode="subject"
                   showLocationFields={true}
                   showTransactionFields={false}
@@ -400,28 +408,64 @@ export default function NewValuationPage() {
 
                 <button
                   onClick={() => {
-                    if (newProperty.address && newProperty.city) {
+                    if (newProperty.address && newProperty.city && (newProperty.valuation_purpose || valuationPurpose)) {
                       setStep(2)
                     }
                   }}
-                  disabled={!newProperty.address || !newProperty.city}
+                  disabled={!newProperty.address || !newProperty.city || (!newProperty.valuation_purpose && !valuationPurpose)}
                   className="w-full py-3 bg-amber-500 text-black font-mono text-sm font-bold hover:bg-amber-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  CONTINUE
+                  REVIEW WORKFLOW
                 </button>
               </div>
             )}
           </TerminalPanel>
+
+          {/* Purpose selection for existing properties */}
+          {selectedProperty && (
+            <TerminalPanel title="SELECT VALUATION PURPOSE">
+              <div className="grid grid-cols-3 gap-4">
+                {valuationPurposes.map((type) => (
+                  <button
+                    key={type.value}
+                    onClick={() => setValuationPurpose(type.value)}
+                    className={`p-4 border text-left transition-colors ${valuationPurpose === type.value
+                      ? 'border-amber-500 bg-amber-500/10'
+                      : 'border-zinc-800 hover:border-zinc-700'
+                      }`}
+                  >
+                    <div className={`font-mono text-sm mb-1 ${valuationPurpose === type.value ? 'text-amber-400' : 'text-white'
+                      }`}>
+                      {type.label.toUpperCase()}
+                    </div>
+                    <div className="font-mono text-[10px] text-zinc-500">
+                      {type.description}
+                    </div>
+                  </button>
+                ))}
+              </div>
+
+              <button
+                onClick={() => valuationPurpose ? setStep(2) : null}
+                disabled={!valuationPurpose}
+                className="w-full mt-4 py-3 bg-amber-500 text-black font-mono text-sm font-bold hover:bg-amber-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              >
+                REVIEW WORKFLOW
+                <ChevronRight className="w-4 h-4" />
+              </button>
+            </TerminalPanel>
+          )}
         </div>
       )}
 
-      {/* Step 2: Valuation Type */}
+      {/* Step 2: Review & Start Workflow */}
       {step === 2 && (
         <div className="space-y-4">
-          {/* Selected Property Summary */}
-          <TerminalPanel title="SELECTED PROPERTY">
-            <div className="flex items-center justify-between">
+          {/* Summary */}
+          <TerminalPanel title="VALUATION SUMMARY">
+            <div className="grid grid-cols-2 gap-4">
               <div>
+                <div className="font-mono text-[10px] text-zinc-500 mb-1">PROPERTY</div>
                 <div className="font-mono text-sm text-white">
                   {selectedProperty?.title || selectedProperty?.address_street || newProperty.address}
                 </div>
@@ -429,40 +473,48 @@ export default function NewValuationPage() {
                   {selectedProperty?.address_city || newProperty.city}, {selectedProperty?.region || newProperty.region}
                 </div>
               </div>
-              <button
-                onClick={() => setStep(1)}
-                className="font-mono text-xs text-amber-500 hover:text-amber-400"
-              >
-                CHANGE
-              </button>
+              <div>
+                <div className="font-mono text-[10px] text-zinc-500 mb-1">PURPOSE</div>
+                <div className="font-mono text-sm text-amber-400">
+                  {valuationPurposes.find(p => p.value === valuationPurpose)?.label?.toUpperCase() || valuationPurpose.toUpperCase()}
+                </div>
+                <div className="font-mono text-xs text-zinc-500">
+                  {valuationPurposes.find(p => p.value === valuationPurpose)?.description}
+                </div>
+              </div>
             </div>
           </TerminalPanel>
 
-          {/* Valuation Type Selection */}
-          <TerminalPanel title="SELECT VALUATION PURPOSE">
-            <div className="grid grid-cols-3 gap-4">
-              {valuationPurposes.map((type) => (
-                <button
-                  key={type.value}
-                  onClick={() => setValuationPurpose(type.value)}
-                  className={`p-4 border text-left transition-colors ${valuationPurpose === type.value
-                    ? 'border-amber-500 bg-amber-500/10'
-                    : 'border-zinc-800 hover:border-zinc-700'
-                    }`}
-                >
-                  <div className={`font-mono text-sm mb-1 ${valuationPurpose === type.value ? 'text-amber-400' : 'text-white'
-                    }`}>
-                    {type.label.toUpperCase()}
+          {/* Workflow Steps Preview */}
+          <TerminalPanel title="VALUATION WORKFLOW">
+            <div className="font-mono text-[10px] text-zinc-500 mb-4">
+              Your valuation will follow this RICS-aligned workflow. Each step must be completed before proceeding.
+            </div>
+            <div className="space-y-3">
+              {[
+                { icon: Home, label: 'Property Setup', desc: 'Confirm property details, ownership, and site characteristics', step: 1 },
+                { icon: Layers, label: 'Floor Plans', desc: 'Create or upload floor plans with room measurements', step: 2 },
+                { icon: Lightbulb, label: 'Highest & Best Use Analysis', desc: 'Determine the optimal use of the property (legally permissible, physically possible, financially feasible, maximally productive)', step: 3 },
+                { icon: Calculator, label: 'Method Selection', desc: 'Select appropriate valuation methods based on property type and purpose', step: 4 },
+                { icon: BarChart3, label: 'Valuation Methods', desc: 'Apply selected methods — market comparison, cost, income, DRC, profits, or residual approach', step: 5 },
+                { icon: Scale, label: 'Reconciliation', desc: 'Reconcile method results and determine final market value', step: 6 },
+                { icon: FileText, label: 'Report Generation', desc: 'Generate RICS-compliant professional valuation report', step: 7 },
+              ].map((item, i) => (
+                <div key={i} className="flex items-start gap-3 p-3 border border-zinc-800 bg-zinc-900/50">
+                  <div className="flex items-center gap-2 min-w-[28px]">
+                    <span className="font-mono text-xs text-zinc-600">{item.step}.</span>
                   </div>
-                  <div className="font-mono text-[10px] text-zinc-500">
-                    {type.description}
+                  <item.icon className="w-4 h-4 text-amber-500/60 mt-0.5 flex-shrink-0" />
+                  <div>
+                    <div className="font-mono text-sm text-white">{item.label.toUpperCase()}</div>
+                    <div className="font-mono text-[10px] text-zinc-500 mt-0.5">{item.desc}</div>
                   </div>
-                </button>
+                </div>
               ))}
             </div>
           </TerminalPanel>
 
-          {/* Create Button */}
+          {/* Start Button */}
           <div className="flex gap-4">
             <button
               onClick={() => setStep(1)}
@@ -478,11 +530,11 @@ export default function NewValuationPage() {
               {creating ? (
                 <>
                   <Loader2 className="w-4 h-4 animate-spin" />
-                  CREATING...
+                  CREATING VALUATION...
                 </>
               ) : (
                 <>
-                  CONTINUE TO PROPERTY SETUP
+                  START VALUATION WORKFLOW
                   <ChevronRight className="w-4 h-4" />
                 </>
               )}

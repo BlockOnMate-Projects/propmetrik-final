@@ -98,10 +98,14 @@ class FeeEngine {
         }
 
         // 1. Try per-entity override from payment_accounts table
+        //    Per-entity overrides only apply to 'rent' payments (migrated from
+        //    pm_payment_accounts — property management module). Deal and project
+        //    fees use the global fee_configurations unless we add per-type
+        //    override columns in the future.
         let overrideRate: number | null = null;
         let overrideFlat: number | null = null;
 
-        if (entityId && entityType) {
+        if (entityId && entityType && paymentType === 'rent') {
             const override = await this.getEntityFeeOverride(entityId, entityType);
             if (override) {
                 overrideRate = override.percentageRate;
@@ -296,8 +300,9 @@ class FeeEngine {
             if (result.rows.length === 0) return null;
 
             const row = result.rows[0];
-            // platform_fee_percentage is stored as "1.0" meaning 1%, convert to decimal (0.01)
-            const pct = row.platform_fee_percentage != null ? parseFloat(row.platform_fee_percentage) / 100 : null;
+            // platform_fee_percentage is stored as decimal rate: 0.0100 = 1%, 0.0025 = 0.25%
+            // (migration 133 already converted from legacy "1.0 = 1%" format via / 100.0)
+            const pct = row.platform_fee_percentage != null ? parseFloat(row.platform_fee_percentage) : null;
             const flat = row.platform_fee_flat != null ? parseFloat(row.platform_fee_flat) : null;
 
             // Only return if at least one override is set

@@ -16,7 +16,7 @@ const valuationsNavItems = [
     { href: '/dashboard/valuations', label: 'VALUATIONS', icon: FileText, exact: true },
     { href: '/dashboard/valuations/new', label: 'NEW', icon: Plus },
     { href: '/dashboard/valuations/templates', label: 'TEMPLATES', icon: FolderOpen },
-    { href: '/dashboard/calendar', label: 'CALENDAR', icon: Calendar },
+    { href: '/dashboard/calendar?service=valuations', label: 'CALENDAR', icon: Calendar },
     { href: '/dashboard/valuations/analytics', label: 'ANALYTICS', icon: BarChart3 },
     { href: '/dashboard/valuations/settings', label: 'SETTINGS', icon: Settings },
 ]

@@ -76,12 +76,16 @@ interface CryptoMetrics {
         count: number
         volumeUSDT: number
         feesUSDT: number
+        volumeGHS?: number
+        feesGHS?: number
     }>
     dailyVolume: Array<{
         date: string
         count: number
         volumeUSDT: number
         feesUSDT: number
+        volumeGHS?: number
+        feesGHS?: number
     }>
     recentTransactions: CryptoTransaction[]
 }
@@ -90,9 +94,9 @@ interface CryptoTransaction {
     id: string
     reference: string
     paymentType: string
-    txHash: string
-    payerWallet: string
-    recipientWallet: string
+    txHash: string | null
+    payerWallet: string | null
+    recipientWallet: string | null
     principalCrypto: number | null
     feeCrypto: number | null
     exchangeRate: number | null
@@ -103,8 +107,17 @@ interface CryptoTransaction {
     principalAmount?: number
     serviceFee?: number
     currency?: string
+    channel?: string
+    recipientType?: string
     payerEmail?: string
     metadata?: any
+    // NOWPayments enrichment
+    payCurrency?: string | null
+    payAmount?: number | null
+    payAddress?: string | null
+    outcomeCurrency?: string | null
+    outcomeAmount?: number | null
+    usdAmount?: number | null
 }
 
 interface CryptoWallet {
@@ -117,6 +130,8 @@ interface CryptoWallet {
     accountName: string | null
     organizationName: string | null
     isActive: boolean
+    settlementCoin?: string | null
+    settlementChain?: string | null
 }
 
 interface PlatformConfig {
@@ -615,15 +630,15 @@ export default function AdminCryptoPage() {
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                         <StatCard
                             title="Total Volume (Crypto)"
-                            value={formatUSDT(s?.totalVolumeUSDT ?? 0)}
-                            subtitle={`${formatGHS(s?.totalVolumeGHS ?? 0)} equivalent`}
+                            value={(s?.totalVolumeUSDT ?? 0) > 0 ? formatUSDT(s.totalVolumeUSDT) : formatGHS(s?.totalVolumeGHS ?? 0)}
+                            subtitle={(s?.totalVolumeUSDT ?? 0) > 0 ? `${formatGHS(s?.totalVolumeGHS ?? 0)} equivalent` : `${s?.totalTransactions ?? 0} crypto payments`}
                             icon={DollarSign}
                             color="text-green-500"
                         />
                         <StatCard
                             title="Fees Earned (Crypto)"
-                            value={formatUSDT(s?.totalFeesUSDT ?? 0)}
-                            subtitle={`${formatGHS(s?.totalFeesGHS ?? 0)} equivalent`}
+                            value={(s?.totalFeesUSDT ?? 0) > 0 ? formatUSDT(s.totalFeesUSDT) : formatGHS(s?.totalFeesGHS ?? 0)}
+                            subtitle={(s?.totalFeesUSDT ?? 0) > 0 ? `${formatGHS(s?.totalFeesGHS ?? 0)} equivalent` : 'platform fees collected'}
                             icon={TrendingUp}
                             color="text-amber-500"
                         />
@@ -658,8 +673,11 @@ export default function AdminCryptoPage() {
                                         {metrics?.volumeByType?.map(vt => {
                                             const Icon = paymentTypeIcon[vt.paymentType] || Activity
                                             const color = paymentTypeColor[vt.paymentType] || 'text-zinc-500'
-                                            const maxVol = Math.max(...(metrics.volumeByType?.map(v => v.volumeUSDT) || [1]), 1)
-                                            const pct = (vt.volumeUSDT / maxVol) * 100
+                                            const useGHS = (vt.volumeUSDT || 0) === 0 && (vt.volumeGHS || 0) > 0
+                                            const displayVol = useGHS ? formatGHS(vt.volumeGHS || 0) : formatUSDT(vt.volumeUSDT)
+                                            const displayFee = useGHS ? formatGHS(vt.feesGHS || 0) : formatUSDT(vt.feesUSDT)
+                                            const maxVol = Math.max(...(metrics.volumeByType?.map(v => useGHS ? (v.volumeGHS || 0) : v.volumeUSDT) || [1]), 1)
+                                            const pct = ((useGHS ? (vt.volumeGHS || 0) : vt.volumeUSDT) / maxVol) * 100
 
                                             return (
                                                 <div key={vt.paymentType}>
@@ -672,8 +690,8 @@ export default function AdminCryptoPage() {
                                                             </Badge>
                                                         </div>
                                                         <div className="text-right">
-                                                            <span className="font-mono text-xs text-white">{formatUSDT(vt.volumeUSDT)}</span>
-                                                            <span className="font-mono text-[10px] text-zinc-500 ml-2">fee: {formatUSDT(vt.feesUSDT)}</span>
+                                                            <span className="font-mono text-xs text-white">{displayVol}</span>
+                                                            <span className="font-mono text-[10px] text-zinc-500 ml-2">fee: {displayFee}</span>
                                                         </div>
                                                     </div>
                                                     <div className="w-full bg-zinc-800 h-1.5 rounded-full">
@@ -807,6 +825,7 @@ export default function AdminCryptoPage() {
                                         metrics?.recentTransactions?.map(tx => {
                                             const sc = statusConfig[tx.status] || statusConfig.pending
                                             const TypeIcon = paymentTypeIcon[tx.paymentType] || Activity
+                                            const isNowPayments = tx.channel === 'crypto_nowpayments'
                                             return (
                                                 <tr key={tx.id} className="border-b border-zinc-800/50 hover:bg-zinc-800/30 transition-colors">
                                                     <td className="px-4 py-2.5">
@@ -816,18 +835,24 @@ export default function AdminCryptoPage() {
                                                         </div>
                                                     </td>
                                                     <td className="px-4 py-2.5">
-                                                        <div className="flex items-center gap-1.5">
-                                                            <span className="font-mono text-xs text-zinc-300">{shortAddr(tx.txHash)}</span>
-                                                            <CopiedButton text={tx.txHash} />
-                                                            <a
-                                                                href={explorerUrl(cryptoStatus?.chainId, tx.txHash)}
-                                                                target="_blank"
-                                                                rel="noopener noreferrer"
-                                                                className="text-zinc-600 hover:text-red-400"
-                                                            >
-                                                                <ExternalLink className="w-3 h-3" />
-                                                            </a>
-                                                        </div>
+                                                        {tx.txHash ? (
+                                                            <div className="flex items-center gap-1.5">
+                                                                <span className="font-mono text-xs text-zinc-300">{shortAddr(tx.txHash)}</span>
+                                                                <CopiedButton text={tx.txHash} />
+                                                                <a
+                                                                    href={explorerUrl(cryptoStatus?.chainId, tx.txHash)}
+                                                                    target="_blank"
+                                                                    rel="noopener noreferrer"
+                                                                    className="text-zinc-600 hover:text-red-400"
+                                                                >
+                                                                    <ExternalLink className="w-3 h-3" />
+                                                                </a>
+                                                            </div>
+                                                        ) : (
+                                                            <Badge variant="outline" className="font-mono text-[9px] border-cyan-700/40 text-cyan-400 bg-cyan-900/10">
+                                                                {isNowPayments ? 'NOWPayments' : 'No Hash'}
+                                                            </Badge>
+                                                        )}
                                                     </td>
                                                     <td className="px-4 py-2.5">
                                                         <span className="font-mono text-[10px] text-zinc-400">{shortAddr(tx.payerWallet)}</span>
@@ -836,10 +861,22 @@ export default function AdminCryptoPage() {
                                                         <span className="font-mono text-[10px] text-zinc-400">{shortAddr(tx.recipientWallet)}</span>
                                                     </td>
                                                     <td className="px-4 py-2.5 text-right">
-                                                        <span className="font-mono text-xs text-white">{formatUSDT(tx.principalCrypto)}</span>
+                                                        {tx.principalCrypto != null ? (
+                                                            <span className="font-mono text-xs text-white">{formatUSDT(tx.principalCrypto)}</span>
+                                                        ) : tx.principalAmount != null ? (
+                                                            <span className="font-mono text-xs text-white">{formatGHS(tx.principalAmount / 100)}</span>
+                                                        ) : (
+                                                            <span className="font-mono text-xs text-zinc-600">—</span>
+                                                        )}
                                                     </td>
                                                     <td className="px-4 py-2.5 text-right">
-                                                        <span className="font-mono text-[10px] text-amber-500">{formatUSDT(tx.feeCrypto)}</span>
+                                                        {tx.feeCrypto != null ? (
+                                                            <span className="font-mono text-[10px] text-amber-500">{formatUSDT(tx.feeCrypto)}</span>
+                                                        ) : tx.serviceFee != null ? (
+                                                            <span className="font-mono text-[10px] text-amber-500">{formatGHS(tx.serviceFee / 100)}</span>
+                                                        ) : (
+                                                            <span className="font-mono text-[10px] text-zinc-600">—</span>
+                                                        )}
                                                     </td>
                                                     <td className="px-4 py-2.5 text-center">
                                                         <Badge variant="outline" className={`font-mono text-[9px] ${sc.bg} ${sc.color}`}>
@@ -939,6 +976,7 @@ export default function AdminCryptoPage() {
                                             transactions.map(tx => {
                                                 const sc = statusConfig[tx.status] || statusConfig.pending
                                                 const TypeIcon = paymentTypeIcon[tx.paymentType] || Activity
+                                                const isNowPayments = tx.channel === 'crypto_nowpayments'
                                                 return (
                                                     <tr key={tx.id} className="border-b border-zinc-800/50 hover:bg-zinc-800/30 transition-colors">
                                                         <td className="px-4 py-2.5">
@@ -951,18 +989,24 @@ export default function AdminCryptoPage() {
                                                             </div>
                                                         </td>
                                                         <td className="px-4 py-2.5">
-                                                            <div className="flex items-center gap-1.5">
-                                                                <span className="font-mono text-xs text-zinc-300">{shortAddr(tx.txHash)}</span>
-                                                                <CopiedButton text={tx.txHash} />
-                                                                <a
-                                                                    href={explorerUrl(cryptoStatus?.chainId, tx.txHash)}
-                                                                    target="_blank"
-                                                                    rel="noopener noreferrer"
-                                                                    className="text-zinc-600 hover:text-red-400"
-                                                                >
-                                                                    <ExternalLink className="w-3 h-3" />
-                                                                </a>
-                                                            </div>
+                                                            {tx.txHash ? (
+                                                                <div className="flex items-center gap-1.5">
+                                                                    <span className="font-mono text-xs text-zinc-300">{shortAddr(tx.txHash)}</span>
+                                                                    <CopiedButton text={tx.txHash} />
+                                                                    <a
+                                                                        href={explorerUrl(cryptoStatus?.chainId, tx.txHash)}
+                                                                        target="_blank"
+                                                                        rel="noopener noreferrer"
+                                                                        className="text-zinc-600 hover:text-red-400"
+                                                                    >
+                                                                        <ExternalLink className="w-3 h-3" />
+                                                                    </a>
+                                                                </div>
+                                                            ) : (
+                                                                <Badge variant="outline" className="font-mono text-[9px] border-cyan-700/40 text-cyan-400 bg-cyan-900/10">
+                                                                    {isNowPayments ? 'NOWPayments' : 'No Hash'}
+                                                                </Badge>
+                                                            )}
                                                         </td>
                                                         <td className="px-4 py-2.5">
                                                             <div>
@@ -970,16 +1014,46 @@ export default function AdminCryptoPage() {
                                                                 {tx.payerEmail && (
                                                                     <p className="font-mono text-[9px] text-zinc-600">{tx.payerEmail}</p>
                                                                 )}
+                                                                {!tx.payerWallet && tx.payCurrency && (
+                                                                    <Badge variant="outline" className="font-mono text-[9px] border-zinc-700 text-zinc-400 mt-0.5">
+                                                                        {tx.payCurrency}
+                                                                    </Badge>
+                                                                )}
                                                             </div>
                                                         </td>
                                                         <td className="px-4 py-2.5">
-                                                            <span className="font-mono text-[10px] text-zinc-400">{shortAddr(tx.recipientWallet)}</span>
+                                                            {tx.recipientWallet ? (
+                                                                <span className="font-mono text-[10px] text-zinc-400">{shortAddr(tx.recipientWallet)}</span>
+                                                            ) : tx.recipientType === 'organization' ? (
+                                                                <div>
+                                                                    <span className="font-mono text-[10px] text-zinc-400">Organization</span>
+                                                                    {tx.outcomeCurrency && (
+                                                                        <Badge variant="outline" className="font-mono text-[9px] border-green-800/40 text-green-400 bg-green-900/10 ml-1">
+                                                                            → {tx.outcomeCurrency}
+                                                                        </Badge>
+                                                                    )}
+                                                                </div>
+                                                            ) : (
+                                                                <span className="font-mono text-[10px] text-zinc-600">—</span>
+                                                            )}
                                                         </td>
                                                         <td className="px-4 py-2.5 text-right">
-                                                            <span className="font-mono text-xs text-white">{formatUSDT(tx.principalCrypto)}</span>
+                                                            {tx.principalCrypto != null ? (
+                                                                <span className="font-mono text-xs text-white">{formatUSDT(tx.principalCrypto)}</span>
+                                                            ) : tx.principalAmount != null ? (
+                                                                <span className="font-mono text-xs text-white">{formatGHS(tx.principalAmount / 100)}</span>
+                                                            ) : (
+                                                                <span className="font-mono text-xs text-zinc-600">—</span>
+                                                            )}
                                                         </td>
                                                         <td className="px-4 py-2.5 text-right">
-                                                            <span className="font-mono text-[10px] text-amber-500">{formatUSDT(tx.feeCrypto)}</span>
+                                                            {tx.feeCrypto != null ? (
+                                                                <span className="font-mono text-[10px] text-amber-500">{formatUSDT(tx.feeCrypto)}</span>
+                                                            ) : tx.serviceFee != null ? (
+                                                                <span className="font-mono text-[10px] text-amber-500">{formatGHS(tx.serviceFee / 100)}</span>
+                                                            ) : (
+                                                                <span className="font-mono text-[10px] text-zinc-600">—</span>
+                                                            )}
                                                         </td>
                                                         <td className="px-4 py-2.5 text-right">
                                                             <span className="font-mono text-[10px] text-zinc-500">
@@ -1071,6 +1145,7 @@ export default function AdminCryptoPage() {
                                         <th className="text-left px-4 py-2 font-mono text-[10px] text-zinc-500 uppercase">Entity</th>
                                         <th className="text-left px-4 py-2 font-mono text-[10px] text-zinc-500 uppercase">Organization</th>
                                         <th className="text-left px-4 py-2 font-mono text-[10px] text-zinc-500 uppercase">Wallet Address</th>
+                                        <th className="text-left px-4 py-2 font-mono text-[10px] text-zinc-500 uppercase">Settlement</th>
                                         <th className="text-center px-4 py-2 font-mono text-[10px] text-zinc-500 uppercase">Verified</th>
                                         <th className="text-center px-4 py-2 font-mono text-[10px] text-zinc-500 uppercase">Active</th>
                                         <th className="text-right px-4 py-2 font-mono text-[10px] text-zinc-500 uppercase">Registered</th>
@@ -1100,6 +1175,20 @@ export default function AdminCryptoPage() {
                                                         <ExternalLink className="w-3 h-3" />
                                                     </a>
                                                 </div>
+                                            </td>
+                                            <td className="px-4 py-2.5">
+                                                {w.settlementCoin ? (
+                                                    <div className="flex items-center gap-1">
+                                                        <Badge variant="outline" className="font-mono text-[9px] border-green-800/40 text-green-400 bg-green-900/10 uppercase">
+                                                            {w.settlementCoin}
+                                                        </Badge>
+                                                        {w.settlementChain && (
+                                                            <span className="font-mono text-[9px] text-zinc-600">{w.settlementChain}</span>
+                                                        )}
+                                                    </div>
+                                                ) : (
+                                                    <span className="font-mono text-[10px] text-zinc-600">Not configured</span>
+                                                )}
                                             </td>
                                             <td className="px-4 py-2.5 text-center">
                                                 {w.isVerified ? (

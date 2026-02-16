@@ -381,7 +381,7 @@ export default function MethodSelectionPage() {
         methods_applied: selectedMethods,
         primary_method: primaryMethod,
         method_weights: methodWeights,
-        current_step: 3, // Methods is step 3
+        current_step: 5, // Advance past methods to first method step
       })
 
       // Check if update failed
@@ -495,11 +495,12 @@ export default function MethodSelectionPage() {
         <StepIndicator
           steps={[
             { id: 1, label: 'Property Setup', status: 'completed' },
-            { id: 2, label: 'HBU Analysis', status: 'completed' },
-            { id: 3, label: 'Method Selection', status: 'current' },
-            { id: 4, label: 'Valuation', status: 'upcoming' },
-            { id: 5, label: 'Reconciliation', status: 'upcoming' },
-            { id: 6, label: 'Report', status: 'upcoming' },
+            { id: 2, label: 'Floor Plans', status: 'completed' },
+            { id: 3, label: 'HBU Analysis', status: 'completed' },
+            { id: 4, label: 'Method Selection', status: 'current' },
+            { id: 5, label: 'Valuation', status: 'upcoming' },
+            { id: 6, label: 'Reconciliation', status: 'upcoming' },
+            { id: 7, label: 'Report', status: 'upcoming' },
           ]}
         />
       </div>

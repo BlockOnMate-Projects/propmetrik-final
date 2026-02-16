@@ -656,7 +656,7 @@ router.get('/crypto/transactions', asyncHandler(async (req: Request, res: Respon
     const sortColumn = validSortColumns[sortBy as string] || 'pt.created_at';
     const sortDir = (sortOrder as string)?.toLowerCase() === 'asc' ? 'ASC' : 'DESC';
 
-    let whereClause = `WHERE pt.tx_hash IS NOT NULL`; // Only crypto transactions
+    let whereClause = `WHERE (pt.tx_hash IS NOT NULL OR pt.channel = 'crypto_nowpayments')`; // On-chain + NOWPayments crypto
     const params: any[] = [];
 
     if (status) {
@@ -724,33 +724,45 @@ router.get('/crypto/transactions', asyncHandler(async (req: Request, res: Respon
         pool.query(countQuery, countParams),
     ]);
 
-    const transactions = dataResult.rows.map(row => ({
-        id: row.id,
-        reference: row.reference,
-        paymentType: row.payment_type,
-        payerId: row.payer_id,
-        payerEmail: row.payer_email,
-        recipientType: row.recipient_type,
-        recipientId: row.recipient_id,
-        grossAmount: row.gross_amount,
-        principalAmount: row.principal_amount,
-        serviceFee: row.service_fee,
-        currency: row.currency,
-        status: row.status,
-        channel: row.channel,
-        txHash: row.tx_hash,
-        blockNumber: row.block_number,
-        payerWallet: row.payer_wallet,
-        recipientWallet: row.recipient_wallet,
-        cryptoCurrency: row.crypto_currency,
-        exchangeRate: row.exchange_rate ? parseFloat(row.exchange_rate) : null,
-        principalCrypto: row.principal_crypto ? parseFloat(row.principal_crypto) : null,
-        feeCrypto: row.fee_crypto ? parseFloat(row.fee_crypto) : null,
-        gasCostMatic: row.gas_cost_matic ? parseFloat(row.gas_cost_matic) : null,
-        createdAt: row.created_at,
-        verifiedAt: row.verified_at,
-        metadata: row.metadata,
-    }));
+    const transactions = dataResult.rows.map(row => {
+        const meta = row.metadata || {};
+        const isNowPayments = row.channel === 'crypto_nowpayments';
+        return {
+            id: row.id,
+            reference: row.reference,
+            paymentType: row.payment_type,
+            payerId: row.payer_id,
+            payerEmail: row.payer_email,
+            recipientType: row.recipient_type,
+            recipientId: row.recipient_id,
+            grossAmount: row.gross_amount,
+            principalAmount: row.principal_amount,
+            serviceFee: row.service_fee,
+            currency: row.currency,
+            status: row.status,
+            channel: row.channel,
+            txHash: row.tx_hash,
+            blockNumber: row.block_number,
+            payerWallet: row.payer_wallet || (isNowPayments ? meta.pay_address : null),
+            recipientWallet: row.recipient_wallet || null,
+            cryptoCurrency: row.crypto_currency,
+            exchangeRate: row.exchange_rate ? parseFloat(row.exchange_rate)
+                : (isNowPayments && meta.usd_amount && meta.principal_ghs ? parseFloat((meta.principal_ghs / meta.usd_amount).toFixed(2)) : null),
+            principalCrypto: row.principal_crypto ? parseFloat(row.principal_crypto) : null,
+            feeCrypto: row.fee_crypto ? parseFloat(row.fee_crypto) : null,
+            gasCostMatic: row.gas_cost_matic ? parseFloat(row.gas_cost_matic) : null,
+            createdAt: row.created_at,
+            verifiedAt: row.verified_at,
+            metadata: row.metadata,
+            // NOWPayments-specific enrichment
+            payCurrency: isNowPayments ? (meta.pay_currency?.toUpperCase() || row.crypto_currency?.toUpperCase()) : null,
+            payAmount: isNowPayments ? meta.pay_amount : null,
+            payAddress: isNowPayments ? meta.pay_address : null,
+            outcomeCurrency: isNowPayments ? meta.outcome_currency?.toUpperCase() : null,
+            outcomeAmount: isNowPayments ? (meta.outcome_amount ? parseFloat(meta.outcome_amount) : null) : null,
+            usdAmount: isNowPayments ? meta.usd_amount : null,
+        };
+    });
 
     const total = countResult.rows[0]?.total || 0;
 
@@ -783,7 +795,7 @@ router.get('/crypto/metrics', asyncHandler(async (req: Request, res: Response) =
     const metricsQuery = `
         WITH crypto_txns AS (
             SELECT * FROM payment_transactions
-            WHERE tx_hash IS NOT NULL
+            WHERE (tx_hash IS NOT NULL OR channel = 'crypto_nowpayments')
               AND created_at >= NOW() - INTERVAL '${interval}'
         )
         SELECT
@@ -807,9 +819,11 @@ router.get('/crypto/metrics', asyncHandler(async (req: Request, res: Response) =
             payment_type,
             COUNT(*)::int AS count,
             COALESCE(SUM(principal_crypto) FILTER (WHERE status = 'success'), 0)::numeric AS volume_usdt,
-            COALESCE(SUM(fee_crypto) FILTER (WHERE status = 'success'), 0)::numeric AS fees_usdt
+            COALESCE(SUM(fee_crypto) FILTER (WHERE status = 'success'), 0)::numeric AS fees_usdt,
+            COALESCE(SUM(gross_amount) FILTER (WHERE status = 'success'), 0)::bigint AS volume_ghs_pesewas,
+            COALESCE(SUM(service_fee) FILTER (WHERE status = 'success'), 0)::bigint AS fees_ghs_pesewas
         FROM payment_transactions
-        WHERE tx_hash IS NOT NULL
+        WHERE (tx_hash IS NOT NULL OR channel = 'crypto_nowpayments')
           AND created_at >= NOW() - INTERVAL '${interval}'
         GROUP BY payment_type
         ORDER BY volume_usdt DESC
@@ -820,9 +834,11 @@ router.get('/crypto/metrics', asyncHandler(async (req: Request, res: Response) =
             DATE(created_at) AS date,
             COUNT(*) FILTER (WHERE status = 'success')::int AS count,
             COALESCE(SUM(principal_crypto) FILTER (WHERE status = 'success'), 0)::numeric AS volume_usdt,
-            COALESCE(SUM(fee_crypto) FILTER (WHERE status = 'success'), 0)::numeric AS fees_usdt
+            COALESCE(SUM(fee_crypto) FILTER (WHERE status = 'success'), 0)::numeric AS fees_usdt,
+            COALESCE(SUM(gross_amount) FILTER (WHERE status = 'success'), 0)::bigint AS volume_ghs_pesewas,
+            COALESCE(SUM(service_fee) FILTER (WHERE status = 'success'), 0)::bigint AS fees_ghs_pesewas
         FROM payment_transactions
-        WHERE tx_hash IS NOT NULL
+        WHERE (tx_hash IS NOT NULL OR channel = 'crypto_nowpayments')
           AND created_at >= NOW() - INTERVAL '${interval}'
         GROUP BY DATE(created_at)
         ORDER BY date ASC
@@ -841,9 +857,15 @@ router.get('/crypto/metrics', asyncHandler(async (req: Request, res: Response) =
             pt.exchange_rate,
             pt.status,
             pt.created_at,
-            pt.verified_at
+            pt.verified_at,
+            pt.gross_amount,
+            pt.principal_amount,
+            pt.service_fee,
+            pt.currency,
+            pt.channel,
+            pt.metadata
         FROM payment_transactions pt
-        WHERE pt.tx_hash IS NOT NULL
+        WHERE (pt.tx_hash IS NOT NULL OR pt.channel = 'crypto_nowpayments')
         ORDER BY pt.created_at DESC
         LIMIT 10
     `;
@@ -878,27 +900,45 @@ router.get('/crypto/metrics', asyncHandler(async (req: Request, res: Response) =
             count: r.count,
             volumeUSDT: parseFloat(r.volume_usdt),
             feesUSDT: parseFloat(r.fees_usdt),
+            volumeGHS: (r.volume_ghs_pesewas || 0) / 100,
+            feesGHS: (r.fees_ghs_pesewas || 0) / 100,
         })),
         dailyVolume: dailyVolumeResult.rows.map(r => ({
             date: r.date,
             count: r.count,
             volumeUSDT: parseFloat(r.volume_usdt),
             feesUSDT: parseFloat(r.fees_usdt),
+            volumeGHS: (r.volume_ghs_pesewas || 0) / 100,
+            feesGHS: (r.fees_ghs_pesewas || 0) / 100,
         })),
-        recentTransactions: recentResult.rows.map(r => ({
-            id: r.id,
-            reference: r.reference,
-            paymentType: r.payment_type,
-            txHash: r.tx_hash,
-            payerWallet: r.payer_wallet,
-            recipientWallet: r.recipient_wallet,
-            principalCrypto: r.principal_crypto ? parseFloat(r.principal_crypto) : null,
-            feeCrypto: r.fee_crypto ? parseFloat(r.fee_crypto) : null,
-            exchangeRate: r.exchange_rate ? parseFloat(r.exchange_rate) : null,
-            status: r.status,
-            createdAt: r.created_at,
-            verifiedAt: r.verified_at,
-        })),
+        recentTransactions: recentResult.rows.map(r => {
+            const meta = r.metadata || {};
+            const isNP = r.channel === 'crypto_nowpayments';
+            return {
+                id: r.id,
+                reference: r.reference,
+                paymentType: r.payment_type,
+                txHash: r.tx_hash,
+                payerWallet: r.payer_wallet || (isNP ? meta.pay_address : null),
+                recipientWallet: r.recipient_wallet || null,
+                recipientType: isNP ? 'organization' : null,
+                principalCrypto: r.principal_crypto ? parseFloat(r.principal_crypto) : null,
+                feeCrypto: r.fee_crypto ? parseFloat(r.fee_crypto) : null,
+                exchangeRate: r.exchange_rate ? parseFloat(r.exchange_rate)
+                    : (isNP && meta.usd_amount && meta.principal_ghs ? parseFloat((meta.principal_ghs / meta.usd_amount).toFixed(2)) : null),
+                status: r.status,
+                createdAt: r.created_at,
+                verifiedAt: r.verified_at,
+                grossAmount: r.gross_amount,
+                principalAmount: r.principal_amount,
+                serviceFee: r.service_fee,
+                currency: r.currency,
+                channel: r.channel,
+                metadata: r.metadata,
+                payCurrency: isNP ? (meta.pay_currency?.toUpperCase() || null) : null,
+                outcomeCurrency: isNP ? meta.outcome_currency?.toUpperCase() : null,
+            };
+        }),
     });
 }));
 
@@ -938,6 +978,8 @@ router.get('/crypto/wallets', asyncHandler(async (req: Request, res: Response) =
             pa.account_name,
             pa.is_active,
             pa.created_at,
+            pa.crypto_preferred_settlement_coin,
+            pa.crypto_preferred_settlement_chain,
             o.name AS organization_name
         FROM payment_accounts pa
         LEFT JOIN organizations o ON pa.entity_id = o.id
@@ -969,6 +1011,8 @@ router.get('/crypto/wallets', asyncHandler(async (req: Request, res: Response) =
         organizationName: row.organization_name,
         isActive: row.is_active,
         createdAt: row.created_at,
+        settlementCoin: row.crypto_preferred_settlement_coin || null,
+        settlementChain: row.crypto_preferred_settlement_chain || null,
     }));
 
     res.json({
@@ -1196,7 +1240,7 @@ router.put('/crypto/platform-settlement', asyncHandler(async (req: Request, res:
         try {
             const ticker = await nowPaymentsService.getNowPaymentsTicker(coinSymbol, chain);
             if (ticker) {
-                const valid = await nowPaymentsService.validateSettlementAddress(walletAddress, ticker);
+                const valid = await nowPaymentsService.validateSettlementAddress(coinSymbol, chain, walletAddress);
                 if (!valid) {
                     return res.status(400).json({ error: `Address validation failed for ${coinSymbol}` });
                 }
@@ -1243,7 +1287,7 @@ router.put('/crypto/platform-settlement', asyncHandler(async (req: Request, res:
         }
     }
 
-    // Save to DB
+    // Save to DB (platform_settings — primary config)
     await pool.query(`
         INSERT INTO platform_settings (setting_key, setting_value, updated_at)
         VALUES ('platform_settlement_wallet', $1::jsonb, NOW())
@@ -1257,6 +1301,25 @@ router.put('/crypto/platform-settlement', asyncHandler(async (req: Request, res:
         useNowPayments: !isEvmNative,
         coinName: coin.coin_name,
     })]);
+
+    // Sync to nowpayments_config for fee collection service
+    try {
+        await pool.query(`
+            INSERT INTO nowpayments_config (config_key, config_value, updated_at)
+            VALUES ('platform_payout_wallet', $1::jsonb, NOW())
+            ON CONFLICT (config_key)
+            DO UPDATE SET config_value = $1::jsonb, updated_at = NOW()
+        `, [JSON.stringify({
+            configured: true,
+            coinSymbol: coinSymbol.toLowerCase(),
+            chain: chain.toLowerCase(),
+            walletAddress,
+            useNowPayments: !isEvmNative,
+            coinName: coin.coin_name,
+        })]);
+    } catch (syncErr: any) {
+        logger.warn({ err: syncErr.message }, 'Failed to sync platform wallet to nowpayments_config');
+    }
 
     logger.info({
         coinSymbol, chain, walletAddress, isEvmNative, txHash, preferredTokenTxHash,

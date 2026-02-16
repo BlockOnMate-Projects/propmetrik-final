@@ -416,7 +416,7 @@ export default function ResidualMethodPage() {
             calculated_by: pythonResult ? 'python_rics_engine' : 'frontend_calculation',
           },
         },
-        current_step: 7,
+        current_step: 8,
       })
 
       // Navigate to reconciliation (Residual is typically last specialized method)

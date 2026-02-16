@@ -622,7 +622,7 @@ export default function ReconciliationPage() {
       await valuationsApi.update(valuationId, {
         final_value_ghs: reconciledValue,
         confidence_score: confidenceScore,
-        current_step: 8,
+        current_step: 9,
         status: 'pending_review',
         reconciliation_data: {
           weights,

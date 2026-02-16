@@ -47,7 +47,16 @@ export class PortfolioService {
                 AND p.status = 'pending' 
                 AND p.payment_date < CURRENT_DATE
             `,
-            totalValue: `SELECT COALESCE(SUM(price), 0) as total FROM properties WHERE organization_id = $1`
+            totalValue: `
+                SELECT COALESCE(SUM(price), 0) as total,
+                       COALESCE((
+                           SELECT SUM(fr.amount) FROM property_financial_records fr
+                           JOIN properties p2 ON fr.property_id = p2.id
+                           WHERE p2.organization_id = $1
+                             AND fr.record_type = 'income'
+                             AND fr.transaction_date >= (CURRENT_DATE - INTERVAL '12 months')
+                       ), 0) as annual_income
+                FROM properties WHERE organization_id = $1`
         };
 
         const [
@@ -75,7 +84,10 @@ export class PortfolioService {
         const lastMonthIncome = parseFloat(incomeLastMonthRes.rows[0].total);
         const incomeTrend = lastMonthIncome > 0 ? ((currentIncome - lastMonthIncome) / lastMonthIncome) * 100 : 0;
 
-        const totalValue = parseFloat(valueRes.rows[0].total);
+        const purchasePrice = parseFloat(valueRes.rows[0].total);
+        const annualIncome = parseFloat(valueRes.rows[0].annual_income || 0);
+        const incomeBasedValue = annualIncome > 0 ? annualIncome / 0.07 : 0; // 7% cap rate
+        const totalValue = parseFloat(Math.max(incomeBasedValue, purchasePrice).toFixed(2));
 
         return {
             totalProperties,
@@ -182,24 +194,50 @@ export class PortfolioService {
 
     /**
      * Get detailed portfolio value statistics
+     * Uses income capitalization: estimated market value = Annual Income / market cap rate
+     * Falls back to price column when no income data exists
      */
     async getPortfolioValue(organizationId: string): Promise<PortfolioValue> {
-        const query = `
-            SELECT SUM(price) as total_value 
+        // Get purchase/listing price sum
+        const priceQuery = `
+            SELECT COALESCE(SUM(price), 0) as total_price
             FROM properties 
             WHERE organization_id = $1
         `;
-        const result = await db.query(query, [organizationId]);
-        const totalValue = parseFloat(result.rows[0].total_value || 0);
+        const priceResult = await db.query(priceQuery, [organizationId]);
+        const purchaseValue = parseFloat(priceResult.rows[0].total_price || 0);
+
+        // Calculate income-based valuation from actual rental data
+        const incomeQuery = `
+            SELECT COALESCE(SUM(fr.amount), 0) as annual_income
+            FROM property_financial_records fr
+            JOIN properties p ON fr.property_id = p.id
+            WHERE p.organization_id = $1
+              AND fr.record_type = 'income'
+              AND fr.transaction_date >= (CURRENT_DATE - INTERVAL '12 months')
+        `;
+        const incomeResult = await db.query(incomeQuery, [organizationId]);
+        const annualIncome = parseFloat(incomeResult.rows[0].annual_income || 0);
+
+        // Use a market cap rate (7% is typical for residential in Ghana) to derive market value
+        const marketCapRate = 0.07;
+        const incomeBasedValue = annualIncome > 0 ? annualIncome / marketCapRate : 0;
+
+        // Use the higher of income-based or purchase value
+        const totalValue = Math.max(incomeBasedValue, purchaseValue);
+        const appreciationAmount = totalValue - purchaseValue;
+        const appreciationPercentage = purchaseValue > 0 
+            ? parseFloat(((appreciationAmount / purchaseValue) * 100).toFixed(1))
+            : 0;
 
         return {
-            totalValue,
-            currentMarketValue: totalValue * 1.08, // Simplified aggregate appreciation
-            purchaseValue: totalValue,
-            appreciationAmount: totalValue * 0.08,
-            appreciationPercentage: 8,
+            totalValue: parseFloat(totalValue.toFixed(2)),
+            currentMarketValue: parseFloat(incomeBasedValue.toFixed(2)),
+            purchaseValue,
+            appreciationAmount: parseFloat(appreciationAmount.toFixed(2)),
+            appreciationPercentage,
             lastUpdated: new Date(),
-            valuationConfidence: 82
+            valuationConfidence: annualIncome > 0 ? 85 : 50
         };
     }
 

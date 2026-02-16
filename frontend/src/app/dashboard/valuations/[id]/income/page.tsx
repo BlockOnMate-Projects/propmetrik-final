@@ -807,7 +807,7 @@ export default function IncomeApproachPage() {
             rentalComparablesUsed: rentalComparables.length,
           },
         },
-        current_step: 6,
+        current_step: 7,
       })
 
       // Navigate to next step based on selected methods

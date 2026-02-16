@@ -13,6 +13,7 @@
  */
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { QRCodeSVG } from 'qrcode.react';
 import {
   useAccount,
   useConnect,
@@ -67,11 +68,46 @@ type FlowStep =
   | 'success'
   | 'error';
 
-// Coin display info
-const COIN_ICONS: Record<string, string> = {
-  btc: '₿', eth: 'Ξ', usdt: '₮', usdc: '◎', sol: '◎',
-  matic: '⬡', weth: 'Ξ', wbtc: '₿', ltc: 'Ł', trx: '◈', bnb: '◇',
-};
+/** Get a crypto coin icon URL from CoinCap CDN */
+function getCoinIconUrl(symbol: string): string {
+  const s = symbol.toLowerCase();
+  return `https://assets.coincap.io/assets/icons/${s}@2x.png`;
+}
+
+/** Coin icon component — uses logo_url from backend if available, else CDN fallback */
+function CoinIcon({ symbol, logoUrl, size = 24 }: { symbol: string; logoUrl?: string | null; size?: number }) {
+  const [imgError, setImgError] = React.useState(false);
+  const [useFallback, setUseFallback] = React.useState(false);
+  const s = symbol.toLowerCase();
+
+  const primarySrc = logoUrl || getCoinIconUrl(s);
+  const fallbackSrc = logoUrl ? getCoinIconUrl(s) : null;
+
+  if (imgError && (!fallbackSrc || useFallback)) {
+    return (
+      <span
+        className="inline-flex items-center justify-center rounded-full bg-gray-200 text-[10px] font-bold text-gray-600 flex-shrink-0"
+        style={{ width: size, height: size }}
+      >
+        {symbol.toUpperCase().slice(0, 3)}
+      </span>
+    );
+  }
+
+  return (
+    <img
+      src={imgError && fallbackSrc ? fallbackSrc : primarySrc}
+      alt={symbol}
+      width={size}
+      height={size}
+      className="rounded-full flex-shrink-0"
+      onError={() => {
+        if (!imgError) setImgError(true);
+        else setUseFallback(true);
+      }}
+    />
+  );
+}
 
 // =====================================================
 // COMPONENT
@@ -141,7 +177,7 @@ export default function CryptoPaymentFlow({
     setStep('estimate');
 
     try {
-      const est = await getCryptoEstimate(amountGHS, coin.nowpayments_ticker, coin.chain);
+      const est = await getCryptoEstimate(amountGHS, coin.nowpayments_ticker, coin.chain, tenancyId);
       setEstimate(est);
 
       if (est.error) {
@@ -385,9 +421,21 @@ export default function CryptoPaymentFlow({
     setTimeout(() => setCopied(false), 2000);
   };
 
+  // Search filter for coins
+  const [coinSearch, setCoinSearch] = useState('');
+
   // Group coins for display
   const onChainCoins = coins.filter(c => c.is_evm_native);
-  const offChainCoins = coins.filter(c => !c.is_evm_native);
+  const allOffChainCoins = coins.filter(c => !c.is_evm_native);
+
+  // Filter off-chain coins by search query
+  const offChainCoins = coinSearch.trim()
+    ? allOffChainCoins.filter(c =>
+        c.coin_symbol.toLowerCase().includes(coinSearch.toLowerCase()) ||
+        (c.display_name || '').toLowerCase().includes(coinSearch.toLowerCase()) ||
+        (c.chain || '').toLowerCase().includes(coinSearch.toLowerCase())
+      )
+    : allOffChainCoins;
 
   // ─── Render ─────────────────────────────────────────────
 
@@ -427,10 +475,9 @@ export default function CryptoPaymentFlow({
                         onClick={() => handleCoinSelect(coin)}
                         className="flex items-center gap-2 px-3 py-2.5 border border-gray-200 rounded-xl text-sm font-medium hover:border-cyan-400 hover:bg-cyan-50 transition-all"
                       >
-                        <span className="text-base">{COIN_ICONS[coin.coin_symbol] || '●'}</span>
+                        <CoinIcon symbol={coin.coin_symbol} logoUrl={coin.logo_url} size={24} />
                         <div className="text-left">
                           <span className="block font-semibold text-gray-900">{coin.coin_symbol.toUpperCase()}</span>
-                          <span className="block text-[10px] text-gray-500">{coin.display_name}</span>
                         </div>
                       </button>
                     ))}
@@ -439,26 +486,46 @@ export default function CryptoPaymentFlow({
               )}
 
               {/* Off-chain (via NOWPayments auto-conversion) */}
-              {offChainCoins.length > 0 && (
+              {allOffChainCoins.length > 0 && (
                 <div>
                   <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">
-                    Cross-Chain — via NOWPayments
+                    {allOffChainCoins.length}+ Coins — via NOWPayments
                   </p>
-                  <div className="grid grid-cols-2 gap-2">
-                    {offChainCoins.map(coin => (
-                      <button
-                        key={coin.id}
-                        onClick={() => handleCoinSelect(coin)}
-                        className="flex items-center gap-2 px-3 py-2.5 border border-gray-200 rounded-xl text-sm font-medium hover:border-purple-400 hover:bg-purple-50 transition-all"
-                      >
-                        <span className="text-base">{COIN_ICONS[coin.coin_symbol] || '●'}</span>
-                        <div className="text-left">
-                          <span className="block font-semibold text-gray-900">{coin.coin_symbol.toUpperCase()}</span>
-                          <span className="block text-[10px] text-gray-500">{coin.display_name} ({coin.chain})</span>
-                        </div>
-                      </button>
-                    ))}
+                  {/* Search box */}
+                  <div className="relative mb-2">
+                    <input
+                      type="text"
+                      placeholder="Search coins (BTC, ETH, SOL...)"
+                      value={coinSearch}
+                      onChange={e => setCoinSearch(e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-purple-400 focus:border-purple-400 pl-8"
+                    />
+                    <svg className="absolute left-2.5 top-2.5 w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
                   </div>
+                  {/* Scrollable coin grid */}
+                  <div className="max-h-48 overflow-y-auto rounded-xl border border-gray-100">
+                    <div className="grid grid-cols-2 gap-1.5 p-1.5">
+                      {offChainCoins.slice(0, 100).map(coin => (
+                        <button
+                          key={coin.id}
+                          onClick={() => handleCoinSelect(coin)}
+                          className="flex items-center gap-2 px-2.5 py-2 border border-gray-100 rounded-lg text-sm font-medium hover:border-purple-400 hover:bg-purple-50 transition-all"
+                        >
+                          <CoinIcon symbol={coin.coin_symbol} logoUrl={coin.logo_url} size={20} />
+                          <div className="text-left min-w-0">
+                            <span className="block font-semibold text-gray-900 text-xs">{coin.coin_symbol.toUpperCase()}</span>
+                            <span className="block text-[9px] text-gray-400 truncate">{coin.chain}</span>
+                          </div>
+                        </button>
+                      ))}
+                      {offChainCoins.length === 0 && coinSearch && (
+                        <p className="col-span-2 text-center text-xs text-gray-400 py-3">No coins match &quot;{coinSearch}&quot;</p>
+                      )}
+                    </div>
+                  </div>
+                  {offChainCoins.length > 100 && (
+                    <p className="text-[10px] text-gray-400 mt-1 text-center">Showing first 100 results. Use search to find more.</p>
+                  )}
                 </div>
               )}
             </div>
@@ -509,16 +576,26 @@ export default function CryptoPaymentFlow({
                 <span>Rent Amount</span>
                 <span className="font-semibold">GH₵{amountGHS.toLocaleString()}</span>
               </div>
+              {estimate.platformFeeGhs > 0 && (
+                <div className="flex justify-between text-xs text-blue-600">
+                  <span>Platform Fee</span>
+                  <span>GH₵{Number(estimate.platformFeeGhs).toFixed(2)}</span>
+                </div>
+              )}
               <div className="flex justify-between">
+                <span>Total ({estimate.platformFeeGhs > 0 ? 'incl. fee' : 'rent'})</span>
+                <span className="font-semibold">GH₵{Number(estimate.totalChargeGhs || amountGHS).toLocaleString()}</span>
+              </div>
+              <div className="flex justify-between text-xs text-blue-600">
                 <span>USD Equivalent</span>
-                <span>${estimate.amountUsd.toFixed(2)}</span>
+                <span>${Number(estimate.totalChargeUsd || estimate.amountUsd).toFixed(2)}</span>
               </div>
               <hr className="border-blue-200" />
               <div className="flex justify-between text-base font-bold text-blue-900">
                 <span>You Pay</span>
                 <span>
-                  {estimate.estimatedPayAmount.toFixed(
-                    estimate.estimatedPayAmount < 1 ? 8 : estimate.estimatedPayAmount < 100 ? 4 : 2
+                  {Number(estimate.estimatedPayAmount).toFixed(
+                    Number(estimate.estimatedPayAmount) < 1 ? 8 : Number(estimate.estimatedPayAmount) < 100 ? 4 : 2
                   )}{' '}
                   {selectedCoin.coin_symbol.toUpperCase()}
                 </span>
@@ -574,6 +651,18 @@ export default function CryptoPaymentFlow({
             </div>
 
             <div className="bg-white rounded-lg p-3 border border-purple-200">
+              <div className="flex justify-center mb-3">
+                <div className="bg-white p-2 rounded-lg">
+                  <QRCodeSVG
+                    value={unifiedResult.nowPaymentsResult.depositAddress}
+                    size={160}
+                    level="H"
+                    includeMargin={false}
+                    bgColor="#ffffff"
+                    fgColor="#1e1b4b"
+                  />
+                </div>
+              </div>
               <p className="text-xs font-mono break-all text-gray-900 text-center">
                 {unifiedResult.nowPaymentsResult.depositAddress}
               </p>

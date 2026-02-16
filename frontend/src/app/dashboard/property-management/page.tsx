@@ -129,6 +129,7 @@ export default function PropertyManagementDashboard() {
         applications: null,
         receivables: null,
     })
+    const [portfolioFinancials, setPortfolioFinancials] = useState<any>(null)
     const [isLoading, setIsLoading] = useState(true)
     const [error, setError] = useState<string | null>(null)
 
@@ -146,7 +147,7 @@ export default function PropertyManagementDashboard() {
                 const startDateNext = `${nextYear}-01-01`
                 const endDateNext = `${nextYear}-12-31`
 
-                const [metrics, composition, leases, workOrders, cashFlowCurrent, cashFlowNext, applications, receivables] = await Promise.all([
+                const [metrics, composition, leases, workOrders, cashFlowCurrent, cashFlowNext, applications, receivables, portfolioFin] = await Promise.all([
                     propertyManagementApi.getPortfolioOverview().catch(() => null),
                     propertyManagementApi.getPortfolioComposition().catch(() => null),
                     propertyManagementApi.getLeasePortfolioSummary().catch(() => null),
@@ -155,6 +156,7 @@ export default function PropertyManagementDashboard() {
                     propertyManagementApi.getCashFlow({ startDate: startDateNext, endDate: endDateNext }).catch(() => null),
                     propertyManagementApi.getApplicationStats().catch(() => null),
                     propertyManagementApi.getAgedReceivablesReport().catch(() => null),
+                    propertyManagementApi.getPortfolioFinancialSummary().catch(() => null),
                 ])
 
                 // Pick whichever year has data
@@ -163,6 +165,7 @@ export default function PropertyManagementDashboard() {
                     : cashFlowNext
 
                 setData({ metrics, composition, leases, workOrders, cashFlow, applications, receivables })
+                setPortfolioFinancials(portfolioFin)
             } catch (err) {
                 console.error('Dashboard load error:', err)
                 setError('Failed to load dashboard data.')
@@ -296,6 +299,57 @@ export default function PropertyManagementDashboard() {
                     subtitle="Work order turnaround"
                 />
             </div>
+
+            {/* ─── Row 2.5: Portfolio Financial Analytics ── */}
+            {portfolioFinancials && (
+                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
+                    <Card className="bg-black border border-zinc-800">
+                        <CardContent className="p-4">
+                            <p className="text-[10px] text-zinc-500 font-mono uppercase mb-1">Portfolio NOI</p>
+                            <p className={`text-xl font-bold font-mono ${(portfolioFinancials.portfolioNOI ?? 0) >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                                {fmtCurrency(portfolioFinancials.portfolioNOI ?? 0)}
+                            </p>
+                            <p className="text-[9px] font-mono text-zinc-600 mt-1">Net Operating Income</p>
+                        </CardContent>
+                    </Card>
+                    <Card className="bg-black border border-zinc-800">
+                        <CardContent className="p-4">
+                            <p className="text-[10px] text-zinc-500 font-mono uppercase mb-1">Wtd. Cap Rate</p>
+                            <p className="text-xl font-bold text-amber-400 font-mono">
+                                {(portfolioFinancials.weightedCapRate ?? 0).toFixed(2)}%
+                            </p>
+                            <p className="text-[9px] font-mono text-zinc-600 mt-1">Weighted Capitalization</p>
+                        </CardContent>
+                    </Card>
+                    <Card className="bg-black border border-zinc-800">
+                        <CardContent className="p-4">
+                            <p className="text-[10px] text-zinc-500 font-mono uppercase mb-1">Avg Occupancy</p>
+                            <p className={`text-xl font-bold font-mono ${(portfolioFinancials.averageOccupancy ?? 0) >= 90 ? 'text-green-400' : (portfolioFinancials.averageOccupancy ?? 0) >= 70 ? 'text-amber-400' : 'text-red-400'}`}>
+                                {(portfolioFinancials.averageOccupancy ?? 0).toFixed(0)}%
+                            </p>
+                            <p className="text-[9px] font-mono text-zinc-600 mt-1">Portfolio Average</p>
+                        </CardContent>
+                    </Card>
+                    <Card className="bg-black border border-zinc-800">
+                        <CardContent className="p-4">
+                            <p className="text-[10px] text-zinc-500 font-mono uppercase mb-1">Monthly Income</p>
+                            <p className="text-xl font-bold text-green-400 font-mono">
+                                {fmtCurrency(portfolioFinancials.totalMonthlyIncome ?? 0)}
+                            </p>
+                            <p className="text-[9px] font-mono text-zinc-600 mt-1">Gross Monthly</p>
+                        </CardContent>
+                    </Card>
+                    <Card className="bg-black border border-zinc-800">
+                        <CardContent className="p-4">
+                            <p className="text-[10px] text-zinc-500 font-mono uppercase mb-1">Net Monthly</p>
+                            <p className={`text-xl font-bold font-mono ${(portfolioFinancials.netMonthlyCashFlow ?? 0) >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                                {fmtCurrency(portfolioFinancials.netMonthlyCashFlow ?? 0)}
+                            </p>
+                            <p className="text-[9px] font-mono text-zinc-600 mt-1">After Expenses</p>
+                        </CardContent>
+                    </Card>
+                </div>
+            )}
 
             {/* ─── Row 3: Revenue Chart + Receivables ───── */}
             <div className="grid gap-6 lg:grid-cols-7">
