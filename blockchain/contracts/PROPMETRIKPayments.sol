@@ -24,7 +24,7 @@ contract PROPMETRIKPayments is ReentrancyGuard, Pausable, Ownable2Step {
 
     // ── Enums & Structs ──────────────────────────────────────────────
 
-    enum PaymentType { RENT, DEAL, PROJECT }
+    enum PaymentType { RENT, DEAL, PROJECT, VALUATION }
 
     struct TokenConfig {
         bool enabled;
@@ -184,9 +184,10 @@ contract PROPMETRIKPayments is ReentrancyGuard, Pausable, Ownable2Step {
         propmetrikWallet = _propmetrikWallet;
 
         // Default fee schedule — matches backend FeeEngine
-        feeConfigs[PaymentType.RENT]    = FeeConfig({ percentageBasisPoints: 100, minimumFeeUSD6: 1_650000, enabled: true });
-        feeConfigs[PaymentType.DEAL]    = FeeConfig({ percentageBasisPoints: 25,  minimumFeeUSD6: 0,        enabled: true });
-        feeConfigs[PaymentType.PROJECT] = FeeConfig({ percentageBasisPoints: 25,  minimumFeeUSD6: 0,        enabled: true });
+        feeConfigs[PaymentType.RENT]      = FeeConfig({ percentageBasisPoints: 100, minimumFeeUSD6: 1_650000, enabled: true });
+        feeConfigs[PaymentType.DEAL]      = FeeConfig({ percentageBasisPoints: 25,  minimumFeeUSD6: 0,        enabled: true });
+        feeConfigs[PaymentType.PROJECT]   = FeeConfig({ percentageBasisPoints: 25,  minimumFeeUSD6: 0,        enabled: true });
+        feeConfigs[PaymentType.VALUATION] = FeeConfig({ percentageBasisPoints: 250, minimumFeeUSD6: 0,        enabled: true });
     }
 
     // ── Access Control ───────────────────────────────────────────────

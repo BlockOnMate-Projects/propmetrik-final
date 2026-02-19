@@ -1,14 +1,17 @@
 /**
  * Authentication Routes
  * 
- * Handles email/password login and session management
+ * Handles email/password login, signup (Keycloak-integrated), and session management
  */
 
 import { Router, Request, Response } from 'express';
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
+import axios from 'axios';
+import { v4 as uuidv4 } from 'uuid';
 import { pool } from '../database';
 import { logger } from '../utils/logger';
+import config from '../config';
 
 const router = Router();
 
@@ -16,6 +19,286 @@ const JWT_SECRET = process.env.JWT_SECRET || 'propmetrik-jwt-secret-change-in-pr
 const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '7d';
 // Cast JWT_EXPIRES_IN for jsonwebtoken compatibility
 const jwtExpiresIn = JWT_EXPIRES_IN as jwt.SignOptions['expiresIn'];
+
+// Keycloak Admin helpers
+const keycloakUrl = (config.keycloak.url || '').replace(/\/$/, '');
+const keycloakRealm = config.keycloak.realm || '';
+const keycloakEnabled = !!(keycloakUrl && keycloakRealm);
+
+async function getKeycloakAdminToken(): Promise<string | null> {
+  if (!keycloakEnabled) return null;
+
+  const adminClientId = config.keycloak.adminClientId || config.keycloak.clientId;
+  const adminSecret = config.keycloak.adminSecret || config.keycloak.clientSecret;
+  const adminRealm = config.keycloak.adminRealm || 'master';
+  const adminUsername = config.keycloak.adminUsername;
+  const adminPassword = config.keycloak.adminPassword;
+
+  const requestToken = async (realm: string, params: Record<string, string>): Promise<string> => {
+    const tokenUrl = `${keycloakUrl}/realms/${realm}/protocol/openid-connect/token`;
+    const response = await axios.post(tokenUrl, new URLSearchParams(params), {
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      timeout: 10000,
+    });
+    return response.data.access_token;
+  };
+
+  // Strategy 1: client_credentials on app realm
+  try {
+    if (adminClientId && adminSecret) {
+      return await requestToken(keycloakRealm, {
+        grant_type: 'client_credentials',
+        client_id: adminClientId,
+        client_secret: adminSecret,
+      });
+    }
+  } catch { /* fall through */ }
+
+  // Strategy 2: client_credentials on admin realm
+  try {
+    if (adminClientId && adminSecret && adminRealm !== keycloakRealm) {
+      return await requestToken(adminRealm, {
+        grant_type: 'client_credentials',
+        client_id: adminClientId,
+        client_secret: adminSecret,
+      });
+    }
+  } catch { /* fall through */ }
+
+  // Strategy 3: password grant with admin credentials
+  try {
+    if (adminUsername && adminPassword) {
+      return await requestToken(adminRealm, {
+        grant_type: 'password',
+        client_id: adminClientId || 'admin-cli',
+        username: adminUsername,
+        password: adminPassword,
+      });
+    }
+  } catch { /* fall through */ }
+
+  logger.warn('Could not obtain Keycloak admin token — all strategies failed');
+  return null;
+}
+
+async function createKeycloakUser(
+  adminToken: string,
+  email: string,
+  firstName: string,
+  lastName: string,
+  password: string
+): Promise<string | null> {
+  try {
+    // Create user
+    await axios.post(
+      `${keycloakUrl}/admin/realms/${keycloakRealm}/users`,
+      {
+        email,
+        username: email,
+        firstName,
+        lastName,
+        enabled: true,
+        emailVerified: false,
+        credentials: [{
+          type: 'password',
+          value: password,
+          temporary: false,
+        }],
+      },
+      {
+        headers: {
+          Authorization: `Bearer ${adminToken}`,
+          'Content-Type': 'application/json',
+        },
+        timeout: 10000,
+      }
+    );
+
+    // Look up the created user to get the Keycloak ID
+    const searchRes = await axios.get(
+      `${keycloakUrl}/admin/realms/${keycloakRealm}/users`,
+      {
+        params: { email, exact: true },
+        headers: { Authorization: `Bearer ${adminToken}` },
+        timeout: 10000,
+      }
+    );
+
+    const kcUser = searchRes.data?.[0];
+    if (kcUser?.id) {
+      logger.info('Keycloak user created', { email, keycloakId: kcUser.id });
+      return kcUser.id;
+    }
+
+    return null;
+  } catch (err: any) {
+    // 409 = user already exists in Keycloak
+    if (err?.response?.status === 409) {
+      logger.info('User already exists in Keycloak, linking', { email });
+      const searchRes = await axios.get(
+        `${keycloakUrl}/admin/realms/${keycloakRealm}/users`,
+        {
+          params: { email, exact: true },
+          headers: { Authorization: `Bearer ${adminToken}` },
+          timeout: 10000,
+        }
+      );
+      return searchRes.data?.[0]?.id || null;
+    }
+    logger.error('Failed to create Keycloak user', { email, error: err?.message });
+    return null;
+  }
+}
+
+// ============================================================================
+// Signup (Keycloak + Local DB)
+// ============================================================================
+
+/**
+ * POST /api/v1/auth/signup
+ * Register a new user — creates in Keycloak (if configured) and local DB
+ */
+router.post('/signup', async (req: Request, res: Response) => {
+  const client = await pool.connect();
+  try {
+    const { firstName, lastName, email, password, companyName } = req.body;
+
+    // Validation
+    if (!firstName || !lastName || !email || !password) {
+      return res.status(400).json({
+        success: false,
+        message: 'First name, last name, email, and password are required',
+      });
+    }
+    if (password.length < 8) {
+      return res.status(400).json({
+        success: false,
+        message: 'Password must be at least 8 characters',
+      });
+    }
+
+    const normalizedEmail = email.toLowerCase().trim();
+
+    // Check if user already exists
+    const existing = await client.query(
+      'SELECT id FROM users WHERE email = $1',
+      [normalizedEmail]
+    );
+    if (existing.rows.length > 0) {
+      return res.status(409).json({
+        success: false,
+        message: 'An account with this email already exists',
+      });
+    }
+
+    await client.query('BEGIN');
+
+    // ---- Create or link Organization if company name provided ----
+    let organizationId: string | null = null;
+    if (companyName && companyName.trim()) {
+      const orgSlug = companyName.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+      const orgResult = await client.query(
+        `INSERT INTO organizations (id, name, slug, type, is_active, created_at, updated_at)
+         VALUES ($1, $2, $3, 'valuation_firm', true, NOW(), NOW())
+         ON CONFLICT (slug) DO UPDATE SET updated_at = NOW()
+         RETURNING id`,
+        [uuidv4(), companyName.trim(), orgSlug]
+      );
+      organizationId = orgResult.rows[0].id;
+    }
+
+    // ---- Hash password ----
+    const passwordHash = await bcrypt.hash(password, 12);
+
+    // ---- Create local DB user ----
+    const userId = uuidv4();
+    const defaultRole = organizationId ? 'firm_principal' : 'viewer';
+
+    await client.query(
+      `INSERT INTO users (
+        id, email, password_hash, first_name, last_name,
+        role, organization_id, subscription_tier,
+        is_active, email_verified,
+        created_at, updated_at
+       ) VALUES ($1, $2, $3, $4, $5, $6, $7, 'free', true, false, NOW(), NOW())`,
+      [userId, normalizedEmail, passwordHash, firstName.trim(), lastName.trim(), defaultRole, organizationId]
+    );
+
+    // ---- Create user in Keycloak (best-effort) ----
+    let keycloakUserId: string | null = null;
+    try {
+      const adminToken = await getKeycloakAdminToken();
+      if (adminToken) {
+        keycloakUserId = await createKeycloakUser(adminToken, normalizedEmail, firstName.trim(), lastName.trim(), password);
+        if (keycloakUserId) {
+          await client.query(
+            'UPDATE users SET keycloak_id = $1 WHERE id = $2',
+            [keycloakUserId, userId]
+          );
+        }
+      } else {
+        logger.warn('Keycloak not available — user created locally only', { email: normalizedEmail });
+      }
+    } catch (kcErr) {
+      logger.error('Keycloak user creation failed (non-blocking)', { email: normalizedEmail, error: kcErr });
+      // Continue — the local account is still valid
+    }
+
+    await client.query('COMMIT');
+
+    // ---- Generate JWT ----
+    const token = jwt.sign(
+      {
+        userId,
+        email: normalizedEmail,
+        role: defaultRole,
+        organizationId,
+        tier: 'free',
+      },
+      JWT_SECRET,
+      { expiresIn: jwtExpiresIn }
+    );
+
+    logger.info('User registered', {
+      userId,
+      email: normalizedEmail,
+      keycloakUserId: keycloakUserId || 'none',
+      hasOrganization: !!organizationId,
+    });
+
+    res.status(201).json({
+      success: true,
+      token,
+      user: {
+        id: userId,
+        email: normalizedEmail,
+        firstName: firstName.trim(),
+        lastName: lastName.trim(),
+        role: defaultRole,
+        tier: 'free',
+        emailVerified: false,
+        organization: organizationId ? { id: organizationId, name: companyName?.trim() } : null,
+      },
+    });
+  } catch (error: any) {
+    await client.query('ROLLBACK').catch(() => {});
+    logger.error('Signup error', { error: error?.message });
+
+    if (error?.code === '23505') {
+      return res.status(409).json({
+        success: false,
+        message: 'An account with this email already exists',
+      });
+    }
+
+    res.status(500).json({
+      success: false,
+      message: 'An error occurred during signup. Please try again.',
+    });
+  } finally {
+    client.release();
+  }
+});
 
 // ============================================================================
 // Login

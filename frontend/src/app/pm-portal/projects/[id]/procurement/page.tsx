@@ -74,7 +74,7 @@ const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
 // Default headers for API requests
 const DEFAULT_HEADERS = {
   'Content-Type': 'application/json',
-  'x-user-id': '33333333-3333-3333-3333-333333333333',
+  'x-user-id': 'ed4a50d7-a1b2-4c3d-8e5f-6a7b8c9d0e1f',
   'x-organization-id': '00000000-0000-0000-0000-000000000001',
 };
 

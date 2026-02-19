@@ -11,7 +11,7 @@ export default function Footer() {
                     <div className="lg:col-span-2">
                         <Link href="/" className="inline-block mb-8">
                             <Image
-                                src="/branding/logo-full.png"
+                                src="/branding/logo-dark-bg.svg"
                                 alt="PROPMETRIK Logo"
                                 width={180}
                                 height={50}
@@ -48,6 +48,8 @@ export default function Footer() {
                             <li><Link href="/services/data" className="hover:text-amber-500 transition-colors">Data Hub</Link></li>
                             <li><Link href="/services/deal-management" className="hover:text-amber-500 transition-colors">Deal Management</Link></li>
                             <li><Link href="/services/market-intelligence" className="hover:text-amber-500 transition-colors">Market Intelligence</Link></li>
+                            <li><Link href="/services/project-management" className="hover:text-amber-500 transition-colors">Project Management</Link></li>
+                            <li><Link href="/services/property-management" className="hover:text-amber-500 transition-colors">Property Management</Link></li>
                         </ul>
                     </div>
 

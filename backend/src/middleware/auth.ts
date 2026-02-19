@@ -135,23 +135,63 @@ function parseTokenPayload(payload: KeycloakTokenPayload): AuthenticatedUser {
  * Development mode mock user for testing without Keycloak
  */
 const DEV_MODE_USER: AuthenticatedUser = {
-  sub: '00000000-0000-0000-0000-000000000001',
-  id: '00000000-0000-0000-0000-000000000001',
-  email: 'dev@propmetrik.com',
+  sub: 'ed4a50d7-a1b2-4c3d-8e5f-6a7b8c9d0e1f',
+  id: 'ed4a50d7-a1b2-4c3d-8e5f-6a7b8c9d0e1f',
+  email: 'eric@cedynhq.com',
   emailVerified: true,
-  name: 'Development User',
-  username: 'dev_user',
-  firstName: 'Development',
-  lastName: 'User',
-  realmRoles: ['admin'],
-  clientRoles: ['admin'],
+  name: 'Eric Danso',
+  username: 'eric_danso',
+  firstName: 'Eric',
+  lastName: 'Danso',
+  realmRoles: ['super_admin'],
+  clientRoles: ['super_admin'],
   organizationId: '00000000-0000-0000-0000-000000000001',
   region: 'GR',
 };
 
 /**
+ * Local JWT secret — same as used by /auth/login and /auth/signup
+ */
+const LOCAL_JWT_SECRET = process.env.JWT_SECRET || 'propmetrik-jwt-secret-change-in-production';
+
+/**
+ * Try to decode a local (non-Keycloak) JWT and map to AuthenticatedUser.
+ * Returns null if the token is not a local JWT.
+ */
+function tryDecodeLocalJwt(token: string): AuthenticatedUser | null {
+  try {
+    const jwt = require('jsonwebtoken');
+    const payload = jwt.verify(token, LOCAL_JWT_SECRET) as {
+      userId: string;
+      email: string;
+      role: string;
+      organizationId?: string;
+      tier?: string;
+    };
+    if (!payload.userId) return null;
+    return {
+      sub: payload.userId,
+      id: payload.userId,
+      email: payload.email,
+      emailVerified: true,
+      name: payload.email,
+      username: payload.email,
+      firstName: undefined,
+      lastName: undefined,
+      realmRoles: [payload.role],
+      clientRoles: [payload.role],
+      organizationId: payload.organizationId,
+      region: undefined,
+    };
+  } catch {
+    return null;
+  }
+}
+
+/**
  * Authentication middleware - verifies JWT and attaches user to request
- * In development mode without a token, uses a mock user
+ * Supports both Keycloak JWTs and local JWTs from /auth/login.
+ * In development mode without a token, uses a mock user.
  */
 export async function authenticate(
   req: Request,
@@ -201,6 +241,22 @@ export async function authenticate(
   } catch (error: any) {
     if (error instanceof UnauthorizedError) {
       return next(error);
+    }
+
+    // If Keycloak verification fails, try local JWT (from /auth/login)
+    const token = extractToken(req);
+    if (token) {
+      const localUser = tryDecodeLocalJwt(token);
+      if (localUser) {
+        req.user = localUser;
+        req.token = token;
+        authLogger.debug('User authenticated via local JWT', {
+          userId: localUser.id,
+          email: localUser.email,
+          role: localUser.realmRoles[0],
+        });
+        return next();
+      }
     }
     
     if (error.code === 'ERR_JWT_EXPIRED') {

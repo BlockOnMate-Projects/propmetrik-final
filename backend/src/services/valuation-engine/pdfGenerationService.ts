@@ -95,7 +95,9 @@ export class PdfGenerationService {
         ? JSON.parse(report.content) 
         : report.content || {};
 
-      if (!content.storage_key) {
+      // Check both content.storage_key and docx_storage_key column
+      const docxStorageKey = content.storage_key || report.docx_storage_key;
+      if (!docxStorageKey) {
         return {
           success: false,
           reportId,
@@ -108,11 +110,14 @@ export class PdfGenerationService {
 
       // Download DOCX from MinIO
       const bucket = process.env.MINIO_REPORTS_BUCKET || buckets.documents || 'propmetrik-documents';
-      const docxBuffer = await this.downloadDocx(bucket, content.storage_key);
+      const docxBuffer = await this.downloadDocx(bucket, docxStorageKey);
       
+      // Repair DOCX if needed (fix missing namespace declarations)
+      const repairedBuffer = await this.repairDocxNamespaces(docxBuffer);
+
       // Save to temp file
       const tempDocxPath = path.join(this.tempDir, `${reportId}.docx`);
-      await fs.writeFile(tempDocxPath, docxBuffer);
+      await fs.writeFile(tempDocxPath, repairedBuffer);
 
       // Convert to PDF
       const pdfPath = await this.convertToPdf(tempDocxPath, this.tempDir);
@@ -153,7 +158,7 @@ export class PdfGenerationService {
       const verificationUrl = `${this.verificationBaseUrl}/verify/${reportId}`;
       await query(
         `UPDATE valuation_reports 
-         SET pdf_url = $1,
+         SET pdf_storage_key = $1,
              digital_seal_hash = $2,
              verification_url = $3,
              updated_at = NOW()
@@ -195,6 +200,59 @@ export class PdfGenerationService {
         reportId,
         error: error.message,
       };
+    }
+  }
+
+  /**
+   * Repair DOCX namespace declarations.
+   * Some generated DOCXes are missing xmlns:r, xmlns:wp, xmlns:a, xmlns:pic
+   * on the <w:document> root element, which causes LibreOffice to fail.
+   */
+  private async repairDocxNamespaces(buffer: Buffer): Promise<Buffer> {
+    try {
+      const PizZip = (await import('pizzip')).default;
+      const zip = new PizZip(buffer);
+      const docXmlFile = zip.file('word/document.xml');
+      if (!docXmlFile) return buffer;
+
+      const docXml = docXmlFile.asText();
+
+      // Check if wp namespace is already declared (indicator of well-formed file)
+      if (docXml.includes('xmlns:wp=')) return buffer;
+
+      // Add missing namespace declarations to <w:document> root element
+      const requiredNs = {
+        'xmlns:r': 'http://schemas.openxmlformats.org/officeDocument/2006/relationships',
+        'xmlns:wp': 'http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing',
+        'xmlns:a': 'http://schemas.openxmlformats.org/drawingml/2006/main',
+        'xmlns:pic': 'http://schemas.openxmlformats.org/drawingml/2006/picture',
+        'xmlns:w14': 'http://schemas.microsoft.com/office/word/2010/wordml',
+        'xmlns:mc': 'http://schemas.openxmlformats.org/markup-compatibility/2006',
+      };
+
+      let fixedXml = docXml;
+      const insertions: string[] = [];
+      for (const [attr, uri] of Object.entries(requiredNs)) {
+        if (!fixedXml.includes(attr + '=')) {
+          insertions.push(`${attr}="${uri}"`);
+        }
+      }
+
+      if (insertions.length > 0) {
+        // Insert right after the first xmlns:w="..." declaration
+        fixedXml = fixedXml.replace(
+          /(<w:document\s+xmlns:w="[^"]*")/,
+          `$1 ${insertions.join(' ')}`
+        );
+        zip.file('word/document.xml', fixedXml);
+        logger.info('Repaired DOCX namespace declarations', { added: insertions.length });
+        return zip.generate({ type: 'nodebuffer' }) as Buffer;
+      }
+
+      return buffer;
+    } catch (err: any) {
+      logger.warn('Failed to repair DOCX namespaces, proceeding with original', { error: err.message });
+      return buffer;
     }
   }
 
@@ -362,19 +420,19 @@ export class PdfGenerationService {
       const qrImage = await pdfDoc.embedPng(qrPngBuffer);
       const qrSize = 80;
 
-      // Position in bottom-right corner
+      // Position in bottom-right corner, above the footer area
       lastPage.drawImage(qrImage, {
         x: width - qrSize - 30,
-        y: 30,
+        y: 70,
         width: qrSize,
         height: qrSize,
       });
 
-      // Add verification text
+      // Add verification text above footer
       const helvetica = await pdfDoc.embedFont('Helvetica');
       lastPage.drawText('Scan to verify', {
         x: width - qrSize - 40,
-        y: 20,
+        y: 60,
         size: 8,
         font: helvetica,
         color: rgb(0.4, 0.4, 0.4),
@@ -382,7 +440,7 @@ export class PdfGenerationService {
 
       lastPage.drawText(`Hash: ${documentHash.substring(0, 16)}...`, {
         x: width - qrSize - 60,
-        y: 10,
+        y: 50,
         size: 6,
         font: helvetica,
         color: rgb(0.5, 0.5, 0.5),

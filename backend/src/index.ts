@@ -13,6 +13,7 @@ import { errorHandler } from './middleware/errorHandler';
 import { rateLimiter } from './middleware/rateLimiter';
 import { requestIdMiddleware } from './middleware/requestId';
 import { authenticate, optionalAuth } from './middleware/auth';
+import valuationClientsRouter from './routes/valuation-clients';
 
 // Import routes
 import healthRoutes from './routes/health';
@@ -57,6 +58,11 @@ import ricsComplianceRoutes from './routes/ricsCompliance';
 import floodRiskRoutes from './routes/floodRisk';
 import adminRoutes from './routes/admin';
 import tenantPortalRoutes from './routes/tenantPortal';
+import eSignRoutes from './routes/eSign';
+import valuationOrgRoutes from './routes/valuation-org';
+import valuationInvoiceRoutes from './routes/valuation-invoices';
+import enterpriseRoutes from './routes/enterprise';
+import subscriptionRoutes from './routes/subscription';
 
 // Import shared services
 import { realtimeEmitter } from '../shared-services/realtime';
@@ -124,8 +130,8 @@ app.use(rateLimiter);
 app.use('/health', healthRoutes);
 // app.use('/api/docs', docsRoutes);  // OpenAPI documentation - TODO: fix zod-to-openapi integration
 app.use('/api/v1/data-hub', dataHubRoutes);
-app.use('/api/v1/valuations', valuationRoutes);
-app.use('/api/valuations', valuationRoutes);  // Also mount for frontend compatibility
+app.use('/api/v1/valuations', optionalAuth, valuationRoutes);
+app.use('/api/valuations', optionalAuth, valuationRoutes);  // Also mount for frontend compatibility
 app.use('/api/v1/properties', propertyRoutes);
 app.use('/api/public/properties', propertyRoutes);  // Also mount at public path for frontend compatibility
 app.use('/api/v1/ingestion', ingestionRouter);
@@ -204,6 +210,30 @@ app.use('/api/admin', adminRoutes);  // Also mount for frontend compatibility
 app.use('/api/v1/tenant-portal', tenantPortalRoutes);
 app.use('/api/tenant-portal', tenantPortalRoutes);  // Also mount for frontend compatibility
 
+// E-Sign Routes (signature envelopes, signer IDs, certificate of completion)
+app.use('/api/v1/esign', eSignRoutes);
+app.use('/api/esign', eSignRoutes);  // Also mount for frontend compatibility
+
+// Valuation Org Routes (RBAC, team management, invitations)
+app.use('/api/v1/valuation-org', valuationOrgRoutes);
+app.use('/api/valuation-org', valuationOrgRoutes);  // Also mount for frontend compatibility
+
+// Valuation Invoice Routes (finance, invoicing, Paystack payments)
+app.use('/api/v1/valuation-invoices', valuationInvoiceRoutes);
+app.use('/api/valuation-invoices', valuationInvoiceRoutes);  // Also mount for frontend compatibility
+
+// Enterprise B2B Routes (org settings, approval chains, API keys, firm analytics)
+app.use('/api/v1/enterprise', enterpriseRoutes);
+app.use('/api/enterprise', enterpriseRoutes);  // Also mount for frontend compatibility
+
+// Subscription & Billing Routes (plans, subscriptions, invoices, usage)
+app.use('/api/v1/subscriptions', subscriptionRoutes);
+app.use('/api/subscriptions', subscriptionRoutes);  // Also mount for frontend compatibility
+
+// Valuation Clients Routes
+app.use('/api/v1/valuation-clients', valuationClientsRouter);
+app.use('/api/valuation-clients', valuationClientsRouter);  // Also mount for frontend compatibility
+
 
 
 // TODO: Add more route modules as they are created
@@ -228,42 +258,41 @@ app.use(errorHandler);
 async function shutdown(signal: string): Promise<void> {
   logger.info(`Received ${signal}, starting graceful shutdown...`);
 
-  // Stop accepting new requests
-  server.close(async (err) => {
-    if (err) {
-      logger.error('Error during server close', { error: err.message });
-    }
-
-    try {
-      // Shutdown realtime connections
-      realtimeEmitter.shutdown();
-      logger.info('Realtime connections closed');
-
-      // Shutdown Data Hub queues
-      await dataHubQueueManager.shutdown();
-      logger.info('Data Hub queues closed');
-
-      // Close database connections
-      await pool.end();
-      logger.info('PostgreSQL pool closed');
-
-      // Close Redis connections
-      await closeRedis();
-      logger.info('Redis connections closed');
-
-      logger.info('Graceful shutdown completed');
-      process.exit(0);
-    } catch (shutdownError) {
-      logger.error('Error during graceful shutdown', { error: shutdownError });
-      process.exit(1);
-    }
+  // Close the HTTP server first to release the port immediately
+  await new Promise<void>((resolve) => {
+    server.close((err) => {
+      if (err) {
+        logger.error('Error during server close', { error: err.message });
+      }
+      resolve();
+    });
+    // If server.close hangs (e.g. keep-alive connections), force after 3s
+    setTimeout(resolve, 3000);
   });
 
-  // Force exit after 30 seconds
-  setTimeout(() => {
-    logger.error('Forced shutdown after timeout');
+  try {
+    // Shutdown realtime connections
+    realtimeEmitter.shutdown();
+    logger.info('Realtime connections closed');
+
+    // Shutdown Data Hub queues
+    await dataHubQueueManager.shutdown();
+    logger.info('Data Hub queues closed');
+
+    // Close database connections
+    await pool.end();
+    logger.info('PostgreSQL pool closed');
+
+    // Close Redis connections
+    await closeRedis();
+    logger.info('Redis connections closed');
+
+    logger.info('Graceful shutdown completed');
+    process.exit(0);
+  } catch (shutdownError) {
+    logger.error('Error during graceful shutdown', { error: shutdownError });
     process.exit(1);
-  }, 30000);
+  }
 }
 
 // Initialize services and start server
@@ -380,12 +409,34 @@ process.on('SIGTERM', () => shutdown('SIGTERM'));
 process.on('SIGINT', () => shutdown('SIGINT'));
 
 // Start server
+let retryCount = 0;
+const MAX_RETRIES = 5;
+
 const server = app.listen(config.port, async () => {
+  retryCount = 0; // reset on successful listen
   await bootstrap();
   logger.info(`Propmetrik API server running on port ${config.port}`, {
     env: config.env,
     version: process.env.npm_package_version || '1.0.0',
   });
+});
+
+server.on('error', (err: NodeJS.ErrnoException) => {
+  if (err.code === 'EADDRINUSE') {
+    retryCount++;
+    if (retryCount > MAX_RETRIES) {
+      logger.error(`Port ${config.port} still in use after ${MAX_RETRIES} retries. Exiting.`);
+      process.exit(1);
+    }
+    logger.warn(`Port ${config.port} in use, retry ${retryCount}/${MAX_RETRIES} in 2s...`);
+    setTimeout(() => {
+      server.close();
+      server.listen(config.port);
+    }, 2000);
+  } else {
+    logger.error('Server error', { error: err.message });
+    process.exit(1);
+  }
 });
 
 export { app, server };

@@ -96,12 +96,11 @@ async function main() {
   }
   console.log(`Safe/Owner: ${SAFE_WALLET}`);
 
-  const RELAYER_ADDRESS = process.env.BTC_RELAYER_ADDRESS;
-  if (!RELAYER_ADDRESS || !ethers.isAddress(RELAYER_ADDRESS)) {
-    throw new Error("BTC_RELAYER_ADDRESS must be set to a valid address");
-  }
-  if (isMainnet && RELAYER_ADDRESS.toLowerCase() === deployer.address.toLowerCase()) {
-    throw new Error("On mainnet, BTC_RELAYER_ADDRESS must not be the deployer address");
+  // Registrar = backend signer that can register recipients & attest off-chain payments
+  // On testnet the deployer doubles as registrar; on mainnet use a dedicated key.
+  const REGISTRAR_ADDRESS = process.env.BTC_RELAYER_ADDRESS || deployer.address;
+  if (!ethers.isAddress(REGISTRAR_ADDRESS)) {
+    throw new Error("BTC_RELAYER_ADDRESS (registrar) must be a valid address");
   }
 
   // ── Deploy mock tokens if testnet ──────────────────────────────
@@ -144,25 +143,27 @@ async function main() {
     console.log(`  ✓ ${t.symbol} added`);
   }
 
-  // ── Add BTC as external chain ──────────────────────────────────
-  console.log("\n₿  Adding BTC as external chain...");
-  const btcTx = await payments.addExternalChain("BTC", "BTC", 8);
-  await btcTx.wait();
-  console.log("  ✓ BTC added (8 decimals / satoshis)");
+  // ── BTC Support ────────────────────────────────────────────────
+  // BTC payments are handled off-chain via NOWPayments.
+  // The backend attests BTC payments on-chain via recordOffChainPayment()
+  // using the registrar role. No addExternalChain or authorizeRelayer needed.
+  console.log("\n₿  BTC support: enabled via off-chain attestation (recordOffChainPayment)");
+  console.log("   Backend (registrar) attests BTC payments on-chain for audit trail");
 
-  // ── Authorize relayer ──────────────────────────────────────────
-  console.log(`\n🔑 Authorizing BTC relayer: ${RELAYER_ADDRESS}`);
-  const relayerTx = await payments.authorizeRelayer(RELAYER_ADDRESS);
-  await relayerTx.wait();
-  console.log("  ✓ Relayer authorized");
-
-  // ── Authorize deployer as registrar ────────────────────────────
-  // The deployer key is used by the backend to auto-register landlords.
-  // Owner (Safe) can revoke/rotate this at any time.
-  console.log(`\n📋 Authorizing registrar: ${deployer.address}`);
+  // ── Authorize registrar(s) ─────────────────────────────────────
+  // 1. Deployer key — used by the backend for auto-registering landlords
+  console.log(`\n📋 Authorizing registrar (deployer): ${deployer.address}`);
   const registrarTx = await payments.authorizeRegistrar(deployer.address);
   await registrarTx.wait();
-  console.log("  ✓ Registrar authorized (backend can auto-register recipients)");
+  console.log("  ✓ Deployer registrar authorized (backend can auto-register recipients)");
+
+  // 2. Dedicated registrar key — for BTC attestation (if different from deployer)
+  if (REGISTRAR_ADDRESS.toLowerCase() !== deployer.address.toLowerCase()) {
+    console.log(`  Authorizing registrar (BTC attestation): ${REGISTRAR_ADDRESS}`);
+    const btcRegTx = await payments.authorizeRegistrar(REGISTRAR_ADDRESS);
+    await btcRegTx.wait();
+    console.log("  ✓ BTC registrar authorized");
+  }
 
   // ── Configure DEX Swap Router ──────────────────────────────────
   const swapRouterAddr = SWAP_ROUTERS[chainId];
@@ -188,24 +189,14 @@ async function main() {
     console.log("\n⚠️  No DEX swap router configured for this network");
   }
 
-  // ── Configure WBTC Token & BTC Settlement Wallet (Phase 3) ─────
+  // ── WBTC is already in the token allowlist ────────────────────
+  // WBTC on-chain payments use processPayment() like any other ERC20.
+  // No separate setWbtcToken/setBtcSettlementWallet calls needed.
   const wbtcAddr = WBTC_ADDRESSES[chainId];
   if (wbtcAddr) {
-    console.log(`\n₿  Setting WBTC token for BTC settlement: ${wbtcAddr}`);
-    const wbtcTx = await payments.setWbtcToken(wbtcAddr);
-    await wbtcTx.wait();
-    console.log("  ✓ WBTC token configured");
-
-    // BTC settlement wallet — deployer/platform wallet for WBTC collection
-    // In production, this is a platform-controlled hot wallet that holds WBTC
-    // before it's sold on an exchange and converted to native BTC.
-    const BTC_SETTLEMENT_WALLET = process.env.BTC_SETTLEMENT_WALLET || SAFE_WALLET;
-    console.log(`  Setting BTC settlement wallet: ${BTC_SETTLEMENT_WALLET}`);
-    const settleTx = await payments.setBtcSettlementWallet(BTC_SETTLEMENT_WALLET);
-    await settleTx.wait();
-    console.log("  ✓ BTC settlement wallet configured");
+    console.log(`\n₿  WBTC on-chain payments: enabled (${wbtcAddr} in token allowlist)`);
   } else {
-    console.log("\n⚠️  No WBTC address for this network — BTC settlement disabled");
+    console.log("\n⚠️  No WBTC address for this network");
   }
 
   // ── Transfer ownership to Safe on mainnet ─────────────────────
@@ -228,12 +219,10 @@ async function main() {
     propmetrikWallet: SAFE_WALLET,
     contract: paymentsAddr,
     tokens: tokenAddresses,
-    externalChains: [{ chain: "BTC", symbol: "BTC", decimals: 8 }],
-    relayer: RELAYER_ADDRESS,
-    registrar: deployer.address,
+    registrar: REGISTRAR_ADDRESS,
     swapRouter: swapRouterAddr || null,
     wbtcToken: wbtcAddr || null,
-    btcSettlementWallet: wbtcAddr ? (process.env.BTC_SETTLEMENT_WALLET || SAFE_WALLET) : null,
+
     timestamp: new Date().toISOString(),
   };
 
@@ -249,8 +238,8 @@ async function main() {
   console.log("═══════════════════════════════════════════════════");
   console.log(`  Contract:  ${paymentsAddr}`);
   console.log(`  Tokens:    ${tokenAddresses.length} ERC20 configured`);
-  console.log(`  BTC:       enabled (external chain + WBTC settlement)`);
-  console.log(`  Relayer:   ${RELAYER_ADDRESS}`);
+  console.log(`  BTC:       enabled (off-chain attestation via registrar)`);
+  console.log(`  Registrar: ${REGISTRAR_ADDRESS}`);
   console.log(`  Owner:     ${isMainnet ? SAFE_WALLET + " (pending acceptOwnership)" : deployer.address}`);
   console.log("═══════════════════════════════════════════════════");
 }

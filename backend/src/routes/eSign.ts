@@ -71,8 +71,8 @@ const getUserId = (req: Request): string => {
     const headerUserId = req.headers['x-user-id'] as string;
     if (headerUserId) return headerUserId;
 
-    // Default to admin user for development (this user exists in the database)
-    return '00000000-0000-0000-0000-000000000002';
+    // Default to Eric Danso for development
+    return 'ed4a50d7-a1b2-4c3d-8e5f-6a7b8c9d0e1f';
 };
 
 // Extract user email from JWT or header
@@ -781,6 +781,130 @@ router.post('/test/create-pdf', asyncHandler(async (req: Request, res: Response)
 }));
 
 /**
+ * Get or create a permanent signer ID (PMT-XXXX-XXXX) for a user
+ * POST /api/v1/esign/users/get-or-create-signer-id
+ * 
+ * PMT IDs are derived from the first section of the user's UUID and persisted
+ * in esign_signer_identities. Once assigned, they follow the user forever
+ * across all signing contexts (leases, valuation reports, change orders,
+ * property purchases, etc.) for consistency and audit trail.
+ */
+router.post('/users/get-or-create-signer-id', asyncHandler(async (req: Request, res: Response) => {
+    const { email, name } = req.body;
+    if (!email) {
+        return res.status(400).json({ success: false, error: 'Email is required' });
+    }
+
+    // Helper: generate PMT ID from UUID — takes first 8 hex chars of the UUID (first section)
+    const pmtFromUuid = (uuid: string) => {
+        const raw = uuid.replace(/-/g, '');
+        return `PMT-${raw.substring(0, 4).toUpperCase()}-${raw.substring(4, 8).toUpperCase()}`;
+    };
+
+    // Resolve the user ID — prefer real JWT userId, then lookup by email
+    // IMPORTANT: Do NOT use the dev-fallback getUserId() here — only real JWT
+    let resolvedUserId: string | null = null;
+    const realJwtUserId = (req as any).userId || (req as any).user?.id || (req.headers['x-user-id'] as string) || null;
+
+    // Check if JWT userId corresponds to a real user
+    if (realJwtUserId) {
+        const userByIdRes = await dbQuery(
+            'SELECT id FROM users WHERE id = $1 LIMIT 1', [realJwtUserId]
+        ).catch(() => ({ rows: [] }));
+        if (userByIdRes.rows.length > 0) {
+            resolvedUserId = userByIdRes.rows[0].id;
+        }
+    }
+
+    // If JWT didn't resolve, try email lookup in users table
+    if (!resolvedUserId) {
+        const userByEmail = await dbQuery(
+            'SELECT id FROM users WHERE email = $1 LIMIT 1', [email]
+        ).catch(() => ({ rows: [] }));
+        if (userByEmail.rows.length > 0) {
+            resolvedUserId = userByEmail.rows[0].id;
+        }
+    }
+
+    // Try tenants table by email
+    if (!resolvedUserId) {
+        const tenantByEmail = await dbQuery(
+            'SELECT id FROM tenants WHERE email = $1 LIMIT 1', [email]
+        ).catch(() => ({ rows: [] }));
+        if (tenantByEmail.rows.length > 0) {
+            resolvedUserId = tenantByEmail.rows[0].id;
+        }
+    }
+
+    // ── Step 1: Check if this user/email already has a persisted PMT ID ──
+    // Look up by user_id first (handles email changes), then by email
+    let existingIdentity: any = null;
+
+    if (resolvedUserId) {
+        const byUserId = await dbQuery(
+            'SELECT permanent_id FROM esign_signer_identities WHERE user_id = $1 LIMIT 1',
+            [resolvedUserId]
+        ).catch(() => ({ rows: [] }));
+        if (byUserId.rows.length > 0) {
+            existingIdentity = byUserId.rows[0];
+        }
+    }
+
+    if (!existingIdentity) {
+        const byEmail = await dbQuery(
+            'SELECT permanent_id, user_id FROM esign_signer_identities WHERE email = $1 LIMIT 1',
+            [email]
+        ).catch(() => ({ rows: [] }));
+        if (byEmail.rows.length > 0) {
+            existingIdentity = byEmail.rows[0];
+            // If we now have a resolved user ID but the record doesn't, backfill it
+            if (resolvedUserId && !byEmail.rows[0].user_id) {
+                await dbQuery(
+                    'UPDATE esign_signer_identities SET user_id = $1 WHERE email = $2',
+                    [resolvedUserId, email]
+                ).catch(() => {});
+            }
+        }
+    }
+
+    if (existingIdentity?.permanent_id) {
+        // PMT ID already persisted — return it (consistent forever)
+        return res.json({ success: true, signer_pmt_id: existingIdentity.permanent_id });
+    }
+
+    // ── Step 2: Generate new PMT ID and persist it ──
+    let pmtId: string;
+
+    if (resolvedUserId) {
+        // Derive from UUID first section — stable and deterministic
+        pmtId = pmtFromUuid(resolvedUserId);
+    } else {
+        // External signer with no user/tenant record — hash the email
+        const hash = createHash('sha256').update(email.toLowerCase()).digest('hex');
+        pmtId = `PMT-${hash.substring(0, 4).toUpperCase()}-${hash.substring(4, 8).toUpperCase()}`;
+    }
+
+    // Persist in esign_signer_identities so it follows the user forever
+    try {
+        await dbQuery(
+            `INSERT INTO esign_signer_identities (id, email, user_id, permanent_id, display_name, total_signatures, first_signed_at, last_signed_at, created_at)
+             VALUES (gen_random_uuid(), $1, $2, $3, $4, 0, NOW(), NOW(), NOW())
+             ON CONFLICT (email) DO UPDATE SET
+               permanent_id = COALESCE(esign_signer_identities.permanent_id, $3),
+               user_id = COALESCE(esign_signer_identities.user_id, $2),
+               display_name = COALESCE(NULLIF($4, ''), esign_signer_identities.display_name)`,
+            [email, resolvedUserId, pmtId, name || email.split('@')[0]]
+        );
+        logger.info('Persisted PMT signer ID', { email, pmtId, userId: resolvedUserId });
+    } catch (persistErr: any) {
+        // Log but don't fail — the PMT ID is still valid even if persistence fails
+        logger.warn('Could not persist PMT signer ID', { email, pmtId, error: persistErr?.message });
+    }
+
+    return res.json({ success: true, signer_pmt_id: pmtId });
+}));
+
+/**
  * Health check
  * GET /api/v1/esign/health
  */
@@ -1229,6 +1353,218 @@ router.post('/envelopes/from-template', asyncHandler(async (req: Request, res: R
         if (error.message === 'Template not found') {
             return res.status(404).json({ error: error.message });
         }
+        res.status(400).json({ error: error.message });
+    }
+}));
+
+/**
+ * Create envelope from self-sign flow (SelfSignComplete component)
+ * POST /api/v1/esign/envelopes/create
+ * 
+ * Accepts FormData with:
+ *   - envelope_data: JSON string with envelope metadata
+ *   - files: The signed PDF file
+ * 
+ * For self-signed envelopes, generates a Certificate of Completion
+ * and appends it to the stored PDF.
+ */
+router.post('/envelopes/create', esignUpload.single('files'), asyncHandler(async (req: Request, res: Response) => {
+    const organizationId = getOrganizationId(req) || await getDefaultOrgId();
+    const userId = getUserId(req);
+
+    try {
+        // Parse envelope data from the FormData JSON string
+        let envelopeDataRaw: any;
+        try {
+            envelopeDataRaw = req.body.envelope_data ? JSON.parse(req.body.envelope_data) : req.body;
+        } catch {
+            envelopeDataRaw = req.body;
+        }
+
+        const isSelfSigned = envelopeDataRaw.isSelfSigned === true || envelopeDataRaw.status === 'completed';
+        const recipients = envelopeDataRaw.recipients || [];
+        const fields = envelopeDataRaw.fields || [];
+
+        // Read the uploaded PDF if provided
+        let pdfBuffer: Buffer | null = null;
+        let pdfDataUrl: string | null = null;
+        if (req.file) {
+            pdfBuffer = fs.readFileSync(req.file.path);
+            const pdfBase64 = pdfBuffer.toString('base64');
+            pdfDataUrl = `data:application/pdf;base64,${pdfBase64}`;
+            fs.unlinkSync(req.file.path); // Clean up temp file
+        }
+
+        // Map fields to the format expected by envelope service
+        const mapFieldType = (t: string): string => {
+            switch (t) {
+                case 'initial': return 'initials';
+                case 'name': return 'text';
+                default: return t;
+            }
+        };
+
+        const flatFields = fields.map((f: any) => ({
+            signerEmail: f.recipientEmail || recipients[0]?.email || '',
+            type: mapFieldType(f.type || 'signature'),
+            page: f.page || 1,
+            x: f.x ?? 0,
+            y: f.y ?? 0,
+            width: f.width ?? 200,
+            height: f.height ?? 50,
+            required: f.required !== false,
+            label: f.label || null,
+            value: f.value || null,
+            signed: isSelfSigned,
+        }));
+
+        // Build envelope DTO
+        const envelopeData = {
+            name: envelopeDataRaw.subject || 'Self-Signed Document',
+            message: envelopeDataRaw.message || '',
+            documentHtml: pdfDataUrl
+                ? `<div class="pdf-document" data-pdf-url="${pdfDataUrl}">PDF Document</div>`
+                : null,
+            documentPdfUrl: pdfDataUrl,
+            contextType: envelopeDataRaw.contextType || (isSelfSigned ? 'self_signed' : 'document'),
+            contextEntityId: envelopeDataRaw.contextEntityId || null,
+            contextEntityName: envelopeDataRaw.contextEntityName || null,
+            autoSend: isSelfSigned ? false : true,
+            initialStatus: isSelfSigned ? 'completed' : undefined,
+            signers: recipients.map((r: any, i: number) => ({
+                name: r.name || 'Signer',
+                email: r.email,
+                role: r.role || 'signer',
+                order: r.order || i + 1,
+            })),
+            fields: flatFields,
+            expiresInDays: envelopeDataRaw.settings?.expiresInDays || 30,
+        };
+
+        // Create the envelope in the database
+        const envelope = await esignEnvelopeService.createAndSendEnvelope(
+            organizationId,
+            userId,
+            envelopeData
+        );
+
+        // For self-signed completed envelopes, generate Certificate of Completion
+        // and store the certified PDF
+        let certifiedPdfUrl: string | null = null;
+        const signerPmtIds: string[] = [];
+
+        if (isSelfSigned && pdfBuffer) {
+            try {
+                // Generate PMT IDs for signers using the same DB-lookup logic
+                // as the /users/get-or-create-signer-id endpoint
+                for (const r of recipients) {
+                    const email = r.email;
+                    if (email) {
+                        let pmtId: string | null = null;
+                        
+                        // 1. Look up in users table first (use user UUID first section)
+                        const userRes = await dbQuery(
+                            'SELECT id FROM users WHERE email = $1 LIMIT 1',
+                            [email]
+                        ).catch(() => ({ rows: [] }));
+                        
+                        if (userRes.rows.length > 0) {
+                            const raw = userRes.rows[0].id.replace(/-/g, '');
+                            pmtId = `PMT-${raw.substring(0, 4).toUpperCase()}-${raw.substring(4, 8).toUpperCase()}`;
+                        }
+                        
+                        // 2. Fall back to tenants table
+                        if (!pmtId) {
+                            const tenantRes = await dbQuery(
+                                'SELECT id FROM tenants WHERE email = $1 LIMIT 1',
+                                [email]
+                            ).catch(() => ({ rows: [] }));
+                            
+                            if (tenantRes.rows.length > 0) {
+                                const raw = tenantRes.rows[0].id.replace(/-/g, '');
+                                pmtId = `PMT-${raw.substring(0, 4).toUpperCase()}-${raw.substring(4, 8).toUpperCase()}`;
+                            }
+                        }
+                        
+                        // 3. Last resort: deterministic hash from email
+                        if (!pmtId) {
+                            const hash = createHash('sha256').update(email.toLowerCase()).digest('hex');
+                            pmtId = `PMT-${hash.substring(0, 4).toUpperCase()}-${hash.substring(4, 8).toUpperCase()}`;
+                        }
+                        
+                        signerPmtIds.push(pmtId);
+                    }
+                }
+
+                // Generate Certificate of Completion
+                const documentHash = pdfSigningService.calculateDocumentHash(new Uint8Array(pdfBuffer));
+                const certPdfBytes = await pdfSigningService.generateCertificateOfCompletion({
+                    certificateId: `CERT-${envelope.id.substring(0, 8).toUpperCase()}`,
+                    documentTitle: envelopeDataRaw.subject || 'Signed Document',
+                    documentHash,
+                    envelopeId: envelope.id,
+                    organizationName: 'PROPMETRIK Ghana Ltd.',
+                    completedAt: new Date(),
+                    signers: recipients.map((r: any, i: number) => ({
+                        name: r.name,
+                        email: r.email,
+                        role: r.role || 'signer',
+                        signedAt: new Date(envelopeDataRaw.signedAt || Date.now()),
+                        signatureId: signerPmtIds[i] || undefined,
+                    })),
+                });
+
+                // Merge certificate pages into signed PDF
+                const mainDoc = await PDFDocument.load(pdfBuffer);
+                const certDoc = await PDFDocument.load(certPdfBytes);
+                const certPages = await mainDoc.copyPages(certDoc, certDoc.getPageIndices());
+                for (const p of certPages) {
+                    mainDoc.addPage(p);
+                }
+                const certifiedPdfBytes = await mainDoc.save();
+
+                // Store certified PDF in MinIO
+                const certifiedKey = `esign/certified/${envelope.id}_certified.pdf`;
+                await uploadFile(
+                    buckets.documents,
+                    certifiedKey,
+                    Buffer.from(certifiedPdfBytes),
+                    'application/pdf',
+                    { envelopeId: envelope.id, type: 'certified-self-signed' }
+                );
+
+                // Update envelope record with certified PDF URL
+                await dbQuery(
+                    `UPDATE esign_envelopes SET signed_pdf_url = $2, updated_at = NOW() WHERE id = $1`,
+                    [envelope.id, certifiedKey]
+                );
+
+                certifiedPdfUrl = certifiedKey;
+                logger.info('Generated Certificate of Completion for self-signed envelope', {
+                    envelopeId: envelope.id,
+                    certifiedKey,
+                });
+            } catch (certError: any) {
+                logger.warn('Failed to generate Certificate of Completion', {
+                    envelopeId: envelope.id,
+                    error: certError?.message,
+                });
+                // Continue without certificate — the envelope is still saved
+            }
+        }
+
+        res.status(201).json({
+            success: true,
+            envelope_id: envelope.id,
+            data: envelope,
+            signer_pmt_ids: signerPmtIds,
+            certified_pdf_url: certifiedPdfUrl,
+        });
+    } catch (error: any) {
+        if (req.file && fs.existsSync(req.file.path)) {
+            fs.unlinkSync(req.file.path);
+        }
+        logger.error('E-Sign Create Envelope Error:', error);
         res.status(400).json({ error: error.message });
     }
 }));

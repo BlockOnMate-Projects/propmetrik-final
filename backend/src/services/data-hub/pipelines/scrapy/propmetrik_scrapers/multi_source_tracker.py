@@ -141,17 +141,49 @@ class MultiSourceTracker:
                     # Insert new contribution
                     result = self._insert_contribution(
                         cur, property_id, data_source_id, source_type,
-                        data_fields, raw_data, reliability_score
+                        data_fields, raw_data, reliability_score,
+                        item_data, source_slug
                     )
                 
-                self.conn.commit()
+                # NOTE: Do NOT commit here - the calling pipeline controls the transaction
                 return result
                 
         except Exception as e:
-            self.conn.rollback()
+            # NOTE: Do NOT rollback here - the calling pipeline uses SAVEPOINTs
             logger.error(f"Error tracking source contribution: {e}")
             raise
     
+    # Region name to region_code_enum mapping
+    REGION_ENUM_MAP = {
+        'greater accra': 'greater_accra',
+        'accra': 'greater_accra',
+        'ashanti': 'kumasi_metro',
+        'kumasi': 'kumasi_metro',
+        'eastern': 'eastern',
+        'western': 'western_cluster',
+        'central': 'western_cluster',
+        'northern': 'northern_cluster',
+        'volta': 'eastern',
+        'upper east': 'northern_cluster',
+        'upper west': 'northern_cluster',
+        'bono': 'northern_cluster',
+    }
+
+    # Map internal source_type to data_source_tier_enum values
+    TIER_ENUM_MAP = {
+        'tier1_government': 'tier1_government',
+        'tier2_financial': 'tier2_financial',
+        'tier3_partner': 'tier3_partners',
+        'tier3_partners': 'tier3_partners',
+        'tier3c_construction': 'tier3_partners',
+        'tier4_user': 'tier3b_user_generated',
+        'tier4_market_data': 'tier4_market_data',
+        'tier5_web': 'tier5_public_web',
+        'tier5_public_web': 'tier5_public_web',
+        'manual_entry': 'tier3b_user_generated',
+        'api_import': 'tier4_market_data',
+    }
+
     def _get_or_create_data_source(self, cursor, source_slug: str, source_type: str) -> str:
         """Get data source ID from cache or database, creating if needed."""
         
@@ -171,15 +203,16 @@ class MultiSourceTracker:
         else:
             # Create new data source
             trust_score = SOURCE_TYPE_TRUST.get(source_type, 0.5)
+            tier_enum = self.TIER_ENUM_MAP.get(source_type, 'tier5_public_web')
             cursor.execute("""
-                INSERT INTO data_sources (name, slug, source_type, trust_score, is_active)
-                VALUES (%s, %s, %s, %s, true)
-                ON CONFLICT (slug) DO UPDATE SET source_type = EXCLUDED.source_type
+                INSERT INTO data_sources (name, slug, tier, trust_score, is_active)
+                VALUES (%s, %s, %s::data_source_tier_enum, %s, true)
+                ON CONFLICT (slug) DO UPDATE SET tier = EXCLUDED.tier
                 RETURNING id
             """, (
                 self._format_source_name(source_slug),
                 source_slug,
-                source_type,
+                tier_enum,
                 trust_score,
             ))
             data_source_id = str(cursor.fetchone()['id'])
@@ -191,6 +224,12 @@ class MultiSourceTracker:
     def _format_source_name(self, slug: str) -> str:
         """Format source slug into readable name."""
         return ' '.join(word.capitalize() for word in slug.replace('-', '_').split('_'))
+    
+    def _normalize_region(self, item_data: Dict[str, Any]) -> str:
+        """Extract and normalize region from item data to region_code_enum."""
+        region = item_data.get('region', '') or ''
+        region_lower = region.lower().strip()
+        return self.REGION_ENUM_MAP.get(region_lower, 'greater_accra')
     
     def _extract_trackable_fields(self, item_data: Dict[str, Any]) -> Dict[str, Any]:
         """Extract trackable fields from raw item data."""
@@ -256,20 +295,46 @@ class MultiSourceTracker:
         source_type: str,
         data_fields: Dict[str, Any],
         raw_data: Dict[str, Any],
-        reliability_score: float
+        reliability_score: float,
+        item_data: Dict[str, Any] = None,
+        source_slug: str = 'unknown'
     ) -> Dict[str, Any]:
         """Insert new source contribution."""
+        property_region = self._normalize_region(item_data or {})
+        source_name = self._format_source_name(source_slug)
+        
+        # Map source_type to source_type_enum (property_data_sources uses different enum)
+        SOURCE_TYPE_MAP = {
+            'tier1_government': 'tier1_government',
+            'tier2_financial': 'tier2_financial',
+            'tier3_partner': 'tier3_partner',
+            'tier3_partners': 'tier3_partner',
+            'tier4_market_data': 'tier4_user',
+            'tier5_web': 'tier5_web',
+            'tier5_public_web': 'tier5_web',
+            'manual_entry': 'manual_entry',
+            'api_import': 'api_import',
+        }
+        mapped_source_type = SOURCE_TYPE_MAP.get(source_type, 'tier5_web')
         
         cursor.execute("""
             INSERT INTO property_data_sources (
-                property_id, data_source_id, source_type,
-                data_fields, raw_data, reliability_score,
-                is_primary_source, first_seen_at, last_updated, update_count
-            ) VALUES (%s, %s, %s, %s, %s, %s, false, NOW(), NOW(), 1)
+                property_id, data_source_id, property_region,
+                source_type, source_name, data_fields, raw_data,
+                reliability_score, data_collected_at,
+                is_primary_source, last_updated, update_count
+            ) VALUES (
+                %s, %s, %s::region_code_enum,
+                %s::source_type_enum, %s, %s, %s,
+                %s, NOW(),
+                false, NOW(), 1
+            )
         """, (
             property_id,
             data_source_id,
-            source_type,
+            property_region,
+            mapped_source_type,
+            source_name,
             json.dumps(data_fields),
             json.dumps(raw_data),
             reliability_score,

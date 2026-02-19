@@ -71,8 +71,8 @@ const rfiUpload = multer({
 
 const router = Router();
 
-// Dev fallback user ID for development mode (Eric Ofori - PM user)
-const DEV_USER_ID = '33333333-3333-3333-3333-333333333333';
+// Dev fallback user ID for development mode (Eric Danso - super_admin)
+const DEV_USER_ID = 'ed4a50d7-a1b2-4c3d-8e5f-6a7b8c9d0e1f';
 
 // Helper to extract user ID from request (auth middleware provides this)
 const getUserId = (req: Request): string | undefined => {

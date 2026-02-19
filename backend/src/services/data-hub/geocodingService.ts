@@ -256,11 +256,18 @@ export class GeocodingService {
       };
 
       // Cache the result
-      await this.cacheResult(address, result, data as Record<string, unknown>);
+      try {
+        await this.cacheResult(address, result, data as Record<string, unknown>);
+      } catch (cacheError) {
+        logger.warn('Geocode cache write failed (result still returned)', { 
+          error: cacheError instanceof Error ? cacheError.message : String(cacheError),
+          address,
+        });
+      }
 
       return result;
     } catch (error) {
-      logger.error('Mapbox geocoding failed', { error, address });
+      logger.error('Mapbox geocoding failed', { error: error instanceof Error ? error.message : String(error), address });
       return null;
     }
   }
@@ -334,11 +341,18 @@ export class GeocodingService {
       };
 
       // Cache the result
-      await this.cacheResult(address, geocodingResult, data as Record<string, unknown>);
+      try {
+        await this.cacheResult(address, geocodingResult, data as Record<string, unknown>);
+      } catch (cacheError) {
+        logger.warn('Geocode cache write failed (result still returned)', {
+          error: cacheError instanceof Error ? cacheError.message : String(cacheError),
+          address,
+        });
+      }
 
       return geocodingResult;
     } catch (error) {
-      logger.error('Google geocoding failed', { error, address });
+      logger.error('Google geocoding failed', { error: error instanceof Error ? error.message : String(error), address });
       return null;
     }
   }

@@ -69,36 +69,50 @@ export default function PaymentSettings({ paymentApi, serviceLabel }: PaymentSet
             ? 'Connect a bank account or mobile money wallet to receive deal commission payouts. Once configured, payments will be automatically split — you receive the principal and PROPMETRIK retains a small service fee.'
             : label === 'Project Management'
             ? 'Connect a bank account or mobile money wallet to receive buyer payments and contractor settlements. Once configured, payments will be automatically split — you receive the principal and PROPMETRIK retains a small service fee.'
+            : label === 'Valuation Services'
+            ? 'Connect a bank account or mobile money wallet to receive valuation fee payments from clients. Once configured, payments will be automatically split — you receive the principal and PROPMETRIK retains the 2.5% platform fee.'
             : 'Connect a bank account or mobile money wallet to receive rent payments from tenants. Once configured, payments will be automatically split — you receive the principal and PROPMETRIK retains a small service fee.',
         formSubtitle: label === 'Deal Management'
             ? 'Choose how you want to receive deal payouts'
             : label === 'Project Management'
             ? 'Choose how you want to receive project payments'
+            : label === 'Valuation Services'
+            ? 'Choose how you want to receive valuation fee payments'
             : 'Choose how you want to receive payments from tenants',
         configuredSubtitle: label === 'Deal Management'
             ? 'Where deal commission payouts are deposited'
             : label === 'Project Management'
             ? 'Where project payments are deposited'
+            : label === 'Valuation Services'
+            ? 'Where valuation fee payments are deposited'
             : 'Where tenant rent payments are deposited',
         splitNote: label === 'Deal Management'
             ? 'Deal payments are automatically split: you receive the principal, PROPMETRIK retains the service fee.'
             : label === 'Project Management'
             ? 'Buyer payments are automatically split: you receive the principal, PROPMETRIK retains the service fee.'
+            : label === 'Valuation Services'
+            ? 'Valuation payments are automatically split: you receive the principal, PROPMETRIK retains the 2.5% platform fee.'
             : 'Rent paid by tenants is automatically split: landlord receives principal, PROPMETRIK retains the service fee.',
         feeNote: label === 'Deal Management'
             ? 'per deal payment'
             : label === 'Project Management'
             ? 'per project payment'
+            : label === 'Valuation Services'
+            ? 'per valuation invoice payment'
             : 'per rent payment',
         feeDescription: label === 'Deal Management'
             ? 'This fee is added on top of the deal amount, paid by the buyer.'
             : label === 'Project Management'
             ? 'This fee is added on top of the invoice amount, paid by the client.'
+            : label === 'Valuation Services'
+            ? 'This fee is added on top of the valuation invoice, paid by the client.'
             : 'This fee is added on top of the rent amount, paid by the tenant.',
         feeExample: label === 'Deal Management'
             ? 'Example: GHS 2,500 deal → buyer pays GHS 2,525 → you receive GHS 2,500.'
             : label === 'Project Management'
             ? 'Example: GHS 2,500 invoice → client pays GHS 2,525 → you receive GHS 2,500.'
+            : label === 'Valuation Services'
+            ? 'Example: GHS 19,000 valuation → client pays GHS 19,475 → you receive GHS 19,000.'
             : 'Example: GHS 2,500 rent → tenant pays GHS 2,525 → you receive GHS 2,500.',
     };
     // Account status

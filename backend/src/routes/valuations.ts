@@ -100,10 +100,10 @@ const validateUUID = (paramName: string) => {
     const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
     if (!uuidRegex.test(uuid)) {
-      return res.status(400).json({
-        error: 'Bad Request',
-        message: `Invalid ${paramName} format`,
-      });
+      // Forward to next matching route instead of returning 400.
+      // This allows static routes like /rental-benchmarks, /cap-rate/benchmarks,
+      // /market/:region to be matched even when defined after /:id.
+      return next('route');
     }
 
     next();
@@ -126,12 +126,30 @@ router.get('/', async (req: Request, res: Response) => {
     const status = req.query.status as string;
     const purpose = req.query.purpose as string;
 
+    // RBAC: determine if user can see all valuations or only assigned ones
+    const userRole = req.user?.realmRoles?.[0] || req.user?.clientRoles?.[0] || '';
+    const userId = req.user?.id || req.user?.sub;
+    const orgId = req.user?.organizationId;
+    const fullAccessRoles = ['super_admin', 'admin', 'firm_principal', 'senior_valuer', 'manager', 'compliance_officer'];
+    const hasFullAccess = fullAccessRoles.includes(userRole);
+
     let whereClause = '';
+    let joinClause = '';
     const params: any[] = [];
     let paramIndex = 1;
 
+    // Assignment-based filtering for non-admin roles
+    if (!hasFullAccess && userId) {
+      joinClause = ` INNER JOIN valuation_team_members vtm ON vtm.valuation_id = v.id AND vtm.user_id = $${paramIndex++} AND vtm.is_active = true`;
+      params.push(userId);
+    } else if (orgId && !['super_admin'].includes(userRole)) {
+      // Org-scoped: admin/managers see their org's valuations only
+      whereClause += ` WHERE v.valuer_organization_id = $${paramIndex++}`;
+      params.push(orgId);
+    }
+
     if (status) {
-      whereClause += ` WHERE v.status = $${paramIndex++}`;
+      whereClause += whereClause ? ` AND v.status = $${paramIndex++}` : ` WHERE v.status = $${paramIndex++}`;
       params.push(status);
     }
 
@@ -141,7 +159,7 @@ router.get('/', async (req: Request, res: Response) => {
     }
 
     const countResult = await query(
-      `SELECT COUNT(*) as total FROM valuations v${whereClause}`,
+      `SELECT COUNT(*) as total FROM valuations v${joinClause}${whereClause}`,
       params
     );
 
@@ -165,7 +183,7 @@ router.get('/', async (req: Request, res: Response) => {
         p.region,
         p.property_type,
         p.digital_address
-      FROM valuations v
+      FROM valuations v${joinClause}
       LEFT JOIN properties p ON v.property_id = p.id
       ${whereClause}
       ORDER BY v.created_at DESC
@@ -231,20 +249,40 @@ router.get('/', async (req: Request, res: Response) => {
  */
 router.get('/stats', async (req: Request, res: Response) => {
   try {
+    // RBAC: same logic as list — filter by assignment for non-admin roles
+    const userRole = req.user?.realmRoles?.[0] || req.user?.clientRoles?.[0] || '';
+    const userId = req.user?.id || req.user?.sub;
+    const orgId = req.user?.organizationId;
+    const fullAccessRoles = ['super_admin', 'admin', 'firm_principal', 'senior_valuer', 'manager', 'compliance_officer'];
+    const hasFullAccess = fullAccessRoles.includes(userRole);
+
+    let joinClause = '';
+    let whereClause = '';
+    const params: any[] = [];
+    let paramIndex = 1;
+
+    if (!hasFullAccess && userId) {
+      joinClause = ` INNER JOIN valuation_team_members vtm ON vtm.valuation_id = v.id AND vtm.user_id = $${paramIndex++} AND vtm.is_active = true`;
+      params.push(userId);
+    } else if (orgId && !['super_admin'].includes(userRole)) {
+      whereClause = ` WHERE v.valuer_organization_id = $${paramIndex++}`;
+      params.push(orgId);
+    }
+
     const result = await query(`
       SELECT 
         COUNT(*) as total_valuations,
-        COUNT(DISTINCT property_id) as unique_properties,
-        AVG(estimated_value) as avg_value,
-        AVG(confidence_score) as avg_confidence,
-        COUNT(CASE WHEN status = 'draft' THEN 1 END) as draft_count,
-        COUNT(CASE WHEN status = 'in_progress' THEN 1 END) as in_progress_count,
-        COUNT(CASE WHEN status = 'pending_review' THEN 1 END) as pending_review_count,
-        COUNT(CASE WHEN status = 'completed' THEN 1 END) as completed_count,
-        COUNT(CASE WHEN created_at > NOW() - INTERVAL '7 days' THEN 1 END) as last_7_days,
-        COUNT(CASE WHEN created_at > NOW() - INTERVAL '30 days' THEN 1 END) as last_30_days
-      FROM valuations
-    `);
+        COUNT(DISTINCT v.property_id) as unique_properties,
+        AVG(v.estimated_value) as avg_value,
+        AVG(v.confidence_score) as avg_confidence,
+        COUNT(CASE WHEN v.status = 'draft' THEN 1 END) as draft_count,
+        COUNT(CASE WHEN v.status = 'in_progress' THEN 1 END) as in_progress_count,
+        COUNT(CASE WHEN v.status = 'pending_review' THEN 1 END) as pending_review_count,
+        COUNT(CASE WHEN v.status = 'completed' THEN 1 END) as completed_count,
+        COUNT(CASE WHEN v.created_at > NOW() - INTERVAL '7 days' THEN 1 END) as last_7_days,
+        COUNT(CASE WHEN v.created_at > NOW() - INTERVAL '30 days' THEN 1 END) as last_30_days
+      FROM valuations v${joinClause}${whereClause}
+    `, params);
 
     const stats = result.rows[0];
 
@@ -293,6 +331,7 @@ router.post('/', validateValuationRequest, async (req: Request, res: Response) =
       instruction_date,
       report_date,
       is_retrospective,
+      client_id,
       options = {},
     } = req.body;
     // Use user ID if authenticated, otherwise null for anonymous
@@ -452,6 +491,9 @@ router.post('/', validateValuationRequest, async (req: Request, res: Response) =
       report_date: report_date || null,
     };
 
+    // Also capture the organization ID for client linkage
+    const organizationId = (req as any).user?.organizationId || null;
+
     const valuationResult = await query(
       `INSERT INTO valuations (
         property_id,
@@ -465,9 +507,11 @@ router.post('/', validateValuationRequest, async (req: Request, res: Response) =
         effective_date,
         inspection_date,
         is_retrospective,
-        metadata
+        metadata,
+        client_id,
+        valuer_organization_id
       ) VALUES (
-        $1, $2, $3, $4, 'draft', 0, 0, '[]', $5, $6, COALESCE($7, FALSE), $8
+        $1, $2, $3, $4, 'draft', 0, 0, '[]', $5, $6, COALESCE($7, FALSE), $8, $9, $10
       ) RETURNING id, property_id, status, valuation_type, valuation_purpose, created_at`,
       [
         propId,
@@ -478,13 +522,44 @@ router.post('/', validateValuationRequest, async (req: Request, res: Response) =
         inspectionDate,
         retrospectiveFlag,
         metadata,
+        client_id || null,
+        organizationId,
       ]
     );
 
     const result = valuationResult.rows[0];
 
-    // Create valuation engagement record with client info if provided
-    if (property?.client_name || property?.request_type) {
+    // If client_id provided, auto-populate engagement from client registry
+    if (client_id) {
+      try {
+        const clientRow = await query(
+          `SELECT name, company_name, email, phone, address FROM valuation_clients WHERE id = $1 AND organization_id = $2`,
+          [client_id, organizationId]
+        );
+        if (clientRow.rows.length > 0) {
+          const c = clientRow.rows[0];
+          await query(
+            `INSERT INTO valuation_engagements (
+              valuation_id, client_name, client_company, client_email, client_contact, client_address,
+              request_type, request_date, purpose
+            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
+            [
+              result.id,
+              c.name, c.company_name, c.email, c.phone, c.address,
+              property?.request_type || 'written',
+              instruction_date || new Date().toISOString().split('T')[0],
+              valuation_purpose || 'sale',
+            ]
+          );
+          logger.info('Valuation engagement auto-populated from client registry', { valuationId: result.id, clientId: client_id });
+        }
+      } catch (engErr: any) {
+        logger.warn('Failed to auto-populate engagement from client', { valuationId: result.id, error: engErr.message });
+      }
+    }
+
+    // Create valuation engagement record with client info if provided (inline fields)
+    else if (property?.client_name || property?.request_type) {
       try {
         await query(
           `INSERT INTO valuation_engagements (
@@ -970,6 +1045,7 @@ router.put('/:id', validateUUID('id'), async (req: Request, res: Response) => {
       'confidence_score',
       'methods_applied',
       'method_weights',
+      'weighting_rationale',
       'method_results',
       'primary_method',
       'methods_used',
@@ -1246,7 +1322,7 @@ router.post('/:id/comparables/search', validateUUID('id'), async (req: Request, 
     const {
       latitude,
       longitude,
-      radiusKm = 5,
+      radiusKm = 15,
       propertyType,
       priceMin,
       priceMax,
@@ -3069,6 +3145,41 @@ router.get('/floor-plans/:planId/image', async (req: Request, res: Response) => 
   } catch (error: any) {
     logger.error('Failed to get floor plan image URL', { error: error.message });
     res.status(500).json({ error: 'Failed to get floor plan image URL', message: error.message });
+  }
+});
+
+/**
+ * GET /api/valuations/floor-plans/:planId/image-stream
+ * Stream floor plan image directly from MinIO (avoids presigned URL expiry issues).
+ * Used by report editor to display floor plan images without expiring URLs.
+ */
+router.get('/floor-plans/:planId/image-stream', async (req: Request, res: Response) => {
+  try {
+    const floorPlan = await floorPlanService.getById(req.params.planId);
+    if (!floorPlan || !floorPlan.image_url) {
+      return res.status(404).json({ error: 'Floor plan image not found' });
+    }
+
+    // Parse minio:// URL
+    const match = floorPlan.image_url.match(/^minio:\/\/([^/]+)\/(.+)$/);
+    if (!match) {
+      return res.status(400).json({ error: 'Invalid image URL format' });
+    }
+
+    const [, bucket, key] = match;
+    const { getFile } = await import('../database/minio');
+    const file = await getFile(bucket, key);
+
+    const ext = key.split('.').pop()?.toLowerCase() || 'png';
+    const mimeType = ext === 'jpg' || ext === 'jpeg' ? 'image/jpeg' : 'image/png';
+
+    res.setHeader('Content-Type', mimeType);
+    res.setHeader('Cache-Control', 'public, max-age=86400'); // 24h cache
+    res.setHeader('Content-Disposition', `inline; filename="floor-${floorPlan.floor_number}.${ext}"`);
+    res.send(Buffer.from(file.body));
+  } catch (error: any) {
+    logger.error('Failed to stream floor plan image', { planId: req.params.planId, error: error.message });
+    res.status(500).json({ error: 'Failed to stream floor plan image', message: error.message });
   }
 });
 

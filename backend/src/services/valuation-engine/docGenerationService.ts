@@ -1,7 +1,8 @@
 /**
  * Document Generation Service
  * 
- * Generates DOCX reports using docxtemplater.
+ * Generates DOCX reports using docxtemplater (legacy) or the
+ * professional docx builder (new programmatic approach).
  * Integrates with reportDataService for data collection.
  * Uploads to MinIO for storage.
  * 
@@ -23,6 +24,7 @@ import { valuationReportService } from './valuationReportService';
 import { floorPlanService } from './floorPlanService';
 import { v4 as uuidv4 } from 'uuid';
 import axios from 'axios';
+import { buildProfessionalDocx } from './professionalDocxBuilder';
 
 // =====================================================
 // TYPES
@@ -69,6 +71,14 @@ export interface ReportSectionData {
     imageBuffer: Buffer;
     imageUrl: string;
   }>;
+  weightingRationale?: string | null;
+  /** Saved TipTap editor HTML sections — the user-edited report content */
+  editorSections?: Array<{
+    id: string;
+    title: string;
+    order: number;
+    content: string; // HTML
+  }>;
 }
 
 // =====================================================
@@ -101,7 +111,7 @@ class DocGenerationService {
         throw new Error(`Report not found: ${reportId}`);
       }
 
-      // 2. Collect all report data
+      // 2. Collect all report data (including saved TipTap editor content)
       const sectionData = await this.collectReportData(reportId, report, options);
 
       // 3. Generate QR code for verification
@@ -217,6 +227,26 @@ class DocGenerationService {
       ? await this.getFloorPlanImagesWithData(valuationId)
       : [];
 
+    // Load saved TipTap editor sections (user-edited report content)
+    let editorSections: ReportSectionData['editorSections'] = undefined;
+    try {
+      const editorResult = await query(
+        `SELECT content->'sections' AS sections FROM valuation_reports WHERE id = $1`,
+        [reportId]
+      );
+      const savedSections = editorResult.rows[0]?.sections;
+      if (savedSections && Array.isArray(savedSections) && savedSections.length > 0) {
+        editorSections = savedSections;
+        logger.info('Loaded saved TipTap editor sections for DOCX generation', {
+          reportId,
+          sectionCount: savedSections.length,
+          sectionIds: savedSections.map((s: any) => s.id),
+        });
+      }
+    } catch (err: any) {
+      logger.warn('Failed to load editor sections, will use programmatic builder', { error: err.message });
+    }
+
     return {
       cover,
       transmittal,
@@ -235,6 +265,8 @@ class DocGenerationService {
       photos,
       floorPlans,
       floorPlanImages,
+      weightingRationale: (valuationReportData as any).weighting_rationale || null,
+      editorSections,
     };
   }
 
@@ -250,8 +282,14 @@ class DocGenerationService {
     
     // Check if template exists, if not use fallback HTML-to-DOCX
     if (!fs.existsSync(templatePath)) {
-      logger.warn(`Template not found: ${templatePath}, generating basic DOCX`);
-      return this.generateBasicDocx(data);
+      logger.info(`Template not found: ${templatePath}, using professional DOCX builder`);
+      return buildProfessionalDocx(data);
+    }
+
+    // Use professional programmatic builder for ghis_standard (better formatting)
+    if (templateName === 'ghis_standard') {
+      logger.info('Using professional DOCX builder for ghis_standard template');
+      return buildProfessionalDocx(data);
     }
 
     const content = fs.readFileSync(templatePath, 'binary');
@@ -586,7 +624,7 @@ class DocGenerationService {
     // Create document.xml with content
     const escapedContent = content.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
     zip.file('word/document.xml', `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" xmlns:wp="http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:pic="http://schemas.openxmlformats.org/drawingml/2006/picture" xmlns:w14="http://schemas.microsoft.com/office/word/2010/wordml" xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006">
   <w:body>
     <w:p>
       <w:r>

@@ -45,13 +45,15 @@ const FX_CONFIG = {
   daily_rate_cache_ttl: 86400, // 24 hours for daily closing rates
 };
 
-// Static fallback rates (updated manually as last resort)
+// Static fallback rates — last resort when both ForexRate-API and Yahoo Finance are unavailable.
+// These MUST be kept current. Last updated from Bank of Ghana mid-rate (2025-06).
+// The live FX pipeline and economic_indicators DB table are the canonical sources.
 const FALLBACK_RATES: Record<string, number> = {
-  USD: 15.50,
-  GBP: 19.50,
-  EUR: 16.80,
-  CNY: 2.15,
-  NGN: 0.0095,
+  USD: 10.99,
+  GBP: 14.50,
+  EUR: 12.30,
+  CNY: 1.55,
+  NGN: 0.0068,
 };
 
 // =====================================================
@@ -233,7 +235,7 @@ export class FXFeedService {
    * Get fallback static rate
    */
   private getFallbackRate(currency: string): ExchangeRateFeed {
-    const rate = FALLBACK_RATES[currency] || 15.5;
+    const rate = FALLBACK_RATES[currency] || 10.99;
 
     return {
       pair: `${currency}/GHS`,

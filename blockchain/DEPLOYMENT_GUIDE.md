@@ -39,18 +39,18 @@ Tenant (Bitcoin Wallet)
             │
             Backend verifies N confirmations
             │
-            └── recordExternalPayment()  →  PROPMETRIKPayments Contract
+            └── recordOffChainPayment()  →  PROPMETRIKPayments Contract
                     │
                     └── Immutable on-chain attestation of BTC payment
 ```
 
 **Key design decisions:**
 - **Multi-token**: Owner-managed allowlist — supports any ERC20 (USDT, USDC, USDC.e, WETH, future tokens)
-- **Native BTC**: Relayer-attested external chain payments — BTC payment verified on Bitcoin blockchain, recorded on EVM chain via authorized relayer
+- **Native BTC**: Registrar-attested off-chain payments — BTC payment verified on Bitcoin blockchain, recorded on EVM chain via authorized registrar
 - **No hardcoded tokens**: Constructor takes only `(propmetrikWallet, initialOwner)` — tokens added post-deploy via `addToken()`
 - **Cross-decimal fee scaling**: Minimum fee stored as 6-decimal USD (`minimumFeeUSD6`), scaled to token's native decimals at runtime
 - Contract **never holds funds** — atomic split in every ERC20 transaction; BTC forwarded off-chain by backend
-- Mirrors backend `FeeEngine` logic exactly (RENT: max(1%, $1.65), DEAL: 0.25%, PROJECT: 0.25%)
+- Mirrors backend `FeeEngine` logic exactly (RENT: max(1%, $1.65), DEAL: 0.25%, PROJECT: 0.25%, VALUATION: 2.5%)
 - OpenZeppelin v5: ReentrancyGuard, Pausable, Ownable2Step, SafeERC20
 - Slither security scan: **0 findings** (101 detectors)
 - [x] Test suite: **165/165 passing** (multi-token, DEX swap, platform fee auto-conversion, attestation, native BTC, hardening, registrar role)
@@ -61,7 +61,7 @@ Tenant (Bitcoin Wallet)
 
 ### Accepted Currencies
 
-PROPMETRIK v2.3 accepts **6 currencies** — 5 ERC20 tokens via on-chain `processPayment()` / `processPaymentWithSwap()` and **native BTC** via relayer-attested `recordExternalPayment()`.
+PROPMETRIK v2.3 accepts **6 currencies** — 5 ERC20 tokens via on-chain `processPayment()` / `processPaymentWithSwap()` and **native BTC** via registrar-attested `recordOffChainPayment()`.
 
 ### ERC20 Tokens (Polygon Mainnet)
 
@@ -77,9 +77,9 @@ PROPMETRIK v2.3 accepts **6 currencies** — 5 ERC20 tokens via on-chain `proces
 
 | Currency | Chain    | Decimals | Symbol | Method                  |
 |----------|----------|----------|--------|-------------------------|
-| **BTC**  | Bitcoin  | 8 (sats) | BTC    | `recordExternalPayment` |
+| **BTC**  | Bitcoin  | 8 (sats) | BTC    | `recordOffChainPayment` |
 
-BTC payments are sent on the Bitcoin network, verified by the backend (N confirmations), then recorded on-chain as an immutable attestation by an authorized relayer. The contract stores the BTC transaction hash, sender address, amount in satoshis, and the calculated fee — providing a full audit trail.
+BTC payments are sent on the Bitcoin network, verified by the backend (N confirmations), then recorded on-chain as an immutable attestation by an authorized registrar. The contract stores the payment reference, amount in USD (6-decimal), external payment ID, and attestation hash — providing a full audit trail.
 
 ### ERC20 Tokens (Ethereum Mainnet)
 
@@ -90,7 +90,7 @@ BTC payments are sent on the Bitcoin network, verified by the backend (N confirm
 | USDC    | `0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48` | 6        | USDC   | `processPayment` |
 | WBTC    | `0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599` | 8        | WBTC   | `processPayment` |
 
-> **Note:** Native BTC via `recordExternalPayment` is available on all deployed chains — it is registered as an external chain on each deployment.
+> **Note:** Native BTC via `recordOffChainPayment` is available on all deployed chains — any authorized registrar can attest off-chain payments.
 
 ### Token Management Functions
 
@@ -119,13 +119,13 @@ Fees are stored as 6-decimal USD values and scaled at runtime:
 | USDC     | 6        | `1_650000`                  | 1:1 (same decimals)      | `processPayment`        |
 | WBTC     | 8        | `165_000000`                | × 10^2                    | `processPayment`        |
 | WETH     | 18       | `1_650000_000000_000000`    | × 10^12                   | `processPayment`        |
-| **BTC**  | 8 (sats) | `165_000000`                | × 10^2 (same as WBTC)    | `recordExternalPayment` |
+| **BTC**  | 8 (sats) | `165_000000`                | × 10^2 (same as WBTC)    | `recordOffChainPayment` |
 ### processPayment Signature (v2)
 
 ```solidity
 function processPayment(
     address token,           // NEW: which ERC20 token to pay with
-    PaymentType paymentType, // RENT, DEAL, or PROJECT
+    PaymentType paymentType, // RENT, DEAL, PROJECT, or VALUATION
     bytes32 recipientEntityId,
     uint256 principalAmount,
     bytes32 paymentReference,
@@ -239,7 +239,7 @@ The platform settlement wallet (where fees are collected) is now configurable vi
 - **Total: 165 tests passing**
 - [x] Slither static analysis — 0 high/medium findings (101 detectors)
 - [x] MockERC20 with configurable decimals for testing
-- [x] Native BTC support via recordExternalPayment (relayer-attested)
+- [x] Native BTC support via recordOffChainPayment (registrar-attested)
 - [x] Deploy script auto-detects Ethereum mainnet / Polygon mainnet / testnet
 - [x] Hardhat config supports: Ethereum, Polygon, Amoy, Sepolia, localhost
 - [x] Deploy to Amoy testnet (v2.1)
@@ -264,13 +264,13 @@ The platform settlement wallet (where fees are collected) is now configurable vi
 - [x] Alchemy RPC configured
 
 ### Phase 4: Mainnet Deployment
-- [x] Deploy PROPMETRIKPayments v2.3 to Polygon mainnet (5 ERC20 tokens: USDT, USDC, USDC.e, WETH, WBTC + **native BTC** via relayer + DEX swap via QuickSwap V3)
+- [x] Deploy PROPMETRIKPayments v2.3 to Polygon mainnet (5 ERC20 tokens: USDT, USDC, USDC.e, WETH, WBTC + **native BTC** via registrar + DEX swap via QuickSwap V3)
   - Contract: [`0x469c39649fdd3c74B99A9c6E53EF62e0DDC72C06`](https://polygonscan.com/address/0x469c39649fdd3c74B99A9c6E53EF62e0DDC72C06#code)
   - Verified on PolygonScan: **Yes**
-  - BTC Relayer (Tangem): `0xa2e034fe313c32935f1f151bff951969a0aa190a`
+  - BTC Registrar (Tangem): `0xa2e034fe313c32935f1f151bff951969a0aa190a`
   - Registrar (Deployer): `0x651A05813aF8E70BC9c57Ddc7093aDa014170Ce9` — backend auto-registers landlords
   - Deployed: 2026-02-15
-- [ ] Deploy PROPMETRIKPayments v2.3 to Ethereum mainnet (4 ERC20 tokens: WETH, USDT, USDC, WBTC + **native BTC** via relayer)
+- [ ] Deploy PROPMETRIKPayments v2.3 to Ethereum mainnet (4 ERC20 tokens: WETH, USDT, USDC, WBTC + **native BTC** via registrar)
 - [x] Verify contracts on PolygonScan and Etherscan
 - [x] Mainnet deploy sets Safe multisig as constructor owner
 - [ ] Safe multisig calls `acceptOwnership()` to finalize ownership transfer
@@ -313,8 +313,7 @@ The deploy script automatically:
 - Deploys 5 MockERC20 tokens (USDT 6-dec, USDC 6-dec, USDC.e 6-dec, WETH 18-dec, WBTC 8-dec)
 - Deploys PROPMETRIKPayments with deployer as owner
 - Adds all 5 mock tokens to the allowlist
-- Adds BTC as external chain (8 decimals / satoshis)
-- Authorizes BTC_RELAYER_ADDRESS as relayer
+- Authorizes registrar for off-chain BTC attestation via `recordOffChainPayment()`
 - Saves deployment info to `deployments/amoy-deployment.json`
 
 ---
@@ -357,7 +356,7 @@ npx hardhat run scripts/initialize.ts --network sepolia
 | Deployer | `0x651A05813aF8E70BC9c57Ddc7093aDa014170Ce9` |
 | Owner | Safe `0xEFd259AbF3Af26Aa22a0Fb4e189059C13e3a0C1C` (pending `acceptOwnership()`) |
 | Platform Wallet | Safe `0xEFd259AbF3Af26Aa22a0Fb4e189059C13e3a0C1C` |
-| BTC Relayer | Tangem `0xa2e034fe313c32935f1f151bff951969a0aa190a` |
+| BTC Registrar | Tangem `0xa2e034fe313c32935f1f151bff951969a0aa190a` |
 | Registrar | Deployer `0x651A05813aF8E70BC9c57Ddc7093aDa014170Ce9` (backend auto-registers landlords) |
 | Verified | Yes — [PolygonScan](https://polygonscan.com/address/0x469c39649fdd3c74B99A9c6E53EF62e0DDC72C06#code) |
 
@@ -370,7 +369,7 @@ npx hardhat run scripts/initialize.ts --network sepolia
 | USDC.e | `0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174` | 6 |
 | WETH | `0x7ceB23fD6bC0adD59E62ac25578270cFf1b9f619` | 18 |
 | WBTC | `0x1BFD67037B42Cf73acF2047067bd4F2C47D9BfD6` | 8 |
-| BTC | External chain (relayer-attested) | 8 |
+| BTC | Off-chain (registrar-attested) | 8 |
 
 ### Deployment Steps (completed)
 
@@ -386,8 +385,7 @@ npx hardhat verify --network polygon <CONTRACT_ADDRESS> <SAFE_WALLET> <DEPLOYER>
 
 The deploy script automatically:
 - Adds real Polygon mainnet tokens (USDT, USDC, USDC.e, WETH, WBTC)
-- Adds BTC as external chain (8 decimals)
-- Authorizes BTC_RELAYER_ADDRESS for BTC attestation
+- Authorizes registrar address for off-chain BTC attestation via `recordOffChainPayment()`
 - **Authorizes deployer as registrar** — backend can auto-register landlords without Safe approval
 - Deploys with deployer as admin, configures all tokens, then transfers ownership to Safe
 - **Safe must call `acceptOwnership()` to finalize the 2-step transfer**
@@ -420,8 +418,7 @@ npx hardhat run scripts/initialize.ts --network ethereum
 
 The deploy script automatically:
 - Adds real Ethereum mainnet tokens (WETH, USDT, USDC, WBTC)
-- Adds BTC as external chain (8 decimals)
-- Authorizes BTC_RELAYER_ADDRESS for BTC attestation
+- Authorizes registrar address for off-chain BTC attestation via `recordOffChainPayment()`
 - Sets Safe multisig as owner at deployment time
 - Saves deployment info to `deployments/ethereum-deployment.json`
 
@@ -496,7 +493,7 @@ The `PaymentProcessed` event now includes `address token` — update `Blockchain
 
 - Token selector in payment UI (dropdown: USDT, USDC, WETH, WBTC, **BTC**)
 - For ERC20: `approve()` call targets the selected token contract, then `processPayment()`
-- For **BTC**: user sends BTC on Bitcoin network → backend verifies confirmations → relayer calls `recordExternalPayment()`
+- For **BTC**: user sends BTC on Bitcoin network → backend verifies confirmations → registrar calls `recordOffChainPayment()`
 
 ---
 
@@ -657,10 +654,10 @@ interface OffRampProvider {
 - [x] Zero-address validation on all wallet parameters
 - [x] Owner-only for all admin functions
 - [x] Token allowlist prevents arbitrary token injection
-- [x] Relayer authorization for external chain payments (owner-managed)
-- [x] External chain sender address stored on-chain for audit trail
+- [x] Registrar authorization for off-chain payments (owner-managed)
+- [x] Off-chain payment attestation data stored on-chain for audit trail
 - [x] Cross-type duplicate protection (ERC20 + BTC share reference namespace)
-- [x] External tx hash replay protection (prevents same BTC tx recorded twice)
+- [x] External payment ID replay protection (prevents same BTC tx recorded twice)
 - [x] Recipient wallet uniqueness guard (prevents wallet collision across entities)
 - [x] Fee economics guard for non-stable tokens (minimum fee scales by token value)
 - [x] Slither: 0 high/medium findings across 101 detectors
@@ -696,14 +693,16 @@ await contract.deactivateRecipient(entityId);
 
 ### Disable BTC Payments
 ```bash
-await contract.setExternalChainEnabled("BTC", false);
-# BTC recordExternalPayment calls will revert; ERC20 payments unaffected
+# Revoke registrar to prevent new off-chain attestations
+await contract.revokeRegistrar(registrarAddress);
+# Or pause the entire contract:
+await contract.pause();
 ```
 
-### Revoke a Relayer
+### Revoke a Registrar
 ```bash
-await contract.revokeRelayer(relayerAddress);
-# Relayer can no longer call recordExternalPayment
+await contract.revokeRegistrar(registrarAddress);
+# Registrar can no longer call recordOffChainPayment or register recipients
 ```
 
 ---
@@ -744,7 +743,7 @@ await contract.revokeRelayer(relayerAddress);
 | USDC.e   | ERC20        | `0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174`   | 6        | `processPayment`        |
 | WETH     | ERC20        | `0x7ceB23fD6bC0adD59E62ac25578270cFf1b9f619`   | 18       | `processPayment`        |
 | WBTC     | ERC20        | `0x1BFD67037B42Cf73acF2047067bd4F2C47D9BfD6`   | 8        | `processPayment`        |
-| **BTC**  | **Native**   | **Bitcoin Network**                            | 8 (sats) | `recordExternalPayment` |
+| **BTC**  | **Native**   | **Bitcoin Network**                            | 8 (sats) | `recordOffChainPayment` |
 
 ### Ethereum Mainnet — Accepted Currencies
 
@@ -754,4 +753,4 @@ await contract.revokeRelayer(relayerAddress);
 | USDT     | ERC20        | `0xdAC17F958D2ee523a2206206994597C13D831ec7`   | 6        | `processPayment`        |
 | USDC     | ERC20        | `0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48`   | 6        | `processPayment`        |
 | WBTC     | ERC20        | `0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599`   | 8        | `processPayment`        |
-| **BTC**  | **Native**   | **Bitcoin Network**                            | 8 (sats) | `recordExternalPayment` |
+| **BTC**  | **Native**   | **Bitcoin Network**                            | 8 (sats) | `recordOffChainPayment` |

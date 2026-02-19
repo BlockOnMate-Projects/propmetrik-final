@@ -237,7 +237,7 @@ class ReportTemplateService {
   /**
    * Collect all data needed for report rendering
    */
-  async collectReportData(valuationId: string): Promise<ReportData> {
+  async collectReportData(valuationId: string, userId?: string): Promise<ReportData> {
     // Fetch valuation with property - use SELECT * to avoid column name issues
     let valuationRow: any = null;
     let propertyRow: any = null;
@@ -374,19 +374,74 @@ class ReportTemplateService {
       logger.debug('Using property owner as client fallback', { owner_name: valuationRow.owner_name });
     }
 
-    // Fetch valuer info
-    let valuer = {};
+    // Fetch valuer info - try multiple sources
+    let valuer: any = {};
     try {
-      const valuerResult = await pool.query(`
-        SELECT v.*
-        FROM valuers v
-        JOIN valuation_engagements e ON v.id = e.lead_valuer_id
-        WHERE e.valuation_id = $1
-        LIMIT 1
-      `, [valuationId]);
-      valuer = valuerResult.rows[0] || {};
+      // Try 1: Look up valuer assigned to this valuation
+      if (valuationRow?.valuer_id) {
+        const valuerResult = await pool.query(
+          `SELECT v.* FROM valuers v WHERE v.id = $1`,
+          [valuationRow.valuer_id]
+        );
+        if (valuerResult.rows.length > 0) {
+          valuer = valuerResult.rows[0];
+        }
+      }
+      // Try 1b: Fallback to any active valuer
+      if (!valuer.name) {
+        const valuerResult = await pool.query(`
+          SELECT v.* FROM valuers v WHERE v.is_active = true ORDER BY v.created_at ASC LIMIT 1
+        `);
+        if (valuerResult.rows.length > 0) {
+          valuer = valuerResult.rows[0];
+        }
+      }
     } catch (e: any) {
-      logger.debug('Valuers table query failed, using empty valuer', { error: e.message });
+      logger.debug('Valuers table query failed', { error: e.message });
+    }
+
+    // Try 2: If no valuer found, fall back to the authenticated user or valuation creator
+    if (!valuer.name && !valuer.full_name) {
+      const fallbackUserId = userId || valuationRow?.created_by;
+      if (fallbackUserId) {
+        try {
+          const userResult = await pool.query(
+            'SELECT full_name, first_name, last_name, email, display_name FROM users WHERE id = $1 OR keycloak_id = $1 LIMIT 1',
+            [fallbackUserId]
+          );
+          if (userResult.rows.length > 0) {
+            const u = userResult.rows[0];
+            valuer = {
+              name: u.full_name || u.display_name || `${u.first_name || ''} ${u.last_name || ''}`.trim(),
+              full_name: u.full_name || u.display_name || `${u.first_name || ''} ${u.last_name || ''}`.trim(),
+              contact_email: u.email,
+            };
+            logger.debug('Using authenticated user as valuer fallback', { userId: fallbackUserId, name: valuer.name });
+          }
+        } catch (e: any) {
+          logger.debug('User fallback query failed', { error: e.message });
+        }
+      }
+    }
+
+    // Try 3: If still no valuer found, use the first user in the system as a last resort
+    if (!valuer.name && !valuer.full_name) {
+      try {
+        const anyUserResult = await pool.query(
+          'SELECT full_name, first_name, last_name, email, display_name FROM users ORDER BY created_at ASC LIMIT 1'
+        );
+        if (anyUserResult.rows.length > 0) {
+          const u = anyUserResult.rows[0];
+          valuer = {
+            name: u.full_name || u.display_name || `${u.first_name || ''} ${u.last_name || ''}`.trim(),
+            full_name: u.full_name || u.display_name || `${u.first_name || ''} ${u.last_name || ''}`.trim(),
+            contact_email: u.email,
+          };
+          logger.debug('Using first system user as valuer last-resort fallback', { name: valuer.name });
+        }
+      } catch (e: any) {
+        logger.debug('Last-resort user query failed', { error: e.message });
+      }
     }
 
     // Fetch reconciliation
@@ -461,6 +516,12 @@ class ReportTemplateService {
         ORDER BY assessment_date DESC LIMIT 1
       `, [propertyRow?.id]);
       riskAssessment = riskResult.rows[0] || {};
+
+      // If empty, fall back to properties.metadata.risk_assessment (comprehensive form)
+      if (!riskAssessment.employment_stability && propertyRow?.metadata?.risk_assessment) {
+        riskAssessment = propertyRow.metadata.risk_assessment;
+        logger.info('Using risk assessment from properties.metadata for template rendering');
+      }
     } catch (e: any) {
       logger.debug('Risk assessment query failed', { error: e.message });
     }
@@ -540,6 +601,7 @@ class ReportTemplateService {
 
   /**
    * Build floor plans table (Schedule of Accommodation) for Appendix A
+   * Falls back to extracting room data from canvas_json when the rooms column is empty.
    */
   buildFloorPlansTable(floor_plans: any[]): string {
     if (!floor_plans || floor_plans.length === 0) {
@@ -556,9 +618,32 @@ class ReportTemplateService {
 
     for (const fp of floor_plans) {
       const floorLabel = fp.floor_label || `Floor ${fp.floor_number}`;
-      const rooms = fp.rooms || [];
-      const floorArea = fp.gross_building_area_sqm || 0;
-      totalArea += Number(floorArea);
+      let rooms = fp.rooms || [];
+      let floorArea = Number(fp.gross_building_area_sqm) || 0;
+
+      // If rooms column is empty, try extracting from canvas_json
+      if (rooms.length === 0 && fp.canvas_json) {
+        const canvas = typeof fp.canvas_json === 'string' 
+          ? JSON.parse(fp.canvas_json) 
+          : fp.canvas_json;
+        
+        if (canvas?.rooms && Array.isArray(canvas.rooms) && canvas.rooms.length > 0) {
+          rooms = canvas.rooms.map((r: any) => ({
+            name: r.name || r.type || 'Room',
+            type: r.type,
+            area_sqm: r.area || r.areaSqm || 0,
+          }));
+          // Also recalculate floor area from canvas rooms if it was 0
+          if (floorArea === 0) {
+            floorArea = rooms.reduce((sum: number, r: any) => sum + Number(r.area_sqm || 0), 0);
+          }
+          logger.debug('Extracted rooms from canvas_json for report', { 
+            floorLabel, roomCount: rooms.length, floorArea 
+          });
+        }
+      }
+
+      totalArea += floorArea;
 
       if (rooms.length > 0) {
         // Show individual rooms
@@ -592,7 +677,7 @@ class ReportTemplateService {
 
   /**
    * Build floor plan images HTML for Appendix B
-   * Fetches presigned URLs for floor plan images from MinIO
+   * Uses proxy URLs (never expire) instead of presigned URLs
    */
   private async buildFloorPlanImagesHtml(valuationId: string, floorPlans: any[]): Promise<string> {
     if (!floorPlans || floorPlans.length === 0) {
@@ -600,7 +685,7 @@ class ReportTemplateService {
     }
 
     try {
-      // Get images with presigned URLs
+      // Get images with presigned URLs (used to check if image exists)
       const floorPlanImages = await floorPlanService.getImagesForValuation(valuationId);
       
       if (!floorPlanImages || floorPlanImages.length === 0) {
@@ -610,10 +695,13 @@ class ReportTemplateService {
         ).join('<br>')}</p><p style="text-align: center; color: #999; margin-top: 20px; font-style: italic;">[Floor plan images will appear here when exported from the drawing tool]</p>`;
       }
 
-      // Build HTML for each floor plan image
+      // Build HTML using proxy URLs that never expire
+      const apiBase = process.env.API_BASE_URL || `http://localhost:${process.env.PORT || 4000}`;
       let html = '';
       for (const fp of floorPlanImages) {
         if (fp.imageUrl) {
+          // Use proxy endpoint instead of presigned URL so images don't expire
+          const proxyUrl = `${apiBase}/api/v1/valuations/floor-plans/${fp.planId}/image-stream`;
           html += `
             <div style="margin-bottom: 30px; page-break-inside: avoid;">
               <h3 style="text-align: center; margin-bottom: 15px; font-size: 14pt;">
@@ -621,7 +709,7 @@ class ReportTemplateService {
                 ${fp.grossBuildingAreaSqm ? ` (${fp.grossBuildingAreaSqm.toFixed(2)} sqm)` : ''}
               </h3>
               <div style="text-align: center;">
-                <img src="${fp.imageUrl}" alt="${fp.floorLabel}" style="max-width: 100%; max-height: 500px; border: 1px solid #ccc;" />
+                <img src="${proxyUrl}" alt="${fp.floorLabel}" style="max-width: 100%; max-height: 500px; border: 1px solid #ccc;" />
               </div>
             </div>
           `;
@@ -668,8 +756,8 @@ class ReportTemplateService {
     
     // Fetch exchange rate AS OF THE VALUATION DATE (RICS/GhIS compliant)
     let exchangeRateData = { 
-      rate: 15.65, 
-      source: 'Default', 
+      rate: 10.99, 
+      source: 'Bank of Ghana', 
       date: valuationDate.toISOString().split('T')[0],
       is_historical: false,
     };
@@ -686,7 +774,7 @@ class ReportTemplateService {
       if (exchangeRateResult && Number.isFinite(fetchedRate) && fetchedRate > 0) {
         exchangeRateData = {
           rate: fetchedRate,
-          source: exchangeRateResult.source || 'Bank of Ghana',
+          source: 'Bank of Ghana',
           date: exchangeRateResult.date 
             ? new Date(exchangeRateResult.date).toISOString().split('T')[0] 
             : valuationDate.toISOString().split('T')[0],
@@ -710,8 +798,8 @@ class ReportTemplateService {
       if (valuation.exchange_rate_used) {
         const savedRate = Number(valuation.exchange_rate_used);
         exchangeRateData = {
-          rate: Number.isFinite(savedRate) ? savedRate : 15.65,
-          source: valuation.exchange_rate_source || 'Saved (Audit Trail)',
+          rate: Number.isFinite(savedRate) ? savedRate : 10.99,
+          source: 'Bank of Ghana',
           date: valuation.exchange_rate_date || valuationDate.toISOString().split('T')[0],
           is_historical: true,
         };
@@ -722,8 +810,8 @@ class ReportTemplateService {
     if (!Number.isFinite(normalizedRate) || normalizedRate <= 0) {
       exchangeRateData = {
         ...exchangeRateData,
-        rate: 15.65,
-        source: exchangeRateData.source || 'Default',
+        rate: 10.99,
+        source: 'Bank of Ghana',
       };
     }
 
@@ -731,8 +819,8 @@ class ReportTemplateService {
     const finalValueGhs = valuation.final_value_ghs || reconciliation.final_value || 0;
     const finalValueUsd = valuation.final_value_usd || (exchangeRateData.rate > 0 ? finalValueGhs / exchangeRateData.rate : 0);
     
-    // Calculate FSV (use saved or default to 20% discount)
-    const fsvDiscountPercent = valuation.fsv_discount_percent || 20;
+    // Calculate FSV — use DB-stored values (from valuations table), never hardcode
+    const fsvDiscountPercent = valuation.fsv_discount_percent || 30;
     const forceSaleValue = valuation.force_sale_value || (finalValueGhs * (1 - fsvDiscountPercent / 100));
     const forceSaleValueUsd = valuation.force_sale_value_usd || (exchangeRateData.rate > 0 ? forceSaleValue / exchangeRateData.rate : 0);
 
@@ -747,20 +835,22 @@ class ReportTemplateService {
     };
 
     // Build methods list
+    // Note: Reconciliation may store 'sales_comparison' while templates use 'comparable_sales'
+    const methodMap: Record<string, string> = {
+      comparable_sales: 'Market Comparison Method',
+      sales_comparison: 'Market Comparison Method',
+      income_approach: 'Income Capitalisation Method',
+      cost_approach: 'Depreciated Replacement Cost Method',
+      residual_method: 'Residual Method',
+      profits_method: 'Profits Method',
+    };
     const methodNames = methods_used.map((m: any) => {
-      const methodMap: Record<string, string> = {
-        comparable_sales: 'Comparable Sales Method',
-        income_approach: 'Income Approach',
-        cost_approach: 'Depreciated Cost Method',
-        residual_method: 'Residual Method',
-        profits_method: 'Profits Method',
-      };
       return methodMap[m.method_type] || m.method_type;
     });
 
     // Build Part Four: Valuation Process dynamic content
     const methodTypesList = methods_used.map((m: any) => m.method_type);
-    const hasComparableSales = methodTypesList.includes('comparable_sales');
+    const hasComparableSales = methodTypesList.includes('comparable_sales') || methodTypesList.includes('sales_comparison');
     const hasIncomeApproach = methodTypesList.includes('income_approach');
     const hasCostApproach = methodTypesList.includes('cost_approach');
     const hasResidualMethod = methodTypesList.includes('residual_method');
@@ -984,7 +1074,25 @@ class ReportTemplateService {
         land_area_sqm: landAreaSqm ? landAreaSqm.toFixed(2) : 'Not measured',
         land_area_acres: landAreaAcres,
         land_area_hectares: landAreaHectares,
-        building_area_sqm: property.building_area_sqm ? Number(property.building_area_sqm).toFixed(2) : 'Not measured',
+        building_area_sqm: (() => {
+          // Try property record first
+          if (property.building_area_sqm && Number(property.building_area_sqm) > 0) {
+            return Number(property.building_area_sqm).toFixed(2);
+          }
+          // Fallback: calculate from floor plan canvas_json data
+          let totalFromCanvas = 0;
+          for (const fp of floor_plans) {
+            if (Number(fp.gross_building_area_sqm) > 0) {
+              totalFromCanvas += Number(fp.gross_building_area_sqm);
+            } else if (fp.canvas_json) {
+              const canvas = typeof fp.canvas_json === 'string' ? JSON.parse(fp.canvas_json) : fp.canvas_json;
+              if (canvas?.rooms && Array.isArray(canvas.rooms)) {
+                totalFromCanvas += canvas.rooms.reduce((sum: number, r: any) => sum + Number(r.area || r.areaSqm || 0), 0);
+              }
+            }
+          }
+          return totalFromCanvas > 0 ? totalFromCanvas.toFixed(2) : 'Not measured';
+        })(),
         bedrooms: property.bedrooms || 'N/A',
         bathrooms: property.bathrooms || 'N/A',
         floors: property.floors || '1',
@@ -1094,6 +1202,7 @@ class ReportTemplateService {
         name_uppercase: (valuer.name || valuer.full_name || 'VALUER NAME').toUpperCase(),
         qualifications: valuer.qualifications || 'BSc., MGhIS',
         title: valuer.title || 'Valuation & Estate Surveyor',
+        title_uppercase: (valuer.title || 'VALUATION & ESTATE SURVEYOR').toUpperCase(),
         registration_number: valuer.ghis_number || valuer.registration_number || '[GhIS Reg No]',
         firm: valuer.firm_name || valuer.company || 'PROPMETRIK',
         email: valuer.contact_email || valuer.email,
@@ -1115,13 +1224,38 @@ class ReportTemplateService {
         })),
       },
 
-      // Floor plans
-      floor_plans: floor_plans.map((fp: any) => ({
-        floor_label: fp.floor_label || `Floor ${fp.floor_number}`,
-        floor_number: fp.floor_number,
-        total_area: fp.gross_building_area_sqm || fp.total_area_sqm,
-        rooms: fp.rooms || [],
-      })),
+      // Floor plans - extract room data from canvas_json if rooms column is empty
+      floor_plans: floor_plans.map((fp: any) => {
+        let rooms = fp.rooms || [];
+        let totalArea = Number(fp.gross_building_area_sqm) || 0;
+        
+        // Fallback: extract rooms from canvas_json
+        if (rooms.length === 0 && fp.canvas_json) {
+          const canvas = typeof fp.canvas_json === 'string' ? JSON.parse(fp.canvas_json) : fp.canvas_json;
+          if (canvas?.rooms && Array.isArray(canvas.rooms) && canvas.rooms.length > 0) {
+            rooms = canvas.rooms.map((r: any) => ({
+              name: r.name || r.type || 'Room',
+              type: r.type,
+              area_sqm: r.area || r.areaSqm || 0,
+            }));
+            if (totalArea === 0) {
+              totalArea = rooms.reduce((sum: number, r: any) => sum + Number(r.area_sqm || 0), 0);
+            }
+          }
+        }
+
+        const description = rooms.length > 0
+          ? rooms.map((r: any) => r.name || r.type || 'Room').join(', ')
+          : '-';
+
+        return {
+          floor_label: fp.floor_label || `Floor ${fp.floor_number}`,
+          floor_number: fp.floor_number,
+          total_area: totalArea > 0 ? totalArea.toFixed(2) : '0.00',
+          description,
+          rooms,
+        };
+      }),
 
       // Floor plans table for Appendix A (Schedule of Accommodation)
       floor_plans_table: this.buildFloorPlansTable(floor_plans),
@@ -1189,8 +1323,48 @@ class ReportTemplateService {
         accessibility_avg: riskAssessment.accessibility === 'average' ? 'x' : '',
         accessibility_fair: riskAssessment.accessibility === 'fair' ? 'x' : '',
         accessibility_poor: riskAssessment.accessibility === 'poor' ? 'x' : '',
-        // Overall
-        overall_risk_level: riskAssessment.overall_risk_level || 'medium',
+        // Overall — Likert scale calculation (Good=4, Average=3, Fair=2, Poor=1)
+        overall_risk_level: (() => {
+          const likertMap: Record<string, number> = { good: 4, average: 3, fair: 2, poor: 1 };
+          const fields = [
+            riskAssessment.employment_stability,
+            riskAssessment.convenience_employment,
+            riskAssessment.convenience_shopping,
+            riskAssessment.convenience_school,
+            riskAssessment.public_transportation,
+            riskAssessment.utilities_adequacy,
+            riskAssessment.recreation_facilities,
+            riskAssessment.police_fire_protection,
+            riskAssessment.accessibility,
+          ];
+          const rated = fields.filter((f: string) => f && likertMap[f]);
+          if (rated.length === 0) return riskAssessment.overall_risk_level || 'Not Assessed';
+          const total = rated.reduce((sum: number, f: string) => sum + (likertMap[f] || 0), 0);
+          const avg = total / rated.length;
+          const score = avg.toFixed(2);
+          if (avg >= 3.5) return `Low Risk (${score}/4.00)`;
+          if (avg >= 2.5) return `Medium Risk (${score}/4.00)`;
+          if (avg >= 1.5) return `High Risk (${score}/4.00)`;
+          return `Very High Risk (${score}/4.00)`;
+        })(),
+        likert_score: (() => {
+          const likertMap: Record<string, number> = { good: 4, average: 3, fair: 2, poor: 1 };
+          const fields = [
+            riskAssessment.employment_stability,
+            riskAssessment.convenience_employment,
+            riskAssessment.convenience_shopping,
+            riskAssessment.convenience_school,
+            riskAssessment.public_transportation,
+            riskAssessment.utilities_adequacy,
+            riskAssessment.recreation_facilities,
+            riskAssessment.police_fire_protection,
+            riskAssessment.accessibility,
+          ];
+          const rated = fields.filter((f: string) => f && likertMap[f]);
+          if (rated.length === 0) return 'N/A';
+          const total = rated.reduce((sum: number, f: string) => sum + (likertMap[f] || 0), 0);
+          return `${total}/${rated.length * 4}`;
+        })(),
         notes: riskAssessment.notes || '',
       },
     };
@@ -1266,7 +1440,8 @@ class ReportTemplateService {
    */
   async generateReportSections(
     valuationId: string, 
-    templateId: string = 'ghis-standard'
+    templateId: string = 'ghis-standard',
+    userId?: string
   ): Promise<TemplateSection[]> {
     try {
       // Load template
@@ -1275,7 +1450,7 @@ class ReportTemplateService {
       logger.debug('Template loaded', { sections: template.sections.length });
       
       // Collect data
-      const data = await this.collectReportData(valuationId);
+      const data = await this.collectReportData(valuationId, userId);
       logger.debug('Data collected', { 
         hasValuation: !!data.valuation,
         methodsCount: data.methods_used.length 

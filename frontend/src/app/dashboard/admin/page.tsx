@@ -207,20 +207,20 @@ export default function AdminOverviewPage() {
           </div>
           <div className="space-y-1">
             <ActivityItem
-              action="Created new organization: Realteum Properties"
+              action="Created new organization: PROPMETRIK GROUP"
               user="eric@cedynhq.com"
               time="2 hours ago"
               type="create"
             />
             <ActivityItem
-              action="Updated user permissions for admin@realteum.com"
+              action="Updated user permissions for eric@cedynhq.com"
               user="system"
               time="3 hours ago"
               type="update"
             />
             <ActivityItem
               action="User login from new device"
-              user="eric.danso@cedynhq.com"
+              user="eric@cedynhq.com"
               time="5 hours ago"
               type="login"
             />
@@ -232,7 +232,7 @@ export default function AdminOverviewPage() {
             />
             <ActivityItem
               action="New valuation report generated"
-              user="admin@realteum.com"
+              user="eric@cedynhq.com"
               time="8 hours ago"
               type="create"
             />

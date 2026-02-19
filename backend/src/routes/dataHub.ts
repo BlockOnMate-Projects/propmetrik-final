@@ -28,6 +28,7 @@ import {
 import { dataQualityService } from '../services/data-hub/dataQualityService';
 import { systemSettingsService } from '../services/data-hub/systemSettingsService';
 import { systemHealthService } from '../services/data-hub/systemHealthService';
+import { ghanaPostService } from '../services/data-hub/ghanaPostGeocodingService';
 import { dataLineageService } from '../services/data-hub/dataLineageService';
 import { dataInsightsService } from '../services/data-hub/dataInsightsService';
 import { economicDataService, EconomicIndicatorType } from '../services/data-hub/economicDataService';
@@ -466,17 +467,189 @@ router.get('/contributions/:id', asyncHandler(async (req: Request, res: Response
  */
 router.post('/contributions', asyncHandler(async (req: Request, res: Response) => {
   // TODO: Get user from auth middleware
-  const userId = req.body.contributor_id || 'anonymous';
+  const userId = req.body.contributor_id || null;
 
-  const contribution = await contributionService.create({
-    ...req.body,
+  // Map frontend format to service format
+  const input = {
     contributor_id: userId,
-  });
+    contributor_type: req.body.contributor_type || 'owner',
+    contribution_type: req.body.contribution_type || req.body.type || 'comparable',
+    property_id: req.body.property_id || req.body.subject_property_id || null,
+    property_region: req.body.property_region || req.body.data?.region || 'greater_accra',
+    data: req.body.data || {},
+    source_context: req.body.source_context || req.body.source || 'user_manual',
+    session_id: req.body.session_id || null,
+    metadata: req.body.metadata || {},
+  };
 
-  res.status(201).json({
-    success: true,
-    data: contribution,
-  });
+  try {
+    let contribution = await contributionService.create(input);
+
+    // Auto-approve contributions from the valuation workflow
+    const autoApproveTypes = ['comparable', 'new_property', 'enrichment', 'transaction'];
+    if (autoApproveTypes.includes(input.contribution_type)) {
+      const updated = await contributionService.update(contribution.id, {
+        validation_status: 'approved',
+        validation_notes: 'Auto-approved from valuation workflow',
+        credits_pending: false,
+      });
+      if (updated) contribution = updated;
+
+      // Insert contributed comparable into the properties table so it appears in searches
+      if (input.contribution_type === 'comparable' || input.contribution_type === 'new_property') {
+        try {
+          const d = input.data as Record<string, any>;
+
+          // Map common property_type values to enum
+          const propertyTypeMap: Record<string, string> = {
+            house: 'residential_house', residential: 'residential_house', residential_house: 'residential_house',
+            apartment: 'apartment_flat', flat: 'apartment_flat', apartment_flat: 'apartment_flat',
+            commercial: 'commercial_shop', shop: 'commercial_shop', commercial_shop: 'commercial_shop',
+            office: 'commercial_office', commercial_office: 'commercial_office',
+            warehouse: 'warehouse', land: 'land',
+          };
+          const propertyType = propertyTypeMap[(d.property_type || 'residential_house').toLowerCase()] || 'residential_house';
+
+          // Determine transaction type
+          const txType = (d.transaction_type || 'sale').toLowerCase();
+          const transactionType = ['sale', 'rental', 'lease'].includes(txType) ? txType : 'sale';
+
+          // Get price (sale_price or price)
+          const price = parseFloat(d.sale_price || d.price || '0');
+          const currency = (d.currency || d.price_currency || 'GHS').toUpperCase();
+
+          // Build address and geocode
+          const addressParts = [d.address_street || d.address, d.address_city || d.city].filter(Boolean);
+          const fullAddress = addressParts.join(', ');
+
+          let latitude = d.latitude ? parseFloat(d.latitude) : null;
+          let longitude = d.longitude ? parseFloat(d.longitude) : null;
+
+          if (!latitude) {
+            try {
+              // Priority 1: Use digital address (Ghana Post GPS code) if provided
+              if (d.digital_address) {
+                const gpsResult = await ghanaPostService.geocodeDigitalAddress(d.digital_address);
+                if (gpsResult && gpsResult.confidence >= 0.5) {
+                  latitude = gpsResult.latitude;
+                  longitude = gpsResult.longitude;
+                }
+              }
+
+              // Priority 2: Ghana Post neighborhood lookup
+              if (!latitude && fullAddress) {
+                const components = ghanaPostService.extractAddressComponents(fullAddress);
+                // Also inject digital address into components if available
+                if (d.digital_address) components.digitalAddress = d.digital_address;
+                const geoResult = await ghanaPostService.geocodeAddress(components);
+                if (geoResult && geoResult.confidence >= 0.6) {
+                  latitude = geoResult.latitude;
+                  longitude = geoResult.longitude;
+                }
+              }
+
+              // Priority 3: Mapbox/Google fallback
+              if (!latitude && fullAddress) {
+                const mapboxResult = await geocodingService.geocode(fullAddress);
+                if (mapboxResult) {
+                  latitude = mapboxResult.latitude;
+                  longitude = mapboxResult.longitude;
+                }
+              }
+            } catch (geoErr) {
+              logger.warn('Failed to geocode contributed property', { address: fullAddress, digitalAddress: d.digital_address, error: geoErr });
+            }
+          }
+
+          const region = d.region || input.property_region || 'greater_accra';
+          const city = d.address_city || d.city || 'Accra';
+
+          // Insert into properties table
+          const insertResult = await query(
+            `INSERT INTO properties (
+              region, address_street, address_city, address_district,
+              latitude, longitude,
+              property_type, transaction_type,
+              title, description,
+              bedrooms, bathrooms, floors,
+              built_area_sqm, total_area_sqm, land_area_sqm,
+              year_built, condition,
+              price, price_currency,
+              data_source, evidence_type,
+              status, verification_status
+            ) VALUES (
+              $1::region_code_enum, $2, $3, $4,
+              $5, $6,
+              $7::property_type_enum, $8::transaction_type_enum,
+              $9, $10,
+              $11, $12, $13,
+              $14, $15, $16,
+              $17, $18::property_condition_enum,
+              $19, $20::currency_enum,
+              'tier4_user'::source_type_enum, 'contributed',
+              'active'::listing_status_enum, 'unverified'::verification_status_enum
+            ) RETURNING id, reference_number`,
+            [
+              region,
+              d.address_street || d.address || fullAddress,
+              city,
+              d.address_district || d.neighborhood || null,
+              latitude,
+              longitude,
+              propertyType,
+              transactionType,
+              d.title || `Contributed ${propertyType.replace('_', ' ')} in ${city}`,
+              d.description || `User-contributed comparable property`,
+              d.bedrooms ? parseInt(d.bedrooms) : null,
+              d.bathrooms ? parseInt(d.bathrooms) : null,
+              d.total_floors ? parseInt(d.total_floors) : (d.floors ? parseInt(d.floors) : null),
+              d.gfa ? parseFloat(d.gfa) : (d.built_area_sqm ? parseFloat(d.built_area_sqm) : (d.size_sqm ? parseFloat(d.size_sqm) : null)),
+              d.plot_size ? parseFloat(d.plot_size) : (d.total_area_sqm ? parseFloat(d.total_area_sqm) : null),
+              d.land_area ? parseFloat(d.land_area) : (d.land_area_sqm ? parseFloat(d.land_area_sqm) : null),
+              d.year_built ? parseInt(d.year_built) : null,
+              ['excellent', 'good', 'fair', 'poor', 'renovation_required', 'under_construction'].includes(d.condition) ? d.condition : null,
+              price > 0 ? price : 0,
+              ['GHS', 'USD', 'EUR', 'GBP'].includes(currency) ? currency : 'GHS',
+            ]
+          );
+
+          if (insertResult.rows[0]) {
+            // Link the contribution to the property and refresh contribution data
+            const linked = await contributionService.update(contribution.id, {
+              is_applied: true,
+              applied_property_id: insertResult.rows[0].id,
+            });
+            if (linked) contribution = linked;
+            logger.info('Created property from contribution', {
+              contribution_id: contribution.id,
+              property_id: insertResult.rows[0].id,
+              reference: insertResult.rows[0].reference_number,
+            });
+          }
+        } catch (propErr) {
+          // Don't fail the contribution if property insert fails
+          logger.error('Failed to create property from contribution', {
+            contribution_id: contribution.id,
+            error: propErr,
+          });
+        }
+      }
+    }
+
+    res.status(201).json({
+      success: true,
+      data: contribution,
+    });
+  } catch (err: any) {
+    if (err.message?.includes('Duplicate contribution')) {
+      res.status(409).json({
+        success: false,
+        error: { code: 'DUPLICATE', message: err.message },
+      });
+    } else {
+      throw err;
+    }
+  }
 }));
 
 /**
@@ -630,6 +803,12 @@ router.post('/contributors/:id/verify', asyncHandler(async (req: Request, res: R
 /**
  * Geocode an address
  * POST /data-hub/geocode
+ * 
+ * Priority:
+ * 1. Ghana Post GPS digital address decode (if GPS code found in address)
+ * 2. Ghana neighborhood lookup (100+ known neighborhoods with precise coords)
+ * 3. Mapbox geocoding (fallback)
+ * 4. Google Maps geocoding (last resort)
  */
 router.post('/geocode', asyncHandler(async (req: Request, res: Response) => {
   const { address } = req.body;
@@ -642,6 +821,37 @@ router.post('/geocode', asyncHandler(async (req: Request, res: Response) => {
     return;
   }
 
+  // Priority 1 & 2: Try Ghana Post GPS service first
+  // Handles digital addresses (GA-123-4567) and neighborhood lookups (East Legon, Cantonments, etc.)
+  try {
+    const addressComponents = ghanaPostService.extractAddressComponents(address);
+    const ghanaResult = await ghanaPostService.geocodeAddress(addressComponents);
+    
+    if (ghanaResult && ghanaResult.confidence >= 0.5) {
+      res.json({
+        success: true,
+        data: {
+          latitude: ghanaResult.latitude,
+          longitude: ghanaResult.longitude,
+          formatted_address: address,
+          street_address: ghanaResult.street || undefined,
+          neighborhood: addressComponents.neighborhood || ghanaResult.area || undefined,
+          district: ghanaResult.district || undefined,
+          region: ghanaResult.region || undefined,
+          digital_address: ghanaResult.digitalAddress || undefined,
+          country: 'Ghana',
+          confidence: ghanaResult.confidence,
+          match_type: ghanaResult.source === 'gps_decode' ? 'rooftop' : 'approximate',
+          provider: `ghanapost_${ghanaResult.source}`,
+        },
+      });
+      return;
+    }
+  } catch (err) {
+    // Ghana Post service error — fall through to Mapbox/Google
+  }
+
+  // Priority 3 & 4: Fall back to Mapbox → Google
   const result = await geocodingService.geocode(address);
 
   if (!result) {

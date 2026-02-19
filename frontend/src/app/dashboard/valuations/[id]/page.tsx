@@ -90,7 +90,7 @@ export default function ValuationDetailPage() {
   const valuationId = params.id as string
 
   const [valuation, setValuation] = useState<Valuation | null>(null)
-  const [floorPlans, setFloorPlans] = useState<FloorPlan[]>([])
+  const [floorPlans, setFloorPlans] = useState<FloorPlan[]>([])  
   const [hbuAnalysis, setHbuAnalysis] = useState<HBUAnalysis | null>(null)
   const [reconciliation, setReconciliation] = useState<Reconciliation | null>(null)
   const [loading, setLoading] = useState(true)

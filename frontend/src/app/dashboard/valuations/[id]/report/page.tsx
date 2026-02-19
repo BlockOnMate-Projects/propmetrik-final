@@ -15,7 +15,7 @@ import Link from 'next/link'
 import { useState, useEffect, useCallback } from 'react'
 import { reportsApi } from '@/lib/reports-api'
 import { valuationsApi } from '@/lib/valuation-api'
-import { ReportEditor, ApprovalModal } from '@/components/reports'
+import { ReportEditor } from '@/components/reports'
 import type { ValuationReport } from '@/types/report'
 import type { Valuation } from '@/types/valuation'
 import {
@@ -46,9 +46,6 @@ export default function ReportPage() {
   const [report, setReport] = useState<ValuationReport | null>(null)
   const [isGenerated, setIsGenerated] = useState(false)
   const [readOnly, setReadOnly] = useState(true)
-  const [showApprovalModal, setShowApprovalModal] = useState(false)
-  const [valuerCredentials, setValuerCredentials] = useState<any>(null)
-  const [approvalCheck, setApprovalCheck] = useState<any>(null)
   const [regenerating, setRegenerating] = useState(false)
   const [successMessage, setSuccessMessage] = useState<string | null>(null)
 
@@ -146,50 +143,69 @@ export default function ReportPage() {
     if (!report) return
 
     try {
+      // If DOCX hasn't been generated yet, generate it first
+      if (!isGenerated) {
+        setError(null)
+        await reportsApi.generate(report.id, {
+          template: 'ghis_standard',
+          include_floor_plans: true,
+          include_photos: true,
+        })
+        setIsGenerated(true)
+      }
+
       const downloadRes = await reportsApi.download(report.id)
       window.open(downloadRes.download_url, '_blank')
     } catch (err) {
       console.error('Failed to download report:', err)
       setError(err instanceof Error ? err.message : 'Failed to download report')
     }
-  }, [report])
+  }, [report, isGenerated])
 
-  // Open approval modal
+  // Open approval via e-sign redirect flow
   const handleOpenApproval = useCallback(async () => {
     if (!report) return
 
     try {
-      // Check if can approve
-      const checkRes = await reportsApi.checkApproval(report.id)
-      setApprovalCheck(checkRes)
+      setError(null)
 
-      // Get valuer credentials (using a placeholder user ID for now)
-      // In production, this would come from auth context
-      const valuerId = valuation?.created_by || 'dev-valuer-id'
-      try {
-        const credentials = await reportsApi.getValuerCredentials(valuerId)
-        setValuerCredentials(credentials)
-      } catch {
-        // Valuer credentials may not exist yet
-        setValuerCredentials(null)
+      // Auto-generate DOCX if not yet generated (required for approval)
+      if (!isGenerated) {
+        try {
+          await reportsApi.generate(report.id, {
+            template: 'ghis_standard',
+            include_floor_plans: true,
+            include_photos: true,
+          })
+          setIsGenerated(true)
+        } catch (genErr) {
+          setError('Failed to generate report document. Please try again.')
+          return
+        }
       }
 
-      setShowApprovalModal(true)
-    } catch (err) {
-      console.error('Failed to check approval:', err)
-      setError(err instanceof Error ? err.message : 'Failed to check approval status')
-    }
-  }, [report, valuation])
+      // Get valuer ID
+      const valuerId = valuation?.created_by
+      if (!valuerId) {
+        setError('This valuation has no assigned valuer. Please assign a valuer first.')
+        return
+      }
 
-  // Handle approval complete
-  const handleApprovalComplete = useCallback((result: any) => {
-    setShowApprovalModal(false)
-    
-    if (result.success) {
-      // Refresh report data
-      router.refresh()
+      // Prepare e-sign envelope data from backend
+      const esignData = await reportsApi.prepareEsign(report.id, valuerId)
+
+      // Store in sessionStorage for the e-sign page
+      sessionStorage.setItem('esign_report_document', JSON.stringify(esignData))
+
+      // Redirect to e-sign envelope page
+      router.push('/dashboard/e-sign/report-envelope')
+    } catch (err) {
+      console.error('Failed to prepare report for signing:', err)
+      setError(err instanceof Error ? err.message : 'Failed to prepare report for signing')
     }
-  }, [router])
+  }, [report, valuation, isGenerated, router])
+
+
 
   // Loading state
   if (pageState === 'loading') {
@@ -319,20 +335,18 @@ export default function ReportPage() {
           </button>
 
           {/* Download */}
-          {isGenerated && (
-            <button
-              onClick={handleDownload}
-              className="flex items-center gap-2 px-3 py-2 bg-zinc-800 text-zinc-400 font-mono text-xs hover:text-white transition-colors"
-            >
-              <Download className="w-3 h-3" />
-              Download
-            </button>
-          )}
+          <button
+            onClick={handleDownload}
+            className="flex items-center gap-2 px-3 py-2 bg-zinc-800 text-zinc-400 font-mono text-xs hover:text-white transition-colors"
+          >
+            <Download className="w-3 h-3" />
+            Download
+          </button>
 
           {/* Approve & Sign */}
           {report.status === 'draft' && (
             <button
-              onClick={() => setShowApprovalModal(true)}
+              onClick={handleOpenApproval}
               className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white font-mono text-xs font-bold hover:bg-green-500 transition-colors"
             >
               <PenTool className="w-3 h-3" />
@@ -386,16 +400,6 @@ export default function ReportPage() {
         />
       </div>
 
-      {/* Approval Modal */}
-      <ApprovalModal
-        isOpen={showApprovalModal}
-        onClose={() => setShowApprovalModal(false)}
-        reportId={report.id}
-        valuer={valuerCredentials}
-        approvalCheck={approvalCheck}
-        onApprovalComplete={handleApprovalComplete}
-        apiBaseUrl={process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api/v1'}
-      />
     </div>
   )
 }

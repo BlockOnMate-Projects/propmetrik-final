@@ -10,11 +10,12 @@
 // ENUMS (Mirror Solidity PaymentType enum)
 // =====================================================
 
-/** Maps to Solidity enum PaymentType { RENT=0, DEAL=1, PROJECT=2 } */
+/** Maps to Solidity enum PaymentType { RENT=0, DEAL=1, PROJECT=2, VALUATION=3 } */
 export enum CryptoPaymentType {
   RENT = 0,
   DEAL = 1,
   PROJECT = 2,
+  VALUATION = 3,
 }
 
 /** Maps backend PaymentType string to contract enum index */
@@ -22,6 +23,7 @@ export const PAYMENT_TYPE_TO_CONTRACT: Record<string, CryptoPaymentType> = {
   rent: CryptoPaymentType.RENT,
   deal: CryptoPaymentType.DEAL,
   project: CryptoPaymentType.PROJECT,
+  valuation: CryptoPaymentType.VALUATION,
 };
 
 // =====================================================
