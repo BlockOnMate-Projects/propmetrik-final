@@ -1,24 +1,29 @@
 'use client'
 
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { cn } from '@/lib/utils'
+import { useSession } from 'next-auth/react'
+import { canAccessValuationTab } from '@/lib/rbac'
 import {
     FileText,
-    Plus,
-    FolderOpen,
     Settings,
     BarChart3,
-    Calendar
+    Calendar,
+    Users,
+    Receipt,
+    Building2,
 } from 'lucide-react'
 
 const valuationsNavItems = [
-    { href: '/dashboard/valuations', label: 'VALUATIONS', icon: FileText, exact: true },
-    { href: '/dashboard/valuations/new', label: 'NEW', icon: Plus },
-    { href: '/dashboard/valuations/templates', label: 'TEMPLATES', icon: FolderOpen },
-    { href: '/dashboard/calendar?service=valuations', label: 'CALENDAR', icon: Calendar },
-    { href: '/dashboard/valuations/analytics', label: 'ANALYTICS', icon: BarChart3 },
-    { href: '/dashboard/valuations/settings', label: 'SETTINGS', icon: Settings },
+    { href: '/dashboard/valuations', label: 'VALUATIONS', icon: FileText, exact: true, tabKey: 'valuations' },
+    { href: '/dashboard/valuations/team', label: 'TEAM', icon: Users, tabKey: 'team' },
+    { href: '/dashboard/valuations/finance', label: 'FINANCE', icon: Receipt, tabKey: 'finance' },
+    { href: '/dashboard/valuations/clients', label: 'CLIENTS', icon: Building2, tabKey: 'clients' },
+    { href: '/dashboard/calendar?service=valuations', label: 'CALENDAR', icon: Calendar, tabKey: 'calendar' },
+    { href: '/dashboard/valuations/analytics', label: 'ANALYTICS', icon: BarChart3, tabKey: 'analytics' },
+    { href: '/dashboard/valuations/settings', label: 'SETTINGS', icon: Settings, tabKey: 'settings' },
 ]
 
 export default function ValuationsLayout({
@@ -27,6 +32,18 @@ export default function ValuationsLayout({
     children: React.ReactNode
 }) {
     const pathname = usePathname()
+    const { data: session, status } = useSession()
+    const [mounted, setMounted] = useState(false)
+
+    useEffect(() => { setMounted(true) }, [])
+
+    const sessionReady = mounted && status === 'authenticated'
+    const userRole = session?.user?.role || ''
+
+    // Filter sub-tabs based on user role (only after mount + session to avoid hydration mismatch)
+    const visibleNavItems = sessionReady
+        ? valuationsNavItems.filter(item => canAccessValuationTab(userRole, item.tabKey))
+        : valuationsNavItems
 
     const isActive = (href: string, exact?: boolean) => {
         if (exact) {
@@ -41,7 +58,7 @@ export default function ValuationsLayout({
             <div className="border-b border-zinc-800 bg-zinc-900/30">
                 <div className="px-4">
                     <nav className="flex items-center gap-1 py-1 overflow-x-auto no-scrollbar">
-                        {valuationsNavItems.map((item) => {
+                        {visibleNavItems.map((item) => {
                             const Icon = item.icon
                             const active = isActive(item.href, item.exact)
                             return (

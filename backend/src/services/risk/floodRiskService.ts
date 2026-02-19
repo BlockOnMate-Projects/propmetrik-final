@@ -5,8 +5,8 @@
  * Calculates property-level flood risk scores using historical data and spatial analysis.
  */
 
-import { query } from '../../database';
-import { logger } from '../../utils/logger';
+import { query } from '../.../database';
+import { logger } from '../.../utils/logger';
 
 interface FloodIncident {
     id: string;

@@ -37,7 +37,7 @@ import {
   pdfGenerationService,
   auditLogService,
 } from '../services/valuation-engine';
-import { getPresignedDownloadUrl } from '../database/minio';
+import { getPresignedDownloadUrl, getFile } from '../database/minio';
 import { reportTemplateService } from '../services/valuation-engine/reportTemplateService';
 import multer from 'multer';
 import { v4 as uuidv4 } from 'uuid';
@@ -722,7 +722,8 @@ router.get('/:id/download', validateUUID('id'), async (req: Request, res: Respon
 
     // Check if report has been generated
     const content = report.content as any;
-    if (!content?.storage_key) {
+    const storageKey = report.docx_url || content?.storage_key;
+    if (!storageKey) {
       return res.status(400).json({
         error: 'Bad Request',
         message: 'Report has not been generated yet. Call POST /api/reports/:id/generate first.',
@@ -731,7 +732,7 @@ router.get('/:id/download', validateUUID('id'), async (req: Request, res: Respon
 
     // Get fresh signed URL
     const bucket = process.env.MINIO_REPORTS_BUCKET || 'propmetrik-reports';
-    const signedUrl = await getPresignedDownloadUrl(bucket, content.storage_key, 60 * 60); // 1 hour
+    const signedUrl = await getPresignedDownloadUrl(bucket, storageKey, 60 * 60); // 1 hour
 
     // Option 1: Redirect to signed URL
     if (req.query.redirect === 'true') {
@@ -774,7 +775,8 @@ router.get('/:id/status', validateUUID('id'), async (req: Request, res: Response
     }
 
     const content = report.content as any;
-    const isGenerated = !!content?.storage_key;
+    const isGenerated = !!report.docx_url || !!content?.storage_key;
+    const storageKey = report.docx_url || content?.storage_key;
 
     res.json({
       report_id: req.params.id,
@@ -783,7 +785,7 @@ router.get('/:id/status', validateUUID('id'), async (req: Request, res: Response
       version: report.version,
       is_generated: isGenerated,
       generated_at: content?.generated_at || null,
-      storage_key: isGenerated ? content.storage_key : null,
+      storage_key: isGenerated ? storageKey : null,
     });
   } catch (error: any) {
     logger.error('Failed to get report status', { 
@@ -822,18 +824,54 @@ router.get('/:id/content', validateUUID('id'), async (req: Request, res: Respons
     
     // Return editable sections if already saved and not forcing regeneration
     if (!forceRegenerate && content?.sections && Array.isArray(content.sections) && content.sections.length > 0) {
+      // Fix expired presigned MinIO URLs in saved content by replacing with proxy URLs
+      let fixedSections = content.sections;
+      try {
+        const { floorPlanService } = await import ('../services/valuation-engine/floorPlanService');
+        const floorPlans = await floorPlanService.getByValuationId(report.valuation_id);
+        const apiBase = process.env.API_BASE_URL || `http://localhost:${process.env.PORT || 4000}`;
+
+        // Build a map: floor_number → planId for quick lookup
+        const floorNumberToPlanId = new Map<number, string>();
+        for (const fp of floorPlans) {
+          floorNumberToPlanId.set(fp.floor_number, fp.id);
+        }
+
+        fixedSections = content.sections.map((section: any) => {
+          if (section.content && typeof section.content === 'string') {
+            // Replace expired presigned S3/MinIO floor plan URLs with proxy URLs
+            section.content = section.content.replace(
+              /(<img[^>]*\ssrc=")https?:\/\/[^"]*?floor-plans\/[^/]+\/floor-(\d+)\.\w+(?:\?[^"]*)?(")/g,
+              (match: string, prefix: string, floorNumStr: string, suffix: string) => {
+                const floorNum = parseInt(floorNumStr, 10);
+                const planId = floorNumberToPlanId.get(floorNum);
+                if (planId) {
+                  return `${prefix}${apiBase}/api/v1/valuations/floor-plans/${planId}/image-stream${suffix}`;
+                }
+                return match; // leave unchanged if can't resolve
+              }
+            );
+          }
+          return section;
+        });
+      } catch (err: any) {
+        logger.warn('Could not fix floor plan URLs in saved content', { error: err.message });
+      }
+
       return res.json({
         report_id: req.params.id,
-        sections: content.sections,
+        sections: fixedSections,
         last_modified: content.last_modified || report.updated_at,
       });
     }
 
     // Generate sections from template with valuation data
     try {
+      const userId = (req as any).user?.id || null;
       const sections = await reportTemplateService.generateReportSections(
         report.valuation_id,
-        'ghis-standard'
+        'ghis-standard',
+        userId
       );
 
       res.json({
@@ -1526,6 +1564,166 @@ router.post('/:id/approve', validateUUID('id'), async (req: Request, res: Respon
 });
 
 /**
+ * POST /api/reports/:id/prepare-esign
+ * Prepare self-sign e-sign envelope data for valuation report approval.
+ * Returns document URL and signer info for the e-sign UI.
+ */
+router.post('/:id/prepare-esign', validateUUID('id'), async (req: Request, res: Response) => {
+  try {
+    const { valuer_id } = req.body;
+
+    if (!valuer_id) {
+      return res.status(400).json({
+        error: 'Bad Request',
+        message: 'valuer_id is required',
+      });
+    }
+
+    // Get report
+    const report = await reportService.getReportById(req.params.id);
+    if (!report) {
+      return res.status(404).json({ error: 'Not Found', message: 'Report not found' });
+    }
+
+    // Get valuer credentials
+    const credentials = await approvalService.getValuerCredentials(valuer_id);
+    if (!credentials) {
+      return res.status(404).json({ error: 'Not Found', message: 'Valuer not found' });
+    }
+
+    // Ensure DOCX is generated
+    const content = report.content as any;
+    const storageKey = report.docx_url || content?.storage_key;
+    if (!storageKey) {
+      return res.status(400).json({
+        error: 'Bad Request',
+        message: 'Report document has not been generated. Generate the DOCX first.',
+      });
+    }
+
+    // Get the valuation info for property details
+    const valResult = await pool.query(
+      `SELECT v.id, p.title, p.address_street, p.address_city, p.digital_address
+       FROM valuations v
+       JOIN properties p ON v.property_id = p.id
+       WHERE v.id = $1`,
+      [report.valuation_id]
+    );
+
+    const property = valResult.rows[0] || {};
+    const propertyAddress = [property.address_street, property.address_city].filter(Boolean).join(', ') || property.title || 'Property';
+
+    // Get valuer email from valuers table
+    const valuerRow = await pool.query(
+      `SELECT contact_email FROM valuers WHERE id = $1`,
+      [valuer_id]
+    );
+    const valuerEmail = valuerRow.rows[0]?.contact_email || `${credentials.name.toLowerCase().replace(/\s+/g, '.')}@propmetrik.com`;
+
+    // E-sign UI requires PDF — convert DOCX to PDF if needed
+    const bucket = process.env.MINIO_REPORTS_BUCKET || 'propmetrik-reports';
+    let pdfStorageKey = report.pdf_url as string | undefined;
+
+    if (pdfStorageKey) {
+      // PDF already exists — use proxy URL to avoid CORS issues
+      logger.info('Using existing PDF for e-sign', { reportId: req.params.id, pdfKey: pdfStorageKey });
+    } else {
+      // Generate PDF from DOCX via LibreOffice
+      logger.info('Converting DOCX to PDF for e-sign', { reportId: req.params.id });
+      const pdfResult = await pdfGenerationService.convertDocxToPdf(req.params.id, {
+        addQrCode: false,
+        addDigitalSeal: false,
+      });
+
+      if (!pdfResult.success || !pdfResult.pdfUrl) {
+        return res.status(500).json({
+          error: 'PDF Conversion Failed',
+          message: pdfResult.error || 'Failed to convert report to PDF for signing. Ensure LibreOffice is installed.',
+        });
+      }
+
+      pdfStorageKey = pdfResult.storageKey;
+    }
+
+    // Use backend proxy URL to avoid CORS issues with S3 presigned URLs
+    const apiBase = process.env.APP_URL || `http://localhost:${process.env.PORT || 4000}`;
+    const documentUrl = `${apiBase}/api/v1/reports/${req.params.id}/pdf-stream`;
+
+    const baseFilename = content?.filename?.replace(/\.docx$/i, '') || `valuation_report_${req.params.id}`;
+    const filename = `${baseFilename}.pdf`;
+
+    res.json({
+      success: true,
+      reportId: req.params.id,
+      valuationId: report.valuation_id,
+      documentUrl,
+      documentKey: pdfStorageKey || storageKey,
+      filename,
+      propertyAddress,
+      valuer: {
+        id: credentials.id,
+        name: credentials.name,
+        title: credentials.title,
+        email: valuerEmail,
+        qualifications: credentials.qualifications,
+        license_number: credentials.license_number,
+      },
+      signers: [{
+        name: credentials.name,
+        email: valuerEmail,
+        role: 'valuer',
+        order: 1,
+      }],
+      subject: `Valuation Report - ${propertyAddress}`,
+      message: `Professional valuation report for ${propertyAddress}. Please review and sign to approve.`,
+    });
+  } catch (error: any) {
+    logger.error('Failed to prepare e-sign for report', {
+      reportId: req.params.id,
+      error: error.message,
+      stack: error.stack,
+    });
+    res.status(500).json({
+      error: 'Internal Server Error',
+      message: error.message || 'Failed to prepare e-sign data',
+    });
+  }
+});
+
+/**
+ * GET /api/reports/:id/pdf-stream
+ * Stream the report PDF directly (avoids CORS issues with S3 presigned URLs).
+ * Used by the e-sign UI iframe to load the document.
+ */
+router.get('/:id/pdf-stream', validateUUID('id'), async (req: Request, res: Response) => {
+  try {
+    const report = await reportService.getReportById(req.params.id);
+    if (!report) {
+      return res.status(404).json({ error: 'Not Found', message: 'Report not found' });
+    }
+
+    const pdfKey = report.pdf_url as string | undefined;
+    if (!pdfKey) {
+      return res.status(404).json({ error: 'Not Found', message: 'PDF has not been generated yet' });
+    }
+
+    const bucket = process.env.MINIO_REPORTS_BUCKET || 'propmetrik-reports';
+    const file = await getFile(bucket, pdfKey);
+
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `inline; filename="report_${req.params.id}.pdf"`);
+    res.setHeader('Cache-Control', 'private, max-age=3600');
+    res.send(Buffer.from(file.body));
+  } catch (error: any) {
+    logger.error('Failed to stream report PDF', {
+      reportId: req.params.id,
+      error: error.message,
+    });
+    res.status(500).json({ error: 'Internal Server Error', message: error.message });
+  }
+});
+
+/**
  * POST /api/reports/:id/reject
  * Reject a report (send back for revision)
  */
@@ -1603,8 +1801,12 @@ router.post('/:id/generate-pdf', validateUUID('id'), async (req: Request, res: R
       });
     }
 
-    // Log audit
-    await auditLogService.logPdfGenerated(req.params.id, userId, result.fileSize);
+    // Log audit (non-blocking — don't let audit failure block PDF response)
+    try {
+      await auditLogService.logPdfGenerated(req.params.id, userId, result.fileSize);
+    } catch (auditErr: any) {
+      logger.warn('Audit log failed for PDF generation', { reportId: req.params.id, error: auditErr.message });
+    }
 
     logger.info('PDF generated', {
       reportId: req.params.id,

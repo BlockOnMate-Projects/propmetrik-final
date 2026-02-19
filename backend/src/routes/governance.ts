@@ -18,7 +18,7 @@ const router = Router();
 // Development mode organization ID (valid UUID for testing)
 const DEV_ORG_ID = '00000000-0000-0000-0000-000000000001';
 // Development mode user ID (valid UUID for testing)
-const DEV_USER_ID = '00000000-0000-0000-0000-000000000001';
+const DEV_USER_ID = 'ed4a50d7-a1b2-4c3d-8e5f-6a7b8c9d0e1f';
 
 // Helper to get organization ID from request
 const getOrgId = (req: Request): string => {

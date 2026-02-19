@@ -5,16 +5,18 @@ import { usePathname } from 'next/navigation'
 import { cn } from '@/lib/utils'
 import { useTheme } from 'next-themes'
 import { useEffect, useState } from 'react'
+import { useSession } from 'next-auth/react'
+import { canAccessPlatformTab, isAdminRole } from '@/lib/rbac'
 
-const navigation: { name: string; href: string; key: string; badge?: string; adminOnly?: boolean }[] = [
-  { name: 'OVERVIEW', href: '/dashboard', key: '1' },
-  { name: 'VALUATIONS', href: '/dashboard/valuations', key: '2' },
-  { name: 'DEALS', href: '/dashboard/deals', key: '3' },
-  { name: 'PROJECTS', href: '/dashboard/projects', key: '4' },
-  { name: 'ANALYTICS', href: '/dashboard/analytics', key: '5' },
-  { name: 'MANAGEMENT', href: '/dashboard/property-management', key: '6' },
-  { name: 'E-SIGN', href: '/dashboard/e-sign', key: '7' },
-  { name: 'ADMIN', href: '/dashboard/admin', key: 'A', badge: 'ADMIN', adminOnly: true },
+const navigation: { name: string; href: string; key: string; tabKey: string; badge?: string; adminOnly?: boolean }[] = [
+  { name: 'OVERVIEW', href: '/dashboard', key: '1', tabKey: 'overview' },
+  { name: 'VALUATIONS', href: '/dashboard/valuations', key: '2', tabKey: 'valuations' },
+  { name: 'DEALS', href: '/dashboard/deals', key: '3', tabKey: 'deals' },
+  { name: 'PROJECTS', href: '/dashboard/projects', key: '4', tabKey: 'projects' },
+  { name: 'ANALYTICS', href: '/dashboard/analytics', key: '5', tabKey: 'analytics' },
+  { name: 'MANAGEMENT', href: '/dashboard/property-management', key: '6', tabKey: 'property-management' },
+  { name: 'E-SIGN', href: '/dashboard/e-sign', key: '7', tabKey: 'e-sign' },
+  { name: 'ADMIN', href: '/dashboard/admin', key: 'A', tabKey: 'admin', badge: 'ADMIN', adminOnly: true },
 ]
 
 function Clock() {
@@ -34,12 +36,14 @@ function Clock() {
     return () => clearInterval(interval)
   }, [])
 
-  if (!mounted) return <div className="flex items-center gap-3 font-mono text-xs" style={{ minWidth: 160 }} />
-
   return (
-    <div className="flex items-center gap-3 font-mono text-xs">
-      <span className="text-amber-500">{date}</span>
-      <span className="text-green-400 font-bold">{time}</span>
+    <div className="flex items-center gap-3 font-mono text-xs" style={{ minWidth: 160 }} suppressHydrationWarning>
+      {mounted && (
+        <>
+          <span className="text-amber-500">{date}</span>
+          <span className="text-green-400 font-bold">{time}</span>
+        </>
+      )}
     </div>
   )
 }
@@ -66,6 +70,19 @@ function ThemeToggle() {
 
 export function TopNav() {
   const pathname = usePathname()
+  const { data: session, status } = useSession()
+  const [mounted, setMounted] = useState(false)
+
+  useEffect(() => { setMounted(true) }, [])
+
+  const sessionReady = mounted && status === 'authenticated'
+  const userRole = session?.user?.role || ''
+  const displayRole = userRole ? userRole.replace(/_/g, ' ').toUpperCase() : 'USER'
+
+  // Filter navigation items based on user role (only after mount + session to avoid hydration mismatch)
+  const visibleNavigation = sessionReady
+    ? navigation.filter(item => canAccessPlatformTab(userRole, item.tabKey))
+    : navigation
 
   const isActive = (href: string) => {
     if (href === '/dashboard') return pathname === '/dashboard'
@@ -99,9 +116,8 @@ export function TopNav() {
 
         {/* Navigation */}
         <nav className="flex items-center gap-0.5 flex-1">
-          {navigation.map((item) => {
+          {visibleNavigation.map((item) => {
             const active = isActive(item.href)
-            // TODO: Check user role from session and hide adminOnly items for non-admins
             const isAdminTab = item.adminOnly
             return (
               <Link
@@ -143,7 +159,10 @@ export function TopNav() {
         <div className="flex items-center gap-4">
           <div className="flex items-center gap-2 px-3 py-1 border border-zinc-800">
             <span className="text-[10px] text-zinc-500 font-mono">USER</span>
-            <span className="text-xs text-white font-mono">ADMIN</span>
+            <span className={cn(
+              "text-xs font-mono",
+              sessionReady && isAdminRole(userRole) ? "text-red-400" : "text-white"
+            )}>{sessionReady ? displayRole : 'USER'}</span>
           </div>
           <Link
             href="/dashboard/profile"

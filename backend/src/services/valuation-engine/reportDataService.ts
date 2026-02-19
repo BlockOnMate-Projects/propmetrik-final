@@ -16,6 +16,7 @@
 import { query } from '../../database';
 import { logger } from '../../utils/logger';
 import { valuationReportService } from './valuationReportService';
+import { economicDataService } from '../data-hub/economicDataService';
 
 // =====================================================
 // TYPES
@@ -239,35 +240,48 @@ export interface EngagementData {
 // CONSTANTS
 // =====================================================
 
-const DEFAULT_DISCLAIMERS = [
-  'This valuation is premised on a proposed fifty (50) year lease hold interest where applicable',
-  'The property has been valued as though free from liens and encumbrances other than those contained in the deeds of records',
-  'No liability is to be assumed for matters legal in nature nor is any opinion of title rendered by this report',
-  'The capital value of the subject property is assumed to be on all cash basis',
-  'The valuer by this report is not required to give testimony in court with reference to the property in question unless prior arrangements have been agreed upon',
-  'The physical condition of the improvements and the soil characteristics were based on visual inspection only',
-  'Sketches are accurate only for purposes of approximation',
-  'Possession of any copy of this report does not carry with it the right to publication or use for any purpose by any other than the addressee without the written consent of the appraiser',
-];
-
 const STANDARDS_REFERENCES = [
   { code: 'RICS', name: 'RICS Valuation – Global Standards (Red Book)', year: 2022 },
   { code: 'IVS', name: 'International Valuation Standards', year: 2022 },
   { code: 'GhIS', name: 'Ghana Institution of Surveyors Valuation Standards', year: 2020 },
 ];
 
-const DEFAULT_EXCHANGE_RATE = {
-  rate: 15.65,
-  source: 'Bank of Ghana',
-  date: new Date().toISOString().split('T')[0],
-};
-
 // =====================================================
 // REPORT DATA SERVICE
 // =====================================================
 
 class ReportDataService {
-  
+
+  /**
+   * Fetch USD/GHS exchange rate as of the valuation effective date.
+   * Uses the data-hub's getExchangeRateForDate which queries
+   * the economic_indicators table for the closest rate to that date.
+   * Source is always attributed to Bank of Ghana for RICS/GhIS compliance.
+   */
+  private async getValuationDateExchangeRate(effectiveDate: Date | string): Promise<{ rate: number; source: string; date: string }> {
+    const asOfDate = effectiveDate instanceof Date ? effectiveDate : new Date(effectiveDate);
+    const dateStr = asOfDate.toISOString().split('T')[0];
+    try {
+      const fxRate = await economicDataService.getExchangeRateForDate('USD', 'GHS', asOfDate);
+      if (fxRate && fxRate.rate > 0) {
+        const rateDate = fxRate.date instanceof Date
+          ? fxRate.date.toISOString().split('T')[0]
+          : String(fxRate.date).split('T')[0];
+        logger.info('Using valuation-date FX rate for report', {
+          rate: fxRate.rate,
+          requestedDate: dateStr,
+          actualDate: rateDate,
+        });
+        return { rate: fxRate.rate, source: 'Bank of Ghana', date: rateDate };
+      }
+    } catch (err: any) {
+      logger.error('Failed to fetch valuation-date FX rate — no fallback, exchange rate MUST come from economic_indicators or live API', { error: err.message, effectiveDate: dateStr });
+      throw new Error(`Exchange rate unavailable for ${dateStr}. Ensure Bank of Ghana rate is recorded in economic_indicators table.`);
+    }
+    // If getExchangeRateForDate returned nothing usable, throw — we must NOT use a hardcoded rate
+    throw new Error(`No valid exchange rate found for ${dateStr}. Populate the economic_indicators table.`);
+  }
+
   /**
    * Get cover page data for a report
    */
@@ -301,11 +315,9 @@ class ReportDataService {
     );
     const engagement = engagementResult.rows[0];
 
-    // Get valuer data
-    const valuerResult = await query(
-      `SELECT * FROM valuers WHERE is_active = true ORDER BY created_at DESC LIMIT 1`
-    );
-    const valuer = valuerResult.rows[0];
+    // Get valuer data - prefer the valuation's assigned valuer
+    const valuation = await this.getValuationData(report.valuation_id);
+    const valuer = await this.getActiveValuer(valuation?.valuer_id);
 
     const propertyLocation = this.formatPropertyLocation(property);
 
@@ -342,15 +354,23 @@ class ReportDataService {
   async getTransmittalData(reportId: string): Promise<ReportTransmittalData> {
     const report = await this.getReportWithValuation(reportId);
     const engagement = await this.getEngagement(report.valuation_id);
-    const valuer = await this.getActiveValuer();
+    const valuer = await this.getActiveValuer(report.valuer_id);
     const property = await this.getProperty(report.property_id);
     const valuation = await this.getValuationData(report.valuation_id);
 
     const marketValue = valuation?.final_value_ghs || valuation?.estimated_value || 0;
-    const forcedSaleValue = Math.round(marketValue * 0.7); // 70% of market value
-    const exchangeRate = DEFAULT_EXCHANGE_RATE;
+    // FSV: use DB-stored value, or calculate from DB discount %, never hardcode
+    const fsvDiscount = valuation?.fsv_discount_percent ?? valuation?.recon_fsv_discount ?? 30;
+    const forcedSaleValue = valuation?.force_sale_value
+      ? Number(valuation.force_sale_value)
+      : Math.round(marketValue * (1 - fsvDiscount / 100));
+    const effectiveDate = report.effective_date || valuation?.effective_date || new Date();
+    // Use exchange rate from reconciliation if available, else fetch for valuation date
+    const exchangeRate = valuation?.recon_exchange_rate && Number(valuation.recon_exchange_rate) > 0
+      ? { rate: Number(valuation.recon_exchange_rate), source: 'Bank of Ghana', date: new Date(effectiveDate).toISOString().split('T')[0] }
+      : await this.getValuationDateExchangeRate(effectiveDate);
 
-    const methodsSummary = this.generateMethodsSummary(valuation?.method_results || []);
+    const methodsSummary = this.generateMethodsSummary(valuation?.recon_method_results || valuation?.method_results || []);
 
     return {
       recipient: {
@@ -391,13 +411,21 @@ class ReportDataService {
    */
   async getCertificationData(reportId: string): Promise<ReportCertificationData> {
     const report = await this.getReportWithValuation(reportId);
-    const valuer = await this.getActiveValuer();
+    const valuer = await this.getActiveValuer(report.valuer_id);
     const property = await this.getProperty(report.property_id);
     const valuation = await this.getValuationData(report.valuation_id);
 
     const marketValue = valuation?.final_value_ghs || valuation?.estimated_value || 0;
-    const forcedSaleValue = Math.round(marketValue * 0.7);
-    const exchangeRate = DEFAULT_EXCHANGE_RATE;
+    // FSV: use DB-stored value, or calculate from DB discount %, never hardcode
+    const fsvDiscount = valuation?.fsv_discount_percent ?? valuation?.recon_fsv_discount ?? 30;
+    const forcedSaleValue = valuation?.force_sale_value
+      ? Number(valuation.force_sale_value)
+      : Math.round(marketValue * (1 - fsvDiscount / 100));
+    const effectiveDate = report.effective_date || valuation?.effective_date || new Date();
+    // Use exchange rate from reconciliation if available, else fetch for valuation date
+    const exchangeRate = valuation?.recon_exchange_rate && Number(valuation.recon_exchange_rate) > 0
+      ? { rate: Number(valuation.recon_exchange_rate), source: 'Bank of Ghana', date: new Date(effectiveDate).toISOString().split('T')[0] }
+      : await this.getValuationDateExchangeRate(effectiveDate);
     const propertyLocation = this.formatPropertyLocation(property);
 
     return {
@@ -430,13 +458,33 @@ class ReportDataService {
    * Get disclaimers data for a report
    */
   async getDisclaimersData(reportId: string): Promise<ReportDisclaimersData> {
-    // Could potentially load custom disclaimers from report content
     const report = await this.getReportWithValuation(reportId);
-    const customDisclaimers = report.content?.disclaimers;
 
+    // 1. Check if custom disclaimers were saved in report content
+    const customDisclaimers = report.content?.disclaimers;
+    if (customDisclaimers && Array.isArray(customDisclaimers) && customDisclaimers.length > 0) {
+      return {
+        title: 'STATEMENT OF LIMITING CONDITIONS',
+        conditions: customDisclaimers,
+        standards_references: STANDARDS_REFERENCES,
+      };
+    }
+
+    // 2. Try to load from valuation engagement (valuation methodology)
+    const engagement = await this.getEngagement(report.valuation_id);
+    if (engagement?.limiting_conditions && Array.isArray(engagement.limiting_conditions) && engagement.limiting_conditions.length > 0) {
+      return {
+        title: 'STATEMENT OF LIMITING CONDITIONS',
+        conditions: engagement.limiting_conditions,
+        standards_references: STANDARDS_REFERENCES,
+      };
+    }
+
+    // 3. No disclaimers configured — return empty so the report can render without fabrication
+    logger.warn('No disclaimers/limiting conditions found for report — section will be empty', { reportId });
     return {
       title: 'STATEMENT OF LIMITING CONDITIONS',
-      conditions: customDisclaimers || DEFAULT_DISCLAIMERS,
+      conditions: [],
       standards_references: STANDARDS_REFERENCES,
     };
   }
@@ -554,7 +602,35 @@ class ReportDataService {
       };
     }
 
-    // Return data from property table
+    // Fallback: read from properties.metadata (comprehensive form Chapter 3 data)
+    const metadata = property?.metadata || {};
+    if (metadata.wall_construction || metadata.floor_finish || metadata.roofing || metadata.ceiling || metadata.doors || metadata.windows) {
+      logger.info('Using construction data from properties.metadata (comprehensive form)', { propertyId });
+      return {
+        property_id: propertyId,
+        structure_type: metadata.construction_type || property?.construction_type || null,
+        foundation: metadata.foundation || null,
+        walls: metadata.wall_construction || null,
+        roofing: metadata.roofing || property?.roof_type || null,
+        flooring: metadata.floor_finish || property?.floor_type || null,
+        ceiling: metadata.ceiling || null,
+        windows: metadata.windows || null,
+        doors: metadata.doors || null,
+        electrical: metadata.services_description || null,
+        plumbing: metadata.drainage_sanitation || null,
+        hvac: null,
+        age_years: property?.year_built ? new Date().getFullYear() - property.year_built : null,
+        condition: metadata.condition_state || property?.condition || null,
+        last_renovation_year: null,
+        effective_age_years: null,
+        fixtures: metadata.fixtures_fittings ? [metadata.fixtures_fittings] : [],
+        defects: [],
+        structural_notes: metadata.brief_description || null,
+      };
+    }
+
+    // Absolute last resort: basic property table columns only
+    logger.warn('No construction data in property_construction table or properties.metadata', { propertyId });
     return {
       property_id: propertyId,
       structure_type: property?.construction_type || null,
@@ -647,23 +723,47 @@ class ReportDataService {
       };
     }
 
-    // Return default assessment
+    // No record in property_risk_assessments table.
+    // Fall back to properties.metadata.risk_assessment (saved from comprehensive form)
+    const propertyResult2 = await query(`SELECT metadata FROM properties WHERE id = $1`, [propertyId]);
+    const metadata = propertyResult2.rows[0]?.metadata || {};
+    const metaRisk = metadata.risk_assessment;
+
+    if (metaRisk && typeof metaRisk === 'object') {
+      logger.info('Using risk assessment from properties.metadata (comprehensive form)', { propertyId });
+      const items = [
+        { item: 'Employment stability', rating: metaRisk.employment_stability },
+        { item: 'Convenience to Employment', rating: metaRisk.convenience_employment },
+        { item: 'Convenience to Shopping', rating: metaRisk.convenience_shopping },
+        { item: 'Convenience to School', rating: metaRisk.convenience_school },
+        { item: 'Adequacy of Public Transportation', rating: metaRisk.public_transportation },
+        { item: 'Adequacy of Utilities', rating: metaRisk.utilities_adequacy },
+        { item: 'Recreation Facilities', rating: metaRisk.recreation_facilities },
+        { item: 'Police & Fire Protection', rating: metaRisk.police_fire_protection },
+        { item: 'Accessibility', rating: metaRisk.accessibility },
+      ].filter(item => item.rating);
+
+      // Derive overall risk from count of 'poor'/'fair' ratings
+      const poorCount = items.filter(i => i.rating === 'poor' || i.rating === 'fair').length;
+      const overallRisk = poorCount >= 4 ? 'high' : poorCount >= 2 ? 'medium' : 'low';
+
+      return {
+        property_id: propertyId,
+        assessment_date: new Date().toISOString().split('T')[0],
+        items: items as any,
+        overall_risk_level: overallRisk as any,
+        notes: null,
+      };
+    }
+
+    // No risk assessment data anywhere
+    logger.warn('No risk assessment found in property_risk_assessments or properties.metadata', { propertyId });
     return {
       property_id: propertyId,
       assessment_date: new Date().toISOString().split('T')[0],
-      items: [
-        { item: 'Employment stability', rating: 'good' },
-        { item: 'Convenience to Employment', rating: 'good' },
-        { item: 'Convenience to Shopping', rating: 'average' },
-        { item: 'Convenience to School', rating: 'average' },
-        { item: 'Adequacy of Public Transportation', rating: 'good' },
-        { item: 'Adequacy of Utilities', rating: 'good' },
-        { item: 'Recreation Facilities', rating: 'average' },
-        { item: 'Police & Fire Protection', rating: 'good' },
-        { item: 'Accessibility', rating: 'good' },
-      ],
-      overall_risk_level: 'low',
-      notes: null,
+      items: [],
+      overall_risk_level: 'low' as const,
+      notes: 'Risk assessment has not been conducted for this property.',
     };
   }
 
@@ -703,22 +803,36 @@ class ReportDataService {
       };
     }
 
-    // Return default inspection data
+    // No detailed inspection record in valuation_inspections table.
+    // Fall back to valuations.inspection_date from the comprehensive data form.
+    const valuation = await this.getValuationData(valuationId);
+    const valuer = await this.getActiveValuer(valuation?.valuer_id);
+    const inspectionDate = valuation?.inspection_date
+      ? (valuation.inspection_date instanceof Date
+        ? valuation.inspection_date.toISOString().split('T')[0]
+        : String(valuation.inspection_date).split('T')[0])
+      : null;
+
+    if (inspectionDate) {
+      logger.info('Using inspection_date from valuations table (comprehensive form)', { valuationId, inspectionDate });
+    } else {
+      logger.warn('No inspection date recorded for valuation', { valuationId });
+    }
+
     return {
       valuation_id: valuationId,
-      inspection_date: new Date().toISOString().split('T')[0],
-      inspector: null,
-      scope: 'Full physical inspection of the property',
-      access_notes: 'Full access was granted to all areas of the property',
-      weather_conditions: 'Clear',
+      inspection_date: inspectionDate || new Date().toISOString().split('T')[0],
+      inspector: valuer ? {
+        name: valuer.name,
+        qualifications: valuer.qualifications,
+      } : null,
+      scope: null,
+      access_notes: null,
+      weather_conditions: null,
       measurement_standard: 'RICS Property Measurement 2nd Edition',
-      areas_inspected: ['All accessible areas of the property'],
-      limitations: [
-        'Structural tests not conducted',
-        'Services not tested',
-        'No soil investigation conducted',
-      ],
-      notes: null,
+      areas_inspected: [],
+      limitations: [],
+      notes: inspectionDate ? null : 'Inspection date not recorded.',
     };
   }
 
@@ -781,7 +895,7 @@ class ReportDataService {
 
   private async getReportWithValuation(reportId: string): Promise<any> {
     const result = await query(
-      `SELECT r.*, v.id as valuation_id, v.property_id, v.effective_date, v.final_value_ghs as final_value, v.valuation_purpose as purpose
+      `SELECT r.*, v.id as valuation_id, v.property_id, v.effective_date, v.final_value_ghs as final_value, v.valuation_purpose as purpose, v.valuer_id
        FROM valuation_reports r
        JOIN valuations v ON r.valuation_id = v.id
        WHERE r.id = $1`,
@@ -795,7 +909,21 @@ class ReportDataService {
 
   private async getValuationData(valuationId: string): Promise<any> {
     const result = await query(
-      `SELECT * FROM valuations WHERE id = $1`,
+      `SELECT v.*,
+              vr.value_range_low as recon_value_low,
+              vr.value_range_high as recon_value_high,
+              vr.overall_confidence_score as recon_confidence,
+              vr.overall_confidence_level as recon_confidence_level,
+              vr.exchange_rate_used as recon_exchange_rate,
+              vr.method_weights as recon_method_weights,
+              vr.method_results as recon_method_results,
+              vr.reconciliation_narrative,
+              vr.special_assumptions as recon_special_assumptions,
+              vr.fsv_discount_percent as recon_fsv_discount,
+              vr.force_sale_value as recon_force_sale_value
+       FROM valuations v
+       LEFT JOIN valuation_reconciliations vr ON vr.valuation_id = v.id
+       WHERE v.id = $1`,
       [valuationId]
     );
     return result.rows[0];
@@ -817,7 +945,18 @@ class ReportDataService {
     return result.rows[0];
   }
 
-  private async getActiveValuer(): Promise<any> {
+  private async getActiveValuer(valuerId?: string): Promise<any> {
+    // First try the specific valuer assigned to the valuation
+    if (valuerId) {
+      const specific = await query(
+        `SELECT * FROM valuers WHERE id = $1`,
+        [valuerId]
+      );
+      if (specific.rows.length > 0) {
+        return specific.rows[0];
+      }
+    }
+    // Fallback to any active valuer
     const result = await query(
       `SELECT * FROM valuers WHERE is_active = true ORDER BY created_at DESC LIMIT 1`
     );
@@ -829,9 +968,35 @@ class ReportDataService {
     const parts = [
       property.address_street,
       property.address_city,
-      property.address_state || property.region,
+      property.address_state || this.formatRegionName(property.region),
     ].filter(Boolean);
     return parts.join(', ') || property.title || 'Property Location';
+  }
+
+  private formatRegionName(region: string | null | undefined): string {
+    if (!region) return '';
+    const regions: Record<string, string> = {
+      greater_accra: 'Greater Accra',
+      kumasi_metro: 'Kumasi Metropolitan',
+      eastern: 'Eastern Region',
+      western_cluster: 'Western Region',
+      northern_cluster: 'Northern Region',
+      ashanti: 'Ashanti Region',
+      central: 'Central Region',
+      volta: 'Volta Region',
+      western: 'Western Region',
+      northern: 'Northern Region',
+      upper_east: 'Upper East Region',
+      upper_west: 'Upper West Region',
+      bono: 'Bono Region',
+      bono_east: 'Bono East Region',
+      ahafo: 'Ahafo Region',
+      savannah: 'Savannah Region',
+      north_east: 'North East Region',
+      oti: 'Oti Region',
+      western_north: 'Western North Region',
+    };
+    return regions[region.toLowerCase()] || region.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
   }
 
   private formatDate(date: Date | string): string {

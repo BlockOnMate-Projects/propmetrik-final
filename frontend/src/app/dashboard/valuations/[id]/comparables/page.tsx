@@ -162,7 +162,7 @@ interface SubjectProperty {
 }
 
 const DEFAULT_FILTERS: SearchFilters = {
-  maxDistance: 5.0,
+  maxDistance: 15.0,
   minPrice: 0,
   maxPrice: 10000000,
   minGfa: 0,
@@ -413,8 +413,8 @@ function ComparablesPageContent() {
       setNewComparable({})
       setShowAddForm(false)
       
-      const trustScore = result.metadata?.trust_score || 0
-      alert(`Comparable property submitted successfully!\nTrust Score: ${(trustScore * 100).toFixed(1)}%\nStatus: Pending Review`)
+      const trustScore = result.metadata?.trust_score || result.data?.trust_score || 0
+      alert(`Comparable property submitted and approved!\nIt will appear in your search results after refreshing.`)
       
     } catch (error) {
       console.error('Error submitting comparable:', error)
@@ -628,9 +628,9 @@ function ComparablesPageContent() {
                   <label className="font-mono text-[10px] text-zinc-500 mb-1 block">MAX DISTANCE (KM)</label>
                   <input
                     type="range"
-                    min="0.5"
-                    max="10"
-                    step="0.5"
+                    min="1"
+                    max="50"
+                    step="1"
                     value={searchFilters.maxDistance}
                     onChange={(e) => setSearchFilters(prev => ({ ...prev, maxDistance: parseFloat(e.target.value) }))}
                     className="w-full accent-amber-500"

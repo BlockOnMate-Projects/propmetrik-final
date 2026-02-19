@@ -18,6 +18,9 @@ interface ExternalDocumentData {
   tenancyId?: string;
   applicationId?: string;
   propertyName?: string;
+  contextType?: string;
+  contextEntityId?: string;
+  contextEntityName?: string;
 }
 
 interface Envelope {
@@ -64,13 +67,14 @@ export default function Dashboard() {
     const handleExternalDocument = (event: MessageEvent) => {
       if (event.data?.type === 'LOAD_DOCUMENT' && event.data?.data) {
         console.log('📄 Received external document from PropMetrik:', event.data.data);
-        setExternalDocument(event.data.data);
+        setExternalDocument((prev: ExternalDocumentData | null) => {
+          if (prev) {
+            console.log('⏭️ Document already received, ignoring duplicate');
+            return prev;
+          }
+          return event.data.data;
+        });
         setShowEnvelopeWizard(true);
-        
-        // Notify parent that we're ready
-        if (window.parent !== window) {
-          window.parent.postMessage({ type: 'ESIGN_READY' }, '*');
-        }
       }
     };
 

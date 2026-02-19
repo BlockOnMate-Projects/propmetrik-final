@@ -100,12 +100,15 @@ export interface EconomicSnapshot {
 // =====================================================
 
 export class EconomicDataService {
-  // Default exchange rates for GHS (Ghana Cedis) - will be updated from external sources
+  // Default exchange rates for GHS (Ghana Cedis) — last resort fallback.
+  // These are ONLY used by the scheduled updateExchangeRates() job when external
+  // APIs are unreachable. The canonical rates come from the economic_indicators table
+  // and the live FX feed service. Last updated from Bank of Ghana (2025-06).
   private static readonly DEFAULT_EXCHANGE_RATES: Record<string, number> = {
-    USD: 15.5,  // 1 USD = ~15.5 GHS (approximate, update from API)
-    GBP: 19.5,
-    EUR: 16.8,
-    NGN: 0.0095,
+    USD: 10.99,
+    GBP: 14.50,
+    EUR: 12.30,
+    NGN: 0.0068,
   };
 
   // Official data sources

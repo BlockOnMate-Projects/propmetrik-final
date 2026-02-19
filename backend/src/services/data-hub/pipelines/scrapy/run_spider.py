@@ -18,8 +18,15 @@ import logging
 from datetime import datetime
 from typing import List, Optional
 
+# Load .env before anything else reads env vars
+from dotenv import load_dotenv
+_script_dir = os.path.dirname(os.path.abspath(__file__))
+# backend/.env is 5 levels up: scrapy → pipelines → data-hub → services → src → backend
+_backend_env = os.path.join(_script_dir, '..', '..', '..', '..', '..', '.env')
+load_dotenv(os.path.normpath(_backend_env), override=False)
+
 # Add project root to path
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, _script_dir)
 
 from scrapy.crawler import CrawlerProcess
 from scrapy.utils.project import get_project_settings

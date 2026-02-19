@@ -63,6 +63,9 @@ export interface ExternalDocumentData {
   tenancyId?: string;
   applicationId?: string;
   propertyName?: string;
+  contextType?: string;
+  contextEntityId?: string;
+  contextEntityName?: string;
 }
 
 interface EnvelopeWizardProps {
@@ -163,7 +166,7 @@ export default function EnvelopeWizard({ onComplete, onCancel, currentUser, exte
       console.log('👥 Created recipients:', recipientList);
       
       setRecipients(recipientList);
-      checkSelfSigning(recipientList);
+      checkSelfSigning(recipientList, extDoc.contextType);
       
       // Skip to step 2 (field placement) since document is already loaded
       setCurrentStep(2);
@@ -177,7 +180,7 @@ export default function EnvelopeWizard({ onComplete, onCancel, currentUser, exte
   };
 
   // Detect self-signing mode (only signer is current user) OR sign-and-send mode (current user is one of multiple signers)
-  const checkSelfSigning = (recipientList: Recipient[]) => {
+  const checkSelfSigning = (recipientList: Recipient[], contextType?: string) => {
     const signers = recipientList.filter(r => r.role === 'signer');
     
     // Check if current user is among the signers
@@ -185,7 +188,14 @@ export default function EnvelopeWizard({ onComplete, onCancel, currentUser, exte
       s.email.toLowerCase() === currentUser.email.toLowerCase()
     ) : null;
     
-    if (signers.length === 1 && signers[0].id === 'self-signer' && currentUser) {
+    // contextType === 'self_signed' forces self-signing mode (e.g. report approval)
+    if (contextType === 'self_signed' && signers.length === 1) {
+      // Forced self-signing from context (report approval, etc.)
+      console.log('✍️ Self-signing mode forced by contextType:', contextType);
+      setIsSelfSigning(true);
+      setIsSignAndSend(false);
+      setCurrentUserRecipientId(signers[0].id);
+    } else if (signers.length === 1 && signers[0].id === 'self-signer' && currentUser) {
       // Pure self-signing: only one signer and it's the current user
       setIsSelfSigning(true);
       setIsSignAndSend(false);
@@ -270,7 +280,7 @@ export default function EnvelopeWizard({ onComplete, onCancel, currentUser, exte
 
   const handleRecipientsChange = (recipientList: Recipient[]) => {
     setRecipients(recipientList);
-    checkSelfSigning(recipientList);
+    checkSelfSigning(recipientList, externalDocument?.contextType);
   };
 
   const handleFieldSigned = (fieldId: string, signatureData?: SignatureData, value?: string) => {
@@ -293,7 +303,7 @@ export default function EnvelopeWizard({ onComplete, onCancel, currentUser, exte
           <button className="back-btn" onClick={onCancel}>
             ← Back
           </button>
-          <h1>Create Envelope</h1>
+          <h1>{isSelfSigning ? 'Sign Document' : 'Create Envelope'}</h1>
         </div>
         
         {/* Progress Steps */}

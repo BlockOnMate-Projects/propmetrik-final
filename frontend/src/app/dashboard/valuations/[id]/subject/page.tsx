@@ -119,6 +119,8 @@ export default function SubjectPropertyPage() {
           services_description: metadata.services_description || '',
           // Land Value Evidence
           land_value_evidence: metadata.land_value_evidence || '',
+          // Risk Assessment (GhIS Section 3)
+          risk_assessment: metadata.risk_assessment || undefined,
         })
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to load valuation')
@@ -198,6 +200,8 @@ export default function SubjectPropertyPage() {
           services_description: propertyData.services_description,
           // Land Value Evidence
           land_value_evidence: propertyData.land_value_evidence,
+          // Risk Assessment (GhIS Section 3)
+          risk_assessment: propertyData.risk_assessment,
         },
       }
 

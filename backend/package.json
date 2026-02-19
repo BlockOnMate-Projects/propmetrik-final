@@ -4,7 +4,9 @@
   "description": "PROPMETRIK Ghana - Real Estate Intelligence Platform Backend",
   "main": "dist/index.js",
   "scripts": {
-    "dev": "ts-node-dev --respawn --transpile-only src/index.ts",
+    "dev": "bash dev.sh",
+    "dev:tsx": "tsx watch --clear-screen=false src/index.ts",
+    "dev:legacy": "ts-node-dev --respawn --transpile-only src/index.ts",
     "build": "tsc",
     "start": "node dist/index.js",
     "clean": "rm -rf dist node_modules",
@@ -42,6 +44,7 @@
     "cheerio": "^1.1.2",
     "compression": "^1.7.4",
     "cors": "^2.8.5",
+    "docx": "^9.5.3",
     "docxtemplater": "^3.67.6",
     "docxtemplater-image-module-free": "^1.1.1",
     "dotenv": "^16.3.1",
@@ -117,6 +120,7 @@
     "ts-jest": "^29.1.1",
     "ts-node": "^10.9.2",
     "ts-node-dev": "^2.0.0",
+    "tsx": "^4.21.0",
     "typescript": "^5.3.3"
   },
   "engines": {

@@ -525,7 +525,7 @@ class ValuationEngineService {
         inflation_rate: snapshot.inflation_rate ?? 0.12,
         interest_rate_policy: snapshot.interest_rate_policy ?? 0.27,
         mortgage_rate_avg: snapshot.mortgage_rate_avg ?? 0.32,
-        exchange_rate_usd: snapshot.exchange_rate_usd ?? 15.5,
+        exchange_rate_usd: snapshot.exchange_rate_usd ?? 10.99,
         gdp_growth: snapshot.gdp_growth ?? 0.032,
         construction_cost_index: constructionIndex?.index_value ?? 110,
         snapshot_date: snapshot.date || new Date(),
@@ -549,7 +549,7 @@ class ValuationEngineService {
         inflation_rate: 0.12,
         interest_rate_policy: 0.27,
         mortgage_rate_avg: 0.32,
-        exchange_rate_usd: 15.5,
+        exchange_rate_usd: 10.99,
         gdp_growth: 0.032,
         construction_cost_index: 110,
         snapshot_date: new Date(),
@@ -1187,6 +1187,7 @@ class ValuationEngineService {
       rental_market_analysis: row.rental_market_analysis || null,  // Rental comparable analysis data
       effective_date: row.effective_date,
       expiry_date: row.expiry_date,
+      created_by: row.created_by || row.valuer_id || null,
       created_at: row.created_at,
       updated_at: row.updated_at,
     };

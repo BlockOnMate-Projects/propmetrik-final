@@ -2,7 +2,8 @@
 
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
+import { useSession } from 'next-auth/react'
 import {
   TerminalPanel,
   Metric,
@@ -18,6 +19,22 @@ import {
 import { valuationsApi, type ValuationFilters } from '@/lib/valuation-api'
 import type { Valuation, ValuationStatsResponse, ValuationStatus } from '@/types/valuation'
 import { Plus, Search, Filter, RefreshCw, Download, Loader2, Edit2, Trash2 } from 'lucide-react'
+
+interface OrgMember {
+  id: string
+  email: string
+  firstName: string
+  lastName: string
+  displayName: string
+  role: string
+}
+
+interface TeamMember {
+  userId: string
+  userName: string
+  userEmail: string
+  teamRole: string
+}
 
 // Status filter mapping
 const statusFilters = [
@@ -45,6 +62,11 @@ function formatRelativeTime(dateString: string, isMounted: boolean): string {
 
 export default function ValuationsPage() {
   const router = useRouter()
+  const { data: session } = useSession()
+  const isOrganization = !!(session?.user as any)?.organizationId
+  const userRole = (session?.user as any)?.role || ''
+  // Only management roles can reassign valuers
+  const canAssign = ['super_admin', 'firm_principal', 'admin', 'senior_valuer', 'manager'].includes(userRole)
   const [filter, setFilter] = useState<string>('all')
   const [searchQuery, setSearchQuery] = useState('')
   const [valuations, setValuations] = useState<Valuation[]>([])
@@ -53,6 +75,69 @@ export default function ValuationsPage() {
   const [error, setError] = useState<string | null>(null)
   const [refreshing, setRefreshing] = useState(false)
   const [mounted, setMounted] = useState(false)
+
+  // Org assignment state
+  const [orgMembers, setOrgMembers] = useState<OrgMember[]>([])
+  const [assignMap, setAssignMap] = useState<Record<string, TeamMember | null>>({})
+  const [assigning, setAssigning] = useState<string | null>(null) // valuationId being assigned
+
+  // Auth headers for org API calls
+  const getOrgHeaders = useCallback((): Record<string, string> => {
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' }
+    if (typeof window !== 'undefined') {
+      const token = localStorage.getItem('token')
+      if (token) headers['Authorization'] = `Bearer ${token}`
+      const orgId = localStorage.getItem('organizationId')
+      if (orgId) headers['x-organization-id'] = orgId
+      const userId = localStorage.getItem('userId')
+      if (userId) headers['x-user-id'] = userId
+    }
+    return headers
+  }, [])
+
+  // Fetch org members for dropdown
+  const fetchOrgMembers = useCallback(async () => {
+    try {
+      const res = await fetch('/api/valuation-org/members', { headers: getOrgHeaders() })
+      if (res.ok) {
+        const data = await res.json()
+        setOrgMembers(data.data || [])
+      }
+    } catch { /* silent */ }
+  }, [getOrgHeaders])
+
+  // Fetch lead assignee for a single valuation
+  const fetchTeamForValuation = useCallback(async (valuationId: string): Promise<TeamMember | null> => {
+    try {
+      const res = await fetch(`/api/valuation-org/valuations/${valuationId}/team`, { headers: getOrgHeaders() })
+      if (res.ok) {
+        const data = await res.json()
+        const members: TeamMember[] = data.data || []
+        // Return the lead_valuer if exists, otherwise the first member
+        return members.find(m => m.teamRole === 'lead_valuer') || members[0] || null
+      }
+    } catch { /* silent */ }
+    return null
+  }, [getOrgHeaders])
+
+  // Assign valuer to valuation
+  const handleAssign = async (valuationId: string, userId: string) => {
+    if (!userId) return
+    setAssigning(valuationId)
+    try {
+      const res = await fetch(`/api/valuation-org/valuations/${valuationId}/team`, {
+        method: 'POST',
+        headers: getOrgHeaders(),
+        body: JSON.stringify({ userId, teamRole: 'lead_valuer' }),
+      })
+      if (res.ok) {
+        // Refresh this valuation's assignment
+        const member = await fetchTeamForValuation(valuationId)
+        setAssignMap(prev => ({ ...prev, [valuationId]: member }))
+      }
+    } catch { /* silent */ }
+    setAssigning(null)
+  }
 
   // Set mounted after hydration
   useEffect(() => {
@@ -105,6 +190,23 @@ export default function ValuationsPage() {
   useEffect(() => {
     fetchData()
   }, [filter])
+
+  // Fetch org members + team assignments once valuations load
+  useEffect(() => {
+    if (valuations.length === 0) return
+    fetchOrgMembers()
+    // Fetch team for each valuation
+    const loadAssignments = async () => {
+      const map: Record<string, TeamMember | null> = {}
+      await Promise.all(
+        valuations.map(async (v) => {
+          map[v.id] = await fetchTeamForValuation(v.id)
+        })
+      )
+      setAssignMap(map)
+    }
+    loadAssignments()
+  }, [valuations, fetchOrgMembers, fetchTeamForValuation])
 
   // Handle search with debounce
   useEffect(() => {
@@ -323,15 +425,17 @@ export default function ValuationsPage() {
             <thead>
               <tr className="text-[10px] font-mono text-zinc-500 border-b border-zinc-800">
                 <th className="text-left pb-2 w-28">ID</th>
+                <th className="text-left pb-2 w-40">ASSIGN</th>
                 <th className="text-left pb-2">PROPERTY</th>
-                <th className="text-left pb-2 w-32">LOCATION</th>
+                <th className="text-left pb-2 w-28">DIGITAL ADDR</th>
+                <th className="text-left pb-2 w-28">LOCATION</th>
                 <th className="text-left pb-2 w-24">TYPE</th>
                 <th className="text-right pb-2 w-28">VALUE</th>
                 <th className="text-center pb-2 w-24">CONFIDENCE</th>
                 <th className="text-left pb-2 w-28">STATUS</th>
                 <th className="text-left pb-2 w-16">STEP</th>
                 <th className="text-right pb-2 w-24">UPDATED</th>
-                <th className="text-center pb-2 w-32">ACTIONS</th>
+                <th className="text-center pb-2 w-28">ACTIONS</th>
               </tr>
             </thead>
             <tbody className="font-mono text-xs">
@@ -344,8 +448,33 @@ export default function ValuationsPage() {
                   <td className="py-2 text-amber-500 group-hover:text-amber-400">
                     VAL-{item.id.slice(0, 8).toUpperCase()}
                   </td>
+                  <td className="py-2" onClick={(e) => e.stopPropagation()}>
+                    {assigning === item.id ? (
+                      <Loader2 className="w-3 h-3 text-amber-500 animate-spin" />
+                    ) : canAssign ? (
+                      <select
+                        value={assignMap[item.id]?.userId || ''}
+                        onChange={(e) => handleAssign(item.id, e.target.value)}
+                        className="w-full px-1.5 py-1 bg-zinc-900 border border-zinc-700 text-xs font-mono text-white focus:outline-none focus:border-amber-500/50 cursor-pointer hover:border-zinc-500 transition-colors"
+                      >
+                        <option value="">— Unassigned —</option>
+                        {orgMembers.map((m) => (
+                          <option key={m.id} value={m.id}>
+                            {m.displayName || `${m.firstName} ${m.lastName}`}
+                          </option>
+                        ))}
+                      </select>
+                    ) : (
+                      <span className="text-xs font-mono text-zinc-300">
+                        {assignMap[item.id]?.userName || <span className="text-zinc-600">— Unassigned —</span>}
+                      </span>
+                    )}
+                  </td>
                   <td className="py-2 text-white">
                     {item.property?.title || item.property?.address || 'Unnamed Property'}
+                  </td>
+                  <td className="py-2 text-cyan-400 font-mono text-[10px]">
+                    {item.property?.digital_address || <span className="text-zinc-600">—</span>}
                   </td>
                   <td className="py-2 text-zinc-400">
                     {item.property?.city || item.property?.region || '—'}

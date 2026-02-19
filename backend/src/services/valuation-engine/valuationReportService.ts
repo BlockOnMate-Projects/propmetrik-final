@@ -127,19 +127,18 @@ export interface ReportData {
   
   // Disclaimers
   disclaimers: string[];
+  
+  // Weighting rationale
+  weighting_rationale?: string | null;
 }
 
 // =====================================================
 // REPORT TEMPLATES
 // =====================================================
 
-const REPORT_DISCLAIMERS = [
-  'This valuation is prepared in accordance with the Ghana Institution of Surveyors (GhIS) standards and International Valuation Standards (IVS).',
-  'The valuation is based on the information provided and the conditions existing at the valuation date.',
-  'This report is for the sole use of the addressed party and may not be relied upon by third parties without written consent.',
-  'Market conditions may change, and the value expressed herein may not be valid at a future date.',
-  'The valuer has not investigated title or conducted a structural survey of the property.',
-];
+// Disclaimers are provided by reportDataService.getDisclaimersData() which reads
+// from the report's custom content or falls back to the standardised DEFAULT_DISCLAIMERS.
+// Do NOT duplicate disclaimer lists here — use the same canonical source.
 
 const METHOD_DESCRIPTIONS: Record<string, string> = {
   sales_comparison: 'The Sales Comparison Approach estimates value by comparing the subject property to similar properties that have recently sold. Adjustments are made for differences in location, size, condition, and other relevant factors.',
@@ -200,9 +199,9 @@ class ValuationReportService {
           purpose: this.formatPurpose(valuation.purpose),
           final_value: valuation.final_value,
           final_value_formatted: this.formatCurrency(valuation.final_value, options.currency || 'GHS'),
-          value_low: valuation.value_low || valuation.final_value * 0.95,
-          value_high: valuation.value_high || valuation.final_value * 1.05,
-          confidence_score: valuation.confidence_score || 0.75,
+          value_low: valuation.value_low || null,
+          value_high: valuation.value_high || null,
+          confidence_score: valuation.confidence_score || null,
           confidence_grade: this.getConfidenceGrade(valuation.confidence_score),
           primary_method: valuation.primary_method || 'sales_comparison',
         },
@@ -227,7 +226,9 @@ class ValuationReportService {
             : null,
         },
         
-        methods: this.formatMethodResults(valuation.method_results || [], options),
+        methods: this.formatMethodResults(valuation.method_results || [], options, valuation.method_weights),
+        
+        weighting_rationale: valuation.weighting_rationale || null,
         
         valuer: {
           name: options.valuerName || 'System Valuation',
@@ -236,7 +237,9 @@ class ValuationReportService {
           date: new Date().toISOString().split('T')[0],
         },
         
-        disclaimers: REPORT_DISCLAIMERS,
+        // Disclaimers are injected by reportDataService.getDisclaimersData()
+        // during report assembly — not duplicated here.
+        disclaimers: [],
       };
 
       // Add comparables if available
@@ -292,6 +295,8 @@ class ValuationReportService {
         value_range_high as value_high,
         primary_method,
         method_results,
+        method_weights,
+        weighting_rationale,
         confidence_score,
         market_conditions,
         valuer_id,
@@ -337,7 +342,8 @@ class ValuationReportService {
    */
   private formatMethodResults(
     results: any,
-    options: ReportOptions
+    options: ReportOptions,
+    methodWeights?: Record<string, number>
   ): ReportData['methods'] {
     // Convert object format to array format
     let resultsArray: any[] = [];
@@ -359,17 +365,28 @@ class ValuationReportService {
       return [];
     }
     
-    return resultsArray.map(result => ({
-      name: this.formatMethodName(result.method),
-      value: result.value,
-      value_formatted: this.formatCurrency(result.value, options.currency || 'GHS'),
-      confidence: result.confidence || 0.5,
-      weight: result.weight || 0.2,
-      details: options.includeMethodDetails !== false ? {
-        ...result.details,
-        description: METHOD_DESCRIPTIONS[result.method] || '',
-      } : undefined,
-    }));
+    return resultsArray.map(result => {
+      // Use method_weights from valuations table (user-set percentages 0-100) if available
+      // Fall back to per-method weight; null if not set (do not fabricate)
+      let weight = result.weight || null;
+      if (methodWeights && Object.keys(methodWeights).length > 0) {
+        const methodKey = result.method || '';
+        if (methodWeights[methodKey] !== undefined && methodWeights[methodKey] !== null) {
+          weight = methodWeights[methodKey] / 100; // Convert from percentage (0-100) to decimal (0-1)
+        }
+      }
+      return {
+        name: this.formatMethodName(result.method),
+        value: result.value,
+        value_formatted: this.formatCurrency(result.value, options.currency || 'GHS'),
+        confidence: result.confidence || null,
+        weight,
+        details: options.includeMethodDetails !== false ? {
+          ...result.details,
+          description: METHOD_DESCRIPTIONS[result.method] || '',
+        } : undefined,
+      };
+    });
   }
 
   /**
@@ -400,12 +417,12 @@ class ValuationReportService {
   ): ReportData['market_analysis'] {
     return {
       trend: this.formatTrend(conditions.market_trend),
-      price_change_12m: conditions.price_trend_12m || 0,
-      activity_level: conditions.market_activity || 'moderate',
-      cycle_phase: conditions.cycle_phase || 'stable',
-      days_on_market: conditions.days_on_market || 90,
-      avg_price_per_sqm: conditions.price_metrics?.average_per_sqm || 0,
-      median_price_per_sqm: conditions.price_metrics?.median_per_sqm || 0,
+      price_change_12m: conditions.price_trend_12m || null,
+      activity_level: conditions.market_activity || null,
+      cycle_phase: conditions.cycle_phase || null,
+      days_on_market: conditions.days_on_market || null,
+      avg_price_per_sqm: conditions.price_metrics?.average_per_sqm || null,
+      median_price_per_sqm: conditions.price_metrics?.median_per_sqm || null,
     };
   }
 
@@ -635,9 +652,10 @@ class ValuationReportService {
     return `VR-${date}-${random}`;
   }
 
-  private formatCurrency(amount: number, currency: string = 'GHS'): string {
+  private formatCurrency(amount: number, currency: string = 'GHS', exchangeRate?: number): string {
     if (currency === 'USD') {
-      return `$${(amount / 15).toLocaleString('en-US', { maximumFractionDigits: 0 })}`;
+      const rate = exchangeRate || 10.99; // should always be passed from valuation data
+      return `$${(amount / rate).toLocaleString('en-US', { maximumFractionDigits: 0 })}`;
     }
     return `GHS ${amount.toLocaleString('en-US', { maximumFractionDigits: 0 })}`;
   }

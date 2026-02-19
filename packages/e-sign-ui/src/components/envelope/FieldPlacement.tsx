@@ -250,8 +250,8 @@ export default function FieldPlacement({
         storeLocalValue(newField.id, initials, signatureData);
         onFieldSigned?.(newField.id, signatureData, initials);
       } else if (newField.type === 'date_signed') {
-        const dateValue = new Date().toLocaleDateString('en-US', { month: 'numeric', day: 'numeric', year: 'numeric' });
-        const imageData = generateTextAsImage(dateValue, { fontSize: 14, width: 120, height: 30 });
+        const dateValue = new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
+        const imageData = generateTextAsImage(dateValue, { fontSize: 13, fontFamily: 'Georgia, "Times New Roman", serif', width: 160, height: 30 });
         const signatureData: SignatureData = { type: 'typed', data: imageData };
         storeLocalValue(newField.id, dateValue, signatureData);
         onFieldSigned?.(newField.id, signatureData, dateValue);
@@ -464,12 +464,12 @@ export default function FieldPlacement({
         onFieldSigned?.(field.id, signatureData, initials);
       } else if (field.type === 'date_signed') {
         // Generate date as IMAGE
-        const dateValue = new Date().toLocaleDateString('en-US', {
-          month: 'numeric',
+        const dateValue = new Date().toLocaleDateString('en-GB', {
           day: 'numeric',
+          month: 'long',
           year: 'numeric'
         });
-        const imageData = generateTextAsImage(dateValue, { fontSize: 14, width: 120, height: 30 });
+        const imageData = generateTextAsImage(dateValue, { fontSize: 13, fontFamily: 'Georgia, "Times New Roman", serif', width: 160, height: 30 });
         const signatureData: SignatureData = { type: 'typed', data: imageData };
         storeLocalValue(field.id, dateValue, signatureData);
         onFieldSigned?.(field.id, signatureData, dateValue);

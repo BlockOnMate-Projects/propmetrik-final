@@ -99,6 +99,16 @@ describe("PROPMETRIKPayments — Multi-Token", function () {
       expect(deal.percentageBasisPoints).to.equal(25);
       expect(deal.minimumFeeUSD6).to.equal(0);
       expect(deal.enabled).to.be.true;
+
+      const project = await contract.feeConfigs(2); // PROJECT
+      expect(project.percentageBasisPoints).to.equal(25);
+      expect(project.minimumFeeUSD6).to.equal(0);
+      expect(project.enabled).to.be.true;
+
+      const valuation = await contract.feeConfigs(3); // VALUATION
+      expect(valuation.percentageBasisPoints).to.equal(250);
+      expect(valuation.minimumFeeUSD6).to.equal(0);
+      expect(valuation.enabled).to.be.true;
     });
   });
 
@@ -254,6 +264,34 @@ describe("PROPMETRIKPayments — Multi-Token", function () {
       expect(fee).to.equal(125_000000);
     });
 
+    it("VALUATION — 2.5% fee with USDT (6 decimals)", async function () {
+      const amount = ethers.parseUnits("5000", 6); // $5000 valuation
+      const fee = await contract.calculateFee(await usdt.getAddress(), 3, amount);
+      // 2.5% of 5000 = 125 → 125_000000
+      expect(fee).to.equal(125_000000);
+    });
+
+    it("VALUATION — 2.5% fee with USDC (6 decimals)", async function () {
+      const amount = ethers.parseUnits("10000", 6); // $10k valuation
+      const fee = await contract.calculateFee(await usdc.getAddress(), 3, amount);
+      // 2.5% of 10000 = 250 → 250_000000
+      expect(fee).to.equal(250_000000);
+    });
+
+    it("VALUATION — 2.5% fee with WETH (18 decimals)", async function () {
+      const amount = ethers.parseUnits("10", 18); // 10 WETH
+      const fee = await contract.calculateFee(await weth.getAddress(), 3, amount);
+      // 2.5% of 10 = 0.25 WETH
+      expect(fee).to.equal(ethers.parseUnits("0.25", 18));
+    });
+
+    it("VALUATION — 2.5% fee with WBTC (8 decimals)", async function () {
+      const amount = ethers.parseUnits("1", 8); // 1 BTC
+      const fee = await contract.calculateFee(await wbtc.getAddress(), 3, amount);
+      // 2.5% of 1 = 0.025 BTC = 2_500000 (8 dec units)
+      expect(fee).to.equal(ethers.parseUnits("0.025", 8));
+    });
+
     it("RENT — WBTC uses percentage when minimum is not configured", async function () {
       // 0.0001 BTC rent → 1% = 0.000001 BTC = 100 units
       const smallBtc = ethers.parseUnits("0.0001", 8); // 10000 units
@@ -324,6 +362,18 @@ describe("PROPMETRIKPayments — Multi-Token", function () {
 
       const fee = BigInt(25_000000);
       expect(await usdt.balanceOf(propmetrik.address)).to.equal(fee);
+    });
+
+    it("VALUATION — 2.5% fee split with USDT", async function () {
+      const ref = ethers.keccak256(ethers.toUtf8Bytes("val-usdt-001"));
+      const usdtAddr = await usdt.getAddress();
+      const valAmount = ethers.parseUnits("5000", 6); // $5000 valuation
+      await contract.connect(tenant).processPayment(usdtAddr, 3, ENTITY_ID_1, valAmount, ref, "0x");
+
+      // 2.5% of 5000 = 125
+      const fee = BigInt(125_000000);
+      expect(await usdt.balanceOf(propmetrik.address)).to.equal(fee);
+      expect(await usdt.balanceOf(recipient1.address)).to.equal(valAmount);
     });
 
     it("emits PaymentProcessed with token address", async function () {
@@ -449,6 +499,96 @@ describe("PROPMETRIKPayments — Multi-Token", function () {
 
       // 0.25% of 1 = 0.0025 BTC
       expect(await wbtc.balanceOf(propmetrik.address)).to.equal(ethers.parseUnits("0.0025", 8));
+    });
+  });
+
+  // ═══════════════════════════════════════════════════════════════════
+  //  7b — VALUATION Payments (PaymentType=3, 2.5% fee, all tokens)
+  // ═══════════════════════════════════════════════════════════════════
+
+  describe("7b — VALUATION Payments (2.5% fee)", function () {
+    const VALUATION_USD = ethers.parseUnits("8000", 6); // $8000 valuation
+    const VALUATION_ETH = ethers.parseUnits("4", 18);    // 4 WETH
+    const VALUATION_BTC = ethers.parseUnits("0.1", 8);   // 0.1 WBTC
+
+    it("VALUATION — USDC 2.5% fee and correct split", async function () {
+      const ref = ethers.keccak256(ethers.toUtf8Bytes("val-usdc-001"));
+      const usdcAddr = await usdc.getAddress();
+      const tenantBefore = await usdc.balanceOf(tenant.address);
+
+      await contract.connect(tenant).processPayment(usdcAddr, 3, ENTITY_ID_1, VALUATION_USD, ref, "0x");
+
+      // 2.5% of 8000 = 200 USDC
+      const fee = ethers.parseUnits("200", 6);
+      expect(await usdc.balanceOf(propmetrik.address)).to.equal(fee);
+      expect(await usdc.balanceOf(recipient1.address)).to.equal(VALUATION_USD);
+      expect(await usdc.balanceOf(tenant.address)).to.equal(tenantBefore - VALUATION_USD - fee);
+    });
+
+    it("VALUATION — WETH 2.5% with 18 decimals", async function () {
+      const ref = ethers.keccak256(ethers.toUtf8Bytes("val-weth-001"));
+      const wethAddr = await weth.getAddress();
+
+      await contract.connect(tenant).processPayment(wethAddr, 3, ENTITY_ID_1, VALUATION_ETH, ref, "0x");
+
+      // 2.5% of 4 = 0.1 WETH
+      expect(await weth.balanceOf(propmetrik.address)).to.equal(ethers.parseUnits("0.1", 18));
+      expect(await weth.balanceOf(recipient1.address)).to.equal(VALUATION_ETH);
+    });
+
+    it("VALUATION — WBTC 2.5% with 8 decimals", async function () {
+      const ref = ethers.keccak256(ethers.toUtf8Bytes("val-wbtc-001"));
+      const wbtcAddr = await wbtc.getAddress();
+
+      await contract.connect(tenant).processPayment(wbtcAddr, 3, ENTITY_ID_2, VALUATION_BTC, ref, "0x");
+
+      // 2.5% of 0.1 = 0.0025 BTC = 250000 units
+      expect(await wbtc.balanceOf(propmetrik.address)).to.equal(ethers.parseUnits("0.0025", 8));
+      expect(await wbtc.balanceOf(recipient2.address)).to.equal(VALUATION_BTC);
+    });
+
+    it("VALUATION — emits PaymentProcessed with type 3", async function () {
+      const ref = ethers.keccak256(ethers.toUtf8Bytes("val-emit-001"));
+      const usdtAddr = await usdt.getAddress();
+      const amount = ethers.parseUnits("2000", 6);
+
+      await expect(
+        contract.connect(tenant).processPayment(usdtAddr, 3, ENTITY_ID_1, amount, ref, "0x")
+      )
+        .to.emit(contract, "PaymentProcessed")
+        .withArgs(ref, tenant.address, recipient1.address, usdtAddr, amount, ethers.parseUnits("50", 6), 3);
+    });
+
+    it("VALUATION — disabled type reverts", async function () {
+      await contract.setPaymentTypeEnabled(3, false);
+      const ref = ethers.keccak256(ethers.toUtf8Bytes("val-disabled-001"));
+      await expect(
+        contract.connect(tenant).processPayment(await usdt.getAddress(), 3, ENTITY_ID_1, VALUATION_USD, ref, "0x")
+      ).to.be.revertedWith("Payment type disabled");
+      await contract.setPaymentTypeEnabled(3, true); // restore
+    });
+
+    it("VALUATION — owner can update fee config", async function () {
+      // Change VALUATION to 3% ($5 min)
+      await contract.updateFeeConfig(3, 300, 5_000000);
+      const cfg = await contract.feeConfigs(3);
+      expect(cfg.percentageBasisPoints).to.equal(300);
+      expect(cfg.minimumFeeUSD6).to.equal(5_000000);
+
+      // 3% of $2000 = $60 USDT
+      const fee = await contract.calculateFee(await usdt.getAddress(), 3, ethers.parseUnits("2000", 6));
+      expect(fee).to.equal(ethers.parseUnits("60", 6));
+
+      // Restore to 2.5%, $0 min
+      await contract.updateFeeConfig(3, 250, 0);
+    });
+
+    it("VALUATION — gas usage within budget", async function () {
+      const ref = ethers.keccak256(ethers.toUtf8Bytes("val-gas-001"));
+      const usdtAddr = await usdt.getAddress();
+      const tx = await contract.connect(tenant).processPayment(usdtAddr, 3, ENTITY_ID_1, VALUATION_USD, ref, "0x");
+      const receipt = await tx.wait();
+      expect(Number(receipt!.gasUsed)).to.be.lt(GAS_BUDGET);
     });
   });
 
@@ -1180,8 +1320,8 @@ describe("PROPMETRIKPayments — Multi-Token", function () {
       expect(storedHash).to.equal(ethers.ZeroHash);
     });
 
-    it("supports all payment types (RENT, DEAL, PROJECT)", async function () {
-      for (const [i, type] of [0, 1, 2].entries()) {
+    it("supports all payment types (RENT, DEAL, PROJECT, VALUATION)", async function () {
+      for (const [i, type] of [0, 1, 2, 3].entries()) {
         const ref = ethers.keccak256(ethers.toUtf8Bytes(`offchain-type-${i}`));
         const hash = ethers.keccak256(ethers.toUtf8Bytes(`hash-${i}`));
         await expect(
@@ -1190,7 +1330,7 @@ describe("PROPMETRIKPayments — Multi-Token", function () {
           )
         ).to.not.be.reverted;
       }
-      expect(await contract.offChainPaymentCount()).to.equal(3);
+      expect(await contract.offChainPaymentCount()).to.equal(4);
     });
 
     it("gas usage within budget", async function () {

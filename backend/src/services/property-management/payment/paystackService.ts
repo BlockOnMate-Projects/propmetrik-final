@@ -113,20 +113,12 @@ export class PaystackService {
     private isTestMode: boolean;
 
     constructor() {
-        // Determine mode from environment
-        this.isTestMode = process.env.PAYMENT_MODE !== 'live';
-        
-        // Select keys based on mode
-        if (this.isTestMode) {
-            this.secretKey = process.env.PAYSTACK_TEST_SECRET_KEY || '';
-            this.publicKey = process.env.PAYSTACK_TEST_PUBLIC_KEY || '';
-        } else {
-            this.secretKey = process.env.PAYSTACK_LIVE_SECRET_KEY || '';
-            this.publicKey = process.env.PAYSTACK_LIVE_PUBLIC_KEY || '';
-        }
+        this.secretKey = process.env.PAYSTACK_SECRET_KEY || '';
+        this.publicKey = process.env.PAYSTACK_PUBLIC_KEY || '';
+        this.isTestMode = this.secretKey.startsWith('sk_test_');
 
         if (!this.secretKey) {
-            logger.warn(`PAYSTACK_${this.isTestMode ? 'TEST' : 'LIVE'}_SECRET_KEY is not set. Payment operations will fail.`);
+            logger.warn('PAYSTACK_SECRET_KEY is not set. Payment operations will fail.');
         }
 
         logger.info(`PaystackService initialized in ${this.isTestMode ? 'TEST' : 'LIVE'} mode`);

@@ -257,7 +257,7 @@ export class ApprovalService {
       ? JSON.parse(report.content) 
       : report.content || {};
 
-    if (!content.storage_key) {
+    if (!report.docx_storage_key && !content.storage_key) {
       reasons.push('Report document has not been generated');
     }
 
@@ -281,7 +281,6 @@ export class ApprovalService {
     try {
       // Verify valuer can approve
       const credentials = await this.getValuerCredentials(valuerId);
-      
       if (!credentials) {
         return {
           success: false,
@@ -302,13 +301,12 @@ export class ApprovalService {
 
       // Check if report can be approved
       const approvalCheck = await this.canApprove(reportId);
-      
       if (!approvalCheck.canApprove) {
         return {
           success: false,
           reportId,
           status: 'rejected',
-          error: approvalCheck.reasons.join(', '),
+          error: `Cannot approve: ${approvalCheck.reasons.join(', ')}`,
         };
       }
 
@@ -697,12 +695,12 @@ export class ApprovalService {
         ? JSON.parse(report.content)
         : report.content || {};
 
-      if (!content.pdf_storage_key && !content.storage_key) {
+      if (!content.pdf_storage_key && !content.storage_key && !report.docx_storage_key) {
         throw new Error('Report PDF has not been generated');
       }
 
       // Fetch PDF from storage
-      const storageKey = content.pdf_storage_key || content.storage_key;
+      const storageKey = content.pdf_storage_key || content.storage_key || report.docx_storage_key;
       const pdfBuffer = await this.fetchDocumentFromStorage(storageKey);
 
       // Get signature placement configuration

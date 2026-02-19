@@ -279,12 +279,13 @@ router.get('/crypto/status', asyncHandler(async (req: Request, res: Response) =>
     // Try to get on-chain fee configs
     if (cryptoPaymentService.isConfigured()) {
         try {
-            const [rentFee, dealFee, projectFee] = await Promise.all([
+            const [rentFee, dealFee, projectFee, valuationFee] = await Promise.all([
                 cryptoPaymentService.getOnChainFeeConfig('rent'),
                 cryptoPaymentService.getOnChainFeeConfig('deal'),
                 cryptoPaymentService.getOnChainFeeConfig('project'),
+                cryptoPaymentService.getOnChainFeeConfig('valuation'),
             ]);
-            status.onChainFees = { rent: rentFee, deal: dealFee, project: projectFee };
+            status.onChainFees = { rent: rentFee, deal: dealFee, project: projectFee, valuation: valuationFee };
         } catch (err: any) {
             status.onChainFeeError = err.message;
         }

@@ -1092,6 +1092,41 @@ export default function ComprehensivePropertyForm({
             />
           </div>
         </div>
+
+        {/* Property Risk Assessment (GhIS Section 3) */}
+        <div className="space-y-3">
+          <div className="font-mono text-[10px] text-amber-400 border-b border-amber-500/20 pb-1">PROPERTY RISK ASSESSMENT</div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {([
+              { key: 'employment_stability', label: 'EMPLOYMENT STABILITY' },
+              { key: 'convenience_employment', label: 'CONVENIENCE TO EMPLOYMENT' },
+              { key: 'convenience_shopping', label: 'CONVENIENCE TO SHOPPING' },
+              { key: 'convenience_school', label: 'CONVENIENCE TO SCHOOL' },
+              { key: 'public_transportation', label: 'PUBLIC TRANSPORTATION' },
+              { key: 'utilities_adequacy', label: 'ADEQUACY OF UTILITIES' },
+              { key: 'recreation_facilities', label: 'RECREATION FACILITIES' },
+              { key: 'police_fire_protection', label: 'POLICE & FIRE PROTECTION' },
+              { key: 'accessibility', label: 'ACCESSIBILITY' },
+            ] as const).map(({ key, label }) => (
+              <div key={key}>
+                <label className="font-mono text-[10px] text-zinc-500 mb-1 block">{label}</label>
+                <select
+                  value={(data.risk_assessment as any)?.[key] || 'average'}
+                  onChange={(e) => {
+                    const current = (data.risk_assessment || {}) as any;
+                    updateField('risk_assessment', { ...current, [key]: e.target.value });
+                  }}
+                  className="w-full px-3 py-2 bg-zinc-900 border border-zinc-800 text-white font-mono text-sm focus:outline-none focus:border-amber-500/50"
+                >
+                  <option value="good">Good</option>
+                  <option value="average">Average</option>
+                  <option value="fair">Fair</option>
+                  <option value="poor">Poor</option>
+                </select>
+              </div>
+            ))}
+          </div>
+        </div>
       </div>
 
       {/* Owner Information */}

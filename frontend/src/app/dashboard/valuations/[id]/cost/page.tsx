@@ -452,52 +452,50 @@ export default function CostApproachPage() {
     try {
       setCalculatingDepreciation(true)
       
-      // Call Python valuation engine depreciation API
-      const response = await fetch('http://localhost:8001/api/v1/depreciation/calculate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          property: {
-            id: valuation?.id,
-            property_type: property.propertyType || property.property_type || 'residential_house',
-            region: property.region || 'greater_accra',
-            year_built: property.year_built,
-            condition: property.condition || 'good',
-            building_size_sqm: property.builtArea || property.grossFloorArea || property.building_area_sqm || gfa,
-            bedrooms: property.bedrooms,
-            bathrooms: property.bathrooms,
-            parking_spaces: property.parking_spaces,
-            has_ac: property.has_air_conditioning || property.hasAirConditioning,
-            has_generator: property.has_generator || property.hasGenerator,
-            has_borehole: property.has_borehole || property.hasBorehole,
-          },
+      // Call Python valuation engine depreciation API via the API client
+      const result = await pythonMethodsApi.calculateDepreciation(
+        {
+          id: valuation?.id || 'unknown',
+          property_type: property.propertyType || property.property_type || 'residential_house',
+          region: property.region || 'greater_accra',
+          year_built: property.year_built,
+          condition: property.condition || 'good',
+          building_size_sqm: property.builtArea || property.grossFloorArea || property.building_area_sqm || gfa,
+          bedrooms: property.bedrooms,
+          bathrooms: property.bathrooms,
+          parking_spaces: property.parking_spaces,
+          has_ac: property.has_air_conditioning || property.hasAirConditioning,
+          has_generator: property.has_generator || property.hasGenerator,
+          has_borehole: property.has_borehole || property.hasBorehole,
+        },
+        {
           include_external: true,
           location_data: {
             road_type: property.roadAccess || property.road_access,
             flood_zone: property.floodZone || property.flood_zone,
           },
           market_data: {},
-        }),
-      })
+        }
+      )
 
-      if (!response.ok) {
-        throw new Error('Depreciation calculation failed')
+      if (!result.success || !result.data) {
+        throw new Error(result.error || 'Depreciation calculation failed')
       }
 
-      const result = await response.json()
+      const data = result.data
       
       // Update state with calculated values (convert from decimal to percentage)
-      setPhysicalDepreciation(Math.round(result.physical.depreciation_rate * 100))
-      setFunctionalObsolescence(Math.round(result.functional.depreciation_rate * 100))
-      if (result.external) {
-        setExternalObsolescence(Math.round(result.external.depreciation_rate * 100))
+      setPhysicalDepreciation(Math.round(data.physical.depreciation_rate * 100))
+      setFunctionalObsolescence(Math.round(data.functional.depreciation_rate * 100))
+      if (data.external) {
+        setExternalObsolescence(Math.round(data.external.depreciation_rate * 100))
       }
       
       console.log('Depreciation auto-calculated:', {
-        physical: result.physical.depreciation_percent,
-        functional: result.functional.depreciation_percent,
-        external: result.external?.depreciation_percent || 0,
-        total: result.total.percent,
+        physical: data.physical.depreciation_percent,
+        functional: data.functional.depreciation_percent,
+        external: data.external?.depreciation_percent || 0,
+        total: data.total?.percent || 0,
       })
     } catch (err) {
       console.error('Depreciation calculation error:', err)
@@ -583,8 +581,9 @@ export default function CostApproachPage() {
         ? existingMethods 
         : [...existingMethods, 'cost_approach']
       
-      // Use Python result as primary, local as fallback
-      const finalValue = pythonResult?.estimated_value ?? indicatedValue
+      // Always use the displayed indicatedValue as the saved value
+      // Python result provides confidence/metadata but the user's configured value is authoritative
+      const finalValue = indicatedValue
       const finalConfidence = pythonResult?.confidence_score ?? calculateConfidence()
       
       await valuationsApi.update(valuationId, {

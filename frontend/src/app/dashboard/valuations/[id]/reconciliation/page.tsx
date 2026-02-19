@@ -61,7 +61,16 @@ export default function ReconciliationPage() {
   // Sensitivity analysis
   const [showSensitivity, setShowSensitivity] = useState(true) // Auto-load sensitivity
   const [sensitivityRange, setSensitivityRange] = useState(10) // +/- percentage
-  const [sensitivityDriver, setSensitivityDriver] = useState<'construction_cost' | 'land_value' | 'depreciation' | 'gdv'>('construction_cost')
+  type SensitivityDriverType = 
+    // Cost approach drivers
+    | 'construction_cost' | 'land_value' | 'depreciation'
+    // Sales comparison drivers
+    | 'price_per_sqm' | 'comparable_adjustments'
+    // Income approach drivers
+    | 'rental_rate' | 'cap_rate' | 'vacancy_rate'
+    // Residual/DRC drivers
+    | 'gdv' | 'replacement_cost'
+  const [sensitivityDriver, setSensitivityDriver] = useState<SensitivityDriverType>('construction_cost')
 
   // Weight locking and governance
   const [lockedWeights, setLockedWeights] = useState<Record<string, boolean>>({})
@@ -104,8 +113,8 @@ export default function ReconciliationPage() {
             const method = result.method || 'unknown'
             normalizedResults[method] = {
               method: method,
-              value_ghs: result.value_ghs || result.value || 0,
-              confidence_score: result.confidence_score || result.confidence || 0.5,
+              value_ghs: Number(result.value_ghs || result.value || 0),
+              confidence_score: Number(result.confidence_score || result.confidence || 0.5),
               weight: result.weight || 0,
               is_primary: result.is_primary || false,
               notes: result.notes || '',
@@ -121,8 +130,8 @@ export default function ReconciliationPage() {
             
             normalizedResults[methodKey] = {
               method: methodKey as any,
-              value_ghs: result.value_ghs || result.value || result.indicatedValue || 0,
-              confidence_score: result.confidence_score || result.confidence || 0.5,
+              value_ghs: Number(result.value_ghs || result.value || result.indicatedValue || 0),
+              confidence_score: Number(result.confidence_score || result.confidence || 0.5),
               weight: result.weight || 0,
               is_primary: result.is_primary || false,
               notes: result.notes || '',
@@ -323,57 +332,140 @@ export default function ReconciliationPage() {
     return totalWeight > 0 ? weightedConfidence / totalWeight : 0
   }, [methodResults, weights])
 
-  // Sensitivity data - now driver-aware with fixed 5 key points
+  // Build available sensitivity drivers based on which methods are active
+  const availableDrivers = useMemo(() => {
+    const drivers: { value: SensitivityDriverType; label: string; method: string; tooltip: string }[] = []
+    const methods = Object.keys(methodResults)
+
+    if (methods.includes('cost_approach')) {
+      drivers.push(
+        { value: 'construction_cost', label: 'Construction Cost', method: 'cost_approach', tooltip: 'Shows how value changes if construction costs vary. Useful for new/recently built properties.' },
+        { value: 'land_value', label: 'Land Value', method: 'cost_approach', tooltip: 'Shows impact of land value fluctuations. Important in markets with volatile land prices.' },
+        { value: 'depreciation', label: 'Depreciation', method: 'cost_approach', tooltip: 'Shows effect of depreciation assumptions. Critical for older buildings.' },
+      )
+    }
+    if (methods.includes('sales_comparison')) {
+      drivers.push(
+        { value: 'price_per_sqm', label: 'Price per SQM', method: 'sales_comparison', tooltip: 'Shows sensitivity to comparable price-per-square-metre adjustments. Key driver for market approach.' },
+        { value: 'comparable_adjustments', label: 'Comparable Adjustments', method: 'sales_comparison', tooltip: 'Shows impact of overall adjustment factors applied to comparable sales evidence.' },
+      )
+    }
+    if (methods.includes('income_approach')) {
+      drivers.push(
+        { value: 'rental_rate', label: 'Rental Rate', method: 'income_approach', tooltip: 'Shows sensitivity to rental income assumptions. Directly affects gross income calculations.' },
+        { value: 'cap_rate', label: 'Capitalisation Rate', method: 'income_approach', tooltip: 'Shows impact of yield/cap rate changes. Inverse relationship — higher cap rate reduces value.' },
+        { value: 'vacancy_rate', label: 'Vacancy Rate', method: 'income_approach', tooltip: 'Shows effect of vacancy allowance assumptions on effective gross income.' },
+      )
+    }
+    if (methods.includes('residual')) {
+      drivers.push(
+        { value: 'gdv', label: 'Gross Development Value', method: 'residual', tooltip: 'Shows sensitivity to GDV assumptions. Key for development/residual valuations.' },
+      )
+    }
+    if (methods.includes('drc')) {
+      drivers.push(
+        { value: 'replacement_cost', label: 'Replacement Cost', method: 'drc', tooltip: 'Shows impact of replacement cost assumptions on DRC valuation output.' },
+      )
+    }
+    return drivers
+  }, [methodResults])
+
+  // Auto-select first available driver when methods change
+  useEffect(() => {
+    if (availableDrivers.length > 0 && !availableDrivers.find(d => d.value === sensitivityDriver)) {
+      setSensitivityDriver(availableDrivers[0].value)
+    }
+  }, [availableDrivers, sensitivityDriver])
+
+  // Sensitivity data - driver-aware with fixed 5 key points
   const sensitivityData = useMemo(() => {
-    // Get base components from cost approach if available
     const costResult = methodResults['cost_approach'] as any
-    
-    // Calculate component ratios from actual cost approach data or use defaults
-    // These represent what percentage of the final value each component contributes
+    const costWeight = (weights['cost_approach'] || 0) / 100
+    const salesWeight = (weights['sales_comparison'] || 0) / 100
+    const incomeWeight = (weights['income_approach'] || 0) / 100
+    const residualWeight = (weights['residual'] || 0) / 100
+    const drcWeight = (weights['drc'] || 0) / 100
+
+    // Cost approach component ratios (relative to method value, weighted into reconciled value)
     const hasActualCostData = costResult?.construction_cost && costResult?.land_value
-    
-    // If we have actual cost data, calculate the ratios
-    const constructionCostRatio = hasActualCostData 
-      ? (costResult.construction_cost / reconciledValue) 
-      : 0.65 // Default: 65% of value from construction
-    const landValueRatio = hasActualCostData 
-      ? (costResult.land_value / reconciledValue) 
-      : 0.30 // Default: 30% of value from land
-    const depreciationRatio = costResult?.total_depreciation_percent 
-      ? (costResult.total_depreciation_percent / 100) 
-      : 0.20 // Default: 20% depreciation impact
-    
+    const constructionCostRatio = hasActualCostData
+      ? (costResult.construction_cost / reconciledValue)
+      : 0.65 * costWeight
+    const landValueRatio = hasActualCostData
+      ? (costResult.land_value / reconciledValue)
+      : 0.30 * costWeight
+    const depreciationRatio = costResult?.total_depreciation_percent
+      ? (costResult.total_depreciation_percent / 100)
+      : 0.20
+
     // Fixed 5-point analysis: -max, -half, 0, +half, +max
     const percentages = [-sensitivityRange, -sensitivityRange/2, 0, sensitivityRange/2, sensitivityRange]
-    
+
     return percentages.map(pct => {
       let adjustedValue: number
       let impactMultiplier: number
-      
+
       switch (sensitivityDriver) {
+        // --- Cost Approach Drivers ---
         case 'construction_cost':
-          // Construction cost change impacts the construction portion of value
           impactMultiplier = constructionCostRatio * (pct / 100)
           adjustedValue = reconciledValue * (1 + impactMultiplier)
           break
         case 'land_value':
-          // Land value change impacts the land portion of value
           impactMultiplier = landValueRatio * (pct / 100)
           adjustedValue = reconciledValue * (1 + impactMultiplier)
           break
         case 'depreciation':
-          // Depreciation increase reduces value (inverse relationship)
-          // More depreciation = lower value
-          impactMultiplier = -depreciationRatio * (pct / 100)
+          // More depreciation → lower value
+          impactMultiplier = -depreciationRatio * costWeight * (pct / 100)
           adjustedValue = reconciledValue * (1 + impactMultiplier)
           break
+
+        // --- Sales Comparison Drivers ---
+        case 'price_per_sqm':
+          // Price per sqm change flows proportionally through the sales weight
+          impactMultiplier = salesWeight * (pct / 100)
+          adjustedValue = reconciledValue * (1 + impactMultiplier)
+          break
+        case 'comparable_adjustments':
+          // Overall adjustment factor change — typically ~30% of the comparable value moves
+          impactMultiplier = salesWeight * 0.3 * (pct / 100)
+          adjustedValue = reconciledValue * (1 + impactMultiplier)
+          break
+
+        // --- Income Approach Drivers ---
+        case 'rental_rate':
+          // Rental rate directly affects gross income → proportional to income weight
+          impactMultiplier = incomeWeight * (pct / 100)
+          adjustedValue = reconciledValue * (1 + impactMultiplier)
+          break
+        case 'cap_rate':
+          // Cap rate has inverse relationship: Value = NOI / Cap Rate
+          // If cap rate goes up by x%, value goes down by approximately x% (1st order)
+          impactMultiplier = -incomeWeight * (pct / 100)
+          adjustedValue = reconciledValue * (1 + impactMultiplier)
+          break
+        case 'vacancy_rate':
+          // Vacancy affects ~5-15% of gross income, weighted by income approach share
+          impactMultiplier = -incomeWeight * 0.15 * (pct / 100)
+          adjustedValue = reconciledValue * (1 + impactMultiplier)
+          break
+
+        // --- Residual / DRC Drivers ---
         case 'gdv':
+          impactMultiplier = residualWeight * (pct / 100)
+          adjustedValue = reconciledValue * (1 + impactMultiplier)
+          break
+        case 'replacement_cost':
+          impactMultiplier = drcWeight * (pct / 100)
+          adjustedValue = reconciledValue * (1 + impactMultiplier)
+          break
+
         default:
-          // Simple 1:1 proportional adjustment
           adjustedValue = reconciledValue * (1 + pct / 100)
           break
       }
-      
+
       return {
         percentage: pct,
         value: adjustedValue,
@@ -381,7 +473,7 @@ export default function ReconciliationPage() {
         changePercent: ((adjustedValue - reconciledValue) / reconciledValue) * 100
       }
     })
-  }, [reconciledValue, sensitivityRange, sensitivityDriver, methodResults])
+  }, [reconciledValue, sensitivityRange, sensitivityDriver, methodResults, weights])
 
   // Auto-generated reconciliation narrative (RICS/GhIS compliant)
   const autoNarrative = useMemo(() => {
@@ -1131,13 +1223,12 @@ export default function ReconciliationPage() {
                       <span className="font-mono text-[10px] text-zinc-500">DRIVER:</span>
                       <select
                         value={sensitivityDriver}
-                        onChange={(e) => setSensitivityDriver(e.target.value as any)}
+                        onChange={(e) => setSensitivityDriver(e.target.value as SensitivityDriverType)}
                         className="px-2 py-1 bg-zinc-800 border border-zinc-700 text-white font-mono text-xs focus:outline-none"
                       >
-                        <option value="construction_cost">Construction Cost</option>
-                        <option value="land_value">Land Value</option>
-                        <option value="depreciation">Depreciation</option>
-                        <option value="gdv">Gross Development Value</option>
+                        {availableDrivers.map(d => (
+                          <option key={d.value} value={d.value}>{d.label}</option>
+                        ))}
                       </select>
                       <HelpCircle className="w-3 h-3 text-zinc-500" />
                     </div>
@@ -1145,10 +1236,7 @@ export default function ReconciliationPage() {
                   <TooltipContent side="top" className="max-w-xs">
                     <p className="text-xs font-medium mb-1">Sensitivity Driver</p>
                     <p className="text-xs text-zinc-400">
-                      {sensitivityDriver === 'construction_cost' && 'Shows how value changes if construction costs vary. Useful for new/recently built properties.'}
-                      {sensitivityDriver === 'land_value' && 'Shows impact of land value fluctuations. Important in markets with volatile land prices.'}
-                      {sensitivityDriver === 'depreciation' && 'Shows effect of depreciation assumptions. Critical for older buildings.'}
-                      {sensitivityDriver === 'gdv' && 'Shows sensitivity to Gross Development Value changes. Key for development/residual valuations.'}
+                      {availableDrivers.find(d => d.value === sensitivityDriver)?.tooltip || 'Select a driver to see how changes impact the reconciled value.'}
                     </p>
                   </TooltipContent>
                 </Tooltip>
@@ -1166,10 +1254,7 @@ export default function ReconciliationPage() {
               <thead>
                 <tr className="bg-zinc-800/50">
                   <th className="px-4 py-2 text-left font-mono text-[10px] text-zinc-400 uppercase">
-                    {sensitivityDriver === 'construction_cost' && 'Construction Cost Δ'}
-                    {sensitivityDriver === 'land_value' && 'Land Value Δ'}
-                    {sensitivityDriver === 'depreciation' && 'Depreciation Rate Δ'}
-                    {sensitivityDriver === 'gdv' && 'GDV Δ'}
+                    {(availableDrivers.find(d => d.value === sensitivityDriver)?.label || 'Driver')} Δ
                   </th>
                   <th className="px-4 py-2 text-right font-mono text-[10px] text-zinc-400">INDICATED VALUE</th>
                   <th className="px-4 py-2 text-right font-mono text-[10px] text-zinc-400">VALUE CHANGE</th>

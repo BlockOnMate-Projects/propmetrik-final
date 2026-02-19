@@ -831,6 +831,8 @@ class PostgresPipeline:
                     # Track multi-source contribution if enabled and we have a property_id
                     if self._multi_source_tracker and property_id:
                         try:
+                            # Use a SAVEPOINT so tracker errors don't abort the main transaction
+                            cur.execute("SAVEPOINT multi_source_tracking")
                             source_type = self._get_source_type(item.get('source_slug'))
                             self._multi_source_tracker.track_contribution(
                                 property_id=str(property_id),
@@ -839,8 +841,10 @@ class PostgresPipeline:
                                 item_data=dict(item),
                                 source_url=item.get('source_url')
                             )
+                            cur.execute("RELEASE SAVEPOINT multi_source_tracking")
                             self.sources_tracked += 1
                         except Exception as e:
+                            cur.execute("ROLLBACK TO SAVEPOINT multi_source_tracking")
                             logger.warning(f"Multi-source tracking failed: {e}")
                             # Don't fail the pipeline, just log the error
 

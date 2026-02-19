@@ -20,7 +20,7 @@ import { logger } from '../../src/utils/logger';
 // TYPES
 // =====================================================
 
-export type PaymentType = 'rent' | 'deal' | 'project' | 'subscription';
+export type PaymentType = 'rent' | 'deal' | 'project' | 'subscription' | 'valuation';
 export type FeeMode = 'percentage' | 'flat' | 'max_of';
 
 export interface FeeRule {
@@ -271,6 +271,17 @@ class FeeEngine {
                 organizationId: null,
                 feeMode: 'flat',
                 percentageRate: 0,
+                flatAmount: 0,
+                currency: 'GHS',
+                minFee: null,
+                maxFee: null,
+            },
+            valuation: {
+                id: 'default-valuation',
+                paymentType: 'valuation',
+                organizationId: null,
+                feeMode: 'percentage',
+                percentageRate: 0.025,    // 2.5%
                 flatAmount: 0,
                 currency: 'GHS',
                 minFee: null,

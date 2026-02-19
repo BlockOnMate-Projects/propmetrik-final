@@ -519,8 +519,9 @@ export function Currency({
   showSign = false,
   compact = false
 }: CurrencyProps) {
-  // Handle null/undefined values
-  if (value == null || isNaN(value)) {
+  // Handle null/undefined values and ensure numeric type
+  const numValue = typeof value === 'string' ? parseFloat(value) : value;
+  if (numValue == null || isNaN(numValue)) {
     return <span className="text-zinc-500">—</span>;
   }
 
@@ -528,15 +529,15 @@ export function Currency({
 
   let displayValue: string;
   if (compact) {
-    if (value >= 1_000_000) {
-      displayValue = `${(value / 1_000_000).toFixed(1)}M`;
-    } else if (value >= 1_000) {
-      displayValue = `${(value / 1_000).toFixed(0)}K`;
+    if (numValue >= 1_000_000) {
+      displayValue = `${(numValue / 1_000_000).toFixed(1)}M`;
+    } else if (numValue >= 1_000) {
+      displayValue = `${(numValue / 1_000).toFixed(0)}K`;
     } else {
-      displayValue = value.toLocaleString('en-US');
+      displayValue = numValue.toLocaleString('en-US');
     }
   } else {
-    displayValue = value.toLocaleString('en-US');
+    displayValue = numValue.toLocaleString('en-US', { maximumFractionDigits: 2 });
   }
 
   const sizeClasses = {
@@ -547,7 +548,7 @@ export function Currency({
 
   return (
     <span className={cn('font-mono text-green-400', sizeClasses[size])}>
-      {showSign && value > 0 && '+'}
+      {showSign && numValue > 0 && '+'}
       {symbol}{displayValue}
     </span>
   );

@@ -2,8 +2,10 @@ import NextAuth from "next-auth";
 import KeycloakProvider from "next-auth/providers/keycloak";
 import CredentialsProvider from "next-auth/providers/credentials";
 
-// Backend API URL - strip /api/v1 suffix if present
-const API_BASE = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000').replace(/\/api\/v1$/, '');
+// Backend API URL for server-side calls (NextAuth runs server-side).
+// NEXT_PUBLIC_API_URL may be a relative proxy path like "/api" which doesn't work
+// in server-side fetch; use the internal backend URL directly.
+const API_BASE = (process.env.INTERNAL_API_URL || 'http://localhost:4000').replace(/\/api\/v1$/, '');
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
   providers: [

@@ -431,49 +431,16 @@ class LandComparablesResponse(BaseModel):
 
 
 # ============================================================================
-# GHANA MARKET DATA (Constants for standalone mode)
+# VALUATION INPUT POLICY
+# All valuation inputs must come from the frontend workflow:
+# - Construction rates → Data Hub (editable construction cost panels)
+# - Land values → LandComparableSalesService + ResidualMethodService → LandValueReconciliationService
+# - Rental rates → Rental Market Analysis page (rental comparables basket)
+# - Cap rates → CapRateService (RICS A/B/C grade hierarchy)
+# - Depreciation → DepreciationReconciliationService
+# Endpoints return 400 if required inputs are not provided.
+# No hardcoded fallback constants — this is an audited, regulated engine.
 # ============================================================================
-
-# Construction costs per sqm by region (GHS)
-CONSTRUCTION_COSTS = {
-    "greater_accra": {"basic": 3500, "standard": 5500, "premium": 9000},
-    "kumasi_metro": {"basic": 2800, "standard": 4500, "premium": 7500},
-    "eastern": {"basic": 2500, "standard": 4000, "premium": 6500},
-    "western_cluster": {"basic": 2600, "standard": 4200, "premium": 7000},
-    "northern_cluster": {"basic": 2200, "standard": 3500, "premium": 5500},
-}
-
-# Land values per sqm by region (GHS)
-LAND_VALUES = {
-    "greater_accra": {"prime": 5000, "standard": 2500, "emerging": 1000},
-    "kumasi_metro": {"prime": 2500, "standard": 1200, "emerging": 500},
-    "eastern": {"prime": 1500, "standard": 700, "emerging": 300},
-    "western_cluster": {"prime": 1800, "standard": 800, "emerging": 350},
-    "northern_cluster": {"prime": 1000, "standard": 400, "emerging": 150},
-}
-
-# Rental rates per sqm/month by property type (GHS)
-RENTAL_RATES = {
-    "residential": {"greater_accra": 35, "kumasi_metro": 20, "eastern": 15, "western_cluster": 18, "northern_cluster": 10},
-    "commercial": {"greater_accra": 60, "kumasi_metro": 35, "eastern": 25, "western_cluster": 30, "northern_cluster": 15},
-    "industrial": {"greater_accra": 25, "kumasi_metro": 15, "eastern": 10, "western_cluster": 12, "northern_cluster": 8},
-}
-
-# Cap rates by property type and region (%)
-CAP_RATES = {
-    "residential": {"greater_accra": 6.5, "kumasi_metro": 8.0, "eastern": 9.5, "western_cluster": 8.5, "northern_cluster": 10.0},
-    "commercial": {"greater_accra": 9.0, "kumasi_metro": 10.5, "eastern": 12.0, "western_cluster": 11.0, "northern_cluster": 13.0},
-    "industrial": {"greater_accra": 10.0, "kumasi_metro": 11.5, "eastern": 13.0, "western_cluster": 12.0, "northern_cluster": 14.0},
-}
-
-# Depreciation rates by age (annual %)
-DEPRECIATION_RATES = {
-    (0, 5): 0.02,
-    (6, 15): 0.025,
-    (16, 30): 0.03,
-    (31, 50): 0.02,
-    (51, 100): 0.01,
-}
 
 
 # ============================================================================
@@ -513,11 +480,24 @@ async def health_check():
     """Health check with database status"""
     db_status = "connected" if db_pool else "standalone (no database)"
     
+    # Test land value provider creation
+    land_provider_status = "unknown"
+    land_provider_error = None
+    try:
+        provider = await get_land_value_provider()
+        land_provider_status = "available" if provider else "unavailable"
+    except Exception as e:
+        land_provider_status = "error"
+        land_provider_error = str(e)
+    
     return {
         "status": "healthy",
         "service": "PROPMETRIK Python Valuation Engine",
         "version": "2.0.0",
         "database": db_status,
+        "has_land_services": HAS_LAND_SERVICES,
+        "land_provider": land_provider_status,
+        "land_provider_error": land_provider_error,
         "timestamp": datetime.now().isoformat()
     }
 
@@ -529,37 +509,60 @@ async def health_check():
 @app.post("/api/v1/methods/sales-comparison", response_model=ValuationMethodResponse)
 async def calculate_sales_comparison(request: ValuationMethodRequest):
     """
-    Sales Comparison Approach
+    Sales Comparison Approach (Legacy/Simple)
     
-    Values property by comparing to recent sales of similar properties.
-    Primary method for residential properties.
+    Simple sales comparison using user-provided comparable data.
+    For RICS-compliant analysis, use /methods/sales-comparison-rics instead.
+    
+    Accepts options:
+        - indicated_value: pre-calculated value from comparable basket
+        - price_per_sqm: market-derived price per sqm
+        - comparables_count: number of comparables used
+        - adjustments: adjustment details from the basket analysis
     """
     start_time = datetime.now()
     prop = request.property
+    opts = request.options or {}
     
     try:
-        region = _normalize_region(prop.region)
         building_sqm = prop.building_size_sqm or 150
         land_sqm = prop.land_area_sqm or 300
         
-        # Get market price per sqm based on region and property type
-        base_price_per_sqm = CONSTRUCTION_COSTS.get(region, CONSTRUCTION_COSTS["greater_accra"])["standard"]
-        land_value_per_sqm = LAND_VALUES.get(region, LAND_VALUES["greater_accra"])["standard"]
+        # Use user-provided indicated value if available (from comparable basket)
+        indicated_value = opts.get("indicated_value")
+        price_per_sqm = opts.get("price_per_sqm")
+        comparables_count = opts.get("comparables_count", 0)
         
-        # Calculate base value
-        building_value = building_sqm * base_price_per_sqm
-        land_value = land_sqm * land_value_per_sqm
+        if indicated_value and indicated_value > 0:
+            adjusted_value = indicated_value
+        elif price_per_sqm and price_per_sqm > 0:
+            adjusted_value = building_sqm * price_per_sqm
+        else:
+            raise HTTPException(
+                status_code=400,
+                detail="Either indicated_value or price_per_sqm is required in options (from comparable basket analysis)"
+            )
         
-        # Apply adjustments
-        adjustments = _calculate_adjustments(prop)
-        adjusted_value = (building_value + land_value) * adjustments["total_multiplier"]
+        # Apply any user-specified adjustments
+        adjustments = opts.get("adjustments", {})
+        total_multiplier = adjustments.get("total_multiplier", 1.0)
+        adjusted_value = adjusted_value * total_multiplier
         
-        # Confidence based on data availability
-        confidence = 0.75
+        # Confidence based on data quality
+        confidence = 0.60  # Base
+        if comparables_count >= 5:
+            confidence += 0.20
+        elif comparables_count >= 3:
+            confidence += 0.15
+        elif comparables_count >= 1:
+            confidence += 0.05
         if prop.bedrooms and prop.bathrooms and prop.year_built:
-            confidence = 0.85
+            confidence += 0.05
+        confidence = min(confidence, 0.95)
         
         calc_time = (datetime.now() - start_time).total_seconds() * 1000
+        
+        data_source = "comparable_basket" if indicated_value else "market_price_per_sqm"
         
         return ValuationMethodResponse(
             success=True,
@@ -572,28 +575,27 @@ async def calculate_sales_comparison(request: ValuationMethodRequest):
                 "high": round(adjusted_value * 1.10, 2),
             },
             details={
-                "building_value": round(building_value, 2),
-                "land_value": round(land_value, 2),
-                "price_per_sqm_building": base_price_per_sqm,
-                "price_per_sqm_land": land_value_per_sqm,
+                "indicated_value": round(adjusted_value, 2),
+                "price_per_sqm": price_per_sqm or (round(adjusted_value / building_sqm, 2) if building_sqm > 0 else 0),
                 "adjustments": adjustments,
-                "comparables_analyzed": 5,
-                "regional_multiplier": adjustments.get("regional_multiplier", 1.0),
+                "comparables_analyzed": comparables_count,
+                "data_source": data_source,
             },
             assumptions=[
-                "Market data from comparable sales in the area",
+                f"Analysis based on {comparables_count} comparable properties" if comparables_count > 0 else "Value derived from market price per sqm",
                 "Property condition is as stated",
                 "No hidden defects or legal encumbrances",
-                f"Analysis based on {region} market conditions",
             ],
             limitations=[
-                "Limited comparable data in some regions",
+                "Limited comparable data in some regions" if comparables_count < 3 else "Adequate comparable data available",
                 "Values may not reflect recent market changes",
                 "Subject to property inspection verification",
             ],
             calculation_time_ms=calc_time
         )
         
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Sales comparison failed: {e}")
         raise HTTPException(status_code=500, detail=str(e))
@@ -844,44 +846,80 @@ async def calculate_cost_approach(request: ValuationMethodRequest):
     Cost Approach
     
     Values property based on land value + construction cost - depreciation.
-    Primary method for new construction and unique properties.
+    All input values (land value, construction cost, depreciation) must come from
+    the frontend workflow — this endpoint does NOT use hardcoded constants.
+    
+    Required options:
+        - construction_cost_per_sqm: from Data Hub market rates
+        - land_value_per_sqm: from comparable land sales service
+        - depreciation_overrides: { physical, functional, external } from depreciation service
     """
     start_time = datetime.now()
     prop = request.property
+    opts = request.options or {}
     
     try:
-        region = _normalize_region(prop.region)
         building_sqm = prop.building_size_sqm or 150
         land_sqm = prop.land_area_sqm or 300
         year_built = prop.year_built or datetime.now().year - 10
         condition = prop.condition or "good"
+        age = datetime.now().year - year_built
         
-        # Get construction costs
-        costs = CONSTRUCTION_COSTS.get(region, CONSTRUCTION_COSTS["greater_accra"])
-        cost_per_sqm = costs["standard"]
-        if condition == "excellent":
-            cost_per_sqm = costs["premium"]
-        elif condition == "fair" or condition == "poor":
-            cost_per_sqm = costs["basic"]
+        # Use user-provided construction cost per sqm (from Data Hub) — required
+        cost_per_sqm = opts.get("construction_cost_per_sqm")
+        if not cost_per_sqm or cost_per_sqm <= 0:
+            raise HTTPException(
+                status_code=400,
+                detail="construction_cost_per_sqm is required in options (from Data Hub market rates)"
+            )
         
-        # Calculate construction cost new
+        # Use user-provided land value per sqm (from comparable land sales)
+        # Defaults to 0 if not yet available (frontend calculates indicatedValue independently)
+        land_value_per_sqm = opts.get("land_value_per_sqm", 0) or 0
+        
+        # Calculate construction cost new (hard costs only — frontend adds soft costs/profit)
         construction_cost_new = building_sqm * cost_per_sqm
         
-        # Calculate land value
-        land_values = LAND_VALUES.get(region, LAND_VALUES["greater_accra"])
-        land_value = land_sqm * land_values["standard"]
+        # Calculate land value from provided per-sqm rate
+        land_value = land_sqm * land_value_per_sqm
         
-        # Calculate depreciation
-        age = datetime.now().year - year_built
-        depreciation_pct = _calculate_depreciation(age, condition)
-        depreciation_amount = construction_cost_new * depreciation_pct
+        # Use depreciation from the depreciation service (via frontend overrides)
+        depreciation_overrides = opts.get("depreciation_overrides", {})
+        physical_dep = depreciation_overrides.get("physical", 0) / 100 if depreciation_overrides.get("physical", 0) > 1 else depreciation_overrides.get("physical", 0)
+        functional_dep = depreciation_overrides.get("functional", 0) / 100 if depreciation_overrides.get("functional", 0) > 1 else depreciation_overrides.get("functional", 0)
+        external_dep = depreciation_overrides.get("external", 0) / 100 if depreciation_overrides.get("external", 0) > 1 else depreciation_overrides.get("external", 0)
+        total_depreciation_pct = physical_dep + functional_dep + external_dep
+        
+        depreciation_amount = construction_cost_new * total_depreciation_pct
         depreciated_cost = construction_cost_new - depreciation_amount
         
         # Total value
         total_value = land_value + depreciated_cost
         
-        confidence = 0.70 if age < 5 else 0.65
+        # Confidence based on data quality
+        confidence = 0.55  # Base confidence
+        if cost_per_sqm > 0:
+            confidence += 0.10  # Has construction rate from Data Hub
+        if land_value_per_sqm > 0:
+            confidence += 0.10  # Has land value from comparable sales
+        if depreciation_overrides:
+            confidence += 0.10  # Has depreciation from service
+        if age < 5:
+            confidence += 0.05  # Newer buildings are easier to value
+        confidence = min(confidence, 0.95)
+        
         calc_time = (datetime.now() - start_time).total_seconds() * 1000
+        
+        assumptions = [
+            f"Construction cost: ₵{cost_per_sqm:,.0f}/sqm from Data Hub market rates",
+            f"Land value: ₵{land_value_per_sqm:,.0f}/sqm from comparable land sales",
+            f"Physical depreciation: {physical_dep*100:.1f}% from depreciation service",
+            f"Building age: {age} years, condition: {condition}",
+        ]
+        if functional_dep > 0:
+            assumptions.append(f"Functional obsolescence: {functional_dep*100:.1f}%")
+        if external_dep > 0:
+            assumptions.append(f"External obsolescence: {external_dep*100:.1f}%")
         
         return ValuationMethodResponse(
             success=True,
@@ -890,8 +928,8 @@ async def calculate_cost_approach(request: ValuationMethodRequest):
             confidence_score=confidence,
             confidence_level=_get_confidence_level(confidence),
             value_range={
-                "low": round(total_value * 0.88, 2),
-                "high": round(total_value * 1.12, 2),
+                "low": round(total_value * 0.90, 2),
+                "high": round(total_value * 1.10, 2),
             },
             details={
                 "land_value": round(land_value, 2),
@@ -899,25 +937,30 @@ async def calculate_cost_approach(request: ValuationMethodRequest):
                 "depreciation_amount": round(depreciation_amount, 2),
                 "depreciated_building_value": round(depreciated_cost, 2),
                 "cost_per_sqm": cost_per_sqm,
-                "land_value_per_sqm": land_values["standard"],
+                "land_value_per_sqm": land_value_per_sqm,
                 "building_age_years": age,
-                "depreciation_pct": round(depreciation_pct * 100, 1),
+                "depreciation_pct": round(total_depreciation_pct * 100, 1),
+                "physical_depreciation_pct": round(physical_dep * 100, 1),
+                "functional_obsolescence_pct": round(functional_dep * 100, 1),
+                "external_obsolescence_pct": round(external_dep * 100, 1),
                 "condition_factor": condition,
+                "data_sources": {
+                    "construction_cost": "data_hub",
+                    "land_value": "comparable_sales",
+                    "depreciation": "depreciation_service",
+                },
             },
-            assumptions=[
-                "Construction costs based on current material prices",
-                "Land value reflects current market conditions",
-                "Depreciation calculated using age-life method",
-                f"Building age: {age} years",
-            ],
+            assumptions=assumptions,
             limitations=[
-                "May not reflect market value for older properties",
+                "Accuracy depends on quality of input market data",
                 "Construction cost estimates may vary by contractor",
-                "Does not account for functional obsolescence",
+                "Land value derived from comparable sales analysis",
             ],
             calculation_time_ms=calc_time
         )
         
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Cost approach failed: {e}")
         raise HTTPException(status_code=500, detail=str(e))
@@ -940,17 +983,16 @@ async def calculate_income_approach(request: ValuationMethodRequest):
         building_sqm = prop.building_size_sqm or 150
         prop_type = _normalize_property_type(prop.property_type)
         
-        # Get rental rate
-        rental_rates = RENTAL_RATES.get(prop_type, RENTAL_RATES["residential"])
-        monthly_rent_per_sqm = rental_rates.get(region, rental_rates["greater_accra"])
-        
-        # Use provided rent or calculate market rent
-        # Check for monthly_rent in options first (from frontend), then property
+        # Monthly rent — MUST come from Rental Market Analysis (rental comparables basket)
+        # or from user manual entry. No hardcoded fallback.
         monthly_rent = opts.get("monthly_rent") or prop.monthly_rent_ghs
-        if monthly_rent:
-            annual_rent = monthly_rent * 12
-        else:
-            annual_rent = building_sqm * monthly_rent_per_sqm * 12
+        if not monthly_rent or monthly_rent <= 0:
+            raise HTTPException(
+                status_code=400,
+                detail="monthly_rent is required. Provide from Rental Market Analysis (rental comparables basket) or user entry."
+            )
+        annual_rent = monthly_rent * 12
+        rent_source = "workflow_provided"
         
         # Get expense ratio from options or use default
         expense_ratio = opts.get("operating_expenses")
@@ -973,26 +1015,24 @@ async def calculate_income_approach(request: ValuationMethodRequest):
         # Calculate NOI
         noi = effective_gross_income * (1 - expense_ratio)
         
-        # Get cap rate: use provided cap_rate from options, or fall back to defaults
+        # Cap rate — MUST come from CapRateService (RICS A/B/C grade hierarchy)
+        # or from user manual entry. No hardcoded fallback.
         cap_rate = opts.get("cap_rate")
-        cap_rate_source = "user_provided"
         if cap_rate is not None and cap_rate > 0:
             # Convert from percentage to decimal if needed (e.g., 6.5 -> 0.065)
             cap_rate = cap_rate / 100 if cap_rate > 1 else cap_rate
+            cap_rate_source = "workflow_provided"
         else:
-            # Fall back to hardcoded rates
-            cap_rates = CAP_RATES.get(prop_type, CAP_RATES["residential"])
-            cap_rate = cap_rates.get(region, cap_rates["greater_accra"]) / 100
-            cap_rate_source = "market_default"
+            raise HTTPException(
+                status_code=400,
+                detail="cap_rate is required. Provide from CapRateService (RICS A/B/C hierarchy) or user entry."
+            )
         
         # Calculate value
         value = noi / cap_rate if cap_rate > 0 else 0
         
-        confidence = 0.72
-        if monthly_rent:
-            confidence = 0.82
-        if cap_rate_source == "user_provided":
-            confidence = min(confidence + 0.05, 0.90)  # Boost confidence when user provides cap rate
+        # High confidence since both rent and cap rate are from proper sources
+        confidence = 0.85
         
         calc_time = (datetime.now() - start_time).total_seconds() * 1000
         
@@ -1008,17 +1048,18 @@ async def calculate_income_approach(request: ValuationMethodRequest):
             },
             details={
                 "gross_annual_income": round(annual_rent, 2),
+                "monthly_rent": round(monthly_rent, 2),
+                "rent_source": rent_source,
                 "vacancy_rate": round(vacancy_rate * 100, 2),
                 "effective_gross_income": round(effective_gross_income, 2),
                 "expense_ratio": round(expense_ratio * 100, 2),
                 "net_operating_income": round(noi, 2),
                 "cap_rate_pct": round(cap_rate * 100, 2),
                 "cap_rate_source": cap_rate_source,
-                "monthly_rent_per_sqm": monthly_rent_per_sqm,
                 "gross_rent_multiplier": round(value / annual_rent, 2) if annual_rent > 0 else 0,
             },
             assumptions=[
-                f"{'User-provided' if monthly_rent else 'Market'} rental rate applied",
+                f"Monthly rent: GH₵{monthly_rent:,.2f} ({rent_source})",
                 f"Vacancy rate: {vacancy_rate * 100:.1f}%",
                 f"Expense ratio: {expense_ratio * 100:.1f}%",
                 f"Capitalization rate: {cap_rate * 100:.2f}% ({cap_rate_source})",
@@ -1032,6 +1073,8 @@ async def calculate_income_approach(request: ValuationMethodRequest):
             calculation_time_ms=calc_time
         )
         
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Income approach failed: {e}")
         raise HTTPException(status_code=500, detail=str(e))
@@ -1044,41 +1087,71 @@ async def calculate_residual_method(request: ValuationMethodRequest):
     
     Values development land based on Gross Development Value - costs.
     Primary method for land with development potential.
+    
+    Accepts options:
+        - gdv: Gross Development Value (required, or sale_price_per_sqm)
+        - sale_price_per_sqm: completed development sale price per sqm
+        - construction_cost_per_sqm: from Data Hub market rates
+        - plot_coverage: fraction (default 0.40)
+        - floors: number of floors (default 2)
+        - professional_fees_pct: as decimal (default 0.10)
+        - marketing_costs_pct: as decimal (default 0.03)
+        - finance_costs_pct: as decimal (default 0.08)
+        - developer_profit_pct: as decimal (default 0.20)
     """
     start_time = datetime.now()
     prop = request.property
+    opts = request.options or {}
     
     try:
-        region = _normalize_region(prop.region)
         land_sqm = prop.land_area_sqm or 500
         
-        # Assume typical residential development
-        # Plot ratio / coverage assumptions
-        buildable_sqm = land_sqm * 0.40  # 40% plot coverage
-        floors = 2  # Typical 2-story
+        # Development parameters from user options or sensible defaults
+        plot_coverage = opts.get("plot_coverage", 0.40)
+        floors = opts.get("floors", 2)
+        buildable_sqm = land_sqm * plot_coverage
         total_buildable = buildable_sqm * floors
         
-        # Get sales price for completed development
-        costs = CONSTRUCTION_COSTS.get(region, CONSTRUCTION_COSTS["greater_accra"])
-        sale_price_per_sqm = costs["standard"] * 1.5  # Completed value is higher
+        # Construction cost per sqm — require from user
+        construction_cost_per_sqm = opts.get("construction_cost_per_sqm")
+        if not construction_cost_per_sqm or construction_cost_per_sqm <= 0:
+            raise HTTPException(
+                status_code=400,
+                detail="construction_cost_per_sqm is required in options (from Data Hub market rates)"
+            )
         
-        # Gross Development Value (GDV)
-        gdv = total_buildable * sale_price_per_sqm
+        # GDV from user or derive from sale_price_per_sqm
+        gdv = opts.get("gdv")
+        sale_price_per_sqm = opts.get("sale_price_per_sqm")
+        if gdv and gdv > 0:
+            pass  # Use provided GDV directly
+        elif sale_price_per_sqm and sale_price_per_sqm > 0:
+            gdv = total_buildable * sale_price_per_sqm
+        else:
+            raise HTTPException(
+                status_code=400,
+                detail="Either gdv or sale_price_per_sqm is required in options"
+            )
         
         # Development costs
-        construction_cost = total_buildable * costs["standard"]
-        professional_fees = construction_cost * 0.10
-        marketing_costs = gdv * 0.03
-        finance_costs = construction_cost * 0.08  # 8% of construction
-        developer_profit = gdv * 0.20  # 20% profit margin
+        construction_cost = total_buildable * construction_cost_per_sqm
+        professional_fees_pct = opts.get("professional_fees_pct", 0.10)
+        marketing_costs_pct = opts.get("marketing_costs_pct", 0.03)
+        finance_costs_pct = opts.get("finance_costs_pct", 0.08)
+        developer_profit_pct = opts.get("developer_profit_pct", 0.20)
+        
+        professional_fees = construction_cost * professional_fees_pct
+        marketing_costs = gdv * marketing_costs_pct
+        finance_costs = construction_cost * finance_costs_pct
+        developer_profit = gdv * developer_profit_pct
         
         total_costs = construction_cost + professional_fees + marketing_costs + finance_costs + developer_profit
         
         # Residual land value
         land_value = gdv - total_costs
-        land_value = max(0, land_value)  # Can't be negative
+        land_value = max(0, land_value)
         
-        confidence = 0.60  # Lower confidence for development valuations
+        confidence = 0.60
         calc_time = (datetime.now() - start_time).total_seconds() * 1000
         
         return ValuationMethodResponse(
@@ -1095,18 +1168,23 @@ async def calculate_residual_method(request: ValuationMethodRequest):
                 "gross_development_value": round(gdv, 2),
                 "total_buildable_sqm": round(total_buildable, 2),
                 "construction_cost": round(construction_cost, 2),
+                "construction_cost_per_sqm": construction_cost_per_sqm,
                 "professional_fees": round(professional_fees, 2),
                 "marketing_costs": round(marketing_costs, 2),
                 "finance_costs": round(finance_costs, 2),
                 "developer_profit": round(developer_profit, 2),
                 "land_value_per_sqm": round(land_value / land_sqm, 2) if land_sqm > 0 else 0,
+                "data_sources": {
+                    "construction_cost": "data_hub",
+                    "gdv": "user_provided" if opts.get("gdv") else "derived_from_sale_price",
+                },
             },
             assumptions=[
-                "Residential development assumed",
-                f"Plot coverage: 40%, Floors: {floors}",
-                "Developer profit margin: 20%",
-                "Finance costs: 8% of construction",
-                "Professional fees: 10% of construction",
+                f"Plot coverage: {plot_coverage*100:.0f}%, Floors: {floors}",
+                f"Construction cost: ₵{construction_cost_per_sqm:,.0f}/sqm from Data Hub",
+                f"Developer profit margin: {developer_profit_pct*100:.0f}%",
+                f"Finance costs: {finance_costs_pct*100:.0f}% of construction",
+                f"Professional fees: {professional_fees_pct*100:.0f}% of construction",
             ],
             limitations=[
                 "Highly sensitive to GDV assumptions",
@@ -1117,6 +1195,8 @@ async def calculate_residual_method(request: ValuationMethodRequest):
             calculation_time_ms=calc_time
         )
         
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Residual method failed: {e}")
         raise HTTPException(status_code=500, detail=str(e))
@@ -1237,11 +1317,13 @@ async def calculate_drc_method(request: ValuationMethodRequest):
         land_sqm = prop.land_area_sqm or 1000
         year_built = prop.year_built or datetime.now().year - 20
         
-        # Get replacement cost (from options or calculate)
+        # Get replacement cost from user options — required
         replacement_cost_per_sqm = opts.get("replacement_cost_per_sqm")
-        if not replacement_cost_per_sqm:
-            costs = CONSTRUCTION_COSTS.get(region, CONSTRUCTION_COSTS["greater_accra"])
-            replacement_cost_per_sqm = costs["premium"] * 1.2  # Premium + specialist factor
+        if not replacement_cost_per_sqm or replacement_cost_per_sqm <= 0:
+            raise HTTPException(
+                status_code=400,
+                detail="replacement_cost_per_sqm is required in options (from Data Hub market rates)"
+            )
         
         # Gross Replacement Cost (GRC)
         grc = building_sqm * replacement_cost_per_sqm
@@ -1437,13 +1519,13 @@ async def calculate_drc_method(request: ValuationMethodRequest):
         # LAND VALUE (from Land Value System)
         # ========================================
         passed_land_value = opts.get("land_value")
-        land_value_source = "land_value_system" if passed_land_value and passed_land_value > 0 else "calculated"
-        
-        if passed_land_value and passed_land_value > 0:
-            land_value = float(passed_land_value)
-        else:
-            land_values = LAND_VALUES.get(region, LAND_VALUES["greater_accra"])
-            land_value = land_sqm * land_values["standard"]
+        if not passed_land_value or passed_land_value <= 0:
+            raise HTTPException(
+                status_code=400,
+                detail="land_value is required in options (from land value service)"
+            )
+        land_value = float(passed_land_value)
+        land_value_source = "land_value_system"
         
         # Total DRC Value
         total_drc = drc_building + land_value
@@ -1689,18 +1771,32 @@ async def calculate_land_value(request: LandValueRequest):
                         cached=result.cached
                     )
                 else:
-                    logger.warning(f"LandValueProvider failed: {result.error}, falling back to hardcoded")
+                    logger.warning(f"LandValueProvider failed: {result.error}")
                     
 
             except Exception as provider_error:
-                logger.warning(f"LandValueProvider error: {provider_error}, falling back to hardcoded")
+                logger.warning(f"LandValueProvider error: {provider_error}")
         
         # ========================================
         # ERROR Handling for Enterprise Compliance (No Hardcoded Fallbacks)
         # ========================================
         
         if not land_value_provider:
-            err_msg = "Land valuation service unavailable and fallback logic has been disabled for compliance."
+            reason = "unknown"
+            if not HAS_LAND_SERVICES:
+                reason = "HAS_LAND_SERVICES=False (import failed at startup)"
+            elif not db_pool:
+                reason = "db_pool is None (database not connected)"
+            else:
+                # Try creating again to get the actual error
+                try:
+                    test_adapter = PostgreSQLMarketDataAdapter(db_pool)
+                    test_provider = LandValueProvider(test_adapter)
+                    reason = f"get_land_value_provider returned None but manual creation succeeded (provider={test_provider})"
+                except Exception as create_err:
+                    reason = f"LandValueProvider creation failed: {create_err}"
+            
+            err_msg = f"Land valuation service unavailable: {reason}"
             logger.error(err_msg)
             return LandValueResponse(
                 success=False, 
@@ -1826,61 +1922,20 @@ async def get_land_comparables(request: LandComparablesRequest):
                     )
                     
             except Exception as db_error:
-                logger.warning(f"Database comparables failed: {db_error}, using fallback")
+                logger.warning(f"Database comparables query failed: {db_error}")
         
         # ========================================
-        # FALLBACK: Simulated Comparables
+        # NO FALLBACK: Return empty results
+        # Land values come from LandComparableSalesService + ResidualMethodService
+        # on the frontend. Synthetic data would bypass the audited workflow.
         # ========================================
-        logger.info(f"Using fallback land comparables for region: {region}")
-        
-        land_values = LAND_VALUES.get(region, LAND_VALUES["greater_accra"])
-        
-        # Generate synthetic comparables for demo
-        # In production, this would query actual land sales
-        comparables = []
-        base_per_sqm = land_values["standard"]
-        
-        for i in range(min(6, max_results)):
-            distance = 1.0 + i * 1.5  # 1km, 2.5km, 4km, etc.
-            if distance > max_distance:
-                break
-                
-            # Vary the price slightly
-            variation = 1.0 + ((i % 3) - 1) * 0.15  # -15%, 0%, +15%
-            sale_price = base_per_sqm * variation
-            
-            # Calculate adjustment
-            size_ratio = 500 / land_sqm  # Compare to standard 500sqm
-            distance_adj = 1.0 - (distance * 0.02)  # 2% per km
-            adjustment_factor = size_ratio * distance_adj
-            adjusted_price = sale_price * adjustment_factor
-            
-            similarity = max(0.4, 1.0 - (distance * 0.05) - abs(1.0 - size_ratio) * 0.1)
-            
-            comparables.append(LandComparableSummary(
-                id=f"land-comp-{region}-{i+1}",
-                distance_km=round(distance, 1),
-                sale_date=f"2024-{(12-i):02d}-15",  # Recent dates
-                sale_price_per_sqm=round(sale_price, 2),
-                adjusted_price_per_sqm=round(adjusted_price, 2),
-                similarity_score=round(similarity, 3),
-                adjustment_factor=round(adjustment_factor, 3),
-            ))
-        
-        # Determine strength
-        comp_count = len(comparables)
-        if comp_count >= 5:
-            strength = "strong"
-        elif comp_count >= 3:
-            strength = "balanced"
-        else:
-            strength = "weak"
+        logger.info(f"No land comparables found for region: {region}, returning empty result")
         
         return LandComparablesResponse(
             success=True,
-            comparables=comparables,
-            strength=strength,
-            count=comp_count,
+            comparables=[],
+            strength="weak",
+            count=0,
             search_radius_km=max_distance,
         )
         
@@ -2248,32 +2303,6 @@ def _get_confidence_level(score: float) -> str:
         return "low"
 
 
-def _calculate_depreciation(age: int, condition: str) -> float:
-    """Calculate depreciation percentage based on age and condition"""
-    # Age-based depreciation
-    base_depreciation = 0
-    remaining_age = age
-    
-    for (min_age, max_age), rate in DEPRECIATION_RATES.items():
-        if remaining_age <= 0:
-            break
-        years_in_bracket = min(remaining_age, max_age - min_age + 1)
-        base_depreciation += years_in_bracket * rate
-        remaining_age -= years_in_bracket
-    
-    # Condition adjustment
-    condition_factors = {
-        "excellent": 0.85,
-        "good": 1.0,
-        "fair": 1.15,
-        "poor": 1.35,
-    }
-    factor = condition_factors.get(condition.lower(), 1.0)
-    
-    total_depreciation = min(0.80, base_depreciation * factor)  # Max 80%
-    return total_depreciation
-
-
 def _calculate_adjustments(prop: PropertyInput) -> Dict[str, Any]:
     """Calculate property adjustments"""
     multiplier = 1.0
@@ -2455,9 +2484,9 @@ async def calculate_depreciation(request: DepreciationCalculateRequest):
     Uses RICS/GhIS compliant methodology with age-based caps.
     """
     from .services import (
-        PhysicalDepreciationCalculator as calculate_physical_depreciation,
-        FunctionalObsolescenceCalculator as calculate_functional_obsolescence,
-        ExternalObsolescenceCalculator as calculate_external_obsolescence,
+        PhysicalDepreciationCalculator,
+        FunctionalObsolescenceCalculator,
+        ExternalObsolescenceCalculator,
         DepreciationReconciliationService,
     )
     from .schemas.property import (
@@ -2565,8 +2594,9 @@ async def calculate_depreciation(request: DepreciationCalculateRequest):
             ),
         )
         
-        # Calculate Physical Depreciation using convenience function
-        physical_result = calculate_physical_depreciation(
+        # Calculate Physical Depreciation
+        physical_calculator = PhysicalDepreciationCalculator()
+        physical_result = physical_calculator.calculate(
             property_data=property_schema,
             valuation_date=date.today(),
             construction_type=None,  # Let it infer from property type
@@ -2574,22 +2604,26 @@ async def calculate_depreciation(request: DepreciationCalculateRequest):
         )
         
         # Calculate Functional Obsolescence
-        functional_result = calculate_functional_obsolescence(property_schema)
+        functional_calculator = FunctionalObsolescenceCalculator()
+        functional_result = functional_calculator.calculate(property_schema)
         
         # Calculate External Obsolescence (if requested)
         external_result = None
         if request.include_external:
-            external_result = calculate_external_obsolescence(
+            external_calculator = ExternalObsolescenceCalculator()
+            external_result = external_calculator.calculate(
                 property_data=property_schema,
                 location_data=request.location_data or {},
                 market_data=request.market_data or {},
             )
         
-        # Estimate RCN for context
-        norm_region = _normalize_region(prop.region)
-        costs = CONSTRUCTION_COSTS.get(norm_region, CONSTRUCTION_COSTS["greater_accra"])
-        cost_per_sqm = costs.get("standard", 8500)
-        rcn = building_sqm * cost_per_sqm
+        # Estimate RCN for context — use provided value or estimate from building size
+        rcn = request.rcn if hasattr(request, 'rcn') and request.rcn else None
+        if not rcn:
+            # Rough estimate: use a reasonable per-sqm rate for context only
+            # This is NOT used in the depreciation calculation itself
+            cost_per_sqm = 8500  # Default estimate, not authoritative
+            rcn = building_sqm * cost_per_sqm
         
         # Reconcile with age-based caps
         reconciliation = DepreciationReconciliationService()
