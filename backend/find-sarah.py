@@ -1,7 +1,7 @@
 import subprocess, json
 
 result = subprocess.run(
-    ['psql', 'postgresql://propmetrik_app:3Ut1ypZBhTDLeG02VBOMZ50eBfKmtWPn@pg.cedynhq.com:5434/propmetrik',
+    ['psql', 'postgresql://propmetrik_app:3Ut1ypZBhTDLeG02VBOMZ50eBfKmtWPn@pg.propmetrik.com:5434/propmetrik',
      '-t', '-c', "SELECT content::text FROM valuation_reports WHERE id = '2dd37218-f5e7-4d59-babc-42ecf63bad1c'"],
     capture_output=True, text=True
 )

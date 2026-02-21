@@ -136,8 +136,9 @@ interface UseRealtimeReturn {
   off: (eventType: RealtimeEventType | string, handler: EventHandler) => void;
 }
 
-// Use empty string for relative URLs - Next.js proxy will rewrite /api/* to http://localhost:4000/api/v1/*
-const DEFAULT_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api/v1';
+// Use the Next.js proxy path instead of direct backend URL to avoid cross-origin
+// connection issues and browser connection limit exhaustion
+const DEFAULT_BASE_URL = process.env.NEXT_PUBLIC_API_URL || '/api';
 
 export function useRealtime(options: UseRealtimeOptions = {}): UseRealtimeReturn {
   const {
@@ -162,6 +163,16 @@ export function useRealtime(options: UseRealtimeOptions = {}): UseRealtimeReturn
   const handlersRef = useRef<Map<string, Set<EventHandler>>>(new Map());
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const hasLoggedWarningRef = useRef(false);
+  const reconnectAttemptsRef = useRef(0);
+  const connectRef = useRef<(() => void) | null>(null);
+  /** Prevent unstable callback refs from causing reconnect loops */
+  const onEventRef = useRef(onEvent);
+  const onConnectionChangeRef = useRef(onConnectionChange);
+  const isDisconnectingRef = useRef(false);
+
+  // Keep refs in sync without triggering re-renders
+  useEffect(() => { onEventRef.current = onEvent; }, [onEvent]);
+  useEffect(() => { onConnectionChangeRef.current = onConnectionChange; }, [onConnectionChange]);
 
   // Initialize handlers from options
   useEffect(() => {
@@ -186,8 +197,8 @@ export function useRealtime(options: UseRealtimeOptions = {}): UseRealtimeReturn
   const handleEvent = useCallback((event: RealtimeEvent) => {
     setLastEvent(event);
 
-    // Call global handler
-    onEvent?.(event);
+    // Call global handler via ref (stable)
+    onEventRef.current?.(event);
 
     // Call specific handlers
     const typeHandlers = handlersRef.current.get(event.type);
@@ -196,11 +207,11 @@ export function useRealtime(options: UseRealtimeOptions = {}): UseRealtimeReturn
     // Also call wildcard handlers
     const wildcardHandlers = handlersRef.current.get('*');
     wildcardHandlers?.forEach((handler) => handler(event));
-  }, [onEvent]);
+  }, []); // No dependencies — uses refs for stability
 
   const connect = useCallback(() => {
-    // Don't connect if already connected or connecting
-    if (eventSourceRef.current) {
+    // Don't connect if already connected, connecting, or intentionally disconnecting
+    if (eventSourceRef.current || isDisconnectingRef.current) {
       return;
     }
 
@@ -220,7 +231,8 @@ export function useRealtime(options: UseRealtimeOptions = {}): UseRealtimeReturn
       eventSource.onopen = () => {
         setIsConnected(true);
         setReconnectAttempts(0);
-        onConnectionChange?.(true);
+        reconnectAttemptsRef.current = 0;
+        onConnectionChangeRef.current?.(true);
         handleEvent({
           type: RealtimeEventType.CONNECTED,
           payload: { timestamp: new Date().toISOString() },
@@ -228,7 +240,7 @@ export function useRealtime(options: UseRealtimeOptions = {}): UseRealtimeReturn
       };
 
       // Handle error
-      eventSource.onerror = (error) => {
+      eventSource.onerror = () => {
         // Only log warning once to avoid console spam
         if (!hasLoggedWarningRef.current) {
           console.warn('SSE connection unavailable - realtime features disabled');
@@ -236,22 +248,25 @@ export function useRealtime(options: UseRealtimeOptions = {}): UseRealtimeReturn
         }
         
         setIsConnected(false);
-        onConnectionChange?.(false);
+        onConnectionChangeRef.current?.(false);
         
         eventSource.close();
         eventSourceRef.current = null;
 
-        // Attempt reconnect (limited to avoid spam)
-        if (autoReconnect && reconnectAttempts < maxReconnectAttempts) {
+        // Attempt reconnect with exponential backoff (capped)
+        if (autoReconnect && reconnectAttemptsRef.current < maxReconnectAttempts) {
+          reconnectAttemptsRef.current += 1;
+          setReconnectAttempts(reconnectAttemptsRef.current);
           handleEvent({
             type: RealtimeEventType.RECONNECTING,
-            payload: { attempt: reconnectAttempts + 1 },
+            payload: { attempt: reconnectAttemptsRef.current },
           });
           
+          // Exponential backoff: 3s, 6s, 12s, ...
+          const delay = reconnectDelay * Math.pow(2, reconnectAttemptsRef.current - 1);
           reconnectTimeoutRef.current = setTimeout(() => {
-            setReconnectAttempts((prev) => prev + 1);
-            connect();
-          }, reconnectDelay);
+            connectRef.current?.();
+          }, delay);
         } else {
           handleEvent({
             type: RealtimeEventType.DISCONNECTED,
@@ -298,17 +313,20 @@ export function useRealtime(options: UseRealtimeOptions = {}): UseRealtimeReturn
     }
   }, [
     baseUrl,
-    userId,
-    organizationId,
     autoReconnect,
     reconnectDelay,
     maxReconnectAttempts,
-    reconnectAttempts,
     handleEvent,
-    onConnectionChange,
   ]);
 
+  // Keep connectRef in sync so reconnect setTimeout always calls latest version
+  useEffect(() => {
+    connectRef.current = connect;
+  }, [connect]);
+
   const disconnect = useCallback(() => {
+    isDisconnectingRef.current = true;
+
     if (reconnectTimeoutRef.current) {
       clearTimeout(reconnectTimeoutRef.current);
       reconnectTimeoutRef.current = null;
@@ -321,9 +339,14 @@ export function useRealtime(options: UseRealtimeOptions = {}): UseRealtimeReturn
 
     setIsConnected(false);
     setClientId(null);
+    // Don't reset reconnectAttemptsRef here — that caused infinite loops
+    // when useEffect cleanup → disconnect → connect → retry cycle
     setReconnectAttempts(0);
-    onConnectionChange?.(false);
-  }, [onConnectionChange]);
+    onConnectionChangeRef.current?.(false);
+
+    // Allow future manual connect calls
+    setTimeout(() => { isDisconnectingRef.current = false; }, 100);
+  }, []);
 
   const subscribe = useCallback(async (channels: string[]) => {
     if (!clientId) return;
@@ -370,16 +393,21 @@ export function useRealtime(options: UseRealtimeOptions = {}): UseRealtimeReturn
     removeHandler(eventType, handler);
   }, [removeHandler]);
 
-  // Auto-connect on mount
+  // Auto-connect on mount (stable — runs once, not on every callback change)
   useEffect(() => {
     if (autoConnect) {
-      connect();
+      // Reset attempts for a fresh mount
+      reconnectAttemptsRef.current = 0;
+      hasLoggedWarningRef.current = false;
+      isDisconnectingRef.current = false;
+      connectRef.current?.();
     }
 
     return () => {
       disconnect();
     };
-  }, [autoConnect]); // Only re-run if autoConnect changes
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoConnect]);
 
   return {
     isConnected,

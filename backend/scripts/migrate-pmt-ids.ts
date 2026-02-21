@@ -39,25 +39,25 @@ async function migrate() {
     const ericUserId = 'ed4a50d7-a1b2-4c3d-8e5f-6a7b8c9d0e1f';
     const ericPmtId = 'PMT-ED4A-50D7';
 
-    // 4. Upsert eric@cedynhq.com
+    // 4. Upsert eric@propmetrik.com
     const existing1 = await client.query(
       'SELECT id FROM esign_signer_identities WHERE email = $1',
-      ['eric@cedynhq.com']
+      ['eric@propmetrik.com']
     );
     if (existing1.rows.length > 0) {
       await client.query(
         'UPDATE esign_signer_identities SET permanent_id = $1, user_id = $2, display_name = $3 WHERE email = $4',
-        [ericPmtId, ericUserId, 'Eric Danso', 'eric@cedynhq.com']
+        [ericPmtId, ericUserId, 'Eric Danso', 'eric@propmetrik.com']
       );
-      console.log('✅ Updated eric@cedynhq.com -> PMT-ED4A-50D7');
+      console.log('✅ Updated eric@propmetrik.com -> PMT-ED4A-50D7');
     } else {
       await client.query(
         `INSERT INTO esign_signer_identities 
          (id, email, permanent_id, user_id, display_name, total_signatures, first_signed_at, last_signed_at)
          VALUES (gen_random_uuid(), $1, $2, $3, $4, 0, NOW(), NOW())`,
-        ['eric@cedynhq.com', ericPmtId, ericUserId, 'Eric Danso']
+        ['eric@propmetrik.com', ericPmtId, ericUserId, 'Eric Danso']
       );
-      console.log('✅ Inserted eric@cedynhq.com -> PMT-ED4A-50D7');
+      console.log('✅ Inserted eric@propmetrik.com -> PMT-ED4A-50D7');
     }
 
     // 5. Upsert eric@realteum.com (same user, different email)

@@ -7129,12 +7129,12 @@ Phase 1 has been successfully completed with all core infrastructure deployed an
 
 | Service | Status | Connection Details | Notes |
 |---------|--------|-------------------|-------|
-| **PostgreSQL 15** | ✅ Connected | `pg.cedynhq.com:5434/propmetrik` | 25 tables created, regional partitioning active |
+| **PostgreSQL 15** | ✅ Connected | `pg.propmetrik.com:5434/propmetrik` | 25 tables created, regional partitioning active |
 | **PostGIS Extension** | ✅ Enabled | Geometry columns added | Spatial indexes and helper functions deployed |
-| **Redis 7** | ✅ Connected | `redis.cedynhq.com:6379` | 4 clients (auth, cache, queue, pubsub) with ACL auth |
-| **OpenSearch** | ✅ Connected | `opensearch.cedynhq.com` | 3 indices created (properties, neighborhoods, transactions) |
-| **MinIO Object Storage** | ✅ Connected | `s3.cedynhq.com` | 4 buckets created (properties, documents, media, uploads) |
-| **Keycloak SSO** | ✅ Configured | `sso.cedynhq.com/realms/propmetrik` | Realm ready for client configuration |
+| **Redis 7** | ✅ Connected | `redis.propmetrik.com:6379` | 4 clients (auth, cache, queue, pubsub) with ACL auth |
+| **OpenSearch** | ✅ Connected | `opensearch.propmetrik.com` | 3 indices created (properties, neighborhoods, transactions) |
+| **MinIO Object Storage** | ✅ Connected | `s3.propmetrik.com` | 4 buckets created (properties, documents, media, uploads) |
+| **Keycloak SSO** | ✅ Configured | `sso.propmetrik.com/realms/propmetrik` | Realm ready for client configuration |
 
 #### Database Schema Deployed
 
@@ -7191,12 +7191,12 @@ Phase 1 has been successfully completed with all core infrastructure deployed an
 #### Already Provisioned (Production Ready)
 | Service | Status | Connection Details |
 |---------|--------|-------------------|
-| PostgreSQL 15 + PostGIS | ✅ Ready | `pg.cedynhq.com:5433/propmetrik` |
-| Redis 7 | ✅ Ready | `redis.cedynhq.com:6379` |
-| ClickHouse (Analytics DB) | ✅ Ready | `pg.cedynhq.com:5433/propmetrik_clk` |
-| MinIO Object Storage | ✅ Ready | `s3.cedynhq.com` |
+| PostgreSQL 15 + PostGIS | ✅ Ready | `pg.propmetrik.com:5433/propmetrik` |
+| Redis 7 | ✅ Ready | `redis.propmetrik.com:6379` |
+| ClickHouse (Analytics DB) | ✅ Ready | `pg.propmetrik.com:5433/propmetrik_clk` |
+| MinIO Object Storage | ✅ Ready | `s3.propmetrik.com` |
 | Keycloak (Identity) | ✅ Ready | Existing deployment - create `propmetrik` realm |
-| OpenSearch | ✅ Ready | `opensearch.cedynhq.com` - 3 indices created |
+| OpenSearch | ✅ Ready | `opensearch.propmetrik.com` - 3 indices created |
 
 #### Configured This Phase ✅
 | Service | Action Completed | Status |
@@ -7205,7 +7205,7 @@ Phase 1 has been successfully completed with all core infrastructure deployed an
 | **Redis Configuration** | 4 database partitions (auth:0, cache:1, queue:2, pubsub:3) | ✅ Complete |
 | **MinIO Buckets** | Created: `propmetrik-properties`, `propmetrik-documents`, `propmetrik-media`, `propmetrik-uploads` | ✅ Complete |
 | **OpenSearch Indices** | Created: `propmetrik_properties`, `propmetrik_neighborhoods`, `propmetrik_transactions` | ✅ Complete |
-| **Keycloak Realm** | `propmetrik` realm configured at `sso.cedynhq.com` | ✅ Complete |
+| **Keycloak Realm** | `propmetrik` realm configured at `sso.propmetrik.com` | ✅ Complete |
 
 #### Deferred Items
 | Service | Reason | When Needed |

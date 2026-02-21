@@ -15,8 +15,8 @@ import config from '../config';
 
 const router = Router();
 
-const JWT_SECRET = process.env.JWT_SECRET || 'propmetrik-jwt-secret-change-in-production';
-const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '7d';
+const JWT_SECRET = config.jwt.secret;
+const JWT_EXPIRES_IN = config.jwt.expiresIn;
 // Cast JWT_EXPIRES_IN for jsonwebtoken compatibility
 const jwtExpiresIn = JWT_EXPIRES_IN as jwt.SignOptions['expiresIn'];
 

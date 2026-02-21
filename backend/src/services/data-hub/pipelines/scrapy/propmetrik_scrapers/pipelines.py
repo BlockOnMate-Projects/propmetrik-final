@@ -1137,7 +1137,7 @@ class OpenSearchPipeline:
     
     @classmethod
     def from_crawler(cls, crawler):
-        opensearch_url = crawler.settings.get('OPENSEARCH_URL', 'https://opensearch.cedynhq.com')
+        opensearch_url = crawler.settings.get('OPENSEARCH_URL', 'https://opensearch.propmetrik.com')
         opensearch_user = crawler.settings.get('OPENSEARCH_USERNAME', '')
         opensearch_pass = crawler.settings.get('OPENSEARCH_PASSWORD', '')
         

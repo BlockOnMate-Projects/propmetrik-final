@@ -36,6 +36,12 @@ import workflowRoutes from './routes/workflows';
 import realtimeRoutes from './routes/realtime';
 import calendarRoutes from './routes/calendar';
 import analyticsRoutes from './routes/analytics';
+import mlAnalyticsRoutes from './routes/mlAnalytics';
+import analyticsFoundationRoutes from './routes/analyticsFoundation';
+import valuationAnalyticsRoutes from './routes/valuationAnalytics';
+import marketIntelligenceRoutes from './routes/marketIntelligence';
+import managementMetricsRoutes from './routes/managementMetrics';
+import tickerRoutes from './routes/ticker';
 import budgetRoutes from './routes/budget';
 import teamRoutes from './routes/team';
 import vendorRoutes from './routes/vendors';
@@ -63,10 +69,23 @@ import valuationOrgRoutes from './routes/valuation-org';
 import valuationInvoiceRoutes from './routes/valuation-invoices';
 import enterpriseRoutes from './routes/enterprise';
 import subscriptionRoutes from './routes/subscription';
+import commercializationRoutes from './routes/commercialization';
+import userProfileRoutes from './routes/user-profile';
+import publicationsRoutes from './routes/publications';
+import chartsRoutes from './routes/charts';
+import autopilotRoutes from './routes/autopilot';
+import workspaceRoutes from './routes/workspace';
+import kobbyAIRoutes from './routes/kobbyAI';
+import { workspaceWebSocketServer } from '../shared-services/workspace/WorkspaceWebSocketServer';
+import { initKobbyMonitor } from './jobs/kobbyAIMonitor';
+import { initWhatsAppDigest } from './jobs/whatsappDigest';
 
 // Import shared services
 import { realtimeEmitter } from '../shared-services/realtime';
 import { notificationRoutes } from '../shared-services/notifications/in-mail';
+
+// Import autopilot scheduler
+import { autopilotScheduler } from './services/publications/autopilot';
 
 // Import Data Hub queue manager
 import { dataHubQueueManager } from './services/data-hub';
@@ -159,6 +178,18 @@ app.use('/api/v1/calendar', calendarRoutes);
 app.use('/api/calendar', calendarRoutes);  // Also mount for frontend compatibility
 app.use('/api/v1/analytics', analyticsRoutes);
 app.use('/api/analytics', analyticsRoutes);  // Also mount for frontend compatibility
+app.use('/api/v1/analytics/ml', mlAnalyticsRoutes);  // ML Analytics (Sections 1-4, 8.1-8.7)
+app.use('/api/analytics/ml', mlAnalyticsRoutes);  // Also mount for frontend compatibility
+app.use('/api/v1/analytics/platform', analyticsFoundationRoutes);  // Phase 1 Foundation (CCI, GHAI, Alerts)
+app.use('/api/analytics/platform', analyticsFoundationRoutes);  // Also mount for frontend compatibility
+app.use('/api/v1/analytics/valuations', valuationAnalyticsRoutes);  // Phase 2 Valuation Analytics
+app.use('/api/analytics/valuations', valuationAnalyticsRoutes);  // Also mount for frontend compatibility
+app.use('/api/v1/analytics/market', marketIntelligenceRoutes);  // Phase 3 Market Intelligence
+app.use('/api/analytics/market', marketIntelligenceRoutes);  // Also mount for frontend compatibility
+app.use('/api/v1/analytics/management', managementMetricsRoutes);  // Property Management Metrics
+app.use('/api/analytics/management', managementMetricsRoutes);  // Also mount for frontend compatibility
+app.use('/api/v1/ticker', tickerRoutes);
+app.use('/api/ticker', tickerRoutes);
 app.use('/api/v1/budget', budgetRoutes);
 app.use('/api/budget', budgetRoutes);  // Also mount for frontend compatibility
 app.use('/api/v1/team', teamRoutes);
@@ -206,6 +237,14 @@ app.use('/api/notifications', notificationRoutes);  // Also mount for frontend c
 app.use('/api/v1/admin', adminRoutes);
 app.use('/api/admin', adminRoutes);  // Also mount for frontend compatibility
 
+// User Profile Routes (profile, password, notification prefs, stats)
+app.use('/api/v1/user', userProfileRoutes);
+app.use('/api/user', userProfileRoutes);  // Also mount for frontend compatibility
+
+// Commercialization Routes (usage analytics, customer success, API catalog, onboarding)
+app.use('/api/v1/admin/platform', commercializationRoutes);
+app.use('/api/admin/platform', commercializationRoutes);
+
 // Tenant Portal Routes (auth, conversations, payments, maintenance, documents)
 app.use('/api/v1/tenant-portal', tenantPortalRoutes);
 app.use('/api/tenant-portal', tenantPortalRoutes);  // Also mount for frontend compatibility
@@ -236,9 +275,25 @@ app.use('/api/valuation-clients', valuationClientsRouter);  // Also mount for fr
 
 
 
-// TODO: Add more route modules as they are created
-// app.use('/api/v1/users', userRoutes);
-// app.use('/api/v1/search', searchRoutes);
+// Publications & Research CMS Routes
+app.use('/api/v1/publications', publicationsRoutes);
+app.use('/api/publications', publicationsRoutes);  // Also mount for frontend compatibility
+
+// Charts API (catalog, preview, snapshots for publications)
+app.use('/api/v1/charts', chartsRoutes);
+app.use('/api/charts', chartsRoutes);  // Also mount for frontend compatibility
+
+// Autopilot Pipeline Routes (autonomous publication scheduling & management)
+app.use('/api/v1/autopilot', autopilotRoutes);
+app.use('/api/autopilot', autopilotRoutes);  // Also mount for frontend compatibility
+
+// Workspace Collaboration Routes
+app.use('/api/v1/workspace', workspaceRoutes);
+app.use('/api/workspace', workspaceRoutes);  // Also mount for frontend compatibility
+
+// Kobby AI Routes (workspace AI assistant)
+app.use('/api/v1/ai/kobby', kobbyAIRoutes);
+app.use('/api/ai/kobby', kobbyAIRoutes);  // Also mount for frontend compatibility
 
 
 // 404 handler
@@ -371,6 +426,14 @@ async function bootstrap(): Promise<void> {
       logger.warn('Failed to initialize Data Hub queues', { error: queueError });
     }
 
+    // Start autopilot scheduler (non-blocking)
+    try {
+      await autopilotScheduler.start();
+      logger.info('Autopilot scheduler initialized');
+    } catch (autopilotError) {
+      logger.warn('Failed to start autopilot scheduler', { error: autopilotError });
+    }
+
     logger.info('All services initialized');
 
   } catch (error) {
@@ -415,6 +478,12 @@ const MAX_RETRIES = 5;
 const server = app.listen(config.port, async () => {
   retryCount = 0; // reset on successful listen
   await bootstrap();
+  // Start Kobby AI Proactive Monitor
+  initKobbyMonitor();
+  // Start WhatsApp Daily Digest
+  initWhatsAppDigest();
+  // Attach WebSocket server for workspace real-time collaboration
+  workspaceWebSocketServer.attach(server);
   logger.info(`Propmetrik API server running on port ${config.port}`, {
     env: config.env,
     version: process.env.npm_package_version || '1.0.0',

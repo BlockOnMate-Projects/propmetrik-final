@@ -1,4 +1,5 @@
 import TopNav from '@/components/marketing/TopNav';
+import ServicesFooter from '@/components/marketing/ServicesFooter';
 import Footer from '@/components/marketing/Footer';
 
 export default function MarketingLayout({
@@ -10,6 +11,7 @@ export default function MarketingLayout({
     <div className="flex flex-col min-h-screen bg-zinc-950 text-white">
       <TopNav />
       {children}
+      <ServicesFooter />
       <Footer />
     </div>
   );

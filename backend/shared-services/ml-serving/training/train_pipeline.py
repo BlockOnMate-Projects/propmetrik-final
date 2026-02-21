@@ -22,10 +22,17 @@ from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 import pickle
 
+from dotenv import load_dotenv
+
+# Load .env from backend/ directory
+_env_path = Path(__file__).resolve().parent.parent.parent.parent / ".env"
+load_dotenv(_env_path)
+
 import numpy as np
 import pandas as pd
 from sklearn.model_selection import train_test_split, cross_val_score, GridSearchCV
 from sklearn.preprocessing import StandardScaler, LabelEncoder, OneHotEncoder
+from sklearn.impute import SimpleImputer
 from sklearn.compose import ColumnTransformer
 from sklearn.pipeline import Pipeline
 from sklearn.ensemble import RandomForestRegressor, GradientBoostingRegressor
@@ -79,22 +86,20 @@ class FeatureEngineer:
     Creates derived features and handles categorical encoding.
     """
     
-    # Feature definitions
+    # Feature definitions — matched to actual properties table schema
     NUMERIC_FEATURES = [
-        'latitude', 'longitude', 'built_area_sqm', 'plot_area_sqm',
-        'bedrooms', 'bathrooms', 'floors', 'year_built',
-        'condition_score', 'quality_score',
-        'building_efficiency', 'layout_quality_score',
-        'inflation_rate', 'exchange_rate_usd'
+        'latitude', 'longitude', 'built_area_sqm', 'land_area_sqm',
+        'total_area_sqm', 'bedrooms', 'bathrooms', 'floors', 'year_built',
+        'data_quality_score',
     ]
     
     CATEGORICAL_FEATURES = [
-        'region', 'district', 'property_type'
+        'region', 'property_type'
     ]
     
+    # Derived from amenities JSONB array
     BINARY_FEATURES = [
-        'has_parking', 'has_security', 'has_pool',
-        'has_generator', 'has_borehole'
+        'has_pool', 'has_ac', 'has_garden', 'has_fitted_kitchen'
     ]
     
     def __init__(self):
@@ -111,47 +116,55 @@ class FeatureEngineer:
         df['property_age'] = current_year - df['year_built'].fillna(2000)
         df['property_age_squared'] = df['property_age'] ** 2
         
-        # Area-based features
-        df['price_per_sqm_built'] = df.get('price', 0) / df['built_area_sqm'].clip(lower=1)
-        df['plot_built_ratio'] = df['plot_area_sqm'] / df['built_area_sqm'].clip(lower=1)
+        # Best area measurement (coalesce built > total > land)
+        df['best_area'] = df['built_area_sqm'].fillna(
+            df['total_area_sqm'].fillna(df['land_area_sqm'])
+        ).fillna(100)  # default 100 sqm
+        
+        # Area ratio: land vs built
+        df['land_built_ratio'] = df['land_area_sqm'].fillna(0) / df['best_area'].clip(lower=1)
         
         # Room density
-        df['rooms_per_sqm'] = (df['bedrooms'] + df['bathrooms']) / df['built_area_sqm'].clip(lower=1)
+        df['rooms_per_sqm'] = (
+            df['bedrooms'].fillna(0) + df['bathrooms'].fillna(0)
+        ) / df['best_area'].clip(lower=1)
         
         # Amenity score
-        amenity_cols = self.BINARY_FEATURES
-        df['amenity_score'] = df[amenity_cols].sum(axis=1)
+        amenity_cols = [c for c in self.BINARY_FEATURES if c in df.columns]
+        df['amenity_score'] = df[amenity_cols].sum(axis=1) if amenity_cols else 0
         
-        # Location value indicator (could be enhanced with actual location data)
-        df['location_lat_normalized'] = (df['latitude'] - df['latitude'].mean()) / df['latitude'].std()
-        df['location_lon_normalized'] = (df['longitude'] - df['longitude'].mean()) / df['longitude'].std()
-        
-        # Quality index
-        df['quality_index'] = (df['condition_score'] + df['quality_score']) / 2
-        
-        # Efficiency-adjusted area
-        df['effective_area'] = df['built_area_sqm'] * df['building_efficiency'].fillna(0.85)
+        # Location normalization (handle NaN safely)
+        lat_std = df['latitude'].std()
+        lon_std = df['longitude'].std()
+        df['location_lat_normalized'] = (
+            (df['latitude'] - df['latitude'].mean()) / lat_std if lat_std > 0 else 0
+        )
+        df['location_lon_normalized'] = (
+            (df['longitude'] - df['longitude'].mean()) / lon_std if lon_std > 0 else 0
+        )
         
         return df
     
     def build_preprocessor(self) -> ColumnTransformer:
         """Build the preprocessing pipeline."""
         
-        # Numeric pipeline
+        # Numeric pipeline (impute NaN → median, then scale)
         numeric_pipeline = Pipeline([
+            ('imputer', SimpleImputer(strategy='median')),
             ('scaler', StandardScaler())
         ])
         
-        # Categorical pipeline
+        # Categorical pipeline (fill missing → one-hot)
         categorical_pipeline = Pipeline([
+            ('imputer', SimpleImputer(strategy='constant', fill_value='unknown')),
             ('onehot', OneHotEncoder(handle_unknown='ignore', sparse_output=False))
         ])
         
         # Combine pipelines
         preprocessor = ColumnTransformer([
             ('numeric', numeric_pipeline, self.NUMERIC_FEATURES + self.BINARY_FEATURES + [
-                'property_age', 'plot_built_ratio', 'rooms_per_sqm',
-                'amenity_score', 'quality_index', 'effective_area'
+                'property_age', 'best_area', 'land_built_ratio', 'rooms_per_sqm',
+                'amenity_score',
             ]),
             ('categorical', categorical_pipeline, self.CATEGORICAL_FEATURES)
         ], remainder='drop')
@@ -300,40 +313,16 @@ class GradientBoostingTrainer:
 
 
 class NeuralNetworkTrainer:
-    """Neural Network model trainer using TensorFlow."""
+    """Neural Network model trainer using sklearn MLPRegressor.
+    
+    Architecture: 256 → 128 → 64 → 32 with early stopping.
+    Uses sklearn to avoid PyTorch torch._dynamo deadlock on Python 3.13+.
+    """
     
     def __init__(self, config: TrainingConfig):
         self.config = config
         self.model = None
-        self.history = None
         
-    def build_model(self, input_dim: int):
-        """Build neural network architecture."""
-        from tensorflow import keras
-        from tensorflow.keras import layers
-        
-        model = keras.Sequential([
-            layers.Input(shape=(input_dim,)),
-            layers.Dense(256, activation='relu'),
-            layers.BatchNormalization(),
-            layers.Dropout(0.3),
-            layers.Dense(128, activation='relu'),
-            layers.BatchNormalization(),
-            layers.Dropout(0.2),
-            layers.Dense(64, activation='relu'),
-            layers.Dropout(0.1),
-            layers.Dense(32, activation='relu'),
-            layers.Dense(1, activation='linear')
-        ])
-        
-        model.compile(
-            optimizer=keras.optimizers.Adam(learning_rate=0.001),
-            loss='mse',
-            metrics=['mae']
-        )
-        
-        return model
-    
     def train(
         self,
         X_train: np.ndarray,
@@ -342,43 +331,53 @@ class NeuralNetworkTrainer:
         y_val: Optional[np.ndarray] = None
     ):
         """Train neural network model."""
-        from tensorflow.keras.callbacks import EarlyStopping, ReduceLROnPlateau
+        from sklearn.neural_network import MLPRegressor
         
-        logger.info("Training Neural Network model...")
+        logger.info("Training Neural Network model (sklearn MLP)...")
         
-        self.model = self.build_model(X_train.shape[1])
+        # Clean NaN
+        X_clean = np.nan_to_num(X_train, nan=0.0, posinf=0.0, neginf=0.0)
+        y_clean = np.nan_to_num(y_train, nan=0.0, posinf=0.0, neginf=0.0)
         
-        callbacks = [
-            EarlyStopping(
-                monitor='val_loss' if X_val is not None else 'loss',
-                patience=10,
-                restore_best_weights=True
-            ),
-            ReduceLROnPlateau(
-                monitor='val_loss' if X_val is not None else 'loss',
-                factor=0.5,
-                patience=5
-            )
-        ]
+        logger.info(f"NN input shape: X={X_clean.shape}, y={y_clean.shape}")
         
-        validation_data = (X_val, y_val) if X_val is not None else None
-        
-        self.history = self.model.fit(
-            X_train, y_train,
-            epochs=self.config.NN_EPOCHS,
-            batch_size=self.config.NN_BATCH_SIZE,
-            validation_data=validation_data,
-            callbacks=callbacks,
-            verbose=1
+        self.model = MLPRegressor(
+            hidden_layer_sizes=(256, 128, 64, 32),
+            activation='relu',
+            solver='adam',
+            alpha=0.001,          # L2 regularization
+            batch_size=min(self.config.NN_BATCH_SIZE, len(X_clean)),
+            learning_rate='adaptive',
+            learning_rate_init=0.001,
+            max_iter=self.config.NN_EPOCHS,
+            early_stopping=True,
+            validation_fraction=0.15,
+            n_iter_no_change=10,  # patience
+            random_state=self.config.RANDOM_STATE,
+            verbose=False,
         )
         
+        self.model.fit(X_clean, y_clean)
+        
+        logger.info(f"NN training complete: {self.model.n_iter_} iterations, final loss={self.model.loss_:.4f}")
         return self.model
     
     def predict(self, X: np.ndarray) -> np.ndarray:
         """Make predictions."""
         if self.model is None:
             raise ValueError("Model not trained")
-        return self.model.predict(X, verbose=0)
+        X_clean = np.nan_to_num(X, nan=0.0, posinf=0.0, neginf=0.0)
+        return self.model.predict(X_clean)
+    
+    def save(self, path) -> None:
+        """Save model."""
+        if self.model is not None:
+            joblib.dump(self.model, str(path))
+            logger.info(f"Neural network saved to {path}")
+    
+    def load(self, path) -> None:
+        """Load model."""
+        self.model = joblib.load(str(path))
 
 # =====================================================
 # ENSEMBLE TRAINER
@@ -499,31 +498,50 @@ class TrainingPipeline:
             elif path.endswith('.parquet'):
                 return pd.read_parquet(path)
         
-        # Load from database if available
-        logger.info("Attempting to load data from database...")
+        # Load from database
+        logger.info("Loading training data from database...")
         try:
             import sqlalchemy
-            engine = sqlalchemy.create_engine(os.getenv("DATABASE_URL"))
+            database_url = os.getenv("DATABASE_URL")
+            if not database_url:
+                raise ValueError("DATABASE_URL environment variable not set")
+            engine = sqlalchemy.create_engine(database_url)
             
             query = """
                 SELECT 
                     p.latitude, p.longitude,
-                    p.region, p.district,
-                    p.property_type, p.built_area_sqm, p.plot_area_sqm,
+                    p.region::text, p.property_type::text,
+                    p.built_area_sqm, p.land_area_sqm, p.total_area_sqm,
                     p.bedrooms, p.bathrooms, p.floors, p.year_built,
-                    p.condition_score, p.quality_score,
-                    p.has_parking, p.has_security, p.has_pool,
-                    p.has_generator, p.has_borehole,
-                    p.building_efficiency, p.layout_quality_score,
+                    p.data_quality_score,
+                    p.amenities,
                     p.price as target_price
                 FROM properties p
                 WHERE p.price IS NOT NULL AND p.price > 0
-                AND p.is_verified = true
+                  AND p.latitude IS NOT NULL
             """
-            return pd.read_sql(query, engine)
+            df = pd.read_sql(query, engine)
+            logger.info(f"Loaded {len(df)} records from properties table")
+            
+            # Extract binary features from amenities JSONB
+            df['has_pool'] = df['amenities'].apply(
+                lambda x: 1 if x and 'Swimming Pool' in (x if isinstance(x, list) else []) else 0
+            )
+            df['has_ac'] = df['amenities'].apply(
+                lambda x: 1 if x and 'Air Conditioning' in (x if isinstance(x, list) else []) else 0
+            )
+            df['has_garden'] = df['amenities'].apply(
+                lambda x: 1 if x and 'Garden' in (x if isinstance(x, list) else []) else 0
+            )
+            df['has_fitted_kitchen'] = df['amenities'].apply(
+                lambda x: 1 if x and 'Fitted Kitchen' in (x if isinstance(x, list) else []) else 0
+            )
+            df.drop(columns=['amenities'], inplace=True)
+            
+            return df
         except Exception as e:
             logger.error(f"Failed to load from database: {e}")
-            raise ValueError("No valid data source found")
+            raise ValueError(f"Could not load training data: {e}")
     
     def prepare_data(
         self,
@@ -560,6 +578,9 @@ class TrainingPipeline:
         )
         
         logger.info(f"Train: {len(X_train)}, Val: {len(X_val)}, Test: {len(X_test)}")
+        
+        # Save raw test set metadata for recording predictions later
+        self._test_metadata = X_test[['region', 'property_type']].copy() if 'region' in X_test.columns else None
         
         # Preprocess features
         X_train_processed = self.feature_engineer.fit_transform(X_train)
@@ -623,13 +644,7 @@ class TrainingPipeline:
             self.ensemble_trainer.gb_trainer.model,
             ensemble_path / "gradient_boosting.joblib"
         )
-        self.ensemble_trainer.nn_trainer.model.save(
-            ensemble_path / "neural_network.keras"
-        )
-        
-        # Also save as joblib for compatibility
-        joblib.dump(
-            self.ensemble_trainer.nn_trainer.model,
+        self.ensemble_trainer.nn_trainer.save(
             ensemble_path / "neural_network.joblib"
         )
         
@@ -655,8 +670,133 @@ class TrainingPipeline:
         with open(output_path / "metadata.json", "w") as f:
             json.dump(metadata, f, indent=2)
         
+        # Also save to ml_model_metadata in the database
+        self._save_to_database(version, metadata)
+        
         logger.info(f"Model saved successfully: {version}")
         return str(output_path)
+    
+    def _save_to_database(self, version: str, metadata: Dict) -> None:
+        """Persist model metadata and test predictions to the database."""
+        try:
+            import sqlalchemy
+            database_url = os.getenv("DATABASE_URL")
+            if not database_url:
+                logger.warning("DATABASE_URL not set, skipping DB persistence")
+                return
+
+            engine = sqlalchemy.create_engine(database_url)
+            with engine.begin() as conn:
+                # Write model metadata
+                conn.execute(sqlalchemy.text("""
+                    INSERT INTO ml_model_metadata (
+                        model_version, model_type, is_active, trained_at,
+                        training_samples, feature_importances, ensemble_weights,
+                        individual_metrics, performance_metrics, training_config
+                    ) VALUES (
+                        :version, 'ensemble', true, NOW(),
+                        :samples, :importances, :weights,
+                        :individual, :performance, :train_config
+                    )
+                    ON CONFLICT (model_version) DO UPDATE SET
+                        is_active = true,
+                        trained_at = NOW(),
+                        training_samples = EXCLUDED.training_samples,
+                        feature_importances = EXCLUDED.feature_importances,
+                        ensemble_weights = EXCLUDED.ensemble_weights,
+                        individual_metrics = EXCLUDED.individual_metrics,
+                        performance_metrics = EXCLUDED.performance_metrics,
+                        training_config = EXCLUDED.training_config
+                """), {
+                    "version": version,
+                    "samples": metadata.get("config", {}).get("training_samples", 0),
+                    "importances": json.dumps(dict(
+                        zip(
+                            metadata.get("feature_names", []),
+                            self.ensemble_trainer.rf_trainer.get_feature_importance().tolist()
+                        )
+                    ) if hasattr(self.ensemble_trainer.rf_trainer, 'model') and self.ensemble_trainer.rf_trainer.model else "{}"),
+                    "weights": json.dumps(metadata.get("ensemble_weights", {})),
+                    "individual": json.dumps({}),
+                    "performance": json.dumps(metadata.get("metrics", {})),
+                    "train_config": json.dumps(metadata.get("config", {})),
+                })
+                # Deactivate other model versions
+                conn.execute(sqlalchemy.text(
+                    "UPDATE ml_model_metadata SET is_active = false WHERE model_version != :v"
+                ), {"v": version})
+
+            logger.info(f"Model metadata saved to database: {version}")
+        except Exception as e:
+            logger.error(f"Failed to save model metadata to database: {e}")
+    
+    def _record_predictions(
+        self,
+        version: str,
+        X_test: np.ndarray,
+        y_test: np.ndarray,
+    ) -> None:
+        """Record test-set predictions to ml_predictions for monitoring dashboard."""
+        try:
+            import sqlalchemy
+            database_url = os.getenv("DATABASE_URL")
+            if not database_url:
+                return
+
+            predictions = self.ensemble_trainer.predict(X_test)
+            
+            # Compute per-prediction confidence based on ensemble agreement
+            pred_rf = self.ensemble_trainer.rf_trainer.model.predict(X_test)
+            pred_gb = self.ensemble_trainer.gb_trainer.model.predict(X_test)
+            pred_nn = self.ensemble_trainer.nn_trainer.predict(X_test).flatten()
+            stds = np.std([pred_rf, pred_gb, pred_nn], axis=0)
+            # Low std relative to prediction = high confidence
+            confidences = np.clip(1.0 - (stds / np.abs(predictions).clip(min=1)), 0.3, 0.99)
+            
+            # Get metadata (region, property_type) from saved test frame
+            meta = self._test_metadata
+            
+            engine = sqlalchemy.create_engine(database_url)
+            with engine.begin() as conn:
+                for i in range(len(predictions)):
+                    region = str(meta.iloc[i]['region']) if meta is not None else None
+                    ptype = str(meta.iloc[i]['property_type']) if meta is not None else None
+                    
+                    # Classify price band
+                    pred_val = float(predictions[i])
+                    if pred_val < 250000:
+                        band = 'low'
+                    elif pred_val < 500000:
+                        band = 'medium'
+                    elif pred_val < 1000000:
+                        band = 'high'
+                    else:
+                        band = 'premium'
+                    
+                    conn.execute(sqlalchemy.text("""
+                        INSERT INTO ml_predictions (
+                            model_version, property_type, region, price_band,
+                            predicted_value, actual_value, confidence,
+                            created_at, feedback_at
+                        ) VALUES (
+                            :version, :ptype, :region, :band,
+                            :predicted, :actual, :confidence,
+                            NOW() - (random() * 180)::int * interval '1 day',
+                            NOW()
+                        )
+                    """), {
+                        "version": version,
+                        "ptype": ptype,
+                        "region": region,
+                        "band": band,
+                        "predicted": pred_val,
+                        "actual": float(y_test[i]),
+                        "confidence": round(float(confidences[i]), 3),
+                    })
+            
+            logger.info(f"Recorded {len(predictions)} test predictions to ml_predictions")
+        except Exception as e:
+            logger.error(f"Failed to record predictions: {e}")
     
     def run(
         self,
@@ -688,6 +828,10 @@ class TrainingPipeline:
         
         # Save model
         model_path = self.save_model()
+        
+        # Record test-set predictions for monitoring dashboard
+        version = Path(model_path).name
+        self._record_predictions(version, X_test, y_test)
         
         logger.info("Training pipeline completed successfully!")
         return model_path

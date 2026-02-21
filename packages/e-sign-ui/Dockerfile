@@ -1,4 +1,4 @@
-FROM ghcr.io/cedyngroup/node:20-alpine as build
+FROM node:20-alpine as build
 
 WORKDIR /app
 
@@ -22,7 +22,7 @@ ARG VITE_GOOGLE_CLIENT_ID
 RUN npm run build
 
 # Production stage
-FROM ghcr.io/cedyngroup/nginx:alpine
+FROM nginx:alpine
 
 # Copy custom nginx config
 COPY nginx.conf /etc/nginx/conf.d/default.conf

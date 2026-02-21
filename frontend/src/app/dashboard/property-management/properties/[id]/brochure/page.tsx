@@ -341,7 +341,7 @@ export default function PropertyBrochurePage() {
 
             {/* Print Disclaimer */}
             <div className="hidden print:block text-[8px] text-neutral-400 text-center py-8">
-                © 2026 Cedyn Group. All data extracted from PROPMETRIK Data Hub V2 (Live-Sync).
+                © {new Date().getFullYear()} PROPMETRIK. All data extracted from PROPMETRIK Data Hub V2 (Live-Sync).
                 Prices and availability subject to terminal volatility index.
             </div>
         </div>

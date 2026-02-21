@@ -10,7 +10,7 @@
 
 const { Pool } = require('pg');
 const pool = new Pool({ 
-  connectionString: 'postgresql://propmetrik_app:3Ut1ypZBhTDLeG02VBOMZ50eBfKmtWPn@pg.cedynhq.com:5434/propmetrik' 
+  connectionString: 'postgresql://propmetrik_app:3Ut1ypZBhTDLeG02VBOMZ50eBfKmtWPn@pg.propmetrik.com:5434/propmetrik' 
 });
 
 const NEW_USER_ID = 'ed4a50d7-a1b2-4c3d-8e5f-6a7b8c9d0e1f';
@@ -64,7 +64,7 @@ const OLD_ORG_IDS = [
     if (existingUser.rows.length === 0) {
       // Get password hash from existing Eric Danso record
       const oldUser = await client.query(
-        "SELECT password_hash FROM users WHERE email = 'eric@cedynhq.com' LIMIT 1"
+        "SELECT password_hash FROM users WHERE email = 'eric@propmetrik.com' LIMIT 1"
       );
       const pwHash = oldUser.rows.length > 0 ? oldUser.rows[0].password_hash : null;
       
@@ -75,10 +75,10 @@ const OLD_ORG_IDS = [
         } catch (e) { /* FK constraint - will be handled after ref updates */ }
       }
       // Also clear any user with the same email
-      await client.query("DELETE FROM users WHERE email = 'eric@cedynhq.com'");
+      await client.query("DELETE FROM users WHERE email = 'eric@propmetrik.com'");
       await client.query("DELETE FROM users WHERE email = 'admin@realteum.com'");
       await client.query("DELETE FROM users WHERE email = 'eric@realteum.com'");
-      await client.query("DELETE FROM users WHERE email = 'eric.danso@cedynhq.com'");
+      await client.query("DELETE FROM users WHERE email = 'eric.danso@propmetrik.com'");
       await client.query("DELETE FROM users WHERE email = 'test-user@propmetrik.com'");
 
       const insertCols = pwHash 
@@ -86,8 +86,8 @@ const OLD_ORG_IDS = [
         : `(id, email, first_name, last_name, role, organization_id, display_name, status, email_verified, is_active, created_at, updated_at)`;
       
       const insertVals = pwHash
-        ? `($1, 'eric@cedynhq.com', 'Eric', 'Danso', 'super_admin', $2, 'Eric Danso', 'active', true, true, NOW(), NOW(), $3)`
-        : `($1, 'eric@cedynhq.com', 'Eric', 'Danso', 'super_admin', $2, 'Eric Danso', 'active', true, true, NOW(), NOW())`;
+        ? `($1, 'eric@propmetrik.com', 'Eric', 'Danso', 'super_admin', $2, 'Eric Danso', 'active', true, true, NOW(), NOW(), $3)`
+        : `($1, 'eric@propmetrik.com', 'Eric', 'Danso', 'super_admin', $2, 'Eric Danso', 'active', true, true, NOW(), NOW())`;
       
       const insertParams = pwHash ? [NEW_USER_ID, ORG_ID, pwHash] : [NEW_USER_ID, ORG_ID];
       
@@ -110,7 +110,7 @@ const OLD_ORG_IDS = [
         license_status, company_name, contact_email, specializations, regions_covered, is_active, created_at, updated_at)
       VALUES ($1, $1, 'Eric Danso', 'Valuation & Estate Surveyor', 'BSc. Land Economy, MGhIS',
         '1234567', 'Ghana Institution of Surveyors', 'active',
-        'PROPMETRIK GROUP', 'eric@cedynhq.com',
+        'PROPMETRIK GROUP', 'eric@propmetrik.com',
         ARRAY['residential', 'commercial', 'industrial', 'land'], ARRAY['GR', 'AR', 'WR', 'CR', 'ER'], 
         true, NOW(), NOW())
     `, [NEW_USER_ID]);

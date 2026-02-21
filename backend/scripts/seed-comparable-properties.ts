@@ -11,7 +11,7 @@ import { Pool } from 'pg';
 import { v4 as uuidv4 } from 'uuid';
 
 const pool = new Pool({
-  connectionString: process.env.DATABASE_URL || 'postgresql://propmetrik_app:3Ut1ypZBhTDLeG02VBOMZ50eBfKmtWPn@pg.cedynhq.com:5434/propmetrik',
+  connectionString: process.env.DATABASE_URL || 'postgresql://propmetrik_app:3Ut1ypZBhTDLeG02VBOMZ50eBfKmtWPn@pg.propmetrik.com:5434/propmetrik',
 });
 
 // Subject property location: 311 Lehigh Dr, Dowenhya, Greater Accra

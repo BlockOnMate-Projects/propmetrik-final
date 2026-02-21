@@ -32,10 +32,11 @@
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.32.1",
-    "@aws-sdk/client-s3": "^3.478.0",
-    "@aws-sdk/s3-request-presigner": "^3.478.0",
+    "@aws-sdk/client-s3": "^3.995.0",
+    "@aws-sdk/s3-request-presigner": "^3.995.0",
     "@opensearch-project/opensearch": "^2.5.0",
     "@types/bcrypt": "^6.0.0",
+    "@types/ws": "^8.18.1",
     "axios": "^1.13.2",
     "axios-retry": "^4.5.0",
     "bcrypt": "^6.0.0",
@@ -76,12 +77,13 @@
     "pino": "^8.17.2",
     "pino-pretty": "^10.3.1",
     "pizzip": "^3.2.0",
-    "puppeteer": "^24.36.1",
+    "puppeteer": "^24.37.5",
     "qrcode": "^1.5.4",
     "sharp": "^0.33.5",
     "swagger-ui-express": "^5.0.1",
     "twilio": "^5.12.0",
     "uuid": "^9.0.1",
+    "ws": "^8.19.0",
     "zod": "^3.22.4"
   },
   "devDependencies": {
@@ -126,7 +128,7 @@
   "engines": {
     "node": ">=20.0.0"
   },
-  "author": "Cedyn Group",
+  "author": "PROPMETRIK",
   "license": "PROPRIETARY",
   "repository": {
     "type": "git",

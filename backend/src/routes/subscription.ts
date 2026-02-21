@@ -30,7 +30,7 @@ import {
   getSubscriptionMetrics, listAllSubscriptions,
   // Types
   PlanCategory, PlanSegment, PlanTier,
-} from '../services/billing/subscriptionService';
+} from '../../shared-services/payments/subscriptions/subscriptionService';
 
 const router = Router();
 
@@ -208,7 +208,7 @@ router.post('/subscription/reactivate', authenticate, authorize('subscription', 
     const userId = (req as any).user?.id;
 
     // Find cancelled subscription
-    const { rows } = await (await import('../../database')).pool.query(`
+    const { rows } = await (await import('../database')).pool.query(`
       SELECT id FROM subscriptions
       WHERE (organization_id = $1 OR user_id = $2)
         AND status = 'cancelled'

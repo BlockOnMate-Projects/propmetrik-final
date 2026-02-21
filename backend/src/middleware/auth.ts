@@ -137,7 +137,7 @@ function parseTokenPayload(payload: KeycloakTokenPayload): AuthenticatedUser {
 const DEV_MODE_USER: AuthenticatedUser = {
   sub: 'ed4a50d7-a1b2-4c3d-8e5f-6a7b8c9d0e1f',
   id: 'ed4a50d7-a1b2-4c3d-8e5f-6a7b8c9d0e1f',
-  email: 'eric@cedynhq.com',
+  email: 'eric@propmetrik.com',
   emailVerified: true,
   name: 'Eric Danso',
   username: 'eric_danso',
@@ -152,7 +152,7 @@ const DEV_MODE_USER: AuthenticatedUser = {
 /**
  * Local JWT secret — same as used by /auth/login and /auth/signup
  */
-const LOCAL_JWT_SECRET = process.env.JWT_SECRET || 'propmetrik-jwt-secret-change-in-production';
+const LOCAL_JWT_SECRET = config.jwt.secret;
 
 /**
  * Try to decode a local (non-Keycloak) JWT and map to AuthenticatedUser.

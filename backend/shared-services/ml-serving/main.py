@@ -21,11 +21,27 @@ import pickle
 import numpy as np
 from pathlib import Path
 
+from dotenv import load_dotenv
+
+# Load .env from backend/ directory (two levels up from ml-serving/)
+_env_path = Path(__file__).resolve().parent.parent.parent / ".env"
+load_dotenv(_env_path)
+
 from fastapi import FastAPI, HTTPException, BackgroundTasks, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 import redis
 import joblib
+import sys
+
+# Make training pipeline classes available for joblib unpickling.
+# When train_pipeline.py runs as __main__, pickle stores classes as __main__.ClassName.
+# We import the module and expose its classes in this module's namespace so joblib can find them.
+import training.train_pipeline as _tp
+for _name in dir(_tp):
+    _obj = getattr(_tp, _name)
+    if isinstance(_obj, type):
+        globals()[_name] = _obj
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -178,10 +194,18 @@ class ModelRegistry:
         try:
             model_data = {
                 "version": version,
-                "model": joblib.load(model_path / "model.joblib"),
                 "preprocessor": joblib.load(model_path / "preprocessor.joblib"),
                 "metadata": json.loads((model_path / "metadata.json").read_text()),
             }
+            
+            # Try to load the full ensemble object
+            model_joblib = model_path / "model.joblib"
+            if model_joblib.exists():
+                try:
+                    model_data["model"] = joblib.load(model_joblib)
+                except Exception:
+                    logger.warning(f"Could not load model.joblib (pickle class mismatch), using ensemble components")
+                    model_data["model"] = None
             
             # Load ensemble components if present
             ensemble_path = model_path / "ensemble"
@@ -422,8 +446,8 @@ class PredictionService:
 
 app = FastAPI(
     title="PROPMETRIK ML Model Serving API",
-    description="Property valuation model serving with ensemble predictions",
-    version="1.0.0"
+    description="Property valuation model serving with ensemble predictions and ML analytics",
+    version="2.0.0"
 )
 
 # CORS middleware
@@ -435,18 +459,42 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# =====================================================
+# REGISTER ML ANALYTICS ROUTERS
+# =====================================================
+
+try:
+    from .routes import all_ml_routers
+    for router in all_ml_routers:
+        app.include_router(router)
+    logger.info(f"Registered {len(all_ml_routers)} ML analytics routers")
+except ImportError:
+    # Fallback for running main.py directly
+    try:
+        from routes import all_ml_routers
+        for router in all_ml_routers:
+            app.include_router(router)
+        logger.info(f"Registered {len(all_ml_routers)} ML analytics routers")
+    except ImportError as e:
+        logger.warning(f"ML analytics routes not available: {e}")
+
 # Initialize services
 redis_client = None
 try:
-    redis_client = redis.Redis(
-        host=config.REDIS_HOST,
-        port=config.REDIS_PORT,
-        decode_responses=True
-    )
+    redis_url = os.getenv("REDIS_URL")
+    if redis_url:
+        redis_client = redis.from_url(redis_url, decode_responses=True)
+    else:
+        redis_client = redis.Redis(
+            host=config.REDIS_HOST,
+            port=config.REDIS_PORT,
+            decode_responses=True
+        )
     redis_client.ping()
     logger.info("Connected to Redis")
 except Exception as e:
     logger.warning(f"Redis not available, caching disabled: {e}")
+    redis_client = None
 
 model_registry = ModelRegistry(config.MODEL_STORAGE_PATH, redis_client)
 prediction_service = PredictionService(model_registry, redis_client)
@@ -458,9 +506,16 @@ prediction_service = PredictionService(model_registry, redis_client)
 @app.get("/health")
 async def health_check():
     """Health check endpoint."""
+    redis_ok = False
+    try:
+        if redis_client is not None:
+            redis_ok = redis_client.ping()
+    except Exception:
+        redis_ok = False
+
     return {
         "status": "healthy",
-        "redis_connected": redis_client is not None and redis_client.ping() if redis_client else False,
+        "redis_connected": redis_ok,
         "active_model": model_registry.active_version,
         "timestamp": datetime.now().isoformat()
     }
@@ -544,6 +599,22 @@ async def startup():
     """Initialize the application on startup."""
     logger.info("Starting PROPMETRIK ML Model Serving API")
     
+    # Initialize ML analytics database pool
+    try:
+        from .services.database import async_db
+    except ImportError:
+        try:
+            from services.database import async_db
+        except ImportError:
+            async_db = None
+    
+    if async_db:
+        try:
+            await async_db.initialize()
+            logger.info("ML analytics database pool initialized")
+        except Exception as e:
+            logger.warning(f"ML analytics database not available: {e}")
+    
     # Try to load the latest model
     try:
         model_registry.load_model("latest")
@@ -556,6 +627,23 @@ async def startup():
 async def shutdown():
     """Cleanup on shutdown."""
     logger.info("Shutting down PROPMETRIK ML Model Serving API")
+    
+    # Close ML analytics database pool
+    try:
+        from .services.database import async_db
+    except ImportError:
+        try:
+            from services.database import async_db
+        except ImportError:
+            async_db = None
+    
+    if async_db:
+        try:
+            await async_db.close()
+            logger.info("ML analytics database pool closed")
+        except Exception:
+            pass
+    
     if redis_client:
         redis_client.close()
 

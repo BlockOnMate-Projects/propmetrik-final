@@ -79,7 +79,7 @@ export default function PMPortalLayout({
               <DropdownMenuLabel className="text-zinc-300">
                 {user?.name || 'Project Manager'}
                 <div className="text-xs text-zinc-500 font-normal">
-                  {user?.email || 'pm@cedynhq.com'}
+                  {user?.email || 'pm@propmetrik.com'}
                 </div>
               </DropdownMenuLabel>
               <DropdownMenuSeparator className="bg-zinc-800" />

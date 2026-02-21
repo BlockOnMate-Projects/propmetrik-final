@@ -60,7 +60,7 @@ function generateTypedSignatureImage(text: string, fontFamily: string): Promise<
   });
 }
 
-const STORAGE_KEY_PREFIX = "cedyn_esign_signature";
+const STORAGE_KEY_PREFIX = "propmetrik_esign_signature";
 
 function normalizeSignerIdentity(identity: string): string {
   return identity.trim().toLowerCase().replace(/[^a-z0-9@._-]/g, "_");

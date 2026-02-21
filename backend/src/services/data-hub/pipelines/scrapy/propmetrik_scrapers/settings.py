@@ -124,7 +124,7 @@ DOWNLOAD_TIMEOUT = 30
 DATABASE_URL = os.getenv("DATABASE_URL", "")
 
 # OpenSearch Configuration (using OPENSEARCH_URL)
-OPENSEARCH_URL = os.getenv("OPENSEARCH_URL", "https://opensearch.cedynhq.com")
+OPENSEARCH_URL = os.getenv("OPENSEARCH_URL", "https://opensearch.propmetrik.com")
 OPENSEARCH_TIMEOUT = int(os.getenv("OPENSEARCH_TIMEOUT", "30"))
 OPENSEARCH_USERNAME = os.getenv("OPENSEARCH_USERNAME", "")
 OPENSEARCH_PASSWORD = os.getenv("OPENSEARCH_PASSWORD", "")

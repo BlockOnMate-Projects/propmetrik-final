@@ -289,4 +289,4 @@ class NewSiteSpider(BasePropertySpider):
 
 ## 📄 License
 
-Proprietary - PROPMETRIK/Cedyn Group
+Proprietary - PROPMETRIK

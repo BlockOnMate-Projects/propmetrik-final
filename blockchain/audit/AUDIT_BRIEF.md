@@ -1,8 +1,8 @@
 # PROPMETRIKPayments — Security Audit Brief
 
-**Submitted by:** Cedyn Group (PROPMETRIK)
+**Submitted by:** PROPMETRIK
 **Date:** February 2025
-**Contact:** [engineering@cedynhq.com]
+**Contact:** [engineering@propmetrik.com]
 
 ---
 

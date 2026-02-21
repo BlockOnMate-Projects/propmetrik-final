@@ -153,7 +153,7 @@ export default function Dashboard() {
         }];
         return {
         id: String(req.id),
-        subject: `Complete with Cedyn: ${req.document?.title || req.title || 'Document'}`,
+        subject: `Complete with PROPMETRIK: ${req.document?.title || req.title || 'Document'}`,
         status: normalizeStatus(req.status, recipients),
         created_at: req.created_at,
         recipients,
@@ -317,7 +317,7 @@ export default function Dashboard() {
         <div className="header-left">
           <div className="logo">
             <span className="logo-icon">✒️</span>
-            <span className="logo-text">Cedyn E-Sign</span>
+            <span className="logo-text">PROPMETRIK E-Sign</span>
           </div>
         </div>
         
@@ -355,7 +355,7 @@ export default function Dashboard() {
                 {getUserInfo()?.name?.charAt(0).toUpperCase() || 'C'}
               </span>
               <span className="welcome-signature">
-                {getUserInfo()?.name || 'Cedyn User'}
+                {getUserInfo()?.name || 'User'}
               </span>
             </div>
           </div>

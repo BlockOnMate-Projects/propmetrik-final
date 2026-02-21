@@ -20,7 +20,7 @@ import {
     PaginationParams,
     PaginatedResponse
 } from '../../../types/property-management.types';
-import { eSignIntegrationService, CompletionEvent } from '../../e-sign';
+import { eSignIntegrationService, CompletionEvent } from '../../../../shared-services/e-sign';
 import { leaseTemplateService } from './leaseTemplateService';
 
 /**

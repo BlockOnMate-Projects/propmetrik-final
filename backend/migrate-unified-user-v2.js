@@ -13,7 +13,7 @@
 
 const { Pool } = require('pg');
 const pool = new Pool({ 
-  connectionString: 'postgresql://propmetrik_app:3Ut1ypZBhTDLeG02VBOMZ50eBfKmtWPn@pg.cedynhq.com:5434/propmetrik' 
+  connectionString: 'postgresql://propmetrik_app:3Ut1ypZBhTDLeG02VBOMZ50eBfKmtWPn@pg.propmetrik.com:5434/propmetrik' 
 });
 
 const NEW_USER_ID = 'ed4a50d7-a1b2-4c3d-8e5f-6a7b8c9d0e1f';
@@ -51,18 +51,18 @@ async function run() {
   const existing = await pool.query('SELECT id FROM users WHERE id = $1', [NEW_USER_ID]);
   if (existing.rows.length === 0) {
     // Get password hash from existing Eric Danso
-    const old = await pool.query("SELECT password_hash FROM users WHERE email = 'eric@cedynhq.com' LIMIT 1");
+    const old = await pool.query("SELECT password_hash FROM users WHERE email = 'eric@propmetrik.com' LIMIT 1");
     const pwHash = old.rows[0]?.password_hash;
     
     if (pwHash) {
       await pool.query(`
         INSERT INTO users (id, email, first_name, last_name, role, organization_id, display_name, status, email_verified, is_active, created_at, updated_at, password_hash)
-        VALUES ($1, 'eric-new@cedynhq.com', 'Eric', 'Danso', 'super_admin', $2, 'Eric Danso', 'active', true, true, NOW(), NOW(), $3)
+        VALUES ($1, 'eric-new@propmetrik.com', 'Eric', 'Danso', 'super_admin', $2, 'Eric Danso', 'active', true, true, NOW(), NOW(), $3)
       `, [NEW_USER_ID, ORG_ID, pwHash]);
     } else {
       await pool.query(`
         INSERT INTO users (id, email, first_name, last_name, role, organization_id, display_name, status, email_verified, is_active, created_at, updated_at)
-        VALUES ($1, 'eric-new@cedynhq.com', 'Eric', 'Danso', 'super_admin', $2, 'Eric Danso', 'active', true, true, NOW(), NOW())
+        VALUES ($1, 'eric-new@propmetrik.com', 'Eric', 'Danso', 'super_admin', $2, 'Eric Danso', 'active', true, true, NOW(), NOW())
       `, [NEW_USER_ID, ORG_ID]);
     }
     console.log('  ✓ Created with temp email\n');
@@ -144,7 +144,7 @@ async function run() {
     INSERT INTO valuers (id, user_id, name, title, qualifications, license_number, license_issuer,
       license_status, company_name, contact_email, specializations, regions_covered, is_active, created_at, updated_at)
     VALUES ($1, $1, 'Eric Danso', 'Valuation & Estate Surveyor', 'BSc. Land Economy, MGhIS',
-      '1234567', 'Ghana Institution of Surveyors', 'active', 'PROPMETRIK GROUP', 'eric@cedynhq.com',
+      '1234567', 'Ghana Institution of Surveyors', 'active', 'PROPMETRIK GROUP', 'eric@propmetrik.com',
       ARRAY['residential', 'commercial', 'industrial', 'land'], ARRAY['GR', 'AR', 'WR', 'CR', 'ER'], 
       true, NOW(), NOW())
   `, [NEW_USER_ID]);
@@ -176,8 +176,8 @@ async function run() {
     }
   }
   // Update the new user's email to the final one
-  await pool.query("UPDATE users SET email = 'eric@cedynhq.com' WHERE id = $1", [NEW_USER_ID]);
-  console.log('  ✓ Email set to eric@cedynhq.com\n');
+  await pool.query("UPDATE users SET email = 'eric@propmetrik.com' WHERE id = $1", [NEW_USER_ID]);
+  console.log('  ✓ Email set to eric@propmetrik.com\n');
 
   // STEP 8: Delete old organizations
   console.log('STEP 8: Remove old organizations');

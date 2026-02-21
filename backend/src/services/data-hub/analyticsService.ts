@@ -126,10 +126,11 @@ export class DataHubAnalyticsService {
     try {
       const result = await query<{ region: string; count: string }>(
         `SELECT 
-         property_region as region,
+         region,
          COUNT(*) as count
        FROM properties
-       GROUP BY property_region
+       WHERE region IS NOT NULL
+       GROUP BY region
        ORDER BY count DESC`
       );
 

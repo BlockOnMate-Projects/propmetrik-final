@@ -13,7 +13,7 @@ import { Router, Request, Response } from 'express';
 import * as crypto from 'crypto';
 import { whatsappService, WebhookPayload } from '../../shared-services/messaging/whatsappService';
 import { logger } from '../utils/logger';
-import { CompletionEvent, ESignSourceModule } from '../services/e-sign/types';
+import { CompletionEvent, ESignSourceModule } from '../../shared-services/e-sign/integration/types';
 
 const router = Router();
 

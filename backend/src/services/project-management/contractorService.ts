@@ -19,10 +19,10 @@
 
 import { pool } from '../../database';
 import { v4 as uuidv4 } from 'uuid';
-import { BaseService } from '../base/BaseService';
+import { BaseService } from '../../../shared-services/base/BaseService';
 import { eventBus, ProjectEventType } from './events';
-import { eSignIntegrationService } from '../e-sign/eSignIntegrationService';
-import { CompletionEvent, ESignField, ESignSigner } from '../e-sign/types';
+import { eSignIntegrationService } from '../../../shared-services/e-sign/integration/eSignIntegrationService';
+import { CompletionEvent, ESignField, ESignSigner } from '../../../shared-services/e-sign/integration/types';
 import { logger } from '../../utils/logger';
 
 // ============================================================================

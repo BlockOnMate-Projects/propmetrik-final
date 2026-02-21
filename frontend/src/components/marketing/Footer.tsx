@@ -4,11 +4,11 @@ import Image from 'next/image';
 export default function Footer() {
     return (
         <footer className="bg-zinc-950 text-white pt-24 pb-12 border-t border-zinc-800">
-            <div className="container mx-auto px-4 md:px-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-12 mb-20">
+            <div className="max-w-[1440px] mx-auto px-4 md:px-8 lg:px-12">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-x-10 gap-y-12 mb-20">
 
                     {/* Brand Column */}
-                    <div className="lg:col-span-2">
+                    <div className="lg:col-span-2 min-w-0">
                         <Link href="/" className="inline-block mb-8">
                             <Image
                                 src="/branding/logo-dark-bg.svg"
@@ -19,7 +19,7 @@ export default function Footer() {
                             />
                         </Link>
                         <p className="text-zinc-400 text-lg leading-relaxed max-w-sm mb-8">
-                            Ghana's definitive real estate intelligence platform. Empowering stakeholders with verified data and AI-driven insights.
+                            Ghana&apos;s definitive real estate intelligence platform. Empowering stakeholders with verified data and AI-driven insights.
                         </p>
                         <div className="flex gap-4">
                             {['LinkedIn', 'Twitter', 'Facebook'].map((social) => (
@@ -30,36 +30,49 @@ export default function Footer() {
                         </div>
                     </div>
 
-                    {/* Links Columns */}
-                    <div>
-                        <h4 className="font-bold text-lg mb-6">Company</h4>
+                    {/* Company */}
+                    <div className="min-w-0">
+                        <h4 className="font-bold text-lg mb-6 whitespace-nowrap">Company</h4>
                         <ul className="space-y-4 text-zinc-400">
-                            <li><Link href="/about" className="hover:text-amber-500 transition-colors">About Us</Link></li>
-                            <li><Link href="/careers" className="hover:text-amber-500 transition-colors">Careers</Link></li>
-                            <li><Link href="/contact" className="hover:text-amber-500 transition-colors">Contact</Link></li>
-                            <li><Link href="/press" className="hover:text-amber-500 transition-colors">Press</Link></li>
+                            <li><Link href="/about" className="hover:text-amber-500 transition-colors whitespace-nowrap">About Us</Link></li>
+                            <li><Link href="/careers" className="hover:text-amber-500 transition-colors whitespace-nowrap">Careers</Link></li>
+                            <li><Link href="/contact" className="hover:text-amber-500 transition-colors whitespace-nowrap">Contact</Link></li>
+                            <li><Link href="/pricing" className="hover:text-amber-500 transition-colors whitespace-nowrap">Pricing</Link></li>
+                            <li><Link href="/api" className="hover:text-amber-500 transition-colors whitespace-nowrap">API Docs</Link></li>
                         </ul>
                     </div>
 
-                    <div>
-                        <h4 className="font-bold text-lg mb-6">Solutions</h4>
+                    {/* Insights */}
+                    <div className="min-w-0">
+                        <h4 className="font-bold text-lg mb-6 whitespace-nowrap">Insights</h4>
                         <ul className="space-y-4 text-zinc-400">
-                            <li><Link href="/services/valuation" className="hover:text-amber-500 transition-colors">Valuation Engine</Link></li>
-                            <li><Link href="/services/data" className="hover:text-amber-500 transition-colors">Data Hub</Link></li>
-                            <li><Link href="/services/deal-management" className="hover:text-amber-500 transition-colors">Deal Management</Link></li>
-                            <li><Link href="/services/market-intelligence" className="hover:text-amber-500 transition-colors">Market Intelligence</Link></li>
-                            <li><Link href="/services/project-management" className="hover:text-amber-500 transition-colors">Project Management</Link></li>
-                            <li><Link href="/services/property-management" className="hover:text-amber-500 transition-colors">Property Management</Link></li>
+                            <li><Link href="/insights/outlook" className="hover:text-amber-500 transition-colors whitespace-nowrap">Real Estate Outlook</Link></li>
+                            <li><Link href="/insights/snapshot" className="hover:text-amber-500 transition-colors whitespace-nowrap">Property Snapshot</Link></li>
+                            <li><Link href="/insights/indices" className="hover:text-amber-500 transition-colors whitespace-nowrap">Indices &amp; Data</Link></li>
+                            <li><Link href="/insights/policy-papers" className="hover:text-amber-500 transition-colors whitespace-nowrap">Policy Papers</Link></li>
                         </ul>
                     </div>
 
-                    <div>
-                        <h4 className="font-bold text-lg mb-6">Resources</h4>
+                    {/* Press */}
+                    <div className="min-w-0">
+                        <h4 className="font-bold text-lg mb-6 whitespace-nowrap">Press</h4>
                         <ul className="space-y-4 text-zinc-400">
-                            <li><Link href="/blog" className="hover:text-amber-500 transition-colors">Market Reports</Link></li>
-                            <li><Link href="/research" className="hover:text-amber-500 transition-colors">Research</Link></li>
-                            <li><Link href="/faq" className="hover:text-amber-500 transition-colors">Help Center</Link></li>
-                            <li><Link href="/api" className="hover:text-amber-500 transition-colors">API Docs</Link></li>
+                            <li><Link href="/press/releases" className="hover:text-amber-500 transition-colors whitespace-nowrap">Press Releases</Link></li>
+                            <li><Link href="/press/commentary" className="hover:text-amber-500 transition-colors whitespace-nowrap">Expert Commentary</Link></li>
+                            <li><Link href="/press/media-kit" className="hover:text-amber-500 transition-colors whitespace-nowrap">Media Kit</Link></li>
+                        </ul>
+                    </div>
+
+                    {/* Services */}
+                    <div className="min-w-0">
+                        <h4 className="font-bold text-lg mb-6 whitespace-nowrap">Services</h4>
+                        <ul className="space-y-4 text-zinc-400">
+                            <li><Link href="/services/valuation" className="hover:text-amber-500 transition-colors whitespace-nowrap">Valuation Engine</Link></li>
+                            <li><Link href="/services/data" className="hover:text-amber-500 transition-colors whitespace-nowrap">Data Hub</Link></li>
+                            <li><Link href="/services/deal-management" className="hover:text-amber-500 transition-colors whitespace-nowrap">Deal Management</Link></li>
+                            <li><Link href="/services/market-intelligence" className="hover:text-amber-500 transition-colors whitespace-nowrap">Market Intelligence</Link></li>
+                            <li><Link href="/services/project-management" className="hover:text-amber-500 transition-colors whitespace-nowrap">Project Management</Link></li>
+                            <li><Link href="/services/property-management" className="hover:text-amber-500 transition-colors whitespace-nowrap">Property Management</Link></li>
                         </ul>
                     </div>
                 </div>
@@ -71,6 +84,7 @@ export default function Footer() {
                         <Link href="/privacy" className="hover:text-white transition-colors">Privacy Policy</Link>
                         <Link href="/terms" className="hover:text-white transition-colors">Terms of Service</Link>
                         <Link href="/cookies" className="hover:text-white transition-colors">Cookie Policy</Link>
+                        <Link href="/contact" className="hover:text-white transition-colors">Contact</Link>
                     </div>
                 </div>
             </div>

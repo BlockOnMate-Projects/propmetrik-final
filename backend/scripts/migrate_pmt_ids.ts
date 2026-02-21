@@ -34,7 +34,7 @@ import { pool } from "../src/database";
     // 3. Seed Eric Danso's PMT ID (derived from UUID first section: ed4a50d7 → PMT-ED4A-50D7)
     const ericUserId = 'ed4a50d7-a1b2-4c3d-8e5f-6a7b8c9d0e1f';
     const ericPmtId = 'PMT-ED4A-50D7';
-    const ericEmail = 'eric@cedynhq.com';
+    const ericEmail = 'eric@propmetrik.com';
 
     // Check if Eric already has an identity record
     const existing = await client.query(

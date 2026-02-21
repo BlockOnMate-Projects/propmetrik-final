@@ -3,7 +3,7 @@
 **Version:** 3.0  
 **Date:** January 2026  
 **Classification:** Product Analytics Documentation  
-**Status:** Implementation Ready
+**Status:** Implementation Ready — Phase 1 Foundation **IMPLEMENTED**, ML/NLP Services Layer **IMPLEMENTED**
 
 ---
 
@@ -1950,6 +1950,156 @@ interface EnsembleAnalytics {
 
 ## 8.7 Centralized ML/NLP Services
 
+> **✅ IMPLEMENTED** — All services in this section have been built and deployed.
+
+### Implementation Status
+
+| Component | Status | Backend Location | Lines |
+|-----------|--------|------------------|-------|
+| Config & Database Infrastructure | ✅ Done | `shared-services/ml-serving/services/config.py`, `database.py` | ~200 |
+| Sentiment Analysis Service | ✅ Done | `shared-services/ml-serving/services/sentiment_analysis.py` | ~790 |
+| Named Entity Recognition | ✅ Done | `shared-services/ml-serving/services/named_entity_recognition.py` | ~720 |
+| Trend Extraction & Forecasting | ✅ Done | `shared-services/ml-serving/services/trend_extraction.py` | ~870 |
+| Document Intelligence | ✅ Done | `shared-services/ml-serving/services/document_intelligence.py` | ~970 |
+| AI Assistant | ✅ Done | `shared-services/ml-serving/services/ai_assistant.py` | ~1140 |
+| Model Monitoring & Drift | ✅ Done | `shared-services/ml-serving/services/model_monitoring.py` | ~1120 |
+| FastAPI Routes | ✅ Done | `shared-services/ml-serving/routes.py` | ~480 |
+| FastAPI Main App | ✅ Done | `shared-services/ml-serving/main.py` | ~620 |
+| TypeScript ML Client | ✅ Done | `src/services/analytics/mlServingClient.ts` | ~520 |
+| ML Analytics Service | ✅ Done | `src/services/analytics/mlAnalyticsService.ts` | ~550 |
+| Express ML Routes | ✅ Done | `src/routes/mlAnalytics.ts` | ~520 |
+| Data Hub Integration | ✅ Done | `src/services/data-hub/mlIntegrationService.ts` | ~380 |
+| Database Migration | ✅ Done | `database/migrations/155_ml_analytics_schema.sql` | 9 tables |
+
+### Live Backend Endpoints (Express API — Port 4000)
+
+All endpoints are mounted at `/api/v1/analytics/ml/` (also `/api/analytics/ml/` for frontend compat).
+
+#### Dashboard & Health
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/v1/analytics/ml/dashboard` | ML analytics dashboard summary |
+| GET | `/api/v1/analytics/ml/health` | ML Serving microservice health check |
+
+#### Section 1: Construction Cost Analytics
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/v1/analytics/ml/construction/index` | National construction cost index |
+| GET | `/api/v1/analytics/ml/construction/regional?region=` | Regional cost comparison |
+| GET | `/api/v1/analytics/ml/construction/materials?material=&period=` | Material price trends |
+| GET | `/api/v1/analytics/ml/construction/labor?skill_level=&region=` | Labor cost analytics |
+| GET | `/api/v1/analytics/ml/construction/forecast?region=&horizon=` | Cost forecasts (ML-powered) |
+
+#### Section 2: Housing Affordability Index (GHAI)
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/v1/analytics/ml/hai/current` | All regional GHAI values |
+| GET | `/api/v1/analytics/ml/hai/region/:region` | Detailed HAI for a region |
+| GET | `/api/v1/analytics/ml/hai/history?region=&period=` | Historical HAI trends |
+
+#### Section 3: Valuation Analytics
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/v1/analytics/ml/valuations/volume?period=&region=` | Valuation volume metrics |
+
+#### Section 4: Market Intelligence
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/v1/analytics/ml/market/price-index?region=&property_type=` | Property price index |
+| GET | `/api/v1/analytics/ml/market/activity?region=&period=` | Market activity metrics |
+| GET | `/api/v1/analytics/ml/market/investment?region=` | Investment opportunity scores (ML) |
+
+#### Section 8.1: AVM Performance
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/v1/analytics/ml/performance?model_version=&period_days=` | AVM accuracy metrics |
+| GET | `/api/v1/analytics/ml/performance/segments?segment_type=` | Performance by segment |
+| GET | `/api/v1/analytics/ml/performance/trend?metric_name=&months=` | Performance trend over time |
+
+#### Section 8.2: Feature Importance
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/v1/analytics/ml/features?model_version=` | Feature importance rankings |
+| GET | `/api/v1/analytics/ml/predictions/:id/explain` | SHAP-based prediction explanation |
+
+#### Section 8.3: Prediction Confidence
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/v1/analytics/ml/confidence?model_version=&period_days=` | Confidence distribution |
+
+#### Section 8.4: Model Drift & Monitoring
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/v1/analytics/ml/monitoring/drift?model_version=` | Drift detection |
+| GET | `/api/v1/analytics/ml/monitoring/drift/features?model_version=` | Per-feature drift |
+
+#### Section 8.5: Price Forecasting
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/v1/analytics/ml/forecast?region=&property_type=&horizon=` | Price forecasts |
+
+#### Section 8.6: Ensemble Analytics
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/v1/analytics/ml/ensemble?model_version=` | Ensemble model analytics |
+
+#### Section 8.7: Centralized ML/NLP Services
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| POST | `/api/v1/analytics/ml/sentiment/analyze` | Analyze text sentiment |
+| GET | `/api/v1/analytics/ml/sentiment/history?source_type=&days=` | Sentiment history |
+| GET | `/api/v1/analytics/ml/sentiment/market-confidence?days=` | Market Confidence Index |
+| POST | `/api/v1/analytics/ml/ner/extract` | Extract named entities |
+| POST | `/api/v1/analytics/ml/ner/batch` | Batch entity extraction |
+| POST | `/api/v1/analytics/ml/trends/analyze` | Analyze text for trends |
+| GET | `/api/v1/analytics/ml/trends/trending?days=&limit=` | Trending topics |
+| POST | `/api/v1/analytics/ml/documents/process` | Process document |
+| POST | `/api/v1/analytics/ml/documents/batch` | Batch document processing |
+| POST | `/api/v1/analytics/ml/assistant/query` | AI assistant query |
+| POST | `/api/v1/analytics/ml/assistant/report` | Generate market report |
+
+### Python ML Serving Endpoints (FastAPI — Port 8000)
+
+Direct ML endpoints consumed by the TypeScript ML client:
+
+| Method | Endpoint | Service |
+|--------|----------|---------|
+| GET | `/health` | Health check |
+| POST | `/api/v1/ml/sentiment/analyze` | Sentiment Analysis |
+| GET | `/api/v1/ml/sentiment/history` | Sentiment History |
+| GET | `/api/v1/ml/sentiment/market-confidence` | Market Confidence Index |
+| POST | `/api/v1/ml/ner/extract` | Named Entity Recognition |
+| POST | `/api/v1/ml/ner/batch` | Batch NER |
+| POST | `/api/v1/ml/trends/analyze` | Trend Analysis |
+| GET | `/api/v1/ml/trends/trending` | Trending Topics |
+| POST | `/api/v1/ml/trends/forecast` | Price Forecasting |
+| POST | `/api/v1/ml/documents/process` | Document Intelligence |
+| POST | `/api/v1/ml/documents/batch` | Batch Document Processing |
+| POST | `/api/v1/ml/assistant/query` | AI Assistant Query |
+| POST | `/api/v1/ml/assistant/report` | Report Generation |
+| GET | `/api/v1/ml/monitoring/performance` | AVM Performance |
+| GET | `/api/v1/ml/monitoring/performance/segments` | Performance by Segment |
+| GET | `/api/v1/ml/monitoring/performance/trend` | Performance Trend |
+| GET | `/api/v1/ml/monitoring/features/importance` | Feature Importance |
+| GET | `/api/v1/ml/monitoring/predictions/:id/explain` | Prediction Explanation |
+| GET | `/api/v1/ml/monitoring/confidence` | Confidence Distribution |
+| GET | `/api/v1/ml/monitoring/drift` | Drift Detection |
+| GET | `/api/v1/ml/monitoring/drift/features` | Feature Drift Details |
+| GET | `/api/v1/ml/ensemble/analytics` | Ensemble Analytics |
+
+### Data Hub Integration Pipelines
+
+The `mlDataHubIntegrationService` runs the following automated enrichment pipelines:
+
+| Pipeline | Input (Data Hub) | ML Service | Output |
+|----------|-----------------|------------|--------|
+| Property Listing Enrichment | `ingested_properties` | NER | `ml_extracted_entities` |
+| News Sentiment | `scraped_news_articles` | Sentiment Analysis | `ml_sentiment_analysis` |
+| Document Processing | `uploaded_documents` | Document Intelligence | `ml_processed_documents` |
+| Trend Extraction | Aggregated text content | Trend Analysis | `ml_trend_analysis` |
+| Regional Forecasts | Economic indicators | Price Forecasting | `ml_price_forecasts` |
+| Market Confidence | Sentiment aggregates | Sentiment Analysis | `ml_market_confidence_index` |
+
 ### 8.7.1 Service Architecture Overview
 
 The Centralized ML/NLP Services layer provides unified natural language processing and machine learning capabilities to support Market Intelligence, sentiment analysis, trend extraction, and automated insights generation across all analytics domains.
@@ -2552,34 +2702,32 @@ POST /api/v1/ml/assistant/query
 }
 ```
 
-### 8.7.7 API Endpoints
+### 8.7.7 API Endpoints ✅ IMPLEMENTED
+
+> **Note**: All endpoints below are now live. Express routes (port 4000) proxy to Python FastAPI (port 8000).
+> See the "Live Backend Endpoints" table above for the full list with query parameters.
 
 ```typescript
-// Sentiment Analysis
-POST /api/v1/ml/sentiment/analyze
-GET /api/v1/ml/sentiment/history?region=greater_accra&period=30d
-GET /api/v1/ml/sentiment/market-confidence-index
+// Sentiment Analysis — ✅ IMPLEMENTED
+POST /api/v1/analytics/ml/sentiment/analyze
+GET  /api/v1/analytics/ml/sentiment/history?source_type=&days=&limit=
+GET  /api/v1/analytics/ml/sentiment/market-confidence?days=
 
-// Named Entity Recognition
-POST /api/v1/ml/ner/extract
-POST /api/v1/ml/ner/batch-extract
-GET /api/v1/ml/ner/entities/:entity_type
+// Named Entity Recognition — ✅ IMPLEMENTED
+POST /api/v1/analytics/ml/ner/extract
+POST /api/v1/analytics/ml/ner/batch
 
-// Trend Analysis
-POST /api/v1/ml/trends/analyze
-GET /api/v1/ml/trends/trending-topics
-GET /api/v1/ml/trends/forecasts/:keyword
+// Trend Analysis — ✅ IMPLEMENTED
+POST /api/v1/analytics/ml/trends/analyze
+GET  /api/v1/analytics/ml/trends/trending?days=&limit=
 
-// Document Intelligence
-POST /api/v1/ml/document/process
-POST /api/v1/ml/document/batch-process
-GET /api/v1/ml/document/status/:document_id
-GET /api/v1/ml/document/results/:document_id
+// Document Intelligence — ✅ IMPLEMENTED
+POST /api/v1/analytics/ml/documents/process
+POST /api/v1/analytics/ml/documents/batch
 
-// AI Assistant
-POST /api/v1/ml/assistant/query
-POST /api/v1/ml/assistant/generate-report
-GET /api/v1/ml/assistant/recommendations
+// AI Assistant — ✅ IMPLEMENTED
+POST /api/v1/analytics/ml/assistant/query
+POST /api/v1/analytics/ml/assistant/report
 ```
 
 ### 8.7.8 Database Schema
@@ -2978,27 +3126,78 @@ interface DataQualityMetrics {
 // Returns: Investment opportunity metrics
 ```
 
-### 11.5 ML Analytics API
+### 11.5 ML Analytics API ✅ IMPLEMENTED
+
+> All ML Analytics endpoints are mounted at `/api/v1/analytics/ml/` on the Express backend (port 4000).
+> They proxy to the Python ML Serving microservice (port 8000) where needed.
 
 ```typescript
-// GET /api/v1/analytics/ml/performance
-// Query: ?model_version=latest
-// Returns: AVM accuracy metrics
+// Dashboard & Health
+GET /api/v1/analytics/ml/dashboard              // ML analytics dashboard summary
+GET /api/v1/analytics/ml/health                  // ML service health check
 
-// GET /api/v1/analytics/ml/features
-// Returns: Feature importance rankings
+// Construction Analytics (Section 1)
+GET /api/v1/analytics/ml/construction/index      // National construction cost index
+GET /api/v1/analytics/ml/construction/regional   // Regional cost data
+GET /api/v1/analytics/ml/construction/materials   // Material price trends
+GET /api/v1/analytics/ml/construction/labor       // Labor cost analytics
+GET /api/v1/analytics/ml/construction/forecast    // Cost forecasts (ML-powered)
 
-// GET /api/v1/analytics/ml/monitoring
-// Query: ?period=7d
-// Returns: Model drift and health metrics
+// Housing Affordability (Section 2)
+GET /api/v1/analytics/ml/hai/current             // All regional GHAI values
+GET /api/v1/analytics/ml/hai/region/:region      // Detailed HAI for a region
+GET /api/v1/analytics/ml/hai/history             // Historical HAI trends
 
-// GET /api/v1/analytics/ml/forecast
-// Query: ?region=greater_accra&property_type=residential&horizon=6m
-// Returns: Price forecasts
+// Valuation Analytics (Section 3)
+GET /api/v1/analytics/ml/valuations/volume       // Valuation volume metrics
 
-// POST /api/v1/analytics/ml/predict
-// Body: PropertyFeatures
-// Returns: AVM prediction with confidence
+// Market Intelligence (Section 4)
+GET /api/v1/analytics/ml/market/price-index      // Property price index
+GET /api/v1/analytics/ml/market/activity         // Market activity metrics
+GET /api/v1/analytics/ml/market/investment       // Investment opportunity scores
+
+// AVM Performance (Section 8.1)
+GET /api/v1/analytics/ml/performance             // AVM accuracy metrics
+GET /api/v1/analytics/ml/performance/segments    // Performance by segment
+GET /api/v1/analytics/ml/performance/trend       // Performance trend
+
+// Feature Importance (Section 8.2)
+GET /api/v1/analytics/ml/features                // Feature importance rankings
+GET /api/v1/analytics/ml/predictions/:id/explain // SHAP prediction explanation
+
+// Prediction Confidence (Section 8.3)
+GET /api/v1/analytics/ml/confidence              // Confidence distribution
+
+// Model Drift (Section 8.4)
+GET /api/v1/analytics/ml/monitoring/drift         // Drift detection
+GET /api/v1/analytics/ml/monitoring/drift/features // Per-feature drift
+
+// Price Forecasting (Section 8.5)
+GET /api/v1/analytics/ml/forecast                // Price forecasts
+
+// Ensemble Analytics (Section 8.6)
+GET /api/v1/analytics/ml/ensemble                // Ensemble model analytics
+
+// Sentiment Analysis (Section 8.7)
+POST /api/v1/analytics/ml/sentiment/analyze       // Analyze text sentiment
+GET  /api/v1/analytics/ml/sentiment/history       // Sentiment history
+GET  /api/v1/analytics/ml/sentiment/market-confidence // Market Confidence Index
+
+// Named Entity Recognition (Section 8.7)
+POST /api/v1/analytics/ml/ner/extract             // Extract entities from text
+POST /api/v1/analytics/ml/ner/batch               // Batch entity extraction
+
+// Trend Analysis (Section 8.7)
+POST /api/v1/analytics/ml/trends/analyze          // Analyze text for trends
+GET  /api/v1/analytics/ml/trends/trending         // Current trending topics
+
+// Document Intelligence (Section 8.7)
+POST /api/v1/analytics/ml/documents/process       // Process document
+POST /api/v1/analytics/ml/documents/batch         // Batch processing
+
+// AI Assistant (Section 8.7)
+POST /api/v1/analytics/ml/assistant/query          // Natural language query
+POST /api/v1/analytics/ml/assistant/report         // Generate market report
 ```
 
 ---
@@ -3275,37 +3474,60 @@ CREATE INDEX idx_mam_period ON market_activity_metrics(period_date, region);
 
 ## 14. Implementation Roadmap
 
-### Phase 1: Foundation (Weeks 1-4)
+### Phase 1: Foundation (Weeks 1-4) ✅ **COMPLETED**
 
-| Week | Deliverable | Owner |
-|------|-------------|-------|
-| 1 | Database schema creation (all analytics tables) | Backend |
-| 1 | Construction Cost Index API endpoints | Backend |
-| 2 | GHAI calculation service and API | Backend |
-| 2 | Basic analytics dashboard shell | Frontend |
-| 3 | Construction analytics dashboard | Frontend |
-| 3 | Regional heatmap component | Frontend |
-| 4 | GHAI dashboard with all sub-indices | Frontend |
-| 4 | Alert system foundation | Backend |
+> **Implementation Note**: Phase 1 establishes the analytics foundation — CCI, GHAI, alerts, and frontend dashboards. All services query the analytics schema tables from migration 156.
 
-**Deliverables:**
-- ✅ Construction Cost Index with regional breakdown
-- ✅ Housing Affordability Index (MHAI, CHAI, RHAI)
-- ✅ Basic dashboard with metric cards and charts
-- ✅ Regional heatmap visualization
+| Component | Status | File |
+|-----------|--------|------|
+| Analytics foundation schema (11 tables) | ✅ Done | `database/migrations/156_analytics_foundation_schema.sql` |
+| Construction Cost Index service | ✅ Done | `src/services/analytics/constructionCostIndexService.ts` |
+| GHAI calculation service | ✅ Done | `src/services/analytics/ghaiService.ts` |
+| Alert system foundation | ✅ Done | `src/services/analytics/alertService.ts` |
+| Analytics foundation routes (30+ endpoints) | ✅ Done | `src/routes/analyticsFoundation.ts` |
+| Route registration in Express app | ✅ Done | `src/index.ts` |
+| Frontend analytics layout (tabs) | ✅ Done | `frontend: app/dashboard/analytics/layout.tsx` |
+| Construction dashboard page | ✅ Done | `frontend: app/dashboard/analytics/construction/page.tsx` |
+| Regional heatmap component | ✅ Done | `frontend: components/analytics/RegionalHeatmap.tsx` |
+| GHAI/Affordability dashboard page | ✅ Done | `frontend: app/dashboard/analytics/affordability/page.tsx` |
 
-### Phase 2: Valuation Analytics (Weeks 5-8)
+**Database Tables Created (Migration 156):**
+- `construction_cost_index_analytics` — CCI time-series with MoM/YoY changes
+- `regional_cost_data` — Per-region construction cost breakdown (16 regions seeded)
+- `material_prices` — 14 construction materials with supply/volatility tracking
+- `labor_rates` — 11 labor categories with availability indicators
+- `housing_affordability_index` — MHAI/CHAI/RHAI composite with regional weights
+- `valuation_analytics_snapshots` — Periodic valuation portfolio snapshots
+- `property_price_index` — Regional property price index time-series
+- `market_activity_metrics` — Transaction volumes, listing metrics
+- `ml_model_performance` — ML model accuracy tracking
+- `analytics_alerts` — Alert instances with severity/lifecycle
+- `analytics_alert_rules` — 8 default threshold rules seeded
 
-| Week | Deliverable | Owner |
-|------|-------------|-------|
-| 5 | Valuation volume metrics aggregation | Backend |
-| 5 | Method performance tracking | Backend |
-| 6 | Valuer performance analytics service | Backend |
-| 6 | Market-relative analytics | Backend |
-| 7 | Valuation analytics dashboard | Frontend |
-| 7 | Valuer leaderboard/benchmarking UI | Frontend |
-| 8 | Floor plan analytics integration | Backend |
-| 8 | Sensitivity analysis visualization | Frontend |
+**API Endpoints Delivered:**
+- ✅ Construction CCI API (`/api/v1/analytics/platform/construction/*`) — 7 endpoints
+- ✅ Housing Affordability API (`/api/v1/analytics/platform/hai/*`) — 8 endpoints
+- ✅ Alert System API (`/api/v1/analytics/platform/alerts/*`) — 9 endpoints
+- ✅ Frontend proxy compat (`/api/analytics/platform/*`)
+
+**Frontend Deliverables:**
+- ✅ Construction Cost Index dashboard with KPIs, regional table, historical trend, material/labor analytics
+- ✅ Housing Affordability dashboard with composite GHAI, MHAI/CHAI/RHAI sub-indices, supplementary indices (CAI/LAI/MAS), regional heatmap, drill-down detail, trend history
+- ✅ Regional heatmap component (SVG-based, interactive, multi-colorscale)
+- ✅ Dashboard shell with CONSTRUCTION and AFFORDABILITY navigation tabs
+
+### Phase 2: Valuation Analytics (Weeks 5-8) ✅ **COMPLETED**
+
+| Week | Deliverable | Owner | Status |
+|------|-------------|-------|--------|
+| 5 | Valuation volume metrics aggregation | Backend | ✅ Done |
+| 5 | Method performance tracking | Backend | ✅ Done |
+| 6 | Valuer performance analytics service | Backend | ✅ Done |
+| 6 | Market-relative analytics | Backend | ✅ Done |
+| 7 | Valuation analytics dashboard | Frontend | ✅ Done |
+| 7 | Valuer leaderboard/benchmarking UI | Frontend | ✅ Done |
+| 8 | Floor plan analytics integration | Backend | ✅ Done |
+| 8 | Sensitivity analysis visualization | Frontend | ✅ Done |
 
 **Deliverables:**
 - ✅ Portfolio valuation metrics
@@ -3313,18 +3535,48 @@ CREATE INDEX idx_mam_period ON market_activity_metrics(period_date, region);
 - ✅ Valuer performance analytics
 - ✅ Floor plan/measurement analytics
 
-### Phase 3: Market Intelligence (Weeks 9-12)
+**Implementation Inventory:**
 
-| Week | Deliverable | Owner |
-|------|-------------|-------|
-| 9 | Property Price Index calculation | Backend |
-| 9 | Market activity metrics aggregation | Backend |
-| 10 | Rental market analytics service | Backend |
-| 10 | Investment opportunity scoring | Backend |
-| 11 | Market intelligence dashboard | Frontend |
-| 11 | Price trend visualization | Frontend |
-| 12 | Investment opportunity finder UI | Frontend |
-| 12 | Custom report generation | Backend |
+| Component | File | Purpose |
+|-----------|------|---------|
+| Migration 157 | `backend/database/migrations/157_valuation_analytics_phase2.sql` | valuer_performance_snapshots, method_performance_history, floor_plan_analytics, market_relative_analytics tables + ALTER valuation_analytics_snapshots |
+| Valuation Analytics Service | `backend/src/services/analytics/valuationAnalyticsService.ts` | Volume summary/history, method performance, valuer leaderboard/detail, market-relative, quality metrics, sensitivity, snapshot computation |
+| Floor Plan Analytics Service | `backend/src/services/analytics/floorPlanAnalyticsService.ts` | GFA/NIA summary, regional breakdown, room analytics, GFA distribution, compliance violations |
+| Valuation Analytics Routes | `backend/src/routes/valuationAnalytics.ts` | 16 REST endpoints for all Phase 2 analytics |
+| Dashboard Page | `frontend/src/app/dashboard/analytics/valuations/page.tsx` | KPIs, volume history, regional breakdown, method performance, quality metrics, purpose/type breakdowns, top valuers |
+| Leaderboard Page | `frontend/src/app/dashboard/analytics/valuations/leaderboard/page.tsx` | Sortable valuer rankings, detail sidebar with peer percentiles, by-type/region breakdowns |
+| Sensitivity Page | `frontend/src/app/dashboard/analytics/valuations/sensitivity/page.tsx` | Sensitivity summary/lookup with tornado bars, floor plan analytics (GFA distribution, room analytics, compliance violations) |
+
+**API Endpoints (mounted at `/api/v1/analytics/valuations` and `/api/analytics/valuations`):**
+- `GET /volume/summary` — Portfolio valuation volume with breakdowns
+- `GET /volume/history` — Monthly volume time series
+- `GET /methods/performance` — Per-method accuracy/usage metrics
+- `GET /methods/history` — Method performance time series
+- `GET /quality` — Comparable quality, override rate, confidence distribution
+- `GET /valuers/leaderboard` — Sorted valuer rankings
+- `GET /valuers/:valuerId` — Detailed valuer metrics with peer percentiles
+- `GET /market-relative` — Valuation vs market position metrics
+- `GET /floor-plans/summary` — GFA/NIA/compliance aggregate stats
+- `GET /floor-plans/by-region` — Floor plan metrics by region
+- `GET /floor-plans/rooms` — Room size analytics by type
+- `GET /floor-plans/distribution` — GFA histogram buckets
+- `GET /floor-plans/compliance` — Ghana Building Code violations
+- `GET /sensitivity/:valuationId` — Sensitivity analyses for a valuation
+- `GET /sensitivity-summary` — Aggregated sensitivity stats
+- `POST /compute-snapshot` — Trigger snapshot computation
+
+### Phase 3: Market Intelligence (Weeks 9-12) ✅ **COMPLETED**
+
+| Week | Deliverable | Owner | Status |
+|------|-------------|-------|--------|
+| 9 | Property Price Index calculation | Backend | ✅ Done |
+| 9 | Market activity metrics aggregation | Backend | ✅ Done |
+| 10 | Rental market analytics service | Backend | ✅ Done |
+| 10 | Investment opportunity scoring | Backend | ✅ Done |
+| 11 | Market intelligence dashboard | Frontend | ✅ Done |
+| 11 | Price trend visualization | Frontend | ✅ Done |
+| 12 | Investment opportunity finder UI | Frontend | ✅ Done |
+| 12 | Custom report generation | Backend | ✅ Done |
 
 **Deliverables:**
 - ✅ Property Price Index by region/type
@@ -3332,18 +3584,49 @@ CREATE INDEX idx_mam_period ON market_activity_metrics(period_date, region);
 - ✅ Rental market insights
 - ✅ Investment opportunity identification
 
-### Phase 4: ML Analytics (Weeks 13-16)
+**Implementation Inventory:**
 
-| Week | Deliverable | Owner |
-|------|-------------|-------|
-| 13 | AVM performance tracking pipeline | ML Team |
-| 13 | Feature importance service | ML Team |
-| 14 | Model monitoring infrastructure | ML Team |
-| 14 | Drift detection alerts | Backend |
-| 15 | ML analytics dashboard | Frontend |
-| 15 | SHAP/feature contribution visualization | Frontend |
-| 16 | Price forecasting API | ML Team |
-| 16 | Forecast visualization | Frontend |
+| Component | File | Purpose |
+|-----------|------|---------|
+| Migration 158 | `backend/database/migrations/158_market_intelligence_phase3.sql` | rental_yield_analytics, investment_opportunity_metrics, market_report_snapshots tables + ALTER property_price_index & market_activity_metrics |
+| Market Intelligence Service | `backend/src/services/analytics/marketIntelligenceService.ts` | Price index (live + snapshot), market activity, supply/demand, price distribution, recent transactions, snapshot computation |
+| Rental Analytics Service | `backend/src/services/analytics/rentalAnalyticsService.ts` | Rental summary, yield analysis, rental trends, benchmarks, rental-by-region |
+| Investment Scoring Service | `backend/src/services/analytics/investmentScoringService.ts` | Composite opportunity scoring (0-100), factor decomposition, risk assessment, regional comparison, region detail |
+| Market Intelligence Routes | `backend/src/routes/marketIntelligence.ts` | 17 REST endpoints for all Phase 3 analytics |
+| Market Dashboard Page | `frontend/src/app/dashboard/analytics/page.tsx` | API-driven KPIs, price index table, recent transactions, supply/demand, price distribution, activity history |
+| Investment Finder Page | `frontend/src/app/dashboard/analytics/market/investments/page.tsx` | Regional comparison matrix, scored opportunity cards with factor breakdown, rental overview |
+| Rental Analytics Page | `frontend/src/app/dashboard/analytics/market/rentals/page.tsx` | Rental summary, yield analysis table, rental trends chart, benchmarks |
+
+**API Endpoints (mounted at `/api/v1/analytics/market` and `/api/analytics/market`):**
+- `GET /price-index` — Latest price index by region/type
+- `GET /price-index/history` — Monthly price index time-series
+- `GET /activity/summary` — Market activity per region/type
+- `GET /activity/history` — Monthly activity time-series
+- `GET /supply-demand` — Supply/demand metrics per region
+- `GET /price-distribution` — Price histogram buckets
+- `GET /recent-transactions` — Latest property transactions
+- `GET /rental/summary` — Rental market summary
+- `GET /rental/yields` — Rental yield analysis
+- `GET /rental/trends` — Monthly rental price trends
+- `GET /rental/benchmarks` — Rental market benchmarks
+- `GET /rental/by-region` — Rental summary grouped by region
+- `GET /investment/opportunities` — Scored investment opportunities
+- `GET /investment/regional` — Regional comparison matrix
+- `GET /investment/:region` — Detail for a specific region
+- `POST /compute-snapshot` — Compute & persist market + investment snapshots
+
+### Phase 4: ML Analytics (Weeks 13-16) ✅ **COMPLETED**
+
+| Week | Deliverable | Owner | Status |
+|------|-------------|-------|--------|
+| 13 | AVM performance tracking pipeline | ML Team | ✅ Done |
+| 13 | Feature importance service | ML Team | ✅ Done |
+| 14 | Model monitoring infrastructure | ML Team | ✅ Done |
+| 14 | Drift detection alerts | Backend | ✅ Done |
+| 15 | ML analytics dashboard | Frontend | ✅ Done |
+| 15 | SHAP/feature contribution visualization | Frontend | ✅ Done |
+| 16 | Price forecasting API | ML Team | ✅ Done |
+| 16 | Forecast visualization | Frontend | ✅ Done |
 
 **Deliverables:**
 - ✅ AVM accuracy tracking and visualization
@@ -3351,37 +3634,75 @@ CREATE INDEX idx_mam_period ON market_activity_metrics(period_date, region);
 - ✅ Model health monitoring
 - ✅ Price forecasting with confidence intervals
 
-### Phase 5: Centralized ML/NLP Services (Weeks 17-22) ⭐ NEW
+**Implementation Inventory:**
+
+| Component | File |
+|-----------|------|
+| ML dashboard (overview, KPIs, confidence, drift, ensemble) | `frontend/src/app/dashboard/analytics/ml/page.tsx` |
+| Feature importance & SHAP analysis page | `frontend/src/app/dashboard/analytics/ml/features/page.tsx` |
+| Model monitoring & drift detection page | `frontend/src/app/dashboard/analytics/ml/monitoring/page.tsx` |
+| Price forecasting page (regional, scenarios, drivers) | `frontend/src/app/dashboard/analytics/ml/forecasting/page.tsx` |
+| Analytics layout (ML MODELS tab) | `frontend/src/app/dashboard/analytics/layout.tsx` |
+
+**Frontend Pages (4 pages, all consuming live API — zero mock data):**
+- `/dashboard/analytics/ml` — AVM performance KPIs (MAE/MAPE/R²/±10%), confidence distribution histogram, performance trend sparkline, ensemble model composition, drift status, quick navigation to sub-pages
+- `/dashboard/analytics/ml/features` — Global feature importance horizontal bar chart with category filtering, category breakdown, per-prediction SHAP explainer with waterfall contributions
+- `/dashboard/analytics/ml/monitoring` — Drift status KPIs, per-feature PSI/KS drift table, performance metric trend (selectable: MAPE/MAE/R²/RMSE), segment performance breakdown table
+- `/dashboard/analytics/ml/forecasting` — Region/property type/horizon selectors, short-term forecast with confidence intervals, long-term scenario analysis (pessimistic/base/optimistic), forecast driver impact bars, regional comparison panel
+
+**API Endpoints Consumed (mounted at `/api/v1/analytics/ml` and `/api/analytics/ml`):**
+- `GET /dashboard` — Dashboard summary (service status, model version, 30d stats)
+- `GET /performance` — AVM model accuracy metrics (MAE, MAPE, RMSE, R², within_10_pct)
+- `GET /performance/trend?metric_name=` — Performance metric trend over time
+- `GET /performance/segments?segment_type=` — Performance by property type/region/price band
+- `GET /features` — Feature importance rankings with categories
+- `GET /predictions/:id/explain` — SHAP-based prediction explanation
+- `GET /confidence` — Confidence distribution histogram
+- `GET /monitoring/drift` — Drift detection summary (severity, recommendation, retrain)
+- `GET /monitoring/drift/features` — Per-feature PSI & KS statistics
+- `GET /forecast?region=&property_type=&horizon=` — Price forecasts with scenarios
+- `GET /ensemble` — Ensemble model composition and diversity
+
+### Phase 5: Centralized ML/NLP Services (Weeks 17-22) ✅ **COMPLETED**
 
 > **Architecture Note**: This phase establishes **centralized** ML/NLP services that all analytics domains consume. No isolated NLP implementations - all domains integrate with these shared services.
 
-| Week | Deliverable | Owner |
-|------|-------------|-------|
-| 17 | ML/NLP database schema (5 tables) | Backend |
-| 17 | Base service classes with caching | Backend |
-| 18 | Sentiment Analysis service (fine-tuned BERT) | ML Team |
-| 18 | NER service (spaCy + Ghana entities) | ML Team |
-| 19 | Document Intelligence engine (PDF/OCR) | ML Team |
-| 19 | Table extraction (Camelot/Tabula) | Backend |
-| 20 | Trend Analysis service (topic modeling) | ML Team |
-| 20 | Keyword tracking with anomaly detection | Backend |
-| 21 | AI Assistant (LangChain + GPT-4) | ML Team |
-| 21 | Vector DB setup (Pinecone) | Backend |
-| 22 | Integration with all analytics domains | All |
-| 22 | ML/NLP API endpoints and testing | Backend |
+| Component | Status | Backend File |
+|-----------|--------|-------------|
+| ML/NLP database schema (9 tables) | ✅ Done | `database/migrations/155_ml_analytics_schema.sql` |
+| Config & Database Infrastructure | ✅ Done | `shared-services/ml-serving/services/config.py`, `database.py` |
+| Sentiment Analysis service | ✅ Done | `shared-services/ml-serving/services/sentiment_analysis.py` |
+| Named Entity Recognition (NER) service | ✅ Done | `shared-services/ml-serving/services/named_entity_recognition.py` |
+| Document Intelligence engine | ✅ Done | `shared-services/ml-serving/services/document_intelligence.py` |
+| Trend Analysis service | ✅ Done | `shared-services/ml-serving/services/trend_extraction.py` |
+| AI Assistant + Report Generation | ✅ Done | `shared-services/ml-serving/services/ai_assistant.py` |
+| Model Monitoring + Drift Detection | ✅ Done | `shared-services/ml-serving/services/model_monitoring.py` |
+| FastAPI routes (21+ endpoints) | ✅ Done | `shared-services/ml-serving/routes.py` |
+| FastAPI main app integration | ✅ Done | `shared-services/ml-serving/main.py` |
+| TypeScript ML Serving client | ✅ Done | `src/services/analytics/mlServingClient.ts` |
+| ML Analytics orchestration service | ✅ Done | `src/services/analytics/mlAnalyticsService.ts` |
+| Express API routes (35+ endpoints) | ✅ Done | `src/routes/mlAnalytics.ts` |
+| Data Hub ↔ ML integration pipelines | ✅ Done | `src/services/data-hub/mlIntegrationService.ts` |
+| Route registration in Express app | ✅ Done | `src/index.ts` |
 
 **Deliverables:**
-- ✅ Sentiment Analysis API (`/api/v1/ml/sentiment/*`)
-- ✅ NER API (`/api/v1/ml/ner/*`)
-- ✅ Document Intelligence API (`/api/v1/ml/document/*`)
-- ✅ Trend Analysis API (`/api/v1/ml/trends/*`)
-- ✅ AI Assistant API (`/api/v1/ml/assistant/*`)
+- ✅ Sentiment Analysis API (`/api/v1/analytics/ml/sentiment/*`)
+- ✅ NER API (`/api/v1/analytics/ml/ner/*`)
+- ✅ Document Intelligence API (`/api/v1/analytics/ml/documents/*`)
+- ✅ Trend Analysis API (`/api/v1/analytics/ml/trends/*`)
+- ✅ AI Assistant API (`/api/v1/analytics/ml/assistant/*`)
+- ✅ AVM Monitoring API (`/api/v1/analytics/ml/performance/*`, `/monitoring/*`)
+- ✅ Price Forecasting API (`/api/v1/analytics/ml/forecast`)
+- ✅ Ensemble Analytics API (`/api/v1/analytics/ml/ensemble`)
+- ✅ Construction/HAI/Market data pipelines (`/api/v1/analytics/ml/construction/*`, `/hai/*`, `/market/*`)
 
 **Integration Points Completed:**
-- ✅ Construction Analytics → Sentiment (cost forecasting)
-- ✅ GHAI → Trends (crisis detection)
-- ✅ Valuation → Document Intel (listing extraction)
+- ✅ Construction Analytics → ML Forecasting (cost prediction)
+- ✅ GHAI → Trends (crisis detection via trend extraction)
+- ✅ Valuation → Document Intel (listing extraction via NER)
 - ✅ Market Intelligence → All services (primary consumer)
+- ✅ Data Hub → ML Enrichment Pipelines (6 automated pipelines)
+- ✅ Express Backend → Python ML Serving (typed HTTP client)
 
 ### Phase 6: Advanced Features (Weeks 23-26)
 

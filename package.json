@@ -11,6 +11,7 @@
   ],
   "scripts": {
     "dev": "turbo run dev --parallel",
+    "dev:reset": "bash scripts/dev-reset.sh",
     "dev:backend": "turbo run dev --filter=@propmetrik/backend",
     "dev:frontend": "turbo run dev --filter=@propmetrik/frontend",
     "dev:tenant": "turbo run dev --filter=@propmetrik/tenant-portal",
@@ -25,8 +26,8 @@
     "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,md}\""
   },
   "devDependencies": {
-    "turbo": "^2.3.0",
-    "prettier": "^3.3.3"
+    "prettier": "^3.3.3",
+    "turbo": "^2.3.0"
   },
   "packageManager": "npm@10.0.0",
   "engines": {
@@ -34,8 +35,8 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/Cedyn-Group/propmetrik"
+    "url": "https://github.com/CedynGroup/propmetrik"
   },
-  "author": "Cedyn Group",
+  "author": "PROPMETRIK",
   "license": "UNLICENSED"
 }
