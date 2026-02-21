@@ -1,6 +1,6 @@
 # E-Signature Platform Frontend
 
-React TypeScript frontend for Cedyn E-Signature Platform with Keycloak SSO and Google Drive integration.
+React TypeScript frontend for PROPMETRIK E-Signature Platform with Keycloak SSO and Google Drive integration.
 
 ## Prerequisites
 
@@ -22,8 +22,8 @@ Create a `.env.local` file:
 
 ```env
 VITE_KEYCLOAK_URL=http://localhost:8080
-VITE_KEYCLOAK_REALM=cedyn
-VITE_KEYCLOAK_CLIENT_ID=cedyn-esign
+VITE_KEYCLOAK_REALM=propmetrik
+VITE_KEYCLOAK_CLIENT_ID=propmetrik-esign
 VITE_API_BASE_URL=http://localhost:8000
 VITE_GOOGLE_CLIENT_ID=your-google-client-id
 ```
@@ -46,15 +46,15 @@ npm run preview
 ## Docker Build
 
 ```bash
-docker build -t cedyn-esign-frontend \
+docker build -t propmetrik-esign-frontend \
   --build-arg VITE_KEYCLOAK_URL=http://localhost:8080 \
-  --build-arg VITE_KEYCLOAK_REALM=cedyn \
-  --build-arg VITE_KEYCLOAK_CLIENT_ID=cedyn-esign \
+  --build-arg VITE_KEYCLOAK_REALM=propmetrik \
+  --build-arg VITE_KEYCLOAK_CLIENT_ID=propmetrik-esign \
   --build-arg VITE_API_BASE_URL=http://localhost:8000 \
   --build-arg VITE_GOOGLE_CLIENT_ID=your-google-client-id \
   .
 
-docker run -p 3000:80 cedyn-esign-frontend
+docker run -p 3000:80 propmetrik-esign-frontend
 ```
 
 ## Features
@@ -118,7 +118,7 @@ The frontend communicates with the backend API at `http://localhost:8000`:
 
 ### Keycloak Connection Issues
 - Verify `VITE_KEYCLOAK_URL` matches your Keycloak instance
-- Check Keycloak client ID matches `cedyn-esign`
+- Check Keycloak client ID matches `propmetrik-esign`
 - Ensure Valid Redirect URIs includes `http://localhost:3000/*`
 
 ### API Connection Issues
@@ -143,4 +143,4 @@ See `docker-compose.yml` in root directory for full deployment configuration wit
 
 ## License
 
-Proprietary - Cedyn Group
+Proprietary - PROPMETRIK

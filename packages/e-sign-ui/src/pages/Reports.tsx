@@ -194,7 +194,7 @@ export default function Reports() {
         <div className="header-left">
           <div className="logo" onClick={() => navigate('/')}>
             <span className="logo-icon">✒️</span>
-            <span className="logo-text">Cedyn E-Sign</span>
+            <span className="logo-text">PROPMETRIK E-Sign</span>
           </div>
         </div>
         

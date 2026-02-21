@@ -10,7 +10,7 @@
  */
 
 import { Pool, PoolClient, QueryResult } from 'pg';
-import { BaseService } from '../../../../src/services/base/BaseService';
+import { BaseService } from '../../../../shared-services/base/BaseService';
 import { DatabaseError, NotFoundError } from '../../../../src/services/project-management/errors';
 
 // Mock dependencies
@@ -73,7 +73,7 @@ class TestService extends BaseService {
   }
 
   public async testGetById<T>(table: string, id: string): Promise<T | null> {
-    return this.getById(table, id);
+    return this.findById(table, id);
   }
 
   public testMapRows<T>(rows: any[]): T[] {

@@ -20,8 +20,11 @@ import {
 } from '@/components/ui/popover'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
-import { ganttApi, type ProjectBaseline } from '@/lib/projects-api'
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
+import { ganttApi, phasesApi, type ProjectBaseline } from '@/lib/projects-api'
+import { type ProjectPhase } from '@/types/projects'
 import { GanttChart, GanttData, GanttPhase, GanttMilestone } from './GanttChart'
+import { WorkBreakdownStructure } from '../WorkBreakdownStructure'
 
 // =====================================================
 // TYPES
@@ -254,6 +257,8 @@ export function ProjectGantt({
   const [showBaseline, setShowBaseline] = useState(false)
   const [showDependencies, setShowDependencies] = useState(true)
   const [showMilestones, setShowMilestones] = useState(true)
+  const [activeTab, setActiveTab] = useState('timeline')
+  const queryClient = useQueryClient()
 
   // Fetch Gantt data
   const { data: ganttData, isLoading, error, refetch } = useQuery({
@@ -294,6 +299,72 @@ export function ProjectGantt({
     }
   }, [ganttData, criticalPathData])
 
+  const updatePhaseMutation = useMutation({
+    mutationFn: (data: { phaseId: string; updates: Partial<ProjectPhase> }) =>
+      phasesApi.update(data.phaseId, data.updates),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['gantt', projectId] })
+      refetch()
+    },
+  })
+
+  // Add Phase Mutation
+  const addPhaseMutation = useMutation({
+    mutationFn: (newPhase: Partial<ProjectPhase>) => phasesApi.create(projectId, newPhase),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['gantt', projectId] })
+      refetch()
+    },
+  })
+
+  // Delete Phase Mutation
+  const deletePhaseMutation = useMutation({
+    mutationFn: (phaseId: string) => phasesApi.delete(phaseId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['gantt', projectId] })
+      refetch()
+    },
+  })
+
+  const handleAddPhase = () => {
+    // Generate default dates
+    let start_date = new Date()
+    if (chartData && chartData.phases.length > 0) {
+      // Start after the last phase
+      const dates = chartData.phases.map((p: any) => new Date(p.endDate).getTime())
+      start_date = new Date(Math.max(...dates))
+      start_date.setDate(start_date.getDate() + 1)
+    } else if (chartData?.startDate) {
+      start_date = new Date(chartData.startDate)
+    }
+
+    const end_date = new Date(start_date)
+    end_date.setDate(end_date.getDate() + 14) // Default 2 weeks
+
+    addPhaseMutation.mutate({
+      phase_name: `New Phase ${chartData ? chartData.phases.length + 1 : 1}`,
+      planned_start_date: start_date.toISOString(),
+      planned_end_date: end_date.toISOString(),
+      progress_percentage: 0,
+    })
+  }
+
+  const handleDeletePhase = (phaseId: string) => {
+    if (confirm("Are you sure you want to delete this phase?")) {
+      deletePhaseMutation.mutate(phaseId)
+    }
+  }
+
+  const handlePhaseDragEnd = (phaseId: string, newStart: string, newEnd: string) => {
+    updatePhaseMutation.mutate({
+      phaseId,
+      updates: {
+        planned_start_date: newStart,
+        planned_end_date: newEnd,
+      },
+    })
+  }
+
   const handlePhaseClick = (phase: GanttPhase) => {
     onPhaseEdit?.(phase)
   }
@@ -327,7 +398,7 @@ export function ProjectGantt({
       {/* Toolbar */}
       <div className="flex items-center justify-between">
         <h3 className="font-mono text-sm text-zinc-300">Project Timeline</h3>
-        
+
         <div className="flex items-center gap-2">
           <ViewOptions
             showBaseline={showBaseline}
@@ -337,7 +408,7 @@ export function ProjectGantt({
             showMilestones={showMilestones}
             onShowMilestonesChange={setShowMilestones}
           />
-          
+
           <BaselineManager
             projectId={projectId}
             onBaselineCreated={handleBaselineCreated}
@@ -354,24 +425,57 @@ export function ProjectGantt({
         </div>
       </div>
 
-      {/* Critical Path Summary */}
-      {chartData && chartData.criticalPath.length > 0 && (
-        <CriticalPathSummary
-          criticalPath={chartData.criticalPath}
-          phases={chartData.phases}
-        />
-      )}
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
+        <TabsList className="bg-zinc-800/50 border border-zinc-700 h-9 p-0.5">
+          <TabsTrigger value="timeline" className="font-mono text-xs data-[state=active]:bg-zinc-900 data-[state=active]:text-amber-500">
+            Timeline View
+          </TabsTrigger>
+          <TabsTrigger value="wbs" className="font-mono text-xs data-[state=active]:bg-zinc-900 data-[state=active]:text-amber-500">
+            WBS (Spreadsheet)
+          </TabsTrigger>
+        </TabsList>
 
-      {/* Gantt Chart */}
-      <GanttChart
-        data={chartData}
-        isLoading={isLoading}
-        onPhaseClick={handlePhaseClick}
-        onMilestoneClick={handleMilestoneClick}
-        showBaseline={showBaseline}
-        showDependencies={showDependencies}
-        showMilestones={showMilestones}
-      />
+        <TabsContent value="timeline" className="space-y-3 mt-0">
+          {/* Critical Path Summary */}
+          {chartData && chartData.criticalPath.length > 0 && (
+            <CriticalPathSummary
+              criticalPath={chartData.criticalPath}
+              phases={chartData.phases}
+            />
+          )}
+
+          {/* Gantt Chart */}
+          <GanttChart
+            data={chartData}
+            isLoading={isLoading || updatePhaseMutation.isPending}
+            onPhaseClick={handlePhaseClick}
+            onMilestoneClick={handleMilestoneClick}
+            onPhaseDragEnd={handlePhaseDragEnd}
+            showBaseline={showBaseline}
+            showDependencies={showDependencies}
+            showMilestones={showMilestones}
+          />
+        </TabsContent>
+
+        <TabsContent value="wbs" className="mt-0">
+          <WorkBreakdownStructure
+            data={chartData}
+            onUpdatePhase={(phase) => {
+              updatePhaseMutation.mutate({
+                phaseId: phase.id,
+                updates: {
+                  phase_name: phase.name,
+                  planned_start_date: phase.startDate,
+                  planned_end_date: phase.endDate,
+                  progress_percentage: phase.progress
+                }
+              })
+            }}
+            onAddPhase={handleAddPhase}
+            onDeletePhase={handleDeletePhase}
+          />
+        </TabsContent>
+      </Tabs>
     </div>
   )
 }

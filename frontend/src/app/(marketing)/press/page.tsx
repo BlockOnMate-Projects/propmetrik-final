@@ -1,273 +1,343 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import Link from 'next/link';
-import { Calendar, ExternalLink, Award, Users } from 'lucide-react';
+import { publicationsApi, aiContentApi } from '@/lib/publications-api';
+import type { Publication } from '@/lib/publications-api';
+
+function formatDate(dateStr: string | null): string {
+  if (!dateStr) return '';
+  return new Date(dateStr).toLocaleDateString('en-GB', {
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+  });
+}
 
 export default function PressPage() {
-    const pressReleases = [
-        {
-            title: 'PROPMETRIK Raises $2M in Seed Funding to Expand Across West Africa',
-            date: 'January 10, 2026',
-            excerpt: 'Leading proptech platform secures funding from prominent African VCs to accelerate growth and product development.',
-            category: 'Funding'
-        },
-        {
-            title: 'PROPMETRIK Partners with Ghana Lands Commission for Digital Title Verification',
-            date: 'December 15, 2025',
-            excerpt: 'Strategic partnership aims to streamline property transactions and reduce land disputes through technology.',
-            category: 'Partnership'
-        },
-        {
-            title: 'PROPMETRIK Surpasses 5,000 Property Valuations Milestone',
-            date: 'November 28, 2025',
-            excerpt: 'Platform celebrates major milestone as adoption accelerates among banks, developers, and investors.',
-            category: 'Milestone'
-        },
-        {
-            title: 'PROPMETRIK Wins "Best Proptech Innovation" at Ghana Tech Awards',
-            date: 'October 20, 2025',
-            excerpt: 'Recognition highlights platform\'s impact on modernizing Ghana\'s real estate industry.',
-            category: 'Award'
-        },
-    ];
+  const [pressReleases, setPressReleases] = useState<Publication[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [quoteTopic, setQuoteTopic] = useState('');
+  const [generatedQuote, setGeneratedQuote] = useState('');
+  const [quoteLoading, setQuoteLoading] = useState(false);
 
-    const mediaKit = [
-        { name: 'Company Fact Sheet', format: 'PDF', size: '245 KB' },
-        { name: 'High-Res Logos', format: 'ZIP', size: '1.2 MB' },
-        { name: 'Leadership Photos', format: 'ZIP', size: '3.5 MB' },
-        { name: 'Brand Guidelines', format: 'PDF', size: '890 KB' },
-    ];
+  useEffect(() => {
+    publicationsApi
+      .getPublished({ product: 'press_release', limit: 20 })
+      .then((r) => setPressReleases(r.data || []))
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, []);
 
-    const coverage = [
-        {
-            outlet: 'Ghana Business News',
-            headline: 'How PROPMETRIK is Revolutionizing Real Estate Valuations',
-            date: 'January 2026',
-            link: '#'
-        },
-        {
-            outlet: 'TechCabal',
-            headline: 'Meet the Ghanaian Startup Bringing Transparency to Property Markets',
-            date: 'December 2025',
-            link: '#'
-        },
-        {
-            outlet: 'African Business Magazine',
-            headline: 'Proptech\'s Rise in West Africa: A Case Study',
-            date: 'November 2025',
-            link: '#'
-        },
-        {
-            outlet: 'Ventures Africa',
-            headline: 'Ghana\'s PROPMETRIK Secures Strategic Partnerships',
-            date: 'October 2025',
-            link: '#'
-        },
-    ];
+  const handleGenerateQuote = async () => {
+    if (!quoteTopic.trim()) return;
+    setQuoteLoading(true);
+    setGeneratedQuote('');
+    try {
+      const result = await aiContentApi.generateQuote({ topic: quoteTopic });
+      setGeneratedQuote(result.data?.text || result.text || '');
+    } catch {
+      setGeneratedQuote(
+        'Unable to generate quote at this time. Please try again.'
+      );
+    } finally {
+      setQuoteLoading(false);
+    }
+  };
 
-    return (
-        <main className="pt-32 pb-24 bg-zinc-950">
-            {/* Hero Section */}
-            <section className="pb-16">
-                <div className="container mx-auto px-4 md:px-6">
-                    <motion.div
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        className="max-w-3xl"
-                    >
-                        <h1 className="text-5xl md:text-7xl font-bold tracking-tight text-white mb-6">
-                            Press &{' '}
-                            <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary to-yellow-400">
-                                Media
-                            </span>
-                        </h1>
-                        <p className="text-xl text-zinc-400 leading-relaxed mb-8">
-                            Latest news, announcements, and media coverage of PROPMETRIK's mission to transform real estate in Ghana and beyond.
+  const mediaKit = [
+    { name: 'Company Fact Sheet', format: 'PDF', size: '245 KB' },
+    { name: 'High-Res Logos', format: 'ZIP', size: '1.2 MB' },
+    { name: 'Leadership Photos', format: 'ZIP', size: '3.5 MB' },
+    { name: 'Brand Guidelines', format: 'PDF', size: '890 KB' },
+  ];
+
+  return (
+    <main className="pt-32 pb-24 bg-zinc-950">
+      {/* Hero */}
+      <section className="pb-16">
+        <div className="container mx-auto px-4 md:px-6">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="max-w-3xl"
+          >
+            <div className="text-sm font-bold text-primary uppercase tracking-[0.2em] mb-4">
+              PRESS &amp; MEDIA
+            </div>
+            <h1 className="text-5xl md:text-7xl font-bold tracking-tight text-white mb-6">
+              Press{' '}
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary to-yellow-400">
+                Room
+              </span>
+            </h1>
+            <p className="text-xl text-zinc-400 leading-relaxed">
+              Official announcements, media resources, and analyst quotes from
+              PROPMETRIK Research — West Africa&apos;s leading real estate
+              intelligence platform.
+            </p>
+          </motion.div>
+        </div>
+      </section>
+
+      {/* Quick Links */}
+      <section className="border-y border-zinc-800 py-8">
+        <div className="container mx-auto px-4 md:px-6">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            {[
+              {
+                label: 'Press Releases',
+                count: pressReleases.length,
+                href: '#releases',
+              },
+              { label: 'Media Kit', count: null, href: '#media-kit' },
+              { label: 'Instant Quotes', count: null, href: '#quotes' },
+              { label: 'Contact Press', count: null, href: '#contact' },
+            ].map((item, i) => (
+              <motion.a
+                key={item.label}
+                href={item.href}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: i * 0.1 }}
+                className="bg-zinc-900 border border-zinc-800 rounded-lg p-4 hover:border-primary/50 transition-colors text-center"
+              >
+                <div className="text-white font-bold">{item.label}</div>
+                {item.count !== null && (
+                  <div className="text-sm text-zinc-500">
+                    {item.count} published
+                  </div>
+                )}
+              </motion.a>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Press Releases */}
+      <section id="releases" className="py-16">
+        <div className="container mx-auto px-4 md:px-6">
+          <h2 className="text-3xl font-bold text-white mb-8">
+            Press Releases
+          </h2>
+
+          {loading ? (
+            <div className="space-y-4">
+              {[...Array(4)].map((_, i) => (
+                <div
+                  key={i}
+                  className="bg-zinc-900 border border-zinc-800 rounded-lg p-6 animate-pulse"
+                >
+                  <div className="h-4 w-24 bg-zinc-800 rounded mb-3" />
+                  <div className="h-6 w-3/4 bg-zinc-800 rounded mb-2" />
+                  <div className="h-4 w-1/2 bg-zinc-800 rounded" />
+                </div>
+              ))}
+            </div>
+          ) : pressReleases.length === 0 ? (
+            <div className="text-center py-12 bg-zinc-900 border border-zinc-800 rounded-lg">
+              <div className="text-4xl mb-4">📰</div>
+              <p className="text-zinc-400">
+                Press releases will appear here once published.
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {pressReleases.map((pr, i) => (
+                <motion.div
+                  key={pr.id}
+                  initial={{ opacity: 0, y: 20 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ delay: i * 0.05 }}
+                >
+                  <Link href={`/insights/${pr.slug}`}>
+                    <div className="group bg-zinc-900 border border-zinc-800 rounded-lg p-6 hover:border-primary/50 transition-colors">
+                      <div className="text-sm text-zinc-500 mb-2">
+                        {formatDate(pr.published_at)}
+                      </div>
+                      <h3 className="text-xl font-bold text-white mb-2 group-hover:text-primary transition-colors">
+                        {pr.title}
+                      </h3>
+                      {pr.excerpt && (
+                        <p className="text-zinc-400 line-clamp-2">
+                          {pr.excerpt}
                         </p>
-                        <Link href="/contact">
-                            <motion.button
-                                whileHover={{ scale: 1.02 }}
-                                whileTap={{ scale: 0.98 }}
-                                className="px-6 py-3 bg-primary text-zinc-950 font-bold rounded hover:bg-primary/90 transition-colors"
-                            >
-                                Media Inquiries
-                            </motion.button>
-                        </Link>
-                    </motion.div>
-                </div>
-            </section>
-
-            {/* Press Releases */}
-            <section className="pb-16">
-                <div className="container mx-auto px-4 md:px-6">
-                    <h2 className="text-3xl font-bold text-white mb-8">Press Releases</h2>
-
-                    <div className="space-y-6">
-                        {pressReleases.map((release, index) => (
-                            <motion.article
-                                key={index}
-                                initial={{ opacity: 0, y: 20 }}
-                                whileInView={{ opacity: 1, y: 0 }}
-                                viewport={{ once: true }}
-                                transition={{ delay: index * 0.1 }}
-                                className="group bg-zinc-900 border border-zinc-800 rounded-lg p-6 md:p-8 hover:border-primary/50 transition-colors"
-                            >
-                                <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4 mb-4">
-                                    <div className="flex-1">
-                                        <div className="flex items-center gap-3 mb-3">
-                                            <span className="px-3 py-1 bg-primary/10 text-primary text-xs font-bold rounded">
-                                                {release.category}
-                                            </span>
-                                            <span className="text-sm text-zinc-500 flex items-center gap-1">
-                                                <Calendar className="w-4 h-4" />
-                                                {release.date}
-                                            </span>
-                                        </div>
-
-                                        <h3 className="text-2xl font-bold text-white mb-3 group-hover:text-primary transition-colors">
-                                            {release.title}
-                                        </h3>
-
-                                        <p className="text-zinc-400 mb-4">
-                                            {release.excerpt}
-                                        </p>
-                                    </div>
-
-                                    <Link href={`/press/${release.title.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`}>
-                                        <button className="flex items-center gap-2 px-4 py-2 bg-zinc-950 border border-zinc-700 text-white font-medium rounded hover:border-primary hover:text-primary transition-colors shrink-0">
-                                            Read Full Release
-                                            <ExternalLink className="w-4 h-4" />
-                                        </button>
-                                    </Link>
-                                </div>
-                            </motion.article>
-                        ))}
+                      )}
                     </div>
-                </div>
-            </section>
+                  </Link>
+                </motion.div>
+              ))}
+            </div>
+          )}
+        </div>
+      </section>
 
-            {/* Media Coverage */}
-            <section className="py-16 border-y border-zinc-800">
-                <div className="container mx-auto px-4 md:px-6">
-                    <h2 className="text-3xl font-bold text-white mb-8">In the News</h2>
-
-                    <div className="grid md:grid-cols-2 gap-6">
-                        {coverage.map((item, index) => (
-                            <motion.div
-                                key={index}
-                                initial={{ opacity: 0, y: 20 }}
-                                whileInView={{ opacity: 1, y: 0 }}
-                                viewport={{ once: true }}
-                                transition={{ delay: index * 0.1 }}
-                                className="group bg-zinc-900 border border-zinc-800 rounded-lg p-6 hover:border-primary/50 transition-colors"
-                            >
-                                <div className="text-sm text-zinc-500 mb-2">{item.outlet} · {item.date}</div>
-                                <h3 className="text-xl font-bold text-white mb-4 group-hover:text-primary transition-colors">
-                                    {item.headline}
-                                </h3>
-                                <a href={item.link} target="_blank" rel="noopener noreferrer">
-                                    <button className="flex items-center gap-2 text-primary text-sm font-bold hover:gap-4 transition-all">
-                                        Read Article <ExternalLink className="w-4 h-4" />
-                                    </button>
-                                </a>
-                            </motion.div>
-                        ))}
+      {/* Media Kit */}
+      <section id="media-kit" className="py-16 border-t border-zinc-800">
+        <div className="container mx-auto px-4 md:px-6">
+          <div className="grid lg:grid-cols-2 gap-12">
+            <div>
+              <h2 className="text-3xl font-bold text-white mb-6">Media Kit</h2>
+              <p className="text-zinc-400 mb-8">
+                Download our media kit for logos, brand assets, company
+                information, and leadership photos.
+              </p>
+              <div className="space-y-4">
+                {mediaKit.map((item, index) => (
+                  <motion.div
+                    key={index}
+                    initial={{ opacity: 0, x: -20 }}
+                    whileInView={{ opacity: 1, x: 0 }}
+                    viewport={{ once: true }}
+                    transition={{ delay: index * 0.1 }}
+                    className="flex items-center justify-between p-4 bg-zinc-900 border border-zinc-800 rounded-lg hover:border-primary/50 transition-colors"
+                  >
+                    <div>
+                      <div className="font-bold text-white mb-1">
+                        {item.name}
+                      </div>
+                      <div className="text-sm text-zinc-500">
+                        {item.format} · {item.size}
+                      </div>
                     </div>
-                </div>
-            </section>
+                    <button className="px-4 py-2 bg-primary text-zinc-950 font-bold rounded hover:bg-primary/90 transition-colors">
+                      Download
+                    </button>
+                  </motion.div>
+                ))}
+              </div>
+            </div>
 
-            {/* Media Kit */}
-            <section className="py-16">
-                <div className="container mx-auto px-4 md:px-6">
-                    <div className="grid lg:grid-cols-2 gap-12">
-                        <div>
-                            <h2 className="text-3xl font-bold text-white mb-6">Media Kit</h2>
-                            <p className="text-zinc-400 mb-8">
-                                Download our media kit for logos, brand assets, company information, and leadership photos.
-                            </p>
+            <div>
+              <h2 className="text-3xl font-bold text-white mb-6">
+                Data for Press
+              </h2>
+              <div className="grid gap-4">
+                {[
+                  {
+                    title: 'Embeddable Widgets',
+                    desc: 'Embed live PropMetrik index charts directly into your articles with a single code snippet.',
+                  },
+                  {
+                    title: 'Pre-formatted Charts',
+                    desc: 'Publication-ready PNG/SVG charts of CCI, GHAI, GHPI indices with PropMetrik attribution.',
+                  },
+                  {
+                    title: 'Market Statistics',
+                    desc: 'Latest quarterly market statistics, price movements, and construction cost data.',
+                  },
+                ].map((item, i) => (
+                  <motion.div
+                    key={item.title}
+                    initial={{ opacity: 0, y: 10 }}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    viewport={{ once: true }}
+                    transition={{ delay: i * 0.1 }}
+                    className="bg-zinc-900 border border-zinc-800 rounded-lg p-5"
+                  >
+                    <h3 className="font-bold text-white mb-1">{item.title}</h3>
+                    <p className="text-sm text-zinc-400">{item.desc}</p>
+                  </motion.div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
 
-                            <div className="space-y-4">
-                                {mediaKit.map((item, index) => (
-                                    <motion.div
-                                        key={index}
-                                        initial={{ opacity: 0, x: -20 }}
-                                        whileInView={{ opacity: 1, x: 0 }}
-                                        viewport={{ once: true }}
-                                        transition={{ delay: index * 0.1 }}
-                                        className="flex items-center justify-between p-4 bg-zinc-900 border border-zinc-800 rounded-lg hover:border-primary/50 transition-colors"
-                                    >
-                                        <div>
-                                            <div className="font-bold text-white mb-1">{item.name}</div>
-                                            <div className="text-sm text-zinc-500">{item.format} · {item.size}</div>
-                                        </div>
-                                        <button className="px-4 py-2 bg-primary text-zinc-950 font-bold rounded hover:bg-primary/90 transition-colors">
-                                            Download
-                                        </button>
-                                    </motion.div>
-                                ))}
-                            </div>
-                        </div>
+      {/* Instant Quote Generator */}
+      <section id="quotes" className="py-16 border-t border-zinc-800">
+        <div className="container mx-auto px-4 md:px-6">
+          <div className="max-w-2xl">
+            <h2 className="text-3xl font-bold text-white mb-4">
+              Instant Market Quotes
+            </h2>
+            <p className="text-zinc-400 mb-8">
+              Need a data-driven market quote for your article? Our AI generates
+              publication-ready quotes based on the latest PropMetrik data.
+              Attribution: PROPMETRIK Research.
+            </p>
 
-                        <div>
-                            <h2 className="text-3xl font-bold text-white mb-6">Contact Press Team</h2>
-                            <div className="bg-zinc-900 border border-zinc-800 rounded-lg p-8">
-                                <div className="space-y-6">
-                                    <div>
-                                        <div className="text-sm text-zinc-500 mb-1">Media Inquiries</div>
-                                        <div className="text-white font-medium">press@propmetrik.com</div>
-                                    </div>
-                                    <div>
-                                        <div className="text-sm text-zinc-500 mb-1">General Information</div>
-                                        <div className="text-white font-medium">info@propmetrik.com</div>
-                                    </div>
-                                    <div>
-                                        <div className="text-sm text-zinc-500 mb-1">Office Address</div>
-                                        <div className="text-white font-medium">PROPMETRIK<br />Accra, Ghana</div>
-                                    </div>
-                                </div>
+            <div className="space-y-4">
+              <input
+                type="text"
+                value={quoteTopic}
+                onChange={(e) => setQuoteTopic(e.target.value)}
+                placeholder='e.g., "Current state of Accra residential market"'
+                className="w-full px-4 py-3 bg-zinc-900 border border-zinc-800 rounded-lg text-white placeholder-zinc-500 focus:outline-none focus:border-primary transition-colors"
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') handleGenerateQuote();
+                }}
+              />
+              <motion.button
+                onClick={handleGenerateQuote}
+                disabled={quoteLoading || !quoteTopic.trim()}
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                className="px-6 py-3 bg-gradient-to-r from-primary to-yellow-400 text-zinc-950 font-bold rounded-lg hover:shadow-lg hover:shadow-primary/30 transition-shadow disabled:opacity-50"
+              >
+                {quoteLoading ? 'Generating...' : 'Generate Quote'}
+              </motion.button>
 
-                                <div className="mt-8 pt-8 border-t border-zinc-800">
-                                    <div className="text-sm text-zinc-400 mb-4">
-                                        For urgent media requests, please contact us directly via email. We typically respond within 24 hours.
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </section>
+              {generatedQuote && (
+                <motion.div
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="bg-zinc-900 border border-zinc-800 rounded-lg p-6 mt-4"
+                >
+                  <blockquote className="text-zinc-300 italic leading-relaxed mb-4">
+                    &ldquo;{generatedQuote}&rdquo;
+                  </blockquote>
+                  <div className="text-sm text-zinc-500">
+                    — PROPMETRIK Research,{' '}
+                    {new Date().toLocaleDateString('en-GB', {
+                      day: 'numeric',
+                      month: 'long',
+                      year: 'numeric',
+                    })}
+                  </div>
+                  <div className="text-xs text-zinc-600 mt-2">
+                    Attribution: PROPMETRIK Ghana Real Estate Intelligence
+                  </div>
+                </motion.div>
+              )}
+            </div>
+          </div>
+        </div>
+      </section>
 
-            {/* Awards & Recognition */}
-            <section className="py-16 bg-zinc-900/50">
-                <div className="container mx-auto px-4 md:px-6">
-                    <div className="text-center mb-12">
-                        <h2 className="text-3xl font-bold text-white mb-4">Awards & Recognition</h2>
-                        <p className="text-zinc-400">Celebrating our commitment to innovation and excellence</p>
-                    </div>
-
-                    <div className="grid md:grid-cols-3 gap-8 max-w-4xl mx-auto">
-                        {[
-                            { name: 'Best Proptech Innovation', org: 'Ghana Tech Awards 2025' },
-                            { name: 'Top 10 Startups to Watch', org: 'African Business Magazine 2025' },
-                            { name: 'Innovation in Real Estate', org: 'West Africa Proptech Summit 2025' },
-                        ].map((award, index) => (
-                            <motion.div
-                                key={index}
-                                initial={{ opacity: 0, y: 20 }}
-                                whileInView={{ opacity: 1, y: 0 }}
-                                viewport={{ once: true }}
-                                transition={{ delay: index * 0.1 }}
-                                className="text-center p-6 bg-zinc-900 border border-zinc-800 rounded-lg"
-                            >
-                                <Award className="w-12 h-12 text-primary mx-auto mb-4" />
-                                <div className="font-bold text-white mb-2">{award.name}</div>
-                                <div className="text-sm text-zinc-400">{award.org}</div>
-                            </motion.div>
-                        ))}
-                    </div>
-                </div>
-            </section>
-        </main>
-    );
+      {/* Contact */}
+      <section id="contact" className="py-16 border-t border-zinc-800">
+        <div className="container mx-auto px-4 md:px-6">
+          <div className="max-w-2xl">
+            <h2 className="text-3xl font-bold text-white mb-4">
+              Press Contact
+            </h2>
+            <p className="text-zinc-400 mb-8">
+              For media inquiries, interview requests, or analyst commentary,
+              please contact our communications team.
+            </p>
+            <div className="bg-zinc-900 border border-zinc-800 rounded-lg p-6">
+              <div className="space-y-3 text-zinc-300">
+                <p>
+                  <span className="text-zinc-500">Email:</span>{' '}
+                  press@propmetrik.com
+                </p>
+                <p>
+                  <span className="text-zinc-500">Phone:</span> +233 XX XXX
+                  XXXX
+                </p>
+                <p>
+                  <span className="text-zinc-500">Response Time:</span> Within
+                  24 hours
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+  );
 }

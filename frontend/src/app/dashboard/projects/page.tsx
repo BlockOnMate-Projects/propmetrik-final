@@ -39,16 +39,16 @@ import { formatCurrency } from '@/lib/utils'
 // =====================================================
 // STATUS BADGE COMPONENT
 // =====================================================
-const statusColors: Record<ProjectStatus, { bg: string; text: string; label: string }> = {
-  planning: { bg: 'bg-blue-900/50', text: 'text-blue-400', label: 'Planning' },
-  pre_sales: { bg: 'bg-purple-900/50', text: 'text-purple-400', label: 'Pre-Sales' },
-  under_construction: { bg: 'bg-amber-900/50', text: 'text-amber-400', label: 'Under Construction' },
-  nearing_completion: { bg: 'bg-orange-900/50', text: 'text-orange-400', label: 'Near Completion' },
-  completed: { bg: 'bg-green-900/50', text: 'text-green-400', label: 'Completed' },
-  sold_out: { bg: 'bg-emerald-900/50', text: 'text-emerald-400', label: 'Sold Out' },
-  on_hold: { bg: 'bg-zinc-700/50', text: 'text-zinc-400', label: 'On Hold' },
-  cancelled: { bg: 'bg-red-900/50', text: 'text-red-400', label: 'Cancelled' },
-  archived: { bg: 'bg-zinc-800/50', text: 'text-zinc-500', label: 'Archived' },
+const statusColors: Record<ProjectStatus, { bg: string; border: string; text: string; label: string }> = {
+  planning: { bg: 'bg-blue-500/10', border: 'border-blue-500/20', text: 'text-blue-400', label: 'Planning' },
+  pre_sales: { bg: 'bg-purple-500/10', border: 'border-purple-500/20', text: 'text-purple-400', label: 'Pre-Sales' },
+  under_construction: { bg: 'bg-amber-500/10', border: 'border-amber-500/20', text: 'text-amber-400', label: 'Under Construction' },
+  nearing_completion: { bg: 'bg-orange-500/10', border: 'border-orange-500/20', text: 'text-orange-400', label: 'Near Completion' },
+  completed: { bg: 'bg-emerald-500/10', border: 'border-emerald-500/20', text: 'text-emerald-500', label: 'Completed' },
+  sold_out: { bg: 'bg-emerald-500/10', border: 'border-emerald-500/20', text: 'text-emerald-500', label: 'Sold Out' },
+  on_hold: { bg: 'bg-zinc-800/50', border: 'border-zinc-700/50', text: 'text-zinc-400', label: 'On Hold' },
+  cancelled: { bg: 'bg-red-500/10', border: 'border-red-500/20', text: 'text-red-500', label: 'Cancelled' },
+  archived: { bg: 'bg-zinc-800/80', border: 'border-zinc-700/80', text: 'text-zinc-500', label: 'Archived' },
 }
 
 const typeIcons: Record<ProjectType, React.ElementType> = {
@@ -73,14 +73,14 @@ function StatusBadge({ status }: { status: ProjectStatus }) {
 // =====================================================
 // PANEL COMPONENT
 // =====================================================
-function Panel({ title, children, className, action }: { 
-  title: string; 
-  children: React.ReactNode; 
+function Panel({ title, children, className, action }: {
+  title: string;
+  children: React.ReactNode;
   className?: string;
   action?: React.ReactNode;
 }) {
   return (
-    <div className={cn('border border-zinc-800 bg-zinc-900/50', className)}>
+    <div className={cn('border border-zinc-800/50 bg-zinc-950/50 rounded-xl overflow-hidden backdrop-blur-sm shadow-xl', className)}>
       <div className="flex items-center justify-between px-3 py-1.5 bg-zinc-800/50 border-b border-zinc-800">
         <span className="font-mono text-[10px] text-amber-500 tracking-wider">{title}</span>
         {action}
@@ -101,7 +101,7 @@ function StatCard({ label, value, subValue, icon: Icon, trend }: {
   trend?: 'up' | 'down' | 'neutral';
 }) {
   return (
-    <div className="border border-zinc-800 bg-zinc-900/50 p-3">
+    <div className="border border-zinc-800/50 bg-zinc-950/50 p-4 rounded-xl shadow-lg backdrop-blur-sm hover:border-zinc-700 transition-colors">
       <div className="flex items-center justify-between mb-2">
         <span className="font-mono text-[10px] text-zinc-500 uppercase tracking-wider">{label}</span>
         <Icon className="h-4 w-4 text-zinc-600" />
@@ -126,18 +126,18 @@ function StatCard({ label, value, subValue, icon: Icon, trend }: {
 // =====================================================
 function ProjectCard({ project }: { project: DevelopmentProject }) {
   const TypeIcon = typeIcons[project.project_type] || Building2
-  const salesProgress = project.total_units 
+  const salesProgress = project.total_units
     ? Math.round(((project.units_sold || 0) / project.total_units) * 100)
     : 0
 
   return (
     <Link href={`/dashboard/projects/${project.id}`}>
-      <div className="bg-zinc-800/50 border border-zinc-700 hover:border-amber-500/50 transition-colors cursor-pointer group h-full">
+      <div className="bg-zinc-950/50 border border-zinc-800/50 rounded-xl hover:border-blue-500/50 hover:shadow-2xl transition-all duration-300 cursor-pointer group h-full overflow-hidden flex flex-col">
         {/* Hero Image or Placeholder */}
-        <div className="h-32 bg-zinc-800 relative overflow-hidden">
+        <div className="h-40 bg-zinc-900 relative overflow-hidden shrink-0">
           {project.hero_image_url ? (
-            <img 
-              src={project.hero_image_url} 
+            <img
+              src={project.hero_image_url}
               alt={project.project_name}
               className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
             />
@@ -149,7 +149,7 @@ function ProjectCard({ project }: { project: DevelopmentProject }) {
           <div className="absolute top-2 left-2">
             <StatusBadge status={project.status} />
           </div>
-          <div className="absolute top-2 right-2 font-mono text-[10px] text-amber-500 bg-zinc-900/80 px-1.5 py-0.5">
+          <div className="absolute top-3 right-3 font-mono font-medium tracking-widest text-[10px] text-zinc-300 bg-zinc-950/80 px-2.5 py-1 rounded-md border border-zinc-800/80 backdrop-blur-md">
             {project.project_number}
           </div>
         </div>
@@ -157,7 +157,7 @@ function ProjectCard({ project }: { project: DevelopmentProject }) {
         <div className="p-3">
           {/* Title & Type */}
           <div className="flex items-start justify-between gap-2 mb-2">
-            <h3 className="font-mono text-sm text-white group-hover:text-amber-500 transition-colors line-clamp-1">
+            <h3 className="font-sans font-semibold text-base text-white group-hover:text-blue-400 transition-colors line-clamp-1">
               {project.project_name}
             </h3>
             <TypeIcon className="h-4 w-4 text-zinc-500 flex-shrink-0" />
@@ -182,7 +182,7 @@ function ProjectCard({ project }: { project: DevelopmentProject }) {
                 <span className="font-mono text-[9px] text-zinc-400">{project.construction_progress || 0}%</span>
               </div>
               <div className="h-1.5 bg-zinc-800 rounded-full overflow-hidden">
-                <div 
+                <div
                   className="h-full bg-amber-500 transition-all duration-300"
                   style={{ width: `${project.construction_progress || 0}%` }}
                 />
@@ -199,7 +199,7 @@ function ProjectCard({ project }: { project: DevelopmentProject }) {
                   </span>
                 </div>
                 <div className="h-1.5 bg-zinc-800 rounded-full overflow-hidden">
-                  <div 
+                  <div
                     className="h-full bg-green-500 transition-all duration-300"
                     style={{ width: `${salesProgress}%` }}
                   />
@@ -209,10 +209,10 @@ function ProjectCard({ project }: { project: DevelopmentProject }) {
           </div>
 
           {/* Footer Stats */}
-          <div className="flex items-center justify-between pt-2 border-t border-zinc-700/50">
+          <div className="flex items-center justify-between pt-3 mt-auto border-t border-zinc-800/50">
             <div>
               {project.total_budget && (
-                <span className="font-mono text-xs text-green-400">
+                <span className="font-mono font-semibold text-sm text-emerald-400 tracking-tight">
                   {formatCurrency(project.total_budget, project.currency || 'GHS')}
                 </span>
               )}
@@ -235,52 +235,52 @@ function ProjectCard({ project }: { project: DevelopmentProject }) {
 // =====================================================
 function ProjectTableRow({ project }: { project: DevelopmentProject }) {
   const TypeIcon = typeIcons[project.project_type] || Building2
-  const salesProgress = project.total_units 
+  const salesProgress = project.total_units
     ? Math.round(((project.units_sold || 0) / project.total_units) * 100)
     : 0
 
   return (
-    <tr 
-      className="border-b border-zinc-800/50 hover:bg-zinc-800/30 cursor-pointer"
+    <tr
+      className="border-b border-zinc-800/50 hover:bg-zinc-800/30 transition-colors cursor-pointer group"
       onClick={() => window.location.href = `/dashboard/projects/${project.id}`}
     >
-      <td className="py-3 text-amber-500 font-mono text-xs">{project.project_number}</td>
-      <td className="py-3">
+      <td className="py-4 px-4 text-emerald-500 font-mono tracking-wider text-xs">{project.project_number}</td>
+      <td className="py-4 px-4">
         <div className="flex items-center gap-2">
-          <TypeIcon className="h-4 w-4 text-zinc-500" />
-          <span className="font-mono text-xs text-white">{project.project_name}</span>
+          <TypeIcon className="h-4 w-4 text-zinc-500 group-hover:text-blue-400 transition-colors" />
+          <span className="font-sans font-medium text-sm text-white group-hover:text-blue-400 transition-colors">{project.project_name}</span>
         </div>
       </td>
-      <td className="py-3 font-mono text-[10px] text-zinc-400">
+      <td className="py-4 px-4 font-mono text-[10px] uppercase tracking-wider text-zinc-500">
         {[project.city, project.region].filter(Boolean).join(', ') || '—'}
       </td>
-      <td className="py-3">
+      <td className="py-4 px-4">
         <StatusBadge status={project.status} />
       </td>
-      <td className="py-3">
+      <td className="py-4 px-4">
         <div className="flex items-center gap-2">
           <div className="w-16 h-1.5 bg-zinc-800 rounded-full overflow-hidden">
-            <div 
-              className="h-full bg-amber-500"
+            <div
+              className="h-full bg-blue-500 rounded-full"
               style={{ width: `${project.construction_progress || 0}%` }}
             />
           </div>
           <span className="font-mono text-[10px] text-zinc-400">{project.construction_progress || 0}%</span>
         </div>
       </td>
-      <td className="py-3">
+      <td className="py-4 px-4">
         {project.total_units ? (
           <span className="font-mono text-xs text-zinc-300">
             {project.units_sold || 0}/{project.total_units}
             <span className="text-zinc-500 ml-1">({salesProgress}%)</span>
           </span>
-        ) : '—'}
+        ) : <span className="text-zinc-600">—</span>}
       </td>
-      <td className="py-3 text-right font-mono text-xs text-green-400">
-        {project.total_budget ? formatCurrency(project.total_budget, project.currency || 'GHS') : '—'}
+      <td className="py-4 px-4 text-right font-mono font-medium text-xs text-emerald-400">
+        {project.total_budget ? formatCurrency(project.total_budget, project.currency || 'GHS') : <span className="text-zinc-600">—</span>}
       </td>
-      <td className="py-3 text-right font-mono text-[10px] text-zinc-500">
-        {project.planned_end_date 
+      <td className="py-4 px-4 text-right font-mono text-[10px] uppercase tracking-wider text-zinc-500">
+        {project.planned_end_date
           ? new Date(project.planned_end_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
           : '—'
         }
@@ -343,17 +343,17 @@ export default function ProjectsPage() {
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-4">
           <div>
-            <h1 className="font-mono text-xl tracking-tight">DEVELOPMENT PROJECTS</h1>
-            <p className="font-mono text-[10px] text-zinc-500 mt-1">
+            <h1 className="font-sans text-2xl font-semibold tracking-tight text-white mb-1">Projects</h1>
+            <p className="font-sans text-sm text-zinc-400 font-medium tracking-wide">
               Manage development projects, track construction progress, and monitor sales
             </p>
           </div>
-          <RealtimeStatus showLabel className="hidden sm:flex" />
+          <RealtimeStatus showLabel className="hidden sm:flex bg-zinc-900/50 border border-zinc-800 rounded-full px-3 py-1" />
         </div>
         <Link href="/dashboard/projects/create">
-          <Button className="bg-amber-600 hover:bg-amber-700 text-black font-mono text-xs">
+          <Button className="bg-blue-600 hover:bg-blue-700 text-white font-sans font-medium text-sm shadow-lg shadow-blue-500/20 transition-all">
             <Plus className="h-4 w-4 mr-2" />
-            NEW PROJECT
+            New Project
           </Button>
         </Link>
       </div>
@@ -361,36 +361,36 @@ export default function ProjectsPage() {
       {/* Stats Row */}
       {stats && (
         <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3 mb-6">
-          <StatCard 
+          <StatCard
             label="Total Projects"
             value={stats.total_projects}
             icon={Building2}
           />
-          <StatCard 
+          <StatCard
             label="Under Construction"
             value={stats.by_status?.under_construction || 0}
             icon={HardHat}
           />
-          <StatCard 
+          <StatCard
             label="Total Units"
             value={stats.total_units}
             subValue={`${stats.units_sold} sold`}
             icon={Home}
             trend="up"
           />
-          <StatCard 
+          <StatCard
             label="Total Budget"
             value={formatCurrency(stats.total_budget, 'GHS')}
             icon={TrendingUp}
           />
-          <StatCard 
+          <StatCard
             label="Total Spent"
             value={formatCurrency(stats.total_spent, 'GHS')}
             subValue={`${Math.round((stats.total_spent / stats.total_budget) * 100)}% utilized`}
             icon={TrendingUp}
             trend="neutral"
           />
-          <StatCard 
+          <StatCard
             label="Avg Progress"
             value={`${Math.round(stats.avg_progress)}%`}
             icon={TrendingUp}
@@ -444,8 +444,8 @@ export default function ProjectsPage() {
           <button
             onClick={() => setViewMode('grid')}
             className={cn(
-              'p-2 transition-colors',
-              viewMode === 'grid' ? 'bg-zinc-800 text-amber-500' : 'text-zinc-500 hover:text-zinc-300'
+              'p-2 transition-colors rounded-l-md',
+              viewMode === 'grid' ? 'bg-zinc-800 text-white' : 'text-zinc-500 hover:text-zinc-300'
             )}
           >
             <LayoutGrid className="h-4 w-4" />
@@ -453,8 +453,8 @@ export default function ProjectsPage() {
           <button
             onClick={() => setViewMode('list')}
             className={cn(
-              'p-2 transition-colors',
-              viewMode === 'list' ? 'bg-zinc-800 text-amber-500' : 'text-zinc-500 hover:text-zinc-300'
+              'p-2 transition-colors rounded-r-md',
+              viewMode === 'list' ? 'bg-zinc-800 text-white' : 'text-zinc-500 hover:text-zinc-300'
             )}
           >
             <List className="h-4 w-4" />
@@ -478,20 +478,22 @@ export default function ProjectsPage() {
 
       {/* Empty State */}
       {!isLoading && !error && filteredProjects.length === 0 && (
-        <div className="border border-zinc-800 bg-zinc-900/50 p-12 text-center">
-          <Building2 className="h-12 w-12 text-zinc-700 mx-auto mb-4" />
-          <h3 className="font-mono text-sm text-white mb-2">No projects found</h3>
-          <p className="font-mono text-[10px] text-zinc-500 mb-4">
-            {search || statusFilter !== 'all' || typeFilter !== 'all' 
-              ? 'Try adjusting your filters'
-              : 'Create your first development project to get started'
+        <div className="border border-zinc-800/50 bg-zinc-950/50 rounded-xl p-16 text-center max-w-2xl mx-auto mt-12 backdrop-blur-sm">
+          <div className="w-16 h-16 bg-zinc-900 rounded-full flex items-center justify-center mx-auto mb-6 border border-zinc-800 shadow-inner">
+            <Building2 className="h-8 w-8 text-zinc-600" />
+          </div>
+          <h3 className="font-sans text-lg font-medium text-white mb-2">No projects found</h3>
+          <p className="font-sans text-sm text-zinc-500 mb-8 max-w-md mx-auto">
+            {search || statusFilter !== 'all' || typeFilter !== 'all'
+              ? 'Try adjusting your filters or search terms to see more results.'
+              : 'Create your first development project to start tracking progress, budgets, and sales.'
             }
           </p>
           {!search && statusFilter === 'all' && typeFilter === 'all' && (
             <Link href="/dashboard/projects/create">
-              <Button className="bg-amber-600 hover:bg-amber-700 text-black font-mono text-xs">
+              <Button className="bg-blue-600 hover:bg-blue-700 text-white font-sans font-medium text-sm shadow-lg shadow-blue-500/20">
                 <Plus className="h-4 w-4 mr-2" />
-                CREATE PROJECT
+                Create New Project
               </Button>
             </Link>
           )}
@@ -509,19 +511,19 @@ export default function ProjectsPage() {
 
       {/* List View */}
       {!isLoading && !error && viewMode === 'list' && filteredProjects.length > 0 && (
-        <Panel title="PROJECTS">
+        <Panel title="PROJECTS" className="border-zinc-800/50 rounded-xl overflow-hidden bg-zinc-950/50 backdrop-blur-sm shadow-xl">
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead>
-                <tr className="text-[10px] font-mono text-zinc-500 border-b border-zinc-800">
-                  <th className="text-left pb-2 w-28">PROJECT #</th>
-                  <th className="text-left pb-2">NAME</th>
-                  <th className="text-left pb-2 w-40">LOCATION</th>
-                  <th className="text-left pb-2 w-32">STATUS</th>
-                  <th className="text-left pb-2 w-32">PROGRESS</th>
-                  <th className="text-left pb-2 w-28">UNITS</th>
-                  <th className="text-right pb-2 w-32">BUDGET</th>
-                  <th className="text-right pb-2 w-28">COMPLETION</th>
+                <tr className="text-[11px] font-sans font-medium uppercase tracking-widest text-zinc-500 border-b border-zinc-800/50 bg-zinc-900/30">
+                  <th className="text-left py-3 px-4 w-28">Project #</th>
+                  <th className="text-left py-3 px-4">Name</th>
+                  <th className="text-left py-3 px-4 w-40">Location</th>
+                  <th className="text-left py-3 px-4 w-32">Status</th>
+                  <th className="text-left py-3 px-4 w-32">Progress</th>
+                  <th className="text-left py-3 px-4 w-28">Units</th>
+                  <th className="text-right py-3 px-4 w-32">Budget</th>
+                  <th className="text-right py-3 px-4 w-28">Completion</th>
                 </tr>
               </thead>
               <tbody>

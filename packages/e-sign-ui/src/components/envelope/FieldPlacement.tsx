@@ -407,7 +407,7 @@ export default function FieldPlacement({
   // Get saved signature from localStorage
   const getSavedSignature = (): SignatureData | null => {
     try {
-      const saved = localStorage.getItem('cedyn_esign_signature');
+      const saved = localStorage.getItem('propmetrik_esign_signature');
       return saved ? JSON.parse(saved) : null;
     } catch {
       return null;
@@ -939,7 +939,7 @@ function SignatureModal({
 
   // Load saved signature from localStorage on mount
   useEffect(() => {
-    const saved = localStorage.getItem('cedyn_esign_signature');
+    const saved = localStorage.getItem('propmetrik_esign_signature');
     if (saved) {
       try {
         setSavedSignature(JSON.parse(saved));
@@ -960,7 +960,7 @@ function SignatureModal({
 
   // Save signature to localStorage
   const saveSignature = (signature: SignatureData) => {
-    localStorage.setItem('cedyn_esign_signature', JSON.stringify(signature));
+    localStorage.setItem('propmetrik_esign_signature', JSON.stringify(signature));
     setSavedSignature(signature);
   };
 
@@ -1117,7 +1117,7 @@ function SignatureModal({
               <button 
                 className="clear-saved-btn"
                 onClick={() => {
-                  localStorage.removeItem('cedyn_esign_signature');
+                  localStorage.removeItem('propmetrik_esign_signature');
                   setSavedSignature(null);
                   setActiveTab('type');
                 }}

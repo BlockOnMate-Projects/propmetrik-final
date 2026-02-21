@@ -48,6 +48,7 @@ import {
   PopoverTrigger,
 } from '@/components/ui/popover'
 import { Checkbox } from '@/components/ui/checkbox'
+import type { DevelopmentProject, ProjectSummary, ProjectStatus } from '@/types/projects'
 import { Skeleton } from '@/components/ui/skeleton'
 import { format } from 'date-fns'
 import { fetchApi } from '@/lib/api'
@@ -94,14 +95,14 @@ interface FilterState {
 // =====================================================
 // CONSTANTS
 // =====================================================
-const STATUS_CONFIG: Record<string, { label: string; color: string }> = {
-  draft: { label: 'Draft', color: 'bg-zinc-500' },
-  pending: { label: 'Pending', color: 'bg-yellow-500' },
-  active: { label: 'Active', color: 'bg-blue-500' },
-  in_progress: { label: 'In Progress', color: 'bg-blue-500' },
-  on_hold: { label: 'On Hold', color: 'bg-orange-500' },
-  completed: { label: 'Completed', color: 'bg-green-500' },
-  cancelled: { label: 'Cancelled', color: 'bg-red-500' },
+const STATUS_CONFIG: Record<string, { label: string; color: string; border: string }> = {
+  draft: { label: 'Draft', color: 'bg-zinc-800 text-zinc-400', border: 'border-zinc-700' },
+  pending: { label: 'Pending', color: 'bg-amber-500/10 text-amber-500', border: 'border-amber-500/20' },
+  active: { label: 'Active', color: 'bg-blue-500/10 text-blue-400', border: 'border-blue-500/20' },
+  in_progress: { label: 'In Progress', color: 'bg-blue-500/10 text-blue-400', border: 'border-blue-500/20' },
+  on_hold: { label: 'On Hold', color: 'bg-orange-500/10 text-orange-400', border: 'border-orange-500/20' },
+  completed: { label: 'Completed', color: 'bg-emerald-500/10 text-emerald-500', border: 'border-emerald-500/20' },
+  cancelled: { label: 'Cancelled', color: 'bg-red-500/10 text-red-500', border: 'border-red-500/20' },
 }
 
 const PROPERTY_TYPES = [
@@ -143,7 +144,7 @@ function FilterPanel({
 }) {
   const hasActiveFilters =
     filters.status.length > 0 ||
-    filters.propertyType.length > 0 ||
+    filters.propertyType?.length > 0 ||
     filters.region.length > 0 ||
     filters.budgetMin !== undefined ||
     filters.budgetMax !== undefined
@@ -167,7 +168,7 @@ function FilterPanel({
           Filters
           {hasActiveFilters && (
             <Badge className="ml-1 h-4 w-4 p-0 flex items-center justify-center bg-amber-500 text-black text-[10px]">
-              {filters.status.length + filters.propertyType.length + filters.region.length}
+              {(filters.status?.length || 0) + (filters.propertyType?.length || 0) + (filters.region?.length || 0)}
             </Badge>
           )}
         </Button>
@@ -182,10 +183,10 @@ function FilterPanel({
                 <Badge
                   key={key}
                   className={cn(
-                    "cursor-pointer transition-all",
-                    filters.status.includes(key)
-                      ? `${config.color} text-white`
-                      : "bg-zinc-800 text-zinc-400 hover:bg-zinc-700"
+                    "cursor-pointer transition-all border font-medium px-2 py-0.5",
+                    (filters.status || []).includes(key as ProjectStatus)
+                      ? `${config.color} ${config.border}`
+                      : "bg-zinc-800 text-zinc-400 border-zinc-700 hover:bg-zinc-700 hover:border-zinc-600"
                   )}
                   onClick={() => toggleArrayFilter('status', key)}
                 >
@@ -203,10 +204,10 @@ function FilterPanel({
                 <Badge
                   key={type}
                   className={cn(
-                    "cursor-pointer transition-all capitalize",
-                    filters.propertyType.includes(type)
-                      ? "bg-blue-500 text-white"
-                      : "bg-zinc-800 text-zinc-400 hover:bg-zinc-700"
+                    "cursor-pointer transition-all",
+                    (filters.propertyType || []).includes(type)
+                      ? "bg-amber-500/10 text-amber-500 border-amber-500/20"
+                      : "bg-zinc-800 text-zinc-400 border-zinc-700 hover:bg-zinc-700"
                   )}
                   onClick={() => toggleArrayFilter('propertyType', type)}
                 >
@@ -303,28 +304,28 @@ function ProjectRow({
     : 0
 
   return (
-    <tr className="border-b border-zinc-800 hover:bg-zinc-800/50 transition-colors">
+    <tr className="border-b border-zinc-800/50 hover:bg-zinc-800/50 transition-all cursor-pointer group">
       {/* Project Info */}
-      <td className="py-3 px-4">
+      <td className="py-4 px-4">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded bg-zinc-700 overflow-hidden shrink-0">
+          <div className="w-10 h-10 rounded-lg bg-zinc-800/50 overflow-hidden shrink-0 border border-zinc-700 group-hover:border-zinc-500 transition-colors">
             {project.hero_image_url ? (
               <img
                 src={project.hero_image_url}
                 alt={project.name}
-                className="w-full h-full object-cover"
+                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
               />
             ) : (
               <div className="w-full h-full flex items-center justify-center">
-                <Building2 className="h-5 w-5 text-zinc-500" />
+                <Building2 className="h-4 w-4 text-zinc-500" />
               </div>
             )}
           </div>
           <div>
-            <span className="font-mono text-sm text-zinc-100 block">
+            <span className="font-sans text-sm font-medium text-zinc-100 block group-hover:text-blue-400 transition-colors">
               {project.name}
             </span>
-            <span className="font-mono text-[10px] text-zinc-500 capitalize">
+            <span className="font-mono text-[10px] text-zinc-500 tracking-wider capitalize">
               {project.property_type?.replace('_', ' ')}
             </span>
           </div>
@@ -342,8 +343,8 @@ function ProjectRow({
       </td>
 
       {/* Status */}
-      <td className="py-3 px-4">
-        <Badge className={cn("text-[10px]", status.color)}>
+      <td className="py-4 px-4">
+        <Badge className={cn("text-[10px] uppercase tracking-wider font-semibold border px-2 py-0.5", status.color, status.border)}>
           {status.label}
         </Badge>
       </td>
@@ -361,7 +362,7 @@ function ProjectRow({
                   className={cn(
                     "h-full rounded-full",
                     budgetUtilization > 100 ? "bg-red-500" :
-                    budgetUtilization > 80 ? "bg-amber-500" : "bg-green-500"
+                      budgetUtilization > 80 ? "bg-amber-500" : "bg-green-500"
                   )}
                   style={{ width: `${Math.min(budgetUtilization, 100)}%` }}
                 />
@@ -404,30 +405,30 @@ function ProjectRow({
       </td>
 
       {/* Actions */}
-      <td className="py-3 px-4">
+      <td className="py-4 px-4 text-right">
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon" className="h-7 w-7">
+            <Button variant="ghost" size="icon" className="h-8 w-8 text-zinc-400 hover:text-white hover:bg-zinc-700">
               <MoreHorizontal className="h-4 w-4" />
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent className="bg-zinc-900 border-zinc-700" align="end">
-            <DropdownMenuItem onClick={onView} className="text-xs">
+          <DropdownMenuContent className="bg-zinc-900 border-zinc-800 shadow-xl" align="end">
+            <DropdownMenuItem onClick={onView} className="text-xs hover:bg-zinc-800 focus:bg-zinc-800 cursor-pointer">
               <Eye className="h-3.5 w-3.5 mr-2" />
               View Details
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={onEdit} className="text-xs">
+            <DropdownMenuItem onClick={onEdit} className="text-xs hover:bg-zinc-800 focus:bg-zinc-800 cursor-pointer">
               <Edit className="h-3.5 w-3.5 mr-2" />
               Edit Project
             </DropdownMenuItem>
-            <DropdownMenuItem className="text-xs">
+            <DropdownMenuItem className="text-xs hover:bg-zinc-800 focus:bg-zinc-800 cursor-pointer">
               <Download className="h-3.5 w-3.5 mr-2" />
               Export
             </DropdownMenuItem>
-            <DropdownMenuSeparator className="bg-zinc-700" />
+            <DropdownMenuSeparator className="bg-zinc-800" />
             <DropdownMenuItem
               onClick={onDelete}
-              className="text-xs text-red-400 focus:text-red-300"
+              className="text-xs text-red-500 hover:bg-red-500/10 focus:bg-red-500/10 cursor-pointer focus:text-red-500"
             >
               <Trash2 className="h-3.5 w-3.5 mr-2" />
               Delete
@@ -496,14 +497,14 @@ export function ProjectsTable({
     params.set('limit', pageSize.toString())
     params.set('sortBy', sortField)
     params.set('sortOrder', sortOrder)
-    
+
     if (filters.search) params.set('search', filters.search)
     if (filters.status.length) params.set('status', filters.status.join(','))
     if (filters.propertyType.length) params.set('propertyType', filters.propertyType.join(','))
     if (filters.region.length) params.set('region', filters.region.join(','))
     if (filters.budgetMin) params.set('budgetMin', filters.budgetMin.toString())
     if (filters.budgetMax) params.set('budgetMax', filters.budgetMax.toString())
-    
+
     return params.toString()
   }, [page, pageSize, sortField, sortOrder, filters])
 
@@ -564,16 +565,16 @@ export function ProjectsTable({
   )
 
   return (
-    <div className={cn("border border-zinc-800 bg-zinc-900/50", className)}>
+    <div className={cn("border border-zinc-800 bg-zinc-950/50 shadow-2xl rounded-xl overflow-hidden backdrop-blur-sm", className)}>
       {/* Toolbar */}
-      <div className="flex items-center justify-between px-4 py-3 border-b border-zinc-800">
-        <div className="flex items-center gap-3">
+      <div className="flex items-center justify-between px-5 py-4 border-b border-zinc-800 bg-zinc-900/30">
+        <div className="flex items-center gap-4">
           {/* Search */}
           <div className="relative">
-            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-zinc-500" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-500" />
             <Input
-              placeholder="Search projects..."
-              className="h-8 w-64 pl-8 text-xs bg-zinc-800 border-zinc-700"
+              placeholder="Search projects by name, number..."
+              className="h-9 w-72 pl-9 text-sm bg-zinc-900/50 border-zinc-800 rounded-lg shadow-inner focus:ring-1 focus:ring-blue-500/50 transition-shadow"
               value={filters.search}
               onChange={e => {
                 setFilters({ ...filters, search: e.target.value })
@@ -581,6 +582,8 @@ export function ProjectsTable({
               }}
             />
           </div>
+
+          <div className="h-6 w-px bg-zinc-800"></div>
 
           {/* Filters */}
           <FilterPanel
@@ -593,10 +596,10 @@ export function ProjectsTable({
           />
         </div>
 
-        <div className="flex items-center gap-2">
-          <span className="font-mono text-xs text-zinc-500">
-            {totalCount} projects
-          </span>
+        <div className="flex items-center gap-3">
+          <Badge variant="outline" className="font-mono text-xs border-zinc-800 text-zinc-400 bg-zinc-900/50">
+            {totalCount} Total Projects
+          </Badge>
         </div>
       </div>
 
@@ -604,27 +607,27 @@ export function ProjectsTable({
       <div className="overflow-x-auto">
         <table className="w-full">
           <thead>
-            <tr className="border-b border-zinc-700 bg-zinc-800/50">
-              <th className="py-2 px-4 text-left font-mono text-xs text-zinc-400 font-normal">
+            <tr className="border-b border-zinc-800 bg-zinc-900/40">
+              <th className="py-3 px-4 text-left font-sans text-[11px] uppercase tracking-wider text-zinc-500 font-medium">
                 <SortButton field="name">Project</SortButton>
               </th>
-              <th className="py-2 px-4 text-left font-mono text-xs text-zinc-400 font-normal">
+              <th className="py-3 px-4 text-left font-sans text-[11px] uppercase tracking-wider text-zinc-500 font-medium">
                 Location
               </th>
-              <th className="py-2 px-4 text-left font-mono text-xs text-zinc-400 font-normal">
+              <th className="py-3 px-4 text-left font-sans text-[11px] uppercase tracking-wider text-zinc-500 font-medium">
                 <SortButton field="status">Status</SortButton>
               </th>
-              <th className="py-2 px-4 text-left font-mono text-xs text-zinc-400 font-normal">
+              <th className="py-3 px-4 text-left font-sans text-[11px] uppercase tracking-wider text-zinc-500 font-medium">
                 <SortButton field="total_budget">Budget</SortButton>
               </th>
-              <th className="py-2 px-4 text-left font-mono text-xs text-zinc-400 font-normal">
+              <th className="py-3 px-4 text-left font-sans text-[11px] uppercase tracking-wider text-zinc-500 font-medium">
                 <SortButton field="progress">Progress</SortButton>
               </th>
-              <th className="py-2 px-4 text-left font-mono text-xs text-zinc-400 font-normal">
+              <th className="py-3 px-4 text-left font-sans text-[11px] uppercase tracking-wider text-zinc-500 font-medium">
                 Timeline
               </th>
-              <th className="py-2 px-4 text-left font-mono text-xs text-zinc-400 font-normal w-12">
-                {/* Actions */}
+              <th className="py-3 px-4 text-right font-sans text-[11px] uppercase tracking-wider text-zinc-500 font-medium w-16">
+                <span className="sr-only">Actions</span>
               </th>
             </tr>
           </thead>

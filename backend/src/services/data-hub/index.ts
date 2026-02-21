@@ -101,3 +101,6 @@ export {
 } from './monitoring';
 
 export { SystemHealthService, systemHealthService } from './systemHealthService';
+
+// ML Integration (Data Hub → ML Serving enrichment pipelines)
+export { mlDataHubIntegrationService } from './mlIntegrationService';

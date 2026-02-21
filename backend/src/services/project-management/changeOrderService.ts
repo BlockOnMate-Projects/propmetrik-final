@@ -28,8 +28,8 @@
 
 import { pool } from '../../database';
 import { logger } from '../../utils/logger';
-import { eSignIntegrationService } from '../e-sign/eSignIntegrationService';
-import { CompletionEvent, ESignField, ESignSigner } from '../e-sign/types';
+import { eSignIntegrationService } from '../../../shared-services/e-sign/integration/eSignIntegrationService';
+import { CompletionEvent, ESignField, ESignSigner } from '../../../shared-services/e-sign/integration/types';
 
 // =====================================================
 // TYPES

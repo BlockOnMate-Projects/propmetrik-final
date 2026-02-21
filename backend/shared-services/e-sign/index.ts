@@ -37,10 +37,13 @@ export { TemplateService, templateService } from './templateService';
 // Envelope service factory for DocuSign-style envelopes
 export { EnvelopeService, createEnvelopeService } from './envelopeService';
 
+// Integration service for cross-module e-sign orchestration
+export { eSignIntegrationService } from './integration/eSignIntegrationService';
+
 // Re-export all types from local types file
 export * from './types';
 
-// Re-export integration types from src/services/e-sign/types
+// Re-export integration types for cross-module envelope/webhook consumers
 export type {
     ESignSourceModule,
     ESignEntityType,

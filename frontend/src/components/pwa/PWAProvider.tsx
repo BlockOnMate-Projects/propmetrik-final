@@ -40,6 +40,7 @@ export function PWAProvider({ children }: { children: ReactNode }) {
   const [isUpdating, setIsUpdating] = useState(false);
   const [registration, setRegistration] = useState<ServiceWorkerRegistration | null>(null);
   const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
+  const isDev = process.env.NODE_ENV !== 'production';
 
   useEffect(() => {
     // Check online status
@@ -74,31 +75,55 @@ export function PWAProvider({ children }: { children: ReactNode }) {
 
     window.addEventListener('appinstalled', handleAppInstalled);
 
-    // Register service worker
+    // Service worker policy:
+    // - Development: unregister all workers + clear caches (prevents stale assets/API behavior)
+    // - Production: register worker for offline/PWA features
     if ('serviceWorker' in navigator) {
-      navigator.serviceWorker
-        .register('/sw.js')
-        .then((reg) => {
-          console.log('[PWA] Service worker registered');
-          setRegistration(reg);
+      if (isDev) {
+        (async () => {
+          try {
+            const regs = await navigator.serviceWorker.getRegistrations();
+            await Promise.all(regs.map((reg) => reg.unregister()));
 
-          // Check for updates
-          reg.addEventListener('updatefound', () => {
-            const newWorker = reg.installing;
-            if (newWorker) {
-              newWorker.addEventListener('statechange', () => {
-                if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-                  // New content available
-                  setIsUpdating(true);
-                  console.log('[PWA] New content available');
-                }
-              });
+            if ('caches' in window) {
+              const keys = await caches.keys();
+              await Promise.all(keys.map((key) => caches.delete(key)));
             }
+
+            setRegistration(null);
+            setIsUpdating(false);
+            setIsInstallable(false);
+            setDeferredPrompt(null);
+            console.log('[PWA] Dev mode: service workers and caches cleared');
+          } catch (error) {
+            console.warn('[PWA] Dev cleanup failed:', error);
+          }
+        })();
+      } else {
+        navigator.serviceWorker
+          .register('/sw.js')
+          .then((reg) => {
+            console.log('[PWA] Service worker registered');
+            setRegistration(reg);
+
+            // Check for updates
+            reg.addEventListener('updatefound', () => {
+              const newWorker = reg.installing;
+              if (newWorker) {
+                newWorker.addEventListener('statechange', () => {
+                  if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                    // New content available
+                    setIsUpdating(true);
+                    console.log('[PWA] New content available');
+                  }
+                });
+              }
+            });
+          })
+          .catch((error) => {
+            console.error('[PWA] Service worker registration failed:', error);
           });
-        })
-        .catch((error) => {
-          console.error('[PWA] Service worker registration failed:', error);
-        });
+      }
     }
 
     return () => {
@@ -107,7 +132,7 @@ export function PWAProvider({ children }: { children: ReactNode }) {
       window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
       window.removeEventListener('appinstalled', handleAppInstalled);
     };
-  }, []);
+  }, [isDev]);
 
   const promptInstall = async () => {
     if (!deferredPrompt) return;

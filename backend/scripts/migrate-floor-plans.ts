@@ -83,7 +83,7 @@ const DEFAULT_OPTIONS: MigrationOptions = {
 
 // Database connection
 const pool = new Pool({
-  host: process.env.DB_HOST || 'pg.cedynhq.com',
+  host: process.env.DB_HOST || 'pg.propmetrik.com',
   port: parseInt(process.env.DB_PORT || '5434', 10),
   database: process.env.DB_NAME || 'propmetrik',
   user: process.env.DB_USER || 'propmetrik_app',

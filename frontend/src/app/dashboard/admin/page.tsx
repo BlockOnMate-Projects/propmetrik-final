@@ -208,19 +208,19 @@ export default function AdminOverviewPage() {
           <div className="space-y-1">
             <ActivityItem
               action="Created new organization: PROPMETRIK GROUP"
-              user="eric@cedynhq.com"
+              user="eric@propmetrik.com"
               time="2 hours ago"
               type="create"
             />
             <ActivityItem
-              action="Updated user permissions for eric@cedynhq.com"
+              action="Updated user permissions for eric@propmetrik.com"
               user="system"
               time="3 hours ago"
               type="update"
             />
             <ActivityItem
               action="User login from new device"
-              user="eric@cedynhq.com"
+              user="eric@propmetrik.com"
               time="5 hours ago"
               type="login"
             />
@@ -232,7 +232,7 @@ export default function AdminOverviewPage() {
             />
             <ActivityItem
               action="New valuation report generated"
-              user="eric@cedynhq.com"
+              user="eric@propmetrik.com"
               time="8 hours ago"
               type="create"
             />
@@ -253,10 +253,12 @@ export default function AdminOverviewPage() {
           {[
             { name: 'Add User', href: '/dashboard/admin/users/new' },
             { name: 'Create Org', href: '/dashboard/admin/organizations/new' },
-            { name: 'View Logs', href: '/dashboard/admin/audit-logs' },
+            { name: 'API Docs', href: '/dashboard/admin/api-docs' },
             { name: 'API Keys', href: '/dashboard/admin/api-keys' },
+            { name: 'Usage', href: '/dashboard/admin/usage' },
+            { name: 'Customers', href: '/dashboard/admin/customer-success' },
+            { name: 'Onboarding', href: '/dashboard/admin/onboarding' },
             { name: 'Data Hub', href: '/dashboard/admin/data-hub' },
-            { name: 'Settings', href: '/dashboard/admin/settings' },
           ].map((action) => (
             <a
               key={action.name}

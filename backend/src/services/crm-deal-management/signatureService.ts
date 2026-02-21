@@ -14,8 +14,8 @@ import db from '../../database';
 import { logger } from '../../utils/logger';
 import { activityService } from './activityService';
 import { crmDocumentService } from './crmDocumentService';
-import { eSignIntegrationService } from '../e-sign/eSignIntegrationService';
-import { ESignField } from '../e-sign/types';
+import { eSignIntegrationService } from '../../../shared-services/e-sign/integration/eSignIntegrationService';
+import { ESignField } from '../../../shared-services/e-sign/integration/types';
 
 // =============================================
 // Types

@@ -21,6 +21,10 @@ import {
   Percent,
   Wallet,
   DollarSign,
+  BookOpen,
+  Rocket,
+  Heart,
+  Zap,
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 
@@ -73,6 +77,21 @@ const navigation: NavItem[] = [
     ],
   },
   {
+    name: 'PLATFORM',
+    icon: Zap,
+    children: [
+      { name: 'API Docs', href: '/dashboard/admin/api-docs', icon: BookOpen },
+      { name: 'Usage Analytics', href: '/dashboard/admin/usage', icon: BarChart3 },
+      { name: 'Customer Success', href: '/dashboard/admin/customer-success', icon: Heart },
+      { name: 'Onboarding', href: '/dashboard/admin/onboarding', icon: Rocket },
+    ],
+  },
+  {
+    name: 'PUBLICATIONS',
+    href: '/dashboard/admin/publications',
+    icon: FileText,
+  },
+  {
     name: 'SETTINGS',
     icon: Settings,
     children: [
@@ -102,30 +121,21 @@ export function AdminTopNav() {
     return null
   })()
 
-  // The sub-items to display: hovered group takes priority, then active group
+  // Sub-items: always show active group; hover previews others temporarily
   const displayGroup = hoveredGroup || activeGroup
   const displayItem = navigation.find((n) => n.name === displayGroup)
   const subItems = displayItem?.children
+
+  // Always show active group's sub-items row
+  const activeItem = navigation.find((n) => n.name === activeGroup)
+  const activeSubItems = activeItem?.children
 
   return (
     <div
       className="w-full bg-zinc-950 border-b border-red-900/50"
       onMouseLeave={() => setHoveredGroup(null)}
     >
-      {/* ── Row 1: Admin Header ── */}
-      <div className="flex items-center justify-between h-8 px-4 bg-red-950/30 border-b border-red-900/30">
-        <div className="flex items-center gap-3">
-          <Shield className="w-4 h-4 text-red-500" />
-          <span className="font-mono text-[11px] text-red-400 font-bold tracking-wider">
-            PROPMETRIK ADMIN CONSOLE
-          </span>
-        </div>
-        <span className="font-mono text-[10px] text-zinc-500">
-          ACCESS LEVEL: <span className="text-red-400 font-bold">SUPER_ADMIN</span>
-        </span>
-      </div>
-
-      {/* ── Row 2: Primary Category Tabs ── */}
+      {/* ── Primary Category Tabs ── */}
       <div className="flex items-center h-9 px-4 gap-0.5 overflow-x-auto scrollbar-hide">
         {navigation.map((item) => {
           const isActive = item.name === activeGroup
@@ -176,14 +186,14 @@ export function AdminTopNav() {
         })}
       </div>
 
-      {/* ── Row 3: Cascading Sub-Items ── */}
-      {subItems && subItems.length > 0 && (
-        <div className="flex items-center h-8 px-4 gap-0.5 bg-zinc-900/60 border-t border-zinc-800/60 overflow-x-auto scrollbar-hide">
-          <span className="font-mono text-[9px] text-zinc-600 uppercase tracking-widest mr-3 whitespace-nowrap">
-            {displayGroup}
+      {/* ── Row 3: Sub-Items — always visible for active group ── */}
+      {(subItems || activeSubItems) && (
+        <div className="flex items-center h-8 px-4 gap-0.5 bg-zinc-900/80 border-t border-red-900/20 overflow-x-auto scrollbar-hide">
+          <span className="font-mono text-[9px] text-red-500/60 uppercase tracking-widest mr-3 whitespace-nowrap">
+            {displayGroup || activeGroup}
           </span>
-          <div className="w-px h-4 bg-zinc-800 mr-2" />
-          {subItems.map((child) => {
+          <div className="w-px h-4 bg-red-900/30 mr-2" />
+          {(subItems || activeSubItems || []).map((child) => {
             const isChildActive = pathname.startsWith(child.href)
             const ChildIcon = child.icon
 

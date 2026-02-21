@@ -193,6 +193,19 @@ export const config = {
     ],
   },
 
+  // Gemini AI (Google)
+  gemini: {
+    apiKey: process.env.GEMINI_API_KEY || '',
+    apiUrl: process.env.GEMINI_API_URL || 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent',
+    enabled: !!process.env.GEMINI_API_KEY,
+  },
+
+  // Workspace & Kobby AI Schedules
+  workspace: {
+    kobbyMonitorCron: process.env.KOBBY_MONITOR_CRON || '0 8 * * *',
+    whatsappDigestCron: process.env.WHATSAPP_DIGEST_CRON || '0 18 * * *',
+  },
+
   // Paystack Payments
   paystack: {
     enabled: !!process.env.PAYSTACK_SECRET_KEY,

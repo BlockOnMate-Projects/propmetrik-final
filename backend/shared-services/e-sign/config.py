@@ -1,5 +1,5 @@
 """
-Configuration module for Cedyn E-Signature Platform
+Configuration module for PROPMETRIK E-Signature Platform
 All values are sourced from the repository root .env file (single source of truth).
 
 Environment Resolution Order:
@@ -120,7 +120,7 @@ class Settings(BaseSettings):
     S3_ENDPOINT: str = os.getenv("S3_ENDPOINT", "")
     S3_ACCESS_KEY: str = os.getenv("S3_ACCESS_KEY", "")
     S3_SECRET_KEY: str = os.getenv("S3_SECRET_KEY", "")
-    S3_BUCKET: str = os.getenv("S3_BUCKET", "cedyn-esign-documents")
+    S3_BUCKET: str = os.getenv("S3_BUCKET", "propmetrik-esign-documents")
     S3_REGION: str = os.getenv("S3_REGION", "us-east-1")
     
     # Security
@@ -154,7 +154,7 @@ class Settings(BaseSettings):
     SMTP_USERNAME: str = os.getenv("SMTP_USERNAME", "")
     SMTP_PASSWORD: str = os.getenv("SMTP_PASSWORD", "")
     SMTP_USE_TLS: bool = os.getenv("SMTP_USE_TLS", "true").lower() == "true"
-    SMTP_FROM: str = os.getenv("SMTP_FROM", "noreply@cedynhq.com")
+    SMTP_FROM: str = os.getenv("SMTP_FROM", "noreply@propmetrik.com")
     
     class Config:
         case_sensitive = True

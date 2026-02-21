@@ -17,7 +17,7 @@ import {
   getSubscription,
   checkUsageLimit,
   trackUsage,
-} from '../services/billing/subscriptionService';
+} from '../../shared-services/payments/subscriptions/subscriptionService';
 
 /**
  * Require an active subscription (any plan)

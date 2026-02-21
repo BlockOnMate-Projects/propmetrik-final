@@ -15,7 +15,7 @@ const router = Router();
 // Middleware to get user context
 const getUserContext = (req: Request) => {
   const userId = req.headers['x-user-id'] as string || 'anonymous';
-  const organizationId = req.headers['x-organization-id'] as string || 'default';
+  const organizationId = req.headers['x-organization-id'] as string || '00000000-0000-0000-0000-000000000001';
   return { userId, organizationId };
 };
 

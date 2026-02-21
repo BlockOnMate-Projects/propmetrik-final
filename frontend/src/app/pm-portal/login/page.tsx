@@ -11,7 +11,7 @@ import { Loader2, HardHat } from 'lucide-react';
 export default function PMLoginPage() {
   const { login, loading: authLoading } = useAuth();
   const [loading, setLoading] = useState(false);
-  const [email, setEmail] = useState('eric.danso@cedynhq.com');
+  const [email, setEmail] = useState('eric.danso@propmetrik.com');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
 
@@ -50,7 +50,7 @@ export default function PMLoginPage() {
               <Input
                 id="email"
                 type="email"
-                placeholder="eric.danso@cedynhq.com"
+                placeholder="eric.danso@propmetrik.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 className="bg-zinc-950 border-zinc-800 text-white"

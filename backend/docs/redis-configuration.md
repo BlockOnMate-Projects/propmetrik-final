@@ -23,7 +23,7 @@ The Redis instance uses database partitions to separate different data types:
 ## Connection Details
 
 ```
-Host: redis.cedynhq.com
+Host: redis.propmetrik.com
 Port: 6379
 Database: 2 (default)
 Username: propmetrik_redis (pending update from propmgtiq_redis)
@@ -165,19 +165,19 @@ await pubsub.subscribe('property-updates', (message) => {
 ### Commands for Debugging
 ```bash
 # Check database size
-redis-cli -h redis.cedynhq.com -p 6379 DBSIZE
+redis-cli -h redis.propmetrik.com -p 6379 DBSIZE
 
 # List keys with pattern
-redis-cli -h redis.cedynhq.com -p 6379 KEYS "propmetrik:cache:*"
+redis-cli -h redis.propmetrik.com -p 6379 KEYS "propmetrik:cache:*"
 
 # Check TTL
-redis-cli -h redis.cedynhq.com -p 6379 TTL "propmetrik:cache:user:123"
+redis-cli -h redis.propmetrik.com -p 6379 TTL "propmetrik:cache:user:123"
 
 # Memory usage
-redis-cli -h redis.cedynhq.com -p 6379 INFO memory
+redis-cli -h redis.propmetrik.com -p 6379 INFO memory
 
 # Client list
-redis-cli -h redis.cedynhq.com -p 6379 CLIENT LIST
+redis-cli -h redis.propmetrik.com -p 6379 CLIENT LIST
 ```
 
 ## Failover & High Availability
