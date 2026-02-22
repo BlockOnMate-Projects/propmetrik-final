@@ -72,6 +72,13 @@ export default function MarketplacePage() {
         })
       });
       
+      if (!response.ok) {
+        console.error('Search API error:', response.status);
+        setProperties([]);
+        setPagination(prev => ({ ...prev, total: 0 }));
+        return;
+      }
+      
       const data = await response.json();
       
       setProperties(data.properties || []);
