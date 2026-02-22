@@ -23,25 +23,25 @@ export default function DealsFinancialsPage() {
     return (
         <div className="space-y-6">
             {/* Page header */}
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between pb-4 border-b border-border">
                 <div>
-                    <h1 className="text-2xl font-mono font-bold text-white tracking-tight">
-                        DEAL FINANCIAL CENTER
+                    <h1 className="text-2xl font-semibold tracking-tight text-foreground">
+                        Deal Financial Center
                     </h1>
-                    <p className="text-zinc-500 font-mono text-xs mt-1">
+                    <p className="text-sm text-muted-foreground mt-1">
                         Commission payouts, deal revenue tracking &amp; payment configuration
                     </p>
                 </div>
             </div>
 
             {/* Tab bar */}
-            <div className="flex gap-1 border-b border-zinc-800">
+            <div className="flex gap-1 border-b border-border">
                 <button
                     onClick={() => setActiveTab('overview')}
-                    className={`px-4 py-2.5 font-mono text-[11px] tracking-wider border-b-2 transition-colors ${
+                    className={`px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${
                         activeTab === 'overview'
-                            ? 'border-amber-500 text-amber-500'
-                            : 'border-transparent text-zinc-500 hover:text-zinc-300'
+                            ? 'border-primary text-primary'
+                            : 'border-transparent text-muted-foreground hover:text-foreground'
                     }`}
                 >
                     <DollarSign className="inline h-3.5 w-3.5 mr-1.5 -mt-0.5" />
@@ -49,10 +49,10 @@ export default function DealsFinancialsPage() {
                 </button>
                 <button
                     onClick={() => setActiveTab('payment-settings')}
-                    className={`px-4 py-2.5 font-mono text-[11px] tracking-wider border-b-2 transition-colors ${
+                    className={`px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${
                         activeTab === 'payment-settings'
-                            ? 'border-amber-500 text-amber-500'
-                            : 'border-transparent text-zinc-500 hover:text-zinc-300'
+                            ? 'border-primary text-primary'
+                            : 'border-transparent text-muted-foreground hover:text-foreground'
                     }`}
                 >
                     <CreditCard className="inline h-3.5 w-3.5 mr-1.5 -mt-0.5" />
@@ -73,71 +73,71 @@ export default function DealsFinancialsPage() {
                 <>
                     {/* KPI Cards */}
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                        <Card className="bg-zinc-900/80 border-zinc-800">
+                        <Card className="border-border shadow-sm">
                             <CardContent className="p-4">
                                 <div className="flex items-center justify-between">
                                     <div>
-                                        <p className="text-[10px] font-mono text-zinc-500 tracking-wider">TOTAL DEAL VALUE</p>
-                                        <p className="text-2xl font-mono font-bold text-white mt-1">GH₵0</p>
+                                        <p className="text-xs text-muted-foreground uppercase tracking-wider">Total Deal Value</p>
+                                        <p className="text-2xl font-bold text-foreground mt-1">GH₵0</p>
                                     </div>
-                                    <div className="p-2 bg-amber-500/10 rounded-lg">
-                                        <DollarSign className="h-5 w-5 text-amber-500" />
+                                    <div className="p-2 bg-primary/10 rounded-lg">
+                                        <DollarSign className="h-5 w-5 text-primary" />
                                     </div>
                                 </div>
-                                <div className="flex items-center mt-2 text-[10px] font-mono text-zinc-500">
+                                <div className="flex items-center mt-2 text-xs text-muted-foreground">
                                     <TrendingUp className="h-3 w-3 mr-1 text-emerald-400" />
                                     <span>This period</span>
                                 </div>
                             </CardContent>
                         </Card>
 
-                        <Card className="bg-zinc-900/80 border-zinc-800">
+                        <Card className="border-border shadow-sm">
                             <CardContent className="p-4">
                                 <div className="flex items-center justify-between">
                                     <div>
-                                        <p className="text-[10px] font-mono text-zinc-500 tracking-wider">COMMISSIONS EARNED</p>
-                                        <p className="text-2xl font-mono font-bold text-white mt-1">GH₵0</p>
+                                        <p className="text-xs text-muted-foreground uppercase tracking-wider">Commissions Earned</p>
+                                        <p className="text-2xl font-bold text-foreground mt-1">GH₵0</p>
                                     </div>
                                     <div className="p-2 bg-emerald-500/10 rounded-lg">
                                         <Wallet className="h-5 w-5 text-emerald-500" />
                                     </div>
                                 </div>
-                                <div className="flex items-center mt-2 text-[10px] font-mono text-zinc-500">
+                                <div className="flex items-center mt-2 text-xs text-muted-foreground">
                                     <ArrowUpRight className="h-3 w-3 mr-1 text-emerald-400" />
                                     <span>Approved &amp; paid</span>
                                 </div>
                             </CardContent>
                         </Card>
 
-                        <Card className="bg-zinc-900/80 border-zinc-800">
+                        <Card className="border-border shadow-sm">
                             <CardContent className="p-4">
                                 <div className="flex items-center justify-between">
                                     <div>
-                                        <p className="text-[10px] font-mono text-zinc-500 tracking-wider">PENDING PAYOUTS</p>
-                                        <p className="text-2xl font-mono font-bold text-white mt-1">GH₵0</p>
+                                        <p className="text-xs text-muted-foreground uppercase tracking-wider">Pending Payouts</p>
+                                        <p className="text-2xl font-bold text-foreground mt-1">GH₵0</p>
                                     </div>
                                     <div className="p-2 bg-orange-500/10 rounded-lg">
                                         <FileText className="h-5 w-5 text-orange-500" />
                                     </div>
                                 </div>
-                                <div className="flex items-center mt-2 text-[10px] font-mono text-zinc-500">
+                                <div className="flex items-center mt-2 text-xs text-muted-foreground">
                                     <span>Awaiting approval</span>
                                 </div>
                             </CardContent>
                         </Card>
 
-                        <Card className="bg-zinc-900/80 border-zinc-800">
+                        <Card className="border-border shadow-sm">
                             <CardContent className="p-4">
                                 <div className="flex items-center justify-between">
                                     <div>
-                                        <p className="text-[10px] font-mono text-zinc-500 tracking-wider">ACTIVE AGENTS</p>
-                                        <p className="text-2xl font-mono font-bold text-white mt-1">0</p>
+                                        <p className="text-xs text-muted-foreground uppercase tracking-wider">Active Agents</p>
+                                        <p className="text-2xl font-bold text-foreground mt-1">0</p>
                                     </div>
                                     <div className="p-2 bg-blue-500/10 rounded-lg">
                                         <Users className="h-5 w-5 text-blue-500" />
                                     </div>
                                 </div>
-                                <div className="flex items-center mt-2 text-[10px] font-mono text-zinc-500">
+                                <div className="flex items-center mt-2 text-xs text-muted-foreground">
                                     <span>With commission plans</span>
                                 </div>
                             </CardContent>
@@ -145,31 +145,31 @@ export default function DealsFinancialsPage() {
                     </div>
 
                     {/* Revenue chart placeholder */}
-                    <Card className="bg-zinc-900/80 border-zinc-800">
+                    <Card className="border-border shadow-sm">
                         <CardHeader className="pb-2">
-                            <CardTitle className="text-sm font-mono text-white">DEAL REVENUE (YTD)</CardTitle>
-                            <CardDescription className="text-[10px] font-mono text-zinc-500">
+                            <CardTitle className="text-sm font-semibold text-foreground">Deal Revenue (YTD)</CardTitle>
+                            <CardDescription className="text-xs text-muted-foreground">
                                 Closed deals and commission payouts over time
                             </CardDescription>
                         </CardHeader>
                         <CardContent className="h-64 flex items-center justify-center">
-                            <div className="text-center text-zinc-600">
+                            <div className="text-center text-muted-foreground">
                                 <BarChart3 className="h-10 w-10 mx-auto mb-2 opacity-50" />
-                                <p className="text-xs font-mono">Revenue chart will populate with deal data</p>
+                                <p className="text-xs">Revenue chart will populate with deal data</p>
                             </div>
                         </CardContent>
                     </Card>
 
                     {/* Recent transactions placeholder */}
-                    <Card className="bg-zinc-900/80 border-zinc-800">
+                    <Card className="border-border shadow-sm">
                         <CardHeader className="pb-2">
-                            <CardTitle className="text-sm font-mono text-white">RECENT TRANSACTIONS</CardTitle>
-                            <CardDescription className="text-[10px] font-mono text-zinc-500">
+                            <CardTitle className="text-sm font-semibold text-foreground">Recent Transactions</CardTitle>
+                            <CardDescription className="text-xs text-muted-foreground">
                                 Latest deal payments and commission payouts
                             </CardDescription>
                         </CardHeader>
                         <CardContent className="py-8 text-center">
-                            <p className="text-xs font-mono text-zinc-600">No transactions yet</p>
+                            <p className="text-xs text-muted-foreground">No transactions yet</p>
                         </CardContent>
                     </Card>
                 </>

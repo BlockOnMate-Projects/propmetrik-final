@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useEffect, useState } from 'react'
+import React, { useState, useCallback, useRef } from 'react'
 import Link from 'next/link'
 import { cn } from '@/lib/utils'
 import {
@@ -23,223 +23,311 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select'
-import { companiesApi } from '@/lib/crm-api'
-import type { Company, PaginatedResponse } from '@/types/crm'
+import { useCompanies, useDeleteCompany } from '@/hooks/crm/use-companies'
+import type { Company } from '@/types/crm'
 import { CompanyType } from '@/types/crm'
 import { formatCurrency } from '@/lib/utils'
+import { EmptyState } from '@/components/crm/EmptyState'
+import { FilterBuilder } from '@/components/crm/FilterBuilder'
+import { SavedViewsPicker } from '@/components/crm/SavedViewsPicker'
+import { useBulkSelection, BulkActionBar, SelectionCheckbox } from '@/components/crm/BulkActions'
+import { useKeyboardShortcuts } from '@/components/crm/KeyboardShortcuts'
+import { COMPANY_FILTER_FIELDS } from '@/types/crm-filters'
+import type { FilterGroup } from '@/types/crm-filters'
+import { toast } from 'sonner'
 
-function Panel({ title, children, className }: { title: string; children: React.ReactNode; className?: string }) {
-    return (
-        <div className={cn('border border-zinc-800 bg-zinc-900/50', className)}>
-            <div className="flex items-center justify-between px-3 py-1.5 bg-zinc-800/50 border-b border-zinc-800">
-                <span className="font-mono text-[10px] text-amber-500 tracking-wider">{title}</span>
-            </div>
-            <div className="p-3">{children}</div>
-        </div>
-    )
-}
-
-function CompanyCard({ company }: { company: Company }) {
+function CompanyCard({ company, isSelected, onToggleSelect }: {
+    company: Company
+    isSelected?: boolean
+    onToggleSelect?: (id: string) => void
+}) {
     const getCompanyTypeColor = (type: CompanyType) => {
         switch (type) {
-            case CompanyType.DEVELOPER: return 'bg-blue-900/50 text-blue-400'
-            case CompanyType.AGENCY: return 'bg-purple-900/50 text-purple-400'
-            case CompanyType.INVESTOR: return 'bg-green-900/50 text-green-400'
-            case CompanyType.CORPORATE: return 'bg-orange-900/50 text-orange-400'
-            case CompanyType.GOVERNMENT: return 'bg-red-900/50 text-red-400'
-            default: return 'bg-zinc-700/50 text-zinc-400'
+            case CompanyType.DEVELOPER: return 'bg-blue-500/10 text-blue-600 dark:text-blue-400'
+            case CompanyType.AGENCY: return 'bg-purple-500/10 text-purple-600 dark:text-purple-400'
+            case CompanyType.INVESTOR: return 'bg-green-500/10 text-green-600 dark:text-green-400'
+            case CompanyType.CORPORATE: return 'bg-orange-500/10 text-orange-600 dark:text-orange-400'
+            case CompanyType.GOVERNMENT: return 'bg-red-500/10 text-red-600 dark:text-red-400'
+            default: return 'bg-muted text-muted-foreground'
         }
     }
 
     return (
-        <Link href={`/dashboard/deals/companies/${company.id}`}>
-            <div className="bg-zinc-800/50 border border-zinc-700 p-4 hover:border-amber-500/50 transition-colors cursor-pointer group">
+        <div className="relative group/card">
+            {onToggleSelect && (
+                <div className={cn(
+                    'absolute top-2 right-2 z-10 transition-opacity',
+                    isSelected ? 'opacity-100' : 'opacity-0 group-hover/card:opacity-100'
+                )}>
+                    <SelectionCheckbox
+                        checked={!!isSelected}
+                        onChange={() => onToggleSelect(company.id)}
+                    />
+                </div>
+            )}
+            <Link href={`/dashboard/deals/companies/${company.id}`}>
+                <Card className={cn(
+                    'p-4 hover:border-primary/50 transition-colors cursor-pointer group bg-card border-border shadow-sm',
+                    isSelected && 'border-primary/50 bg-primary/5'
+                )}>
                 <div className="flex items-start justify-between mb-3">
                     <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 bg-blue-500/20 rounded-lg flex items-center justify-center">
-                            <Building2 className="h-5 w-5 text-blue-500" />
+                        <div className="w-10 h-10 bg-blue-500/10 rounded-lg flex items-center justify-center">
+                            <Building2 className="h-5 w-5 text-blue-600 dark:text-blue-400" />
                         </div>
                         <div>
-                            <h4 className="font-mono text-sm text-white group-hover:text-amber-500 transition-colors">
+                            <h4 className="text-sm font-medium text-card-foreground group-hover:text-primary transition-colors">
                                 {company.company_name}
                             </h4>
                             {company.industry && (
-                                <p className="font-mono text-[10px] text-zinc-500">{company.industry}</p>
+                                <p className="text-xs text-muted-foreground">{company.industry}</p>
                             )}
                         </div>
                     </div>
-                    <span className={cn('font-mono text-[9px] px-1.5 py-0.5', getCompanyTypeColor(company.company_type))}>
-                        {company.company_type?.replace('_', ' ').toUpperCase()}
+                    <span className={cn('text-[10px] font-medium px-2 py-0.5 rounded-full', getCompanyTypeColor(company.company_type))}>
+                        {company.company_type?.replace('_', ' ')}
                     </span>
                 </div>
 
                 <div className="space-y-1.5">
                     {company.phone && (
                         <div className="flex items-center gap-2">
-                            <Phone className="h-3 w-3 text-zinc-500" />
-                            <span className="font-mono text-[10px] text-zinc-400">{company.phone}</span>
+                            <Phone className="h-3 w-3 text-muted-foreground" />
+                            <span className="text-xs text-muted-foreground">{company.phone}</span>
                         </div>
                     )}
                     {company.email && (
                         <div className="flex items-center gap-2">
-                            <Mail className="h-3 w-3 text-zinc-500" />
-                            <span className="font-mono text-[10px] text-zinc-400 truncate">{company.email}</span>
+                            <Mail className="h-3 w-3 text-muted-foreground" />
+                            <span className="text-xs text-muted-foreground truncate">{company.email}</span>
                         </div>
                     )}
                     {company.website && (
                         <div className="flex items-center gap-2">
-                            <Globe className="h-3 w-3 text-zinc-500" />
-                            <span className="font-mono text-[10px] text-zinc-400 truncate">{company.website}</span>
+                            <Globe className="h-3 w-3 text-muted-foreground" />
+                            <span className="text-xs text-muted-foreground truncate">{company.website}</span>
                         </div>
                     )}
                     {company.city && (
                         <div className="flex items-center gap-2">
-                            <MapPin className="h-3 w-3 text-zinc-500" />
-                            <span className="font-mono text-[10px] text-zinc-400">{company.city}, {company.region}</span>
+                            <MapPin className="h-3 w-3 text-muted-foreground" />
+                            <span className="text-xs text-muted-foreground">{company.city}, {company.region}</span>
                         </div>
                     )}
                 </div>
 
-                <div className="flex items-center justify-between mt-3 pt-3 border-t border-zinc-700/50">
+                <div className="flex items-center justify-between mt-3 pt-3 border-t border-border">
                     <div className="flex items-center gap-4">
                         <div>
-                            <span className="font-mono text-[10px] text-zinc-600">CONTACTS</span>
-                            <span className="font-mono text-xs text-white ml-1">{company.contact_count || 0}</span>
+                            <span className="text-[10px] text-muted-foreground uppercase tracking-wider">Contacts</span>
+                            <span className="text-xs font-medium text-foreground ml-1">{company.contact_count || 0}</span>
                         </div>
                         <div>
-                            <span className="font-mono text-[10px] text-zinc-600">DEALS</span>
-                            <span className="font-mono text-xs text-amber-500 ml-1">{company.deal_count || 0}</span>
+                            <span className="text-[10px] text-muted-foreground uppercase tracking-wider">Deals</span>
+                            <span className="text-xs font-medium text-primary ml-1">{company.deal_count || 0}</span>
                         </div>
                     </div>
                     {company.total_deal_value && company.total_deal_value > 0 && (
-                        <span className="font-mono text-[10px] text-green-400">
+                        <span className="text-xs font-medium text-green-600 dark:text-green-400">
                             {formatCurrency(company.total_deal_value, 'GHS')}
                         </span>
                     )}
                 </div>
-            </div>
+            </Card>
         </Link>
+        </div>
     )
 }
 
 export default function CompaniesPage() {
-    const [companies, setCompanies] = useState<Company[]>([])
     const [searchTerm, setSearchTerm] = useState('')
     const [typeFilter, setTypeFilter] = useState<string>('all')
-    const [isLoading, setIsLoading] = useState(true)
-    const [error, setError] = useState<string | null>(null)
     const [page, setPage] = useState(1)
-    const [totalPages, setTotalPages] = useState(1)
+    const [filterGroup, setFilterGroup] = useState<FilterGroup>({ id: 'root', conjunction: 'and', conditions: [] })
+    const searchRef = useRef<HTMLInputElement>(null)
 
-    useEffect(() => {
-        const loadCompanies = async () => {
-            try {
-                setIsLoading(true)
-                setError(null)
+    const { data: companiesData, isLoading, error: companiesError } = useCompanies({
+        page,
+        limit: 24,
+        search: searchTerm || undefined,
+        company_type: typeFilter !== 'all' ? typeFilter : undefined,
+    })
+    const deleteCompanyMutation = useDeleteCompany()
 
-                const data = await companiesApi.getAll({
-                    page,
-                    limit: 24,
-                    search: searchTerm || undefined,
-                    company_type: typeFilter !== 'all' ? typeFilter : undefined
-                })
+    const companies = companiesData?.data || []
+    const totalPages = companiesData?.pagination?.totalPages || 1
+    const error = companiesError ? 'Failed to load companies' : null
 
-                setCompanies(data.data || [])
-                setTotalPages(data.pagination?.totalPages || 1)
-            } catch (err) {
-                console.error('Failed to load companies:', err)
-                setError('Failed to load companies')
-            } finally {
-                setIsLoading(false)
+    // Bulk selection
+    const bulkSelection = useBulkSelection(companies)
+
+    // Keyboard shortcuts
+    useKeyboardShortcuts({
+        onFocusSearch: () => searchRef.current?.focus(),
+    })
+
+    // Bulk action handler
+    const handleBulkAction = useCallback(async (actionId: string, value?: string) => {
+        const ids = Array.from(bulkSelection.selectedIds)
+        switch (actionId) {
+            case 'delete': {
+                const results = await Promise.allSettled(ids.map(id => deleteCompanyMutation.mutateAsync(id)))
+                const succeeded = results.filter(r => r.status === 'fulfilled').length
+                toast.success(`Deleted ${succeeded} compan${succeeded !== 1 ? 'ies' : 'y'}`)
+                bulkSelection.clearSelection()
+                break
             }
+            case 'export': {
+                const exportCompanies = companies.filter(c => ids.includes(c.id))
+                const csvRows = [
+                    ['Company Name', 'Type', 'Industry', 'Email', 'Phone', 'Website', 'City', 'Region'].join(','),
+                    ...exportCompanies.map(c =>
+                        [c.company_name, c.company_type || '', c.industry || '', c.email || '', c.phone || '', c.website || '', c.city || '', c.region || ''].join(',')
+                    )
+                ]
+                const blob = new Blob([csvRows.join('\n')], { type: 'text/csv' })
+                const url = URL.createObjectURL(blob)
+                const a = document.createElement('a')
+                a.href = url
+                a.download = `companies-export-${new Date().toISOString().split('T')[0]}.csv`
+                a.click()
+                URL.revokeObjectURL(url)
+                toast.success(`Exported ${exportCompanies.length} companies`)
+                break
+            }
+            default:
+                toast.info(`Action "${actionId}" not yet implemented`)
         }
-        loadCompanies()
-    }, [page, searchTerm, typeFilter])
+    }, [companies, deleteCompanyMutation, bulkSelection])
+
+    // Saved views handler
+    const handleApplyView = useCallback((filters: FilterGroup) => {
+        setFilterGroup(filters)
+    }, [])
 
     return (
-        <div className="space-y-4">
-            <div className="flex items-center justify-between">
+        <div className="space-y-6">
+            <div className="flex items-center justify-between pb-4 border-b border-border">
                 <div>
-                    <h1 className="font-mono text-xl text-white">COMPANIES</h1>
-                    <p className="font-mono text-[10px] text-zinc-500">Corporate clients, developers, and agencies</p>
+                    <h1 className="text-2xl font-semibold tracking-tight text-foreground">Companies</h1>
+                    <p className="text-sm text-muted-foreground mt-1">Corporate clients, developers, and agencies</p>
                 </div>
                 <Link href="/dashboard/deals/companies/new">
-                    <Button className="bg-amber-500 text-black hover:bg-amber-400 font-mono text-xs">
+                    <Button className="bg-primary text-primary-foreground hover:bg-primary/90 font-medium text-sm h-9 px-4 rounded-md shadow-sm">
                         <Plus className="h-4 w-4 mr-2" />
-                        NEW COMPANY
+                        New Company
                     </Button>
                 </Link>
             </div>
 
-            <Panel title="FILTERS" className="!p-0">
-                <div className="p-3 flex items-center gap-3 flex-wrap">
-                    <div className="relative flex-1 max-w-sm">
-                        <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-zinc-500" />
-                        <Input
-                            placeholder="Search companies..."
-                            value={searchTerm}
-                            onChange={(e) => {
-                                setSearchTerm(e.target.value)
-                                setPage(1)
-                            }}
-                            className="pl-8 bg-zinc-800 border-zinc-700 text-white font-mono text-xs h-9"
-                        />
+            <Card className="border-border shadow-sm">
+                <CardContent className="p-4 space-y-2">
+                    <div className="flex items-center gap-3 flex-wrap">
+                        <div className="relative flex-1 max-w-sm">
+                            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                            <Input
+                                ref={searchRef}
+                                placeholder="Search companies... (press /)"
+                                value={searchTerm}
+                                onChange={(e) => {
+                                    setSearchTerm(e.target.value)
+                                    setPage(1)
+                                }}
+                                className="pl-9 h-9 text-sm"
+                            />
+                        </div>
+
+                        <Select value={typeFilter} onValueChange={(v) => {
+                            setTypeFilter(v)
+                            setPage(1)
+                        }}>
+                            <SelectTrigger className="w-40 h-9 text-sm">
+                                <SelectValue placeholder="Company Type" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="all">All Types</SelectItem>
+                                <SelectItem value="developer">Developer</SelectItem>
+                                <SelectItem value="agency">Agency</SelectItem>
+                                <SelectItem value="investor">Investor</SelectItem>
+                                <SelectItem value="corporate">Corporate</SelectItem>
+                                <SelectItem value="government">Government</SelectItem>
+                            </SelectContent>
+                        </Select>
                     </div>
 
-                    <Select value={typeFilter} onValueChange={(v) => {
-                        setTypeFilter(v)
-                        setPage(1)
-                    }}>
-                        <SelectTrigger className="w-40 bg-zinc-800 border-zinc-700 text-white font-mono text-xs">
-                            <SelectValue placeholder="Company Type" />
-                        </SelectTrigger>
-                        <SelectContent className="bg-zinc-900 border-zinc-700">
-                            <SelectItem value="all" className="font-mono text-xs text-white">All Types</SelectItem>
-                            <SelectItem value="developer" className="font-mono text-xs text-white">Developer</SelectItem>
-                            <SelectItem value="agency" className="font-mono text-xs text-white">Agency</SelectItem>
-                            <SelectItem value="investor" className="font-mono text-xs text-white">Investor</SelectItem>
-                            <SelectItem value="corporate" className="font-mono text-xs text-white">Corporate</SelectItem>
-                            <SelectItem value="government" className="font-mono text-xs text-white">Government</SelectItem>
-                        </SelectContent>
-                    </Select>
-                </div>
-            </Panel>
+                    {/* Phase 3: Filter Builder + Saved Views */}
+                    <div className="flex items-center gap-2 flex-wrap">
+                        <FilterBuilder
+                            fields={COMPANY_FILTER_FIELDS}
+                            value={filterGroup}
+                            onChange={setFilterGroup}
+                        />
+                        <SavedViewsPicker
+                            entityType="companies"
+                            currentFilters={filterGroup}
+                            onApply={handleApplyView}
+                        />
+                    </div>
+                </CardContent>
+            </Card>
 
             {error && (
-                <div className="border border-red-900 bg-red-900/20 p-4 text-center">
-                    <p className="font-mono text-xs text-red-400">{error}</p>
-                    <Button variant="link" onClick={() => window.location.reload()} className="text-amber-500 mt-2">Retry</Button>
-                </div>
+                <Card className="border-destructive/50 bg-destructive/5">
+                    <CardContent className="p-4 text-center">
+                        <p className="text-sm text-destructive">{error}</p>
+                        <Button variant="link" onClick={() => window.location.reload()} className="text-primary mt-2">Retry</Button>
+                    </CardContent>
+                </Card>
             )}
 
             {isLoading ? (
                 <div className="flex items-center justify-center py-12">
-                    <Loader2 className="h-8 w-8 animate-spin text-amber-500" />
+                    <Loader2 className="h-8 w-8 animate-spin text-primary" />
                 </div>
             ) : (
                 <>
-                    <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
+                    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                         {companies.map((company) => (
-                            <CompanyCard key={company.id} company={company} />
+                            <CompanyCard
+                                key={company.id}
+                                company={company}
+                                isSelected={bulkSelection.isSelected(company.id)}
+                                onToggleSelect={bulkSelection.toggleOne}
+                            />
                         ))}
                     </div>
 
                     {companies.length === 0 && !error && (
-                        <div className="text-center py-12 border border-zinc-800 bg-zinc-900/50">
-                            <Building2 className="h-12 w-12 text-zinc-700 mx-auto mb-4" />
-                            <p className="font-mono text-sm text-zinc-500">No companies found</p>
-                        </div>
+                        <EmptyState
+                            icon={Building2}
+                            title={searchTerm ? 'No companies match your search' : 'No companies yet'}
+                            description={searchTerm
+                                ? 'Try adjusting your search or filters.'
+                                : 'Track corporate clients, developers, and agencies working with your properties.'
+                            }
+                            actions={searchTerm ? [] : [
+                                { label: 'New Company', href: '/dashboard/deals/companies/new', icon: Plus },
+                            ]}
+                        />
                     )}
 
                     {totalPages > 1 && (
                         <div className="flex items-center justify-center gap-2">
-                            <Button variant="outline" size="sm" onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1} className="border-zinc-700 text-zinc-300">Previous</Button>
-                            <span className="font-mono text-xs text-zinc-500">Page {page} of {totalPages}</span>
-                            <Button variant="outline" size="sm" onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages} className="border-zinc-700 text-zinc-300">Next</Button>
+                            <Button variant="outline" size="sm" onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1}>Previous</Button>
+                            <span className="text-sm text-muted-foreground">Page {page} of {totalPages}</span>
+                            <Button variant="outline" size="sm" onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages}>Next</Button>
                         </div>
                     )}
                 </>
             )}
+
+            {/* Bulk Action Bar */}
+            <BulkActionBar
+                entityType="company"
+                selectedCount={bulkSelection.selectedCount}
+                onAction={handleBulkAction}
+                onClear={bulkSelection.clearSelection}
+            />
         </div>
     )
 }

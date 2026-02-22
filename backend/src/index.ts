@@ -27,6 +27,7 @@ import reportRoutes from './routes/reports';
 import valuersRoutes from './routes/valuers';
 import propertyManagementRoutes from './routes/propertyManagement';
 import crmRoutes from './routes/crm';
+import marketplaceRoutes from './routes/marketplace';
 import webhooksRoutes from './routes/webhooks';
 import authIntegrationsRoutes from './routes/auth-integrations';
 import authRoutes from './routes/auth';
@@ -85,7 +86,7 @@ import { realtimeEmitter } from '../shared-services/realtime';
 import { notificationRoutes } from '../shared-services/notifications/in-mail';
 
 // Import autopilot scheduler
-import { autopilotScheduler } from './services/publications/autopilot';
+import { autopilotScheduler } from '../shared-services/publications/autopilot';
 
 // Import Data Hub queue manager
 import { dataHubQueueManager } from './services/data-hub';
@@ -147,7 +148,7 @@ app.use(rateLimiter);
 
 // API routes
 app.use('/health', healthRoutes);
-// app.use('/api/docs', docsRoutes);  // OpenAPI documentation - TODO: fix zod-to-openapi integration
+app.use('/api/docs', docsRoutes);  // OpenAPI documentation (PM + CRM)
 app.use('/api/v1/data-hub', dataHubRoutes);
 app.use('/api/v1/valuations', optionalAuth, valuationRoutes);
 app.use('/api/valuations', optionalAuth, valuationRoutes);  // Also mount for frontend compatibility
@@ -163,6 +164,7 @@ app.use('/api/valuers', valuersRoutes);  // Also mount for frontend compatibilit
 app.use('/api/v1/pm', optionalAuth, propertyManagementRoutes);
 app.use('/api/v1/crm', crmRoutes);
 app.use('/api/crm', crmRoutes);  // Also mount for frontend compatibility
+app.use('/api/v1/marketplace', marketplaceRoutes);  // Public marketplace - no auth required
 app.use('/api/v1/webhooks', webhooksRoutes);
 app.use('/api/v1/auth', authRoutes);  // User authentication routes
 app.use('/api/v1/auth', authIntegrationsRoutes);  // OAuth integrations

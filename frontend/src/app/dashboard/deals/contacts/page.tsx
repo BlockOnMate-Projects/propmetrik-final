@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useEffect, useState } from 'react'
+import React, { useState, useMemo, useCallback, useRef } from 'react'
 import Link from 'next/link'
 import { cn, formatCurrency } from '@/lib/utils'
 import {
@@ -11,8 +11,8 @@ import {
     Phone,
     Mail,
     MapPin,
-    Filter,
-    MoreVertical
+    Upload,
+    CheckCircle2,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -24,113 +24,118 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select'
-import {
-    DropdownMenu,
-    DropdownMenuContent,
-    DropdownMenuItem,
-    DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu'
-import { contactsApi } from '@/lib/crm-api'
-import type { Contact, ContactStats, PaginatedResponse } from '@/types/crm'
-import { LeadStatus, ContactType } from '@/types/crm'
-
-// =====================================================
-// PANEL COMPONENT
-// =====================================================
-function Panel({ title, children, className }: { 
-    title: string; 
-    children: React.ReactNode; 
-    className?: string;
-}) {
-    return (
-        <div className={cn('border border-zinc-800 bg-zinc-900/50', className)}>
-            <div className="flex items-center justify-between px-3 py-1.5 bg-zinc-800/50 border-b border-zinc-800">
-                <span className="font-mono text-[10px] text-amber-500 tracking-wider">{title}</span>
-            </div>
-            <div className="p-3">{children}</div>
-        </div>
-    )
-}
+import { useContacts, useContactStats, useDeleteContact } from '@/hooks/crm/use-contacts'
+import type { Contact } from '@/types/crm'
+import { LeadStatus } from '@/types/crm'
+import { EmptyState } from '@/components/crm/EmptyState'
+import { FilterBuilder } from '@/components/crm/FilterBuilder'
+import { SavedViewsPicker } from '@/components/crm/SavedViewsPicker'
+import { useBulkSelection, BulkActionBar, SelectionCheckbox } from '@/components/crm/BulkActions'
+import { ImportWizard } from '@/components/crm/ImportWizard'
+import { useKeyboardShortcuts } from '@/components/crm/KeyboardShortcuts'
+import { CONTACT_FILTER_FIELDS } from '@/types/crm-filters'
+import type { FilterGroup } from '@/types/crm-filters'
+import { toast } from 'sonner'
 
 // =====================================================
 // CONTACT CARD
 // =====================================================
-function ContactCard({ contact }: { contact: Contact }) {
+function ContactCard({ contact, isSelected, onToggleSelect }: {
+    contact: Contact
+    isSelected?: boolean
+    onToggleSelect?: (id: string) => void
+}) {
     const getLeadStatusColor = (status: LeadStatus) => {
         switch (status) {
-            case LeadStatus.NEW: return 'bg-blue-900/50 text-blue-400'
-            case LeadStatus.CONTACTED: return 'bg-purple-900/50 text-purple-400'
-            case LeadStatus.QUALIFIED: return 'bg-green-900/50 text-green-400'
-            case LeadStatus.UNQUALIFIED: return 'bg-red-900/50 text-red-400'
-            case LeadStatus.NURTURING: return 'bg-yellow-900/50 text-yellow-400'
-            default: return 'bg-zinc-700/50 text-zinc-400'
+            case LeadStatus.NEW: return 'bg-blue-500/10 text-blue-600 dark:text-blue-400'
+            case LeadStatus.CONTACTED: return 'bg-purple-500/10 text-purple-600 dark:text-purple-400'
+            case LeadStatus.QUALIFIED: return 'bg-green-500/10 text-green-600 dark:text-green-400'
+            case LeadStatus.UNQUALIFIED: return 'bg-red-500/10 text-red-600 dark:text-red-400'
+            case LeadStatus.NURTURING: return 'bg-yellow-500/10 text-yellow-600 dark:text-yellow-400'
+            default: return 'bg-muted text-muted-foreground'
         }
     }
 
     return (
-        <Link href={`/dashboard/deals/contacts/${contact.id}`}>
-            <div className="bg-zinc-800/50 border border-zinc-700 p-4 hover:border-amber-500/50 transition-colors cursor-pointer group">
+        <div className="relative group/card">
+            {onToggleSelect && (
+                <div className={cn(
+                    'absolute top-2 right-2 z-10 transition-opacity',
+                    isSelected ? 'opacity-100' : 'opacity-0 group-hover/card:opacity-100'
+                )}>
+                    <SelectionCheckbox
+                        checked={!!isSelected}
+                        onChange={() => onToggleSelect(contact.id)}
+                    />
+                </div>
+            )}
+            <Link href={`/dashboard/deals/contacts/${contact.id}`}>
+                <Card className={cn(
+                    'p-4 hover:border-primary/50 transition-colors cursor-pointer group bg-card border-border shadow-sm',
+                    isSelected && 'border-primary/50 bg-primary/5'
+                )}>
                 <div className="flex items-start justify-between mb-3">
                     <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 bg-amber-500/20 rounded-full flex items-center justify-center">
-                            <User className="h-5 w-5 text-amber-500" />
+                        <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center">
+                            <User className="h-5 w-5 text-primary" />
                         </div>
                         <div>
-                            <h4 className="font-mono text-sm text-white group-hover:text-amber-500 transition-colors">
+                            <h4 className="text-sm font-medium text-card-foreground group-hover:text-primary transition-colors">
                                 {contact.first_name} {contact.last_name}
                             </h4>
                             {contact.company_name && (
-                                <p className="font-mono text-[10px] text-zinc-500">{contact.company_name}</p>
+                                <p className="text-xs text-muted-foreground">{contact.company_name}</p>
                             )}
                         </div>
                     </div>
-                    <span className={cn('font-mono text-[9px] px-1.5 py-0.5', getLeadStatusColor(contact.lead_status))}>
-                        {contact.lead_status?.toUpperCase()}
+                    <span className={cn('text-[10px] font-medium px-2 py-0.5 rounded-full', getLeadStatusColor(contact.lead_status))}>
+                        {contact.lead_status?.replace('_', ' ')}
                     </span>
                 </div>
 
                 <div className="space-y-1.5">
                     {contact.phone_primary && (
                         <div className="flex items-center gap-2">
-                            <Phone className="h-3 w-3 text-zinc-500" />
-                            <span className="font-mono text-[10px] text-zinc-400">{contact.phone_primary}</span>
+                            <Phone className="h-3 w-3 text-muted-foreground" />
+                            <span className="text-xs text-muted-foreground">{contact.phone_primary}</span>
                         </div>
                     )}
                     {contact.email && (
                         <div className="flex items-center gap-2">
-                            <Mail className="h-3 w-3 text-zinc-500" />
-                            <span className="font-mono text-[10px] text-zinc-400 truncate">{contact.email}</span>
+                            <Mail className="h-3 w-3 text-muted-foreground" />
+                            <span className="text-xs text-muted-foreground truncate">{contact.email}</span>
                         </div>
                     )}
                     {contact.city && (
                         <div className="flex items-center gap-2">
-                            <MapPin className="h-3 w-3 text-zinc-500" />
-                            <span className="font-mono text-[10px] text-zinc-400">{contact.city}, {contact.region}</span>
+                            <MapPin className="h-3 w-3 text-muted-foreground" />
+                            <span className="text-xs text-muted-foreground">{contact.city}, {contact.region}</span>
                         </div>
                     )}
                 </div>
 
-                <div className="flex items-center justify-between mt-3 pt-3 border-t border-zinc-700/50">
+                <div className="flex items-center justify-between mt-3 pt-3 border-t border-border">
                     <div className="flex items-center gap-4">
                         <div>
-                            <span className="font-mono text-[10px] text-zinc-600">DEALS</span>
-                            <span className="font-mono text-xs text-white ml-1">{contact.deal_count || 0}</span>
+                            <span className="text-[10px] text-muted-foreground uppercase tracking-wider">Deals</span>
+                            <span className="text-xs font-medium text-foreground ml-1">{contact.deal_count || 0}</span>
                         </div>
                         {contact.lead_score !== undefined && (
                             <div>
-                                <span className="font-mono text-[10px] text-zinc-600">SCORE</span>
-                                <span className="font-mono text-xs text-amber-500 ml-1">{contact.lead_score}</span>
+                                <span className="text-[10px] text-muted-foreground uppercase tracking-wider">Score</span>
+                                <span className="text-xs font-medium text-primary ml-1">{contact.lead_score}</span>
                             </div>
                         )}
                     </div>
                     {contact.budget_max && (
-                        <span className="font-mono text-[10px] text-green-400">
+                        <span className="text-xs font-medium text-green-600 dark:text-green-400">
                             Budget: {formatCurrency(contact.budget_max, 'GHS')}
                         </span>
                     )}
                 </div>
-            </div>
+            </Card>
         </Link>
+        </div>
     )
 }
 
@@ -138,99 +143,133 @@ function ContactCard({ contact }: { contact: Contact }) {
 // MAIN COMPONENT
 // =====================================================
 export default function ContactsPage() {
-    const [contacts, setContacts] = useState<Contact[]>([])
-    const [stats, setStats] = useState<ContactStats | null>(null)
     const [searchTerm, setSearchTerm] = useState('')
     const [leadStatusFilter, setLeadStatusFilter] = useState<string>('all')
-    const [isLoading, setIsLoading] = useState(true)
-    const [error, setError] = useState<string | null>(null)
     const [page, setPage] = useState(1)
-    const [totalPages, setTotalPages] = useState(1)
+    const [filterGroup, setFilterGroup] = useState<FilterGroup>({ id: 'root', conjunction: 'and', conditions: [] })
+    const [importWizardOpen, setImportWizardOpen] = useState(false)
+    const searchRef = useRef<HTMLInputElement>(null)
 
-    // Load contacts
-    useEffect(() => {
-        const loadContacts = async () => {
-            try {
-                setIsLoading(true)
-                setError(null)
+    const { data: contactsData, isLoading, error: contactsError } = useContacts({
+        page,
+        limit: 24,
+        search: searchTerm || undefined,
+        lead_status: leadStatusFilter !== 'all' ? leadStatusFilter as LeadStatus : undefined,
+    })
+    const { data: stats } = useContactStats()
+    const deleteContactMutation = useDeleteContact()
 
-                const [contactsData, statsData] = await Promise.all([
-                    contactsApi.getAll({
-                        page,
-                        limit: 24,
-                        search: searchTerm || undefined,
-                        lead_status: leadStatusFilter !== 'all' ? leadStatusFilter as LeadStatus : undefined
-                    }),
-                    contactsApi.getStats()
-                ])
+    const contacts = contactsData?.data || []
+    const totalPages = contactsData?.pagination?.totalPages || 1
+    const error = contactsError ? 'Failed to load contacts' : null
 
-                setContacts(contactsData.data || [])
-                setTotalPages(contactsData.pagination?.totalPages || 1)
-                setStats(statsData)
-            } catch (err) {
-                console.error('Failed to load contacts:', err)
-                setError('Failed to load contacts')
-            } finally {
-                setIsLoading(false)
+    // Bulk selection
+    const bulkSelection = useBulkSelection(contacts)
+
+    // Keyboard shortcuts
+    useKeyboardShortcuts({
+        onFocusSearch: () => searchRef.current?.focus(),
+    })
+
+    // Bulk action handler
+    const handleBulkAction = useCallback(async (actionId: string, value?: string) => {
+        const ids = Array.from(bulkSelection.selectedIds)
+        switch (actionId) {
+            case 'delete': {
+                const results = await Promise.allSettled(ids.map(id => deleteContactMutation.mutateAsync(id)))
+                const succeeded = results.filter(r => r.status === 'fulfilled').length
+                toast.success(`Deleted ${succeeded} contact${succeeded !== 1 ? 's' : ''}`)
+                bulkSelection.clearSelection()
+                break
             }
+            case 'change_status': {
+                if (!value) return
+                toast.info(`Status change to ${value} for ${ids.length} contacts (batch API not implemented)`)
+                bulkSelection.clearSelection()
+                break
+            }
+            case 'export': {
+                const exportContacts = contacts.filter(c => ids.includes(c.id))
+                const csvRows = [
+                    ['First Name', 'Last Name', 'Email', 'Phone', 'Company', 'Lead Status', 'City', 'Region'].join(','),
+                    ...exportContacts.map(c =>
+                        [c.first_name, c.last_name, c.email || '', c.phone_primary || '', c.company_name || '', c.lead_status || '', c.city || '', c.region || ''].join(',')
+                    )
+                ]
+                const blob = new Blob([csvRows.join('\n')], { type: 'text/csv' })
+                const url = URL.createObjectURL(blob)
+                const a = document.createElement('a')
+                a.href = url
+                a.download = `contacts-export-${new Date().toISOString().split('T')[0]}.csv`
+                a.click()
+                URL.revokeObjectURL(url)
+                toast.success(`Exported ${exportContacts.length} contacts`)
+                break
+            }
+            default:
+                toast.info(`Action "${actionId}" not yet implemented`)
         }
-        loadContacts()
-    }, [page, searchTerm, leadStatusFilter])
+    }, [contacts, deleteContactMutation, bulkSelection])
+
+    // Saved views handler
+    const handleApplyView = useCallback((filters: FilterGroup) => {
+        setFilterGroup(filters)
+    }, [])
 
     return (
-        <div className="space-y-4">
+        <div className="space-y-6">
             {/* Header */}
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between pb-4 border-b border-border">
                 <div>
-                    <h1 className="font-mono text-xl text-white">CONTACTS</h1>
-                    <p className="font-mono text-[10px] text-zinc-500">Manage leads, clients, and prospects</p>
+                    <h1 className="text-2xl font-semibold tracking-tight text-foreground">Contacts</h1>
+                    <p className="text-sm text-muted-foreground mt-1">Manage leads, clients, and prospects</p>
                 </div>
                 <Link href="/dashboard/deals/contacts/new">
-                    <Button className="bg-amber-500 text-black hover:bg-amber-400 font-mono text-xs">
+                    <Button className="bg-primary text-primary-foreground hover:bg-primary/90 font-medium text-sm h-9 px-4 rounded-md shadow-sm">
                         <Plus className="h-4 w-4 mr-2" />
-                        NEW CONTACT
+                        New Contact
                     </Button>
                 </Link>
             </div>
 
             {/* Stats Cards */}
-            <div className="grid gap-3 md:grid-cols-5">
-                <Card className="bg-black border-zinc-800">
-                    <CardContent className="p-3">
-                        <div className="font-mono text-[10px] text-zinc-500 mb-1">TOTAL CONTACTS</div>
-                        <div className="font-mono text-xl text-white">
+            <div className="grid gap-4 md:grid-cols-5">
+                <Card className="bg-card border-border shadow-sm">
+                    <CardContent className="p-4">
+                        <div className="text-xs font-medium text-muted-foreground mb-1 uppercase tracking-wider">Total Contacts</div>
+                        <div className="text-2xl font-bold text-foreground">
                             {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : stats?.totalContacts || 0}
                         </div>
                     </CardContent>
                 </Card>
-                <Card className="bg-black border-zinc-800">
-                    <CardContent className="p-3">
-                        <div className="font-mono text-[10px] text-zinc-500 mb-1">NEW THIS MONTH</div>
-                        <div className="font-mono text-xl text-green-400">
+                <Card className="bg-card border-border shadow-sm">
+                    <CardContent className="p-4">
+                        <div className="text-xs font-medium text-muted-foreground mb-1 uppercase tracking-wider">New This Month</div>
+                        <div className="text-2xl font-bold text-green-600 dark:text-green-400">
                             {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : stats?.newThisMonth || 0}
                         </div>
                     </CardContent>
                 </Card>
-                <Card className="bg-black border-zinc-800">
-                    <CardContent className="p-3">
-                        <div className="font-mono text-[10px] text-zinc-500 mb-1">QUALIFIED</div>
-                        <div className="font-mono text-xl text-amber-500">
+                <Card className="bg-card border-border shadow-sm">
+                    <CardContent className="p-4">
+                        <div className="text-xs font-medium text-muted-foreground mb-1 uppercase tracking-wider">Qualified</div>
+                        <div className="text-2xl font-bold text-primary">
                             {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : stats?.byLeadStatus?.qualified || 0}
                         </div>
                     </CardContent>
                 </Card>
-                <Card className="bg-black border-zinc-800">
-                    <CardContent className="p-3">
-                        <div className="font-mono text-[10px] text-zinc-500 mb-1">NURTURING</div>
-                        <div className="font-mono text-xl text-purple-400">
+                <Card className="bg-card border-border shadow-sm">
+                    <CardContent className="p-4">
+                        <div className="text-xs font-medium text-muted-foreground mb-1 uppercase tracking-wider">Nurturing</div>
+                        <div className="text-2xl font-bold text-purple-600 dark:text-purple-400">
                             {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : stats?.byLeadStatus?.nurturing || 0}
                         </div>
                     </CardContent>
                 </Card>
-                <Card className="bg-black border-zinc-800">
-                    <CardContent className="p-3">
-                        <div className="font-mono text-[10px] text-zinc-500 mb-1">UNQUALIFIED</div>
-                        <div className="font-mono text-xl text-red-400">
+                <Card className="bg-card border-border shadow-sm">
+                    <CardContent className="p-4">
+                        <div className="text-xs font-medium text-muted-foreground mb-1 uppercase tracking-wider">Unqualified</div>
+                        <div className="text-2xl font-bold text-red-600 dark:text-red-400">
                             {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : stats?.byLeadStatus?.unqualified || 0}
                         </div>
                     </CardContent>
@@ -238,77 +277,114 @@ export default function ContactsPage() {
             </div>
 
             {/* Filters */}
-            <Panel title="FILTERS" className="!p-0">
-                <div className="p-3 flex items-center gap-3 flex-wrap">
-                    <div className="relative flex-1 max-w-sm">
-                        <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-zinc-500" />
-                        <Input
-                            placeholder="Search contacts..."
-                            value={searchTerm}
-                            onChange={(e) => {
-                                setSearchTerm(e.target.value)
-                                setPage(1)
-                            }}
-                            className="pl-8 bg-zinc-800 border-zinc-700 text-white font-mono text-xs h-9"
-                        />
+            <Card className="border-border shadow-sm">
+                <CardContent className="p-4 space-y-2">
+                    <div className="flex items-center gap-3 flex-wrap">
+                        <div className="relative flex-1 max-w-sm">
+                            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                            <Input
+                                ref={searchRef}
+                                placeholder="Search contacts... (press /)"
+                                value={searchTerm}
+                                onChange={(e) => {
+                                    setSearchTerm(e.target.value)
+                                    setPage(1)
+                                }}
+                                className="pl-9 h-9 text-sm"
+                            />
+                        </div>
+
+                        <Select value={leadStatusFilter} onValueChange={(v) => {
+                            setLeadStatusFilter(v)
+                            setPage(1)
+                        }}>
+                            <SelectTrigger className="w-40 h-9 text-sm">
+                                <SelectValue placeholder="Lead Status" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="all">All Statuses</SelectItem>
+                                <SelectItem value="new">New</SelectItem>
+                                <SelectItem value="contacted">Contacted</SelectItem>
+                                <SelectItem value="qualified">Qualified</SelectItem>
+                                <SelectItem value="unqualified">Unqualified</SelectItem>
+                                <SelectItem value="nurturing">Nurturing</SelectItem>
+                            </SelectContent>
+                        </Select>
+
+                        <div className="flex-1" />
+
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setImportWizardOpen(true)}
+                            className="h-9"
+                        >
+                            <Upload className="h-4 w-4 mr-2" />
+                            Import CSV
+                        </Button>
                     </div>
 
-                    <Select value={leadStatusFilter} onValueChange={(v) => {
-                        setLeadStatusFilter(v)
-                        setPage(1)
-                    }}>
-                        <SelectTrigger className="w-40 bg-zinc-800 border-zinc-700 text-white font-mono text-xs">
-                            <SelectValue placeholder="Lead Status" />
-                        </SelectTrigger>
-                        <SelectContent className="bg-zinc-900 border-zinc-700">
-                            <SelectItem value="all" className="font-mono text-xs text-white">All Statuses</SelectItem>
-                            <SelectItem value="new" className="font-mono text-xs text-white">New</SelectItem>
-                            <SelectItem value="contacted" className="font-mono text-xs text-white">Contacted</SelectItem>
-                            <SelectItem value="qualified" className="font-mono text-xs text-white">Qualified</SelectItem>
-                            <SelectItem value="unqualified" className="font-mono text-xs text-white">Unqualified</SelectItem>
-                            <SelectItem value="nurturing" className="font-mono text-xs text-white">Nurturing</SelectItem>
-                        </SelectContent>
-                    </Select>
-                </div>
-            </Panel>
+                    {/* Phase 3: Filter Builder + Saved Views */}
+                    <div className="flex items-center gap-2 flex-wrap">
+                        <FilterBuilder
+                            fields={CONTACT_FILTER_FIELDS}
+                            value={filterGroup}
+                            onChange={setFilterGroup}
+                        />
+                        <SavedViewsPicker
+                            entityType="contacts"
+                            currentFilters={filterGroup}
+                            onApply={handleApplyView}
+                        />
+                    </div>
+                </CardContent>
+            </Card>
 
             {/* Error State */}
             {error && (
-                <div className="border border-red-900 bg-red-900/20 p-4 text-center">
-                    <p className="font-mono text-xs text-red-400">{error}</p>
-                    <Button 
-                        variant="link" 
-                        onClick={() => window.location.reload()} 
-                        className="text-amber-500 mt-2"
-                    >
-                        Retry
-                    </Button>
-                </div>
+                <Card className="border-destructive/50 bg-destructive/5">
+                    <CardContent className="p-4 text-center">
+                        <p className="text-sm text-destructive">{error}</p>
+                        <Button variant="link" onClick={() => window.location.reload()} className="text-primary mt-2">
+                            Retry
+                        </Button>
+                    </CardContent>
+                </Card>
             )}
 
             {/* Loading State */}
             {isLoading ? (
                 <div className="flex items-center justify-center py-12">
-                    <Loader2 className="h-8 w-8 animate-spin text-amber-500" />
+                    <Loader2 className="h-8 w-8 animate-spin text-primary" />
                 </div>
             ) : (
                 <>
                     {/* Contacts Grid */}
-                    <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
+                    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                         {contacts.map((contact) => (
-                            <ContactCard key={contact.id} contact={contact} />
+                            <ContactCard
+                                key={contact.id}
+                                contact={contact}
+                                isSelected={bulkSelection.isSelected(contact.id)}
+                                onToggleSelect={bulkSelection.toggleOne}
+                            />
                         ))}
                     </div>
 
                     {/* Empty State */}
                     {contacts.length === 0 && !error && (
-                        <div className="text-center py-12 border border-zinc-800 bg-zinc-900/50">
-                            <User className="h-12 w-12 text-zinc-700 mx-auto mb-4" />
-                            <p className="font-mono text-sm text-zinc-500">No contacts found</p>
-                            <p className="font-mono text-xs text-zinc-600 mt-1">
-                                {searchTerm ? 'Try adjusting your search' : 'Add your first contact to get started'}
-                            </p>
-                        </div>
+                        <EmptyState
+                            icon={User}
+                            title={searchTerm ? 'No contacts match your search' : 'No contacts yet'}
+                            description={searchTerm 
+                                ? 'Try adjusting your search or filters to find what you\'re looking for.'
+                                : 'Start building your network by adding your first contact. You can also import contacts from a CSV file.'
+                            }
+                            actions={searchTerm ? [] : [
+                                { label: 'New Contact', href: '/dashboard/deals/contacts/new', icon: Plus },
+                                { label: 'Import CSV', icon: Upload, variant: 'outline' as const, onClick: () => setImportWizardOpen(true) },
+                            ]}
+                        />
                     )}
 
                     {/* Pagination */}
@@ -319,11 +395,10 @@ export default function ContactsPage() {
                                 size="sm"
                                 onClick={() => setPage(p => Math.max(1, p - 1))}
                                 disabled={page === 1}
-                                className="border-zinc-700 text-zinc-300"
                             >
                                 Previous
                             </Button>
-                            <span className="font-mono text-xs text-zinc-500">
+                            <span className="text-sm text-muted-foreground">
                                 Page {page} of {totalPages}
                             </span>
                             <Button
@@ -331,7 +406,6 @@ export default function ContactsPage() {
                                 size="sm"
                                 onClick={() => setPage(p => Math.min(totalPages, p + 1))}
                                 disabled={page === totalPages}
-                                className="border-zinc-700 text-zinc-300"
                             >
                                 Next
                             </Button>
@@ -339,6 +413,20 @@ export default function ContactsPage() {
                     )}
                 </>
             )}
+
+            {/* Bulk Action Bar */}
+            <BulkActionBar
+                entityType="contact"
+                selectedCount={bulkSelection.selectedCount}
+                onAction={handleBulkAction}
+                onClear={bulkSelection.clearSelection}
+            />
+
+            {/* Import Wizard */}
+            <ImportWizard
+                open={importWizardOpen}
+                onOpenChange={setImportWizardOpen}
+            />
         </div>
     )
 }

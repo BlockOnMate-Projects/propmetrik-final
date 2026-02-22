@@ -13,6 +13,9 @@ export default function TopNav() {
     const { scrollY } = useScroll();
     const pathname = usePathname();
 
+    // Detect if we're on a white background page (marketplace or property detail)
+    const isWhiteBackground = pathname?.startsWith('/marketplace') || pathname?.startsWith('/apply');
+
     useMotionValueEvent(scrollY, "change", (latest) => {
         setIsScrolled(latest > 50);
     });
@@ -24,6 +27,7 @@ export default function TopNav() {
 
     const navLinks = [
         { name: 'Home', href: '/' },
+        { name: 'Marketplace', href: '/marketplace' },
         { name: 'Services', href: '/services' },
         { name: 'About', href: '/about' },
         { name: 'Pricing', href: '/pricing' },
@@ -59,7 +63,7 @@ export default function TopNav() {
             <div className="container mx-auto px-4 md:px-6 flex items-center justify-between">
                 <Link href="/" className="flex items-center gap-2">
                     <Image
-                        src="/branding/logo-dark-bg.svg"
+                        src={isWhiteBackground ? "/branding/logo-transparent.svg" : "/branding/logo-dark-bg.svg"}
                         alt="PROPMETRIK Logo"
                         width={200}
                         height={55}

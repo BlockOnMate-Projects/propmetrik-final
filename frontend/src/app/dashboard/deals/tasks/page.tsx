@@ -37,17 +37,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { tasksApi } from '@/lib/crm-api'
 import type { Task, PaginatedResponse } from '@/types/crm'
 import { TaskStatus, TaskPriority } from '@/types/crm'
-
-function Panel({ title, children, className }: { title: string; children: React.ReactNode; className?: string }) {
-    return (
-        <div className={cn('border border-zinc-800 bg-zinc-900/50', className)}>
-            <div className="flex items-center justify-between px-3 py-1.5 bg-zinc-800/50 border-b border-zinc-800">
-                <span className="font-mono text-[10px] text-amber-500 tracking-wider">{title}</span>
-            </div>
-            <div className="p-3">{children}</div>
-        </div>
-    )
-}
+import { EmptyState } from '@/components/crm/EmptyState'
 
 function TaskRow({ task, onComplete }: { task: Task; onComplete: (id: string) => void }) {
     const getPriorityColor = (priority: TaskPriority) => {
@@ -55,8 +45,8 @@ function TaskRow({ task, onComplete }: { task: Task; onComplete: (id: string) =>
             case TaskPriority.URGENT: return 'bg-red-900/50 text-red-400 border-red-500'
             case TaskPriority.HIGH: return 'bg-orange-900/50 text-orange-400 border-orange-500'
             case TaskPriority.MEDIUM: return 'bg-yellow-900/50 text-yellow-400 border-yellow-500'
-            case TaskPriority.LOW: return 'bg-zinc-700/50 text-zinc-400 border-zinc-500'
-            default: return 'bg-zinc-700/50 text-zinc-400 border-zinc-500'
+            case TaskPriority.LOW: return 'bg-muted text-muted-foreground border-border'
+            default: return 'bg-muted text-muted-foreground border-border'
         }
     }
 
@@ -65,29 +55,29 @@ function TaskRow({ task, onComplete }: { task: Task; onComplete: (id: string) =>
 
     return (
         <div className={cn(
-            'flex items-center gap-4 p-3 border border-zinc-700 bg-zinc-800/50 hover:border-zinc-600 transition-colors',
+            'flex items-center gap-4 p-3 border border-border bg-card hover:border-primary/30 transition-colors rounded-md',
             isOverdue && 'border-l-2 border-l-red-500',
             isCompleted && 'opacity-60'
         )}>
             <Checkbox
                 checked={isCompleted}
                 onCheckedChange={() => !isCompleted && onComplete(task.id)}
-                className="border-zinc-600 data-[state=checked]:bg-green-500 data-[state=checked]:border-green-500"
+                className="border-border data-[state=checked]:bg-green-500 data-[state=checked]:border-green-500"
             />
             
             <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2">
                     <span className={cn(
-                        'font-mono text-xs',
-                        isCompleted ? 'text-zinc-500 line-through' : 'text-white'
+                        'text-sm font-medium',
+                        isCompleted ? 'text-muted-foreground line-through' : 'text-foreground'
                     )}>
                         {task.title}
                     </span>
-                    <span className={cn('font-mono text-[9px] px-1.5 py-0.5', getPriorityColor(task.priority))}>
+                    <span className={cn('text-[10px] font-medium px-1.5 py-0.5 rounded', getPriorityColor(task.priority))}>
                         {task.priority?.toUpperCase()}
                     </span>
                     {isOverdue && (
-                        <span className="font-mono text-[9px] px-1.5 py-0.5 bg-red-900/50 text-red-400 flex items-center gap-1">
+                        <span className="text-[10px] font-medium px-1.5 py-0.5 bg-red-900/50 text-red-400 flex items-center gap-1 rounded">
                             <AlertTriangle className="h-3 w-3" />
                             OVERDUE
                         </span>
@@ -95,12 +85,12 @@ function TaskRow({ task, onComplete }: { task: Task; onComplete: (id: string) =>
                 </div>
                 <div className="flex items-center gap-4 mt-1">
                     {task.deal_title && (
-                        <Link href={`/dashboard/deals/${task.deal_id}`} className="font-mono text-[10px] text-amber-500 hover:text-amber-400">
+                        <Link href={`/dashboard/deals/${task.deal_id}`} className="text-xs text-primary hover:text-primary/80">
                             {task.deal_title}
                         </Link>
                     )}
                     {task.contact_name && (
-                        <span className="font-mono text-[10px] text-zinc-500 flex items-center gap-1">
+                        <span className="text-xs text-muted-foreground flex items-center gap-1">
                             <User className="h-3 w-3" />
                             {task.contact_name}
                         </span>
@@ -111,15 +101,15 @@ function TaskRow({ task, onComplete }: { task: Task; onComplete: (id: string) =>
             <div className="flex items-center gap-3 text-right">
                 {task.due_date && (
                     <span className={cn(
-                        'font-mono text-[10px] flex items-center gap-1',
-                        isOverdue ? 'text-red-400' : 'text-zinc-500'
+                        'text-xs flex items-center gap-1',
+                        isOverdue ? 'text-red-400' : 'text-muted-foreground'
                     )}>
                         <Calendar className="h-3 w-3" />
                         {new Date(task.due_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}
                     </span>
                 )}
                 {task.assigned_to_name && (
-                    <span className="font-mono text-[10px] text-zinc-500">
+                    <span className="text-xs text-muted-foreground">
                         {task.assigned_to_name}
                     </span>
                 )}
@@ -214,183 +204,192 @@ export default function TasksPage() {
 
     return (
         <div className="space-y-4">
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between pb-4 border-b border-border">
                 <div>
-                    <h1 className="font-mono text-xl text-white">TASKS</h1>
-                    <p className="font-mono text-[10px] text-zinc-500">Track and manage your work items</p>
+                    <h1 className="text-2xl font-semibold tracking-tight text-foreground">Tasks</h1>
+                    <p className="text-sm text-muted-foreground mt-1">Track and manage your work items</p>
                 </div>
-                <Button onClick={() => setShowNewDialog(true)} className="bg-amber-500 text-black hover:bg-amber-400 font-mono text-xs">
+                <Button onClick={() => setShowNewDialog(true)} className="bg-primary text-primary-foreground hover:bg-primary/90 font-medium text-sm h-9 px-4 rounded-md shadow-sm">
                     <Plus className="h-4 w-4 mr-2" />
-                    NEW TASK
+                    New Task
                 </Button>
             </div>
 
             {/* Stats */}
             <div className="grid gap-3 md:grid-cols-4">
-                <Card className="bg-black border-zinc-800">
+                <Card className="border-border shadow-sm">
                     <CardContent className="p-3">
-                        <div className="font-mono text-[10px] text-zinc-500 mb-1">OVERDUE</div>
-                        <div className="font-mono text-xl text-red-400">{overdueTasks.length}</div>
+                        <div className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Overdue</div>
+                        <div className="text-xl font-bold text-red-400">{overdueTasks.length}</div>
                     </CardContent>
                 </Card>
-                <Card className="bg-black border-zinc-800">
+                <Card className="border-border shadow-sm">
                     <CardContent className="p-3">
-                        <div className="font-mono text-[10px] text-zinc-500 mb-1">PENDING</div>
-                        <div className="font-mono text-xl text-amber-500">{pendingCount}</div>
+                        <div className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Pending</div>
+                        <div className="text-xl font-bold text-primary">{pendingCount}</div>
                     </CardContent>
                 </Card>
-                <Card className="bg-black border-zinc-800">
+                <Card className="border-border shadow-sm">
                     <CardContent className="p-3">
-                        <div className="font-mono text-[10px] text-zinc-500 mb-1">IN PROGRESS</div>
-                        <div className="font-mono text-xl text-blue-400">{inProgressCount}</div>
+                        <div className="text-xs text-muted-foreground uppercase tracking-wider mb-1">In Progress</div>
+                        <div className="text-xl font-bold text-blue-400">{inProgressCount}</div>
                     </CardContent>
                 </Card>
-                <Card className="bg-black border-zinc-800">
+                <Card className="border-border shadow-sm">
                     <CardContent className="p-3">
-                        <div className="font-mono text-[10px] text-zinc-500 mb-1">COMPLETED</div>
-                        <div className="font-mono text-xl text-green-400">{completedCount}</div>
+                        <div className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Completed</div>
+                        <div className="text-xl font-bold text-green-400">{completedCount}</div>
                     </CardContent>
                 </Card>
             </div>
 
             {/* Overdue Alert */}
             {overdueTasks.length > 0 && (
-                <Panel title="⚠️ OVERDUE TASKS">
-                    <div className="space-y-2">
-                        {overdueTasks.slice(0, 5).map(task => (
-                            <TaskRow key={task.id} task={task} onComplete={handleComplete} />
-                        ))}
-                        {overdueTasks.length > 5 && (
-                            <p className="font-mono text-[10px] text-zinc-500 text-center pt-2">
-                                +{overdueTasks.length - 5} more overdue tasks
-                            </p>
-                        )}
-                    </div>
-                </Panel>
+                <Card className="border-border shadow-sm">
+                    <CardContent className="p-4">
+                        <p className="text-sm font-medium text-foreground mb-3">⚠️ Overdue Tasks</p>
+                        <div className="space-y-2">
+                            {overdueTasks.slice(0, 5).map(task => (
+                                <TaskRow key={task.id} task={task} onComplete={handleComplete} />
+                            ))}
+                            {overdueTasks.length > 5 && (
+                                <p className="text-xs text-muted-foreground text-center pt-2">
+                                    +{overdueTasks.length - 5} more overdue tasks
+                                </p>
+                            )}
+                        </div>
+                    </CardContent>
+                </Card>
             )}
 
             {/* Filters */}
-            <Panel title="FILTERS" className="!p-0">
-                <div className="p-3 flex items-center gap-3 flex-wrap">
-                    <div className="relative flex-1 max-w-sm">
-                        <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-zinc-500" />
-                        <Input
-                            placeholder="Search tasks..."
-                            value={searchTerm}
-                            onChange={(e) => setSearchTerm(e.target.value)}
-                            className="pl-8 bg-zinc-800 border-zinc-700 text-white font-mono text-xs h-9"
-                        />
+            <Card className="border-border shadow-sm">
+                <CardContent className="p-4">
+                    <div className="flex items-center gap-3 flex-wrap">
+                        <div className="relative flex-1 max-w-sm">
+                            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                            <Input
+                                placeholder="Search tasks..."
+                                value={searchTerm}
+                                onChange={(e) => setSearchTerm(e.target.value)}
+                                className="pl-8 text-sm h-9"
+                            />
+                        </div>
+
+                        <Select value={statusFilter} onValueChange={setStatusFilter}>
+                            <SelectTrigger className="w-36 h-9 text-sm">
+                                <SelectValue placeholder="Status" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="all">All Status</SelectItem>
+                                <SelectItem value="pending">Pending</SelectItem>
+                                <SelectItem value="in_progress">In Progress</SelectItem>
+                                <SelectItem value="completed">Completed</SelectItem>
+                            </SelectContent>
+                        </Select>
+
+                        <Select value={priorityFilter} onValueChange={setPriorityFilter}>
+                            <SelectTrigger className="w-36 h-9 text-sm">
+                                <SelectValue placeholder="Priority" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="all">All Priority</SelectItem>
+                                <SelectItem value="urgent">Urgent</SelectItem>
+                                <SelectItem value="high">High</SelectItem>
+                                <SelectItem value="medium">Medium</SelectItem>
+                                <SelectItem value="low">Low</SelectItem>
+                            </SelectContent>
+                        </Select>
                     </div>
-
-                    <Select value={statusFilter} onValueChange={setStatusFilter}>
-                        <SelectTrigger className="w-36 bg-zinc-800 border-zinc-700 text-white font-mono text-xs">
-                            <SelectValue placeholder="Status" />
-                        </SelectTrigger>
-                        <SelectContent className="bg-zinc-900 border-zinc-700">
-                            <SelectItem value="all" className="font-mono text-xs text-white">All Status</SelectItem>
-                            <SelectItem value="pending" className="font-mono text-xs text-white">Pending</SelectItem>
-                            <SelectItem value="in_progress" className="font-mono text-xs text-white">In Progress</SelectItem>
-                            <SelectItem value="completed" className="font-mono text-xs text-white">Completed</SelectItem>
-                        </SelectContent>
-                    </Select>
-
-                    <Select value={priorityFilter} onValueChange={setPriorityFilter}>
-                        <SelectTrigger className="w-36 bg-zinc-800 border-zinc-700 text-white font-mono text-xs">
-                            <SelectValue placeholder="Priority" />
-                        </SelectTrigger>
-                        <SelectContent className="bg-zinc-900 border-zinc-700">
-                            <SelectItem value="all" className="font-mono text-xs text-white">All Priority</SelectItem>
-                            <SelectItem value="urgent" className="font-mono text-xs text-white">Urgent</SelectItem>
-                            <SelectItem value="high" className="font-mono text-xs text-white">High</SelectItem>
-                            <SelectItem value="medium" className="font-mono text-xs text-white">Medium</SelectItem>
-                            <SelectItem value="low" className="font-mono text-xs text-white">Low</SelectItem>
-                        </SelectContent>
-                    </Select>
-                </div>
-            </Panel>
+                </CardContent>
+            </Card>
 
             {error && (
-                <div className="border border-red-900 bg-red-900/20 p-4 text-center">
-                    <p className="font-mono text-xs text-red-400">{error}</p>
+                <div className="border border-red-900 bg-red-900/20 p-4 text-center rounded-md">
+                    <p className="text-xs text-red-400">{error}</p>
                 </div>
             )}
 
             {isLoading ? (
                 <div className="flex items-center justify-center py-12">
-                    <Loader2 className="h-8 w-8 animate-spin text-amber-500" />
+                    <Loader2 className="h-8 w-8 animate-spin text-primary" />
                 </div>
             ) : (
-                <Panel title="ALL TASKS">
-                    {filteredTasks.length === 0 ? (
-                        <div className="text-center py-8">
-                            <CheckSquare className="h-12 w-12 text-zinc-700 mx-auto mb-4" />
-                            <p className="font-mono text-sm text-zinc-500">No tasks found</p>
-                        </div>
-                    ) : (
-                        <div className="space-y-2">
-                            {filteredTasks.map(task => (
-                                <TaskRow key={task.id} task={task} onComplete={handleComplete} />
-                            ))}
-                        </div>
-                    )}
-                </Panel>
+                <Card className="border-border shadow-sm">
+                    <CardContent className="p-4">
+                        {filteredTasks.length === 0 ? (
+                            <EmptyState
+                                icon={CheckSquare}
+                                title="No tasks yet"
+                                description="Create tasks to track your work items, follow-ups, and deadlines."
+                                actions={[{ label: 'New Task', onClick: () => setShowNewDialog(true), icon: Plus }]}
+                            />
+                        ) : (
+                            <div className="space-y-2">
+                                {filteredTasks.map(task => (
+                                    <TaskRow key={task.id} task={task} onComplete={handleComplete} />
+                                ))}
+                            </div>
+                        )}
+                    </CardContent>
+                </Card>
             )}
 
             {/* New Task Dialog */}
             <Dialog open={showNewDialog} onOpenChange={setShowNewDialog}>
-                <DialogContent className="bg-zinc-900 border-zinc-800">
+                <DialogContent>
                     <DialogHeader>
-                        <DialogTitle className="font-mono text-white">New Task</DialogTitle>
+                        <DialogTitle>New Task</DialogTitle>
                     </DialogHeader>
                     <div className="space-y-4 py-4">
                         <div>
-                            <Label className="font-mono text-[10px] text-zinc-500">TITLE *</Label>
+                            <Label className="text-xs text-muted-foreground">Title *</Label>
                             <Input
                                 value={newTask.title}
                                 onChange={(e) => setNewTask({ ...newTask, title: e.target.value })}
                                 placeholder="Task title..."
-                                className="mt-1 bg-zinc-800 border-zinc-700 text-white font-mono text-xs"
+                                className="mt-1 text-sm"
                             />
                         </div>
                         <div>
-                            <Label className="font-mono text-[10px] text-zinc-500">DESCRIPTION</Label>
+                            <Label className="text-xs text-muted-foreground">Description</Label>
                             <Textarea
                                 value={newTask.description}
                                 onChange={(e) => setNewTask({ ...newTask, description: e.target.value })}
                                 placeholder="Task description..."
-                                className="mt-1 bg-zinc-800 border-zinc-700 text-white font-mono text-xs resize-none"
+                                className="mt-1 text-sm resize-none"
                                 rows={3}
                             />
                         </div>
                         <div className="grid grid-cols-2 gap-4">
                             <div>
-                                <Label className="font-mono text-[10px] text-zinc-500">PRIORITY</Label>
+                                <Label className="text-xs text-muted-foreground">Priority</Label>
                                 <Select value={newTask.priority} onValueChange={(v) => setNewTask({ ...newTask, priority: v as TaskPriority })}>
-                                    <SelectTrigger className="mt-1 bg-zinc-800 border-zinc-700 text-white font-mono text-xs">
+                                    <SelectTrigger className="mt-1 h-9 text-sm">
                                         <SelectValue />
                                     </SelectTrigger>
-                                    <SelectContent className="bg-zinc-900 border-zinc-700">
-                                        <SelectItem value="low" className="font-mono text-xs text-white">Low</SelectItem>
-                                        <SelectItem value="medium" className="font-mono text-xs text-white">Medium</SelectItem>
-                                        <SelectItem value="high" className="font-mono text-xs text-white">High</SelectItem>
-                                        <SelectItem value="urgent" className="font-mono text-xs text-white">Urgent</SelectItem>
+                                    <SelectContent>
+                                        <SelectItem value="low">Low</SelectItem>
+                                        <SelectItem value="medium">Medium</SelectItem>
+                                        <SelectItem value="high">High</SelectItem>
+                                        <SelectItem value="urgent">Urgent</SelectItem>
                                     </SelectContent>
                                 </Select>
                             </div>
                             <div>
-                                <Label className="font-mono text-[10px] text-zinc-500">DUE DATE</Label>
+                                <Label className="text-xs text-muted-foreground">Due Date</Label>
                                 <Input
                                     type="date"
                                     value={newTask.due_date}
                                     onChange={(e) => setNewTask({ ...newTask, due_date: e.target.value })}
-                                    className="mt-1 bg-zinc-800 border-zinc-700 text-white font-mono text-xs"
+                                    className="mt-1 text-sm"
                                 />
                             </div>
                         </div>
                     </div>
                     <DialogFooter>
-                        <Button variant="outline" onClick={() => setShowNewDialog(false)} className="border-zinc-700 text-zinc-300">Cancel</Button>
-                        <Button onClick={handleCreateTask} disabled={!newTask.title.trim() || isSaving} className="bg-amber-500 text-black hover:bg-amber-400">
+                        <Button variant="outline" onClick={() => setShowNewDialog(false)}>Cancel</Button>
+                        <Button onClick={handleCreateTask} disabled={!newTask.title.trim() || isSaving} className="bg-primary text-primary-foreground hover:bg-primary/90">
                             {isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Create Task'}
                         </Button>
                     </DialogFooter>

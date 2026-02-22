@@ -10,7 +10,16 @@ const getWsBase = () => {
     // Check if there's an explicit API URL set
     const apiUrl = process.env.NEXT_PUBLIC_API_URL;
     if (apiUrl) {
-        return apiUrl.replace(/^http/, 'ws').replace(/\/api\/v\d+$/, '');
+        try {
+            const parsed = new URL(apiUrl, window.location.origin);
+            const isLocal = parsed.hostname === 'localhost' || parsed.hostname === '127.0.0.1';
+            const wsProtocol = parsed.protocol === 'https:' ? 'wss' : 'ws';
+            const wsPort = isLocal && parsed.port === '3000' ? '4000' : parsed.port;
+            const host = wsPort ? `${parsed.hostname}:${wsPort}` : parsed.hostname;
+            return `${wsProtocol}://${host}`;
+        } catch {
+            // fall through to default resolver
+        }
     }
 
     // Fallback to current host but handle common dev port mismatch (Next 3000 -> Express 4000)
@@ -33,11 +42,11 @@ type WSEvent =
     | { type: 'message'; payload: WorkspaceMessage }
     | { type: 'message_ack'; messageId: string }
     | { type: 'message_edited'; messageId: string; content: string; editedAt: string }
-    | { type: 'typing'; userId: string }
+    | { type: 'typing'; userId: string; conversationId?: string }
     | { type: 'pong' }
     | { type: 'presence'; userId: string; status: 'online' | 'offline'; onlineUsers: string[] }
     | { type: 'kobby_thinking'; query: string }
-    | { type: 'kobby_response'; query: string; response: KobbyResponse }
+    | { type: 'kobby_response'; query: string; response: KobbyResponse; conversationId?: string }
     | { type: 'kobby_error'; error: string }
     | { type: 'error'; error: string };
 
@@ -47,7 +56,7 @@ interface UseWorkspaceSocketOptions {
     onMessage?: (msg: WorkspaceMessage) => void;
     onMessageEdited?: (messageId: string, content: string, editedAt: string) => void;
     onPresenceChange?: (onlineUsers: string[]) => void;
-    onKobbyResponse?: (query: string, response: KobbyResponse) => void;
+    onKobbyResponse?: (query: string, response: KobbyResponse, conversationId?: string) => void;
     onKobbyError?: (error: string) => void;
     onKobbyThinking?: (query: string) => void;
 }
@@ -138,7 +147,7 @@ export function useWorkspaceSocket({
                     case 'kobby_response':
                         setIsKobbyThinking(false);
                         setKobbyPendingQuery(null);
-                        onKobbyResponse?.(data.query, data.response);
+                        onKobbyResponse?.(data.query, data.response, data.conversationId);
                         break;
                     case 'kobby_error':
                         setIsKobbyThinking(false);
@@ -175,15 +184,15 @@ export function useWorkspaceSocket({
         };
     }, [connect]);
 
-    const sendMessage = useCallback((content: string, threadId?: string, metadata?: any) => {
+    const sendMessage = useCallback((content: string, conversationId?: string, threadId?: string, metadata?: any) => {
         if (wsRef.current?.readyState === WebSocket.OPEN) {
-            wsRef.current.send(JSON.stringify({ type: 'message', content, threadId, metadata }));
+            wsRef.current.send(JSON.stringify({ type: 'message', content, conversationId, threadId, metadata }));
         }
     }, []);
 
-    const sendTyping = useCallback(() => {
+    const sendTyping = useCallback((conversationId?: string) => {
         if (wsRef.current?.readyState === WebSocket.OPEN) {
-            wsRef.current.send(JSON.stringify({ type: 'typing' }));
+            wsRef.current.send(JSON.stringify({ type: 'typing', conversationId }));
         }
     }, []);
 
@@ -200,7 +209,7 @@ export function useWorkspaceSocket({
     }, []);
 
     const sendKobbyQuery = useCallback(
-        (query: string, entityType: string, entityId: string, sessionId?: string) => {
+        (query: string, entityType: string, entityId: string, sessionId?: string, conversationId?: string) => {
             if (wsRef.current?.readyState === WebSocket.OPEN) {
                 wsRef.current.send(
                     JSON.stringify({
@@ -209,6 +218,7 @@ export function useWorkspaceSocket({
                         entityType,
                         entityId,
                         sessionId,
+                        conversationId,
                     })
                 );
             }

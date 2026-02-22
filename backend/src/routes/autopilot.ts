@@ -11,10 +11,10 @@
 import { Router, Request, Response } from 'express';
 import { logger } from '../utils/logger';
 import { pool } from '../database';
-import { autopilotPipeline } from '../services/publications/autopilot/autopilotPipeline';
-import { autopilotScheduler } from '../services/publications/autopilot/autopilotScheduler';
-import { PUBLICATION_TEMPLATES } from '../services/publications/autopilot/templates';
-import type { AutopilotSchedule } from '../services/publications/autopilot/types';
+import { autopilotPipeline } from '../../shared-services/publications/autopilot/autopilotPipeline';
+import { autopilotScheduler } from '../../shared-services/publications/autopilot/autopilotScheduler';
+import { PUBLICATION_TEMPLATES } from '../../shared-services/publications/autopilot/templates';
+import type { AutopilotSchedule } from '../../shared-services/publications/autopilot/types';
 
 const router = Router();
 

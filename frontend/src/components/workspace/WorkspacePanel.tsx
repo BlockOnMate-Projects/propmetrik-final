@@ -5,6 +5,7 @@ import { useWindowManagerStore } from '@/store/windowManagerStore';
 import { cn } from '@/lib/utils';
 import { workspaceApi, type EntityType } from '@/lib/workspace-api';
 import { MessageSquare } from 'lucide-react';
+import { useSession } from 'next-auth/react';
 
 // ============================================================================
 // FLOATING TRIGGER BUTTON
@@ -60,15 +61,9 @@ export function WorkspaceWidget({
     token: initialToken,
 }: WorkspaceWidgetProps) {
     const [unreadCount, setUnreadCount] = useState(0);
-    const [token, setToken] = useState<string | null>(initialToken || (typeof window !== 'undefined' ? localStorage.getItem('token') : null));
+    const { data: session } = useSession();
     const { openWindow } = useWindowManagerStore();
-
-    useEffect(() => {
-        if (!initialToken && typeof window !== 'undefined') {
-            const stored = localStorage.getItem('token');
-            if (stored) setToken(stored);
-        }
-    }, [initialToken]);
+    const resolvedToken = initialToken || ((session as any)?.accessToken ?? null);
 
     useEffect(() => {
         workspaceApi
@@ -87,7 +82,7 @@ export function WorkspaceWidget({
                 entityId,
                 entityName,
                 currentUserId,
-                token: token || initialToken
+                token: resolvedToken
             },
             size: { width: 440, height: 600 },
             position: { x: window.innerWidth - 460, y: 100 }

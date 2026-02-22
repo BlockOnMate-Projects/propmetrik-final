@@ -50,6 +50,18 @@ const config: Config = {
           DEFAULT: 'hsl(var(--card))',
           foreground: 'hsl(var(--card-foreground))',
         },
+        success: {
+          DEFAULT: 'hsl(var(--success))',
+        },
+        warning: {
+          DEFAULT: 'hsl(var(--warning))',
+        },
+        info: {
+          DEFAULT: 'hsl(var(--info))',
+        },
+        whatsapp: {
+          DEFAULT: 'hsl(var(--whatsapp))',
+        },
       },
       borderRadius: {
         lg: 'var(--radius)',

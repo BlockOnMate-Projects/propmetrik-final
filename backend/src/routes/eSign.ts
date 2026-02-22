@@ -21,7 +21,8 @@ import {
 import {
     CreateSigningRequestDto,
     CaptureSignatureDto,
-    ExternalSignatureDto
+    ExternalSignatureDto,
+    CreateEnvelopeDto
 } from '../../shared-services/e-sign/types';
 import { logger } from '../utils/logger';
 import { pool, query as dbQuery } from '../database';
@@ -1419,13 +1420,13 @@ router.post('/envelopes/create', esignUpload.single('files'), asyncHandler(async
         }));
 
         // Build envelope DTO
-        const envelopeData = {
+        const envelopeData: CreateEnvelopeDto = {
             name: envelopeDataRaw.subject || 'Self-Signed Document',
             message: envelopeDataRaw.message || '',
             documentHtml: pdfDataUrl
                 ? `<div class="pdf-document" data-pdf-url="${pdfDataUrl}">PDF Document</div>`
-                : null,
-            documentPdfUrl: pdfDataUrl,
+                : undefined,
+            documentPdfUrl: pdfDataUrl || undefined,
             contextType: envelopeDataRaw.contextType || (isSelfSigned ? 'self_signed' : 'document'),
             contextEntityId: envelopeDataRaw.contextEntityId || null,
             contextEntityName: envelopeDataRaw.contextEntityName || null,

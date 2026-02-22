@@ -52,56 +52,50 @@ export class FloodRiskService {
         const { latitude, longitude, radius_meters = 500 } = params;
 
         try {
-            // 1. Get nearby historical incidents using PostGIS (if available)
-            let nearbyIncidents: any[] = [];
-            try {
-                const incidentsSql = `
-          SELECT 
-            id,
-            severity,
-            ST_Distance(
-              location,
-              ST_SetSRID(ST_MakePoint($1, $2), 4326)::geography
-            ) as distance_m
-          FROM flood_risk_incidents
-          WHERE location IS NOT NULL AND ST_DWithin(
+            // 1. Get nearby historical incidents using PostGIS
+            const incidentsSql = `
+        SELECT 
+          id,
+          severity,
+          ST_Distance(
             location,
-            ST_SetSRID(ST_MakePoint($1, $2), 4326)::geography,
-            $3
-          )
-          ORDER BY distance_m ASC
-        `;
-                const incidentsResult = await query(incidentsSql, [longitude, latitude, radius_meters]);
-                nearbyIncidents = incidentsResult.rows;
-            } catch {
-                // PostGIS not available or location not populated — fallback to all incidents
-                const fallbackSql = `
-          SELECT id, severity, severity_score, neighborhood, city
-          FROM flood_risk_incidents
-          ORDER BY incident_date DESC
-        `;
-                const fallbackResult = await query(fallbackSql, []);
-                nearbyIncidents = fallbackResult.rows.map((r: any) => ({ ...r, distance_m: 500 }));
-            }
+            ST_SetSRID(ST_MakePoint($1, $2), 4326)::geography
+          ) as distance_m
+        FROM flood_risk_incidents
+        WHERE ST_DWithin(
+          location,
+          ST_SetSRID(ST_MakePoint($1, $2), 4326)::geography,
+          $3
+        )
+        ORDER BY distance_m ASC
+      `;
 
-            // 2. Compute neighborhood risk score from raw incidents
+            const incidentsResult = await query(incidentsSql, [longitude, latitude, radius_meters]);
+            const nearbyIncidents = incidentsResult.rows;
+
+            // 2. Identify neighborhood (simple reverse geocoding or spatial join)
+            // For now, we rely on the nearest incident's neighborhood or a spatial query if neighborhood boundaries existed
             let neighborhoodRiskScore = 0;
-            try {
-                const neighborhoodSql = `
-          SELECT 
-            AVG(severity_score) as avg_severity,
-            COUNT(*) as incident_count
-          FROM flood_risk_incidents
-          WHERE neighborhood = (
-            SELECT neighborhood FROM flood_risk_incidents
-            ORDER BY incident_date DESC LIMIT 1
-          )
-        `;
-                const neighborhoodResult = await query(neighborhoodSql, []);
-                if (neighborhoodResult.rows.length > 0 && neighborhoodResult.rows[0].avg_severity) {
-                    neighborhoodRiskScore = parseFloat(neighborhoodResult.rows[0].avg_severity) * 10;
-                }
-            } catch { /* ignore if neighborhood lookup fails */ }
+
+            // Attempt to find neighborhood risk from materialized view based on proximity
+            const neighborhoodSql = `
+        SELECT avg_risk_score 
+        FROM flood_risk_scores 
+        WHERE neighborhood = (
+          SELECT neighborhood 
+          FROM flood_risk_incidents 
+          WHERE ST_DWithin(
+            location, 
+            ST_SetSRID(ST_MakePoint($1, $2), 4326)::geography, 
+            1000
+          ) 
+          LIMIT 1
+        )
+      `;
+            const neighborhoodResult = await query(neighborhoodSql, [longitude, latitude]);
+            if (neighborhoodResult.rows.length > 0) {
+                neighborhoodRiskScore = parseFloat(neighborhoodResult.rows[0].avg_risk_score);
+            }
 
             // 3. Calculate Property Specific Score
             // Base score from neighborhood + points for nearby incidents
@@ -183,12 +177,9 @@ export class FloodRiskService {
         SELECT 
           id, source_type as source, incident_date, incident_description as description, severity, 
           neighborhood as location_name,
-          CASE WHEN location IS NOT NULL THEN ST_Y(location::geometry) ELSE NULL END as latitude,
-          CASE WHEN location IS NOT NULL THEN ST_X(location::geometry) ELSE NULL END as longitude,
-          is_verified as verified,
-          severity_score,
-          city,
-          estimated_affected_properties
+          ST_Y(location::geometry) as latitude,
+          ST_X(location::geometry) as longitude,
+          is_verified as verified
         FROM flood_risk_incidents
         ${whereClause}
         ORDER BY incident_date DESC
@@ -253,15 +244,11 @@ export class FloodRiskService {
     }
 
     /**
-     * Refresh risk scores (no-op if materialized view doesn't exist)
+     * Refresh the neighborhood risk scores materialized view
      */
     async refreshRiskScores(): Promise<void> {
-        try {
-            await query('REFRESH MATERIALIZED VIEW CONCURRENTLY flood_risk_scores');
-            logger.info('Refreshed flood_risk_scores materialized view');
-        } catch {
-            logger.info('flood_risk_scores materialized view does not exist, skipping refresh');
-        }
+        await query('REFRESH MATERIALIZED VIEW CONCURRENTLY flood_risk_scores');
+        logger.info('Refreshed flood_risk_scores materialized view');
     }
 }
 

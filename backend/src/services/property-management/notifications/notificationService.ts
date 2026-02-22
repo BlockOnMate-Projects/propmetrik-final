@@ -402,7 +402,7 @@ export class NotificationService {
         
         // Use unified notification service if available
         try {
-            const { emailService } = require('../../../shared-services/notifications');
+            const { emailService } = require('../../../../shared-services/notifications/unified');
             const result = await emailService.send({ to: email, subject, html });
             if (result.success) {
                 return result.messageId || `EMAIL-${Date.now()}`;

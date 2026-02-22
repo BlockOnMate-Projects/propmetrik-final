@@ -1684,7 +1684,7 @@ export default function ProjectDetailPage() {
           entityId={project.id}
           entityName={project.project_name}
           currentUserId={null /* TODO: inject from auth context */}
-          token={typeof window !== 'undefined' ? localStorage.getItem('token') : null}
+          token={null}
         />
       )}
     </div>

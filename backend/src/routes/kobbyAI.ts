@@ -118,10 +118,12 @@ router.post(
         );
 
         const response = await kobbyAIService.query(query, context, sessionId);
+        const defaultConversation = await workspaceService.getDefaultConversation(workspaceId);
 
         // Persist the AI response as a workspace message so it shows in chat
         const savedMessage = await workspaceService.persistMessage({
             workspaceId,
+            conversationId: defaultConversation.id,
             senderId: null,
             senderType: 'kobby_ai',
             messageType: 'ai_response',

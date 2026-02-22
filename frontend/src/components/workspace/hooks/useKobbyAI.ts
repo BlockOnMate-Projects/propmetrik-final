@@ -2,12 +2,14 @@
 
 import { useState, useCallback, useRef, useEffect } from 'react';
 import type { EntityType } from '@/lib/workspace-api';
+import { getSession } from 'next-auth/react';
 
 const KOBBY_API_BASE = '/api/ai/kobby';
 
-function getAuthHeaders(): Record<string, string> {
+async function getAuthHeaders(): Promise<Record<string, string>> {
     if (typeof window === 'undefined') return {};
-    const token = localStorage.getItem('token') || sessionStorage.getItem('token');
+    const session = await getSession();
+    const token = (session as any)?.accessToken as string | undefined;
     return token ? { Authorization: `Bearer ${token}` } : {};
 }
 
@@ -44,12 +46,23 @@ export function useKobbyAI({ entityType, entityId, workspaceId, sendViaWS }: Use
 
     // Fetch suggestion prompts for this entity type
     useEffect(() => {
-        fetch(`${KOBBY_API_BASE}/suggestions/${entityType}`, {
-            headers: getAuthHeaders(),
-        })
-            .then((r) => r.json())
-            .then((d) => setSuggestions(d.suggestions || []))
-            .catch(() => { });
+        let cancelled = false;
+        (async () => {
+            try {
+                const headers = await getAuthHeaders();
+                const response = await fetch(`${KOBBY_API_BASE}/suggestions/${entityType}`, { headers });
+                const data = await response.json();
+                if (!cancelled) {
+                    setSuggestions(data.suggestions || []);
+                }
+            } catch {
+                // ignore suggestion fetch failures
+            }
+        })();
+
+        return () => {
+            cancelled = true;
+        };
     }, [entityType]);
 
     /**
@@ -77,9 +90,10 @@ export function useKobbyAI({ entityType, entityId, workspaceId, sendViaWS }: Use
 
             // REST fallback
             try {
+                const authHeaders = await getAuthHeaders();
                 const res = await fetch(`${KOBBY_API_BASE}/query`, {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+                    headers: { 'Content-Type': 'application/json', ...authHeaders },
                     body: JSON.stringify({
                         workspaceId,
                         query,

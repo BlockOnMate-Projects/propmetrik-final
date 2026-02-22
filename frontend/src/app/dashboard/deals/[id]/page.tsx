@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useEffect, useState } from 'react'
+import React, { useState } from 'react'
 import Link from 'next/link'
 import { useParams, useRouter } from 'next/navigation'
 import { cn, formatCurrency } from '@/lib/utils'
@@ -8,27 +8,18 @@ import { isFeatureEnabled } from '@/lib/features'
 import {
     ArrowLeft,
     Edit,
-    Trash2,
     User,
     Building2,
-    Calendar,
-    DollarSign,
-    Clock,
-    Phone,
-    Mail,
-    MessageSquare,
     FileText,
-    CheckSquare,
     Plus,
     Loader2,
     ChevronRight,
     FileDown,
-    LineChart
+    LineChart,
+    StickyNote,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { Card, CardContent } from '@/components/ui/card'
 import { Textarea } from '@/components/ui/textarea'
 import {
     Dialog,
@@ -37,7 +28,6 @@ import {
     DialogFooter,
     DialogHeader,
     DialogTitle,
-    DialogTrigger,
 } from '@/components/ui/dialog'
 import {
     Select,
@@ -46,102 +36,32 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select'
-import { dealsApi, pipelinesApi, tasksApi, notesApi } from '@/lib/crm-api'
-import type { Deal, DealActivity, DealStage, Task, Note, CrmDocument, DealPipeline } from '@/types/crm'
+import { toast } from 'sonner'
+import { useDeal, useDealActivities, useDealTasks, useDealNotes, useDealDocuments, useUpdateDeal, useUpdateDealStage } from '@/hooks/crm/use-deals'
+import { usePipeline } from '@/hooks/crm/use-pipelines'
+import { useCreateNote } from '@/hooks/crm/use-tasks-notes-agents'
+import type { Deal } from '@/types/crm'
 import { GenerateDocumentDialog } from '@/components/deals/GenerateDocumentDialog'
 import { DocumentChecklist } from '@/components/deals/DocumentChecklist'
+import { InlineEdit } from '@/components/crm/InlineEdit'
+import { UnifiedTimeline } from '@/components/crm/UnifiedTimeline'
 
 // =====================================================
-// PANEL COMPONENT
+// SECTION PANEL (themed)
 // =====================================================
 function Panel({ title, children, className, action }: {
-    title: string;
-    children: React.ReactNode;
-    className?: string;
-    action?: React.ReactNode;
+    title: string
+    children: React.ReactNode
+    className?: string
+    action?: React.ReactNode
 }) {
     return (
-        <div className={cn('border border-zinc-800 bg-zinc-900/50', className)}>
-            <div className="flex items-center justify-between px-3 py-1.5 bg-zinc-800/50 border-b border-zinc-800">
-                <span className="font-mono text-[10px] text-amber-500 tracking-wider">{title}</span>
+        <div className={cn('border border-border rounded-lg bg-card', className)}>
+            <div className="flex items-center justify-between px-3 py-1.5 bg-muted/50 border-b border-border rounded-t-lg">
+                <span className="text-[10px] font-medium text-primary tracking-wider uppercase">{title}</span>
                 {action}
             </div>
             <div className="p-3">{children}</div>
-        </div>
-    )
-}
-
-// =====================================================
-// ACTIVITY TIMELINE
-// =====================================================
-function ActivityTimeline({ activities }: { activities: DealActivity[] }) {
-    const getActivityIcon = (type: string) => {
-        switch (type) {
-            case 'call': return <Phone className="h-3 w-3" />
-            case 'email': return <Mail className="h-3 w-3" />
-            case 'whatsapp': return <MessageSquare className="h-3 w-3" />
-            case 'meeting': return <User className="h-3 w-3" />
-            case 'viewing': return <Building2 className="h-3 w-3" />
-            case 'stage_change': return <ChevronRight className="h-3 w-3" />
-            case 'document': return <FileText className="h-3 w-3" />
-            default: return <Clock className="h-3 w-3" />
-        }
-    }
-
-    const getActivityColor = (type: string) => {
-        switch (type) {
-            case 'call': return 'bg-blue-500'
-            case 'email': return 'bg-purple-500'
-            case 'whatsapp': return 'bg-green-500'
-            case 'meeting': return 'bg-orange-500'
-            case 'viewing': return 'bg-amber-500'
-            case 'stage_change': return 'bg-cyan-500'
-            default: return 'bg-zinc-500'
-        }
-    }
-
-    if (activities.length === 0) {
-        return (
-            <div className="text-center py-8">
-                <p className="font-mono text-xs text-zinc-500">No activities recorded yet</p>
-            </div>
-        )
-    }
-
-    return (
-        <div className="relative">
-            <div className="absolute left-4 top-0 bottom-0 w-px bg-zinc-800" />
-            <div className="space-y-4">
-                {activities.map((activity) => (
-                    <div key={activity.id} className="relative pl-10">
-                        <div className={cn(
-                            'absolute left-2.5 w-3 h-3 rounded-full flex items-center justify-center text-white',
-                            getActivityColor(activity.activity_type)
-                        )}>
-                            {getActivityIcon(activity.activity_type)}
-                        </div>
-                        <div className="bg-zinc-800/50 border border-zinc-700 p-3">
-                            <div className="flex items-start justify-between mb-1">
-                                <span className="font-mono text-xs text-white">{activity.title}</span>
-                                <span className="font-mono text-[10px] text-zinc-500">
-                                    {new Date(activity.activity_date).toLocaleDateString('en-GB', {
-                                        day: 'numeric',
-                                        month: 'short',
-                                        hour: '2-digit',
-                                        minute: '2-digit'
-                                    })}
-                                </span>
-                            </div>
-                            {activity.description && (
-                                <p className="font-mono text-[10px] text-zinc-400 mt-1">{activity.description}</p>
-                            )}
-                            <div className="font-mono text-[10px] text-zinc-600 mt-2">
-                                by {activity.performed_by_name || 'System'}
-                            </div>
-                        </div>
-                    </div>
-                ))}
-            </div>
         </div>
     )
 }
@@ -154,123 +74,77 @@ export default function DealDetailPage() {
     const router = useRouter()
     const dealId = params.id as string
 
-    const [deal, setDeal] = useState<Deal | null>(null)
-    const [activities, setActivities] = useState<DealActivity[]>([])
-    const [tasks, setTasks] = useState<Task[]>([])
-    const [notes, setNotes] = useState<Note[]>([])
-    const [documents, setDocuments] = useState<CrmDocument[]>([])
-    const [pipeline, setPipeline] = useState<DealPipeline | null>(null)
-    const [isLoading, setIsLoading] = useState(true)
-    const [error, setError] = useState<string | null>(null)
+    // ---------- React Query hooks ----------
+    const { data: deal, isLoading, error: dealError } = useDeal(dealId)
+    const { data: activities = [] } = useDealActivities(dealId)
+    const { data: tasks = [] } = useDealTasks(dealId)
+    const { data: notes = [] } = useDealNotes(dealId)
+    const { data: documents = [] } = useDealDocuments(dealId)
+    const { data: pipeline } = usePipeline(deal?.pipeline_id || '')
 
-    // Stage change dialog
+    // ---------- Mutations ----------
+    const updateDeal = useUpdateDeal()
+    const updateStage = useUpdateDealStage()
+    const createNote = useCreateNote()
+
+    // ---------- Local UI state ----------
     const [stageDialogOpen, setStageDialogOpen] = useState(false)
-    const [selectedStage, setSelectedStage] = useState<string>('')
+    const [selectedStage, setSelectedStage] = useState('')
     const [stageNote, setStageNote] = useState('')
-    const [isUpdatingStage, setIsUpdatingStage] = useState(false)
-
-    // New note
     const [newNote, setNewNote] = useState('')
-    const [isAddingNote, setIsAddingNote] = useState(false)
-
-    // Document generation dialog
     const [generateDocDialogOpen, setGenerateDocDialogOpen] = useState(false)
     const [documentRefreshKey, setDocumentRefreshKey] = useState(0)
 
-    // Load deal data
-    useEffect(() => {
-        const loadDeal = async () => {
-            try {
-                setIsLoading(true)
-                setError(null)
-
-                const [dealData, activitiesData, tasksData, notesData, docsData] = await Promise.all([
-                    dealsApi.getById(dealId),
-                    dealsApi.getActivities(dealId),
-                    dealsApi.getTasks(dealId),
-                    dealsApi.getNotes(dealId),
-                    dealsApi.getDocuments(dealId)
-                ])
-
-                setDeal(dealData)
-                setActivities(activitiesData)
-                setTasks(tasksData)
-                setNotes(notesData)
-                setDocuments(docsData)
-
-                // Load pipeline for stage options
-                if (dealData.pipeline_id) {
-                    const pipelineData = await pipelinesApi.getById(dealData.pipeline_id)
-                    setPipeline(pipelineData)
-                }
-            } catch (err) {
-                console.error('Failed to load deal:', err)
-                setError('Failed to load deal details')
-            } finally {
-                setIsLoading(false)
-            }
-        }
-
-        if (dealId) {
-            loadDeal()
-        }
-    }, [dealId])
-
-    // Handle stage change
+    // ---------- Handlers ----------
     const handleStageChange = async () => {
         if (!selectedStage || !deal) return
-
         try {
-            setIsUpdatingStage(true)
-            const updated = await dealsApi.updateStage(deal.id, selectedStage, stageNote)
-            setDeal(updated)
-
-            // Reload activities
-            const newActivities = await dealsApi.getActivities(dealId)
-            setActivities(newActivities)
-
+            await updateStage.mutateAsync({ dealId: deal.id, stageId: selectedStage, note: stageNote })
+            toast.success('Stage updated')
             setStageDialogOpen(false)
             setStageNote('')
-        } catch (err) {
-            console.error('Failed to update stage:', err)
-        } finally {
-            setIsUpdatingStage(false)
+        } catch {
+            toast.error('Failed to update stage')
         }
     }
 
-    // Handle add note
     const handleAddNote = async () => {
         if (!newNote.trim() || !deal) return
-
         try {
-            setIsAddingNote(true)
-            const note = await notesApi.create({
-                entity_type: 'deal',
-                entity_id: deal.id,
-                content: newNote
-            })
-            setNotes([note, ...notes])
+            await createNote.mutateAsync({ entity_type: 'deal', entity_id: deal.id, content: newNote })
             setNewNote('')
-        } catch (err) {
-            console.error('Failed to add note:', err)
-        } finally {
-            setIsAddingNote(false)
+            toast.success('Note added')
+        } catch {
+            toast.error('Failed to add note')
         }
     }
 
+    const handleInlineUpdate = async (field: keyof Deal, value: string) => {
+        if (!deal) return
+        const payload: Partial<Deal> = {}
+        if (field === 'deal_value' || field === 'probability' || field === 'commission_amount') {
+            ;(payload as any)[field] = parseFloat(value) || 0
+        } else {
+            ;(payload as any)[field] = value
+        }
+        await updateDeal.mutateAsync({ id: deal.id, data: payload })
+        toast.success('Updated')
+    }
+
+    // ---------- Loading / Error states ----------
     if (isLoading) {
         return (
             <div className="flex items-center justify-center py-20">
-                <Loader2 className="h-8 w-8 animate-spin text-amber-500" />
+                <Loader2 className="h-8 w-8 animate-spin text-primary" />
             </div>
         )
     }
 
-    if (error || !deal) {
+    if (dealError || !deal) {
         return (
             <div className="text-center py-20">
-                <p className="font-mono text-sm text-red-400">{error || 'Deal not found'}</p>
-                <Button variant="link" onClick={() => router.back()} className="text-amber-500 mt-4">
+                <p className="text-sm text-destructive">{dealError?.message || 'Deal not found'}</p>
+                <Button variant="link" onClick={() => router.back()} className="text-primary mt-4">
                     Go Back
                 </Button>
             </div>
@@ -279,47 +153,47 @@ export default function DealDetailPage() {
 
     return (
         <div className="space-y-4">
-            {/* Header */}
+            {/* ─── Header ─── */}
             <div className="flex items-start justify-between">
                 <div className="flex items-start gap-4">
                     <Button
                         variant="ghost"
                         size="icon"
                         onClick={() => router.back()}
-                        className="text-zinc-400 hover:text-white"
+                        className="text-muted-foreground hover:text-foreground"
                     >
                         <ArrowLeft className="h-5 w-5" />
                     </Button>
                     <div>
                         <div className="flex items-center gap-3 mb-1">
-                            <span className="font-mono text-[10px] text-amber-500">{deal.deal_number}</span>
+                            <span className="text-[10px] text-primary font-medium">{deal.deal_number}</span>
                             <span className={cn(
-                                'font-mono text-[9px] px-1.5 py-0.5',
-                                deal.deal_type === 'sale' && 'bg-green-900/50 text-green-400',
-                                deal.deal_type === 'rental' && 'bg-blue-900/50 text-blue-400',
-                                deal.deal_type === 'development' && 'bg-purple-900/50 text-purple-400'
+                                'text-[9px] px-1.5 py-0.5 rounded',
+                                deal.deal_type === 'sale' && 'bg-green-500/10 text-green-600 dark:text-green-400',
+                                deal.deal_type === 'rental' && 'bg-blue-500/10 text-blue-600 dark:text-blue-400',
+                                deal.deal_type === 'development' && 'bg-purple-500/10 text-purple-600 dark:text-purple-400'
                             )}>
                                 {deal.deal_type?.toUpperCase()}
                             </span>
                             <span className={cn(
-                                'font-mono text-[9px] px-1.5 py-0.5',
-                                deal.deal_status === 'active' && 'bg-blue-900/50 text-blue-400',
-                                deal.deal_status === 'won' && 'bg-green-900/50 text-green-400',
-                                deal.deal_status === 'lost' && 'bg-red-900/50 text-red-400',
-                                deal.deal_status === 'on_hold' && 'bg-yellow-900/50 text-yellow-400'
+                                'text-[9px] px-1.5 py-0.5 rounded',
+                                deal.deal_status === 'active' && 'bg-blue-500/10 text-blue-600 dark:text-blue-400',
+                                deal.deal_status === 'won' && 'bg-green-500/10 text-green-600 dark:text-green-400',
+                                deal.deal_status === 'lost' && 'bg-red-500/10 text-red-600 dark:text-red-400',
+                                deal.deal_status === 'on_hold' && 'bg-yellow-500/10 text-yellow-600 dark:text-yellow-400'
                             )}>
                                 {deal.deal_status?.toUpperCase()}
                             </span>
                         </div>
-                        <h1 className="font-mono text-xl text-white">{deal.title}</h1>
+                        <h1 className="text-xl font-semibold text-foreground">{deal.title}</h1>
                         {deal.description && (
-                            <p className="font-mono text-xs text-zinc-400 mt-1 max-w-2xl">{deal.description}</p>
+                            <p className="text-xs text-muted-foreground mt-1 max-w-2xl">{deal.description}</p>
                         )}
                     </div>
                 </div>
                 <div className="flex items-center gap-2">
                     <Link href={`/dashboard/deals/${deal.id}/edit`}>
-                        <Button variant="outline" size="sm" className="border-zinc-700 text-zinc-300 hover:text-white">
+                        <Button variant="outline" size="sm">
                             <Edit className="h-4 w-4 mr-2" />
                             Edit
                         </Button>
@@ -327,23 +201,23 @@ export default function DealDetailPage() {
                 </div>
             </div>
 
-            {/* Stage Progress */}
+            {/* ─── Stage Progress ─── */}
             <Panel title="DEAL STAGE">
                 <div className="flex items-center gap-2 overflow-x-auto pb-2">
-                    {pipeline?.stages?.sort((a, b) => a.stage_order - b.stage_order).map((stage, index) => {
+                    {pipeline?.stages?.sort((a: any, b: any) => a.stage_order - b.stage_order).map((stage: any, index: number) => {
                         const isActive = stage.id === deal.stage_id
-                        const isPast = (pipeline?.stages?.findIndex(s => s.id === deal.stage_id) || 0) > index
+                        const isPast = (pipeline?.stages?.findIndex((s: any) => s.id === deal.stage_id) || 0) > index
 
                         return (
                             <React.Fragment key={stage.id}>
                                 <div
                                     className={cn(
-                                        'flex-shrink-0 px-3 py-1.5 font-mono text-[10px] border transition-colors cursor-pointer',
-                                        isActive && 'bg-amber-500 text-black border-amber-500',
-                                        isPast && !isActive && 'bg-zinc-800 text-zinc-300 border-zinc-700',
-                                        !isActive && !isPast && 'bg-transparent text-zinc-500 border-zinc-700 hover:border-zinc-500'
+                                        'flex-shrink-0 px-3 py-1.5 text-[10px] border rounded transition-colors cursor-pointer',
+                                        isActive && 'bg-primary text-primary-foreground border-primary',
+                                        isPast && !isActive && 'bg-muted text-foreground border-border',
+                                        !isActive && !isPast && 'bg-transparent text-muted-foreground border-border hover:border-foreground/40'
                                     )}
-                                    style={isActive ? { borderColor: stage.stage_color } : {}}
+                                    style={isActive && stage.stage_color ? { backgroundColor: stage.stage_color, borderColor: stage.stage_color } : {}}
                                     onClick={() => {
                                         if (!isActive) {
                                             setSelectedStage(stage.id)
@@ -354,286 +228,209 @@ export default function DealDetailPage() {
                                     {stage.stage_name}
                                 </div>
                                 {index < (pipeline?.stages?.length || 0) - 1 && (
-                                    <ChevronRight className="h-4 w-4 text-zinc-600 flex-shrink-0" />
+                                    <ChevronRight className="h-4 w-4 text-muted-foreground/50 flex-shrink-0" />
                                 )}
                             </React.Fragment>
                         )
                     })}
                 </div>
                 {deal.days_in_stage !== undefined && (
-                    <p className="font-mono text-[10px] text-zinc-500 mt-2">
+                    <p className="text-[10px] text-muted-foreground mt-2">
                         In current stage for {deal.days_in_stage} days
                     </p>
                 )}
             </Panel>
 
-            {/* Main Content Grid */}
+            {/* ─── Main Content Grid ─── */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-                {/* Left Column - Deal Info */}
+                {/* Left Column */}
                 <div className="lg:col-span-2 space-y-4">
-                    {/* Key Metrics */}
-                    <div className="grid grid-cols-4 gap-3">
-                        <Card className="bg-black border-zinc-800">
+                    {/* Key Metrics — with InlineEdit */}
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                        <Card className="border-border">
                             <CardContent className="p-3">
-                                <div className="font-mono text-[10px] text-zinc-500 mb-1">DEAL VALUE</div>
-                                <div className="font-mono text-lg text-green-400">
-                                    {deal.deal_value ? formatCurrency(deal.deal_value, deal.currency || 'GHS') : '—'}
-                                </div>
+                                <div className="text-[10px] text-muted-foreground mb-1">DEAL VALUE</div>
+                                <InlineEdit
+                                    value={deal.deal_value ?? ''}
+                                    displayValue={deal.deal_value ? formatCurrency(deal.deal_value, deal.currency || 'GHS') : '—'}
+                                    type="number"
+                                    onSave={(v) => handleInlineUpdate('deal_value', v)}
+                                    className="text-lg font-semibold text-green-600 dark:text-green-400"
+                                />
                             </CardContent>
                         </Card>
-                        <Card className="bg-black border-zinc-800">
+                        <Card className="border-border">
                             <CardContent className="p-3">
-                                <div className="font-mono text-[10px] text-zinc-500 mb-1">PROBABILITY</div>
-                                <div className="font-mono text-lg text-white">{deal.probability || 0}%</div>
+                                <div className="text-[10px] text-muted-foreground mb-1">PROBABILITY</div>
+                                <InlineEdit
+                                    value={deal.probability ?? 0}
+                                    displayValue={`${deal.probability || 0}%`}
+                                    type="number"
+                                    onSave={(v) => handleInlineUpdate('probability', v)}
+                                    className="text-lg font-semibold text-foreground"
+                                />
                             </CardContent>
                         </Card>
-                        <Card className="bg-black border-zinc-800">
+                        <Card className="border-border">
                             <CardContent className="p-3">
-                                <div className="font-mono text-[10px] text-zinc-500 mb-1">COMMISSION</div>
-                                <div className="font-mono text-lg text-amber-500">
-                                    {deal.commission_amount ? formatCurrency(deal.commission_amount, deal.currency || 'GHS') : '—'}
-                                </div>
+                                <div className="text-[10px] text-muted-foreground mb-1">COMMISSION</div>
+                                <InlineEdit
+                                    value={deal.commission_amount ?? ''}
+                                    displayValue={deal.commission_amount ? formatCurrency(deal.commission_amount, deal.currency || 'GHS') : '—'}
+                                    type="number"
+                                    onSave={(v) => handleInlineUpdate('commission_amount', v)}
+                                    className="text-lg font-semibold text-primary"
+                                />
                             </CardContent>
                         </Card>
-                        <Card className="bg-black border-zinc-800">
+                        <Card className="border-border">
                             <CardContent className="p-3">
-                                <div className="font-mono text-[10px] text-zinc-500 mb-1">EXPECTED CLOSE</div>
-                                <div className="font-mono text-lg text-white">
-                                    {deal.expected_close_date
-                                        ? new Date(deal.expected_close_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })
-                                        : '—'
+                                <div className="text-[10px] text-muted-foreground mb-1">EXPECTED CLOSE</div>
+                                <InlineEdit
+                                    value={deal.expected_close_date ? deal.expected_close_date.toString().slice(0, 10) : ''}
+                                    displayValue={
+                                        deal.expected_close_date
+                                            ? new Date(deal.expected_close_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })
+                                            : '—'
                                     }
-                                </div>
+                                    type="date"
+                                    onSave={(v) => handleInlineUpdate('expected_close_date', v)}
+                                    className="text-lg font-semibold text-foreground"
+                                />
                             </CardContent>
                         </Card>
                     </div>
 
-                    {/* Tabs */}
-                    <Tabs defaultValue="activity" className="w-full">
-                        <TabsList className="bg-zinc-900 border border-zinc-800">
-                            <TabsTrigger value="activity" className="font-mono text-xs data-[state=active]:bg-amber-500 data-[state=active]:text-black">
-                                ACTIVITY
-                            </TabsTrigger>
-                            <TabsTrigger value="tasks" className="font-mono text-xs data-[state=active]:bg-amber-500 data-[state=active]:text-black">
-                                TASKS ({tasks.length})
-                            </TabsTrigger>
-                            <TabsTrigger value="documents" className="font-mono text-xs data-[state=active]:bg-amber-500 data-[state=active]:text-black">
-                                DOCUMENTS ({documents.length})
-                            </TabsTrigger>
-                            <TabsTrigger value="notes" className="font-mono text-xs data-[state=active]:bg-amber-500 data-[state=active]:text-black">
-                                NOTES ({notes.length})
-                            </TabsTrigger>
-                        </TabsList>
+                    {/* ─── Quick‑add Note ─── */}
+                    <div className="flex items-start gap-2">
+                        <StickyNote className="h-4 w-4 text-muted-foreground mt-2.5 flex-shrink-0" />
+                        <Textarea
+                            placeholder="Add a quick note…"
+                            value={newNote}
+                            onChange={(e) => setNewNote(e.target.value)}
+                            className="text-xs resize-none min-h-[40px]"
+                            rows={2}
+                        />
+                        <Button
+                            size="sm"
+                            onClick={handleAddNote}
+                            disabled={!newNote.trim() || createNote.isPending}
+                        >
+                            {createNote.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Add'}
+                        </Button>
+                    </div>
 
-                        <TabsContent value="activity" className="mt-4">
-                            <Panel title="ACTIVITY TIMELINE">
-                                <ActivityTimeline activities={activities} />
-                            </Panel>
-                        </TabsContent>
-
-                        <TabsContent value="tasks" className="mt-4">
-                            <Panel
-                                title="TASKS"
-                                action={
-                                    <Link href={`/dashboard/deals/tasks?deal_id=${deal.id}`}>
-                                        <Button variant="ghost" size="sm" className="h-6 px-2 text-amber-500 hover:text-amber-400">
-                                            <Plus className="h-3 w-3 mr-1" />
-                                            Add
-                                        </Button>
-                                    </Link>
-                                }
+                    {/* ─── Documents Section ─── */}
+                    <Panel
+                        title="DOCUMENTS"
+                        action={
+                            <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-6 px-2 text-primary hover:text-primary/80"
+                                onClick={() => setGenerateDocDialogOpen(true)}
                             >
-                                {tasks.length === 0 ? (
-                                    <p className="font-mono text-xs text-zinc-500 text-center py-6">No tasks</p>
-                                ) : (
-                                    <div className="space-y-2">
-                                        {tasks.map((task) => (
-                                            <div
-                                                key={task.id}
-                                                className="flex items-center gap-3 p-2 bg-zinc-800/50 border border-zinc-700"
-                                            >
-                                                <CheckSquare className={cn(
-                                                    'h-4 w-4',
-                                                    task.status === 'completed' ? 'text-green-500' : 'text-zinc-500'
-                                                )} />
-                                                <div className="flex-1">
-                                                    <p className={cn(
-                                                        'font-mono text-xs',
-                                                        task.status === 'completed' ? 'text-zinc-500 line-through' : 'text-white'
-                                                    )}>
-                                                        {task.title}
-                                                    </p>
-                                                    {task.due_date && (
-                                                        <p className="font-mono text-[10px] text-zinc-500">
-                                                            Due: {new Date(task.due_date).toLocaleDateString('en-GB')}
-                                                        </p>
-                                                    )}
-                                                </div>
-                                                <span className={cn(
-                                                    'font-mono text-[9px] px-1.5 py-0.5',
-                                                    task.priority === 'urgent' && 'bg-red-900/50 text-red-400',
-                                                    task.priority === 'high' && 'bg-orange-900/50 text-orange-400',
-                                                    task.priority === 'medium' && 'bg-yellow-900/50 text-yellow-400',
-                                                    task.priority === 'low' && 'bg-zinc-700/50 text-zinc-400'
-                                                )}>
-                                                    {task.priority?.toUpperCase()}
+                                <FileDown className="h-3 w-3 mr-1" />
+                                Generate
+                            </Button>
+                        }
+                    >
+                        <DocumentChecklist
+                            key={documentRefreshKey}
+                            dealId={dealId}
+                            onGenerateDocument={() => setGenerateDocDialogOpen(true)}
+                        />
+
+                        {documents.length > 0 && (
+                            <div className="pt-4 border-t border-border mt-4">
+                                <h4 className="text-[10px] text-muted-foreground uppercase tracking-wider mb-3">
+                                    Uploaded Files ({documents.length})
+                                </h4>
+                                <div className="space-y-2">
+                                    {documents.map((doc) => (
+                                        <div key={doc.id} className="flex items-center gap-3 p-2 rounded-md bg-muted/30 border border-border">
+                                            <FileText className="h-4 w-4 text-muted-foreground" />
+                                            <div className="flex-1">
+                                                <p className="text-xs text-foreground">{doc.file_name}</p>
+                                                <p className="text-[10px] text-muted-foreground">
+                                                    {doc.document_type?.replace('_', ' ')} • {(doc.file_size / 1024).toFixed(0)}KB
+                                                </p>
+                                            </div>
+                                            {doc.is_signed && (
+                                                <span className="text-[9px] px-1.5 py-0.5 bg-green-500/10 text-green-600 dark:text-green-400 rounded-full font-medium">
+                                                    SIGNED
                                                 </span>
-                                            </div>
-                                        ))}
-                                    </div>
-                                )}
-                            </Panel>
-                        </TabsContent>
-
-                        <TabsContent value="documents" className="mt-4">
-                            <Panel
-                                title="DOCUMENTS"
-                                action={
-                                    <Button
-                                        variant="ghost"
-                                        size="sm"
-                                        className="h-6 px-2 text-amber-500 hover:text-amber-400"
-                                        onClick={() => setGenerateDocDialogOpen(true)}
-                                    >
-                                        <FileDown className="h-3 w-3 mr-1" />
-                                        Generate
-                                    </Button>
-                                }
-                            >
-                                <DocumentChecklist
-                                    key={documentRefreshKey}
-                                    dealId={dealId}
-                                    onGenerateDocument={() => setGenerateDocDialogOpen(true)}
-                                />
-
-                                {/* Legacy uploaded documents */}
-                                {documents.length > 0 && (
-                                    <div className="pt-4 border-t border-zinc-800 mt-4">
-                                        <h4 className="font-mono text-[10px] text-zinc-500 uppercase tracking-wider mb-3">
-                                            Uploaded Files ({documents.length})
-                                        </h4>
-                                        <div className="space-y-2">
-                                            {documents.map((doc) => (
-                                                <div
-                                                    key={doc.id}
-                                                    className="flex items-center gap-3 p-2 bg-zinc-800/50 border border-zinc-700"
-                                                >
-                                                    <FileText className="h-4 w-4 text-zinc-500" />
-                                                    <div className="flex-1">
-                                                        <p className="font-mono text-xs text-white">{doc.file_name}</p>
-                                                        <p className="font-mono text-[10px] text-zinc-500">
-                                                            {doc.document_type?.replace('_', ' ')} • {(doc.file_size / 1024).toFixed(0)}KB
-                                                        </p>
-                                                    </div>
-                                                    {doc.is_signed && (
-                                                        <span className="font-mono text-[9px] px-1.5 py-0.5 bg-green-900/50 text-green-400">
-                                                            SIGNED
-                                                        </span>
-                                                    )}
-                                                </div>
-                                            ))}
+                                            )}
                                         </div>
-                                    </div>
-                                )}
-                            </Panel>
-                        </TabsContent>
-
-                        <TabsContent value="notes" className="mt-4">
-                            <Panel title="NOTES">
-                                <div className="mb-4">
-                                    <Textarea
-                                        placeholder="Add a note..."
-                                        value={newNote}
-                                        onChange={(e) => setNewNote(e.target.value)}
-                                        className="bg-zinc-800 border-zinc-700 text-white font-mono text-xs resize-none"
-                                        rows={3}
-                                    />
-                                    <div className="flex justify-end mt-2">
-                                        <Button
-                                            onClick={handleAddNote}
-                                            disabled={!newNote.trim() || isAddingNote}
-                                            className="bg-amber-500 text-black hover:bg-amber-400 font-mono text-xs"
-                                        >
-                                            {isAddingNote ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Add Note'}
-                                        </Button>
-                                    </div>
+                                    ))}
                                 </div>
-                                {notes.length === 0 ? (
-                                    <p className="font-mono text-xs text-zinc-500 text-center py-6">No notes</p>
-                                ) : (
-                                    <div className="space-y-2">
-                                        {notes.map((note) => (
-                                            <div key={note.id} className="p-3 bg-zinc-800/50 border border-zinc-700">
-                                                <p className="font-mono text-xs text-white whitespace-pre-wrap">{note.content}</p>
-                                                <div className="flex items-center justify-between mt-2">
-                                                    <span className="font-mono text-[10px] text-zinc-500">
-                                                        {note.created_by_name || 'Unknown'} • {new Date(note.created_at).toLocaleDateString('en-GB')}
-                                                    </span>
-                                                    {note.is_pinned && (
-                                                        <span className="font-mono text-[9px] text-amber-500">PINNED</span>
-                                                    )}
-                                                </div>
-                                            </div>
-                                        ))}
-                                    </div>
-                                )}
-                            </Panel>
-                        </TabsContent>
-                    </Tabs>
+                            </div>
+                        )}
+                    </Panel>
+
+                    {/* ─── Unified Timeline ─── */}
+                    <Panel title="TIMELINE">
+                        <UnifiedTimeline
+                            activities={activities}
+                            tasks={tasks}
+                            notes={notes}
+                            documents={documents}
+                        />
+                    </Panel>
                 </div>
 
-                {/* Right Column - Sidebar */}
+                {/* ─── Right Column — Sidebar ─── */}
                 <div className="space-y-4">
-                    {/* Contact Info */}
+                    {/* Contact */}
                     <Panel title="PRIMARY CONTACT">
                         {deal.primary_contact_id ? (
                             <Link href={`/dashboard/deals/contacts/${deal.primary_contact_id}`}>
-                                <div className="flex items-center gap-3 p-2 bg-zinc-800/50 border border-zinc-700 hover:border-amber-500/50 transition-colors">
-                                    <div className="w-10 h-10 bg-amber-500/20 rounded-full flex items-center justify-center">
-                                        <User className="h-5 w-5 text-amber-500" />
+                                <div className="flex items-center gap-3 p-2 rounded-md bg-muted/30 border border-border hover:border-primary/50 transition-colors">
+                                    <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center">
+                                        <User className="h-5 w-5 text-primary" />
                                     </div>
                                     <div>
-                                        <p className="font-mono text-xs text-white">{deal.primary_contact_name}</p>
-                                        <p className="font-mono text-[10px] text-zinc-500">View contact</p>
+                                        <p className="text-xs text-foreground font-medium">{deal.primary_contact_name}</p>
+                                        <p className="text-[10px] text-muted-foreground">View contact</p>
                                     </div>
                                 </div>
                             </Link>
                         ) : (
-                            <p className="font-mono text-xs text-zinc-500">No contact assigned</p>
+                            <p className="text-xs text-muted-foreground">No contact assigned</p>
                         )}
                     </Panel>
 
-                    {/* Company Info */}
+                    {/* Company */}
                     {deal.company_id && (
                         <Panel title="COMPANY">
                             <Link href={`/dashboard/deals/companies/${deal.company_id}`}>
-                                <div className="flex items-center gap-3 p-2 bg-zinc-800/50 border border-zinc-700 hover:border-amber-500/50 transition-colors">
-                                    <div className="w-10 h-10 bg-blue-500/20 rounded-full flex items-center justify-center">
+                                <div className="flex items-center gap-3 p-2 rounded-md bg-muted/30 border border-border hover:border-primary/50 transition-colors">
+                                    <div className="w-10 h-10 bg-blue-500/10 rounded-full flex items-center justify-center">
                                         <Building2 className="h-5 w-5 text-blue-500" />
                                     </div>
                                     <div>
-                                        <p className="font-mono text-xs text-white">{deal.company_name}</p>
-                                        <p className="font-mono text-[10px] text-zinc-500">View company</p>
+                                        <p className="text-xs text-foreground font-medium">{deal.company_name}</p>
+                                        <p className="text-[10px] text-muted-foreground">View company</p>
                                     </div>
                                 </div>
                             </Link>
                         </Panel>
                     )}
 
-                    {/* Agent Info */}
+                    {/* Agent */}
                     <Panel title="ASSIGNED AGENT">
                         {deal.assigned_agent_name ? (
-                            <div className="flex items-center gap-3 p-2 bg-zinc-800/50 border border-zinc-700">
-                                <div className="w-10 h-10 bg-purple-500/20 rounded-full flex items-center justify-center">
+                            <div className="flex items-center gap-3 p-2 rounded-md bg-muted/30 border border-border">
+                                <div className="w-10 h-10 bg-purple-500/10 rounded-full flex items-center justify-center">
                                     <User className="h-5 w-5 text-purple-500" />
                                 </div>
                                 <div>
-                                    <p className="font-mono text-xs text-white">{deal.assigned_agent_name}</p>
-                                    <p className="font-mono text-[10px] text-zinc-500">Sales Agent</p>
+                                    <p className="text-xs text-foreground font-medium">{deal.assigned_agent_name}</p>
+                                    <p className="text-[10px] text-muted-foreground">Sales Agent</p>
                                 </div>
                             </div>
                         ) : (
-                            <p className="font-mono text-xs text-zinc-500">No agent assigned</p>
+                            <p className="text-xs text-muted-foreground">No agent assigned</p>
                         )}
                     </Panel>
 
@@ -641,19 +438,19 @@ export default function DealDetailPage() {
                     {deal.property_names && deal.property_names.length > 0 && (
                         <Panel title="PROPERTIES">
                             <div className="space-y-2">
-                                {deal.property_names.map((name, idx) => {
-                                    const propertyId = deal.property_ids?.[idx];
+                                {deal.property_names.map((name: string, idx: number) => {
+                                    const propertyId = deal.property_ids?.[idx]
                                     return (
-                                        <div key={idx} className="flex items-center justify-between p-2 bg-zinc-800/50 border border-zinc-700">
+                                        <div key={idx} className="flex items-center justify-between p-2 rounded-md bg-muted/30 border border-border">
                                             <div className="flex items-center gap-2">
-                                                <Building2 className="h-4 w-4 text-zinc-500" />
-                                                <span className="font-mono text-xs text-white">{name}</span>
+                                                <Building2 className="h-4 w-4 text-muted-foreground" />
+                                                <span className="text-xs text-foreground">{name}</span>
                                             </div>
                                             {propertyId && isFeatureEnabled('valuations') && (
                                                 <Button
                                                     variant="ghost"
                                                     size="sm"
-                                                    className="h-6 px-2 text-amber-500 hover:text-amber-400"
+                                                    className="h-6 px-2 text-primary hover:text-primary/80"
                                                     onClick={() => router.push(`/dashboard/valuations/new?property_id=${propertyId}`)}
                                                 >
                                                     <LineChart className="h-3 w-3 mr-1" />
@@ -661,7 +458,7 @@ export default function DealDetailPage() {
                                                 </Button>
                                             )}
                                         </div>
-                                    );
+                                    )
                                 })}
                             </div>
                         </Panel>
@@ -671,8 +468,8 @@ export default function DealDetailPage() {
                     {deal.tags && deal.tags.length > 0 && (
                         <Panel title="TAGS">
                             <div className="flex flex-wrap gap-1">
-                                {deal.tags.map((tag, idx) => (
-                                    <span key={idx} className="font-mono text-[10px] px-2 py-0.5 bg-zinc-800 text-zinc-300 border border-zinc-700">
+                                {deal.tags.map((tag: string, idx: number) => (
+                                    <span key={idx} className="text-[10px] px-2 py-0.5 rounded bg-muted text-muted-foreground border border-border">
                                         {tag}
                                     </span>
                                 ))}
@@ -683,9 +480,9 @@ export default function DealDetailPage() {
                     {/* Lead Source */}
                     {deal.lead_source && (
                         <Panel title="LEAD SOURCE">
-                            <p className="font-mono text-xs text-white">{deal.lead_source}</p>
+                            <p className="text-xs text-foreground">{deal.lead_source}</p>
                             {deal.utm_source && (
-                                <p className="font-mono text-[10px] text-zinc-500 mt-1">
+                                <p className="text-[10px] text-muted-foreground mt-1">
                                     UTM: {deal.utm_source} / {deal.utm_medium} / {deal.utm_campaign}
                                 </p>
                             )}
@@ -694,29 +491,25 @@ export default function DealDetailPage() {
                 </div>
             </div>
 
-            {/* Stage Change Dialog */}
+            {/* ─── Stage Change Dialog ─── */}
             <Dialog open={stageDialogOpen} onOpenChange={setStageDialogOpen}>
-                <DialogContent className="bg-zinc-900 border-zinc-800">
+                <DialogContent>
                     <DialogHeader>
-                        <DialogTitle className="font-mono text-white">Change Deal Stage</DialogTitle>
-                        <DialogDescription className="font-mono text-xs text-zinc-500">
+                        <DialogTitle>Change Deal Stage</DialogTitle>
+                        <DialogDescription className="text-xs">
                             Move this deal to a different stage in the pipeline.
                         </DialogDescription>
                     </DialogHeader>
                     <div className="space-y-4 py-4">
                         <div>
-                            <label className="font-mono text-[10px] text-zinc-500 mb-2 block">NEW STAGE</label>
+                            <label className="text-[10px] text-muted-foreground mb-2 block uppercase">New Stage</label>
                             <Select value={selectedStage} onValueChange={setSelectedStage}>
-                                <SelectTrigger className="bg-zinc-800 border-zinc-700 text-white font-mono text-xs">
+                                <SelectTrigger className="text-xs">
                                     <SelectValue placeholder="Select stage" />
                                 </SelectTrigger>
-                                <SelectContent className="bg-zinc-900 border-zinc-700">
-                                    {pipeline?.stages?.map((stage) => (
-                                        <SelectItem
-                                            key={stage.id}
-                                            value={stage.id}
-                                            className="font-mono text-xs text-white"
-                                        >
+                                <SelectContent>
+                                    {pipeline?.stages?.map((stage: any) => (
+                                        <SelectItem key={stage.id} value={stage.id} className="text-xs">
                                             {stage.stage_name}
                                         </SelectItem>
                                     ))}
@@ -724,36 +517,31 @@ export default function DealDetailPage() {
                             </Select>
                         </div>
                         <div>
-                            <label className="font-mono text-[10px] text-zinc-500 mb-2 block">NOTE (OPTIONAL)</label>
+                            <label className="text-[10px] text-muted-foreground mb-2 block uppercase">Note (optional)</label>
                             <Textarea
-                                placeholder="Add a note about this stage change..."
+                                placeholder="Add a note about this stage change…"
                                 value={stageNote}
                                 onChange={(e) => setStageNote(e.target.value)}
-                                className="bg-zinc-800 border-zinc-700 text-white font-mono text-xs resize-none"
+                                className="text-xs resize-none"
                                 rows={3}
                             />
                         </div>
                     </div>
                     <DialogFooter>
-                        <Button
-                            variant="outline"
-                            onClick={() => setStageDialogOpen(false)}
-                            className="border-zinc-700 text-zinc-300"
-                        >
+                        <Button variant="outline" onClick={() => setStageDialogOpen(false)}>
                             Cancel
                         </Button>
                         <Button
                             onClick={handleStageChange}
-                            disabled={!selectedStage || isUpdatingStage}
-                            className="bg-amber-500 text-black hover:bg-amber-400"
+                            disabled={!selectedStage || updateStage.isPending}
                         >
-                            {isUpdatingStage ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Update Stage'}
+                            {updateStage.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Update Stage'}
                         </Button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
 
-            {/* Generate Document Dialog */}
+            {/* ─── Generate Document Dialog ─── */}
             {deal && (
                 <GenerateDocumentDialog
                     isOpen={generateDocDialogOpen}
@@ -761,7 +549,7 @@ export default function DealDetailPage() {
                     dealId={dealId}
                     dealTitle={deal.title}
                     onDocumentGenerated={() => {
-                        setDocumentRefreshKey(k => k + 1)
+                        setDocumentRefreshKey((k) => k + 1)
                     }}
                 />
             )}

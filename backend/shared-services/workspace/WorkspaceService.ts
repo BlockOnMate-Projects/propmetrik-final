@@ -20,6 +20,7 @@ export type EntityType = 'project' | 'valuation' | 'deal' | 'property' | 'platfo
 export type MemberRole = 'admin' | 'member' | 'viewer';
 export type SenderType = 'user' | 'system' | 'kobby_ai';
 export type MessageType = 'text' | 'file' | 'system' | 'ai_response';
+export type ConversationType = 'channel' | 'dm' | 'group';
 
 export interface Workspace {
     id: string;
@@ -43,6 +44,7 @@ export interface WorkspaceMember {
 export interface WorkspaceMessage {
     id: string;
     workspace_id: string;
+    conversation_id: string;
     sender_id: string | null;
     sender_type: SenderType;
     message_type: MessageType;
@@ -57,6 +59,23 @@ export interface WorkspaceMessage {
     sender_avatar?: string;
 }
 
+export interface WorkspaceConversation {
+    id: string;
+    workspace_id: string;
+    conversation_type: ConversationType;
+    name: string | null;
+    dm_key: string | null;
+    created_by: string | null;
+    created_at: Date;
+    updated_at: Date;
+    archived_at: Date | null;
+}
+
+export interface ConversationUnreadCount {
+    conversation_id: string;
+    count: number;
+}
+
 export interface MessagePage {
     messages: WorkspaceMessage[];
     next_cursor: string | null;
@@ -69,6 +88,41 @@ export interface MessagePage {
 // ============================================================================
 
 class WorkspaceServiceImpl {
+    private buildDmKey(a: string, b: string): string {
+        return [a, b].sort().join(':');
+    }
+
+    private async ensureDefaultConversation(workspaceId: string): Promise<WorkspaceConversation> {
+        const existing = await pool.query<WorkspaceConversation>(
+            `SELECT * FROM workspace_conversations
+             WHERE workspace_id = $1 AND conversation_type = 'channel' AND name = 'General'
+             LIMIT 1`,
+            [workspaceId]
+        );
+        if (existing.rows[0]) return existing.rows[0];
+
+        const created = await pool.query<WorkspaceConversation>(
+            `INSERT INTO workspace_conversations (workspace_id, conversation_type, name)
+             VALUES ($1, 'channel', 'General')
+             RETURNING *`,
+            [workspaceId]
+        );
+
+        await pool.query(
+            `INSERT INTO workspace_conversation_members (conversation_id, user_id, role)
+             SELECT $1, wm.user_id, CASE WHEN wm.role = 'admin' THEN 'admin' ELSE 'member' END
+             FROM workspace_members wm
+             WHERE wm.workspace_id = $2
+             ON CONFLICT (conversation_id, user_id) DO NOTHING`,
+            [created.rows[0].id, workspaceId]
+        );
+
+        return created.rows[0];
+    }
+
+    async getDefaultConversation(workspaceId: string): Promise<WorkspaceConversation> {
+        return this.ensureDefaultConversation(workspaceId);
+    }
 
     // --------------------------------------------------------------------------
     // Workspace Lifecycle
@@ -121,6 +175,8 @@ class WorkspaceServiceImpl {
                 );
             }
 
+            await this.ensureDefaultConversation(workspace.id);
+
             return workspace;
         } catch (error: any) {
             throw error;
@@ -169,8 +225,10 @@ class WorkspaceServiceImpl {
         );
 
         // Post system message
+        const defaultConversation = await this.ensureDefaultConversation(workspaceId);
         await this.persistMessage({
             workspaceId,
+            conversationId: defaultConversation.id,
             senderId: null,
             senderType: 'system',
             messageType: 'system',
@@ -232,6 +290,257 @@ class WorkspaceServiceImpl {
         return ['admin', 'member'].includes(result.rows[0].role);
     }
 
+    async listConversations(workspaceId: string, userId: string): Promise<WorkspaceConversation[]> {
+        await this.ensureDefaultConversation(workspaceId);
+        const result = await pool.query<WorkspaceConversation>(
+            `SELECT c.*
+             FROM workspace_conversations c
+             JOIN workspace_conversation_members cm ON cm.conversation_id = c.id
+             WHERE c.workspace_id = $1
+               AND cm.user_id = $2
+               AND c.archived_at IS NULL
+             ORDER BY
+               CASE WHEN c.conversation_type = 'channel' THEN 0 WHEN c.conversation_type = 'dm' THEN 1 ELSE 2 END,
+               c.updated_at DESC`,
+            [workspaceId, userId]
+        );
+        return result.rows;
+    }
+
+    async getConversationById(workspaceId: string, conversationId: string): Promise<WorkspaceConversation | null> {
+        const result = await pool.query<WorkspaceConversation>(
+            `SELECT * FROM workspace_conversations
+             WHERE id = $1 AND workspace_id = $2 AND archived_at IS NULL`,
+            [conversationId, workspaceId]
+        );
+        return result.rows[0] || null;
+    }
+
+    async isConversationMember(conversationId: string, userId: string): Promise<boolean> {
+        const result = await pool.query(
+            `SELECT 1 FROM workspace_conversation_members WHERE conversation_id = $1 AND user_id = $2`,
+            [conversationId, userId]
+        );
+        return result.rows.length > 0;
+    }
+
+    async getConversationMemberUserIds(conversationId: string): Promise<string[]> {
+        const result = await pool.query<{ user_id: string }>(
+            `SELECT user_id FROM workspace_conversation_members WHERE conversation_id = $1`,
+            [conversationId]
+        );
+        return result.rows.map((r) => r.user_id);
+    }
+
+    async getConversationMembers(conversationId: string): Promise<WorkspaceMember[]> {
+        const result = await pool.query<WorkspaceMember>(
+            `SELECT 
+                cm.conversation_id AS workspace_id,
+                cm.user_id,
+                cm.role,
+                cm.joined_at,
+                u.display_name,
+                u.email
+             FROM workspace_conversation_members cm
+             LEFT JOIN users u ON u.id = cm.user_id
+             WHERE cm.conversation_id = $1
+             ORDER BY cm.joined_at ASC`,
+            [conversationId]
+        );
+        return result.rows;
+    }
+
+    private async getConversationMemberRole(conversationId: string, userId: string): Promise<'admin' | 'member' | null> {
+        const result = await pool.query<{ role: 'admin' | 'member' }>(
+            `SELECT role FROM workspace_conversation_members WHERE conversation_id = $1 AND user_id = $2`,
+            [conversationId, userId]
+        );
+        return result.rows[0]?.role || null;
+    }
+
+    async renameConversation(workspaceId: string, conversationId: string, actorUserId: string, name: string): Promise<WorkspaceConversation | null> {
+        const conv = await this.getConversationById(workspaceId, conversationId);
+        if (!conv) return null;
+        if (conv.conversation_type !== 'group' && conv.conversation_type !== 'channel') return null;
+
+        const role = await this.getConversationMemberRole(conversationId, actorUserId);
+        if (role !== 'admin') {
+            throw new Error('Only conversation admins can rename this conversation');
+        }
+
+        const result = await pool.query<WorkspaceConversation>(
+            `UPDATE workspace_conversations
+             SET name = $3, updated_at = NOW()
+             WHERE id = $1 AND workspace_id = $2 AND archived_at IS NULL
+             RETURNING *`,
+            [conversationId, workspaceId, name]
+        );
+        return result.rows[0] || null;
+    }
+
+    async leaveConversation(workspaceId: string, conversationId: string, userId: string): Promise<boolean> {
+        const conv = await this.getConversationById(workspaceId, conversationId);
+        if (!conv) return false;
+
+        if (conv.conversation_type === 'channel') {
+            throw new Error('Cannot leave the default channel conversation');
+        }
+
+        const result = await pool.query(
+            `DELETE FROM workspace_conversation_members WHERE conversation_id = $1 AND user_id = $2`,
+            [conversationId, userId]
+        );
+
+        if ((result.rowCount || 0) === 0) return false;
+
+        const remaining = await pool.query<{ count: string }>(
+            `SELECT COUNT(*)::text AS count FROM workspace_conversation_members WHERE conversation_id = $1`,
+            [conversationId]
+        );
+
+        if (parseInt(remaining.rows[0].count, 10) === 0) {
+            await pool.query(
+                `UPDATE workspace_conversations SET archived_at = NOW(), updated_at = NOW() WHERE id = $1`,
+                [conversationId]
+            );
+        }
+
+        return true;
+    }
+
+    async archiveConversation(workspaceId: string, conversationId: string, actorUserId: string): Promise<boolean> {
+        const conv = await this.getConversationById(workspaceId, conversationId);
+        if (!conv) return false;
+
+        if (conv.conversation_type !== 'group') {
+            throw new Error('Only group conversations can be archived');
+        }
+
+        const role = await this.getConversationMemberRole(conversationId, actorUserId);
+        if (role !== 'admin') {
+            throw new Error('Only group admins can archive this conversation');
+        }
+
+        const result = await pool.query(
+            `UPDATE workspace_conversations
+             SET archived_at = NOW(), updated_at = NOW()
+             WHERE id = $1 AND workspace_id = $2 AND archived_at IS NULL`,
+            [conversationId, workspaceId]
+        );
+        return (result.rowCount || 0) > 0;
+    }
+
+    async addConversationMember(workspaceId: string, conversationId: string, actorUserId: string, targetUserId: string): Promise<boolean> {
+        const conv = await this.getConversationById(workspaceId, conversationId);
+        if (!conv) return false;
+        if (conv.conversation_type !== 'group') {
+            throw new Error('Can only add members to group conversations');
+        }
+
+        const role = await this.getConversationMemberRole(conversationId, actorUserId);
+        if (role !== 'admin') {
+            throw new Error('Only group admins can add members');
+        }
+
+        const workspaceMember = await this.isMember(workspaceId, targetUserId);
+        if (!workspaceMember) {
+            throw new Error('Target user must be a workspace member');
+        }
+
+        const result = await pool.query(
+            `INSERT INTO workspace_conversation_members (conversation_id, user_id, role, added_by)
+             VALUES ($1, $2, 'member', $3)
+             ON CONFLICT (conversation_id, user_id) DO NOTHING`,
+            [conversationId, targetUserId, actorUserId]
+        );
+
+        await pool.query(`UPDATE workspace_conversations SET updated_at = NOW() WHERE id = $1`, [conversationId]);
+        return (result.rowCount || 0) > 0;
+    }
+
+    async removeConversationMember(workspaceId: string, conversationId: string, actorUserId: string, targetUserId: string): Promise<boolean> {
+        const conv = await this.getConversationById(workspaceId, conversationId);
+        if (!conv) return false;
+        if (conv.conversation_type !== 'group') {
+            throw new Error('Can only remove members from group conversations');
+        }
+
+        const role = await this.getConversationMemberRole(conversationId, actorUserId);
+        if (role !== 'admin' && actorUserId !== targetUserId) {
+            throw new Error('Only group admins can remove other members');
+        }
+
+        const result = await pool.query(
+            `DELETE FROM workspace_conversation_members WHERE conversation_id = $1 AND user_id = $2`,
+            [conversationId, targetUserId]
+        );
+
+        if ((result.rowCount || 0) === 0) return false;
+
+        const remaining = await pool.query<{ count: string }>(
+            `SELECT COUNT(*)::text AS count FROM workspace_conversation_members WHERE conversation_id = $1`,
+            [conversationId]
+        );
+        if (parseInt(remaining.rows[0].count, 10) === 0) {
+            await pool.query(`UPDATE workspace_conversations SET archived_at = NOW(), updated_at = NOW() WHERE id = $1`, [conversationId]);
+        }
+
+        await pool.query(`UPDATE workspace_conversations SET updated_at = NOW() WHERE id = $1`, [conversationId]);
+        return true;
+    }
+
+    async createOrGetDMConversation(workspaceId: string, actorUserId: string, otherUserId: string): Promise<WorkspaceConversation> {
+        const dmKey = this.buildDmKey(actorUserId, otherUserId);
+        const existing = await pool.query<WorkspaceConversation>(
+            `SELECT * FROM workspace_conversations
+             WHERE workspace_id = $1 AND conversation_type = 'dm' AND dm_key = $2
+             LIMIT 1`,
+            [workspaceId, dmKey]
+        );
+        if (existing.rows[0]) return existing.rows[0];
+
+        const created = await pool.query<WorkspaceConversation>(
+            `INSERT INTO workspace_conversations (workspace_id, conversation_type, name, dm_key, created_by)
+             VALUES ($1, 'dm', NULL, $2, $3)
+             RETURNING *`,
+            [workspaceId, dmKey, actorUserId]
+        );
+
+        await pool.query(
+            `INSERT INTO workspace_conversation_members (conversation_id, user_id, role)
+             VALUES ($1, $2, 'member'), ($1, $3, 'member')
+             ON CONFLICT (conversation_id, user_id) DO NOTHING`,
+            [created.rows[0].id, actorUserId, otherUserId]
+        );
+
+        return created.rows[0];
+    }
+
+    async createGroupConversation(
+        workspaceId: string,
+        creatorUserId: string,
+        name: string,
+        memberIds: string[]
+    ): Promise<WorkspaceConversation> {
+        const uniqueMemberIds = Array.from(new Set([creatorUserId, ...memberIds]));
+        const created = await pool.query<WorkspaceConversation>(
+            `INSERT INTO workspace_conversations (workspace_id, conversation_type, name, created_by)
+             VALUES ($1, 'group', $2, $3)
+             RETURNING *`,
+            [workspaceId, name, creatorUserId]
+        );
+
+        await pool.query(
+            `INSERT INTO workspace_conversation_members (conversation_id, user_id, role)
+             SELECT $1, uid, CASE WHEN uid = $2 THEN 'admin' ELSE 'member' END
+             FROM unnest($3::uuid[]) AS uid
+             ON CONFLICT (conversation_id, user_id) DO NOTHING`,
+            [created.rows[0].id, creatorUserId, uniqueMemberIds]
+        );
+
+        return created.rows[0];
+    }
+
     // --------------------------------------------------------------------------
     // Messages
     // --------------------------------------------------------------------------
@@ -241,6 +550,7 @@ class WorkspaceServiceImpl {
      */
     async persistMessage(params: {
         workspaceId: string;
+        conversationId: string;
         senderId: string | null;
         senderType?: SenderType;
         messageType?: MessageType;
@@ -251,6 +561,7 @@ class WorkspaceServiceImpl {
     }): Promise<WorkspaceMessage> {
         const {
             workspaceId,
+            conversationId,
             senderId,
             senderType = 'user',
             messageType = 'text',
@@ -262,10 +573,10 @@ class WorkspaceServiceImpl {
 
         const result = await pool.query<WorkspaceMessage>(
             `INSERT INTO workspace_messages 
-         (workspace_id, sender_id, sender_type, message_type, content, metadata, thread_id)
-       VALUES ($1, $2, $3, $4, $5, $6, $7)
+                 (workspace_id, conversation_id, sender_id, sender_type, message_type, content, metadata, thread_id)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
        RETURNING *`,
-            [workspaceId, senderId, senderType, messageType, content, metadata ? JSON.stringify(metadata) : null, threadId || null]
+                        [workspaceId, conversationId, senderId, senderType, messageType, content, metadata ? JSON.stringify(metadata) : null, threadId || null]
         );
 
         const message = result.rows[0];
@@ -300,13 +611,24 @@ class WorkspaceServiceImpl {
      * Cursor is the created_at timestamp of the last seen message.
      */
     async getMessages(workspaceId: string, cursor?: string, limit = 50): Promise<MessagePage> {
+        const defaultConversation = await this.ensureDefaultConversation(workspaceId);
+        return this.getMessagesByConversation(workspaceId, defaultConversation.id, cursor, limit);
+    }
+
+    async getMessagesByConversation(
+        workspaceId: string,
+        conversationId: string,
+        cursor?: string,
+        limit = 50
+    ): Promise<MessagePage> {
         const params: any[] = [workspaceId, limit + 1]; // fetch one extra to detect has_more
         let cursorClause = '';
 
         if (cursor) {
-            cursorClause = `AND m.created_at < $3`;
+                        cursorClause = `AND m.created_at < $4`;
             params.push(new Date(cursor));
         }
+                params.splice(1, 0, conversationId);
 
         const result = await pool.query<WorkspaceMessage>(
             `SELECT
@@ -315,10 +637,11 @@ class WorkspaceServiceImpl {
        FROM workspace_messages m
        LEFT JOIN users u ON u.id = m.sender_id
        WHERE m.workspace_id = $1
+                 AND m.conversation_id = $2
          AND m.deleted_at IS NULL
          ${cursorClause}
        ORDER BY m.created_at DESC
-       LIMIT $2`,
+             LIMIT $3`,
             params
         );
 
@@ -400,6 +723,22 @@ class WorkspaceServiceImpl {
         );
     }
 
+    async markConversationRead(workspaceId: string, conversationId: string, userId: string): Promise<void> {
+        await pool.query(
+            `INSERT INTO workspace_message_reads (message_id, user_id)
+             SELECT m.id, $3
+             FROM workspace_messages m
+             WHERE m.workspace_id = $1
+               AND m.conversation_id = $2
+               AND m.deleted_at IS NULL
+               AND NOT EXISTS (
+                   SELECT 1 FROM workspace_message_reads r
+                   WHERE r.message_id = m.id AND r.user_id = $3
+               )`,
+            [workspaceId, conversationId, userId]
+        );
+    }
+
     /**
      * Get unread message count for a user in a workspace.
      */
@@ -449,10 +788,45 @@ class WorkspaceServiceImpl {
         }
         return counts;
     }
+
+    async getConversationUnreadCounts(workspaceId: string, userId: string): Promise<Record<string, number>> {
+        const result = await pool.query<{ conversation_id: string; count: string }>(
+            `SELECT
+                m.conversation_id,
+                COUNT(*)::text AS count
+             FROM workspace_messages m
+             JOIN workspace_conversation_members cm
+               ON cm.conversation_id = m.conversation_id
+              AND cm.user_id = $2
+             WHERE m.workspace_id = $1
+               AND m.deleted_at IS NULL
+               AND m.sender_id != $2
+               AND NOT EXISTS (
+                   SELECT 1 FROM workspace_message_reads r
+                   WHERE r.message_id = m.id AND r.user_id = $2
+               )
+             GROUP BY m.conversation_id`,
+            [workspaceId, userId]
+        );
+
+        const counts: Record<string, number> = {};
+        for (const row of result.rows) {
+            counts[row.conversation_id] = parseInt(row.count, 10);
+        }
+        return counts;
+    }
     /**
      * Search messages in a workspace by content.
      */
-    async searchMessages(workspaceId: string, query: string, limit = 50): Promise<WorkspaceMessage[]> {
+    async searchMessages(
+        workspaceId: string,
+        query: string,
+        limit = 50,
+        conversationId?: string
+    ): Promise<WorkspaceMessage[]> {
+        const params: any[] = [workspaceId, `%${query}%`, limit];
+        const conversationClause = conversationId ? 'AND m.conversation_id = $4' : '';
+        if (conversationId) params.push(conversationId);
         const result = await pool.query<WorkspaceMessage>(
             `SELECT 
          m.*,
@@ -462,9 +836,10 @@ class WorkspaceServiceImpl {
        WHERE m.workspace_id = $1
          AND m.deleted_at IS NULL
          AND m.content ILIKE $2
+         ${conversationClause}
        ORDER BY m.created_at DESC
        LIMIT $3`,
-            [workspaceId, `%${query}%`, limit]
+            params
         );
         return result.rows;
     }
@@ -472,7 +847,10 @@ class WorkspaceServiceImpl {
     /**
      * Export all messages in a workspace for audit purposes.
      */
-    async exportMessages(workspaceId: string): Promise<WorkspaceMessage[]> {
+        async exportMessages(workspaceId: string, conversationId?: string): Promise<WorkspaceMessage[]> {
+                const params: any[] = [workspaceId];
+                const conversationClause = conversationId ? 'AND m.conversation_id = $2' : '';
+                if (conversationId) params.push(conversationId);
         const result = await pool.query<WorkspaceMessage>(
             `SELECT 
          m.created_at,
@@ -485,8 +863,9 @@ class WorkspaceServiceImpl {
        LEFT JOIN users u ON u.id = m.sender_id
        WHERE m.workspace_id = $1
          AND m.deleted_at IS NULL
+                 ${conversationClause}
        ORDER BY m.created_at ASC`,
-            [workspaceId]
+                        params
         );
         return result.rows;
     }

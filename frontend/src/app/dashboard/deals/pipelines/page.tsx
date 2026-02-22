@@ -35,23 +35,7 @@ import {
 import { pipelinesApi } from '@/lib/crm-api'
 import type { DealPipeline, DealStage } from '@/types/crm'
 import { DealType } from '@/types/crm'
-
-function Panel({ title, children, actions, className }: { 
-    title: string; 
-    children: React.ReactNode; 
-    actions?: React.ReactNode;
-    className?: string 
-}) {
-    return (
-        <div className={cn('border border-zinc-800 bg-zinc-900/50', className)}>
-            <div className="flex items-center justify-between px-3 py-1.5 bg-zinc-800/50 border-b border-zinc-800">
-                <span className="font-mono text-[10px] text-amber-500 tracking-wider">{title}</span>
-                {actions}
-            </div>
-            <div className="p-4">{children}</div>
-        </div>
-    )
-}
+import { EmptyState } from '@/components/crm/EmptyState'
 
 const STAGE_COLORS = [
     { label: 'Gray', value: '#71717a' },
@@ -74,15 +58,15 @@ function StageRow({ stage, onMove, onEdit, onDelete, isFirst, isLast }: {
     isLast: boolean;
 }) {
     return (
-        <div className="flex items-center gap-3 p-3 bg-zinc-800/30 border border-zinc-700/50 group hover:bg-zinc-800/50">
-            <GripVertical className="h-4 w-4 text-zinc-600 cursor-grab" />
+        <div className="flex items-center gap-3 p-3 bg-muted/30 border border-border rounded-md group hover:bg-muted/50">
+            <GripVertical className="h-4 w-4 text-muted-foreground cursor-grab" />
             <div 
                 className="w-4 h-4 rounded-sm flex-shrink-0" 
                 style={{ backgroundColor: stage.stage_color || '#71717a' }}
             />
             <div className="flex-1 min-w-0">
-                <div className="font-mono text-sm text-white">{stage.stage_name}</div>
-                <div className="font-mono text-[10px] text-zinc-500">
+                <div className="text-sm text-foreground font-medium">{stage.stage_name}</div>
+                <div className="text-xs text-muted-foreground">
                     {stage.deal_count || 0} deals · {stage.probability}% probability
                 </div>
             </div>
@@ -92,7 +76,7 @@ function StageRow({ stage, onMove, onEdit, onDelete, isFirst, isLast }: {
                     size="sm"
                     onClick={() => onMove('up')}
                     disabled={isFirst}
-                    className="h-7 w-7 p-0 text-zinc-400 hover:text-white"
+                    className="h-7 w-7 p-0 text-muted-foreground hover:text-foreground"
                 >
                     <ArrowUp className="h-3.5 w-3.5" />
                 </Button>
@@ -101,7 +85,7 @@ function StageRow({ stage, onMove, onEdit, onDelete, isFirst, isLast }: {
                     size="sm"
                     onClick={() => onMove('down')}
                     disabled={isLast}
-                    className="h-7 w-7 p-0 text-zinc-400 hover:text-white"
+                    className="h-7 w-7 p-0 text-muted-foreground hover:text-foreground"
                 >
                     <ArrowDown className="h-3.5 w-3.5" />
                 </Button>
@@ -109,7 +93,7 @@ function StageRow({ stage, onMove, onEdit, onDelete, isFirst, isLast }: {
                     variant="ghost"
                     size="sm"
                     onClick={onEdit}
-                    className="h-7 w-7 p-0 text-zinc-400 hover:text-white"
+                    className="h-7 w-7 p-0 text-muted-foreground hover:text-foreground"
                 >
                     <Edit className="h-3.5 w-3.5" />
                 </Button>
@@ -117,7 +101,7 @@ function StageRow({ stage, onMove, onEdit, onDelete, isFirst, isLast }: {
                     variant="ghost"
                     size="sm"
                     onClick={onDelete}
-                    className="h-7 w-7 p-0 text-zinc-400 hover:text-red-400"
+                    className="h-7 w-7 p-0 text-muted-foreground hover:text-red-400"
                 >
                     <Trash2 className="h-3.5 w-3.5" />
                 </Button>
@@ -145,24 +129,24 @@ function PipelineCard({
     return (
         <Card 
             className={cn(
-                'bg-black border-zinc-800 cursor-pointer transition-all',
-                isSelected ? 'ring-1 ring-amber-500 border-amber-500' : 'hover:border-zinc-700'
+                'cursor-pointer transition-all shadow-sm',
+                isSelected ? 'ring-1 ring-primary border-primary' : 'hover:border-border/80'
             )}
             onClick={onClick}
         >
             <CardContent className="p-4">
                 <div className="flex items-start justify-between mb-3">
                     <div>
-                        <div className="font-mono text-sm text-white flex items-center gap-2">
+                        <div className="text-sm text-foreground font-medium flex items-center gap-2">
                             {pipeline.pipeline_name}
                             {pipeline.is_default && (
-                                <span className="font-mono text-[9px] px-1.5 py-0.5 bg-amber-500/20 text-amber-400 border border-amber-500/30">
-                                    DEFAULT
+                                <span className="text-[10px] font-medium px-1.5 py-0.5 bg-primary/10 text-primary border border-primary/30 rounded">
+                                    Default
                                 </span>
                             )}
                         </div>
-                        <div className="font-mono text-[10px] text-zinc-500 mt-0.5">
-                            {(pipeline.pipeline_type || 'sale').toUpperCase()}
+                        <div className="text-xs text-muted-foreground mt-0.5">
+                            {(pipeline.pipeline_type || 'sale').charAt(0).toUpperCase() + (pipeline.pipeline_type || 'sale').slice(1)}
                         </div>
                     </div>
                     <div className="flex items-center gap-1" onClick={e => e.stopPropagation()}>
@@ -170,7 +154,7 @@ function PipelineCard({
                             variant="ghost"
                             size="sm"
                             onClick={onEdit}
-                            className="h-7 w-7 p-0 text-zinc-400 hover:text-white"
+                            className="h-7 w-7 p-0 text-muted-foreground hover:text-foreground"
                         >
                             <Settings2 className="h-3.5 w-3.5" />
                         </Button>
@@ -179,7 +163,7 @@ function PipelineCard({
                                 variant="ghost"
                                 size="sm"
                                 onClick={onDelete}
-                                className="h-7 w-7 p-0 text-zinc-400 hover:text-red-400"
+                                className="h-7 w-7 p-0 text-muted-foreground hover:text-red-400"
                             >
                                 <Trash2 className="h-3.5 w-3.5" />
                             </Button>
@@ -188,12 +172,12 @@ function PipelineCard({
                 </div>
                 <div className="flex gap-4">
                     <div>
-                        <div className="font-mono text-lg text-white">{stageCount}</div>
-                        <div className="font-mono text-[10px] text-zinc-500">STAGES</div>
+                        <div className="text-lg font-semibold text-foreground">{stageCount}</div>
+                        <div className="text-xs text-muted-foreground">Stages</div>
                     </div>
                     <div>
-                        <div className="font-mono text-lg text-white">{dealCount}</div>
-                        <div className="font-mono text-[10px] text-zinc-500">DEALS</div>
+                        <div className="text-lg font-semibold text-foreground">{dealCount}</div>
+                        <div className="text-xs text-muted-foreground">Deals</div>
                     </div>
                 </div>
                 {pipeline.stages && pipeline.stages.length > 0 && (
@@ -389,7 +373,7 @@ export default function PipelinesPage() {
     if (isLoading) {
         return (
             <div className="flex items-center justify-center py-20">
-                <Loader2 className="h-8 w-8 animate-spin text-amber-500" />
+                <Loader2 className="h-8 w-8 animate-spin text-primary" />
             </div>
         )
     }
@@ -397,24 +381,24 @@ export default function PipelinesPage() {
     if (error) {
         return (
             <div className="text-center py-20">
-                <p className="font-mono text-sm text-red-400">{error}</p>
+                <p className="text-sm text-red-400">{error}</p>
             </div>
         )
     }
 
     return (
         <div className="space-y-4">
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between pb-4 border-b border-border">
                 <div>
-                    <h1 className="font-mono text-xl text-white">PIPELINES</h1>
-                    <p className="font-mono text-[10px] text-zinc-500">Configure deal stages and workflows</p>
+                    <h1 className="text-2xl font-semibold tracking-tight text-foreground">Pipelines</h1>
+                    <p className="text-sm text-muted-foreground mt-1">Configure deal stages and workflows</p>
                 </div>
                 <Button
                     onClick={() => openPipelineDialog()}
-                    className="bg-amber-500 text-black hover:bg-amber-400 font-mono text-xs"
+                    className="bg-primary text-primary-foreground hover:bg-primary/90 font-medium text-sm h-9 px-4 rounded-md shadow-sm"
                 >
                     <Plus className="h-4 w-4 mr-1.5" />
-                    NEW PIPELINE
+                    New Pipeline
                 </Button>
             </div>
 
@@ -422,13 +406,13 @@ export default function PipelinesPage() {
                 {/* Pipeline List */}
                 <div className="space-y-3">
                     {pipelines.length === 0 ? (
-                        <Card className="bg-black border-zinc-800">
+                        <Card className="shadow-sm">
                             <CardContent className="p-6 text-center">
-                                <p className="font-mono text-xs text-zinc-500">No pipelines configured</p>
+                                <p className="text-sm text-muted-foreground">No pipelines configured</p>
                                 <Button
                                     onClick={() => openPipelineDialog()}
                                     variant="outline"
-                                    className="mt-3 font-mono text-xs border-zinc-700 text-zinc-300"
+                                    className="mt-3 text-sm"
                                 >
                                     Create First Pipeline
                                 </Button>
@@ -451,90 +435,96 @@ export default function PipelinesPage() {
                 {/* Selected Pipeline Stages */}
                 <div className="lg:col-span-2">
                     {selectedPipeline ? (
-                        <Panel
-                            title={`${selectedPipeline.pipeline_name.toUpperCase()} STAGES`}
-                            actions={
+                        <Card className="shadow-sm">
+                            <div className="flex items-center justify-between px-4 py-3 border-b border-border">
+                                <span className="text-xs font-medium text-primary">{selectedPipeline.pipeline_name} Stages</span>
                                 <Button
                                     onClick={() => openStageDialog()}
                                     variant="ghost"
                                     size="sm"
-                                    className="h-6 px-2 text-amber-500 hover:text-amber-400 font-mono text-[10px]"
+                                    className="h-6 px-2 text-primary hover:text-primary/80 text-xs font-medium"
                                 >
                                     <Plus className="h-3 w-3 mr-1" />
-                                    ADD STAGE
+                                    Add Stage
                                 </Button>
-                            }
-                        >
-                            {!selectedPipeline.stages || selectedPipeline.stages.length === 0 ? (
-                                <div className="text-center py-8">
-                                    <p className="font-mono text-xs text-zinc-500 mb-3">No stages configured</p>
-                                    <Button
-                                        onClick={() => openStageDialog()}
-                                        variant="outline"
-                                        className="font-mono text-xs border-zinc-700 text-zinc-300"
-                                    >
-                                        Add First Stage
-                                    </Button>
-                                </div>
-                            ) : (
-                                <div className="space-y-2">
-                                    {selectedPipeline.stages.map((stage, idx) => (
-                                        <StageRow
-                                            key={stage.id}
-                                            stage={stage}
-                                            isFirst={idx === 0}
-                                            isLast={idx === selectedPipeline.stages!.length - 1}
-                                            onMove={(dir) => handleMoveStage(stage.id, dir)}
-                                            onEdit={() => openStageDialog(stage)}
-                                            onDelete={() => handleDeleteStage(stage.id)}
-                                        />
-                                    ))}
-                                </div>
-                            )}
-                        </Panel>
-                    ) : (
-                        <Panel title="STAGES">
-                            <div className="text-center py-12">
-                                <p className="font-mono text-xs text-zinc-500">
-                                    Select a pipeline to view and configure stages
-                                </p>
                             </div>
-                        </Panel>
+                            <CardContent className="p-4">
+                                {!selectedPipeline.stages || selectedPipeline.stages.length === 0 ? (
+                                    <div className="text-center py-8">
+                                        <p className="text-sm text-muted-foreground mb-3">No stages configured</p>
+                                        <Button
+                                            onClick={() => openStageDialog()}
+                                            variant="outline"
+                                            className="text-sm"
+                                        >
+                                            Add First Stage
+                                        </Button>
+                                    </div>
+                                ) : (
+                                    <div className="space-y-2">
+                                        {selectedPipeline.stages.map((stage, idx) => (
+                                            <StageRow
+                                                key={stage.id}
+                                                stage={stage}
+                                                isFirst={idx === 0}
+                                                isLast={idx === selectedPipeline.stages!.length - 1}
+                                                onMove={(dir) => handleMoveStage(stage.id, dir)}
+                                                onEdit={() => openStageDialog(stage)}
+                                                onDelete={() => handleDeleteStage(stage.id)}
+                                            />
+                                        ))}
+                                    </div>
+                                )}
+                            </CardContent>
+                        </Card>
+                    ) : (
+                        <Card className="shadow-sm">
+                            <div className="flex items-center justify-between px-4 py-3 border-b border-border">
+                                <span className="text-xs font-medium text-primary">Stages</span>
+                            </div>
+                            <CardContent className="p-4">
+                                <div className="text-center py-12">
+                                    <p className="text-sm text-muted-foreground">
+                                        Select a pipeline to view and configure stages
+                                    </p>
+                                </div>
+                            </CardContent>
+                        </Card>
                     )}
                 </div>
             </div>
 
             {/* Pipeline Dialog */}
             <Dialog open={showPipelineDialog} onOpenChange={setShowPipelineDialog}>
-                <DialogContent className="bg-zinc-900 border-zinc-700">
+                <DialogContent>
                     <DialogHeader>
-                        <DialogTitle className="font-mono text-white">
-                            {editingPipeline ? 'EDIT PIPELINE' : 'NEW PIPELINE'}
+                        <DialogTitle>
+                            {editingPipeline ? 'Edit Pipeline' : 'New Pipeline'}
                         </DialogTitle>
-                        <DialogDescription className="font-mono text-xs text-zinc-500">
+                        <DialogDescription className="text-sm">
                             {editingPipeline ? 'Update pipeline settings' : 'Create a new deal pipeline'}
                         </DialogDescription>
                     </DialogHeader>
                     <div className="space-y-4 py-4">
                         <div>
-                            <label className="font-mono text-[10px] text-zinc-500 mb-1.5 block">PIPELINE NAME</label>
+                            <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Pipeline Name</label>
                             <Input
                                 value={pipelineName}
                                 onChange={(e) => setPipelineName(e.target.value)}
                                 placeholder="e.g., Sales Pipeline"
-                                className="bg-zinc-800 border-zinc-700 text-white font-mono text-sm"
+                                className="text-sm"
                             />
                         </div>
                         <div>
-                            <label className="font-mono text-[10px] text-zinc-500 mb-1.5 block">DEAL TYPE</label>
+                            <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Deal Type</label>
                             <Select value={pipelineDealType} onValueChange={(v) => setPipelineDealType(v as DealType)}>
-                                <SelectTrigger className="bg-zinc-800 border-zinc-700 text-white font-mono text-sm">
+                                <SelectTrigger className="text-sm">
                                     <SelectValue />
                                 </SelectTrigger>
-                                <SelectContent className="bg-zinc-900 border-zinc-700">
-                                    <SelectItem value="sale" className="font-mono text-sm text-white">Sale</SelectItem>
-                                    <SelectItem value="rental" className="font-mono text-sm text-white">Rental</SelectItem>
-                                    <SelectItem value="development" className="font-mono text-sm text-white">Development</SelectItem>
+                                <SelectContent>
+                                    <SelectItem value="sale" className="text-sm">Sale</SelectItem>
+                                    <SelectItem value="rental" className="text-sm">Rental</SelectItem>
+                                    <SelectItem value="development" className="text-sm">Development</SelectItem>
                                 </SelectContent>
                             </Select>
                         </div>
@@ -543,9 +533,8 @@ export default function PipelinesPage() {
                                 id="isDefault"
                                 checked={pipelineIsDefault}
                                 onCheckedChange={(v) => setPipelineIsDefault(v as boolean)}
-                                className="border-zinc-600 data-[state=checked]:bg-amber-500 data-[state=checked]:border-amber-500"
                             />
-                            <label htmlFor="isDefault" className="font-mono text-xs text-zinc-300">
+                            <label htmlFor="isDefault" className="text-sm">
                                 Set as default pipeline for this deal type
                             </label>
                         </div>
@@ -554,16 +543,15 @@ export default function PipelinesPage() {
                         <Button
                             variant="outline"
                             onClick={() => setShowPipelineDialog(false)}
-                            className="border-zinc-700 text-zinc-300 font-mono text-xs"
                         >
-                            CANCEL
+                            Cancel
                         </Button>
                         <Button
                             onClick={handleSavePipeline}
                             disabled={!pipelineName || isSaving}
-                            className="bg-amber-500 text-black hover:bg-amber-400 font-mono text-xs"
+                            className="bg-primary text-primary-foreground hover:bg-primary/90"
                         >
-                            {isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : editingPipeline ? 'UPDATE' : 'CREATE'}
+                            {isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : editingPipeline ? 'Update' : 'Create'}
                         </Button>
                     </DialogFooter>
                 </DialogContent>
@@ -571,27 +559,27 @@ export default function PipelinesPage() {
 
             {/* Stage Dialog */}
             <Dialog open={showStageDialog} onOpenChange={setShowStageDialog}>
-                <DialogContent className="bg-zinc-900 border-zinc-700">
+                <DialogContent>
                     <DialogHeader>
-                        <DialogTitle className="font-mono text-white">
-                            {editingStage ? 'EDIT STAGE' : 'NEW STAGE'}
+                        <DialogTitle>
+                            {editingStage ? 'Edit Stage' : 'New Stage'}
                         </DialogTitle>
-                        <DialogDescription className="font-mono text-xs text-zinc-500">
+                        <DialogDescription className="text-sm">
                             {editingStage ? 'Update stage settings' : 'Add a new stage to the pipeline'}
                         </DialogDescription>
                     </DialogHeader>
                     <div className="space-y-4 py-4">
                         <div>
-                            <label className="font-mono text-[10px] text-zinc-500 mb-1.5 block">STAGE NAME</label>
+                            <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Stage Name</label>
                             <Input
                                 value={stageName}
                                 onChange={(e) => setStageName(e.target.value)}
                                 placeholder="e.g., Initial Contact"
-                                className="bg-zinc-800 border-zinc-700 text-white font-mono text-sm"
+                                className="text-sm"
                             />
                         </div>
                         <div>
-                            <label className="font-mono text-[10px] text-zinc-500 mb-1.5 block">COLOR</label>
+                            <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Color</label>
                             <div className="flex flex-wrap gap-2">
                                 {STAGE_COLORS.map((color) => (
                                     <button
@@ -600,7 +588,7 @@ export default function PipelinesPage() {
                                         onClick={() => setStageColor(color.value)}
                                         className={cn(
                                             'w-8 h-8 rounded transition-all',
-                                            stageColor === color.value && 'ring-2 ring-white ring-offset-2 ring-offset-zinc-900'
+                                            stageColor === color.value && 'ring-2 ring-foreground ring-offset-2 ring-offset-background'
                                         )}
                                         style={{ backgroundColor: color.value }}
                                         title={color.label}
@@ -609,8 +597,8 @@ export default function PipelinesPage() {
                             </div>
                         </div>
                         <div>
-                            <label className="font-mono text-[10px] text-zinc-500 mb-1.5 block">
-                                WIN PROBABILITY (%)
+                            <label className="text-xs font-medium text-muted-foreground mb-1.5 block">
+                                Win Probability (%)
                             </label>
                             <Input
                                 type="number"
@@ -618,9 +606,9 @@ export default function PipelinesPage() {
                                 max="100"
                                 value={stageProbability}
                                 onChange={(e) => setStageProbability(e.target.value)}
-                                className="bg-zinc-800 border-zinc-700 text-white font-mono text-sm w-24"
+                                className="text-sm w-24"
                             />
-                            <p className="font-mono text-[10px] text-zinc-600 mt-1">
+                            <p className="text-xs text-muted-foreground mt-1">
                                 Used for revenue forecasting calculations
                             </p>
                         </div>
@@ -629,16 +617,15 @@ export default function PipelinesPage() {
                         <Button
                             variant="outline"
                             onClick={() => setShowStageDialog(false)}
-                            className="border-zinc-700 text-zinc-300 font-mono text-xs"
                         >
-                            CANCEL
+                            Cancel
                         </Button>
                         <Button
                             onClick={handleSaveStage}
                             disabled={!stageName || isSaving}
-                            className="bg-amber-500 text-black hover:bg-amber-400 font-mono text-xs"
+                            className="bg-primary text-primary-foreground hover:bg-primary/90"
                         >
-                            {isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : editingStage ? 'UPDATE' : 'CREATE'}
+                            {isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : editingStage ? 'Update' : 'Create'}
                         </Button>
                     </DialogFooter>
                 </DialogContent>

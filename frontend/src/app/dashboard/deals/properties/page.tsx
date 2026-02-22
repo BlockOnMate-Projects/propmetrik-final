@@ -25,6 +25,8 @@ import {
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { Badge } from '@/components/ui/badge'
+import { Card, CardContent } from '@/components/ui/card'
+import { EmptyState } from '@/components/crm/EmptyState'
 
 // API base URL
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api/v1'
@@ -116,12 +118,12 @@ function PropertyCard({ property, onViewDeals }: {
         : 0
 
     return (
-        <div 
+        <Card 
             onClick={handleCardClick}
-            className="border border-zinc-800 bg-zinc-900/50 hover:border-amber-500/50 hover:bg-zinc-900 transition-all cursor-pointer group"
+            className="border-border bg-card hover:border-primary/50 transition-all cursor-pointer group shadow-sm overflow-hidden"
         >
             {/* Property Image */}
-            <div className="aspect-[16/10] bg-zinc-800 relative">
+            <div className="aspect-[16/10] bg-muted relative">
                 {property.images?.[0] ? (
                     <img 
                         src={property.images[0]} 
@@ -130,62 +132,61 @@ function PropertyCard({ property, onViewDeals }: {
                     />
                 ) : (
                     <div className="w-full h-full flex items-center justify-center">
-                        <Icon className="h-12 w-12 text-zinc-600 group-hover:text-zinc-500 transition-colors" />
+                        <Icon className="h-12 w-12 text-muted-foreground/40 group-hover:text-muted-foreground/60 transition-colors" />
                     </div>
                 )}
                 {/* Status badge */}
                 <div className="absolute top-2 right-2">
-                    <Badge className={cn('font-mono text-[9px] border', statusColors[property.status] || statusColors['active'])}>
+                    <Badge className={cn('text-[10px] font-medium border', statusColors[property.status] || statusColors['active'])}>
                         {property.status.replace('_', ' ').toUpperCase()}
                     </Badge>
                 </div>
                 {/* Listing type badge */}
                 <div className="absolute top-2 left-2">
-                    <Badge className="font-mono text-[9px] bg-black/70 text-white border-0">
-                        FOR {(property.listing_type === 'rental' ? 'RENT' : property.listing_type).toUpperCase()}
+                    <Badge className="text-[10px] font-medium bg-background/70 text-foreground border-0">
+                        For {(property.listing_type === 'rental' ? 'Rent' : property.listing_type.charAt(0).toUpperCase() + property.listing_type.slice(1))}
                     </Badge>
                 </div>
                 {/* Deal count indicator */}
                 {(property.active_deals ?? 0) > 0 && (
                     <div className="absolute bottom-2 left-2">
-                        <Badge className="font-mono text-[9px] bg-amber-500 text-black border-0">
-                            {property.active_deals} ACTIVE DEAL{(property.active_deals ?? 0) > 1 ? 'S' : ''}
+                        <Badge className="text-[10px] font-medium bg-primary text-primary-foreground border-0">
+                            {property.active_deals} Active Deal{(property.active_deals ?? 0) > 1 ? 's' : ''}
                         </Badge>
                     </div>
                 )}
             </div>
 
             {/* Property Info */}
-            <div className="p-4">
+            <CardContent className="p-4">
                 <div className="flex items-start justify-between mb-2">
-                    <h3 className="font-mono text-sm text-white font-medium truncate flex-1 group-hover:text-amber-500 transition-colors">
+                    <h3 className="text-sm text-foreground font-medium truncate flex-1 group-hover:text-primary transition-colors">
                         {property.property_name}
                     </h3>
                     <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                             <Button variant="ghost" size="icon" className="h-6 w-6 -mr-2" onClick={(e) => e.stopPropagation()}>
-                                <MoreHorizontal className="h-4 w-4 text-zinc-500" />
+                                <MoreHorizontal className="h-4 w-4 text-muted-foreground" />
                             </Button>
                         </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" className="bg-zinc-900 border-zinc-800">
-                            <DropdownMenuItem asChild className="text-zinc-300 hover:text-white">
+                        <DropdownMenuContent align="end">
+                            <DropdownMenuItem asChild>
                                 <Link href={`/dashboard/deals/properties/${property.id}`}>
                                     <Eye className="h-4 w-4 mr-2" /> View Details
                                 </Link>
                             </DropdownMenuItem>
-                            <DropdownMenuItem asChild className="text-zinc-300 hover:text-white">
+                            <DropdownMenuItem asChild>
                                 <Link href={`/dashboard/deals/properties/${property.id}?edit=true`}>
                                     <Edit className="h-4 w-4 mr-2" /> Edit Property
                                 </Link>
                             </DropdownMenuItem>
                             <DropdownMenuItem 
                                 onClick={(e) => { e.stopPropagation(); onViewDeals(property.id) }}
-                                className="text-zinc-300 hover:text-white"
                             >
                                 <FileText className="h-4 w-4 mr-2" /> View Deals
                             </DropdownMenuItem>
-                            <DropdownMenuSeparator className="bg-zinc-800" />
-                            <DropdownMenuItem asChild className="text-amber-500 hover:text-amber-400">
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem asChild className="text-primary">
                                 <Link href={`/dashboard/deals/new?propertyId=${property.id}`}>
                                     <Plus className="h-4 w-4 mr-2" /> Create Deal
                                 </Link>
@@ -194,40 +195,40 @@ function PropertyCard({ property, onViewDeals }: {
                     </DropdownMenu>
                 </div>
 
-                <div className="flex items-center gap-1 text-zinc-500 mb-3">
+                <div className="flex items-center gap-1 text-muted-foreground mb-3">
                     <MapPin className="h-3 w-3" />
-                    <span className="font-mono text-[10px] truncate">
+                    <span className="text-xs font-medium truncate">
                         {property.city}, {property.region?.replace('_', ' ')}
                     </span>
                 </div>
 
                 <div className="flex items-baseline gap-1 mb-3">
-                    <span className="font-mono text-lg text-amber-500 font-bold">
+                    <span className="text-lg text-primary font-bold">
                         {formatCurrency(property.price, property.currency)}
                     </span>
                     {(property.listing_type === 'rent' || property.listing_type === 'rental') && (
-                        <span className="font-mono text-[10px] text-zinc-500">/month</span>
+                        <span className="text-xs text-muted-foreground">/month</span>
                     )}
                 </div>
 
                 {/* Property specs */}
-                <div className="flex items-center gap-4 text-zinc-400 mb-3">
+                <div className="flex items-center gap-4 text-muted-foreground mb-3">
                     {property.bedrooms && (
-                        <span className="font-mono text-[10px]">{property.bedrooms} BED</span>
+                        <span className="text-xs font-medium">{property.bedrooms} Bed</span>
                     )}
                     {property.bathrooms && (
-                        <span className="font-mono text-[10px]">{property.bathrooms} BATH</span>
+                        <span className="text-xs font-medium">{property.bathrooms} Bath</span>
                     )}
                     {property.area_sqm && (
-                        <span className="font-mono text-[10px]">{Number(property.area_sqm).toLocaleString()} SQM</span>
+                        <span className="text-xs font-medium">{Number(property.area_sqm).toLocaleString()} sqm</span>
                     )}
                 </div>
 
                 {/* Owner info */}
                 {property.owner_name && (
-                    <div className="pt-3 border-t border-zinc-800 flex items-center gap-2 mb-3">
-                        <Users className="h-3 w-3 text-zinc-500" />
-                        <span className="font-mono text-[10px] text-zinc-400">
+                    <div className="pt-3 border-t border-border flex items-center gap-2 mb-3">
+                        <Users className="h-3 w-3 text-muted-foreground" />
+                        <span className="text-xs text-muted-foreground">
                             Owner: {property.owner_name}
                         </span>
                     </div>
@@ -235,10 +236,10 @@ function PropertyCard({ property, onViewDeals }: {
 
                 {/* Pipeline Stage Indicator */}
                 {property.current_stage_name && (
-                    <div className="pt-3 border-t border-zinc-800">
+                    <div className="pt-3 border-t border-border">
                         <div className="flex items-center justify-between mb-2">
-                            <span className="font-mono text-[9px] text-zinc-500">PIPELINE STAGE</span>
-                            <span className="font-mono text-[9px] text-zinc-500">
+                            <span className="text-[10px] font-medium text-muted-foreground">Pipeline Stage</span>
+                            <span className="text-[10px] font-medium text-muted-foreground">
                                 {property.current_stage_order}/{property.total_stages}
                             </span>
                         </div>
@@ -247,17 +248,17 @@ function PropertyCard({ property, onViewDeals }: {
                                 className="w-3 h-3 rounded-full flex-shrink-0"
                                 style={{ backgroundColor: property.current_stage_color || '#F59E0B' }}
                             />
-                            <span className="font-mono text-xs text-white font-medium truncate">
+                            <span className="text-xs text-foreground font-medium truncate">
                                 {property.current_stage_name}
                             </span>
                             {property.days_in_stage !== undefined && property.days_in_stage > 0 && (
-                                <span className="font-mono text-[9px] text-zinc-500 ml-auto">
+                                <span className="text-[10px] font-medium text-muted-foreground ml-auto">
                                     {property.days_in_stage}d
                                 </span>
                             )}
                         </div>
                         {/* Progress bar */}
-                        <div className="mt-2 h-1 bg-zinc-800 rounded-full overflow-hidden">
+                        <div className="mt-2 h-1 bg-muted rounded-full overflow-hidden">
                             <div 
                                 className="h-full rounded-full transition-all"
                                 style={{ 
@@ -268,10 +269,8 @@ function PropertyCard({ property, onViewDeals }: {
                         </div>
                     </div>
                 )}
-
-                {/* Quick action - removed as card is now clickable */}
-            </div>
-        </div>
+            </CardContent>
+        </Card>
     )
 }
 
@@ -375,18 +374,18 @@ export default function CRMPropertiesPage() {
     return (
         <div className="space-y-6">
             {/* Header */}
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between pb-4 border-b border-border">
                 <div>
-                    <h1 className="font-mono text-xl text-white">Properties</h1>
-                    <p className="font-mono text-[10px] text-zinc-500 mt-1">
-                        MANAGE CLIENT PROPERTIES AND TRACK DEAL PROGRESS
+                    <h1 className="text-2xl font-semibold tracking-tight text-foreground">Properties</h1>
+                    <p className="text-sm text-muted-foreground mt-1">
+                        Manage client properties and track deal progress
                     </p>
                 </div>
                 <div className="flex items-center gap-2">
                     <Link href="/dashboard/deals/properties/submit">
-                        <Button className="bg-amber-500 hover:bg-amber-600 text-black font-mono text-xs">
+                        <Button className="bg-primary text-primary-foreground hover:bg-primary/90 font-medium text-sm h-9 px-4 rounded-md shadow-sm">
                             <Plus className="h-4 w-4 mr-2" />
-                            SUBMIT PROPERTY
+                            Submit Property
                         </Button>
                     </Link>
                 </div>
@@ -394,33 +393,41 @@ export default function CRMPropertiesPage() {
 
             {/* Stats */}
             <div className="grid grid-cols-4 gap-4">
-                <div className="border border-zinc-800 bg-zinc-900/50 p-4">
-                    <div className="font-mono text-[10px] text-zinc-500 mb-1">TOTAL PROPERTIES</div>
-                    <div className="font-mono text-2xl text-white">{stats.total}</div>
-                </div>
-                <div className="border border-zinc-800 bg-zinc-900/50 p-4">
-                    <div className="font-mono text-[10px] text-zinc-500 mb-1">AVAILABLE</div>
-                    <div className="font-mono text-2xl text-green-400">{stats.available}</div>
-                </div>
-                <div className="border border-zinc-800 bg-zinc-900/50 p-4">
-                    <div className="font-mono text-[10px] text-zinc-500 mb-1">UNDER OFFER</div>
-                    <div className="font-mono text-2xl text-amber-400">{stats.under_offer}</div>
-                </div>
-                <div className="border border-zinc-800 bg-zinc-900/50 p-4">
-                    <div className="font-mono text-[10px] text-zinc-500 mb-1">WITH ACTIVE DEALS</div>
-                    <div className="font-mono text-2xl text-blue-400">{stats.with_active_deals}</div>
-                </div>
+                <Card className="shadow-sm">
+                    <CardContent className="p-4">
+                        <div className="text-xs font-medium text-muted-foreground mb-1">Total Properties</div>
+                        <div className="text-2xl font-bold text-foreground">{stats.total}</div>
+                    </CardContent>
+                </Card>
+                <Card className="shadow-sm">
+                    <CardContent className="p-4">
+                        <div className="text-xs font-medium text-muted-foreground mb-1">Available</div>
+                        <div className="text-2xl font-bold text-green-400">{stats.available}</div>
+                    </CardContent>
+                </Card>
+                <Card className="shadow-sm">
+                    <CardContent className="p-4">
+                        <div className="text-xs font-medium text-muted-foreground mb-1">Under Offer</div>
+                        <div className="text-2xl font-bold text-amber-400">{stats.under_offer}</div>
+                    </CardContent>
+                </Card>
+                <Card className="shadow-sm">
+                    <CardContent className="p-4">
+                        <div className="text-xs font-medium text-muted-foreground mb-1">With Active Deals</div>
+                        <div className="text-2xl font-bold text-blue-400">{stats.with_active_deals}</div>
+                    </CardContent>
+                </Card>
             </div>
 
             {/* Filters */}
             <div className="flex items-center gap-4 flex-wrap">
                 <div className="relative flex-1 min-w-[200px]">
-                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-zinc-500" />
+                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                     <Input
                         placeholder="Search properties..."
                         value={filters.search}
                         onChange={(e) => setFilters(prev => ({ ...prev, search: e.target.value }))}
-                        className="pl-10 bg-zinc-900 border-zinc-800 text-white font-mono text-xs"
+                        className="pl-10 text-sm"
                     />
                 </div>
                 
@@ -428,14 +435,14 @@ export default function CRMPropertiesPage() {
                     value={filters.listing_type}
                     onValueChange={(v) => setFilters(prev => ({ ...prev, listing_type: v }))}
                 >
-                    <SelectTrigger className="w-[140px] bg-zinc-900 border-zinc-800 text-zinc-300 font-mono text-xs">
+                    <SelectTrigger className="w-[140px] text-sm">
                         <SelectValue placeholder="Listing Type" />
                     </SelectTrigger>
-                    <SelectContent className="bg-zinc-900 border-zinc-800">
-                        <SelectItem value="all" className="font-mono text-xs">All Types</SelectItem>
-                        <SelectItem value="sale" className="font-mono text-xs">For Sale</SelectItem>
-                        <SelectItem value="rent" className="font-mono text-xs">For Rent</SelectItem>
-                        <SelectItem value="lease" className="font-mono text-xs">For Lease</SelectItem>
+                    <SelectContent>
+                        <SelectItem value="all" className="text-sm">All Types</SelectItem>
+                        <SelectItem value="sale" className="text-sm">For Sale</SelectItem>
+                        <SelectItem value="rent" className="text-sm">For Rent</SelectItem>
+                        <SelectItem value="lease" className="text-sm">For Lease</SelectItem>
                     </SelectContent>
                 </Select>
 
@@ -443,15 +450,15 @@ export default function CRMPropertiesPage() {
                     value={filters.property_type}
                     onValueChange={(v) => setFilters(prev => ({ ...prev, property_type: v }))}
                 >
-                    <SelectTrigger className="w-[140px] bg-zinc-900 border-zinc-800 text-zinc-300 font-mono text-xs">
+                    <SelectTrigger className="w-[140px] text-sm">
                         <SelectValue placeholder="Property Type" />
                     </SelectTrigger>
-                    <SelectContent className="bg-zinc-900 border-zinc-800">
-                        <SelectItem value="all" className="font-mono text-xs">All Properties</SelectItem>
-                        <SelectItem value="house" className="font-mono text-xs">House</SelectItem>
-                        <SelectItem value="apartment" className="font-mono text-xs">Apartment</SelectItem>
-                        <SelectItem value="land" className="font-mono text-xs">Land</SelectItem>
-                        <SelectItem value="commercial" className="font-mono text-xs">Commercial</SelectItem>
+                    <SelectContent>
+                        <SelectItem value="all" className="text-sm">All Properties</SelectItem>
+                        <SelectItem value="house" className="text-sm">House</SelectItem>
+                        <SelectItem value="apartment" className="text-sm">Apartment</SelectItem>
+                        <SelectItem value="land" className="text-sm">Land</SelectItem>
+                        <SelectItem value="commercial" className="text-sm">Commercial</SelectItem>
                     </SelectContent>
                 </Select>
 
@@ -459,16 +466,16 @@ export default function CRMPropertiesPage() {
                     value={filters.status}
                     onValueChange={(v) => setFilters(prev => ({ ...prev, status: v }))}
                 >
-                    <SelectTrigger className="w-[140px] bg-zinc-900 border-zinc-800 text-zinc-300 font-mono text-xs">
+                    <SelectTrigger className="w-[140px] text-sm">
                         <SelectValue placeholder="Status" />
                     </SelectTrigger>
-                    <SelectContent className="bg-zinc-900 border-zinc-800">
-                        <SelectItem value="all" className="font-mono text-xs">All Status</SelectItem>
-                        <SelectItem value="available" className="font-mono text-xs">Available</SelectItem>
-                        <SelectItem value="under_offer" className="font-mono text-xs">Under Offer</SelectItem>
-                        <SelectItem value="reserved" className="font-mono text-xs">Reserved</SelectItem>
-                        <SelectItem value="sold" className="font-mono text-xs">Sold</SelectItem>
-                        <SelectItem value="rented" className="font-mono text-xs">Rented</SelectItem>
+                    <SelectContent>
+                        <SelectItem value="all" className="text-sm">All Status</SelectItem>
+                        <SelectItem value="available" className="text-sm">Available</SelectItem>
+                        <SelectItem value="under_offer" className="text-sm">Under Offer</SelectItem>
+                        <SelectItem value="reserved" className="text-sm">Reserved</SelectItem>
+                        <SelectItem value="sold" className="text-sm">Sold</SelectItem>
+                        <SelectItem value="rented" className="text-sm">Rented</SelectItem>
                     </SelectContent>
                 </Select>
 
@@ -476,18 +483,18 @@ export default function CRMPropertiesPage() {
                     value={filters.region}
                     onValueChange={(v) => setFilters(prev => ({ ...prev, region: v }))}
                 >
-                    <SelectTrigger className="w-[160px] bg-zinc-900 border-zinc-800 text-zinc-300 font-mono text-xs">
+                    <SelectTrigger className="w-[160px] text-sm">
                         <SelectValue placeholder="Region" />
                     </SelectTrigger>
-                    <SelectContent className="bg-zinc-900 border-zinc-800">
-                        <SelectItem value="all" className="font-mono text-xs">All Regions</SelectItem>
-                        <SelectItem value="Greater Accra" className="font-mono text-xs">Greater Accra</SelectItem>
-                        <SelectItem value="Ashanti" className="font-mono text-xs">Ashanti</SelectItem>
-                        <SelectItem value="Western" className="font-mono text-xs">Western</SelectItem>
-                        <SelectItem value="Central" className="font-mono text-xs">Central</SelectItem>
-                        <SelectItem value="Eastern" className="font-mono text-xs">Eastern</SelectItem>
-                        <SelectItem value="Volta" className="font-mono text-xs">Volta</SelectItem>
-                        <SelectItem value="Northern" className="font-mono text-xs">Northern</SelectItem>
+                    <SelectContent>
+                        <SelectItem value="all" className="text-sm">All Regions</SelectItem>
+                        <SelectItem value="Greater Accra" className="text-sm">Greater Accra</SelectItem>
+                        <SelectItem value="Ashanti" className="text-sm">Ashanti</SelectItem>
+                        <SelectItem value="Western" className="text-sm">Western</SelectItem>
+                        <SelectItem value="Central" className="text-sm">Central</SelectItem>
+                        <SelectItem value="Eastern" className="text-sm">Eastern</SelectItem>
+                        <SelectItem value="Volta" className="text-sm">Volta</SelectItem>
+                        <SelectItem value="Northern" className="text-sm">Northern</SelectItem>
                     </SelectContent>
                 </Select>
             </div>
@@ -495,35 +502,35 @@ export default function CRMPropertiesPage() {
             {/* Content */}
             {isLoading ? (
                 <div className="flex items-center justify-center py-20">
-                    <Loader2 className="h-8 w-8 text-amber-500 animate-spin" />
+                    <Loader2 className="h-8 w-8 text-primary animate-spin" />
                 </div>
             ) : error ? (
                 <div className="flex flex-col items-center justify-center py-20">
-                    <p className="font-mono text-sm text-red-400 mb-4">{error}</p>
+                    <p className="text-sm text-red-400 mb-4">{error}</p>
                     <Button 
                         onClick={loadProperties} 
                         variant="outline"
-                        className="border-zinc-700 text-zinc-300"
                     >
                         Retry
                     </Button>
                 </div>
             ) : properties.length === 0 ? (
-                <div className="flex flex-col items-center justify-center py-20 border border-zinc-800 bg-zinc-900/30">
-                    <Home className="h-12 w-12 text-zinc-600 mb-4" />
-                    <h3 className="font-mono text-lg text-white mb-2">No Properties Found</h3>
-                    <p className="font-mono text-[10px] text-zinc-500 mb-6">
-                        {filters.search || filters.listing_type !== 'all' || filters.property_type !== 'all'
+                <EmptyState
+                    icon={Home}
+                    title="No Properties Found"
+                    description={
+                        filters.search || filters.listing_type !== 'all' || filters.property_type !== 'all'
                             ? 'Try adjusting your filters'
-                            : 'Start by submitting a client property'}
-                    </p>
-                    <Link href="/dashboard/deals/properties/submit">
-                        <Button className="bg-amber-500 hover:bg-amber-600 text-black font-mono text-xs">
-                            <Plus className="h-4 w-4 mr-2" />
-                            SUBMIT PROPERTY
-                        </Button>
-                    </Link>
-                </div>
+                            : 'Start by submitting a client property'
+                    }
+                    actions={[
+                        {
+                            label: 'Submit Property',
+                            href: '/dashboard/deals/properties/submit',
+                            icon: Plus,
+                        }
+                    ]}
+                />
             ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
                     {properties.map(property => (
