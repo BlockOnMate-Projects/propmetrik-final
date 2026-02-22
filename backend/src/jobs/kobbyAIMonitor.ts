@@ -44,8 +44,10 @@ async function runProactiveSweep() {
 
                 // 3. If an anomaly is found, inject a message
                 if (anomalyAlert) {
+                    const defaultConversation = await workspaceService.getDefaultConversation(ws.id);
                     await workspaceService.persistMessage({
                         workspaceId: ws.id,
+                        conversationId: defaultConversation.id,
                         senderId: null, // System/AI message
                         senderType: 'kobby_ai',
                         messageType: 'ai_response',

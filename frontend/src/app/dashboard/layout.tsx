@@ -54,7 +54,7 @@ export default function DashboardLayout({
             entityId="00000000-0000-0000-0000-000000000000"
             entityName="Workspace"
             currentUserId={session?.user?.id}
-            token={null} // Will be picked up from localStorage in widget
+            token={(session as any)?.accessToken ?? null}
           />
         )}
       </div>

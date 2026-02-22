@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef, KeyboardEvent, useCallback } from 'react';
+import { useState, useRef, KeyboardEvent, useCallback, useEffect } from 'react';
 import { Send, Paperclip } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -15,6 +15,9 @@ interface MessageInputProps {
     connected?: boolean;
     replyingTo?: { id: string; senderName: string; content: string } | null;
     onCancelReply?: () => void;
+    token?: string | null;
+    prefillText?: string;
+    prefillNonce?: number;
 }
 
 export function MessageInput({
@@ -26,6 +29,9 @@ export function MessageInput({
     connected = true,
     replyingTo,
     onCancelReply,
+    token,
+    prefillText,
+    prefillNonce,
 }: MessageInputProps) {
     const [value, setValue] = useState('');
     const [isKobbyMention, setIsKobbyMention] = useState(false);
@@ -34,6 +40,12 @@ export function MessageInput({
     const textareaRef = useRef<HTMLTextAreaElement>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
     const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+    useEffect(() => {
+        if (!prefillText) return;
+        setValue(prefillText);
+        setTimeout(() => textareaRef.current?.focus(), 0);
+    }, [prefillText, prefillNonce]);
 
     const handleChange = (val: string) => {
         setValue(val);
@@ -62,7 +74,7 @@ export function MessageInput({
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${localStorage.getItem('token')}`
+                    ...(token ? { Authorization: `Bearer ${token}` } : {})
                 },
                 body: JSON.stringify({ fileName: file.name, fileType: file.type }),
             });
@@ -80,7 +92,7 @@ export function MessageInput({
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${localStorage.getItem('token')}`
+                    ...(token ? { Authorization: `Bearer ${token}` } : {})
                 },
                 body: JSON.stringify({
                     fileKey,

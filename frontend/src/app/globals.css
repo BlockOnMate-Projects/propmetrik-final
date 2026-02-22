@@ -4,24 +4,77 @@
 
 @layer base {
   :root {
-    /* Enterprise Dark Theme (Slate/Indigo) */
+    /* Light Mode (Default) — Institutional Premium */
+    --background: 0 0% 100%;
+    /* White */
+    --foreground: 222 47% 11%;
+    /* Slate 950 */
+
+    --card: 210 40% 98%;
+    /* Slate 50 */
+    --card-foreground: 222 47% 11%;
+    /* Slate 950 */
+
+    --popover: 0 0% 100%;
+    /* White */
+    --popover-foreground: 222 47% 11%;
+
+    --primary: 243 75% 59%;
+    /* Indigo 500 → #6366f1 */
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 210 40% 96%;
+    /* Slate 100 */
+    --secondary-foreground: 222 47% 11%;
+
+    --muted: 210 40% 96%;
+    /* Slate 100 */
+    --muted-foreground: 215 16% 47%;
+    /* Slate 500 */
+
+    --accent: 210 40% 96%;
+    /* Slate 100 */
+    --accent-foreground: 222 47% 11%;
+
+    --destructive: 0 84% 60%;
+    /* Red 500 */
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 214 32% 91%;
+    /* Slate 200 */
+    --input: 214 32% 91%;
+    --ring: 243 75% 59%;
+    /* Indigo 500 */
+
+    --radius: 0.5rem;
+
+    /* Status Colors */
+    --success: 142 76% 36%;
+    --warning: 38 92% 50%;
+    --danger: 0 84% 60%;
+    --info: 217 91% 60%;
+    --whatsapp: 142 71% 45%;
+  }
+
+  .dark {
+    /* Dark Mode — Slate/Indigo */
     --background: 222 47% 11%;
     /* Slate 950 */
     --foreground: 210 40% 98%;
     /* Slate 50 */
 
-    --card: 215 25% 15%;
-    /* Slate 900 */
+    --card: 217 33% 17%;
+    /* Slate 800 */
     --card-foreground: 210 40% 98%;
     /* Slate 50 */
 
-    --popover: 215 25% 15%;
-    /* Slate 900 */
+    --popover: 217 33% 17%;
+    /* Slate 800 */
     --popover-foreground: 210 40% 98%;
 
     --primary: 243 75% 59%;
     /* Indigo 500 */
-    --primary-foreground: 210 40% 98%;
+    --primary-foreground: 0 0% 100%;
 
     --secondary: 217 33% 17%;
     /* Slate 800 */
@@ -41,12 +94,16 @@
     --destructive-foreground: 210 40% 98%;
 
     --border: 217 33% 20%;
-    /* Slate 800 (slightly lighter) */
+    /* Slate 700 */
     --input: 217 33% 20%;
     --ring: 243 75% 59%;
     /* Indigo 500 */
 
-    --radius: 0.5rem;
+    --success: 142 71% 45%;
+    --warning: 38 92% 50%;
+    --danger: 0 84% 60%;
+    --info: 217 91% 60%;
+    --whatsapp: 142 71% 45%;
   }
 }
 
@@ -80,30 +137,29 @@
   background: hsl(var(--muted-foreground) / 0.5);
 }
 
-/* Fix Radix Select dropdown text color */
+/* Fix Radix Select dropdown — use theme tokens */
 [data-radix-select-viewport] {
-  background-color: #27272a !important;
+  background-color: hsl(var(--popover)) !important;
 }
 
 [data-radix-select-viewport] [role="option"] {
-  color: #ffffff !important;
+  color: hsl(var(--popover-foreground)) !important;
 }
 
 [data-radix-select-viewport] [role="option"]:hover,
 [data-radix-select-viewport] [role="option"][data-highlighted] {
-  background-color: #3f3f46 !important;
-  color: #ffffff !important;
+  background-color: hsl(var(--accent)) !important;
+  color: hsl(var(--accent-foreground)) !important;
 }
 
 [data-radix-select-content] {
-  background-color: #27272a !important;
-  color: #ffffff !important;
+  background-color: hsl(var(--popover)) !important;
+  color: hsl(var(--popover-foreground)) !important;
 }
 
-/* Force all text inside select items to be white */
 [data-radix-select-viewport] [role="option"] span,
 [data-radix-select-viewport] [role="option"] * {
-  color: #ffffff !important;
+  color: hsl(var(--popover-foreground)) !important;
 }
 
 /* Status indicator animations */

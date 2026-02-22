@@ -126,15 +126,15 @@ function formatDate(dateStr: string): string {
 function getStatusIcon(status: string) {
     switch (status) {
         case 'read':
-            return <CheckCheck className="h-3 w-3 text-blue-400" />;
+            return <CheckCheck className="h-3 w-3 text-info" />;
         case 'delivered':
-            return <CheckCheck className="h-3 w-3 text-zinc-400" />;
+            return <CheckCheck className="h-3 w-3 text-muted-foreground" />;
         case 'sent':
-            return <Check className="h-3 w-3 text-zinc-400" />;
+            return <Check className="h-3 w-3 text-muted-foreground" />;
         case 'pending':
-            return <Clock className="h-3 w-3 text-zinc-500" />;
+            return <Clock className="h-3 w-3 text-muted-foreground" />;
         case 'failed':
-            return <AlertCircle className="h-3 w-3 text-red-500" />;
+            return <AlertCircle className="h-3 w-3 text-destructive" />;
         default:
             return null;
     }
@@ -150,8 +150,8 @@ function MessageBubble({ message }: { message: WhatsAppMessage }) {
                 className={cn(
                     'max-w-[80%] rounded-lg px-3 py-2',
                     isOutbound
-                        ? 'bg-green-700 text-white rounded-br-none'
-                        : 'bg-zinc-700 text-white rounded-bl-none'
+                        ? 'bg-whatsapp text-white rounded-br-none'
+                        : 'bg-muted text-white rounded-bl-none'
                 )}
             >
                 {message.message_type === 'template' && (
@@ -197,7 +197,7 @@ function MessageBubble({ message }: { message: WhatsAppMessage }) {
                 </div>
 
                 {message.status === 'failed' && message.error_message && (
-                    <p className="text-xs text-red-300 mt-1">{message.error_message}</p>
+                    <p className="text-xs text-destructive mt-1">{message.error_message}</p>
                 )}
             </div>
         </div>
@@ -234,7 +234,7 @@ function TemplateDialog({
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="bg-zinc-900 border-zinc-800 max-w-md">
+            <DialogContent className="bg-background border-border max-w-md">
                 <DialogHeader>
                     <DialogTitle>Send Template Message</DialogTitle>
                     <DialogDescription>
@@ -249,7 +249,7 @@ function TemplateDialog({
                             const template = templates.find(t => t.name === name);
                             setSelectedTemplate(template || null);
                         }}>
-                            <SelectTrigger className="bg-zinc-800 border-zinc-700">
+                            <SelectTrigger className="bg-muted border-border">
                                 <SelectValue placeholder="Select a template" />
                             </SelectTrigger>
                             <SelectContent>
@@ -257,7 +257,7 @@ function TemplateDialog({
                                     <SelectItem key={t.name} value={t.name}>
                                         <div>
                                             <div className="font-medium">{t.name.replace(/_/g, ' ')}</div>
-                                            <div className="text-xs text-zinc-400">{t.description}</div>
+                                            <div className="text-xs text-muted-foreground">{t.description}</div>
                                         </div>
                                     </SelectItem>
                                 ))}
@@ -267,8 +267,8 @@ function TemplateDialog({
 
                     {selectedTemplate && (
                         <>
-                            <div className="p-3 bg-zinc-800 rounded-lg text-sm">
-                                <p className="text-zinc-400 mb-2">Preview:</p>
+                            <div className="p-3 bg-muted rounded-lg text-sm">
+                                <p className="text-muted-foreground mb-2">Preview:</p>
                                 <p className="text-white">
                                     {selectedTemplate.components.find(c => c.type === 'BODY')?.text}
                                 </p>
@@ -287,7 +287,7 @@ function TemplateDialog({
                                                 newParams[index] = e.target.value;
                                                 setParameters(newParams);
                                             }}
-                                            className="bg-zinc-800 border-zinc-700"
+                                            className="bg-muted border-border"
                                         />
                                     ))}
                                 </div>
@@ -303,7 +303,7 @@ function TemplateDialog({
                     <Button
                         disabled={!selectedTemplate || loading}
                         onClick={() => selectedTemplate && onSend(selectedTemplate, parameters)}
-                        className="bg-green-600 hover:bg-green-700"
+                        className="bg-whatsapp hover:bg-whatsapp/90"
                     >
                         {loading ? 'Sending...' : 'Send Template'}
                     </Button>
@@ -460,10 +460,10 @@ export function WhatsAppChat({
 
     if (!contactPhone) {
         return (
-            <Card className={cn('bg-zinc-900 border-zinc-800', className)}>
+            <Card className={cn('bg-background border-border', className)}>
                 <CardContent className="flex flex-col items-center justify-center py-8">
-                    <Phone className="h-8 w-8 text-zinc-600 mb-2" />
-                    <p className="text-zinc-400">No phone number available</p>
+                    <Phone className="h-8 w-8 text-muted-foreground mb-2" />
+                    <p className="text-muted-foreground">No phone number available</p>
                 </CardContent>
             </Card>
         );
@@ -471,26 +471,26 @@ export function WhatsAppChat({
 
     return (
         <Card className={cn(
-            'bg-zinc-900 border-zinc-800 flex flex-col',
+            'bg-background border-border flex flex-col',
             expanded ? 'fixed inset-4 z-50' : 'h-[500px]',
             className
         )}>
             {/* Header */}
-            <CardHeader className="pb-2 border-b border-zinc-800">
+            <CardHeader className="pb-2 border-b border-border">
                 <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
                         <Avatar className="h-10 w-10">
                             <AvatarImage src={contactAvatar} />
-                            <AvatarFallback className="bg-green-600 text-white">
+                            <AvatarFallback className="bg-whatsapp text-white">
                                 {contactName?.split(' ').map(n => n[0]).join('').toUpperCase() || <User className="h-5 w-5" />}
                             </AvatarFallback>
                         </Avatar>
                         <div>
                             <CardTitle className="text-base flex items-center gap-2">
-                                <MessageCircle className="h-4 w-4 text-green-500" />
+                                <MessageCircle className="h-4 w-4 text-whatsapp" />
                                 {contactName || 'WhatsApp'}
                             </CardTitle>
-                            <p className="text-xs text-zinc-400">{contactPhone}</p>
+                            <p className="text-xs text-muted-foreground">{contactPhone}</p>
                         </div>
                     </div>
                     <div className="flex items-center gap-1">
@@ -520,10 +520,10 @@ export function WhatsAppChat({
             <ScrollArea ref={scrollRef} className="flex-1 p-4">
                 {loading && messages.length === 0 ? (
                     <div className="flex items-center justify-center h-full">
-                        <RefreshCw className="h-6 w-6 animate-spin text-zinc-500" />
+                        <RefreshCw className="h-6 w-6 animate-spin text-muted-foreground" />
                     </div>
                 ) : messages.length === 0 ? (
-                    <div className="flex flex-col items-center justify-center h-full text-zinc-500">
+                    <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
                         <MessageCircle className="h-12 w-12 mb-2" />
                         <p>No messages yet</p>
                         <p className="text-sm">Start a conversation!</p>
@@ -533,7 +533,7 @@ export function WhatsAppChat({
                         {Object.entries(groupedMessages).map(([date, dateMessages]) => (
                             <div key={date}>
                                 <div className="flex justify-center my-3">
-                                    <span className="text-xs text-zinc-500 bg-zinc-800 px-3 py-1 rounded-full">
+                                    <span className="text-xs text-muted-foreground bg-muted px-3 py-1 rounded-full">
                                         {date}
                                     </span>
                                 </div>
@@ -547,7 +547,7 @@ export function WhatsAppChat({
             </ScrollArea>
 
             {/* Input */}
-            <div className="p-3 border-t border-zinc-800">
+            <div className="p-3 border-t border-border">
                 <div className="flex items-center gap-2">
                     <DropdownMenu>
                         <DropdownMenuTrigger asChild>
@@ -555,7 +555,7 @@ export function WhatsAppChat({
                                 <Paperclip className="h-4 w-4" />
                             </Button>
                         </DropdownMenuTrigger>
-                        <DropdownMenuContent align="start" className="bg-zinc-900 border-zinc-800">
+                        <DropdownMenuContent align="start" className="bg-background border-border">
                             <DropdownMenuItem onClick={() => setTemplateDialogOpen(true)}>
                                 <FileText className="h-4 w-4 mr-2" />
                                 Send Template
@@ -582,7 +582,7 @@ export function WhatsAppChat({
                                 handleSend();
                             }
                         }}
-                        className="bg-zinc-800 border-zinc-700"
+                        className="bg-muted border-border"
                         disabled={sending}
                     />
 
@@ -590,7 +590,7 @@ export function WhatsAppChat({
                         size="icon"
                         onClick={handleSend}
                         disabled={!newMessage.trim() || sending}
-                        className="shrink-0 bg-green-600 hover:bg-green-700"
+                        className="shrink-0 bg-whatsapp hover:bg-whatsapp/90"
                     >
                         <Send className="h-4 w-4" />
                     </Button>
@@ -638,7 +638,7 @@ export function WhatsAppButton({
                             onClick={() => setChatOpen(true)}
                             className={cn(
                                 size === 'icon' ? 'w-9 h-9' : '',
-                                variant === 'default' && 'bg-green-600 hover:bg-green-700'
+                                variant === 'default' && 'bg-whatsapp hover:bg-whatsapp/90'
                             )}
                         >
                             <MessageCircle className={cn('h-4 w-4', size !== 'icon' && 'mr-2')} />

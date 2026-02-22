@@ -300,7 +300,7 @@ router.post('/nowpayments/ipn', async (req: Request, res: Response) => {
       // Trigger escrow deposit into the smart contract
       try {
         const { escrowPayoutService } = await import('../../shared-services/payments/crypto/escrowPayoutService');
-        await escrowPayoutService.processEscrowDeposit(result.paymentReference);
+        await escrowPayoutService.handleEscrowDeposit(result.paymentReference);
         logger.info('Escrow deposit triggered', { paymentReference: result.paymentReference });
       } catch (escrowErr: any) {
         logger.error('Escrow deposit failed (will retry via polling)', {

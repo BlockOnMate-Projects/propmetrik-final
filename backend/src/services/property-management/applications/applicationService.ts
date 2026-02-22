@@ -886,7 +886,7 @@ export class ApplicationService {
 
     // If lease data includes start/end dates, we can create a tenancy
     let tenancyId: string | null = null;
-    let tenantId: string | null = application.tenantId;
+    let tenantId: string | null = application.tenantId ?? null;
     let envelopeId: string | null = leaseData?.envelopeId || null;
 
     // If we have comprehensive lease data and no existing tenant, create tenant and tenancy

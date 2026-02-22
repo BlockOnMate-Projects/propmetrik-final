@@ -206,6 +206,22 @@ export const config = {
     whatsappDigestCron: process.env.WHATSAPP_DIGEST_CRON || '0 18 * * *',
   },
 
+  // Scrapy automation
+  scrapy: {
+    autoStart: process.env.SCRAPY_AUTO_START !== 'false',
+    initialDelay: parseInt(process.env.SCRAPY_INITIAL_DELAY || '30000', 10),
+    weeklySchedule: process.env.SCRAPY_WEEKLY_SCHEDULE || '0 2 * * 0',
+    dailyUpdates: process.env.SCRAPY_DAILY_UPDATES !== 'false',
+    dailySchedule: process.env.SCRAPY_DAILY_SCHEDULE || '0 3 * * *',
+    enabledSpiders: (process.env.SCRAPY_ENABLED_SPIDERS || 'meqasa,housemaster,gpc,realtor,jiji,daily_graphic_legal,airbnb_ghana')
+      .split(',')
+      .map((s) => s.trim())
+      .filter(Boolean),
+    concurrentSpiders: parseInt(process.env.SCRAPY_CONCURRENT_SPIDERS || '2', 10),
+    retryFailed: process.env.SCRAPY_RETRY_FAILED !== 'false',
+    maxRetries: parseInt(process.env.SCRAPY_MAX_RETRIES || '3', 10),
+  },
+
   // Paystack Payments
   paystack: {
     enabled: !!process.env.PAYSTACK_SECRET_KEY,

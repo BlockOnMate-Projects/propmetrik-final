@@ -22,6 +22,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { WhatsAppChat } from '@/components/crm/WhatsAppChat';
+import { EmptyState } from '@/components/crm/EmptyState';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 
@@ -87,8 +88,8 @@ function ConversationItem({
         <div
             onClick={onClick}
             className={cn(
-                'flex items-center gap-3 p-3 cursor-pointer transition-colors border-b border-zinc-800',
-                isSelected ? 'bg-zinc-800' : 'hover:bg-zinc-800/50'
+                'flex items-center gap-3 p-3 cursor-pointer transition-colors border-b border-border',
+                isSelected ? 'bg-muted' : 'hover:bg-muted/50'
             )}
         >
             <Avatar className="h-12 w-12 shrink-0">
@@ -107,12 +108,12 @@ function ConversationItem({
                     <span className="font-medium truncate">
                         {conversation.contact_name || conversation.phone_number}
                     </span>
-                    <span className="text-xs text-zinc-500 shrink-0">
+                    <span className="text-xs text-muted-foreground shrink-0">
                         {formatRelativeTime(conversation.last_message_at)}
                     </span>
                 </div>
                 <div className="flex items-center justify-between mt-1">
-                    <p className="text-sm text-zinc-400 truncate pr-2">
+                    <p className="text-sm text-muted-foreground truncate pr-2">
                         {conversation.last_message || 'No messages'}
                     </p>
                     {conversation.unread_count > 0 && (
@@ -130,51 +131,51 @@ function ConversationItem({
 function StatsCard({ stats }: { stats: MessagingStats }) {
     return (
         <div className="grid grid-cols-3 md:grid-cols-6 gap-3">
-            <Card className="bg-zinc-900 border-zinc-800">
+            <Card className="shadow-sm">
                 <CardContent className="pt-4 pb-3 px-3">
                     <div className="text-center">
                         <p className="text-2xl font-bold">{stats.total_messages}</p>
-                        <p className="text-xs text-zinc-400">Total</p>
+                        <p className="text-xs text-muted-foreground">Total</p>
                     </div>
                 </CardContent>
             </Card>
-            <Card className="bg-zinc-900 border-zinc-800">
+            <Card className="shadow-sm">
                 <CardContent className="pt-4 pb-3 px-3">
                     <div className="text-center">
                         <p className="text-2xl font-bold text-blue-500">{stats.sent}</p>
-                        <p className="text-xs text-zinc-400">Sent</p>
+                        <p className="text-xs text-muted-foreground">Sent</p>
                     </div>
                 </CardContent>
             </Card>
-            <Card className="bg-zinc-900 border-zinc-800">
+            <Card className="shadow-sm">
                 <CardContent className="pt-4 pb-3 px-3">
                     <div className="text-center">
                         <p className="text-2xl font-bold text-green-500">{stats.received}</p>
-                        <p className="text-xs text-zinc-400">Received</p>
+                        <p className="text-xs text-muted-foreground">Received</p>
                     </div>
                 </CardContent>
             </Card>
-            <Card className="bg-zinc-900 border-zinc-800">
+            <Card className="shadow-sm">
                 <CardContent className="pt-4 pb-3 px-3">
                     <div className="text-center">
                         <p className="text-2xl font-bold">{stats.unique_contacts}</p>
-                        <p className="text-xs text-zinc-400">Contacts</p>
+                        <p className="text-xs text-muted-foreground">Contacts</p>
                     </div>
                 </CardContent>
             </Card>
-            <Card className="bg-zinc-900 border-zinc-800">
+            <Card className="shadow-sm">
                 <CardContent className="pt-4 pb-3 px-3">
                     <div className="text-center">
-                        <p className="text-2xl font-bold text-amber-500">{stats.last_24h}</p>
-                        <p className="text-xs text-zinc-400">24h</p>
+                        <p className="text-2xl font-bold text-primary">{stats.last_24h}</p>
+                        <p className="text-xs text-muted-foreground">24h</p>
                     </div>
                 </CardContent>
             </Card>
-            <Card className="bg-zinc-900 border-zinc-800">
+            <Card className="shadow-sm">
                 <CardContent className="pt-4 pb-3 px-3">
                     <div className="text-center">
                         <p className="text-2xl font-bold">{stats.last_7d}</p>
-                        <p className="text-xs text-zinc-400">7 days</p>
+                        <p className="text-xs text-muted-foreground">7 days</p>
                     </div>
                 </CardContent>
             </Card>
@@ -244,13 +245,13 @@ export default function MessagingPage() {
     return (
         <div className="h-[calc(100vh-120px)] flex flex-col gap-4">
             {/* Header */}
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between pb-4 border-b border-border">
                 <div>
-                    <h1 className="text-2xl font-bold flex items-center gap-2">
+                    <h1 className="text-2xl font-semibold tracking-tight text-foreground flex items-center gap-2">
                         <MessageCircle className="h-6 w-6 text-green-500" />
                         WhatsApp Messaging
                     </h1>
-                    <p className="text-zinc-400 mt-1">
+                    <p className="text-sm text-muted-foreground mt-1">
                         Manage conversations with contacts and leads
                     </p>
                 </div>
@@ -285,7 +286,7 @@ export default function MessagingPage() {
                             <Settings className="h-5 w-5 text-yellow-500" />
                             <div>
                                 <p className="font-medium text-yellow-500">WhatsApp API Not Configured</p>
-                                <p className="text-sm text-zinc-400">
+                                <p className="text-sm text-muted-foreground">
                                     Configure your WhatsApp Business API credentials to send and receive messages.
                                 </p>
                             </div>
@@ -297,21 +298,21 @@ export default function MessagingPage() {
             {/* Main Content */}
             <div className="flex-1 flex gap-4 min-h-0">
                 {/* Conversation List */}
-                <Card className="w-[360px] bg-zinc-900 border-zinc-800 flex flex-col">
+                <Card className="w-[360px] shadow-sm flex flex-col">
                     <CardHeader className="pb-2">
                         <div className="relative">
-                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-500" />
+                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                             <Input
                                 placeholder="Search conversations..."
                                 value={searchQuery}
                                 onChange={(e) => setSearchQuery(e.target.value)}
-                                className="pl-9 bg-zinc-800 border-zinc-700"
+                                className="pl-9"
                             />
                         </div>
                     </CardHeader>
                     <ScrollArea className="flex-1">
                         {filteredConversations.length === 0 ? (
-                            <div className="flex flex-col items-center justify-center py-12 text-zinc-500">
+                            <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
                                 <MessageCircle className="h-12 w-12 mb-2" />
                                 <p>No conversations</p>
                                 <p className="text-sm">Messages will appear here</p>
@@ -340,10 +341,10 @@ export default function MessagingPage() {
                             className="h-full"
                         />
                     ) : (
-                        <Card className="bg-zinc-900 border-zinc-800 h-full flex flex-col items-center justify-center">
-                            <MessageCircle className="h-16 w-16 text-zinc-700 mb-4" />
-                            <h3 className="text-lg font-medium text-zinc-400">Select a conversation</h3>
-                            <p className="text-sm text-zinc-500 mt-1">
+                        <Card className="shadow-sm h-full flex flex-col items-center justify-center">
+                            <MessageCircle className="h-16 w-16 text-muted-foreground/30 mb-4" />
+                            <h3 className="text-lg font-medium text-muted-foreground">Select a conversation</h3>
+                            <p className="text-sm text-muted-foreground mt-1">
                                 Choose a conversation from the list to view messages
                             </p>
                         </Card>

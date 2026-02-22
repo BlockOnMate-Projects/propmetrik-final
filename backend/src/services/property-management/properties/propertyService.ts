@@ -1,5 +1,6 @@
 
 import { v4 as uuidv4 } from 'uuid';
+import crypto from 'crypto';
 import db from '../../../database';
 import {
     Property,
@@ -64,23 +65,43 @@ export class PropertyService {
             const id = uuidv4();
             const referenceNumber = this.generateReferenceNumber(data.region);
 
-            // Geocode Digital Address if provided
+            // Generate permanent marketplace token
+            const permanentLinkToken = crypto.randomBytes(32).toString('hex');
+
+            // Geocode address automatically
             let latitude: number | null = null;
             let longitude: number | null = null;
+            let locationAccuracy: string | null = null;
             let verifiedLocation = false;
 
-            if (data.digitalAddress) {
-                try {
-                    const geocode = await ghanaPostService.geocodeDigitalAddress(data.digitalAddress);
-                    if (geocode) {
-                        latitude = geocode.latitude;
-                        longitude = geocode.longitude;
-                        verifiedLocation = true;
-                        logger.info(`Geocoded Digital Address ${data.digitalAddress} to ${latitude}, ${longitude}`);
-                    }
-                } catch (err) {
-                    logger.warn('Failed to geocode digital address on property creation', { err });
+            try {
+                const { geocodePropertyAddress } = await import('../../../../shared-services/shared/geocodingHelper');
+                const geocodeResult = await geocodePropertyAddress({
+                    digitalAddress: data.digitalAddress,
+                    addressStreet: data.addressStreet,
+                    city: data.addressCity,
+                    region: data.region,
+                    landmark: null
+                });
+                
+                if (geocodeResult) {
+                    latitude = geocodeResult.latitude;
+                    longitude = geocodeResult.longitude;
+                    locationAccuracy = geocodeResult.accuracy;
+                    verifiedLocation = true;
+                    logger.info('Property geocoded successfully', {
+                        propertyId: id,
+                        lat: latitude,
+                        lng: longitude,
+                        accuracy: locationAccuracy,
+                        source: geocodeResult.source
+                    });
                 }
+            } catch (err: any) {
+                logger.warn('Failed to geocode property on creation', { 
+                    error: err.message,
+                    propertyId: id 
+                });
             }
 
             const query = `
@@ -90,12 +111,18 @@ export class PropertyService {
                     digital_address, property_type, transaction_type,
                     bedrooms, bathrooms, floors, total_area_sqm,
                     price, price_currency, status, data_source,
-                    created_by, latitude, longitude, location_verified,
-                    parent_property_id, unit_number
+                    created_by, latitude, longitude, location_verified, location_accuracy,
+                    geom,
+                    parent_property_id, unit_number, permanent_link_token,
+                    marketplace_enabled, marketplace_listed_at
                 ) VALUES (
                     $1, $2, $3, $4, $5, $6, $7, $8, $9, $10,
                     $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21,
-                    $22, $23, $24, $25, $26
+                    $22, $23, $24, $25,
+                    CASE WHEN $22 IS NOT NULL AND $23 IS NOT NULL 
+                        THEN ST_SetSRID(ST_MakePoint($23, $22), 4326)
+                        ELSE NULL END,
+                    $26, $27, $28, $29, $30
                 ) RETURNING *
             `;
 
@@ -124,8 +151,12 @@ export class PropertyService {
                 latitude,
                 longitude,
                 verifiedLocation,
+                locationAccuracy,
                 data.parentPropertyId || null,
-                data.unitNumber || null
+                data.unitNumber || null,
+                permanentLinkToken,
+                true, // marketplace_enabled
+                new Date() // marketplace_listed_at
             ];
 
             const result = await db.query(query, values);
@@ -191,6 +222,62 @@ export class PropertyService {
      * Update an existing property
      */
     async updateProperty(id: string, organizationId: string, data: Partial<CreatePropertyDto>, userId: string): Promise<Property | null> {
+        // Check if address fields are being updated - if so, re-geocode
+        const addressFieldsChanged = !!(
+            data.digitalAddress !== undefined ||
+            data.addressStreet !== undefined ||
+            data.addressCity !== undefined ||
+            data.region !== undefined
+        );
+
+        if (addressFieldsChanged) {
+            try {
+                // Fetch current property to get existing address data
+                const currentResult = await db.query(
+                    'SELECT digital_address, address_street, address_city, region FROM properties WHERE id = $1 AND organization_id = $2',
+                    [id, organizationId]
+                );
+                
+                if (currentResult.rows.length > 0) {
+                    const current = currentResult.rows[0];
+                    
+                    // Use updated values or fallback to current values
+                    const digitalAddress = data.digitalAddress !== undefined ? data.digitalAddress : current.digital_address;
+                    const addressStreet = data.addressStreet !== undefined ? data.addressStreet : current.address_street;
+                    const addressCity = data.addressCity !== undefined ? data.addressCity : current.address_city;
+                    const region = data.region !== undefined ? data.region : current.region;
+                    
+                    const { geocodePropertyAddress } = await import('../../../../shared-services/shared/geocodingHelper');
+                    const geocodeResult = await geocodePropertyAddress({
+                        digitalAddress: digitalAddress,
+                        addressStreet: addressStreet,
+                        city: addressCity,
+                        region: region,
+                        landmark: null
+                    });
+                    
+                    if (geocodeResult) {
+                        // Add geocode results to update data
+                        (data as any).latitude = geocodeResult.latitude;
+                        (data as any).longitude = geocodeResult.longitude;
+                        (data as any).locationAccuracy = geocodeResult.accuracy;
+                        (data as any).locationVerified = true;
+                        logger.info('Property re-geocoded on update', {
+                            propertyId: id,
+                            lat: geocodeResult.latitude,
+                            lng: geocodeResult.longitude,
+                            accuracy: geocodeResult.accuracy
+                        });
+                    }
+                }
+            } catch (err: any) {
+                logger.warn('Failed to re-geocode property on update', { 
+                    error: err.message,
+                    propertyId: id 
+                });
+            }
+        }
+
         const updates: string[] = [];
         const values: any[] = [];
         let paramIndex = 1;
@@ -210,7 +297,11 @@ export class PropertyService {
             floors: 'floors',
             totalAreaSqm: 'total_area_sqm',
             price: 'price',
-            priceCurrency: 'price_currency'
+            priceCurrency: 'price_currency',
+            latitude: 'latitude',
+            longitude: 'longitude',
+            locationAccuracy: 'location_accuracy',
+            locationVerified: 'location_verified'
         };
 
         for (const [key, value] of Object.entries(data)) {
@@ -219,6 +310,11 @@ export class PropertyService {
                 values.push(value);
                 paramIndex++;
             }
+        }
+
+        // If latitude and longitude are being updated, also update geom
+        if ((data as any).latitude !== undefined && (data as any).longitude !== undefined) {
+            updates.push(`geom = ST_SetSRID(ST_MakePoint($${paramIndex}, $${paramIndex - 1}), 4326)`);
         }
 
         if (updates.length === 0) {

@@ -42,7 +42,7 @@ export interface FeeCollectionResult {
   status: 'recorded' | 'initiated' | 'completed' | 'skipped' | 'failed';
   feeAmountGhs: number;
   feeAmountUsd: number;
-  payoutId?: number;
+  payoutId?: string | number;
   reason?: string;
 }
 
@@ -114,7 +114,11 @@ class FeeCollectionService {
 
       if (feeMode === 'payout') {
         // Trigger NOWPayments payout for the fee amount
-        return this.triggerFeePayout(paymentReference, npPayment, feeAmountGhs, feeAmountUsd, platformWallet);
+        return this.triggerFeePayout(paymentReference, npPayment, feeAmountGhs, feeAmountUsd, {
+          walletAddress: platformWallet.walletAddress,
+          coinSymbol: platformWallet.coinSymbol,
+          chain: platformWallet.chain,
+        });
       } else {
         // "invoice" mode — just record the fee for manual/monthly collection
         await this.recordFeeEntry(paymentReference, npPayment.nowpayments_id, feeAmountGhs, feeAmountUsd, {
@@ -234,7 +238,7 @@ class FeeCollectionService {
       payoutChain?: string;
       payoutAddress?: string;
       payoutAmount?: number;
-      nowpaymentsPayoutId?: number;
+      nowpaymentsPayoutId?: string | number;
       errorMessage?: string;
       reason?: string;
     },

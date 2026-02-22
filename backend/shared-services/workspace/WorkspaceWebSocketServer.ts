@@ -19,7 +19,9 @@ import { WebSocket, WebSocketServer, RawData } from 'ws';
 import { IncomingMessage, Server } from 'http';
 import { URL } from 'url';
 import config from '../../src/config';
+import { keycloakConfig } from '../../src/config';
 import jwt from 'jsonwebtoken';
+import { createRemoteJWKSet, jwtVerify } from 'jose';
 import { logger } from '../../src/utils/logger';
 import { workspaceService } from './WorkspaceService';
 import { kobbyAIService, EntityType as KobbyEntityType } from './KobbyAIService';
@@ -33,6 +35,10 @@ const MAX_MESSAGE_LENGTH = 10_000;
 const MAX_CONNECTIONS_PER_USER = 5;
 const RATE_LIMIT_WINDOW_MS = 1_000; // 1 second
 const RATE_LIMIT_MAX_MESSAGES = 10; // max 10 messages per window
+
+const KEYCLOAK_JWKS = createRemoteJWKSet(
+    new URL(`${keycloakConfig.authServerUrl}/realms/${config.keycloak.realm}/protocol/openid-connect/certs`)
+);
 
 // ============================================================================
 // TYPES
@@ -51,6 +57,7 @@ interface AuthenticatedClient {
 interface WSMessage {
     type: 'join' | 'message' | 'ping' | 'mark_read' | 'typing' | 'kobby_query' | 'edit_message';
     workspaceId?: string;
+    conversationId?: string;
     content?: string;
     messageId?: string;
     threadId?: string;
@@ -94,6 +101,43 @@ class WorkspaceWebSocketServerImpl {
     // Track online user presence per workspace: workspaceId -> Set<userId>
     private presenceMap: Map<string, Set<string>> = new Map();
 
+    private async authenticateToken(token: string): Promise<{ userId: string; organizationId: string | undefined } | null> {
+        // Try local/internal JWT first (used by /auth/login credentials flow)
+        try {
+            const decoded = jwt.verify(token, config.jwt.secret) as any;
+            const userId = decoded.userId || decoded.id || decoded.sub;
+            const organizationId = decoded.organizationId || decoded.organization_id || decoded.org_id;
+
+            if (userId) {
+                return { userId, organizationId };
+            }
+        } catch {
+            // fall through to Keycloak verification
+        }
+
+        // Fallback to Keycloak JWT verification (used by SSO flow)
+        try {
+            const { payload } = await jwtVerify(token, KEYCLOAK_JWKS, {
+                issuer: `${keycloakConfig.authServerUrl}/realms/${config.keycloak.realm}`,
+                audience: config.keycloak.clientId,
+            });
+
+            const userId = (payload as any).sub || (payload as any).id;
+            const organizationId =
+                (payload as any).organizationId ||
+                (payload as any).organization_id ||
+                (payload as any).org_id;
+
+            if (userId) {
+                return { userId, organizationId };
+            }
+        } catch {
+            // invalid token for both local + keycloak
+        }
+
+        return null;
+    }
+
     /**
      * Attach the WebSocket server to an existing HTTP server.
      * Called from backend/src/index.ts after Express is set up.
@@ -125,20 +169,14 @@ class WorkspaceWebSocketServerImpl {
             return;
         }
 
-        let userId: string;
-        let organizationId: string;
-
-        try {
-            const secret = config.jwt.secret;
-            const decoded = jwt.verify(token, secret) as any;
-            userId = decoded.id || decoded.sub;
-            organizationId = decoded.organizationId || decoded.organization_id;
-
-            if (!userId) throw new Error('Invalid token payload');
-        } catch {
+        const authResult = await this.authenticateToken(token);
+        if (!authResult?.userId) {
             ws.close(4001, 'Invalid or expired token');
             return;
         }
+
+        const userId = authResult.userId;
+        const organizationId = authResult.organizationId || '00000000-0000-0000-0000-000000000000';
 
         // --- Per-user connection limit ---
         const existingConns = this.userClients.get(userId);
@@ -196,13 +234,7 @@ class WorkspaceWebSocketServerImpl {
                 }
                 break;
             case 'typing':
-                // Broadcast typing indicator to other members
-                if (client.workspaceId) {
-                    this.broadcastToWorkspace(client.workspaceId, {
-                        type: 'typing',
-                        userId: client.userId,
-                    }, client.userId);
-                }
+                await this.handleTyping(client, msg);
                 break;
             case 'kobby_query':
                 await this.handleKobbyQuery(client, msg);
@@ -302,12 +334,29 @@ class WorkspaceWebSocketServerImpl {
             return;
         }
 
+        let conversationId = msg.conversationId;
+        if (!conversationId) {
+            const conversations = await workspaceService.listConversations(client.workspaceId, client.userId);
+            conversationId = conversations.find((c) => c.conversation_type === 'channel' && c.name === 'General')?.id;
+        }
+        if (!conversationId) {
+            this.send(client.ws, { type: 'error', error: 'conversationId is required' });
+            return;
+        }
+
+        const isConversationMember = await workspaceService.isConversationMember(conversationId, client.userId);
+        if (!isConversationMember) {
+            this.send(client.ws, { type: 'error', error: 'Access denied to this conversation' });
+            return;
+        }
+
         // --- Sanitize content before persist ---
         const sanitized = sanitizeContent(msg.content.trim());
 
         // Persist message (also publishes to Redis)
         const message = await workspaceService.persistMessage({
             workspaceId: client.workspaceId,
+            conversationId,
             senderId: client.userId,
             senderType: 'user',
             messageType: 'text',
@@ -346,6 +395,22 @@ class WorkspaceWebSocketServerImpl {
             return;
         }
 
+        let conversationId = msg.conversationId;
+        if (!conversationId) {
+            const conversations = await workspaceService.listConversations(client.workspaceId, client.userId);
+            conversationId = conversations.find((c) => c.conversation_type === 'channel' && c.name === 'General')?.id;
+        }
+        if (!conversationId) {
+            this.send(client.ws, { type: 'kobby_error', error: 'No conversation available for Kobby response' });
+            return;
+        }
+
+        const isConversationMember = await workspaceService.isConversationMember(conversationId, client.userId);
+        if (!isConversationMember) {
+            this.send(client.ws, { type: 'kobby_error', error: 'Access denied to this conversation' });
+            return;
+        }
+
         // Notify the requesting client that Kobby is thinking
         this.send(client.ws, { type: 'kobby_thinking', query });
 
@@ -367,6 +432,7 @@ class WorkspaceWebSocketServerImpl {
             // Persist AI response as a workspace message (broadcasts via Redis pub/sub)
             await workspaceService.persistMessage({
                 workspaceId: client.workspaceId,
+                conversationId,
                 senderId: null,
                 senderType: 'kobby_ai',
                 messageType: 'ai_response',
@@ -387,6 +453,7 @@ class WorkspaceWebSocketServerImpl {
                 type: 'kobby_response',
                 query,
                 response,
+                conversationId,
             });
 
             logger.debug(`Kobby AI responded to workspace ${client.workspaceId}`);
@@ -445,6 +512,27 @@ class WorkspaceWebSocketServerImpl {
         }
     }
 
+    private async broadcastToConversation(conversationId: string, payload: any, excludeUserId?: string): Promise<void> {
+        const memberUserIds = await workspaceService.getConversationMemberUserIds(conversationId);
+        for (const userId of memberUserIds) {
+            if (excludeUserId && userId === excludeUserId) continue;
+            this.sendToUser(userId, payload);
+        }
+    }
+
+    private async handleTyping(client: AuthenticatedClient, msg: WSMessage): Promise<void> {
+        if (!client.workspaceId || !msg.conversationId) return;
+
+        const isConversationMember = await workspaceService.isConversationMember(msg.conversationId, client.userId);
+        if (!isConversationMember) return;
+
+        await this.broadcastToConversation(msg.conversationId, {
+            type: 'typing',
+            userId: client.userId,
+            conversationId: msg.conversationId,
+        }, client.userId);
+    }
+
     /**
      * Send a message to all connected clients of a specific user.
      */
@@ -483,10 +571,11 @@ class WorkspaceWebSocketServerImpl {
 
         this.subscriber.on('message', (channel: string, message: string) => {
             try {
-                const workspaceId = channel.replace('workspace:', '');
                 const payload = JSON.parse(message);
-                // Broadcast to all local WS clients in this workspace
-                this.broadcastToWorkspace(workspaceId, { type: 'message', payload: payload.payload });
+                const conversationId = payload?.payload?.conversation_id;
+                if (conversationId) {
+                    this.broadcastToConversation(conversationId, { type: 'message', payload: payload.payload });
+                }
             } catch (err) {
                 logger.error('Failed to parse Redis workspace message', { error: (err as Error).message });
             }
@@ -555,6 +644,16 @@ class WorkspaceWebSocketServerImpl {
         }
 
         // Broadcast edited message to all workspace members
+        if (updated.conversation_id) {
+            await this.broadcastToConversation(updated.conversation_id, {
+                type: 'message_edited',
+                messageId: msg.messageId,
+                content: sanitized,
+                editedAt: updated.edited_at,
+            });
+            return;
+        }
+
         this.broadcastToWorkspace(client.workspaceId, {
             type: 'message_edited',
             messageId: msg.messageId,

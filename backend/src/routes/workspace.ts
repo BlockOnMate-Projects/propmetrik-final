@@ -54,6 +54,279 @@ const asyncHandler = (fn: (req: Request, res: Response) => Promise<any>) =>
 // ============================================================================
 
 /**
+ * GET /api/v1/workspace/:workspaceId/conversations
+ * List conversations the current user can access.
+ */
+router.get(
+    '/:workspaceId/conversations',
+    asyncHandler(async (req, res) => {
+        const { userId, organizationId } = getUser(req);
+        const { workspaceId } = req.params;
+
+        const workspace = await workspaceService.getById(workspaceId, organizationId);
+        if (!workspace) return res.status(404).json({ error: 'Workspace not found' });
+
+        const isMember = await workspaceService.isMember(workspaceId, userId);
+        if (!isMember) return res.status(403).json({ error: 'Access denied' });
+
+        const conversations = await workspaceService.listConversations(workspaceId, userId);
+        res.json({ conversations });
+    })
+);
+
+/**
+ * GET /api/v1/workspace/:workspaceId/conversations/unread
+ * Per-conversation unread counts for current user.
+ */
+router.get(
+    '/:workspaceId/conversations/unread',
+    asyncHandler(async (req, res) => {
+        const { userId, organizationId } = getUser(req);
+        const { workspaceId } = req.params;
+
+        const workspace = await workspaceService.getById(workspaceId, organizationId);
+        if (!workspace) return res.status(404).json({ error: 'Workspace not found' });
+
+        const isMember = await workspaceService.isMember(workspaceId, userId);
+        if (!isMember) return res.status(403).json({ error: 'Access denied' });
+
+        const counts = await workspaceService.getConversationUnreadCounts(workspaceId, userId);
+        res.json({ counts });
+    })
+);
+
+/**
+ * PATCH /api/v1/workspace/:workspaceId/conversations/:conversationId
+ * Rename group/channel conversation.
+ */
+router.patch(
+    '/:workspaceId/conversations/:conversationId',
+    asyncHandler(async (req, res) => {
+        const { userId, organizationId } = getUser(req);
+        const { workspaceId, conversationId } = req.params;
+        const { name } = req.body as { name?: string };
+
+        if (!name?.trim()) return res.status(400).json({ error: 'name is required' });
+
+        const workspace = await workspaceService.getById(workspaceId, organizationId);
+        if (!workspace) return res.status(404).json({ error: 'Workspace not found' });
+
+        try {
+            const conversation = await workspaceService.renameConversation(workspaceId, conversationId, userId, name.trim());
+            if (!conversation) return res.status(404).json({ error: 'Conversation not found' });
+            return res.json({ conversation });
+        } catch (err: any) {
+            return res.status(403).json({ error: err.message || 'Access denied' });
+        }
+    })
+);
+
+/**
+ * POST /api/v1/workspace/:workspaceId/conversations/:conversationId/leave
+ * Leave DM/group conversation.
+ */
+router.post(
+    '/:workspaceId/conversations/:conversationId/leave',
+    asyncHandler(async (req, res) => {
+        const { userId, organizationId } = getUser(req);
+        const { workspaceId, conversationId } = req.params;
+
+        const workspace = await workspaceService.getById(workspaceId, organizationId);
+        if (!workspace) return res.status(404).json({ error: 'Workspace not found' });
+
+        try {
+            const left = await workspaceService.leaveConversation(workspaceId, conversationId, userId);
+            if (!left) return res.status(404).json({ error: 'Conversation not found or user not a member' });
+            return res.json({ success: true });
+        } catch (err: any) {
+            return res.status(400).json({ error: err.message || 'Unable to leave conversation' });
+        }
+    })
+);
+
+/**
+ * POST /api/v1/workspace/:workspaceId/conversations/:conversationId/archive
+ * Archive a group conversation.
+ */
+router.post(
+    '/:workspaceId/conversations/:conversationId/archive',
+    asyncHandler(async (req, res) => {
+        const { userId, organizationId } = getUser(req);
+        const { workspaceId, conversationId } = req.params;
+
+        const workspace = await workspaceService.getById(workspaceId, organizationId);
+        if (!workspace) return res.status(404).json({ error: 'Workspace not found' });
+
+        try {
+            const archived = await workspaceService.archiveConversation(workspaceId, conversationId, userId);
+            if (!archived) return res.status(404).json({ error: 'Conversation not found' });
+            return res.json({ success: true });
+        } catch (err: any) {
+            return res.status(403).json({ error: err.message || 'Access denied' });
+        }
+    })
+);
+
+/**
+ * GET /api/v1/workspace/:workspaceId/conversations/:conversationId/members
+ */
+router.get(
+    '/:workspaceId/conversations/:conversationId/members',
+    asyncHandler(async (req, res) => {
+        const { userId, organizationId } = getUser(req);
+        const { workspaceId, conversationId } = req.params;
+
+        const workspace = await workspaceService.getById(workspaceId, organizationId);
+        if (!workspace) return res.status(404).json({ error: 'Workspace not found' });
+
+        const isConversationMember = await workspaceService.isConversationMember(conversationId, userId);
+        if (!isConversationMember) return res.status(403).json({ error: 'Access denied to this conversation' });
+
+        const members = await workspaceService.getConversationMembers(conversationId);
+        res.json({ members });
+    })
+);
+
+/**
+ * POST /api/v1/workspace/:workspaceId/conversations/:conversationId/members
+ * Add member to existing group.
+ */
+router.post(
+    '/:workspaceId/conversations/:conversationId/members',
+    asyncHandler(async (req, res) => {
+        const { userId, organizationId } = getUser(req);
+        const { workspaceId, conversationId } = req.params;
+        const { userId: targetUserId } = req.body as { userId?: string };
+
+        if (!targetUserId) return res.status(400).json({ error: 'userId is required' });
+
+        const workspace = await workspaceService.getById(workspaceId, organizationId);
+        if (!workspace) return res.status(404).json({ error: 'Workspace not found' });
+
+        try {
+            const added = await workspaceService.addConversationMember(workspaceId, conversationId, userId, targetUserId);
+            if (!added) return res.status(200).json({ success: true, message: 'User already in conversation' });
+            return res.status(201).json({ success: true });
+        } catch (err: any) {
+            return res.status(403).json({ error: err.message || 'Access denied' });
+        }
+    })
+);
+
+/**
+ * DELETE /api/v1/workspace/:workspaceId/conversations/:conversationId/members/:targetUserId
+ * Remove member from existing group.
+ */
+router.delete(
+    '/:workspaceId/conversations/:conversationId/members/:targetUserId',
+    asyncHandler(async (req, res) => {
+        const { userId, organizationId } = getUser(req);
+        const { workspaceId, conversationId, targetUserId } = req.params;
+
+        const workspace = await workspaceService.getById(workspaceId, organizationId);
+        if (!workspace) return res.status(404).json({ error: 'Workspace not found' });
+
+        try {
+            const removed = await workspaceService.removeConversationMember(workspaceId, conversationId, userId, targetUserId);
+            if (!removed) return res.status(404).json({ error: 'User not in conversation' });
+            return res.json({ success: true });
+        } catch (err: any) {
+            return res.status(403).json({ error: err.message || 'Access denied' });
+        }
+    })
+);
+
+/**
+ * POST /api/v1/workspace/:workspaceId/conversations/:conversationId/read
+ * Mark a conversation as read.
+ */
+router.post(
+    '/:workspaceId/conversations/:conversationId/read',
+    asyncHandler(async (req, res) => {
+        const { userId, organizationId } = getUser(req);
+        const { workspaceId, conversationId } = req.params;
+
+        const workspace = await workspaceService.getById(workspaceId, organizationId);
+        if (!workspace) return res.status(404).json({ error: 'Workspace not found' });
+
+        const isConversationMember = await workspaceService.isConversationMember(conversationId, userId);
+        if (!isConversationMember) return res.status(403).json({ error: 'Access denied to this conversation' });
+
+        await workspaceService.markConversationRead(workspaceId, conversationId, userId);
+        res.json({ success: true });
+    })
+);
+
+/**
+ * POST /api/v1/workspace/:workspaceId/conversations/dm
+ * Create or get a DM conversation with another member.
+ */
+router.post(
+    '/:workspaceId/conversations/dm',
+    asyncHandler(async (req, res) => {
+        const { userId, organizationId } = getUser(req);
+        const { workspaceId } = req.params;
+        const { memberId } = req.body;
+
+        if (!memberId) {
+            return res.status(400).json({ error: 'memberId is required' });
+        }
+
+        const workspace = await workspaceService.getById(workspaceId, organizationId);
+        if (!workspace) return res.status(404).json({ error: 'Workspace not found' });
+
+        const [isMember, targetIsMember] = await Promise.all([
+            workspaceService.isMember(workspaceId, userId),
+            workspaceService.isMember(workspaceId, memberId),
+        ]);
+
+        if (!isMember || !targetIsMember) {
+            return res.status(403).json({ error: 'Both users must be workspace members' });
+        }
+
+        const conversation = await workspaceService.createOrGetDMConversation(workspaceId, userId, memberId);
+        res.status(201).json({ conversation });
+    })
+);
+
+/**
+ * POST /api/v1/workspace/:workspaceId/conversations/group
+ * Create a new private group conversation.
+ */
+router.post(
+    '/:workspaceId/conversations/group',
+    asyncHandler(async (req, res) => {
+        const { userId, organizationId } = getUser(req);
+        const { workspaceId } = req.params;
+        const { name, memberIds } = req.body as { name?: string; memberIds?: string[] };
+
+        if (!name?.trim()) {
+            return res.status(400).json({ error: 'name is required' });
+        }
+        if (!Array.isArray(memberIds) || memberIds.length === 0) {
+            return res.status(400).json({ error: 'memberIds must be a non-empty array' });
+        }
+
+        const workspace = await workspaceService.getById(workspaceId, organizationId);
+        if (!workspace) return res.status(404).json({ error: 'Workspace not found' });
+
+        const isMember = await workspaceService.isMember(workspaceId, userId);
+        if (!isMember) return res.status(403).json({ error: 'Access denied' });
+
+        const uniqueIds = Array.from(new Set(memberIds));
+        for (const memberId of uniqueIds) {
+            const ok = await workspaceService.isMember(workspaceId, memberId);
+            if (!ok) {
+                return res.status(400).json({ error: `User ${memberId} is not a workspace member` });
+            }
+        }
+
+        const conversation = await workspaceService.createGroupConversation(workspaceId, userId, name.trim(), uniqueIds);
+        res.status(201).json({ conversation });
+    })
+);
+
+/**
  * GET /api/v1/workspace/:id/messages
  * Get paginated messages (cursor-based).
  */
@@ -62,6 +335,7 @@ router.get(
     asyncHandler(async (req, res) => {
         const { userId, organizationId } = getUser(req);
         const { workspaceId } = req.params;
+        const conversationId = req.query.conversationId as string | undefined;
         const cursor = req.query.cursor as string | undefined;
         const limit = Math.min(parseInt(req.query.limit as string) || 50, 100);
 
@@ -76,10 +350,23 @@ router.get(
             return res.status(403).json({ error: 'Not a member of this workspace' });
         }
 
-        const page = await workspaceService.getMessages(workspaceId, cursor, limit);
+        if (conversationId) {
+            const isConversationMember = await workspaceService.isConversationMember(conversationId, userId);
+            if (!isConversationMember) {
+                return res.status(403).json({ error: 'Access denied to this conversation' });
+            }
+        }
+
+        const page = conversationId
+            ? await workspaceService.getMessagesByConversation(workspaceId, conversationId, cursor, limit)
+            : await workspaceService.getMessages(workspaceId, cursor, limit);
 
         // Mark as read
-        await workspaceService.markAllRead(workspaceId, userId);
+        if (conversationId) {
+            await workspaceService.markConversationRead(workspaceId, conversationId, userId);
+        } else {
+            await workspaceService.markAllRead(workspaceId, userId);
+        }
 
         res.json(page);
     })
@@ -94,7 +381,7 @@ router.post(
     asyncHandler(async (req, res) => {
         const { userId, organizationId } = getUser(req);
         const { workspaceId } = req.params;
-        const { content, threadId, metadata } = req.body;
+        const { content, threadId, metadata, conversationId } = req.body;
 
         if (!content?.trim()) {
             return res.status(400).json({ error: 'Message content is required' });
@@ -114,8 +401,24 @@ router.post(
             return res.status(403).json({ error: 'Insufficient permissions' });
         }
 
+        let resolvedConversationId = conversationId as string | undefined;
+        if (!resolvedConversationId) {
+            const conversations = await workspaceService.listConversations(workspaceId, userId);
+            resolvedConversationId = conversations.find((c) => c.conversation_type === 'channel' && c.name === 'General')?.id;
+        }
+
+        if (!resolvedConversationId) {
+            return res.status(400).json({ error: 'conversationId is required' });
+        }
+
+        const isConversationMember = await workspaceService.isConversationMember(resolvedConversationId, userId);
+        if (!isConversationMember) {
+            return res.status(403).json({ error: 'Access denied to this conversation' });
+        }
+
         const message = await workspaceService.persistMessage({
             workspaceId,
+            conversationId: resolvedConversationId,
             senderId: userId,
             senderType: 'user',
             messageType: 'text',
@@ -261,6 +564,7 @@ router.get(
         const { userId, organizationId } = getUser(req);
         const { workspaceId } = req.params;
         const { q } = req.query;
+        const conversationId = req.query.conversationId as string | undefined;
 
         if (!q || typeof q !== 'string') {
             return res.status(400).json({ error: 'Search query "q" is required' });
@@ -272,7 +576,12 @@ router.get(
         const isMember = await workspaceService.isMember(workspaceId, userId);
         if (!isMember) return res.status(403).json({ error: 'Access denied' });
 
-        const results = await workspaceService.searchMessages(workspaceId, q);
+        if (conversationId) {
+            const isConversationMember = await workspaceService.isConversationMember(conversationId, userId);
+            if (!isConversationMember) return res.status(403).json({ error: 'Access denied to this conversation' });
+        }
+
+        const results = await workspaceService.searchMessages(workspaceId, q, 50, conversationId);
 
         res.json({ results });
     })
@@ -286,6 +595,7 @@ router.get(
     asyncHandler(async (req, res) => {
         const { userId, organizationId } = getUser(req);
         const { workspaceId } = req.params;
+        const conversationId = req.query.conversationId as string | undefined;
 
         const workspace = await workspaceService.getById(workspaceId, organizationId);
         if (!workspace) return res.status(404).json({ error: 'Workspace not found' });
@@ -293,7 +603,12 @@ router.get(
         const isMember = await workspaceService.isMember(workspaceId, userId);
         if (!isMember) return res.status(403).json({ error: 'Access denied' });
 
-        const messages = await workspaceService.exportMessages(workspaceId);
+        if (conversationId) {
+            const isConversationMember = await workspaceService.isConversationMember(conversationId, userId);
+            if (!isConversationMember) return res.status(403).json({ error: 'Access denied to this conversation' });
+        }
+
+        const messages = await workspaceService.exportMessages(workspaceId, conversationId);
 
         // Simple CSV generation
         let csv = 'Timestamp,Sender Type,Sender Name,Message Type,Content\n';

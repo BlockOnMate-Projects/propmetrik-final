@@ -29,8 +29,11 @@ function StableSessionProvider({ children }: { children: React.ReactNode }) {
     <SessionProvider
       // Don't refetch when user refocuses window — avoids race during HMR
       refetchOnWindowFocus={false}
-      // Refetch session every 5 minutes (instead of never)
-      refetchInterval={5 * 60}
+      // Disable automatic refetching - only refetch on demand
+      // This prevents excessive session checks that cause frontend to stall
+      refetchInterval={0}
+      // Keep session alive longer to reduce checks
+      refetchWhenOffline={false}
     >
       {children}
     </SessionProvider>
@@ -55,7 +58,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
   return (
     <StableSessionProvider>
       <QueryClientProvider client={queryClient}>
-        <ThemeProvider attribute="class" defaultTheme="dark" enableSystem={false}>
+        <ThemeProvider attribute="class" defaultTheme="light" enableSystem={true}>
           <TooltipProvider>
             <AuthProvider>
               {isDev ? (

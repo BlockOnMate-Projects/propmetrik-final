@@ -791,4 +791,30 @@ All endpoints require:
   ],
 });
 
+// ============================================================================
+// MERGE CRM API SPEC
+// ============================================================================
+import { getCrmOpenAPISpec } from './crmOpenAPI';
+
+const crmSpec = getCrmOpenAPISpec();
+
+// Merge CRM tags
+if (crmSpec.tags) {
+  openAPIDocument.tags = [...(openAPIDocument.tags || []), ...crmSpec.tags];
+}
+
+// Merge CRM paths
+if (crmSpec.paths) {
+  openAPIDocument.paths = { ...(openAPIDocument.paths || {}), ...crmSpec.paths };
+}
+
+// Merge CRM component schemas
+if (crmSpec.components?.schemas) {
+  openAPIDocument.components = openAPIDocument.components || {};
+  openAPIDocument.components.schemas = {
+    ...(openAPIDocument.components.schemas || {}),
+    ...crmSpec.components.schemas,
+  };
+}
+
 export default openAPIDocument;

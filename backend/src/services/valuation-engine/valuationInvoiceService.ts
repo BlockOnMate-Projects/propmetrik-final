@@ -463,7 +463,6 @@ class ValuationInvoiceService {
                             currency: 'GHS',
                             reference,
                             channels: ['mobile_money', 'card', 'bank_transfer', 'bank', 'ussd', 'qr'],
-                            send_notification: false,
                             callback_url: `${process.env.FRONTEND_URL || 'https://app.propmetrik.com'}/payment/invoice?id=${invoice.id}&status=success`,
                             metadata: {
                                 invoiceId: invoice.id,

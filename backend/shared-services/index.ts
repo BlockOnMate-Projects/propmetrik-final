@@ -79,5 +79,18 @@ export { ricsComplianceService } from './compliance/ricsComplianceService';
 // Analytics Services
 export * from './analytics';
 
+// Marketplace Services
+export { marketplaceService } from './marketplace/marketplaceService';
+export { geocodingService as marketplaceGeocodingService } from './marketplace/geocodingService';
+
+// Publications Services
+export * from './publications/publicationsService';
+export * from './publications/geminiService';
+export * from './publications/pdfGenerationService';
+export * from './publications/autopilot';
+
+// Shared Utilities
+export { geocodePropertyAddress } from './shared/geocodingHelper';
+
 // Unified Notification Service (SMS + Email)
 export { notificationService } from './notifications/unified';

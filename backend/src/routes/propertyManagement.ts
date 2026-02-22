@@ -2940,14 +2940,19 @@ router.get('/financials/dscr/:propertyId', asyncHandler(async (req: Request, res
     
     if (annualDebtService === 0) {
         // No debt service means infinite coverage — return a clear response
+        const now = new Date();
+        const yearStart = `${now.getFullYear()}-01-01`;
+        const yearEnd = `${now.getFullYear()}-12-31`;
         const noi = await advancedFinancialService.calculateNOI(
             organizationId,
-            req.params.propertyId
+            req.params.propertyId,
+            yearStart,
+            yearEnd
         );
         return res.json({
             dscr: null,
             dscrFormatted: 'N/A (No Debt)',
-            noi: noi?.noi ?? 0,
+            noi: noi?.netOperatingIncome ?? 0,
             annualDebtService: 0,
             interpretation: 'No debt service — property is debt-free',
             riskLevel: 'low'

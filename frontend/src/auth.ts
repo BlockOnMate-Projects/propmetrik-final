@@ -72,7 +72,10 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
   ],
   callbacks: {
     async jwt({ token, account, profile, user }) {
-      console.log('[Auth JWT] callback triggered', { hasUser: !!user, hasAccount: !!account });
+      // Only log when there's actual new data (not on every session check)
+      if (user || account) {
+        console.log('[Auth JWT] callback triggered', { hasUser: !!user, hasAccount: !!account });
+      }
       
       // Handle credentials login
       if (user && 'accessToken' in user) {

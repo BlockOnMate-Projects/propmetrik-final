@@ -59,6 +59,7 @@ import {
     TableRow,
 } from '@/components/ui/table';
 import { Checkbox } from '@/components/ui/checkbox';
+import { EmptyState } from '@/components/crm/EmptyState';
 import { toast } from 'sonner';
 
 // Types
@@ -162,7 +163,7 @@ function getStatusColor(status: string): string {
         case 'disputed':
             return 'bg-red-500/10 text-red-500 border-red-500/20';
         default:
-            return 'bg-zinc-500/10 text-zinc-500 border-zinc-500/20';
+            return 'bg-muted text-muted-foreground border-border';
     }
 }
 
@@ -210,10 +211,10 @@ function CalculateDialog({
 
     return (
         <Dialog open={open} onOpenChange={handleClose}>
-            <DialogContent className="bg-zinc-900 border-zinc-800">
+            <DialogContent>
                 <DialogHeader>
                     <DialogTitle className="flex items-center gap-2">
-                        <Calculator className="h-5 w-5 text-amber-500" />
+                        <Calculator className="h-5 w-5 text-primary" />
                         Commission Calculator
                     </DialogTitle>
                     <DialogDescription>
@@ -229,34 +230,33 @@ function CalculateDialog({
                             placeholder="Enter deal value"
                             value={dealValue}
                             onChange={(e) => setDealValue(e.target.value)}
-                            className="bg-zinc-800 border-zinc-700"
                         />
                     </div>
 
                     <Button 
                         onClick={handleCalculate} 
                         disabled={loading || !dealValue}
-                        className="w-full bg-amber-600 hover:bg-amber-700"
+                        className="w-full bg-primary text-primary-foreground hover:bg-primary/90"
                     >
                         {loading ? 'Calculating...' : 'Calculate'}
                     </Button>
 
                     {result && (
-                        <div className="mt-4 p-4 bg-zinc-800 rounded-lg space-y-3">
+                        <div className="mt-4 p-4 bg-muted rounded-lg space-y-3">
                             <div className="flex justify-between">
-                                <span className="text-zinc-400">Commission Rate</span>
+                                <span className="text-muted-foreground">Commission Rate</span>
                                 <span className="font-medium">{formatPercent(result.commission_rate)}</span>
                             </div>
                             <div className="flex justify-between">
-                                <span className="text-zinc-400">Gross Commission</span>
+                                <span className="text-muted-foreground">Gross Commission</span>
                                 <span className="font-medium">{formatCurrency(result.gross_commission)}</span>
                             </div>
-                            <div className="flex justify-between border-t border-zinc-700 pt-3">
-                                <span className="text-zinc-400">Agent Share</span>
+                            <div className="flex justify-between border-t border-border pt-3">
+                                <span className="text-muted-foreground">Agent Share</span>
                                 <span className="font-bold text-green-500">{formatCurrency(result.agent_share)}</span>
                             </div>
                             <div className="flex justify-between">
-                                <span className="text-zinc-400">Company Share</span>
+                                <span className="text-muted-foreground">Company Share</span>
                                 <span className="font-medium">{formatCurrency(result.company_share)}</span>
                             </div>
                         </div>
@@ -330,10 +330,10 @@ function GenerateStatementDialog({
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="bg-zinc-900 border-zinc-800">
+            <DialogContent>
                 <DialogHeader>
                     <DialogTitle className="flex items-center gap-2">
-                        <FileSpreadsheet className="h-5 w-5 text-amber-500" />
+                        <FileSpreadsheet className="h-5 w-5 text-primary" />
                         Generate Commission Statement
                     </DialogTitle>
                     <DialogDescription>
@@ -349,7 +349,6 @@ function GenerateStatementDialog({
                                 type="date"
                                 value={periodStart}
                                 onChange={(e) => setPeriodStart(e.target.value)}
-                                className="bg-zinc-800 border-zinc-700"
                             />
                         </div>
                         <div className="space-y-2">
@@ -358,7 +357,6 @@ function GenerateStatementDialog({
                                 type="date"
                                 value={periodEnd}
                                 onChange={(e) => setPeriodEnd(e.target.value)}
-                                className="bg-zinc-800 border-zinc-700"
                             />
                         </div>
                     </div>
@@ -369,9 +367,8 @@ function GenerateStatementDialog({
                             placeholder="Leave empty to generate for all agents"
                             value={agentId}
                             onChange={(e) => setAgentId(e.target.value)}
-                            className="bg-zinc-800 border-zinc-700"
                         />
-                        <p className="text-xs text-zinc-500">
+                        <p className="text-xs text-muted-foreground">
                             Leave empty to generate statements for all agents with commissions in this period
                         </p>
                     </div>
@@ -384,7 +381,7 @@ function GenerateStatementDialog({
                     <Button 
                         onClick={handleGenerate}
                         disabled={loading}
-                        className="bg-amber-600 hover:bg-amber-700"
+                        className="bg-primary text-primary-foreground hover:bg-primary/90"
                     >
                         {loading ? 'Generating...' : 'Generate'}
                     </Button>
@@ -416,7 +413,7 @@ function CommissionRecordsTable({
     return (
         <Table>
             <TableHeader>
-                <TableRow className="border-zinc-800 hover:bg-transparent">
+                <TableRow className="border-border hover:bg-transparent">
                     <TableHead className="w-10">
                         <Checkbox 
                             checked={allSelected}
@@ -435,7 +432,7 @@ function CommissionRecordsTable({
             </TableHeader>
             <TableBody>
                 {records.map((record) => (
-                    <TableRow key={record.id} className="border-zinc-800">
+                    <TableRow key={record.id} className="border-border">
                         <TableCell>
                             {record.status === 'pending' && (
                                 <Checkbox 
@@ -447,7 +444,7 @@ function CommissionRecordsTable({
                         <TableCell>
                             <div className="flex items-center gap-2">
                                 <Avatar className="h-8 w-8">
-                                    <AvatarFallback className="bg-zinc-800 text-xs">
+                                    <AvatarFallback className="bg-muted text-xs">
                                         {record.agent_name?.split(' ').map(n => n[0]).join('').toUpperCase() || '?'}
                                     </AvatarFallback>
                                 </Avatar>
@@ -458,7 +455,7 @@ function CommissionRecordsTable({
                             <div>
                                 <div className="font-medium">{record.deal_name}</div>
                                 {record.property_address && (
-                                    <div className="text-sm text-zinc-500 truncate max-w-[200px]">
+                                    <div className="text-sm text-muted-foreground truncate max-w-[200px]">
                                         {record.property_address}
                                     </div>
                                 )}
@@ -505,7 +502,7 @@ function CommissionRecordsTable({
                 ))}
                 {records.length === 0 && (
                     <TableRow>
-                        <TableCell colSpan={9} className="text-center py-8 text-zinc-500">
+                        <TableCell colSpan={9} className="text-center py-8 text-muted-foreground">
                             No commission records found
                         </TableCell>
                     </TableRow>
@@ -528,7 +525,7 @@ function StatementsTable({
     return (
         <Table>
             <TableHeader>
-                <TableRow className="border-zinc-800 hover:bg-transparent">
+                <TableRow className="border-border hover:bg-transparent">
                     <TableHead>Statement #</TableHead>
                     <TableHead>Agent</TableHead>
                     <TableHead>Period</TableHead>
@@ -541,12 +538,12 @@ function StatementsTable({
             </TableHeader>
             <TableBody>
                 {statements.map((statement) => (
-                    <TableRow key={statement.id} className="border-zinc-800">
-                        <TableCell className="font-mono text-sm">{statement.statement_number}</TableCell>
+                    <TableRow key={statement.id} className="border-border">
+                        <TableCell className="text-sm font-medium">{statement.statement_number}</TableCell>
                         <TableCell>
                             <div className="flex items-center gap-2">
                                 <Avatar className="h-8 w-8">
-                                    <AvatarFallback className="bg-zinc-800 text-xs">
+                                    <AvatarFallback className="bg-muted text-xs">
                                         {statement.agent_name?.split(' ').map(n => n[0]).join('').toUpperCase() || '?'}
                                     </AvatarFallback>
                                 </Avatar>
@@ -592,7 +589,7 @@ function StatementsTable({
                 ))}
                 {statements.length === 0 && (
                     <TableRow>
-                        <TableCell colSpan={8} className="text-center py-8 text-zinc-500">
+                        <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
                             No statements found
                         </TableCell>
                     </TableRow>
@@ -744,7 +741,7 @@ export default function CommissionsPage() {
     if (loading) {
         return (
             <div className="flex items-center justify-center h-64">
-                <RefreshCw className="h-8 w-8 animate-spin text-amber-500" />
+                <RefreshCw className="h-8 w-8 animate-spin text-primary" />
             </div>
         );
     }
@@ -752,13 +749,13 @@ export default function CommissionsPage() {
     return (
         <div className="space-y-6">
             {/* Header */}
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between pb-4 border-b border-border">
                 <div>
-                    <h1 className="text-2xl font-bold flex items-center gap-2">
-                        <DollarSign className="h-6 w-6 text-amber-500" />
+                    <h1 className="text-2xl font-semibold tracking-tight text-foreground flex items-center gap-2">
+                        <DollarSign className="h-6 w-6 text-primary" />
                         Commission Management
                     </h1>
-                    <p className="text-zinc-400 mt-1">
+                    <p className="text-sm text-muted-foreground mt-1">
                         Track, approve, and manage agent commissions
                     </p>
                 </div>
@@ -781,7 +778,7 @@ export default function CommissionsPage() {
                     </Button>
                     <Button
                         size="sm"
-                        className="bg-amber-600 hover:bg-amber-700"
+                        className="bg-primary text-primary-foreground hover:bg-primary/90"
                         onClick={() => router.push('/dashboard/deals/commissions/plans')}
                     >
                         <Settings className="h-4 w-4 mr-2" />
@@ -793,78 +790,78 @@ export default function CommissionsPage() {
             {/* Summary Cards */}
             {summary && (
                 <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
-                    <Card className="bg-zinc-900 border-zinc-800">
+                    <Card className="shadow-sm">
                         <CardContent className="pt-6">
                             <div className="flex items-center justify-between">
                                 <div>
-                                    <p className="text-sm text-zinc-400">Pending</p>
+                                    <p className="text-sm text-muted-foreground">Pending</p>
                                     <p className="text-xl font-bold text-yellow-500">
                                         {formatCurrency(summary.total_pending)}
                                     </p>
-                                    <p className="text-xs text-zinc-500">{summary.pending_count} records</p>
+                                    <p className="text-xs text-muted-foreground">{summary.pending_count} records</p>
                                 </div>
                                 <Clock className="h-8 w-8 text-yellow-600" />
                             </div>
                         </CardContent>
                     </Card>
-                    <Card className="bg-zinc-900 border-zinc-800">
+                    <Card className="shadow-sm">
                         <CardContent className="pt-6">
                             <div className="flex items-center justify-between">
                                 <div>
-                                    <p className="text-sm text-zinc-400">Approved</p>
+                                    <p className="text-sm text-muted-foreground">Approved</p>
                                     <p className="text-xl font-bold text-blue-500">
                                         {formatCurrency(summary.total_approved)}
                                     </p>
-                                    <p className="text-xs text-zinc-500">{summary.approved_count} records</p>
+                                    <p className="text-xs text-muted-foreground">{summary.approved_count} records</p>
                                 </div>
                                 <CheckCircle2 className="h-8 w-8 text-blue-600" />
                             </div>
                         </CardContent>
                     </Card>
-                    <Card className="bg-zinc-900 border-zinc-800">
+                    <Card className="shadow-sm">
                         <CardContent className="pt-6">
                             <div className="flex items-center justify-between">
                                 <div>
-                                    <p className="text-sm text-zinc-400">Paid</p>
+                                    <p className="text-sm text-muted-foreground">Paid</p>
                                     <p className="text-xl font-bold text-green-500">
                                         {formatCurrency(summary.total_paid)}
                                     </p>
-                                    <p className="text-xs text-zinc-500">{summary.paid_count} records</p>
+                                    <p className="text-xs text-muted-foreground">{summary.paid_count} records</p>
                                 </div>
                                 <CreditCard className="h-8 w-8 text-green-600" />
                             </div>
                         </CardContent>
                     </Card>
-                    <Card className="bg-zinc-900 border-zinc-800">
+                    <Card className="shadow-sm">
                         <CardContent className="pt-6">
                             <div className="flex items-center justify-between">
                                 <div>
-                                    <p className="text-sm text-zinc-400">MTD</p>
+                                    <p className="text-sm text-muted-foreground">MTD</p>
                                     <p className="text-xl font-bold">{formatCurrency(summary.mtd_commission)}</p>
                                 </div>
-                                <Calendar className="h-8 w-8 text-zinc-600" />
+                                <Calendar className="h-8 w-8 text-muted-foreground" />
                             </div>
                         </CardContent>
                     </Card>
-                    <Card className="bg-zinc-900 border-zinc-800">
+                    <Card className="shadow-sm">
                         <CardContent className="pt-6">
                             <div className="flex items-center justify-between">
                                 <div>
-                                    <p className="text-sm text-zinc-400">YTD</p>
+                                    <p className="text-sm text-muted-foreground">YTD</p>
                                     <p className="text-xl font-bold">{formatCurrency(summary.ytd_commission)}</p>
                                 </div>
-                                <TrendingUp className="h-8 w-8 text-zinc-600" />
+                                <TrendingUp className="h-8 w-8 text-muted-foreground" />
                             </div>
                         </CardContent>
                     </Card>
-                    <Card className="bg-zinc-900 border-zinc-800">
+                    <Card className="shadow-sm">
                         <CardContent className="pt-6">
                             <div className="flex items-center justify-between">
                                 <div>
-                                    <p className="text-sm text-zinc-400">Avg/Deal</p>
+                                    <p className="text-sm text-muted-foreground">Avg/Deal</p>
                                     <p className="text-xl font-bold">{formatCurrency(summary.avg_deal_commission)}</p>
                                 </div>
-                                <BarChart3 className="h-8 w-8 text-zinc-600" />
+                                <BarChart3 className="h-8 w-8 text-muted-foreground" />
                             </div>
                         </CardContent>
                     </Card>
@@ -873,12 +870,12 @@ export default function CommissionsPage() {
 
             {/* Main Content Tabs */}
             <Tabs defaultValue="records" className="space-y-4">
-                <TabsList className="bg-zinc-900 border border-zinc-800">
-                    <TabsTrigger value="records" className="data-[state=active]:bg-zinc-800">
+                <TabsList>
+                    <TabsTrigger value="records">
                         <DollarSign className="h-4 w-4 mr-2" />
                         Commission Records
                     </TabsTrigger>
-                    <TabsTrigger value="statements" className="data-[state=active]:bg-zinc-800">
+                    <TabsTrigger value="statements">
                         <FileText className="h-4 w-4 mr-2" />
                         Statements
                     </TabsTrigger>
@@ -889,9 +886,9 @@ export default function CommissionsPage() {
                     <div className="flex items-center justify-between">
                         <div className="flex items-center gap-4">
                             <div className="flex items-center gap-2">
-                                <Filter className="h-4 w-4 text-zinc-400" />
+                                <Filter className="h-4 w-4 text-muted-foreground" />
                                 <Select value={statusFilter} onValueChange={setStatusFilter}>
-                                    <SelectTrigger className="w-[140px] bg-zinc-900 border-zinc-800">
+                                    <SelectTrigger className="w-[140px]">
                                         <SelectValue placeholder="Status" />
                                     </SelectTrigger>
                                     <SelectContent>
@@ -917,7 +914,7 @@ export default function CommissionsPage() {
                         )}
                     </div>
 
-                    <Card className="bg-zinc-900 border-zinc-800">
+                    <Card className="shadow-sm">
                         <CardContent className="p-0">
                             <CommissionRecordsTable
                                 records={filteredRecords}
@@ -932,7 +929,7 @@ export default function CommissionsPage() {
                 </TabsContent>
 
                 <TabsContent value="statements" className="space-y-4">
-                    <Card className="bg-zinc-900 border-zinc-800">
+                    <Card className="shadow-sm">
                         <CardHeader>
                             <CardTitle>Commission Statements</CardTitle>
                             <CardDescription>

@@ -5,9 +5,9 @@
  */
 import { Router, Request, Response } from 'express';
 import { logger } from '../utils/logger';
-import * as publicationsService from '../services/publications/publicationsService';
-import * as geminiService from '../services/publications/geminiService';
-import { generatePublicationPdf } from '../services/publications/pdfGenerationService';
+import * as publicationsService from '../../shared-services/publications/publicationsService';
+import * as geminiService from '../../shared-services/publications/geminiService';
+import { generatePublicationPdf } from '../../shared-services/publications/pdfGenerationService';
 import { getPresignedDownloadUrl, buckets } from '../database/minio';
 
 const router = Router();

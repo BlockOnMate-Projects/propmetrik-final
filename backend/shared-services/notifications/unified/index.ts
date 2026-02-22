@@ -6,6 +6,7 @@
  */
 
 import { logger } from '../../../src/utils/logger';
+import { SESv2Client, SendEmailCommand } from '@aws-sdk/client-sesv2';
 
 // =====================================================
 // MARKETING / SOCIAL LINKS  (update when real URLs are live)
@@ -57,6 +58,26 @@ export interface GoogleSMTPConfig {
     smtpPassword?: string;
     defaultFrom: string;
     defaultFromName: string;
+}
+
+export interface MicrosoftSMTPConfig {
+    tenantId: string;
+    clientId: string;
+    clientSecret: string;
+    scope: string;
+    grantType: string;
+    authUrl?: string;
+    defaultFrom: string;
+    defaultFromName: string;
+}
+
+export interface AwsSESConfig {
+    region: string;
+    accessKeyId: string;
+    secretAccessKey: string;
+    defaultFrom: string;
+    defaultFromName: string;
+    replyTo?: string;
 }
 
 // =====================================================
@@ -297,17 +318,296 @@ export class GoogleSMTPEmailService {
     }
 }
 
+export class MicrosoftGraphEmailService {
+    private tenantId: string;
+    private clientId: string;
+    private clientSecret: string;
+    private scope: string;
+    private grantType: string;
+    private authUrl: string;
+    private defaultFrom: string;
+    private defaultFromName: string;
+
+    constructor(config?: Partial<MicrosoftSMTPConfig>) {
+        this.tenantId = config?.tenantId || process.env.MS_TENANT_ID || '';
+        this.clientId = config?.clientId || process.env.MS_CLIENT_ID || '';
+        this.clientSecret = config?.clientSecret || process.env.MS_CLIENT_SECRET || '';
+        this.scope = config?.scope || process.env.MS_GRAPH_SCOPE || 'https://graph.microsoft.com/.default';
+        this.grantType = config?.grantType || process.env.MS_GRANT_TYPE || 'client_credentials';
+        this.authUrl = config?.authUrl || process.env.MS_AUTH_URL || `https://login.microsoftonline.com/${this.tenantId}/oauth2/v2.0/token`;
+        this.defaultFrom = config?.defaultFrom || process.env.MS_SMTP_FROM || '';
+        this.defaultFromName = config?.defaultFromName || process.env.MS_SMTP_FROM_NAME || 'PROPMETRIK';
+
+        if (!this.tenantId || !this.clientId || !this.clientSecret || !this.defaultFrom) {
+            logger.warn('Microsoft Graph SMTP credentials not fully configured. Provider will be skipped.');
+        }
+    }
+
+    private isConfigured(): boolean {
+        return !!(this.tenantId && this.clientId && this.clientSecret && this.defaultFrom);
+    }
+
+    private async getAccessToken(): Promise<string> {
+        const params = new URLSearchParams();
+        params.append('client_id', this.clientId);
+        params.append('scope', this.scope);
+        params.append('client_secret', this.clientSecret);
+        params.append('grant_type', this.grantType);
+
+        const response = await fetch(this.authUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: params.toString(),
+        });
+
+        if (!response.ok) {
+            const body = await response.text();
+            throw new Error(`Microsoft token request failed (${response.status}): ${body}`);
+        }
+
+        const tokenData: any = await response.json();
+        if (!tokenData?.access_token) {
+            throw new Error('Microsoft token response missing access_token');
+        }
+        return tokenData.access_token as string;
+    }
+
+    async send(message: EmailMessage): Promise<NotificationResult> {
+        if (!this.isConfigured()) {
+            return { success: false, error: 'Microsoft provider not configured' };
+        }
+
+        try {
+            const token = await this.getAccessToken();
+            const fromAddress = message.from || this.defaultFrom;
+            const fromName = message.fromName || this.defaultFromName;
+            const contentType: 'HTML' | 'Text' = message.html ? 'HTML' : 'Text';
+            const content = message.html || message.text || '';
+
+            const payload = {
+                message: {
+                    subject: message.subject,
+                    body: {
+                        contentType,
+                        content,
+                    },
+                    from: {
+                        emailAddress: {
+                            address: fromAddress,
+                            name: fromName,
+                        },
+                    },
+                    toRecipients: [
+                        {
+                            emailAddress: {
+                                address: message.to,
+                            },
+                        },
+                    ],
+                    ...(message.replyTo
+                        ? {
+                            replyTo: [
+                                {
+                                    emailAddress: {
+                                        address: message.replyTo,
+                                    },
+                                },
+                            ],
+                        }
+                        : {}),
+                },
+                saveToSentItems: false,
+            };
+
+            const sendResponse = await fetch(`https://graph.microsoft.com/v1.0/users/${encodeURIComponent(fromAddress)}/sendMail`, {
+                method: 'POST',
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(payload),
+            });
+
+            if (!sendResponse.ok) {
+                const body = await sendResponse.text();
+                throw new Error(`Microsoft sendMail failed (${sendResponse.status}): ${body}`);
+            }
+
+            const requestId = sendResponse.headers.get('request-id') || undefined;
+
+            logger.info('Email sent successfully via Microsoft Graph', {
+                to: message.to,
+                subject: message.subject,
+                requestId,
+            });
+
+            return {
+                success: true,
+                messageId: requestId,
+            };
+        } catch (error: any) {
+            logger.error('Failed to send email via Microsoft Graph', {
+                error: error.message,
+                to: message.to,
+            });
+            return {
+                success: false,
+                error: error.message,
+            };
+        }
+    }
+}
+
+export class AwsSESEmailService {
+    private region: string;
+    private accessKeyId: string;
+    private secretAccessKey: string;
+    private defaultFrom: string;
+    private defaultFromName: string;
+    private replyTo?: string;
+    private client: SESv2Client | null;
+
+    constructor(config?: Partial<AwsSESConfig>) {
+        this.region = config?.region || process.env.AWS_REGION || '';
+        this.accessKeyId = config?.accessKeyId || process.env.AWS_ACCESS_KEY_ID || '';
+        this.secretAccessKey = config?.secretAccessKey || process.env.AWS_SECRET_ACCESS_KEY || '';
+        this.defaultFrom = config?.defaultFrom || process.env.AWS_SES_FROM_EMAIL || '';
+        this.defaultFromName = config?.defaultFromName || process.env.AWS_SES_FROM_NAME || 'PROPMETRIK';
+        this.replyTo = config?.replyTo || process.env.AWS_SES_REPLY_TO || undefined;
+
+        if (!this.region || !this.accessKeyId || !this.secretAccessKey || !this.defaultFrom) {
+            logger.warn('AWS SES credentials not fully configured. Provider will be skipped.');
+            this.client = null;
+            return;
+        }
+
+        this.client = new SESv2Client({
+            region: this.region,
+            credentials: {
+                accessKeyId: this.accessKeyId,
+                secretAccessKey: this.secretAccessKey,
+            },
+        });
+    }
+
+    private isConfigured(): boolean {
+        return !!this.client;
+    }
+
+    async send(message: EmailMessage): Promise<NotificationResult> {
+        if (!this.isConfigured() || !this.client) {
+            return { success: false, error: 'AWS SES provider not configured' };
+        }
+
+        try {
+            const fromAddress = message.from || this.defaultFrom;
+            const fromName = message.fromName || this.defaultFromName;
+            const content = message.html || message.text || '';
+            const sendCommand = new SendEmailCommand({
+                FromEmailAddress: `${fromName} <${fromAddress}>`,
+                Destination: {
+                    ToAddresses: [message.to],
+                },
+                Content: {
+                    Simple: {
+                        Subject: {
+                            Data: message.subject,
+                            Charset: 'UTF-8',
+                        },
+                        Body: {
+                            ...(message.html
+                                ? { Html: { Data: content, Charset: 'UTF-8' } }
+                                : { Text: { Data: content, Charset: 'UTF-8' } }),
+                        },
+                    },
+                },
+                ...(message.replyTo || this.replyTo
+                    ? { ReplyToAddresses: [message.replyTo || this.replyTo || ''] }
+                    : {}),
+            });
+
+            const result = await this.client.send(sendCommand);
+
+            logger.info('Email sent successfully via AWS SES', {
+                to: message.to,
+                subject: message.subject,
+                messageId: result.MessageId,
+            });
+
+            return {
+                success: true,
+                messageId: result.MessageId,
+            };
+        } catch (error: any) {
+            logger.error('Failed to send email via AWS SES', {
+                error: error.message,
+                to: message.to,
+            });
+            return {
+                success: false,
+                error: error.message,
+            };
+        }
+    }
+}
+
+type EmailProvider = 'microsoft' | 'google' | 'aws_ses';
+
+export class PrioritySMTPEmailService {
+    private microsoftService: MicrosoftGraphEmailService;
+    private googleService: GoogleSMTPEmailService;
+    private awsSesService: AwsSESEmailService;
+    private priority: EmailProvider[] = ['microsoft', 'google', 'aws_ses'];
+
+    constructor() {
+        this.microsoftService = new MicrosoftGraphEmailService();
+        this.googleService = new GoogleSMTPEmailService();
+        this.awsSesService = new AwsSESEmailService();
+    }
+
+    async send(message: EmailMessage): Promise<NotificationResult> {
+        const errors: string[] = [];
+
+        for (const provider of this.priority) {
+            const result = await this.sendWithProvider(provider, message);
+            if (result.success) {
+                logger.info('Email sent with provider', { provider, to: message.to, subject: message.subject });
+                return result;
+            }
+            errors.push(`${provider}: ${result.error || 'unknown error'}`);
+        }
+
+        return {
+            success: false,
+            error: `All email providers failed. ${errors.join(' | ')}`,
+        };
+    }
+
+    private sendWithProvider(provider: EmailProvider, message: EmailMessage): Promise<NotificationResult> {
+        switch (provider) {
+            case 'microsoft':
+                return this.microsoftService.send(message);
+            case 'google':
+                return this.googleService.send(message);
+            case 'aws_ses':
+                return this.awsSesService.send(message);
+            default:
+                return Promise.resolve({ success: false, error: `Unsupported provider: ${provider}` });
+        }
+    }
+}
+
 // =====================================================
 // UNIFIED NOTIFICATION SERVICE
 // =====================================================
 
 export class UnifiedNotificationService {
     private smsService: TwilioSMSService;
-    private emailService: GoogleSMTPEmailService;
+    private emailService: PrioritySMTPEmailService;
 
     constructor() {
         this.smsService = new TwilioSMSService();
-        this.emailService = new GoogleSMTPEmailService();
+        this.emailService = new PrioritySMTPEmailService();
     }
 
     /**
@@ -675,4 +975,4 @@ export class UnifiedNotificationService {
 // Singleton exports
 export const notificationService = new UnifiedNotificationService();
 export const smsService = new TwilioSMSService();
-export const emailService = new GoogleSMTPEmailService();
+export const emailService = new PrioritySMTPEmailService();

@@ -240,6 +240,7 @@ export interface ValuationResult {
   // Dates
   effective_date: Date;
   expiry_date: Date;
+  created_by?: string | null;
   created_at?: Date;
   updated_at?: Date;
 }

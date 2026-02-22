@@ -16,10 +16,12 @@ import {
     Users,
     DollarSign,
     Filter,
-    MoreVertical
+    MoreVertical,
+    UserCircle
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { Card, CardContent } from '@/components/ui/card'
 import {
     Select,
     SelectContent,
@@ -36,24 +38,7 @@ import {
 import { agentsApi } from '@/lib/crm-api'
 import type { Agent, AgentStats, PaginatedResponse } from '@/types/crm'
 import { AgentStatus, AgentSpecialization } from '@/types/crm'
-
-// =====================================================
-// PANEL COMPONENT
-// =====================================================
-function Panel({ title, children, className }: { 
-    title: string; 
-    children: React.ReactNode; 
-    className?: string;
-}) {
-    return (
-        <div className={cn('border border-zinc-800 bg-zinc-900/50', className)}>
-            <div className="flex items-center justify-between px-3 py-1.5 bg-zinc-800/50 border-b border-zinc-800">
-                <span className="font-mono text-[10px] text-amber-500 tracking-wider">{title}</span>
-            </div>
-            <div className="p-3">{children}</div>
-        </div>
-    )
-}
+import { EmptyState } from '@/components/crm/EmptyState'
 
 // =====================================================
 // STAT CARD COMPONENT
@@ -70,20 +55,22 @@ function StatCard({
     trend?: string;
 }) {
     return (
-        <div className="bg-zinc-800/50 border border-zinc-700 p-4">
-            <div className="flex items-start justify-between">
-                <div>
-                    <p className="font-mono text-[10px] text-zinc-500 uppercase tracking-wider">{label}</p>
-                    <p className="font-mono text-2xl font-bold text-white mt-1">{value}</p>
-                    {trend && (
-                        <p className="font-mono text-[10px] text-green-400 mt-1">{trend}</p>
-                    )}
+        <Card className="border-border shadow-sm">
+            <CardContent className="p-4">
+                <div className="flex items-start justify-between">
+                    <div>
+                        <p className="text-xs text-muted-foreground uppercase tracking-wider">{label}</p>
+                        <p className="text-2xl font-bold text-foreground mt-1">{value}</p>
+                        {trend && (
+                            <p className="text-xs text-green-400 mt-1">{trend}</p>
+                        )}
+                    </div>
+                    <div className="p-2 bg-primary/10 rounded">
+                        <Icon className="h-5 w-5 text-primary" />
+                    </div>
                 </div>
-                <div className="p-2 bg-amber-500/10 rounded">
-                    <Icon className="h-5 w-5 text-amber-500" />
-                </div>
-            </div>
-        </div>
+            </CardContent>
+        </Card>
     )
 }
 
@@ -114,10 +101,10 @@ function AgentCard({ agent }: { agent: Agent }) {
     const getStatusColor = (status: AgentStatus) => {
         switch (status) {
             case AgentStatus.ACTIVE: return 'bg-green-900/50 text-green-400'
-            case AgentStatus.INACTIVE: return 'bg-zinc-700/50 text-zinc-400'
+            case AgentStatus.INACTIVE: return 'bg-muted text-muted-foreground'
             case AgentStatus.SUSPENDED: return 'bg-red-900/50 text-red-400'
             case AgentStatus.PENDING_APPROVAL: return 'bg-yellow-900/50 text-yellow-400'
-            default: return 'bg-zinc-700/50 text-zinc-400'
+            default: return 'bg-muted text-muted-foreground'
         }
     }
 
@@ -127,81 +114,83 @@ function AgentCard({ agent }: { agent: Agent }) {
 
     return (
         <Link href={`/dashboard/deals/agents/${agent.id}`}>
-            <div className="bg-zinc-800/50 border border-zinc-700 p-4 hover:border-amber-500/50 transition-colors cursor-pointer group">
-                <div className="flex items-start justify-between mb-3">
-                    <div className="flex items-center gap-3">
-                        {agent.avatar_url ? (
-                            <img 
-                                src={agent.avatar_url} 
-                                alt={agent.display_name} 
-                                className="w-12 h-12 rounded-full object-cover"
-                            />
-                        ) : (
-                            <div className="w-12 h-12 bg-amber-500/20 rounded-full flex items-center justify-center">
-                                <User className="h-6 w-6 text-amber-500" />
-                            </div>
-                        )}
-                        <div>
-                            <h4 className="font-mono text-sm text-white group-hover:text-amber-500 transition-colors">
-                                {agent.display_name || `${agent.first_name} ${agent.last_name}`}
-                            </h4>
-                            {agent.license_number && (
-                                <p className="font-mono text-[10px] text-zinc-500">License: {agent.license_number}</p>
+            <Card className="border-border hover:border-primary/50 transition-colors cursor-pointer group shadow-sm">
+                <CardContent className="p-4">
+                    <div className="flex items-start justify-between mb-3">
+                        <div className="flex items-center gap-3">
+                            {agent.avatar_url ? (
+                                <img 
+                                    src={agent.avatar_url} 
+                                    alt={agent.display_name} 
+                                    className="w-12 h-12 rounded-full object-cover"
+                                />
+                            ) : (
+                                <div className="w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center">
+                                    <User className="h-6 w-6 text-primary" />
+                                </div>
                             )}
+                            <div>
+                                <h4 className="text-sm font-medium text-foreground group-hover:text-primary transition-colors">
+                                    {agent.display_name || `${agent.first_name} ${agent.last_name}`}
+                                </h4>
+                                {agent.license_number && (
+                                    <p className="text-xs text-muted-foreground">License: {agent.license_number}</p>
+                                )}
+                            </div>
+                        </div>
+                        <span className={cn('text-[10px] font-medium px-1.5 py-0.5 rounded', getStatusColor(agent.status))}>
+                            {agent.status?.toUpperCase()}
+                        </span>
+                    </div>
+
+                    {/* Specializations */}
+                    <div className="flex flex-wrap gap-1 mb-3">
+                        {parsePostgresArray(agent.specializations).slice(0, 2).map((spec, index) => (
+                            <span 
+                                key={index}
+                                className="text-[10px] font-medium px-1.5 py-0.5 bg-muted text-muted-foreground rounded"
+                            >
+                                {formatSpecialization(spec as AgentSpecialization)}
+                            </span>
+                        ))}
+                        {parsePostgresArray(agent.specializations).length > 2 && (
+                            <span className="text-[10px] font-medium px-1.5 py-0.5 bg-muted text-muted-foreground rounded">
+                                +{parsePostgresArray(agent.specializations).length - 2} more
+                            </span>
+                        )}
+                    </div>
+
+                    {/* Contact Info */}
+                    <div className="space-y-1.5 mb-3">
+                        <div className="flex items-center gap-2">
+                            <Phone className="h-3 w-3 text-muted-foreground" />
+                            <span className="text-xs text-muted-foreground">{agent.phone_primary}</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <Mail className="h-3 w-3 text-muted-foreground" />
+                            <span className="text-xs text-muted-foreground truncate">{agent.email}</span>
                         </div>
                     </div>
-                    <span className={cn('font-mono text-[9px] px-1.5 py-0.5', getStatusColor(agent.status))}>
-                        {agent.status?.toUpperCase()}
-                    </span>
-                </div>
 
-                {/* Specializations */}
-                <div className="flex flex-wrap gap-1 mb-3">
-                    {parsePostgresArray(agent.specializations).slice(0, 2).map((spec, index) => (
-                        <span 
-                            key={index}
-                            className="font-mono text-[9px] px-1.5 py-0.5 bg-zinc-700/50 text-zinc-300"
-                        >
-                            {formatSpecialization(spec as AgentSpecialization)}
-                        </span>
-                    ))}
-                    {parsePostgresArray(agent.specializations).length > 2 && (
-                        <span className="font-mono text-[9px] px-1.5 py-0.5 bg-zinc-700/50 text-zinc-400">
-                            +{parsePostgresArray(agent.specializations).length - 2} more
-                        </span>
-                    )}
-                </div>
-
-                {/* Contact Info */}
-                <div className="space-y-1.5 mb-3">
-                    <div className="flex items-center gap-2">
-                        <Phone className="h-3 w-3 text-zinc-500" />
-                        <span className="font-mono text-[10px] text-zinc-400">{agent.phone_primary}</span>
+                    {/* Performance Metrics */}
+                    <div className="grid grid-cols-3 gap-2 pt-3 border-t border-border">
+                        <div className="text-center">
+                            <p className="text-xs text-foreground font-bold">{agent.current_active_deals || 0}</p>
+                            <p className="text-[10px] text-muted-foreground">Active Deals</p>
+                        </div>
+                        <div className="text-center">
+                            <p className="text-xs text-foreground font-bold">{agent.total_deals_closed || 0}</p>
+                            <p className="text-[10px] text-muted-foreground">Closed</p>
+                        </div>
+                        <div className="text-center flex items-center justify-center gap-0.5">
+                            <Star className="h-3 w-3 text-yellow-500" />
+                            <p className="text-xs text-foreground font-bold">
+                                {agent.customer_rating ? Number(agent.customer_rating).toFixed(1) : '—'}
+                            </p>
+                        </div>
                     </div>
-                    <div className="flex items-center gap-2">
-                        <Mail className="h-3 w-3 text-zinc-500" />
-                        <span className="font-mono text-[10px] text-zinc-400 truncate">{agent.email}</span>
-                    </div>
-                </div>
-
-                {/* Performance Metrics */}
-                <div className="grid grid-cols-3 gap-2 pt-3 border-t border-zinc-700">
-                    <div className="text-center">
-                        <p className="font-mono text-xs text-white font-bold">{agent.current_active_deals || 0}</p>
-                        <p className="font-mono text-[9px] text-zinc-500">Active Deals</p>
-                    </div>
-                    <div className="text-center">
-                        <p className="font-mono text-xs text-white font-bold">{agent.total_deals_closed || 0}</p>
-                        <p className="font-mono text-[9px] text-zinc-500">Closed</p>
-                    </div>
-                    <div className="text-center flex items-center justify-center gap-0.5">
-                        <Star className="h-3 w-3 text-yellow-500" />
-                        <p className="font-mono text-xs text-white font-bold">
-                            {agent.customer_rating ? Number(agent.customer_rating).toFixed(1) : '—'}
-                        </p>
-                    </div>
-                </div>
-            </div>
+                </CardContent>
+            </Card>
         </Link>
     )
 }
@@ -262,17 +251,17 @@ export default function AgentsPage() {
     return (
         <div className="space-y-4">
             {/* Header */}
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between pb-4 border-b border-border">
                 <div>
-                    <h2 className="font-mono text-lg font-bold text-white">AGENTS</h2>
-                    <p className="font-mono text-[10px] text-zinc-500">
+                    <h1 className="text-2xl font-semibold tracking-tight text-foreground">Agents</h1>
+                    <p className="text-sm text-muted-foreground mt-1">
                         Manage your real estate agents and their performance
                     </p>
                 </div>
                 <Link href="/dashboard/deals/agents/new">
-                    <Button className="bg-amber-500 hover:bg-amber-600 text-black font-mono text-xs">
+                    <Button className="bg-primary text-primary-foreground hover:bg-primary/90 font-medium text-sm h-9 px-4 rounded-md shadow-sm">
                         <Plus className="h-4 w-4 mr-1" />
-                        ADD AGENT
+                        Add Agent
                     </Button>
                 </Link>
             </div>
@@ -304,61 +293,63 @@ export default function AgentsPage() {
             )}
 
             {/* Filters */}
-            <Panel title="FILTERS">
-                <div className="flex flex-wrap gap-3">
-                    <div className="flex-1 min-w-[200px]">
-                        <div className="relative">
-                            <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-500" />
-                            <Input
-                                placeholder="Search agents..."
-                                value={search}
-                                onChange={(e) => setSearch(e.target.value)}
-                                className="pl-8 bg-zinc-800 border-zinc-700 font-mono text-sm"
-                            />
+            <Card className="border-border shadow-sm">
+                <CardContent className="p-4">
+                    <div className="flex flex-wrap gap-3">
+                        <div className="flex-1 min-w-[200px]">
+                            <div className="relative">
+                                <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                                <Input
+                                    placeholder="Search agents..."
+                                    value={search}
+                                    onChange={(e) => setSearch(e.target.value)}
+                                    className="pl-8 text-sm"
+                                />
+                            </div>
                         </div>
+                        <Select value={statusFilter} onValueChange={setStatusFilter}>
+                            <SelectTrigger className="w-[150px] h-9 text-sm">
+                                <SelectValue placeholder="Status" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="all">All Status</SelectItem>
+                                <SelectItem value="active">Active</SelectItem>
+                                <SelectItem value="inactive">Inactive</SelectItem>
+                                <SelectItem value="suspended">Suspended</SelectItem>
+                                <SelectItem value="pending_approval">Pending</SelectItem>
+                            </SelectContent>
+                        </Select>
+                        <Select value={specializationFilter} onValueChange={setSpecializationFilter}>
+                            <SelectTrigger className="w-[180px] h-9 text-sm">
+                                <SelectValue placeholder="Specialization" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="all">All Specializations</SelectItem>
+                                <SelectItem value="residential_sales">Residential Sales</SelectItem>
+                                <SelectItem value="commercial_sales">Commercial Sales</SelectItem>
+                                <SelectItem value="residential_rentals">Residential Rentals</SelectItem>
+                                <SelectItem value="commercial_rentals">Commercial Rentals</SelectItem>
+                                <SelectItem value="land_sales">Land Sales</SelectItem>
+                                <SelectItem value="property_management">Property Management</SelectItem>
+                                <SelectItem value="investment_advisory">Investment Advisory</SelectItem>
+                                <SelectItem value="valuation">Valuation</SelectItem>
+                                <SelectItem value="general">General</SelectItem>
+                            </SelectContent>
+                        </Select>
                     </div>
-                    <Select value={statusFilter} onValueChange={setStatusFilter}>
-                        <SelectTrigger className="w-[150px] bg-zinc-800 border-zinc-700 font-mono text-xs">
-                            <SelectValue placeholder="Status" />
-                        </SelectTrigger>
-                        <SelectContent>
-                            <SelectItem value="all">All Status</SelectItem>
-                            <SelectItem value="active">Active</SelectItem>
-                            <SelectItem value="inactive">Inactive</SelectItem>
-                            <SelectItem value="suspended">Suspended</SelectItem>
-                            <SelectItem value="pending_approval">Pending</SelectItem>
-                        </SelectContent>
-                    </Select>
-                    <Select value={specializationFilter} onValueChange={setSpecializationFilter}>
-                        <SelectTrigger className="w-[180px] bg-zinc-800 border-zinc-700 font-mono text-xs">
-                            <SelectValue placeholder="Specialization" />
-                        </SelectTrigger>
-                        <SelectContent>
-                            <SelectItem value="all">All Specializations</SelectItem>
-                            <SelectItem value="residential_sales">Residential Sales</SelectItem>
-                            <SelectItem value="commercial_sales">Commercial Sales</SelectItem>
-                            <SelectItem value="residential_rentals">Residential Rentals</SelectItem>
-                            <SelectItem value="commercial_rentals">Commercial Rentals</SelectItem>
-                            <SelectItem value="land_sales">Land Sales</SelectItem>
-                            <SelectItem value="property_management">Property Management</SelectItem>
-                            <SelectItem value="investment_advisory">Investment Advisory</SelectItem>
-                            <SelectItem value="valuation">Valuation</SelectItem>
-                            <SelectItem value="general">General</SelectItem>
-                        </SelectContent>
-                    </Select>
-                </div>
-            </Panel>
+                </CardContent>
+            </Card>
 
             {/* Loading State */}
             {isLoading && (
                 <div className="flex items-center justify-center py-12">
-                    <Loader2 className="h-8 w-8 text-amber-500 animate-spin" />
+                    <Loader2 className="h-8 w-8 text-primary animate-spin" />
                 </div>
             )}
 
             {/* Error State */}
             {error && (
-                <div className="p-4 bg-red-900/20 border border-red-800 text-red-400 font-mono text-xs">
+                <div className="p-4 bg-red-900/20 border border-red-800 text-red-400 text-xs rounded-md">
                     {error}
                 </div>
             )}
@@ -367,18 +358,13 @@ export default function AgentsPage() {
             {!isLoading && !error && (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                     {filteredAgents.length === 0 ? (
-                        <div className="col-span-full text-center py-12">
-                            <User className="h-12 w-12 text-zinc-600 mx-auto mb-3" />
-                            <p className="font-mono text-sm text-zinc-500">No agents found</p>
-                            <p className="font-mono text-[10px] text-zinc-600 mt-1">
-                                Add your first agent to get started
-                            </p>
-                            <Link href="/dashboard/deals/agents/new">
-                                <Button className="mt-4 bg-amber-500 hover:bg-amber-600 text-black font-mono text-xs">
-                                    <Plus className="h-4 w-4 mr-1" />
-                                    ADD AGENT
-                                </Button>
-                            </Link>
+                        <div className="col-span-full">
+                            <EmptyState
+                                icon={UserCircle}
+                                title="No agents yet"
+                                description="Add real estate agents to manage deal assignments and track performance."
+                                actions={[{ label: 'Add Agent', href: '/dashboard/deals/agents/new', icon: Plus }]}
+                            />
                         </div>
                     ) : (
                         filteredAgents.map(agent => (

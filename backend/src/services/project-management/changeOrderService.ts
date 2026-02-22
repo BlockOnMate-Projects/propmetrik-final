@@ -1103,9 +1103,10 @@ class ChangeOrderService {
       },
       by_reason: byReason,
       by_type: {
-        addition: parseInt(row.type_addition, 10),
-        deduction: parseInt(row.type_deduction, 10),
-        no_cost: parseInt(row.type_no_cost, 10)
+        additive: parseInt(row.type_additive ?? row.type_addition ?? '0', 10),
+        deductive: parseInt(row.type_deductive ?? row.type_deduction ?? '0', 10),
+        no_cost: parseInt(row.type_no_cost ?? '0', 10),
+        time_extension: parseInt(row.type_time_extension ?? '0', 10)
       },
       total_additions: parseFloat(row.total_additions) || 0,
       total_deductions: parseFloat(row.total_deductions) || 0,
@@ -1291,7 +1292,7 @@ class ChangeOrderService {
         changeOrder.status,
         changeOrder.status,
         { signers: signers.map(s => ({ email: s.email, signedAt: s.signedAt })) },
-        null,
+        undefined,
         'All signatures collected via e-sign'
       );
 
@@ -1319,7 +1320,7 @@ class ChangeOrderService {
           'approved',
           'executed',
           null,
-          null,
+          undefined,
           'Auto-executed after e-sign completion'
         );
 
