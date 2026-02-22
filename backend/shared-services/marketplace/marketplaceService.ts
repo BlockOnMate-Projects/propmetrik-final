@@ -130,10 +130,10 @@ export class MarketplaceService {
         paramCounter++;
       }
 
-      // Property types filter
+      // Property types filter (case-insensitive)
       if (property_types && property_types.length > 0) {
-        conditions.push(`property_type = ANY($${paramCounter})`);
-        params.push(property_types);
+        conditions.push(`LOWER(property_type) = ANY($${paramCounter})`);
+        params.push(property_types.map((t: string) => t.toLowerCase()));
         paramCounter++;
       }
 
@@ -163,14 +163,14 @@ export class MarketplaceService {
         paramCounter++;
       }
 
-      // Location filters
+      // Location filters (normalize spaces/underscores/case for PM enums vs CRM text)
       if (region) {
-        conditions.push(`region = $${paramCounter}`);
+        conditions.push(`LOWER(REPLACE(region, ' ', '_')) = LOWER(REPLACE($${paramCounter}, ' ', '_'))`);
         params.push(region);
         paramCounter++;
       }
       if (city) {
-        conditions.push(`city = $${paramCounter}`);
+        conditions.push(`LOWER(city) = LOWER($${paramCounter})`);
         params.push(city);
         paramCounter++;
       }
@@ -222,7 +222,7 @@ export class MarketplaceService {
         paramCounter += 4;
       }
 
-      const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
+      const whereClause = conditions.length > 0 ? `AND ${conditions.join(' AND ')}` : '';
 
       // Determine ORDER BY
       let orderBy = '';
@@ -236,6 +236,8 @@ export class MarketplaceService {
       }
 
       // Combined query for PM and CRM properties
+      // Dynamic filters are applied on the unified all_properties CTE
+      // to avoid type mismatches between PM enums and CRM text columns
       const query_sql = `
         WITH pm_properties AS (
           SELECT 
@@ -244,7 +246,12 @@ export class MarketplaceService {
             permanent_link_token,
             title,
             description,
-            property_type::text,
+            CASE property_type::text
+              WHEN 'residential_house' THEN 'house'
+              WHEN 'apartment_flat' THEN 'apartment'
+              WHEN 'commercial_shop' THEN 'commercial'
+              ELSE property_type::text
+            END AS property_type,
             'rental'::text AS transaction_type,
             address_street || ', ' || address_city AS address,
             address_city AS city,
@@ -275,9 +282,6 @@ export class MarketplaceService {
             AND marketplace_enabled = TRUE
             AND status IN ('active', 'under_offer')
             AND (digital_address IS NOT NULL OR (latitude IS NOT NULL AND longitude IS NOT NULL))
-          ${whereClause}
-          ${searchCondition}
-          ${geoCondition}
         ),
         crm_props AS (
           SELECT 
@@ -320,9 +324,6 @@ export class MarketplaceService {
             AND marketplace_enabled = TRUE
             AND status IN ('active', 'pending')
             AND (digital_address IS NOT NULL OR (latitude IS NOT NULL AND longitude IS NOT NULL))
-          ${whereClause}
-          ${searchCondition}
-          ${geoCondition}
         ),
         all_properties AS (
           SELECT * FROM pm_properties
@@ -331,6 +332,7 @@ export class MarketplaceService {
         )
         SELECT 
           *,
+          COUNT(*) OVER() AS total_count,
           ${geo_radius ? `
             ST_Distance(
               geom::geography,
@@ -338,45 +340,17 @@ export class MarketplaceService {
             ) / 1000.0 AS distance_km
           ` : 'NULL AS distance_km'}
         FROM all_properties
+        WHERE 1=1
+        ${whereClause}
+        ${searchCondition}
+        ${geoCondition}
         ${orderBy}
         LIMIT $${paramCounter} OFFSET $${paramCounter + 1}
       `;
 
       params.push(size, from);
 
-      // Get total count
-      const countQuery = `
-        WITH pm_properties AS (
-          SELECT id FROM properties
-          WHERE organization_id IS NOT NULL
-            AND marketplace_enabled = TRUE
-            AND status IN ('active', 'under_offer')
-            AND (digital_address IS NOT NULL OR (latitude IS NOT NULL AND longitude IS NOT NULL))
-          ${whereClause}
-          ${searchCondition}
-          ${geoCondition}
-        ),
-        crm_props AS (
-          SELECT id FROM crm_properties
-          WHERE organization_id IS NOT NULL
-            AND marketplace_enabled = TRUE
-            AND status IN ('active', 'pending')
-            AND (digital_address IS NOT NULL OR (latitude IS NOT NULL AND longitude IS NOT NULL))
-          ${whereClause}
-          ${searchCondition}
-          ${geoCondition}
-        )
-        SELECT COUNT(*) as total FROM (
-          SELECT id FROM pm_properties
-          UNION ALL
-          SELECT id FROM crm_props
-        ) AS all_props
-      `;
-
-      const [propertiesResult, countResult] = await Promise.all([
-        db.query(query_sql, params),
-        db.query(countQuery, params.slice(0, -2)) // Exclude LIMIT and OFFSET params
-      ]);
+      const propertiesResult = await db.query(query_sql, params);
 
       const properties: MarketplaceProperty[] = propertiesResult.rows.map(row => ({
         id: row.id,
@@ -417,7 +391,7 @@ export class MarketplaceService {
       }));
 
       return {
-        total: parseInt(countResult.rows[0].total),
+        total: propertiesResult.rows.length > 0 ? parseInt(propertiesResult.rows[0].total_count) : 0,
         properties
       };
 
