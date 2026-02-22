@@ -38,11 +38,11 @@ function Panel({ title, icon: Icon, children, className, action }: {
     action?: React.ReactNode;
 }) {
     return (
-        <div className={cn('border border-zinc-800 bg-zinc-900/50', className)}>
-            <div className="flex items-center justify-between px-3 py-1.5 bg-zinc-800/50 border-b border-zinc-800">
+        <div className={cn('border border-border bg-card', className)}>
+            <div className="flex items-center justify-between px-3 py-1.5 bg-muted/50 border-b border-border">
                 <div className="flex items-center gap-2">
-                    {Icon && <Icon className="h-3 w-3 text-amber-500" />}
-                    <span className="font-mono text-[10px] text-amber-500 tracking-wider">{title}</span>
+                    {Icon && <Icon className="h-3 w-3 text-primary" />}
+                    <span className="font-mono text-[10px] text-primary tracking-wider">{title}</span>
                 </div>
                 {action}
             </div>
@@ -61,11 +61,11 @@ function InfoRow({ label, value, icon: Icon }: {
 }) {
     if (!value) return null
     return (
-        <div className="flex items-start gap-3 py-2 border-b border-zinc-800/50 last:border-0">
-            {Icon && <Icon className="h-4 w-4 text-zinc-500 mt-0.5 flex-shrink-0" />}
+        <div className="flex items-start gap-3 py-2 border-b border-border/50 last:border-0">
+            {Icon && <Icon className="h-4 w-4 text-muted-foreground mt-0.5 flex-shrink-0" />}
             <div className="flex-1 min-w-0">
-                <p className="font-mono text-[10px] text-zinc-500 uppercase tracking-wider">{label}</p>
-                <p className="font-mono text-sm text-white truncate">{value}</p>
+                <p className="font-mono text-[10px] text-muted-foreground uppercase tracking-wider">{label}</p>
+                <p className="font-mono text-sm text-foreground truncate">{value}</p>
             </div>
         </div>
     )
@@ -82,7 +82,7 @@ function LeadStatusBadge({ status }: { status: LeadStatus }) {
             case LeadStatus.QUALIFIED: return 'bg-green-900/50 text-green-400 border-green-700'
             case LeadStatus.UNQUALIFIED: return 'bg-red-900/50 text-red-400 border-red-700'
             case LeadStatus.NURTURING: return 'bg-yellow-900/50 text-yellow-400 border-yellow-700'
-            default: return 'bg-zinc-700/50 text-zinc-400 border-zinc-600'
+            default: return 'bg-muted text-muted-foreground border-border'
         }
     }
 
@@ -105,7 +105,7 @@ function ContactTypeBadge({ type }: { type: ContactType }) {
     }
 
     return (
-        <span className="font-mono text-[10px] px-2 py-1 bg-zinc-700/50 text-zinc-300 border border-zinc-600">
+        <span className="font-mono text-[10px] px-2 py-1 bg-muted text-foreground border border-border">
             {formatType(type)}
         </span>
     )
@@ -172,18 +172,18 @@ export default function ContactDetailPage() {
 
     if (isLoading) {
         return (
-            <div className="min-h-screen bg-zinc-950 flex items-center justify-center">
-                <Loader2 className="h-8 w-8 text-amber-500 animate-spin" />
+            <div className="min-h-screen bg-background flex items-center justify-center">
+                <Loader2 className="h-8 w-8 text-primary animate-spin" />
             </div>
         )
     }
 
     if (error || !contact) {
         return (
-            <div className="min-h-screen bg-zinc-950 p-6">
+            <div className="min-h-screen bg-background p-6">
                 <div className="max-w-4xl mx-auto">
                     <Link href="/dashboard/deals/contacts">
-                        <Button variant="ghost" size="sm" className="text-zinc-400 hover:text-white mb-4">
+                        <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground mb-4">
                             <ArrowLeft className="h-4 w-4 mr-2" />
                             Back to Contacts
                         </Button>
@@ -197,23 +197,23 @@ export default function ContactDetailPage() {
     }
 
     return (
-        <div className="min-h-screen bg-zinc-950 p-6">
+        <div className="min-h-screen bg-background p-6">
             <div className="max-w-6xl mx-auto">
                 {/* Header */}
                 <div className="flex items-center justify-between mb-6">
                     <div className="flex items-center gap-4">
                         <Link href="/dashboard/deals/contacts">
-                            <Button variant="ghost" size="sm" className="text-zinc-400 hover:text-white">
+                            <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground">
                                 <ArrowLeft className="h-4 w-4 mr-2" />
                                 Back
                             </Button>
                         </Link>
                         <div className="flex items-center gap-4">
-                            <div className="w-14 h-14 bg-amber-500/20 rounded-full flex items-center justify-center">
-                                <User className="h-7 w-7 text-amber-500" />
+                            <div className="w-14 h-14 bg-primary/20 rounded-full flex items-center justify-center">
+                                <User className="h-7 w-7 text-primary" />
                             </div>
                             <div>
-                                <h1 className="font-mono text-xl font-bold text-white">
+                                <h1 className="font-mono text-xl font-bold text-foreground">
                                     {contact.title && `${contact.title} `}
                                     {contact.first_name} {contact.last_name}
                                 </h1>
@@ -226,7 +226,7 @@ export default function ContactDetailPage() {
                     </div>
                     <div className="flex items-center gap-2">
                         <Link href={`/dashboard/deals/contacts/${contactId}/edit`}>
-                            <Button variant="outline" size="sm" className="border-zinc-700 text-zinc-300">
+                            <Button variant="outline" size="sm" className="border-border text-foreground">
                                 <Edit2 className="h-4 w-4 mr-2" />
                                 Edit
                             </Button>
@@ -311,7 +311,7 @@ export default function ContactDetailPage() {
                         {/* Notes */}
                         {contact.notes && (
                             <Panel title="NOTES" icon={FileText}>
-                                <p className="font-mono text-sm text-zinc-300 whitespace-pre-wrap">
+                                <p className="font-mono text-sm text-foreground whitespace-pre-wrap">
                                     {contact.notes}
                                 </p>
                             </Panel>
@@ -323,27 +323,27 @@ export default function ContactDetailPage() {
                         {/* Quick Stats */}
                         <Panel title="QUICK STATS" icon={Tag}>
                             <div className="space-y-3">
-                                <div className="flex justify-between items-center py-2 border-b border-zinc-800">
-                                    <span className="font-mono text-[10px] text-zinc-500">LEAD SCORE</span>
-                                    <span className="font-mono text-lg font-bold text-amber-500">
+                                <div className="flex justify-between items-center py-2 border-b border-border">
+                                    <span className="font-mono text-[10px] text-muted-foreground">LEAD SCORE</span>
+                                    <span className="font-mono text-lg font-bold text-primary">
                                         {contact.lead_score || 0}
                                     </span>
                                 </div>
-                                <div className="flex justify-between items-center py-2 border-b border-zinc-800">
-                                    <span className="font-mono text-[10px] text-zinc-500">ACTIVE DEALS</span>
-                                    <span className="font-mono text-lg font-bold text-white">
+                                <div className="flex justify-between items-center py-2 border-b border-border">
+                                    <span className="font-mono text-[10px] text-muted-foreground">ACTIVE DEALS</span>
+                                    <span className="font-mono text-lg font-bold text-foreground">
                                         {contact.deal_count || deals.length}
                                     </span>
                                 </div>
-                                <div className="flex justify-between items-center py-2 border-b border-zinc-800">
-                                    <span className="font-mono text-[10px] text-zinc-500">TOTAL DEAL VALUE</span>
+                                <div className="flex justify-between items-center py-2 border-b border-border">
+                                    <span className="font-mono text-[10px] text-muted-foreground">TOTAL DEAL VALUE</span>
                                     <span className="font-mono text-sm font-bold text-green-400">
                                         {contact.total_deal_value ? formatCurrency(contact.total_deal_value) : '—'}
                                     </span>
                                 </div>
                                 <div className="flex justify-between items-center py-2">
-                                    <span className="font-mono text-[10px] text-zinc-500">LEAD SOURCE</span>
-                                    <span className="font-mono text-xs text-zinc-300">
+                                    <span className="font-mono text-[10px] text-muted-foreground">LEAD SOURCE</span>
+                                    <span className="font-mono text-xs text-foreground">
                                         {contact.lead_source?.replace(/_/g, ' ').toUpperCase() || '—'}
                                     </span>
                                 </div>
@@ -357,7 +357,7 @@ export default function ContactDetailPage() {
                                     {contact.tags.map((tag, index) => (
                                         <span 
                                             key={index}
-                                            className="font-mono text-[10px] px-2 py-0.5 bg-zinc-800 text-zinc-300 border border-zinc-700"
+                                            className="font-mono text-[10px] px-2 py-0.5 bg-muted text-foreground border border-border"
                                         >
                                             {tag}
                                         </span>
@@ -369,19 +369,19 @@ export default function ContactDetailPage() {
                         {/* Timeline / Recent Activity */}
                         <Panel title="RECENT ACTIVITY" icon={Clock}>
                             {activities.length === 0 ? (
-                                <p className="font-mono text-[10px] text-zinc-500 text-center py-4">
+                                <p className="font-mono text-[10px] text-muted-foreground text-center py-4">
                                     No recent activity
                                 </p>
                             ) : (
                                 <div className="space-y-3 max-h-64 overflow-y-auto">
                                     {activities.slice(0, 5).map((activity, index) => (
-                                        <div key={activity.id || index} className="flex items-start gap-2 py-2 border-b border-zinc-800/50 last:border-0">
-                                            <div className="w-2 h-2 rounded-full bg-amber-500 mt-1.5 flex-shrink-0" />
+                                        <div key={activity.id || index} className="flex items-start gap-2 py-2 border-b border-border/50 last:border-0">
+                                            <div className="w-2 h-2 rounded-full bg-primary mt-1.5 flex-shrink-0" />
                                             <div className="flex-1 min-w-0">
-                                                <p className="font-mono text-xs text-white truncate">
+                                                <p className="font-mono text-xs text-foreground truncate">
                                                     {activity.activity_type?.replace(/_/g, ' ')}
                                                 </p>
-                                                <p className="font-mono text-[10px] text-zinc-500">
+                                                <p className="font-mono text-[10px] text-muted-foreground">
                                                     {new Date(activity.created_at).toLocaleDateString()}
                                                 </p>
                                             </div>
@@ -395,29 +395,29 @@ export default function ContactDetailPage() {
                         <Panel title="METADATA" icon={Calendar}>
                             <div className="space-y-2">
                                 <div className="flex justify-between">
-                                    <span className="font-mono text-[10px] text-zinc-500">Created</span>
-                                    <span className="font-mono text-[10px] text-zinc-400">
+                                    <span className="font-mono text-[10px] text-muted-foreground">Created</span>
+                                    <span className="font-mono text-[10px] text-muted-foreground">
                                         {new Date(contact.created_at).toLocaleDateString()}
                                     </span>
                                 </div>
                                 <div className="flex justify-between">
-                                    <span className="font-mono text-[10px] text-zinc-500">Updated</span>
-                                    <span className="font-mono text-[10px] text-zinc-400">
+                                    <span className="font-mono text-[10px] text-muted-foreground">Updated</span>
+                                    <span className="font-mono text-[10px] text-muted-foreground">
                                         {new Date(contact.updated_at).toLocaleDateString()}
                                     </span>
                                 </div>
                                 {contact.last_contacted_at && (
                                     <div className="flex justify-between">
-                                        <span className="font-mono text-[10px] text-zinc-500">Last Contacted</span>
-                                        <span className="font-mono text-[10px] text-zinc-400">
+                                        <span className="font-mono text-[10px] text-muted-foreground">Last Contacted</span>
+                                        <span className="font-mono text-[10px] text-muted-foreground">
                                             {new Date(contact.last_contacted_at).toLocaleDateString()}
                                         </span>
                                     </div>
                                 )}
                                 {contact.assigned_to_name && (
                                     <div className="flex justify-between">
-                                        <span className="font-mono text-[10px] text-zinc-500">Assigned To</span>
-                                        <span className="font-mono text-[10px] text-amber-500">
+                                        <span className="font-mono text-[10px] text-muted-foreground">Assigned To</span>
+                                        <span className="font-mono text-[10px] text-primary">
                                             {contact.assigned_to_name}
                                         </span>
                                     </div>
@@ -434,9 +434,9 @@ export default function ContactDetailPage() {
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
                                 {deals.map((deal) => (
                                     <Link key={deal.id} href={`/dashboard/deals/${deal.id}`}>
-                                        <div className="p-3 bg-zinc-800/50 border border-zinc-700 hover:border-amber-500/50 transition-colors cursor-pointer">
-                                            <h4 className="font-mono text-sm text-white truncate">{deal.title}</h4>
-                                            <p className="font-mono text-[10px] text-zinc-500 mt-1">
+                                        <div className="p-3 bg-muted/50 border border-border hover:border-amber-500/50 transition-colors cursor-pointer">
+                                            <h4 className="font-mono text-sm text-foreground truncate">{deal.title}</h4>
+                                            <p className="font-mono text-[10px] text-muted-foreground mt-1">
                                                 {formatCurrency(deal.deal_value || 0)}
                                             </p>
                                             <span className={cn(

@@ -1,0 +1,229 @@
+Script started on Sun Feb 22 11:07:18 2026
+[1m[7m%[27m[1m[0m                                                                                [0m[27m[24m[J(base) kobby@Erics-MacBook-Pro propmetrik % [K[?2004h[?2004l
+[1m[7m%[27m[1m[0m                                                                                [0m[27m[24m[J(base) kobby@Erics-MacBook-Pro propmetrik % [K[?2004h  pwd[?2004l
+/Users/kobby/github/Cedyn Group/propmetrik
+[1m[7m%[27m[1m[0m                                                                                [0m[27m[24m[J(base) kobby@Erics-MacBook-Pro propmetrik % [K[?2004h[?2004l
+[1m[7m%[27m[1m[0m                                                                                [0m[27m[24m[J(base) kobby@Erics-MacBook-Pro propmetrik % [K[?2004h  bash scripts/fix-deal-colors.sh[?2004l
+DONE: frontend/src/app/dashboard/deals/agents/[id]/page.tsx
+DONE: frontend/src/app/dashboard/deals/properties/submit/page.tsx
+DONE: frontend/src/app/dashboard/deals/documents/[id]/edit/page.tsx
+DONE: frontend/src/app/dashboard/deals/agents/new/page.tsx
+DONE: frontend/src/app/dashboard/deals/agents/[id]/edit/page.tsx
+DONE: frontend/src/app/dashboard/deals/workflows/[id]/page.tsx
+DONE: frontend/src/app/dashboard/deals/contacts/[id]/page.tsx
+DONE: frontend/src/app/dashboard/deals/workflows/[id]/history/page.tsx
+DONE: frontend/src/app/dashboard/deals/messaging/page.tsx
+DONE: frontend/src/app/dashboard/deals/properties/page.tsx
+DONE: frontend/src/app/dashboard/deals/analytics/page.tsx
+ALL FILES PROCESSED
+[1m[7m%[27m[1m[0m                                                                                [0m[27m[24m[J(base) kobby@Erics-MacBook-Pro propmetrik % [K[?2004h[?2004l
+[1m[7m%[27m[1m[0m                                                                                [0m[27m[24m[J(base) kobby@Erics-MacBook-Pro propmetrik % [K[?2004h  grep -rc 'text-zinc-\|bg-zinc-\|tex [Ktt-white\|border-zinc-' frontend/src/app/dashboard/deals/ --include="*.tsx" | gre [Kpp -v ':0$' | sort -t: -k2 -rn[?2004l
+frontend/src/app/dashboard/deals/documents/[id]/edit/page.tsx:6
+frontend/src/app/dashboard/deals/contacts/[id]/page.tsx:5
+frontend/src/app/dashboard/deals/workflows/[id]/page.tsx:4
+frontend/src/app/dashboard/deals/agents/new/page.tsx:4
+frontend/src/app/dashboard/deals/agents/[id]/page.tsx:3
+frontend/src/app/dashboard/deals/agents/[id]/edit/page.tsx:3
+frontend/src/app/dashboard/deals/properties/[id]/page.tsx:2
+frontend/src/app/dashboard/deals/workflows/[id]/history/page.tsx:1
+frontend/src/app/dashboard/deals/properties/page.tsx:1
+[1m[7m%[27m[1m[0m                                                                                [0m[27m[24m[J(base) kobby@Erics-MacBook-Pro propmetrik % [K[?2004h[?2004l
+[1m[7m%[27m[1m[0m                                                                                [0m[27m[24m[J(base) kobby@Erics-MacBook-Pro propmetrik % [K[?2004h  grep -n 'text-zinc-\|bg-zinc-\|text [K--white\|border-zinc-' frontend/src/app/dashboard/deals/documents/\[id\]/edit/pag [Kee.tsx[?2004l
+293:                                            <SelectContent className="bg-zinc-950 border-border">
+322:                                            <SelectContent className="bg-zinc-950 border-border">
+338:                                            <SelectContent className="bg-zinc-950 border-border">
+353:                                            <SelectContent className="bg-zinc-950 border-border">
+433:                                                    className="flex items-center justify-between p-2 bg-muted/50 border border-border rounded hover:border-zinc-600 cursor-pointer group"
+468:                                        <FileText className="h-8 w-8 text-zinc-700 mx-auto mb-2" />
+[1m[7m%[27m[1m[0m                                                                                [0m[27m[24m[J(base) kobby@Erics-MacBook-Pro propmetrik % [K[?2004h[?2004l
+[1m[7m%[27m[1m[0m                                                                                [0m[27m[24m[J(base) kobby@Erics-MacBook-Pro propmetrik % [K[?2004h  grep -n 'text-zinc-\|bg-zinc-\|text [K--white\|border-zinc-' frontend/src/app/dashboard/deals/contacts/\[id\]/page.tsx  [Kffrontend/src/app/dashboard/deals/workflows/\[id\]/page.tsx frontend/src/app/dash [Kbboard/deals/agents/new/page.tsx frontend/src/app/dashboard/deals/agents/\[id\]/p [Kaage.tsx frontend/src/app/dashboard/deals/agents/\[id\]/edit/page.tsx[?2004l
+frontend/src/app/dashboard/deals/contacts/[id]/page.tsx:85:            default: return 'bg-zinc-700/50 text-muted-foreground border-zinc-600'
+frontend/src/app/dashboard/deals/contacts/[id]/page.tsx:108:        <span className="font-mono text-[10px] px-2 py-1 bg-zinc-700/50 text-foreground border border-zinc-600">
+frontend/src/app/dashboard/deals/contacts/[id]/page.tsx:175:            <div className="min-h-screen bg-zinc-950 flex items-center justify-center">
+frontend/src/app/dashboard/deals/contacts/[id]/page.tsx:183:            <div className="min-h-screen bg-zinc-950 p-6">
+frontend/src/app/dashboard/deals/contacts/[id]/page.tsx:200:        <div className="min-h-screen bg-zinc-950 p-6">
+frontend/src/app/dashboard/deals/workflows/[id]/page.tsx:369:          <div className="w-px h-8 bg-zinc-700"></div>
+frontend/src/app/dashboard/deals/workflows/[id]/page.tsx:378:                  <div className="w-px h-8 bg-zinc-700"></div>
+frontend/src/app/dashboard/deals/workflows/[id]/page.tsx:459:          <div className="w-px h-8 bg-zinc-700"></div>
+frontend/src/app/dashboard/deals/workflows/[id]/page.tsx:502:                  className="flex-1 flex items-center justify-center gap-2 p-3 border border-border rounded-lg hover:border-zinc-500 hover:bg-muted transition-colors text-foreground font-mono text-sm"
+frontend/src/app/dashboard/deals/agents/new/page.tsx:407:                                        : "bg-muted/50 border border-border hover:border-zinc-600"
+frontend/src/app/dashboard/deals/agents/new/page.tsx:413:                                    className="border-zinc-600"
+frontend/src/app/dashboard/deals/agents/new/page.tsx:441:                                        : "bg-muted/50 border border-border hover:border-zinc-600"
+frontend/src/app/dashboard/deals/agents/new/page.tsx:447:                                    className="border-zinc-600"
+frontend/src/app/dashboard/deals/agents/[id]/page.tsx:170:        inactive: 'bg-zinc-500/20 text-muted-foreground border-zinc-500/30',
+frontend/src/app/dashboard/deals/agents/[id]/page.tsx:332:                                            className="font-mono text-[10px] border-zinc-600 text-muted-foreground"
+frontend/src/app/dashboard/deals/agents/[id]/page.tsx:452:                                            <div className="w-8 h-8 rounded-full bg-zinc-700 flex items-center justify-center">
+frontend/src/app/dashboard/deals/agents/[id]/edit/page.tsx:431:                                        : "bg-muted text-muted-foreground border-border hover:border-zinc-600"
+frontend/src/app/dashboard/deals/agents/[id]/edit/page.tsx:452:                                        : "bg-muted text-muted-foreground border-border hover:border-zinc-600"
+frontend/src/app/dashboard/deals/agents/[id]/edit/page.tsx:473:                                        : "bg-muted text-muted-foreground border-border hover:border-zinc-600"
+[1m[7m%[27m[1m[0m                                                                                [0m[27m[24m[J(base) kobby@Erics-MacBook-Pro propmetrik % [K[?2004h[?2004l
+[1m[7m%[27m[1m[0m                                                                                [0m[27m[24m[J(base) kobby@Erics-MacBook-Pro propmetrik % [K[?2004h  grep -n 'text-zinc-\|bg-zinc-\|text [K--white\|border-zinc-' frontend/src/app/dashboard/deals/workflows/\[id\]/history/ [Kppage.tsx frontend/src/app/dashboard/deals/properties/page.tsx[?2004l
+frontend/src/app/dashboard/deals/workflows/[id]/history/page.tsx:202:            <Activity className="w-12 h-12 text-zinc-700 mx-auto mb-4" />
+frontend/src/app/dashboard/deals/properties/page.tsx:82:        'pending': 'bg-zinc-500/20 text-muted-foreground border-zinc-500/30',
+[1m[7m%[27m[1m[0m                                                                                [0m[27m[24m[J(base) kobby@Erics-MacBook-Pro propmetrik % [K[?2004h[?2004l
+[1m[7m%[27m[1m[0m                                                                                [0m[27m[24m[J(base) kobby@Erics-MacBook-Pro propmetrik % [K[?2004h  bash scripts/fix-deal-colors-2.sh[?2004l
+CLEANUP DONE
+[1m[7m%[27m[1m[0m                                                                                [0m[27m[24m[J(base) kobby@Erics-MacBook-Pro propmetrik % [K[?2004h[?2004l
+[1m[7m%[27m[1m[0m                                                                                [0m[27m[24m[J(base) kobby@Erics-MacBook-Pro propmetrik % [K[?2004h  grep -rc 'text-zinc-\|bg-zinc-\|tex [Ktt-white\|border-zinc-' frontend/src/app/dashboard/deals/ --include="*.tsx" | gre [Kpp -v ':0$' | sort -t: -k2 -rn[?2004l
+frontend/src/app/dashboard/deals/properties/[id]/page.tsx:2
+frontend/src/app/dashboard/deals/properties/page.tsx:1
+frontend/src/app/dashboard/deals/documents/[id]/edit/page.tsx:1
+frontend/src/app/dashboard/deals/agents/[id]/page.tsx:1
+[1m[7m%[27m[1m[0m                                                                                [0m[27m[24m[J(base) kobby@Erics-MacBook-Pro propmetrik % [K[?2004h[?2004l
+[1m[7m%[27m[1m[0m                                                                                [0m[27m[24m[J(base) kobby@Erics-MacBook-Pro propmetrik % [K[?2004h  grep -n 'text-zinc-\|bg-zinc-\|text [K--white\|border-zinc-' frontend/src/app/dashboard/deals/properties/\[id\]/page.ts [Kxx frontend/src/app/dashboard/deals/properties/page.tsx frontend/src/app/dashboar [Kdd/deals/documents/\[id\]/edit/page.tsx frontend/src/app/dashboard/deals/agents/\ [K[[id\]/page.tsx[?2004l
+frontend/src/app/dashboard/deals/properties/[id]/page.tsx:179:                                            'bg-zinc-500/20 text-muted-foreground'
+frontend/src/app/dashboard/deals/properties/[id]/page.tsx:399:        'pending': 'bg-zinc-500/20 text-muted-foreground border-zinc-500/30',
+frontend/src/app/dashboard/deals/properties/page.tsx:82:        'pending': 'bg-zinc-500/20 text-muted-foreground border-zinc-500/30',
+frontend/src/app/dashboard/deals/documents/[id]/edit/page.tsx:433:                                                    className="flex items-center justify-between p-2 bg-muted/50 border border-border rounded hover:border-zinc-600 cursor-pointer group"
+frontend/src/app/dashboard/deals/agents/[id]/page.tsx:170:        inactive: 'bg-zinc-500/20 text-muted-foreground border-zinc-500/30',
+[1m[7m%[27m[1m[0m                                                                                [0m[27m[24m[J(base) kobby@Erics-MacBook-Pro propmetrik % [K[?2004h[?2004l
+[1m[7m%[27m[1m[0m                                                                                [0m[27m[24m[J(base) kobby@Erics-MacBook-Pro propmetrik % [K[?2004h  sed -i '' 's|hover:border-zinc-600| [Khhover:border-border|g' "frontend/src/app/dashboard/deals/documents/[id]/edit/pag [Kee.tsx" && echo "fixed"[?2004l
+fixed
+[1m[7m%[27m[1m[0m                                                                                [0m[27m[24m[J(base) kobby@Erics-MacBook-Pro propmetrik % [K[?2004h[?2004l
+[1m[7m%[27m[1m[0m                                                                                [0m[27m[24m[J(base) kobby@Erics-MacBook-Pro propmetrik % [K[?2004h  grep -rn 'text-black' frontend/src/ [Kaapp/dashboard/deals/ --include="*.tsx" | grep -v 'data-\[state' | grep -v 'text- [Kpprimary-foreground' | head -20[?2004l
+frontend/src/app/dashboard/deals/workflows/[id]/page.tsx:312:                className="flex items-center gap-2 px-4 py-2 bg-primary text-black rounded hover:bg-amber-400 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-mono text-xs font-bold"
+frontend/src/app/dashboard/deals/agents/new/page.tsx:222:                    className="bg-primary text-black hover:bg-amber-400 font-mono text-xs"
+frontend/src/app/dashboard/deals/agents/new/page.tsx:512:                    className="bg-primary text-black hover:bg-amber-400 font-mono text-xs"
+frontend/src/app/dashboard/deals/agents/[id]/page.tsx:190:                        <div className="w-16 h-16 rounded-full bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center text-black font-mono text-xl font-bold">
+frontend/src/app/dashboard/deals/agents/[id]/page.tsx:228:                    className="bg-primary text-black hover:bg-amber-400 font-mono text-xs"
+frontend/src/app/dashboard/deals/properties/submit/page.tsx:468:                        className="bg-primary hover:bg-primary/90 text-black font-mono text-xs"
+frontend/src/app/dashboard/deals/properties/[id]/page.tsx:141:                                    hasDeals ? 'text-black' : 'text-muted-foreground'
+frontend/src/app/dashboard/deals/properties/[id]/page.tsx:146:                                    <span className="font-mono text-xs font-bold text-black mt-1">
+frontend/src/app/dashboard/deals/documents/[id]/edit/page.tsx:214:                        className="bg-amber-600 hover:bg-amber-700 text-black"
+[1m[7m%[27m[1m[0m                                                                                [0m[27m[24m[J(base) kobby@Erics-MacBook-Pro propmetrik % [K[?2004h[?2004l
+[1m[7m%[27m[1m[0m                                                                                [0m[27m[24m[J(base) kobby@Erics-MacBook-Pro propmetrik % [K[?2004h  bash scripts/fix-deal-colors-3.sh[?2004l
+BUTTON/DROPDOWN FIXES DONE
+[1m[7m%[27m[1m[0m                                                                                [0m[27m[24m[J(base) kobby@Erics-MacBook-Pro propmetrik % [K[?2004h[?2004l
+[1m[7m%[27m[1m[0m                                                                                [0m[27m[24m[J(base) kobby@Erics-MacBook-Pro propmetrik % [K[?2004h  grep -rn 'text-black\|hover:bg-ambe [Krr\|bg-amber' frontend/src/app/dashboard/deals/ --include="*.tsx" | grep -v 'text [K--primary-foreground' | grep -v 'bg-primary' | head -15[?2004l
+frontend/src/app/dashboard/deals/workflows/page.tsx:283:                <div className="w-10 h-10 rounded-full bg-amber-900/30 flex items-center justify-center">
+frontend/src/app/dashboard/deals/agents/[id]/edit/page.tsx:259:                        className="font-mono text-xs bg-amber-600 hover:bg-amber-700"
+frontend/src/app/dashboard/deals/agents/[id]/edit/page.tsx:430:                                        ? "bg-amber-600/20 text-amber-400 border-amber-600"
+frontend/src/app/dashboard/deals/agents/[id]/page.tsx:190:                        <div className="w-16 h-16 rounded-full bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center text-black font-mono text-xl font-bold">
+frontend/src/app/dashboard/deals/properties/[id]/page.tsx:141:                                    hasDeals ? 'text-black' : 'text-muted-foreground'
+frontend/src/app/dashboard/deals/properties/[id]/page.tsx:146:                                    <span className="font-mono text-xs font-bold text-black mt-1">
+frontend/src/app/dashboard/deals/documents/page.tsx:74:        case 'agreement': return 'bg-amber-900/50 text-amber-400 border-amber-800'
+[1m[7m%[27m[1m[0m                                                                                [0m[27m[24m[J(base) kobby@Erics-MacBook-Pro propmetrik % [K[?2004h[?2004l
+[1m[7m%[27m[1m[0m                                                                                [0m[27m[24m[J(base) kobby@Erics-MacBook-Pro propmetrik % [K[?2004h  find frontend/src/app/dashboard/dea [Klls -name "*.tsx" -not -path "*/\[*\]/*" | sort[?2004l
+frontend/src/app/dashboard/deals/agents/new/page.tsx
+frontend/src/app/dashboard/deals/agents/page.tsx
+frontend/src/app/dashboard/deals/analytics/page.tsx
+frontend/src/app/dashboard/deals/commissions/page.tsx
+frontend/src/app/dashboard/deals/companies/page.tsx
+frontend/src/app/dashboard/deals/contacts/new/page.tsx
+frontend/src/app/dashboard/deals/contacts/page.tsx
+frontend/src/app/dashboard/deals/documents/page.tsx
+frontend/src/app/dashboard/deals/financials/page.tsx
+frontend/src/app/dashboard/deals/layout.tsx
+frontend/src/app/dashboard/deals/messaging/page.tsx
+frontend/src/app/dashboard/deals/new/page.tsx
+frontend/src/app/dashboard/deals/page.tsx
+frontend/src/app/dashboard/deals/pipelines/page.tsx
+frontend/src/app/dashboard/deals/properties/page.tsx
+frontend/src/app/dashboard/deals/properties/submit/page.tsx
+frontend/src/app/dashboard/deals/targets/page.tsx
+frontend/src/app/dashboard/deals/tasks/page.tsx
+frontend/src/app/dashboard/deals/workflows/page.tsx
+[1m[7m%[27m[1m[0m                                                                                [0m[27m[24m[J(base) kobby@Erics-MacBook-Pro propmetrik % [K[?2004h[?2004l
+[1m[7m%[27m[1m[0m                                                                                [0m[27m[24m[J(base) kobby@Erics-MacBook-Pro propmetrik % [K[?2004h  grep -rlc 'text-zinc-\|bg-zinc-\|te [Kxxt-white\|border-zinc-\|bg-amber\|text-amber' frontend/src/app/dashboard/deals/  [K---include="*.tsx" | while read f; do c=$(grep -c 'text-zinc-\|bg-zinc-\|text-whi [Ktte\|border-zinc-\|bg-amber\|text-amber' "$f"); if [ "$c" -gt 2 ]; then echo "$c  [K$$f"; fi; done | sort -rn[?2004l
+grep: frontend/src/app/dashboard/deals/commissions/page.tsx:0: No such file or directory
+grep: frontend/src/app/dashboard/deals/tasks/page.tsx:0: No such file or directory
+grep: frontend/src/app/dashboard/deals/financials/page.tsx:0: No such file or directory
+grep: frontend/src/app/dashboard/deals/targets/page.tsx:1: No such file or directory
+grep: frontend/src/app/dashboard/deals/contacts/new/page.tsx:0: No such file or directory
+grep: frontend/src/app/dashboard/deals/contacts/[id]/page.tsx:0: No such file or directory
+grep: frontend/src/app/dashboard/deals/contacts/page.tsx:0: No such file or directory
+grep: frontend/src/app/dashboard/deals/workflows/[id]/history/page.tsx:0: No such file or directory
+grep: frontend/src/app/dashboard/deals/workflows/[id]/page.tsx:1: No such file or directory
+grep: frontend/src/app/dashboard/deals/workflows/page.tsx:1: No such file or directory
+grep: frontend/src/app/dashboard/deals/agents/new/page.tsx:0: No such file or directory
+grep: frontend/src/app/dashboard/deals/agents/[id]/edit/page.tsx:1: No such file or directory
+grep: frontend/src/app/dashboard/deals/agents/[id]/page.tsx:1: No such file or directory
+grep: frontend/src/app/dashboard/deals/agents/page.tsx:0: No such file or directory
+grep: frontend/src/app/dashboard/deals/pipelines/page.tsx:0: No such file or directory
+grep: frontend/src/app/dashboard/deals/properties/submit/page.tsx:0: No such file or directory
+grep: frontend/src/app/dashboard/deals/properties/[id]/page.tsx:1: No such file or directory
+grep: frontend/src/app/dashboard/deals/properties/page.tsx:1: No such file or directory
+grep: frontend/src/app/dashboard/deals/layout.tsx:0: No such file or directory
+grep: frontend/src/app/dashboard/deals/new/page.tsx:1: No such file or directory
+grep: frontend/src/app/dashboard/deals/documents/[id]/edit/page.tsx:0: No such file or directory
+grep: frontend/src/app/dashboard/deals/documents/page.tsx:1: No such file or directory
+grep: frontend/src/app/dashboard/deals/[id]/page.tsx:0: No such file or directory
+grep: frontend/src/app/dashboard/deals/page.tsx:0: No such file or directory
+grep: frontend/src/app/dashboard/deals/messaging/page.tsx:0: No such file or directory
+grep: frontend/src/app/dashboard/deals/companies/page.tsx:0: No such file or directory
+grep: frontend/src/app/dashboard/deals/analytics/page.tsx:0: No such file or directory
+3 frontend/src/app/dashboard/deals/properties/page.tsx
+3 frontend/src/app/dashboard/deals/properties/[id]/page.tsx
+[1m[7m%[27m[1m[0m                                                                                [0m[27m[24m[J(base) kobby@Erics-MacBook-Pro propmetrik % [K[?2004h[?2004l
+[1m[7m%[27m[1m[0m                                                                                [0m[27m[24m[J(base) kobby@Erics-MacBook-Pro propmetrik % [K[?2004h  sed -i '' 's|bg-amber-600 hover:bg- [Kaamber-700|bg-primary hover:bg-primary/90|g' "frontend/src/app/dashboard/deals/ag [Keents/[id]/edit/page.tsx" && sed -i '' 's|bg-amber-600/20 text-amber-400 border-a [Kmmber-600|bg-primary/20 text-primary border-primary|g' "frontend/src/app/dashboar [Kdd/deals/agents/[id]/edit/page.tsx" && echo "agents edit fixed"[?2004l
+agents edit fixed
+[1m[7m%[27m[1m[0m                                                                                [0m[27m[24m[J(base) kobby@Erics-MacBook-Pro propmetrik % [K[?2004h[?2004l
+[1m[7m%[27m[1m[0m                                                                                [0m[27m[24m[J(base) kobby@Erics-MacBook-Pro propmetrik % [K[?2004h  rm scripts/fix-deal-colors.sh scrip [Ktts/fix-deal-colors-2.sh scripts/fix-deal-colors-3.sh && echo "cleanup done"[?2004l
+cleanup done
+[1m[7m%[27m[1m[0m                                                                                [0m[27m[24m[J(base) kobby@Erics-MacBook-Pro propmetrik % [K[?2004h[?2004l
+[1m[7m%[27m[1m[0m                                                                                [0m[27m[24m[J(base) kobby@Erics-MacBook-Pro propmetrik % [K[?2004h  cd "/Users/kobby/github/Cedyn Group [K//propmetrik/backend" && npx tsc --noEmit 2>&1 | grep -E "properties|minio|multer [K"" | head -15[?2004l
+^C
+[1m[7m%[27m[1m[0m                                                                                [0m[27m[24m[J(base) kobby@Erics-MacBook-Pro backend % [K[?2004h  npx tsc --noEmit 2>&1 | tail -5[?2004l
+^C
+[1m[7m%[27m[1m[0m                                                                                [0m[27m[24m[J(base) kobby@Erics-MacBook-Pro backend % [K[?2004h  npx tsc --noEmit 2>&1 | grep -c "error [K  TS"[?2004l
+^C
+[1m[7m%[27m[1m[0m                                                                                [0m[27m[24m[J(base) kobby@Erics-MacBook-Pro backend % [K[?2004h  npx tsc --noEmit --pretty false 2>&1 | [K  grep "error TS" | wc -l[?2004l
+^C npx tsc --noEmit src/routes/crm/properties.ts 2>&1 | head -20
+
+[1m[7m%[27m[1m[0m                                                                                [0m[27m[24m[J(base) kobby@Erics-MacBook-Pro backend % [K[?2004h  npx tsc --noEmit src/routes/crm/proper [Ktties.ts 2>&1 | head -20[?2004l
+src/config/index.ts(1,8): error TS1192: Module '"/Users/kobby/github/Cedyn Group/propmetrik/node_modules/dotenv/lib/main"' has no default export.
+src/config/index.ts(2,8): error TS1259: Module '"path"' can only be default-imported using the 'esModuleInterop' flag
+src/routes/crm/properties.ts(2,8): error TS1192: Module '"crypto"' has no default export.
+src/routes/crm/properties.ts(3,8): error TS1259: Module '"/Users/kobby/github/Cedyn Group/propmetrik/node_modules/@types/multer/index"' can only be default-imported using the 'esModuleInterop' flag
+src/services/crm-deal-management/crmPropertySyncService.ts(18,8): error TS1192: Module '"crypto"' has no default export.
+src/services/data-hub/etlJobService.ts(17,8): error TS1192: Module '"os"' has no default export.
+src/services/data-hub/geocodingService.ts(6,8): error TS1192: Module '"crypto"' has no default export.
+src/services/data-hub/ghanaPostGeocodingService.ts(482,27): error TS2802: Type 'RegExpStringIterator<RegExpExecArray>' can only be iterated through when using the '--downlevelIteration' flag or with a '--target' of 'es2015' or higher.
+src/services/data-hub/jobQueue.ts(6,8): error TS1259: Module '"/Users/kobby/github/Cedyn Group/propmetrik/node_modules/bull/index"' can only be default-imported using the 'esModuleInterop' flag
+src/services/data-hub/jobQueue.ts(805,27): error TS2802: Type 'MapIterator<Queue<any>>' can only be iterated through when using the '--downlevelIteration' flag or with a '--target' of 'es2015' or higher.
+src/services/data-hub/jobQueue.ts(966,33): error TS2802: Type 'MapIterator<[string, Queue<any>]>' can only be iterated through when using the '--downlevelIteration' flag or with a '--target' of 'es2015' or higher.
+src/services/data-hub/jobQueue.ts(984,25): error TS2802: Type 'MapIterator<Queue<any>>' can only be iterated through when using the '--downlevelIteration' flag or with a '--target' of 'es2015' or higher.
+src/services/data-hub/jobQueue.ts(994,25): error TS2802: Type 'MapIterator<Queue<any>>' can only be iterated through when using the '--downlevelIteration' flag or with a '--target' of 'es2015' or higher.
+src/services/data-hub/jobQueue.ts(1006,33): error TS2802: Type 'Map<string, Queue<any>>' can only be iterated through when using the '--downlevelIteration' flag or with a '--target' of 'es2015' or higher.
+../node_modules/@types/react-router-dom/index.d.ts(13,10): error TS2724: '"react-router"' has no exported member named 'match'. Did you mean 'UIMatch'?
+../node_modules/@types/react-router-dom/index.d.ts(19,5): error TS2305: Module '"react-router"' has no exported member 'PromptProps'.
+../node_modules/@types/react-router-dom/index.d.ts(20,5): error TS2305: Module '"react-router"' has no exported member 'Prompt'.
+../node_modules/@types/react-router-dom/index.d.ts(23,5): error TS2305: Module '"react-router"' has no exported member 'RedirectProps'.
+../node_modules/@types/react-router-dom/index.d.ts(24,5): error TS2724: '"react-router"' has no exported member named 'Redirect'. Did you mean 'redirect'?
+../node_modules/@types/react-router-dom/index.d.ts(25,5): error TS2305: Module '"react-router"' has no exported member 'RouteChildrenProps'.
+[1m[7m%[27m[1m[0m                                                                                [0m[27m[24m[J(base) kobby@Erics-MacBook-Pro backend % [K[?2004h[?2004l
+[1m[7m%[27m[1m[0m                                                                                [0m[27m[24m[J(base) kobby@Erics-MacBook-Pro backend % [K[?2004h  npx tsc --noEmit src/routes/crm/proper [Ktties.ts 2>&1 | head -20[?2004l
+src/config/index.ts(1,8): error TS1192: Module '"/Users/kobby/github/Cedyn Group/propmetrik/node_modules/dotenv/lib/main"' has no default export.
+src/config/index.ts(2,8): error TS1259: Module '"path"' can only be default-imported using the 'esModuleInterop' flag
+src/routes/crm/properties.ts(2,8): error TS1192: Module '"crypto"' has no default export.
+src/routes/crm/properties.ts(3,8): error TS1259: Module '"/Users/kobby/github/Cedyn Group/propmetrik/node_modules/@types/multer/index"' can only be default-imported using the 'esModuleInterop' flag
+src/services/crm-deal-management/crmPropertySyncService.ts(18,8): error TS1192: Module '"crypto"' has no default export.
+src/services/data-hub/etlJobService.ts(17,8): error TS1192: Module '"os"' has no default export.
+src/services/data-hub/geocodingService.ts(6,8): error TS1192: Module '"crypto"' has no default export.
+src/services/data-hub/ghanaPostGeocodingService.ts(482,27): error TS2802: Type 'RegExpStringIterator<RegExpExecArray>' can only be iterated through when using the '--downlevelIteration' flag or with a '--target' of 'es2015' or higher.
+src/services/data-hub/jobQueue.ts(6,8): error TS1259: Module '"/Users/kobby/github/Cedyn Group/propmetrik/node_modules/bull/index"' can only be default-imported using the 'esModuleInterop' flag
+src/services/data-hub/jobQueue.ts(805,27): error TS2802: Type 'MapIterator<Queue<any>>' can only be iterated through when using the '--downlevelIteration' flag or with a '--target' of 'es2015' or higher.
+src/services/data-hub/jobQueue.ts(966,33): error TS2802: Type 'MapIterator<[string, Queue<any>]>' can only be iterated through when using the '--downlevelIteration' flag or with a '--target' of 'es2015' or higher.
+src/services/data-hub/jobQueue.ts(984,25): error TS2802: Type 'MapIterator<Queue<any>>' can only be iterated through when using the '--downlevelIteration' flag or with a '--target' of 'es2015' or higher.
+src/services/data-hub/jobQueue.ts(994,25): error TS2802: Type 'MapIterator<Queue<any>>' can only be iterated through when using the '--downlevelIteration' flag or with a '--target' of 'es2015' or higher.
+src/services/data-hub/jobQueue.ts(1006,33): error TS2802: Type 'Map<string, Queue<any>>' can only be iterated through when using the '--downlevelIteration' flag or with a '--target' of 'es2015' or higher.
+../node_modules/@types/react-router-dom/index.d.ts(13,10): error TS2724: '"react-router"' has no exported member named 'match'. Did you mean 'UIMatch'?
+../node_modules/@types/react-router-dom/index.d.ts(19,5): error TS2305: Module '"react-router"' has no exported member 'PromptProps'.
+../node_modules/@types/react-router-dom/index.d.ts(20,5): error TS2305: Module '"react-router"' has no exported member 'Prompt'.
+../node_modules/@types/react-router-dom/index.d.ts(23,5): error TS2305: Module '"react-router"' has no exported member 'RedirectProps'.
+../node_modules/@types/react-router-dom/index.d.ts(24,5): error TS2724: '"react-router"' has no exported member named 'Redirect'. Did you mean 'redirect'?
+../node_modules/@types/react-router-dom/index.d.ts(25,5): error TS2305: Module '"react-router"' has no exported member 'RouteChildrenProps'.
+[1m[7m%[27m[1m[0m                                                                                [0m[27m[24m[J(base) kobby@Erics-MacBook-Pro backend % [K[?2004h[?2004l
+[1m[7m%[27m[1m[0m                                                                                [0m[27m[24m[J(base) kobby@Erics-MacBook-Pro backend % [K[?2004h  grep multer package.json[?2004l
+    "multer": "^1.4.5-lts.1",
+    "@types/multer": "^1.4.13",
+[1m[7m%[27m[1m[0m                                                                                [0m[27m[24m[J(base) kobby@Erics-MacBook-Pro backend % [K[?2004h[?2004l
+[1m[7m%[27m[1m[0m                                                                                [0m[27m[24m[J(base) kobby@Erics-MacBook-Pro backend % [K[?2004h  lsof -ti:4000 2>/dev/null && echo "Bac [Kkkend running on 4000" || echo "Backend NOT running"[?2004l
+3576
+Backend running on 4000
+[1m[7m%[27m[1m[0m                                                                                [0m[27m[24m[J(base) kobby@Erics-MacBook-Pro backend % [K[?2004h[?2004l
+[1m[7m%[27m[1m[0m                                                                                [0m[27m[24m[J(base) kobby@Erics-MacBook-Pro backend % [K[?2004h  cd "/Users/kobby/github/Cedyn Group/pr [Koopmetrik/backend" && npx tsc --noEmit src/routes/crm/properties.ts 2>&1 | head - [K220[?2004l
+^C
+[1m[7m%[27m[1m[0m                                                                                [0m[27m[24m[J(base) kobby@Erics-MacBook-Pro backend % [K[?2004h  lsof -ti:4000 | xargs kill -9 2>/dev/n [Kuull; sleep 1; echo "killed"[?2004l
+killed
+[1m[7m%[27m[1m[0m                                                                                [0m[27m[24m[J(base) kobby@Erics-MacBook-Pro backend % [K[?2004h

@@ -94,7 +94,7 @@ function ConversationItem({
         >
             <Avatar className="h-12 w-12 shrink-0">
                 <AvatarImage src={conversation.avatar_url || undefined} />
-                <AvatarFallback className="bg-green-600 text-white">
+                <AvatarFallback className="bg-green-600 text-foreground">
                     {conversation.contact_name
                         ?.split(' ')
                         .map((n) => n[0])
@@ -117,7 +117,7 @@ function ConversationItem({
                         {conversation.last_message || 'No messages'}
                     </p>
                     {conversation.unread_count > 0 && (
-                        <Badge className="bg-green-600 text-white shrink-0">
+                        <Badge className="bg-green-600 text-foreground shrink-0">
                             {conversation.unread_count}
                         </Badge>
                     )}

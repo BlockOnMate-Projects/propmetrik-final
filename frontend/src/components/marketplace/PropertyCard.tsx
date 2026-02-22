@@ -1,7 +1,6 @@
 // PropertyCard Component - Display property in marketplace
 'use client';
 
-import Image from 'next/image';
 import { Heart, MapPin, Bed, Bath, Square } from 'lucide-react';
 import { useState } from 'react';
 
@@ -38,12 +37,11 @@ export function PropertyCard({ property, onClick, showDistance }: PropertyCardPr
     >
       {/* Property Image */}
       <div className="relative h-56 w-full bg-gray-100">
-        {property.images && property.images[0] ? (
-          <Image
-            src={property.images[0]?.url}
+        {property.images && property.images.length > 0 && (property.images[0]?.url || typeof property.images[0] === 'string') ? (
+          <img
+            src={typeof property.images[0] === 'string' ? property.images[0] : property.images[0].url}
             alt={property.title}
-            fill
-            className="object-cover group-hover:scale-110 transition-transform duration-500"
+            className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
           />
         ) : (
           <div className="w-full h-full flex items-center justify-center text-slate-500">

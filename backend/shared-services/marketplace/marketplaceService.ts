@@ -268,7 +268,8 @@ export class MarketplaceService {
                  ELSE ARRAY[]::text[] END AS features,
             marketplace_listed_at AS listed_at,
             marketplace_views AS views,
-            marketplace_clicks AS clicks
+            marketplace_clicks AS clicks,
+            image_urls AS images
           FROM properties
           WHERE organization_id IS NOT NULL
             AND marketplace_enabled = TRUE
@@ -312,7 +313,8 @@ export class MarketplaceService {
                  ELSE ARRAY[]::text[] END AS features,
             marketplace_listed_at AS listed_at,
             marketplace_views AS views,
-            marketplace_clicks AS clicks
+            marketplace_clicks AS clicks,
+            images
           FROM crm_properties
           WHERE organization_id IS NOT NULL
             AND marketplace_enabled = TRUE
@@ -402,7 +404,12 @@ export class MarketplaceService {
         parking_spaces: row.parking_spaces,
         amenities: row.amenities || [],
         features: row.features || [],
-        images: [], // TODO: Implement image fetching
+        images: (row.images || []).map((img: any) => {
+          if (typeof img === 'string') {
+            return { url: img, id: img };
+          }
+          return { id: img.id || '', url: img.url || '', original_name: img.original_name || '' };
+        }),
         listed_at: row.listed_at,
         views: row.views,
         clicks: row.clicks,
@@ -439,7 +446,8 @@ export class MarketplaceService {
           latitude, longitude, price, price_currency AS currency,
           FALSE AS price_negotiable, bedrooms, bathrooms, total_area_sqm,
           marketplace_listed_at AS listed_at, marketplace_views AS views,
-          marketplace_clicks AS clicks
+          marketplace_clicks AS clicks,
+          image_urls AS images
         FROM properties
         WHERE permanent_link_token = $1
           AND organization_id IS NOT NULL
@@ -457,7 +465,8 @@ export class MarketplaceService {
           price_currency AS currency, price_negotiable, bedrooms, bathrooms,
           total_area_sqm,
           marketplace_listed_at AS listed_at, marketplace_views AS views,
-          marketplace_clicks AS clicks
+          marketplace_clicks AS clicks,
+          images
         FROM crm_properties
         WHERE permanent_link_token = $1
           AND organization_id IS NOT NULL
@@ -579,7 +588,12 @@ export class MarketplaceService {
       parking_spaces: row.parking_spaces,
       amenities: [],
       features: [],
-      images: [],
+      images: (row.images || []).map((img: any) => {
+        if (typeof img === 'string') {
+          return { url: img, id: img };
+        }
+        return { id: img.id || '', url: img.url || '', original_name: img.original_name || '' };
+      }),
       listed_at: row.listed_at,
       views: row.views,
       clicks: row.clicks

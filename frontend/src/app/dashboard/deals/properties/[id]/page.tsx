@@ -7,7 +7,7 @@ import { cn, formatCurrency } from '@/lib/utils'
 import {
     Loader2, ArrowLeft, Plus, MapPin, Home, Building2, LandPlot,
     Users, Phone, Mail, Calendar, FileText, ChevronRight, Clock,
-    CheckCircle2, XCircle, AlertCircle, MoreHorizontal, Edit, Trash2
+    CheckCircle2, XCircle, AlertCircle, MoreHorizontal, Edit, Trash2, Camera, X
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -40,7 +40,7 @@ interface PropertyDetail {
     land_size_sqm?: number
     year_built?: number
     status: 'available' | 'active' | 'pending' | 'under_offer' | 'reserved' | 'sold' | 'rented' | 'withdrawn'
-    images?: string[]
+    images?: Array<{ id: string; url: string; key?: string; original_name?: string } | string>
     features?: string[]
     owner_name?: string
     owner_contact?: string
@@ -103,10 +103,10 @@ function PropertyPipeline({ deals, stages }: { deals: PropertyDeal[], stages: Pi
 
     if (deals.length === 0) {
         return (
-            <div className="flex flex-col items-center justify-center py-12 border border-zinc-800 bg-zinc-900/30">
-                <FileText className="h-10 w-10 text-zinc-600 mb-4" />
-                <h3 className="font-mono text-sm text-white mb-2">No Active Deals</h3>
-                <p className="font-mono text-[10px] text-zinc-500 mb-4">
+            <div className="flex flex-col items-center justify-center py-12 border border-border bg-muted">
+                <FileText className="h-10 w-10 text-muted-foreground mb-4" />
+                <h3 className="font-mono text-sm text-foreground mb-2">No Active Deals</h3>
+                <p className="font-mono text-[10px] text-muted-foreground mb-4">
                     Create a deal to start tracking this property's sales progress
                 </p>
             </div>
@@ -138,7 +138,7 @@ function PropertyPipeline({ deals, stages }: { deals: PropertyDeal[], stages: Pi
                             >
                                 <span className={cn(
                                     "font-mono text-[9px] font-bold text-center",
-                                    hasDeals ? 'text-black' : 'text-zinc-400'
+                                    hasDeals ? 'text-black' : 'text-muted-foreground'
                                 )}>
                                     {stage.stage_name}
                                 </span>
@@ -149,7 +149,7 @@ function PropertyPipeline({ deals, stages }: { deals: PropertyDeal[], stages: Pi
                                 )}
                             </div>
                             {idx < stages.length - 1 && (
-                                <ChevronRight className="h-5 w-5 text-zinc-600 mx-1 flex-shrink-0" />
+                                <ChevronRight className="h-5 w-5 text-muted-foreground mx-1 flex-shrink-0" />
                             )}
                         </div>
                     )
@@ -162,12 +162,12 @@ function PropertyPipeline({ deals, stages }: { deals: PropertyDeal[], stages: Pi
                     <Link 
                         key={deal.id}
                         href={`/dashboard/deals/${deal.id}`}
-                        className="block border border-zinc-800 bg-zinc-900/50 p-4 hover:border-zinc-700 transition-colors"
+                        className="block border border-border bg-card p-4 hover:border-border transition-colors"
                     >
                         <div className="flex items-start justify-between">
                             <div className="flex-1">
                                 <div className="flex items-center gap-2 mb-1">
-                                    <span className="font-mono text-[10px] text-zinc-500">
+                                    <span className="font-mono text-[10px] text-muted-foreground">
                                         {deal.deal_number}
                                     </span>
                                     <Badge 
@@ -176,14 +176,14 @@ function PropertyPipeline({ deals, stages }: { deals: PropertyDeal[], stages: Pi
                                             deal.deal_status === 'active' ? 'bg-blue-500/20 text-blue-400' :
                                             deal.deal_status === 'won' ? 'bg-green-500/20 text-green-400' :
                                             deal.deal_status === 'lost' ? 'bg-red-500/20 text-red-400' :
-                                            'bg-zinc-500/20 text-zinc-400'
+                                            'bg-zinc-500/20 text-muted-foreground'
                                         )}
                                     >
                                         {deal.deal_status.toUpperCase()}
                                     </Badge>
                                 </div>
-                                <h4 className="font-mono text-sm text-white mb-2">{deal.title}</h4>
-                                <div className="flex items-center gap-4 text-zinc-400">
+                                <h4 className="font-mono text-sm text-foreground mb-2">{deal.title}</h4>
+                                <div className="flex items-center gap-4 text-muted-foreground">
                                     <span className="font-mono text-xs">
                                         {formatCurrency(deal.deal_value, deal.currency)}
                                     </span>
@@ -211,7 +211,7 @@ function PropertyPipeline({ deals, stages }: { deals: PropertyDeal[], stages: Pi
                                 >
                                     {deal.stage_name}
                                 </div>
-                                <span className="font-mono text-[10px] text-zinc-500">
+                                <span className="font-mono text-[10px] text-muted-foreground">
                                     Step {deal.stage_order}/{deal.total_stages}
                                 </span>
                             </div>
@@ -263,12 +263,11 @@ export default function PropertyDetailPage() {
             setIsLoading(true)
             setError(null)
 
-            // Fetch property from CRM properties list
-            const propertyRes = await fetch(`${API_BASE}/crm/properties`)
+            // Fetch single property by ID (includes images, description, etc.)
+            const propertyRes = await fetch(`${API_BASE}/crm/properties/${propertyId}`)
             if (propertyRes.ok) {
-                const data = await propertyRes.json()
-                const foundProperty = data.properties?.find((p: any) => p.id === propertyId)
-                if (foundProperty) {
+                const foundProperty = await propertyRes.json()
+                if (foundProperty && foundProperty.id) {
                     setProperty({
                         id: foundProperty.id,
                         property_name: foundProperty.property_name || 'Unnamed Property',
@@ -315,7 +314,7 @@ export default function PropertyDetailPage() {
                     throw new Error('Property not found')
                 }
             } else {
-                throw new Error('Failed to fetch properties')
+                throw new Error('Failed to fetch property')
             }
 
             // Fetch deals for this property
@@ -378,7 +377,7 @@ export default function PropertyDetailPage() {
     if (isLoading) {
         return (
             <div className="flex items-center justify-center min-h-[400px]">
-                <Loader2 className="h-8 w-8 text-amber-500 animate-spin" />
+                <Loader2 className="h-8 w-8 text-primary animate-spin" />
             </div>
         )
     }
@@ -388,7 +387,7 @@ export default function PropertyDetailPage() {
             <div className="flex flex-col items-center justify-center min-h-[400px]">
                 <AlertCircle className="h-12 w-12 text-red-400 mb-4" />
                 <p className="font-mono text-sm text-red-400 mb-4">{error || 'Property not found'}</p>
-                <Button onClick={() => router.back()} variant="outline" className="border-zinc-700">
+                <Button onClick={() => router.back()} variant="outline" className="border-border">
                     Go Back
                 </Button>
             </div>
@@ -396,10 +395,10 @@ export default function PropertyDetailPage() {
     }
 
     const statusColors: Record<string, string> = {
-        'pending': 'bg-zinc-500/20 text-zinc-400 border-zinc-500/30',
+        'pending': 'bg-zinc-500/20 text-muted-foreground border-zinc-500/30',
         'active': 'bg-green-500/20 text-green-400 border-green-500/30',
         'available': 'bg-green-500/20 text-green-400 border-green-500/30',
-        'under_offer': 'bg-amber-500/20 text-amber-400 border-amber-500/30',
+        'under_offer': 'bg-primary/20 text-amber-400 border-primary/30',
         'reserved': 'bg-blue-500/20 text-blue-400 border-blue-500/30',
         'sold': 'bg-purple-500/20 text-purple-400 border-purple-500/30',
         'rented': 'bg-purple-500/20 text-purple-400 border-purple-500/30',
@@ -423,18 +422,18 @@ export default function PropertyDetailPage() {
                         variant="ghost" 
                         size="icon" 
                         onClick={() => router.back()}
-                        className="text-zinc-400 hover:text-white"
+                        className="text-muted-foreground hover:text-foreground"
                     >
                         <ArrowLeft className="h-5 w-5" />
                     </Button>
                     <div>
                         <div className="flex items-center gap-3 mb-1">
-                            <h1 className="font-mono text-xl text-white">{property.property_name}</h1>
+                            <h1 className="font-mono text-xl text-foreground">{property.property_name}</h1>
                             <Badge className={cn('font-mono text-[9px] border', statusColors[property.status])}>
                                 {property.status.replace('_', ' ').toUpperCase()}
                             </Badge>
                         </div>
-                        <div className="flex items-center gap-2 text-zinc-500">
+                        <div className="flex items-center gap-2 text-muted-foreground">
                             <MapPin className="h-3 w-3" />
                             <span className="font-mono text-[10px]">
                                 {property.address}, {property.city}, {property.region}
@@ -444,22 +443,22 @@ export default function PropertyDetailPage() {
                 </div>
                 <div className="flex items-center gap-2">
                     <Link href={`/dashboard/deals/new?propertyId=${property.id}`}>
-                        <Button className="bg-amber-500 hover:bg-amber-600 text-black font-mono text-xs">
+                        <Button className="bg-primary hover:bg-primary/90 text-primary-foreground font-mono text-xs">
                             <Plus className="h-4 w-4 mr-2" />
                             CREATE DEAL
                         </Button>
                     </Link>
                     <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                            <Button variant="outline" size="icon" className="border-zinc-700">
+                            <Button variant="outline" size="icon" className="border-border">
                                 <MoreHorizontal className="h-4 w-4" />
                             </Button>
                         </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" className="bg-zinc-900 border-zinc-800">
-                            <DropdownMenuItem className="text-zinc-300">
+                        <DropdownMenuContent align="end" className="bg-popover border-border">
+                            <DropdownMenuItem className="text-foreground">
                                 <Edit className="h-4 w-4 mr-2" /> Edit Property
                             </DropdownMenuItem>
-                            <DropdownMenuSeparator className="bg-zinc-800" />
+                            <DropdownMenuSeparator className="bg-border" />
                             <DropdownMenuItem className="text-red-400">
                                 <Trash2 className="h-4 w-4 mr-2" /> Delete Property
                             </DropdownMenuItem>
@@ -472,71 +471,167 @@ export default function PropertyDetailPage() {
             <div className="grid grid-cols-3 gap-6">
                 {/* Left: Property Details */}
                 <div className="col-span-1 space-y-4">
-                    {/* Image */}
-                    <div className="aspect-[4/3] bg-zinc-800 rounded overflow-hidden">
-                        {property.images?.[0] ? (
-                            <img 
-                                src={property.images[0]} 
-                                alt={property.property_name}
-                                className="w-full h-full object-cover"
-                            />
-                        ) : (
-                            <div className="w-full h-full flex items-center justify-center">
-                                <Icon className="h-16 w-16 text-zinc-600" />
+                    {/* Image Gallery */}
+                    <div className="space-y-2">
+                        <div className="aspect-[4/3] bg-muted rounded overflow-hidden relative group">
+                            {property.images?.[0]?.url ? (
+                                <img 
+                                    src={property.images[0].url} 
+                                    alt={property.property_name}
+                                    className="w-full h-full object-cover"
+                                />
+                            ) : property.images?.[0] && typeof property.images[0] === 'string' ? (
+                                <img 
+                                    src={property.images[0]} 
+                                    alt={property.property_name}
+                                    className="w-full h-full object-cover"
+                                />
+                            ) : (
+                                <div className="w-full h-full flex flex-col items-center justify-center gap-2">
+                                    <Icon className="h-16 w-16 text-muted-foreground" />
+                                    <label className="cursor-pointer">
+                                        <input
+                                            type="file"
+                                            multiple
+                                            accept="image/jpeg,image/png,image/webp"
+                                            className="hidden"
+                                            onChange={async (e) => {
+                                                if (!e.target.files || e.target.files.length === 0) return
+                                                const formData = new FormData()
+                                                Array.from(e.target.files).forEach(f => formData.append('images', f))
+                                                try {
+                                                    const res = await fetch(`${API_BASE}/crm/properties/${propertyId}/images`, {
+                                                        method: 'POST',
+                                                        body: formData,
+                                                    })
+                                                    if (res.ok) loadPropertyData()
+                                                } catch (err) {
+                                                    console.error('Upload failed:', err)
+                                                }
+                                            }}
+                                        />
+                                        <div className="flex items-center gap-2 px-3 py-2 bg-primary/10 rounded-md text-primary text-xs font-medium hover:bg-primary/20 transition-colors">
+                                            <Camera className="h-4 w-4" />
+                                            Add Photos
+                                        </div>
+                                    </label>
+                                </div>
+                            )}
+                            {/* Upload overlay on hover if images exist */}
+                            {property.images && property.images.length > 0 && (
+                                <label className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-all flex items-center justify-center cursor-pointer">
+                                    <input
+                                        type="file"
+                                        multiple
+                                        accept="image/jpeg,image/png,image/webp"
+                                        className="hidden"
+                                        onChange={async (e) => {
+                                            if (!e.target.files || e.target.files.length === 0) return
+                                            const formData = new FormData()
+                                            Array.from(e.target.files).forEach(f => formData.append('images', f))
+                                            try {
+                                                const res = await fetch(`${API_BASE}/crm/properties/${propertyId}/images`, {
+                                                    method: 'POST',
+                                                    body: formData,
+                                                })
+                                                if (res.ok) loadPropertyData()
+                                            } catch (err) {
+                                                console.error('Upload failed:', err)
+                                            }
+                                        }}
+                                    />
+                                    <div className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-2 px-3 py-2 bg-white/90 rounded text-sm font-medium text-black">
+                                        <Camera className="h-4 w-4" />
+                                        Add More Photos
+                                    </div>
+                                </label>
+                            )}
+                        </div>
+                        {/* Thumbnail strip */}
+                        {property.images && property.images.length > 1 && (
+                            <div className="flex gap-1 overflow-x-auto pb-1">
+                                {property.images.map((img: any, idx: number) => (
+                                    <div
+                                        key={img.id || idx}
+                                        className="relative flex-shrink-0 w-16 h-16 rounded border border-border overflow-hidden group/thumb"
+                                    >
+                                        <img
+                                            src={img.url || img}
+                                            alt={`Photo ${idx + 1}`}
+                                            className="w-full h-full object-cover"
+                                        />
+                                        {img.id && (
+                                            <button
+                                                onClick={async (e) => {
+                                                    e.stopPropagation()
+                                                    try {
+                                                        const res = await fetch(`${API_BASE}/crm/properties/${propertyId}/images/${img.id}`, { method: 'DELETE' })
+                                                        if (res.ok) loadPropertyData()
+                                                    } catch (err) {
+                                                        console.error('Delete failed:', err)
+                                                    }
+                                                }}
+                                                className="absolute top-0 right-0 w-5 h-5 bg-black/60 text-white flex items-center justify-center opacity-0 group-hover/thumb:opacity-100 transition-opacity text-xs hover:bg-destructive"
+                                            >
+                                                <X className="h-3 w-3" />
+                                            </button>
+                                        )}
+                                    </div>
+                                ))}
                             </div>
                         )}
                     </div>
 
                     {/* Price */}
-                    <div className="border border-zinc-800 bg-zinc-900/50 p-4">
-                        <div className="font-mono text-[10px] text-zinc-500 mb-1">
+                    <div className="border border-border bg-card p-4">
+                        <div className="font-mono text-[10px] text-muted-foreground mb-1">
                             {property.listing_type === 'rent' ? 'MONTHLY RENT' : 'ASKING PRICE'}
                         </div>
-                        <div className="font-mono text-2xl text-amber-500 font-bold">
+                        <div className="font-mono text-2xl text-primary font-bold">
                             {formatCurrency(property.price, property.currency)}
                         </div>
                     </div>
 
                     {/* Specs */}
-                    <div className="border border-zinc-800 bg-zinc-900/50 p-4 space-y-3">
-                        <div className="font-mono text-[10px] text-zinc-500 mb-2">PROPERTY DETAILS</div>
+                    <div className="border border-border bg-card p-4 space-y-3">
+                        <div className="font-mono text-[10px] text-muted-foreground mb-2">PROPERTY DETAILS</div>
                         <div className="grid grid-cols-2 gap-4">
                             <div>
-                                <div className="font-mono text-[10px] text-zinc-500">Type</div>
-                                <div className="font-mono text-sm text-white capitalize">{property.property_type}</div>
+                                <div className="font-mono text-[10px] text-muted-foreground">Type</div>
+                                <div className="font-mono text-sm text-foreground capitalize">{property.property_type}</div>
                             </div>
                             <div>
-                                <div className="font-mono text-[10px] text-zinc-500">For</div>
-                                <div className="font-mono text-sm text-white capitalize">{property.listing_type}</div>
+                                <div className="font-mono text-[10px] text-muted-foreground">For</div>
+                                <div className="font-mono text-sm text-foreground capitalize">{property.listing_type}</div>
                             </div>
                             {property.bedrooms && (
                                 <div>
-                                    <div className="font-mono text-[10px] text-zinc-500">Bedrooms</div>
-                                    <div className="font-mono text-sm text-white">{property.bedrooms}</div>
+                                    <div className="font-mono text-[10px] text-muted-foreground">Bedrooms</div>
+                                    <div className="font-mono text-sm text-foreground">{property.bedrooms}</div>
                                 </div>
                             )}
                             {property.bathrooms && (
                                 <div>
-                                    <div className="font-mono text-[10px] text-zinc-500">Bathrooms</div>
-                                    <div className="font-mono text-sm text-white">{property.bathrooms}</div>
+                                    <div className="font-mono text-[10px] text-muted-foreground">Bathrooms</div>
+                                    <div className="font-mono text-sm text-foreground">{property.bathrooms}</div>
                                 </div>
                             )}
                             {property.area_sqm && (
                                 <div>
-                                    <div className="font-mono text-[10px] text-zinc-500">Building Area</div>
-                                    <div className="font-mono text-sm text-white">{property.area_sqm.toLocaleString()} sqm</div>
+                                    <div className="font-mono text-[10px] text-muted-foreground">Building Area</div>
+                                    <div className="font-mono text-sm text-foreground">{property.area_sqm.toLocaleString()} sqm</div>
                                 </div>
                             )}
                             {property.land_size_sqm && (
                                 <div>
-                                    <div className="font-mono text-[10px] text-zinc-500">Land Size</div>
-                                    <div className="font-mono text-sm text-white">{property.land_size_sqm.toLocaleString()} sqm</div>
+                                    <div className="font-mono text-[10px] text-muted-foreground">Land Size</div>
+                                    <div className="font-mono text-sm text-foreground">{property.land_size_sqm.toLocaleString()} sqm</div>
                                 </div>
                             )}
                             {property.year_built && (
                                 <div>
-                                    <div className="font-mono text-[10px] text-zinc-500">Year Built</div>
-                                    <div className="font-mono text-sm text-white">{property.year_built}</div>
+                                    <div className="font-mono text-[10px] text-muted-foreground">Year Built</div>
+                                    <div className="font-mono text-sm text-foreground">{property.year_built}</div>
                                 </div>
                             )}
                         </div>
@@ -544,25 +639,25 @@ export default function PropertyDetailPage() {
 
                     {/* Owner Info */}
                     {property.owner_name && (
-                        <div className="border border-zinc-800 bg-zinc-900/50 p-4">
-                            <div className="font-mono text-[10px] text-zinc-500 mb-3">PROPERTY OWNER</div>
+                        <div className="border border-border bg-card p-4">
+                            <div className="font-mono text-[10px] text-muted-foreground mb-3">PROPERTY OWNER</div>
                             <div className="flex items-center gap-3 mb-3">
-                                <div className="w-10 h-10 bg-amber-500/20 rounded-full flex items-center justify-center">
-                                    <Users className="h-5 w-5 text-amber-500" />
+                                <div className="w-10 h-10 bg-primary/20 rounded-full flex items-center justify-center">
+                                    <Users className="h-5 w-5 text-primary" />
                                 </div>
                                 <div>
-                                    <div className="font-mono text-sm text-white">{property.owner_name}</div>
-                                    <div className="font-mono text-[10px] text-zinc-500">Property Owner</div>
+                                    <div className="font-mono text-sm text-foreground">{property.owner_name}</div>
+                                    <div className="font-mono text-[10px] text-muted-foreground">Property Owner</div>
                                 </div>
                             </div>
                             {property.owner_contact && (
-                                <div className="flex items-center gap-2 text-zinc-400 mb-2">
+                                <div className="flex items-center gap-2 text-muted-foreground mb-2">
                                     <Phone className="h-3 w-3" />
                                     <span className="font-mono text-xs">{property.owner_contact}</span>
                                 </div>
                             )}
                             {property.owner_email && (
-                                <div className="flex items-center gap-2 text-zinc-400">
+                                <div className="flex items-center gap-2 text-muted-foreground">
                                     <Mail className="h-3 w-3" />
                                     <span className="font-mono text-xs">{property.owner_email}</span>
                                 </div>
@@ -572,22 +667,22 @@ export default function PropertyDetailPage() {
 
                     {/* Pipeline Progress - Property-level tracking */}
                     {property.pipeline_name && (
-                        <div className="border border-zinc-800 bg-zinc-900/50 p-4">
-                            <div className="font-mono text-[10px] text-zinc-500 mb-3">PIPELINE PROGRESS</div>
+                        <div className="border border-border bg-card p-4">
+                            <div className="font-mono text-[10px] text-muted-foreground mb-3">PIPELINE PROGRESS</div>
                             
                             <div className="mb-3">
-                                <div className="font-mono text-[9px] text-zinc-600 mb-1">Pipeline</div>
-                                <div className="font-mono text-xs text-white">{property.pipeline_name}</div>
+                                <div className="font-mono text-[9px] text-muted-foreground mb-1">Pipeline</div>
+                                <div className="font-mono text-xs text-foreground">{property.pipeline_name}</div>
                             </div>
 
                             <div className="mb-3">
-                                <div className="font-mono text-[9px] text-zinc-600 mb-1">Current Stage</div>
+                                <div className="font-mono text-[9px] text-muted-foreground mb-1">Current Stage</div>
                                 <div className="flex items-center gap-2">
                                     <div 
                                         className="w-3 h-3 rounded-full flex-shrink-0"
                                         style={{ backgroundColor: property.current_stage_color || '#F59E0B' }}
                                     />
-                                    <span className="font-mono text-sm text-white font-medium">
+                                    <span className="font-mono text-sm text-foreground font-medium">
                                         {property.current_stage_name}
                                     </span>
                                 </div>
@@ -596,12 +691,12 @@ export default function PropertyDetailPage() {
                             {/* Progress bar */}
                             <div className="mb-3">
                                 <div className="flex items-center justify-between mb-1">
-                                    <span className="font-mono text-[9px] text-zinc-500">Progress</span>
-                                    <span className="font-mono text-[9px] text-zinc-500">
+                                    <span className="font-mono text-[9px] text-muted-foreground">Progress</span>
+                                    <span className="font-mono text-[9px] text-muted-foreground">
                                         {property.current_stage_order}/{property.total_stages}
                                     </span>
                                 </div>
-                                <div className="h-2 bg-zinc-800 rounded-full overflow-hidden">
+                                <div className="h-2 bg-muted rounded-full overflow-hidden">
                                     <div 
                                         className="h-full rounded-full transition-all"
                                         style={{ 
@@ -613,7 +708,7 @@ export default function PropertyDetailPage() {
                             </div>
 
                             {property.days_in_stage !== undefined && property.days_in_stage >= 0 && (
-                                <div className="text-zinc-400 font-mono text-[10px] mb-3">
+                                <div className="text-muted-foreground font-mono text-[10px] mb-3">
                                     <Clock className="h-3 w-3 inline mr-1" />
                                     {property.days_in_stage} days in current stage
                                 </div>
@@ -621,8 +716,8 @@ export default function PropertyDetailPage() {
 
                             {/* Stage Selector */}
                             {propertyStages.length > 0 && (
-                                <div className="mt-4 pt-3 border-t border-zinc-800">
-                                    <div className="font-mono text-[9px] text-zinc-500 mb-2">MOVE TO STAGE</div>
+                                <div className="mt-4 pt-3 border-t border-border">
+                                    <div className="font-mono text-[9px] text-muted-foreground mb-2">MOVE TO STAGE</div>
                                     <div className="space-y-1 max-h-48 overflow-y-auto">
                                         {propertyStages.map(stage => (
                                             <button
@@ -632,8 +727,8 @@ export default function PropertyDetailPage() {
                                                 className={cn(
                                                     "w-full flex items-center gap-2 px-3 py-2 text-left transition-colors rounded",
                                                     stage.id === property.current_stage_id 
-                                                        ? "bg-amber-500/20 border border-amber-500/30 cursor-default" 
-                                                        : "bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 cursor-pointer",
+                                                        ? "bg-primary/20 border border-primary/30 cursor-default" 
+                                                        : "bg-muted hover:bg-accent border border-border cursor-pointer",
                                                     isChangingStage && "opacity-50 cursor-wait"
                                                 )}
                                             >
@@ -641,9 +736,9 @@ export default function PropertyDetailPage() {
                                                     className="w-2 h-2 rounded-full flex-shrink-0"
                                                     style={{ backgroundColor: stage.color }}
                                                 />
-                                                <span className="font-mono text-[10px] text-white flex-1 truncate">{stage.stage_name}</span>
+                                                <span className="font-mono text-[10px] text-foreground flex-1 truncate">{stage.stage_name}</span>
                                                 {stage.id === property.current_stage_id && (
-                                                    <CheckCircle2 className="h-3 w-3 text-amber-500 flex-shrink-0" />
+                                                    <CheckCircle2 className="h-3 w-3 text-primary flex-shrink-0" />
                                                 )}
                                             </button>
                                         ))}
@@ -657,22 +752,22 @@ export default function PropertyDetailPage() {
                 {/* Right: Pipeline & Deals */}
                 <div className="col-span-2 space-y-4">
                     <Tabs defaultValue="pipeline" className="w-full">
-                        <TabsList className="bg-zinc-900 border border-zinc-800 p-1">
+                        <TabsList className="bg-muted border border-border p-1">
                             <TabsTrigger 
                                 value="pipeline" 
-                                className="font-mono text-[10px] data-[state=active]:bg-amber-500 data-[state=active]:text-black"
+                                className="font-mono text-[10px] data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
                             >
                                 DEAL PIPELINE
                             </TabsTrigger>
                             <TabsTrigger 
                                 value="activities" 
-                                className="font-mono text-[10px] data-[state=active]:bg-amber-500 data-[state=active]:text-black"
+                                className="font-mono text-[10px] data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
                             >
                                 ACTIVITIES
                             </TabsTrigger>
                             <TabsTrigger 
                                 value="documents" 
-                                className="font-mono text-[10px] data-[state=active]:bg-amber-500 data-[state=active]:text-black"
+                                className="font-mono text-[10px] data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
                             >
                                 DOCUMENTS
                             </TabsTrigger>
@@ -683,18 +778,18 @@ export default function PropertyDetailPage() {
                         </TabsContent>
 
                         <TabsContent value="activities" className="mt-4">
-                            <div className="border border-zinc-800 bg-zinc-900/30 p-8 text-center">
-                                <Clock className="h-10 w-10 text-zinc-600 mx-auto mb-4" />
-                                <p className="font-mono text-sm text-zinc-400">
+                            <div className="border border-border bg-muted p-8 text-center">
+                                <Clock className="h-10 w-10 text-muted-foreground mx-auto mb-4" />
+                                <p className="font-mono text-sm text-muted-foreground">
                                     Activity timeline will show all actions related to this property
                                 </p>
                             </div>
                         </TabsContent>
 
                         <TabsContent value="documents" className="mt-4">
-                            <div className="border border-zinc-800 bg-zinc-900/30 p-8 text-center">
-                                <FileText className="h-10 w-10 text-zinc-600 mx-auto mb-4" />
-                                <p className="font-mono text-sm text-zinc-400">
+                            <div className="border border-border bg-muted p-8 text-center">
+                                <FileText className="h-10 w-10 text-muted-foreground mx-auto mb-4" />
+                                <p className="font-mono text-sm text-muted-foreground">
                                     Documents related to this property will appear here
                                 </p>
                             </div>
@@ -703,25 +798,25 @@ export default function PropertyDetailPage() {
 
                     {/* Quick Stats */}
                     <div className="grid grid-cols-4 gap-4">
-                        <div className="border border-zinc-800 bg-zinc-900/50 p-4">
-                            <div className="font-mono text-[10px] text-zinc-500 mb-1">TOTAL DEALS</div>
-                            <div className="font-mono text-2xl text-white">{deals.length}</div>
+                        <div className="border border-border bg-card p-4">
+                            <div className="font-mono text-[10px] text-muted-foreground mb-1">TOTAL DEALS</div>
+                            <div className="font-mono text-2xl text-foreground">{deals.length}</div>
                         </div>
-                        <div className="border border-zinc-800 bg-zinc-900/50 p-4">
-                            <div className="font-mono text-[10px] text-zinc-500 mb-1">ACTIVE DEALS</div>
+                        <div className="border border-border bg-card p-4">
+                            <div className="font-mono text-[10px] text-muted-foreground mb-1">ACTIVE DEALS</div>
                             <div className="font-mono text-2xl text-blue-400">
                                 {deals.filter(d => d.deal_status === 'active').length}
                             </div>
                         </div>
-                        <div className="border border-zinc-800 bg-zinc-900/50 p-4">
-                            <div className="font-mono text-[10px] text-zinc-500 mb-1">WON DEALS</div>
+                        <div className="border border-border bg-card p-4">
+                            <div className="font-mono text-[10px] text-muted-foreground mb-1">WON DEALS</div>
                             <div className="font-mono text-2xl text-green-400">
                                 {deals.filter(d => d.deal_status === 'won').length}
                             </div>
                         </div>
-                        <div className="border border-zinc-800 bg-zinc-900/50 p-4">
-                            <div className="font-mono text-[10px] text-zinc-500 mb-1">TOTAL VALUE</div>
-                            <div className="font-mono text-lg text-amber-500">
+                        <div className="border border-border bg-card p-4">
+                            <div className="font-mono text-[10px] text-muted-foreground mb-1">TOTAL VALUE</div>
+                            <div className="font-mono text-lg text-primary">
                                 {formatCurrency(
                                     deals.reduce((sum, d) => sum + (d.deal_value || 0), 0),
                                     property.currency

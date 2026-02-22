@@ -370,9 +370,8 @@ market-reports/
 dev.db
 test.db
 
-# Monitoring and analytics
-monitoring/
-analytics/
+# Monitoring and analytics (ops config only — not source code)
+/backend/ops/monitoring/
 metrics/
 
 # Terraform

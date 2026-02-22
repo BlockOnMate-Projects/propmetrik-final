@@ -56,8 +56,14 @@ export default function TopNav() {
     return (
         <motion.header
             className={cn(
-                "fixed top-0 left-0 right-0 z-50 transition-all duration-300 border-b border-transparent",
-                isScrolled ? "bg-zinc-950/80 backdrop-blur-md border-zinc-800 py-3 md:py-4" : "bg-transparent py-4 md:py-6"
+                "fixed top-0 left-0 right-0 z-50 transition-all duration-300 border-b",
+                isWhiteBackground
+                    ? isScrolled
+                        ? "bg-white/95 backdrop-blur-md border-gray-200 py-3 md:py-4 shadow-sm"
+                        : "bg-white border-gray-100 py-4 md:py-6"
+                    : isScrolled
+                        ? "bg-zinc-950/80 backdrop-blur-md border-zinc-800 py-3 md:py-4"
+                        : "bg-transparent border-transparent py-4 md:py-6"
             )}
         >
             <div className="container mx-auto px-4 md:px-6 flex items-center justify-between">
@@ -78,15 +84,22 @@ export default function TopNav() {
                             <Link
                                 href={link.href}
                                 className={cn(
-                                    "text-sm font-medium tracking-wide transition-colors hover:text-amber-500 uppercase",
-                                    isLinkActive(link.href) ? "text-amber-500" : "text-zinc-400"
+                                    "text-sm font-medium tracking-wide transition-colors uppercase",
+                                    isWhiteBackground
+                                        ? isLinkActive(link.href) ? "text-indigo-600" : "text-gray-600 hover:text-indigo-600"
+                                        : isLinkActive(link.href) ? "text-amber-500" : "text-zinc-400 hover:text-amber-500"
                                 )}
                             >
                                 {link.name}
                             </Link>
 
                             {link.children && (
-                                <div className="absolute left-0 top-full mt-3 w-56 rounded-lg border border-zinc-800 bg-zinc-950/95 backdrop-blur-md opacity-0 invisible translate-y-1 group-hover:opacity-100 group-hover:visible group-hover:translate-y-0 transition-all duration-150">
+                                <div className={cn(
+                                    "absolute left-0 top-full mt-3 w-56 rounded-lg border opacity-0 invisible translate-y-1 group-hover:opacity-100 group-hover:visible group-hover:translate-y-0 transition-all duration-150",
+                                    isWhiteBackground
+                                        ? "bg-white border-gray-200 shadow-lg"
+                                        : "bg-zinc-950/95 border-zinc-800 backdrop-blur-md"
+                                )}>
                                     <div className="py-2">
                                         {link.children.map((child) => (
                                             <Link
@@ -94,7 +107,9 @@ export default function TopNav() {
                                                 href={child.href}
                                                 className={cn(
                                                     "block px-4 py-2 text-xs uppercase tracking-wide transition-colors",
-                                                    pathname === child.href ? "text-amber-500 bg-zinc-900" : "text-zinc-400 hover:text-white hover:bg-zinc-900/70"
+                                                    isWhiteBackground
+                                                        ? pathname === child.href ? "text-indigo-600 bg-indigo-50" : "text-gray-600 hover:text-indigo-600 hover:bg-gray-50"
+                                                        : pathname === child.href ? "text-amber-500 bg-zinc-900" : "text-zinc-400 hover:text-white hover:bg-zinc-900/70"
                                                 )}
                                             >
                                                 {child.name}
@@ -110,13 +125,23 @@ export default function TopNav() {
                 <div className="flex items-center gap-3 sm:gap-6">
                     <Link
                         href="/login"
-                        className="text-xs font-bold uppercase tracking-widest text-zinc-400 hover:text-amber-500 transition-colors hidden sm:inline"
+                        className={cn(
+                            "text-xs font-bold uppercase tracking-widest transition-colors hidden sm:inline",
+                            isWhiteBackground
+                                ? "text-gray-600 hover:text-indigo-600"
+                                : "text-zinc-400 hover:text-amber-500"
+                        )}
                     >
                         Login
                     </Link>
                     <Link
                         href="/signup"
-                        className="px-4 sm:px-6 py-2 sm:py-2.5 text-[10px] sm:text-xs font-bold uppercase tracking-widest rounded-sm transition-all bg-amber-600 text-white hover:bg-amber-700"
+                        className={cn(
+                            "px-4 sm:px-6 py-2 sm:py-2.5 text-[10px] sm:text-xs font-bold uppercase tracking-widest rounded-sm transition-all",
+                            isWhiteBackground
+                                ? "bg-indigo-600 text-white hover:bg-indigo-700"
+                                : "bg-amber-600 text-white hover:bg-amber-700"
+                        )}
                     >
                         Get Started
                     </Link>
@@ -124,7 +149,12 @@ export default function TopNav() {
                     {/* Mobile hamburger */}
                     <button
                         onClick={() => setMobileOpen(o => !o)}
-                        className="md:hidden p-1.5 text-zinc-400 hover:text-white transition-colors"
+                        className={cn(
+                            "md:hidden p-1.5 transition-colors",
+                            isWhiteBackground
+                                ? "text-gray-600 hover:text-indigo-600"
+                                : "text-zinc-400 hover:text-white"
+                        )}
                         aria-label="Toggle menu"
                     >
                         {mobileOpen ? (
@@ -143,17 +173,24 @@ export default function TopNav() {
                         initial={{ opacity: 0, height: 0 }}
                         animate={{ opacity: 1, height: 'auto' }}
                         exit={{ opacity: 0, height: 0 }}
-                        className="md:hidden overflow-hidden bg-zinc-950/95 backdrop-blur-md border-t border-zinc-800"
+                        className={cn(
+                            "md:hidden overflow-hidden backdrop-blur-md border-t",
+                            isWhiteBackground
+                                ? "bg-white/95 border-gray-200"
+                                : "bg-zinc-950/95 border-zinc-800"
+                        )}
                     >
                         <nav className="flex flex-col py-2 px-4">
                             {navLinks.map((link) => (
-                                <div key={link.name} className="border-b border-zinc-800/50">
+                                <div key={link.name} className={cn("border-b", isWhiteBackground ? "border-gray-100" : "border-zinc-800/50")}>
                                     <Link
                                         href={link.href}
                                         onClick={() => setMobileOpen(false)}
                                         className={cn(
                                             "py-3 text-sm font-medium tracking-wide uppercase transition-colors block",
-                                            isLinkActive(link.href) ? "text-amber-500" : "text-zinc-400 hover:text-white"
+                                            isWhiteBackground
+                                                ? isLinkActive(link.href) ? "text-indigo-600" : "text-gray-600 hover:text-indigo-600"
+                                                : isLinkActive(link.href) ? "text-amber-500" : "text-zinc-400 hover:text-white"
                                         )}
                                     >
                                         {link.name}
@@ -168,7 +205,9 @@ export default function TopNav() {
                                                     onClick={() => setMobileOpen(false)}
                                                     className={cn(
                                                         "block py-2 text-xs uppercase tracking-wide transition-colors",
-                                                        pathname === child.href ? "text-amber-500" : "text-zinc-500 hover:text-zinc-200"
+                                                        isWhiteBackground
+                                                            ? pathname === child.href ? "text-indigo-600" : "text-gray-500 hover:text-indigo-600"
+                                                            : pathname === child.href ? "text-amber-500" : "text-zinc-500 hover:text-zinc-200"
                                                     )}
                                                 >
                                                     {child.name}
@@ -181,7 +220,12 @@ export default function TopNav() {
                             <Link
                                 href="/login"
                                 onClick={() => setMobileOpen(false)}
-                                className="py-3 text-sm font-medium tracking-wide uppercase text-zinc-400 hover:text-amber-500 transition-colors sm:hidden"
+                                className={cn(
+                                    "py-3 text-sm font-medium tracking-wide uppercase transition-colors sm:hidden",
+                                    isWhiteBackground
+                                        ? "text-gray-600 hover:text-indigo-600"
+                                        : "text-zinc-400 hover:text-amber-500"
+                                )}
                             >
                                 Login
                             </Link>

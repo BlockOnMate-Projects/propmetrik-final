@@ -44,11 +44,11 @@ interface WorkflowExecution {
 }
 
 const statusConfig: Record<string, { color: string; bgColor: string; icon: any; label: string }> = {
-  pending: { color: 'text-zinc-400', bgColor: 'bg-zinc-800', icon: Clock, label: 'Pending' },
+  pending: { color: 'text-muted-foreground', bgColor: 'bg-muted', icon: Clock, label: 'Pending' },
   running: { color: 'text-blue-400', bgColor: 'bg-blue-900/30', icon: RefreshCw, label: 'Running' },
   completed: { color: 'text-green-400', bgColor: 'bg-green-900/30', icon: CheckCircle, label: 'Completed' },
   failed: { color: 'text-red-400', bgColor: 'bg-red-900/30', icon: XCircle, label: 'Failed' },
-  cancelled: { color: 'text-zinc-500', bgColor: 'bg-zinc-800', icon: StopCircle, label: 'Cancelled' },
+  cancelled: { color: 'text-muted-foreground', bgColor: 'bg-muted', icon: StopCircle, label: 'Cancelled' },
   waiting: { color: 'text-yellow-400', bgColor: 'bg-yellow-900/30', icon: Clock, label: 'Waiting' }
 };
 
@@ -145,15 +145,15 @@ export default function WorkflowHistoryPage() {
         <div className="flex items-center gap-4">
           <Link
             href={`/dashboard/deals/workflows/${workflowId}`}
-            className="p-2 text-zinc-500 hover:text-zinc-300 rounded hover:bg-zinc-800"
+            className="p-2 text-muted-foreground hover:text-foreground rounded hover:bg-muted"
           >
             <ArrowLeft className="w-5 h-5" />
           </Link>
           <div>
-            <h1 className="text-xl font-bold text-white font-mono">
+            <h1 className="text-xl font-bold text-foreground font-mono">
               EXECUTION HISTORY
             </h1>
-            <p className="text-zinc-500 text-sm">
+            <p className="text-muted-foreground text-sm">
               {workflow?.name || 'Loading...'}
             </p>
           </div>
@@ -161,7 +161,7 @@ export default function WorkflowHistoryPage() {
 
         <button
           onClick={() => fetchExecutions()}
-          className="flex items-center gap-2 px-4 py-2 border border-zinc-700 text-zinc-300 rounded hover:bg-zinc-800 font-mono text-xs"
+          className="flex items-center gap-2 px-4 py-2 border border-border text-foreground rounded hover:bg-muted font-mono text-xs"
         >
           <RefreshCw className="w-4 h-4" />
           REFRESH
@@ -179,14 +179,14 @@ export default function WorkflowHistoryPage() {
               onClick={() => setStatusFilter(statusFilter === status ? 'all' : status)}
               className={`p-4 rounded-lg border-2 transition-colors ${
                 statusFilter === status
-                  ? 'border-amber-500 bg-zinc-800'
-                  : 'border-zinc-800 bg-zinc-900 hover:border-zinc-700'
+                  ? 'border-amber-500 bg-muted'
+                  : 'border-border bg-card hover:border-border'
               }`}
             >
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-xs text-zinc-500 font-mono">{config.label}</p>
-                  <p className="text-xl font-bold text-white font-mono">{count}</p>
+                  <p className="text-xs text-muted-foreground font-mono">{config.label}</p>
+                  <p className="text-xl font-bold text-foreground font-mono">{count}</p>
                 </div>
                 <StatusIcon className={`w-5 h-5 ${config.color}`} />
               </div>
@@ -196,12 +196,12 @@ export default function WorkflowHistoryPage() {
       </div>
 
       {/* Executions List */}
-      <div className="bg-zinc-900 border border-zinc-800 rounded-lg overflow-hidden">
+      <div className="bg-card border border-border rounded-lg overflow-hidden">
         {executions.length === 0 ? (
           <div className="p-12 text-center">
-            <Activity className="w-12 h-12 text-zinc-700 mx-auto mb-4" />
-            <h3 className="text-lg font-medium text-white mb-2 font-mono">No executions yet</h3>
-            <p className="text-zinc-500 text-sm">
+            <Activity className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+            <h3 className="text-lg font-medium text-foreground mb-2 font-mono">No executions yet</h3>
+            <p className="text-muted-foreground text-sm">
               Executions will appear here when the workflow is triggered
             </p>
           </div>
@@ -213,7 +213,7 @@ export default function WorkflowHistoryPage() {
               const isExpanded = expandedExecution === execution.id;
 
               return (
-                <div key={execution.id} className="hover:bg-zinc-800/50">
+                <div key={execution.id} className="hover:bg-muted/50">
                   {/* Execution Row */}
                   <div
                     className="p-4 cursor-pointer"
@@ -232,11 +232,11 @@ export default function WorkflowHistoryPage() {
                             <span className={`px-2 py-0.5 rounded text-xs font-medium ${config.bgColor} ${config.color} font-mono`}>
                               {config.label}
                             </span>
-                            <span className="text-sm text-zinc-500 font-mono">
+                            <span className="text-sm text-muted-foreground font-mono">
                               {execution.entity_type}: {execution.entity_id.slice(0, 8)}...
                             </span>
                           </div>
-                          <div className="flex items-center gap-4 mt-1 text-sm text-zinc-500">
+                          <div className="flex items-center gap-4 mt-1 text-sm text-muted-foreground">
                             <span>Triggered: {formatTime(execution.created_at)}</span>
                             <span>Duration: {formatDuration(execution.started_at, execution.completed_at)}</span>
                           </div>
@@ -256,9 +256,9 @@ export default function WorkflowHistoryPage() {
                           </button>
                         )}
                         {isExpanded ? (
-                          <ChevronDown className="w-5 h-5 text-zinc-500" />
+                          <ChevronDown className="w-5 h-5 text-muted-foreground" />
                         ) : (
-                          <ChevronRight className="w-5 h-5 text-zinc-500" />
+                          <ChevronRight className="w-5 h-5 text-muted-foreground" />
                         )}
                       </div>
                     </div>
@@ -275,37 +275,37 @@ export default function WorkflowHistoryPage() {
 
                   {/* Expanded Log */}
                   {isExpanded && execution.execution_log && (
-                    <div className="px-4 pb-4 bg-zinc-800/50 border-t border-zinc-800">
+                    <div className="px-4 pb-4 bg-muted/50 border-t border-border">
                       <div className="mt-4 space-y-2">
-                        <h4 className="text-sm font-medium text-zinc-400 font-mono">EXECUTION STEPS</h4>
+                        <h4 className="text-sm font-medium text-muted-foreground font-mono">EXECUTION STEPS</h4>
                         <div className="space-y-2">
                           {execution.execution_log.map((log, index) => (
                             <div
                               key={index}
-                              className="flex items-start gap-3 p-3 bg-zinc-900 rounded-lg border border-zinc-800"
+                              className="flex items-start gap-3 p-3 bg-card rounded-lg border border-border"
                             >
                               <div className={`w-6 h-6 rounded-full flex items-center justify-center ${
                                 log.status === 'success' ? 'bg-green-900/30' :
-                                log.status === 'failed' ? 'bg-red-900/30' : 'bg-zinc-800'
+                                log.status === 'failed' ? 'bg-red-900/30' : 'bg-muted'
                               }`}>
                                 {log.status === 'success' ? (
                                   <CheckCircle className="w-4 h-4 text-green-400" />
                                 ) : log.status === 'failed' ? (
                                   <XCircle className="w-4 h-4 text-red-400" />
                                 ) : (
-                                  <Clock className="w-4 h-4 text-zinc-400" />
+                                  <Clock className="w-4 h-4 text-muted-foreground" />
                                 )}
                               </div>
                               <div className="flex-1">
                                 <div className="flex items-center justify-between">
-                                  <span className="font-medium text-white font-mono">{log.action}</span>
-                                  <span className="text-xs text-zinc-500 font-mono">
+                                  <span className="font-medium text-foreground font-mono">{log.action}</span>
+                                  <span className="text-xs text-muted-foreground font-mono">
                                     {formatTime(log.executed_at)}
                                   </span>
                                 </div>
                                 {log.result && (
-                                  <div className="mt-1 text-sm text-zinc-400">
-                                    <pre className="bg-zinc-800 p-2 rounded text-xs overflow-x-auto font-mono">
+                                  <div className="mt-1 text-sm text-muted-foreground">
+                                    <pre className="bg-muted p-2 rounded text-xs overflow-x-auto font-mono">
                                       {JSON.stringify(log.result, null, 2)}
                                     </pre>
                                   </div>
@@ -333,15 +333,15 @@ export default function WorkflowHistoryPage() {
           <button
             onClick={() => setPage(p => Math.max(1, p - 1))}
             disabled={page === 1}
-            className="px-4 py-2 border border-zinc-700 text-zinc-300 rounded hover:bg-zinc-800 disabled:opacity-50 disabled:cursor-not-allowed font-mono text-xs"
+            className="px-4 py-2 border border-border text-foreground rounded hover:bg-muted disabled:opacity-50 disabled:cursor-not-allowed font-mono text-xs"
           >
             PREVIOUS
           </button>
-          <span className="text-sm text-zinc-500 font-mono">Page {page}</span>
+          <span className="text-sm text-muted-foreground font-mono">Page {page}</span>
           <button
             onClick={() => setPage(p => p + 1)}
             disabled={executions.length < 20}
-            className="px-4 py-2 border border-zinc-700 text-zinc-300 rounded hover:bg-zinc-800 disabled:opacity-50 disabled:cursor-not-allowed font-mono text-xs"
+            className="px-4 py-2 border border-border text-foreground rounded hover:bg-muted disabled:opacity-50 disabled:cursor-not-allowed font-mono text-xs"
           >
             NEXT
           </button>

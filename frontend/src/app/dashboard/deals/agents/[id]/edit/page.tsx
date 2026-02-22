@@ -28,10 +28,10 @@ function Panel({ title, icon: Icon, children, className }: {
     className?: string;
 }) {
     return (
-        <div className={cn('border border-zinc-800 bg-zinc-900/50', className)}>
-            <div className="flex items-center gap-2 px-3 py-1.5 bg-zinc-800/50 border-b border-zinc-800">
-                {Icon && <Icon className="w-4 h-4 text-amber-500" />}
-                <span className="font-mono text-[10px] text-amber-500 tracking-wider uppercase">{title}</span>
+        <div className={cn('border border-border bg-card', className)}>
+            <div className="flex items-center gap-2 px-3 py-1.5 bg-muted/50 border-b border-border">
+                {Icon && <Icon className="w-4 h-4 text-primary" />}
+                <span className="font-mono text-[10px] text-primary tracking-wider uppercase">{title}</span>
             </div>
             <div className="p-4">{children}</div>
         </div>
@@ -226,7 +226,7 @@ export default function EditAgentPage() {
     if (loading) {
         return (
             <div className="flex items-center justify-center h-96">
-                <Loader2 className="w-8 h-8 animate-spin text-amber-500" />
+                <Loader2 className="w-8 h-8 animate-spin text-primary" />
             </div>
         )
     }
@@ -238,13 +238,13 @@ export default function EditAgentPage() {
                 <div className="flex items-center gap-4">
                     <Link 
                         href={`/dashboard/deals/agents/${agentId}`}
-                        className="p-2 hover:bg-zinc-800 rounded-lg transition-colors"
+                        className="p-2 hover:bg-muted rounded-lg transition-colors"
                     >
-                        <ArrowLeft className="w-5 h-5 text-zinc-400" />
+                        <ArrowLeft className="w-5 h-5 text-muted-foreground" />
                     </Link>
                     <div>
-                        <h1 className="font-mono text-xl font-bold text-white">EDIT AGENT</h1>
-                        <p className="font-mono text-xs text-zinc-500">Update agent information</p>
+                        <h1 className="font-mono text-xl font-bold text-foreground">EDIT AGENT</h1>
+                        <p className="font-mono text-xs text-muted-foreground">Update agent information</p>
                     </div>
                 </div>
                 <div className="flex gap-2">
@@ -256,7 +256,7 @@ export default function EditAgentPage() {
                     <Button 
                         onClick={handleSubmit}
                         disabled={saving}
-                        className="font-mono text-xs bg-amber-600 hover:bg-amber-700"
+                        className="font-mono text-xs bg-primary hover:bg-primary/90"
                     >
                         {saving ? (
                             <>
@@ -284,44 +284,44 @@ export default function EditAgentPage() {
                 <Panel title="Basic Information" icon={User}>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
-                            <label className="block font-mono text-[10px] text-zinc-500 uppercase tracking-wider mb-1">First Name *</label>
+                            <label className="block font-mono text-[10px] text-muted-foreground uppercase tracking-wider mb-1">First Name *</label>
                             <Input
                                 type="text"
                                 name="first_name"
                                 value={formData.first_name}
                                 onChange={handleChange}
                                 required
-                                className="bg-zinc-800 border-zinc-700 text-white font-mono"
+                                className="bg-muted border-border text-foreground font-mono"
                             />
                         </div>
                         <div>
-                            <label className="block font-mono text-[10px] text-zinc-500 uppercase tracking-wider mb-1">Last Name *</label>
+                            <label className="block font-mono text-[10px] text-muted-foreground uppercase tracking-wider mb-1">Last Name *</label>
                             <Input
                                 type="text"
                                 name="last_name"
                                 value={formData.last_name}
                                 onChange={handleChange}
                                 required
-                                className="bg-zinc-800 border-zinc-700 text-white font-mono"
+                                className="bg-muted border-border text-foreground font-mono"
                             />
                         </div>
                         <div>
-                            <label className="block font-mono text-[10px] text-zinc-500 uppercase tracking-wider mb-1">Display Name</label>
+                            <label className="block font-mono text-[10px] text-muted-foreground uppercase tracking-wider mb-1">Display Name</label>
                             <Input
                                 type="text"
                                 name="display_name"
                                 value={formData.display_name}
                                 onChange={handleChange}
-                                className="bg-zinc-800 border-zinc-700 text-white font-mono"
+                                className="bg-muted border-border text-foreground font-mono"
                             />
                         </div>
                         <div>
-                            <label className="block font-mono text-[10px] text-zinc-500 uppercase tracking-wider mb-1">Status</label>
+                            <label className="block font-mono text-[10px] text-muted-foreground uppercase tracking-wider mb-1">Status</label>
                             <select
                                 name="status"
                                 value={formData.status}
                                 onChange={handleChange}
-                                className="w-full h-10 px-3 bg-zinc-800 border border-zinc-700 text-white font-mono text-sm rounded-md"
+                                className="w-full h-10 px-3 bg-muted border border-border text-foreground font-mono text-sm rounded-md"
                             >
                                 <option value="active">Active</option>
                                 <option value="inactive">Inactive</option>
@@ -336,45 +336,45 @@ export default function EditAgentPage() {
                 <Panel title="Contact Information" icon={Mail}>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
-                            <label className="block font-mono text-[10px] text-zinc-500 uppercase tracking-wider mb-1">Email *</label>
+                            <label className="block font-mono text-[10px] text-muted-foreground uppercase tracking-wider mb-1">Email *</label>
                             <Input
                                 type="email"
                                 name="email"
                                 value={formData.email}
                                 onChange={handleChange}
                                 required
-                                className="bg-zinc-800 border-zinc-700 text-white font-mono"
+                                className="bg-muted border-border text-foreground font-mono"
                             />
                         </div>
                         <div>
-                            <label className="block font-mono text-[10px] text-zinc-500 uppercase tracking-wider mb-1">Primary Phone *</label>
+                            <label className="block font-mono text-[10px] text-muted-foreground uppercase tracking-wider mb-1">Primary Phone *</label>
                             <Input
                                 type="tel"
                                 name="phone_primary"
                                 value={formData.phone_primary}
                                 onChange={handleChange}
                                 required
-                                className="bg-zinc-800 border-zinc-700 text-white font-mono"
+                                className="bg-muted border-border text-foreground font-mono"
                             />
                         </div>
                         <div>
-                            <label className="block font-mono text-[10px] text-zinc-500 uppercase tracking-wider mb-1">Secondary Phone</label>
+                            <label className="block font-mono text-[10px] text-muted-foreground uppercase tracking-wider mb-1">Secondary Phone</label>
                             <Input
                                 type="tel"
                                 name="phone_secondary"
                                 value={formData.phone_secondary}
                                 onChange={handleChange}
-                                className="bg-zinc-800 border-zinc-700 text-white font-mono"
+                                className="bg-muted border-border text-foreground font-mono"
                             />
                         </div>
                         <div>
-                            <label className="block font-mono text-[10px] text-zinc-500 uppercase tracking-wider mb-1">WhatsApp Number</label>
+                            <label className="block font-mono text-[10px] text-muted-foreground uppercase tracking-wider mb-1">WhatsApp Number</label>
                             <Input
                                 type="tel"
                                 name="whatsapp_number"
                                 value={formData.whatsapp_number}
                                 onChange={handleChange}
-                                className="bg-zinc-800 border-zinc-700 text-white font-mono"
+                                className="bg-muted border-border text-foreground font-mono"
                             />
                         </div>
                     </div>
@@ -384,33 +384,33 @@ export default function EditAgentPage() {
                 <Panel title="License & Credentials" icon={Award}>
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                         <div>
-                            <label className="block font-mono text-[10px] text-zinc-500 uppercase tracking-wider mb-1">License Number</label>
+                            <label className="block font-mono text-[10px] text-muted-foreground uppercase tracking-wider mb-1">License Number</label>
                             <Input
                                 type="text"
                                 name="license_number"
                                 value={formData.license_number}
                                 onChange={handleChange}
-                                className="bg-zinc-800 border-zinc-700 text-white font-mono"
+                                className="bg-muted border-border text-foreground font-mono"
                             />
                         </div>
                         <div>
-                            <label className="block font-mono text-[10px] text-zinc-500 uppercase tracking-wider mb-1">License Expiry</label>
+                            <label className="block font-mono text-[10px] text-muted-foreground uppercase tracking-wider mb-1">License Expiry</label>
                             <Input
                                 type="date"
                                 name="license_expiry"
                                 value={formData.license_expiry}
                                 onChange={handleChange}
-                                className="bg-zinc-800 border-zinc-700 text-white font-mono"
+                                className="bg-muted border-border text-foreground font-mono"
                             />
                         </div>
                         <div>
-                            <label className="block font-mono text-[10px] text-zinc-500 uppercase tracking-wider mb-1">Ghana RE Board ID</label>
+                            <label className="block font-mono text-[10px] text-muted-foreground uppercase tracking-wider mb-1">Ghana RE Board ID</label>
                             <Input
                                 type="text"
                                 name="ghana_real_estate_board_id"
                                 value={formData.ghana_real_estate_board_id}
                                 onChange={handleChange}
-                                className="bg-zinc-800 border-zinc-700 text-white font-mono"
+                                className="bg-muted border-border text-foreground font-mono"
                             />
                         </div>
                     </div>
@@ -427,8 +427,8 @@ export default function EditAgentPage() {
                                 className={cn(
                                     "px-3 py-1.5 font-mono text-xs transition-colors border",
                                     formData.specializations.includes(opt.value)
-                                        ? "bg-amber-600/20 text-amber-400 border-amber-600"
-                                        : "bg-zinc-800 text-zinc-400 border-zinc-700 hover:border-zinc-600"
+                                        ? "bg-primary/20 text-primary border-primary"
+                                        : "bg-muted text-muted-foreground border-border hover:border-border"
                                 )}
                             >
                                 {opt.label}
@@ -449,7 +449,7 @@ export default function EditAgentPage() {
                                     "px-3 py-1.5 font-mono text-xs transition-colors border",
                                     formData.regions_covered.includes(region)
                                         ? "bg-green-600/20 text-green-400 border-green-600"
-                                        : "bg-zinc-800 text-zinc-400 border-zinc-700 hover:border-zinc-600"
+                                        : "bg-muted text-muted-foreground border-border hover:border-border"
                                 )}
                             >
                                 {region}
@@ -470,7 +470,7 @@ export default function EditAgentPage() {
                                     "px-3 py-1.5 font-mono text-xs transition-colors border",
                                     formData.languages.includes(lang.toLowerCase())
                                         ? "bg-purple-600/20 text-purple-400 border-purple-600"
-                                        : "bg-zinc-800 text-zinc-400 border-zinc-700 hover:border-zinc-600"
+                                        : "bg-muted text-muted-foreground border-border hover:border-border"
                                 )}
                             >
                                 {lang}
@@ -483,18 +483,18 @@ export default function EditAgentPage() {
                 <Panel title="Experience & Compensation">
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                         <div>
-                            <label className="block font-mono text-[10px] text-zinc-500 uppercase tracking-wider mb-1">Years Experience</label>
+                            <label className="block font-mono text-[10px] text-muted-foreground uppercase tracking-wider mb-1">Years Experience</label>
                             <Input
                                 type="number"
                                 name="years_experience"
                                 value={formData.years_experience}
                                 onChange={handleChange}
                                 min="0"
-                                className="bg-zinc-800 border-zinc-700 text-white font-mono"
+                                className="bg-muted border-border text-foreground font-mono"
                             />
                         </div>
                         <div>
-                            <label className="block font-mono text-[10px] text-zinc-500 uppercase tracking-wider mb-1">Commission Rate (%)</label>
+                            <label className="block font-mono text-[10px] text-muted-foreground uppercase tracking-wider mb-1">Commission Rate (%)</label>
                             <Input
                                 type="number"
                                 name="default_commission_rate"
@@ -503,11 +503,11 @@ export default function EditAgentPage() {
                                 step="0.1"
                                 min="0"
                                 max="100"
-                                className="bg-zinc-800 border-zinc-700 text-white font-mono"
+                                className="bg-muted border-border text-foreground font-mono"
                             />
                         </div>
                         <div>
-                            <label className="block font-mono text-[10px] text-zinc-500 uppercase tracking-wider mb-1">Split Rate (%)</label>
+                            <label className="block font-mono text-[10px] text-muted-foreground uppercase tracking-wider mb-1">Split Rate (%)</label>
                             <Input
                                 type="number"
                                 name="commission_split_rate"
@@ -516,30 +516,30 @@ export default function EditAgentPage() {
                                 step="0.1"
                                 min="0"
                                 max="100"
-                                className="bg-zinc-800 border-zinc-700 text-white font-mono"
+                                className="bg-muted border-border text-foreground font-mono"
                             />
                         </div>
                         <div>
-                            <label className="block font-mono text-[10px] text-zinc-500 uppercase tracking-wider mb-1">Base Salary (GHS)</label>
+                            <label className="block font-mono text-[10px] text-muted-foreground uppercase tracking-wider mb-1">Base Salary (GHS)</label>
                             <Input
                                 type="number"
                                 name="base_salary"
                                 value={formData.base_salary}
                                 onChange={handleChange}
                                 min="0"
-                                className="bg-zinc-800 border-zinc-700 text-white font-mono"
+                                className="bg-muted border-border text-foreground font-mono"
                             />
                         </div>
                     </div>
 
                     <div className="mt-4">
-                        <label className="block font-mono text-[10px] text-zinc-500 uppercase tracking-wider mb-1">Hire Date</label>
+                        <label className="block font-mono text-[10px] text-muted-foreground uppercase tracking-wider mb-1">Hire Date</label>
                         <Input
                             type="date"
                             name="hire_date"
                             value={formData.hire_date}
                             onChange={handleChange}
-                            className="bg-zinc-800 border-zinc-700 text-white font-mono w-full md:w-1/4"
+                            className="bg-muted border-border text-foreground font-mono w-full md:w-1/4"
                         />
                     </div>
                 </Panel>
@@ -552,7 +552,7 @@ export default function EditAgentPage() {
                         onChange={handleChange}
                         rows={4}
                         placeholder="Agent biography and background..."
-                        className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 text-white font-mono text-sm rounded-md focus:ring-2 focus:ring-amber-500 focus:border-amber-500"
+                        className="w-full px-3 py-2 bg-muted border border-border text-foreground font-mono text-sm rounded-md focus:ring-2 focus:ring-amber-500 focus:border-amber-500"
                     />
                 </Panel>
             </form>
