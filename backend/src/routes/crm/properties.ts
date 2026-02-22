@@ -1,10 +1,25 @@
 import { Router, Request, Response } from 'express';
 import crypto from 'crypto';
+import multer from 'multer';
 import { getOrganizationId, getUserId, asyncHandler } from './helpers';
 import { crmPropertySyncService } from '../../services/crm-deal-management/crmPropertySyncService';
 import { dataHubQueueManager, DataHubQueueManager, CrmPropertySyncJobData } from '../../services/data-hub/jobQueue';
 import db from '../../database';
+import { uploadFile, deleteFile, getPresignedDownloadUrl, generatePropertyImageKey, buckets } from '../../database/minio';
 import { logger } from '../../utils/logger';
+
+const upload = multer({
+    storage: multer.memoryStorage(),
+    limits: { fileSize: 10 * 1024 * 1024 }, // 10MB per file
+    fileFilter: (_req, file, cb) => {
+        const allowed = ['image/jpeg', 'image/png', 'image/webp', 'image/heic', 'image/heif'];
+        if (allowed.includes(file.mimetype)) {
+            cb(null, true);
+        } else {
+            cb(new Error(`Invalid file type: ${file.mimetype}. Only JPEG, PNG, WebP, HEIC are allowed.`));
+        }
+    }
+});
 
 const router = Router();
 
@@ -100,6 +115,7 @@ router.get('/properties', asyncHandler(async (req: Request, res: Response) => {
             p.owner_name,
             p.owner_phone,
             p.features,
+            p.images,
             p.pipeline_id,
             p.current_stage_id,
             p.stage_entered_at,
@@ -433,7 +449,8 @@ router.patch('/properties/:id', asyncHandler(async (req: Request, res: Response)
         'total_area_sqm', 'land_area_sqm', 'floors', 'year_built',
         'features', 'amenities', 'owner_name', 'owner_phone', 'owner_email', 'owner_type',
         'status', 'priority', 'current_stage_id', 'pipeline_id',
-        'latitude', 'longitude', 'location_accuracy'
+        'latitude', 'longitude', 'location_accuracy',
+        'images'
     ];
 
     const setClauses: string[] = [];
@@ -442,7 +459,7 @@ router.patch('/properties/:id', asyncHandler(async (req: Request, res: Response)
 
     for (const field of allowedFields) {
         if (updates[field] !== undefined) {
-            if (field === 'features' || field === 'amenities') {
+            if (field === 'features' || field === 'amenities' || field === 'images') {
                 setClauses.push(`${field} = $${paramIndex}`);
                 values.push(JSON.stringify(updates[field]));
             } else {
@@ -779,6 +796,223 @@ router.get('/contacts/:id/match-properties', asyncHandler(async (req: Request, r
 
     const matches = await propertyMatchService.matchProperties(id, organizationId, { limit, minScore, excludeSold });
     res.json({ contact_id: id, matches, total: matches.length });
+}));
+
+// =====================================================
+// PROPERTY IMAGE UPLOAD
+// =====================================================
+
+// POST /properties/:id/images — Upload images to a property
+router.post('/properties/:id/images', upload.array('images', 20), asyncHandler(async (req: Request, res: Response) => {
+    const organizationId = await getOrganizationId(req);
+    if (!organizationId || organizationId === '00000000-0000-0000-0000-000000000000') {
+        return res.status(401).json({ error: 'Organization not found' });
+    }
+
+    const { id } = req.params;
+    const files = req.files as Express.Multer.File[];
+
+    if (!files || files.length === 0) {
+        return res.status(400).json({ error: 'No images provided' });
+    }
+
+    // Verify property exists and belongs to org
+    const propResult = await db.query(
+        'SELECT id, images FROM crm_properties WHERE id = $1 AND organization_id = $2',
+        [id, organizationId]
+    );
+
+    if (propResult.rows.length === 0) {
+        return res.status(404).json({ error: 'Property not found' });
+    }
+
+    const existingImages: any[] = propResult.rows[0].images || [];
+    const uploadedImages: any[] = [];
+
+    for (const file of files) {
+        try {
+            const key = generatePropertyImageKey(id, file.originalname);
+            const bucket = buckets.properties;
+
+            await uploadFile(bucket, key, file.buffer, file.mimetype, {
+                'property-id': id,
+                'original-name': file.originalname,
+            });
+
+            // Generate a download URL (long-lived for display)
+            const url = await getPresignedDownloadUrl(bucket, key, 86400 * 7); // 7 days
+
+            const imageRecord = {
+                id: crypto.randomUUID(),
+                key,
+                bucket,
+                url,
+                original_name: file.originalname,
+                content_type: file.mimetype,
+                size: file.size,
+                category: (req.body as any)?.category || 'exterior',
+                caption: '',
+                uploaded_at: new Date().toISOString(),
+            };
+
+            uploadedImages.push(imageRecord);
+        } catch (err: any) {
+            logger.error('Failed to upload property image', {
+                propertyId: id,
+                fileName: file.originalname,
+                error: err.message,
+            });
+        }
+    }
+
+    if (uploadedImages.length === 0) {
+        return res.status(500).json({ error: 'All image uploads failed' });
+    }
+
+    // Append new images to existing array
+    const allImages = [...existingImages, ...uploadedImages];
+
+    await db.query(
+        'UPDATE crm_properties SET images = $1, updated_at = NOW() WHERE id = $2 AND organization_id = $3',
+        [JSON.stringify(allImages), id, organizationId]
+    );
+
+    logger.info('Property images uploaded', {
+        propertyId: id,
+        count: uploadedImages.length,
+        total: allImages.length,
+    });
+
+    res.json({
+        uploaded: uploadedImages,
+        total: allImages.length,
+        images: allImages,
+    });
+}));
+
+// DELETE /properties/:id/images/:imageId — Remove a single image from a property
+router.delete('/properties/:id/images/:imageId', asyncHandler(async (req: Request, res: Response) => {
+    const organizationId = await getOrganizationId(req);
+    if (!organizationId || organizationId === '00000000-0000-0000-0000-000000000000') {
+        return res.status(401).json({ error: 'Organization not found' });
+    }
+
+    const { id, imageId } = req.params;
+
+    const propResult = await db.query(
+        'SELECT id, images FROM crm_properties WHERE id = $1 AND organization_id = $2',
+        [id, organizationId]
+    );
+
+    if (propResult.rows.length === 0) {
+        return res.status(404).json({ error: 'Property not found' });
+    }
+
+    const existingImages: any[] = propResult.rows[0].images || [];
+    const imageToDelete = existingImages.find((img: any) => img.id === imageId);
+
+    if (!imageToDelete) {
+        return res.status(404).json({ error: 'Image not found' });
+    }
+
+    // Delete from MinIO
+    try {
+        await deleteFile(imageToDelete.bucket, imageToDelete.key);
+    } catch (err: any) {
+        logger.warn('Failed to delete image from MinIO', {
+            propertyId: id,
+            imageId,
+            error: err.message,
+        });
+    }
+
+    // Remove from JSONB array
+    const updatedImages = existingImages.filter((img: any) => img.id !== imageId);
+
+    await db.query(
+        'UPDATE crm_properties SET images = $1, updated_at = NOW() WHERE id = $2 AND organization_id = $3',
+        [JSON.stringify(updatedImages), id, organizationId]
+    );
+
+    res.json({ deleted: imageId, remaining: updatedImages.length, images: updatedImages });
+}));
+
+// PATCH /properties/:id/images/reorder — Reorder images
+router.patch('/properties/:id/images/reorder', asyncHandler(async (req: Request, res: Response) => {
+    const organizationId = await getOrganizationId(req);
+    if (!organizationId || organizationId === '00000000-0000-0000-0000-000000000000') {
+        return res.status(401).json({ error: 'Organization not found' });
+    }
+
+    const { id } = req.params;
+    const { image_ids } = req.body;
+
+    if (!Array.isArray(image_ids)) {
+        return res.status(400).json({ error: 'image_ids array required' });
+    }
+
+    const propResult = await db.query(
+        'SELECT id, images FROM crm_properties WHERE id = $1 AND organization_id = $2',
+        [id, organizationId]
+    );
+
+    if (propResult.rows.length === 0) {
+        return res.status(404).json({ error: 'Property not found' });
+    }
+
+    const existingImages: any[] = propResult.rows[0].images || [];
+
+    // Reorder based on provided order
+    const reordered = image_ids
+        .map((imgId: string) => existingImages.find((img: any) => img.id === imgId))
+        .filter(Boolean);
+
+    // Add any images not in the reorder list at the end
+    const reorderedIds = new Set(image_ids);
+    const remaining = existingImages.filter((img: any) => !reorderedIds.has(img.id));
+    const finalImages = [...reordered, ...remaining];
+
+    await db.query(
+        'UPDATE crm_properties SET images = $1, updated_at = NOW() WHERE id = $2 AND organization_id = $3',
+        [JSON.stringify(finalImages), id, organizationId]
+    );
+
+    res.json({ images: finalImages });
+}));
+
+// GET /properties/:id/images — Get fresh presigned URLs for property images
+router.get('/properties/:id/images', asyncHandler(async (req: Request, res: Response) => {
+    const organizationId = await getOrganizationId(req);
+    if (!organizationId || organizationId === '00000000-0000-0000-0000-000000000000') {
+        return res.status(401).json({ error: 'Organization not found' });
+    }
+
+    const { id } = req.params;
+
+    const propResult = await db.query(
+        'SELECT id, images FROM crm_properties WHERE id = $1 AND organization_id = $2',
+        [id, organizationId]
+    );
+
+    if (propResult.rows.length === 0) {
+        return res.status(404).json({ error: 'Property not found' });
+    }
+
+    const images: any[] = propResult.rows[0].images || [];
+
+    // Refresh presigned URLs
+    const refreshed = await Promise.all(
+        images.map(async (img: any) => {
+            try {
+                const url = await getPresignedDownloadUrl(img.bucket, img.key, 86400); // 24h
+                return { ...img, url };
+            } catch {
+                return img; // Keep existing URL if refresh fails
+            }
+        })
+    );
+
+    res.json({ property_id: id, images: refreshed, total: refreshed.length });
 }));
 
 export default router;

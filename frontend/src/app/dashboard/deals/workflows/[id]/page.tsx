@@ -255,13 +255,13 @@ export default function WorkflowEditorPage() {
   return (
     <div className="min-h-screen">
       {/* Header */}
-      <div className="bg-zinc-900 border-b border-zinc-800 sticky top-0 z-10">
+      <div className="bg-card border-b border-border sticky top-0 z-10">
         <div className="px-4 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
               <Link
                 href="/dashboard/deals/workflows"
-                className="p-2 text-zinc-500 hover:text-zinc-300 rounded hover:bg-zinc-800"
+                className="p-2 text-muted-foreground hover:text-foreground rounded hover:bg-muted"
               >
                 <ArrowLeft className="w-5 h-5" />
               </Link>
@@ -271,14 +271,14 @@ export default function WorkflowEditorPage() {
                   value={workflow.name}
                   onChange={(e) => setWorkflow(prev => ({ ...prev, name: e.target.value }))}
                   placeholder="Workflow Name"
-                  className="text-xl font-bold text-white bg-transparent border-none focus:ring-0 focus:outline-none font-mono"
+                  className="text-xl font-bold text-foreground bg-transparent border-none focus:ring-0 focus:outline-none font-mono"
                 />
                 <input
                   type="text"
                   value={workflow.description || ''}
                   onChange={(e) => setWorkflow(prev => ({ ...prev, description: e.target.value }))}
                   placeholder="Add a description..."
-                  className="text-sm text-zinc-500 bg-transparent border-none focus:ring-0 focus:outline-none w-full"
+                  className="text-sm text-muted-foreground bg-transparent border-none focus:ring-0 focus:outline-none w-full"
                 />
               </div>
             </div>
@@ -290,7 +290,7 @@ export default function WorkflowEditorPage() {
                   className={`flex items-center gap-2 px-4 py-2 rounded transition-colors font-mono text-xs ${
                     workflow.is_active
                       ? 'bg-green-900/30 text-green-400 hover:bg-green-900/50'
-                      : 'bg-zinc-800 text-zinc-400 hover:bg-zinc-700'
+                      : 'bg-muted text-muted-foreground hover:bg-accent'
                   }`}
                 >
                   {workflow.is_active ? (
@@ -309,7 +309,7 @@ export default function WorkflowEditorPage() {
               <button
                 onClick={saveWorkflow}
                 disabled={saving || !workflow.name}
-                className="flex items-center gap-2 px-4 py-2 bg-amber-500 text-black rounded hover:bg-amber-400 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-mono text-xs font-bold"
+                className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded hover:bg-primary/80 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-mono text-xs font-bold"
               >
                 <Save className="w-4 h-4" />
                 {saving ? 'SAVING...' : 'SAVE'}
@@ -322,21 +322,21 @@ export default function WorkflowEditorPage() {
       {/* Main Content */}
       <div className="max-w-4xl mx-auto px-4 py-8">
         {/* Trigger */}
-        <div className="bg-zinc-900 border border-zinc-800 rounded-lg p-6 mb-6">
+        <div className="bg-card border border-border rounded-lg p-6 mb-6">
           <div className="flex items-center gap-3 mb-4">
             <div className="w-10 h-10 rounded-full bg-purple-900/30 flex items-center justify-center">
               <Zap className="w-5 h-5 text-purple-400" />
             </div>
             <div>
-              <h2 className="font-semibold text-white font-mono">TRIGGER</h2>
-              <p className="text-sm text-zinc-500">When this happens...</p>
+              <h2 className="font-semibold text-foreground font-mono">TRIGGER</h2>
+              <p className="text-sm text-muted-foreground">When this happens...</p>
             </div>
           </div>
 
           <select
             value={workflow.trigger_type}
             onChange={(e) => setWorkflow(prev => ({ ...prev, trigger_type: e.target.value }))}
-            className="w-full px-4 py-3 bg-zinc-800 border border-zinc-700 rounded text-white focus:ring-2 focus:ring-amber-500 focus:border-transparent font-mono text-sm"
+            className="w-full px-4 py-3 bg-muted border border-border rounded text-foreground focus:ring-2 focus:ring-amber-500 focus:border-transparent font-mono text-sm"
           >
             {triggerOptions.map(option => (
               <option key={option.value} value={option.value}>
@@ -346,8 +346,8 @@ export default function WorkflowEditorPage() {
           </select>
 
           {workflow.trigger_type === 'deal_stage_changed' && (
-            <div className="mt-4 p-4 bg-zinc-800 rounded-lg">
-              <label className="block text-sm font-medium text-zinc-400 mb-2 font-mono">
+            <div className="mt-4 p-4 bg-muted rounded-lg">
+              <label className="block text-sm font-medium text-muted-foreground mb-2 font-mono">
                 Filter by stage (optional)
               </label>
               <input
@@ -358,7 +358,7 @@ export default function WorkflowEditorPage() {
                   ...prev,
                   trigger_config: { ...prev.trigger_config, stage_name: e.target.value }
                 }))}
-                className="w-full px-3 py-2 bg-zinc-900 border border-zinc-700 rounded text-white font-mono text-sm"
+                className="w-full px-3 py-2 bg-card border border-border rounded text-foreground font-mono text-sm"
               />
             </div>
           )}
@@ -366,7 +366,7 @@ export default function WorkflowEditorPage() {
 
         {/* Connector */}
         <div className="flex justify-center">
-          <div className="w-px h-8 bg-zinc-700"></div>
+          <div className="w-px h-8 bg-border"></div>
         </div>
 
         {/* Steps */}
@@ -375,15 +375,15 @@ export default function WorkflowEditorPage() {
             <div key={step.id}>
               {index > 0 && (
                 <div className="flex justify-center mb-4">
-                  <div className="w-px h-8 bg-zinc-700"></div>
+                  <div className="w-px h-8 bg-border"></div>
                 </div>
               )}
               
               <div
-                className={`bg-zinc-900 rounded-lg border-2 transition-colors ${
+                className={`bg-card rounded-lg border-2 transition-colors ${
                   selectedStep === step.id
                     ? 'border-amber-500 shadow-lg shadow-amber-500/10'
-                    : 'border-zinc-800 hover:border-zinc-700'
+                    : 'border-border hover:border-border'
                 }`}
               >
                 <div
@@ -395,12 +395,12 @@ export default function WorkflowEditorPage() {
                 >
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
-                      <div className="p-1 text-zinc-600 cursor-grab">
+                      <div className="p-1 text-muted-foreground cursor-grab">
                         <GripVertical className="w-4 h-4" />
                       </div>
                       <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
                         step.step_type === 'action' ? 'bg-blue-900/30' :
-                        step.step_type === 'condition' ? 'bg-yellow-900/30' : 'bg-zinc-800'
+                        step.step_type === 'condition' ? 'bg-yellow-900/30' : 'bg-muted'
                       }`}>
                         {step.step_type === 'action' && step.action_type && (
                           (() => {
@@ -409,13 +409,13 @@ export default function WorkflowEditorPage() {
                           })()
                         )}
                         {step.step_type === 'condition' && <GitBranch className="w-4 h-4 text-yellow-400" />}
-                        {step.step_type === 'delay' && <Clock className="w-4 h-4 text-zinc-400" />}
+                        {step.step_type === 'delay' && <Clock className="w-4 h-4 text-muted-foreground" />}
                       </div>
                       <div>
-                        <p className="font-medium text-white font-mono">
+                        <p className="font-medium text-foreground font-mono">
                           {step.label || step.action_type || step.step_type}
                         </p>
-                        <p className="text-sm text-zinc-500">
+                        <p className="text-sm text-muted-foreground">
                           {step.step_type === 'action' && 'Then do this action'}
                           {step.step_type === 'condition' && 'If/Then condition'}
                           {step.step_type === 'delay' && 'Wait before continuing'}
@@ -428,21 +428,21 @@ export default function WorkflowEditorPage() {
                           e.stopPropagation();
                           deleteStep(step.id);
                         }}
-                        className="p-2 text-zinc-500 hover:text-red-400 rounded hover:bg-zinc-800"
+                        className="p-2 text-muted-foreground hover:text-red-400 rounded hover:bg-muted"
                       >
                         <Trash2 className="w-4 h-4" />
                       </button>
                       {expandedSteps.has(step.id) ? (
-                        <ChevronDown className="w-5 h-5 text-zinc-500" />
+                        <ChevronDown className="w-5 h-5 text-muted-foreground" />
                       ) : (
-                        <ChevronRight className="w-5 h-5 text-zinc-500" />
+                        <ChevronRight className="w-5 h-5 text-muted-foreground" />
                       )}
                     </div>
                   </div>
                 </div>
 
                 {expandedSteps.has(step.id) && (
-                  <div className="px-4 pb-4 border-t border-zinc-800 pt-4">
+                  <div className="px-4 pb-4 border-t border-border pt-4">
                     <StepConfigForm
                       step={step}
                       onUpdate={(updates) => updateStep(step.id, updates)}
@@ -456,12 +456,12 @@ export default function WorkflowEditorPage() {
 
         {/* Add Step Button */}
         <div className="flex justify-center mt-6">
-          <div className="w-px h-8 bg-zinc-700"></div>
+          <div className="w-px h-8 bg-border"></div>
         </div>
         <div className="flex justify-center">
           <button
             onClick={() => setShowActionPicker(true)}
-            className="flex items-center gap-2 px-6 py-3 bg-zinc-900 border-2 border-dashed border-zinc-700 rounded-lg text-zinc-400 hover:border-amber-500/50 hover:text-amber-400 transition-colors font-mono text-sm"
+            className="flex items-center gap-2 px-6 py-3 bg-card border-2 border-dashed border-border rounded-lg text-muted-foreground hover:border-amber-500/50 hover:text-amber-400 transition-colors font-mono text-sm"
           >
             <Plus className="w-5 h-5" />
             ADD STEP
@@ -471,20 +471,20 @@ export default function WorkflowEditorPage() {
         {/* Action Picker Modal */}
         {showActionPicker && (
           <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50">
-            <div className="bg-zinc-900 border border-zinc-700 rounded-xl max-w-md w-full p-6">
-              <h3 className="text-lg font-bold text-white mb-4 font-mono">ADD A STEP</h3>
+            <div className="bg-card border border-border rounded-xl max-w-md w-full p-6">
+              <h3 className="text-lg font-bold text-foreground mb-4 font-mono">ADD A STEP</h3>
               
               <div className="grid grid-cols-2 gap-3 mb-4">
                 {actionOptions.map(action => (
                   <button
                     key={action.value}
                     onClick={() => addStep('action', action.value)}
-                    className="flex items-center gap-3 p-3 border border-zinc-700 rounded-lg hover:border-amber-500/50 hover:bg-zinc-800 transition-colors text-left"
+                    className="flex items-center gap-3 p-3 border border-border rounded-lg hover:border-amber-500/50 hover:bg-muted transition-colors text-left"
                   >
-                    <div className="w-8 h-8 rounded-full bg-zinc-800 flex items-center justify-center">
-                      <action.icon className="w-4 h-4 text-zinc-400" />
+                    <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center">
+                      <action.icon className="w-4 h-4 text-muted-foreground" />
                     </div>
-                    <span className="font-medium text-white font-mono text-sm">{action.label}</span>
+                    <span className="font-medium text-foreground font-mono text-sm">{action.label}</span>
                   </button>
                 ))}
               </div>
@@ -492,14 +492,14 @@ export default function WorkflowEditorPage() {
               <div className="flex gap-3">
                 <button
                   onClick={() => addStep('condition')}
-                  className="flex-1 flex items-center justify-center gap-2 p-3 border border-zinc-700 rounded-lg hover:border-yellow-500/50 hover:bg-zinc-800 transition-colors text-zinc-300 font-mono text-sm"
+                  className="flex-1 flex items-center justify-center gap-2 p-3 border border-border rounded-lg hover:border-yellow-500/50 hover:bg-muted transition-colors text-foreground font-mono text-sm"
                 >
                   <GitBranch className="w-4 h-4" />
                   Condition
                 </button>
                 <button
                   onClick={() => addStep('delay')}
-                  className="flex-1 flex items-center justify-center gap-2 p-3 border border-zinc-700 rounded-lg hover:border-zinc-500 hover:bg-zinc-800 transition-colors text-zinc-300 font-mono text-sm"
+                  className="flex-1 flex items-center justify-center gap-2 p-3 border border-border rounded-lg hover:border-border hover:bg-muted transition-colors text-foreground font-mono text-sm"
                 >
                   <Clock className="w-4 h-4" />
                   Delay
@@ -508,7 +508,7 @@ export default function WorkflowEditorPage() {
 
               <button
                 onClick={() => setShowActionPicker(false)}
-                className="w-full mt-4 py-2 text-zinc-500 hover:text-zinc-300 font-mono text-sm"
+                className="w-full mt-4 py-2 text-muted-foreground hover:text-foreground font-mono text-sm"
               >
                 Cancel
               </button>
@@ -534,8 +534,8 @@ function StepConfigForm({
     });
   };
 
-  const inputClass = "w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded text-white font-mono text-sm focus:ring-2 focus:ring-amber-500 focus:border-transparent";
-  const labelClass = "block text-sm font-medium text-zinc-400 mb-1 font-mono";
+  const inputClass = "w-full px-3 py-2 bg-muted border border-border rounded text-foreground font-mono text-sm focus:ring-2 focus:ring-amber-500 focus:border-transparent";
+  const labelClass = "block text-sm font-medium text-muted-foreground mb-1 font-mono";
 
   if (step.step_type === 'delay') {
     return (
@@ -798,7 +798,7 @@ function StepConfigForm({
               rows={3}
               className={inputClass}
             />
-            <p className="text-xs text-zinc-600 mt-1">
+            <p className="text-xs text-muted-foreground mt-1">
               Use {'{{contact.name}}'}, {'{{deal.title}}'} for dynamic values
             </p>
           </div>
@@ -875,7 +875,7 @@ function StepConfigForm({
 
     default:
       return (
-        <div className="text-zinc-500 text-sm font-mono">
+        <div className="text-muted-foreground text-sm font-mono">
           No configuration options available for this action type.
         </div>
       );

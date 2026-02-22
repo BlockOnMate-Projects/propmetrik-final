@@ -40,10 +40,10 @@ function Panel({ title, icon: Icon, children, className }: {
     className?: string;
 }) {
     return (
-        <div className={cn('border border-zinc-800 bg-zinc-900/50', className)}>
-            <div className="flex items-center gap-2 px-3 py-1.5 bg-zinc-800/50 border-b border-zinc-800">
-                {Icon && <Icon className="h-3 w-3 text-amber-500" />}
-                <span className="font-mono text-[10px] text-amber-500 tracking-wider">{title}</span>
+        <div className={cn('border border-border bg-card', className)}>
+            <div className="flex items-center gap-2 px-3 py-1.5 bg-muted/50 border-b border-border">
+                {Icon && <Icon className="h-3 w-3 text-primary" />}
+                <span className="font-mono text-[10px] text-primary tracking-wider">{title}</span>
             </div>
             <div className="p-4">{children}</div>
         </div>
@@ -207,19 +207,19 @@ export default function NewAgentPage() {
                         variant="ghost" 
                         size="icon" 
                         onClick={() => router.back()}
-                        className="text-zinc-400 hover:text-white"
+                        className="text-muted-foreground hover:text-foreground"
                     >
                         <ArrowLeft className="h-5 w-5" />
                     </Button>
                     <div>
-                        <h1 className="font-mono text-xl text-white">NEW AGENT</h1>
-                        <p className="font-mono text-[10px] text-zinc-500">Add a new agent to your team</p>
+                        <h1 className="font-mono text-xl text-foreground">NEW AGENT</h1>
+                        <p className="font-mono text-[10px] text-muted-foreground">Add a new agent to your team</p>
                     </div>
                 </div>
                 <Button 
                     onClick={handleSave}
                     disabled={isSaving}
-                    className="bg-amber-500 text-black hover:bg-amber-400 font-mono text-xs"
+                    className="bg-primary text-primary-foreground hover:bg-primary/80 font-mono text-xs"
                 >
                     {isSaving ? (
                         <Loader2 className="h-4 w-4 animate-spin mr-2" />
@@ -241,13 +241,13 @@ export default function NewAgentPage() {
             <Panel title="PERSONAL INFORMATION" icon={User}>
                 <div className="grid grid-cols-2 gap-4">
                     <div>
-                        <Label className="font-mono text-[10px] text-zinc-500">FIRST NAME *</Label>
+                        <Label className="font-mono text-[10px] text-muted-foreground">FIRST NAME *</Label>
                         <Input
                             value={firstName}
                             onChange={(e) => setFirstName(e.target.value)}
                             placeholder="Enter first name"
                             className={cn(
-                                "mt-1 bg-zinc-800 border-zinc-700 text-white font-mono text-xs",
+                                "mt-1 bg-muted border-border text-foreground font-mono text-xs",
                                 errors.firstName && "border-red-500"
                             )}
                         />
@@ -255,13 +255,13 @@ export default function NewAgentPage() {
                     </div>
 
                     <div>
-                        <Label className="font-mono text-[10px] text-zinc-500">LAST NAME *</Label>
+                        <Label className="font-mono text-[10px] text-muted-foreground">LAST NAME *</Label>
                         <Input
                             value={lastName}
                             onChange={(e) => setLastName(e.target.value)}
                             placeholder="Enter last name"
                             className={cn(
-                                "mt-1 bg-zinc-800 border-zinc-700 text-white font-mono text-xs",
+                                "mt-1 bg-muted border-border text-foreground font-mono text-xs",
                                 errors.lastName && "border-red-500"
                             )}
                         />
@@ -269,16 +269,16 @@ export default function NewAgentPage() {
                     </div>
 
                     <div>
-                        <Label className="font-mono text-[10px] text-zinc-500">EMAIL ADDRESS *</Label>
+                        <Label className="font-mono text-[10px] text-muted-foreground">EMAIL ADDRESS *</Label>
                         <div className="relative">
-                            <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-zinc-500" />
+                            <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
                             <Input
                                 type="email"
                                 value={email}
                                 onChange={(e) => setEmail(e.target.value)}
                                 placeholder="agent@company.com"
                                 className={cn(
-                                    "mt-1 pl-9 bg-zinc-800 border-zinc-700 text-white font-mono text-xs",
+                                    "mt-1 pl-9 bg-muted border-border text-foreground font-mono text-xs",
                                     errors.email && "border-red-500"
                                 )}
                             />
@@ -287,15 +287,15 @@ export default function NewAgentPage() {
                     </div>
 
                     <div>
-                        <Label className="font-mono text-[10px] text-zinc-500">PRIMARY PHONE *</Label>
+                        <Label className="font-mono text-[10px] text-muted-foreground">PRIMARY PHONE *</Label>
                         <div className="relative">
-                            <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-zinc-500" />
+                            <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
                             <Input
                                 value={phonePrimary}
                                 onChange={(e) => setPhonePrimary(e.target.value)}
                                 placeholder="+233 XX XXX XXXX"
                                 className={cn(
-                                    "mt-1 pl-9 bg-zinc-800 border-zinc-700 text-white font-mono text-xs",
+                                    "mt-1 pl-9 bg-muted border-border text-foreground font-mono text-xs",
                                     errors.phonePrimary && "border-red-500"
                                 )}
                             />
@@ -304,27 +304,27 @@ export default function NewAgentPage() {
                     </div>
 
                     <div>
-                        <Label className="font-mono text-[10px] text-zinc-500">SECONDARY PHONE</Label>
+                        <Label className="font-mono text-[10px] text-muted-foreground">SECONDARY PHONE</Label>
                         <div className="relative">
-                            <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-zinc-500" />
+                            <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
                             <Input
                                 value={phoneSecondary}
                                 onChange={(e) => setPhoneSecondary(e.target.value)}
                                 placeholder="+233 XX XXX XXXX"
-                                className="mt-1 pl-9 bg-zinc-800 border-zinc-700 text-white font-mono text-xs"
+                                className="mt-1 pl-9 bg-muted border-border text-foreground font-mono text-xs"
                             />
                         </div>
                     </div>
 
                     <div>
-                        <Label className="font-mono text-[10px] text-zinc-500">WHATSAPP NUMBER</Label>
+                        <Label className="font-mono text-[10px] text-muted-foreground">WHATSAPP NUMBER</Label>
                         <div className="relative">
                             <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-green-500" />
                             <Input
                                 value={whatsappNumber}
                                 onChange={(e) => setWhatsappNumber(e.target.value)}
                                 placeholder="+233 XX XXX XXXX"
-                                className="mt-1 pl-9 bg-zinc-800 border-zinc-700 text-white font-mono text-xs"
+                                className="mt-1 pl-9 bg-muted border-border text-foreground font-mono text-xs"
                             />
                         </div>
                     </div>
@@ -335,37 +335,37 @@ export default function NewAgentPage() {
             <Panel title="PROFESSIONAL CREDENTIALS" icon={Briefcase}>
                 <div className="grid grid-cols-2 gap-4">
                     <div>
-                        <Label className="font-mono text-[10px] text-zinc-500">LICENSE NUMBER</Label>
+                        <Label className="font-mono text-[10px] text-muted-foreground">LICENSE NUMBER</Label>
                         <Input
                             value={licenseNumber}
                             onChange={(e) => setLicenseNumber(e.target.value)}
                             placeholder="GRE-XXXX-XXX"
-                            className="mt-1 bg-zinc-800 border-zinc-700 text-white font-mono text-xs"
+                            className="mt-1 bg-muted border-border text-foreground font-mono text-xs"
                         />
                     </div>
 
                     <div>
-                        <Label className="font-mono text-[10px] text-zinc-500">LICENSE EXPIRY DATE</Label>
+                        <Label className="font-mono text-[10px] text-muted-foreground">LICENSE EXPIRY DATE</Label>
                         <Input
                             type="date"
                             value={licenseExpiry}
                             onChange={(e) => setLicenseExpiry(e.target.value)}
-                            className="mt-1 bg-zinc-800 border-zinc-700 text-white font-mono text-xs"
+                            className="mt-1 bg-muted border-border text-foreground font-mono text-xs"
                         />
                     </div>
 
                     <div>
-                        <Label className="font-mono text-[10px] text-zinc-500">GREB REGISTRATION ID</Label>
+                        <Label className="font-mono text-[10px] text-muted-foreground">GREB REGISTRATION ID</Label>
                         <Input
                             value={grebId}
                             onChange={(e) => setGrebId(e.target.value)}
                             placeholder="Ghana Real Estate Board ID"
-                            className="mt-1 bg-zinc-800 border-zinc-700 text-white font-mono text-xs"
+                            className="mt-1 bg-muted border-border text-foreground font-mono text-xs"
                         />
                     </div>
 
                     <div>
-                        <Label className="font-mono text-[10px] text-zinc-500">YEARS OF EXPERIENCE</Label>
+                        <Label className="font-mono text-[10px] text-muted-foreground">YEARS OF EXPERIENCE</Label>
                         <Input
                             type="number"
                             value={yearsExperience}
@@ -373,17 +373,17 @@ export default function NewAgentPage() {
                             placeholder="0"
                             min="0"
                             max="50"
-                            className="mt-1 bg-zinc-800 border-zinc-700 text-white font-mono text-xs"
+                            className="mt-1 bg-muted border-border text-foreground font-mono text-xs"
                         />
                     </div>
 
                     <div className="col-span-2">
-                        <Label className="font-mono text-[10px] text-zinc-500">BIO / DESCRIPTION</Label>
+                        <Label className="font-mono text-[10px] text-muted-foreground">BIO / DESCRIPTION</Label>
                         <Textarea
                             value={bio}
                             onChange={(e) => setBio(e.target.value)}
                             placeholder="Brief professional bio..."
-                            className="mt-1 bg-zinc-800 border-zinc-700 text-white font-mono text-xs resize-none"
+                            className="mt-1 bg-muted border-border text-foreground font-mono text-xs resize-none"
                             rows={3}
                         />
                     </div>
@@ -393,7 +393,7 @@ export default function NewAgentPage() {
             {/* Specializations */}
             <Panel title="SPECIALIZATIONS" icon={Award}>
                 <div className="space-y-3">
-                    <p className="font-mono text-[10px] text-zinc-500">
+                    <p className="font-mono text-[10px] text-muted-foreground">
                         Select the areas this agent specializes in *
                     </p>
                     <div className="grid grid-cols-3 gap-2">
@@ -403,16 +403,16 @@ export default function NewAgentPage() {
                                 className={cn(
                                     "flex items-center gap-2 p-2 rounded cursor-pointer transition-colors",
                                     specializations.includes(spec.value)
-                                        ? "bg-amber-500/20 border border-amber-500/50"
-                                        : "bg-zinc-800/50 border border-zinc-700 hover:border-zinc-600"
+                                        ? "bg-primary/20 border border-amber-500/50"
+                                        : "bg-muted/50 border border-border hover:border-border"
                                 )}
                             >
                                 <Checkbox
                                     checked={specializations.includes(spec.value)}
                                     onCheckedChange={() => toggleSpecialization(spec.value)}
-                                    className="border-zinc-600"
+                                    className="border-border"
                                 />
-                                <span className="font-mono text-xs text-zinc-300">
+                                <span className="font-mono text-xs text-foreground">
                                     {spec.label}
                                 </span>
                             </label>
@@ -427,7 +427,7 @@ export default function NewAgentPage() {
             {/* Regions Covered */}
             <Panel title="REGIONS COVERED" icon={MapPin}>
                 <div className="space-y-3">
-                    <p className="font-mono text-[10px] text-zinc-500">
+                    <p className="font-mono text-[10px] text-muted-foreground">
                         Select the regions this agent operates in *
                     </p>
                     <div className="grid grid-cols-4 gap-2">
@@ -437,16 +437,16 @@ export default function NewAgentPage() {
                                 className={cn(
                                     "flex items-center gap-2 p-2 rounded cursor-pointer transition-colors",
                                     regionsCovered.includes(region)
-                                        ? "bg-amber-500/20 border border-amber-500/50"
-                                        : "bg-zinc-800/50 border border-zinc-700 hover:border-zinc-600"
+                                        ? "bg-primary/20 border border-amber-500/50"
+                                        : "bg-muted/50 border border-border hover:border-border"
                                 )}
                             >
                                 <Checkbox
                                     checked={regionsCovered.includes(region)}
                                     onCheckedChange={() => toggleRegion(region)}
-                                    className="border-zinc-600"
+                                    className="border-border"
                                 />
-                                <span className="font-mono text-[10px] text-zinc-300">
+                                <span className="font-mono text-[10px] text-foreground">
                                     {region}
                                 </span>
                             </label>
@@ -462,7 +462,7 @@ export default function NewAgentPage() {
             <Panel title="COMMISSION SETTINGS" icon={Percent}>
                 <div className="grid grid-cols-2 gap-4">
                     <div>
-                        <Label className="font-mono text-[10px] text-zinc-500">DEFAULT COMMISSION RATE (%)</Label>
+                        <Label className="font-mono text-[10px] text-muted-foreground">DEFAULT COMMISSION RATE (%)</Label>
                         <Input
                             type="number"
                             value={commissionRate}
@@ -471,15 +471,15 @@ export default function NewAgentPage() {
                             min="0"
                             max="100"
                             step="0.5"
-                            className="mt-1 bg-zinc-800 border-zinc-700 text-white font-mono text-xs"
+                            className="mt-1 bg-muted border-border text-foreground font-mono text-xs"
                         />
-                        <p className="font-mono text-[10px] text-zinc-600 mt-1">
+                        <p className="font-mono text-[10px] text-muted-foreground mt-1">
                             Percentage of deal value as commission
                         </p>
                     </div>
 
                     <div>
-                        <Label className="font-mono text-[10px] text-zinc-500">COMMISSION SPLIT (%)</Label>
+                        <Label className="font-mono text-[10px] text-muted-foreground">COMMISSION SPLIT (%)</Label>
                         <Input
                             type="number"
                             value={commissionSplit}
@@ -488,9 +488,9 @@ export default function NewAgentPage() {
                             min="0"
                             max="100"
                             step="5"
-                            className="mt-1 bg-zinc-800 border-zinc-700 text-white font-mono text-xs"
+                            className="mt-1 bg-muted border-border text-foreground font-mono text-xs"
                         />
-                        <p className="font-mono text-[10px] text-zinc-600 mt-1">
+                        <p className="font-mono text-[10px] text-muted-foreground mt-1">
                             Agent's share of the commission (vs. company)
                         </p>
                     </div>
@@ -502,14 +502,14 @@ export default function NewAgentPage() {
                 <Button 
                     variant="outline"
                     onClick={() => router.back()}
-                    className="border-zinc-700 text-zinc-300 hover:bg-zinc-800"
+                    className="border-border text-foreground hover:bg-muted"
                 >
                     Cancel
                 </Button>
                 <Button 
                     onClick={handleSave}
                     disabled={isSaving}
-                    className="bg-amber-500 text-black hover:bg-amber-400 font-mono text-xs"
+                    className="bg-primary text-primary-foreground hover:bg-primary/80 font-mono text-xs"
                 >
                     {isSaving ? (
                         <Loader2 className="h-4 w-4 animate-spin mr-2" />

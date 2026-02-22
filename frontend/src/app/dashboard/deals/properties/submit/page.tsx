@@ -6,7 +6,7 @@ import Link from 'next/link'
 import { cn } from '@/lib/utils'
 import { 
     Loader2, ArrowLeft, Save, Home, Building2, LandPlot, 
-    MapPin, DollarSign, User, Phone, Mail
+    MapPin, DollarSign, User, Phone, Mail, Camera
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -19,6 +19,7 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select'
+import { PropertyImageUploader, PropertyImage } from '@/components/crm/PropertyImageUploader'
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api/v1'
 
@@ -63,9 +64,9 @@ const GHANA_REGIONS = [
 
 function FormSection({ title, children }: { title: string; children: React.ReactNode }) {
     return (
-        <div className="border border-zinc-800 bg-zinc-900/50">
-            <div className="px-4 py-2 bg-zinc-800/50 border-b border-zinc-800">
-                <span className="font-mono text-[10px] text-amber-500 tracking-wider">{title}</span>
+        <div className="border border-border bg-card">
+            <div className="px-4 py-2 bg-muted/50 border-b border-border">
+                <span className="font-mono text-[10px] text-primary tracking-wider">{title}</span>
             </div>
             <div className="p-4 space-y-4">
                 {children}
@@ -78,6 +79,7 @@ export default function SubmitPropertyPage() {
     const router = useRouter()
     const [isSubmitting, setIsSubmitting] = useState(false)
     const [error, setError] = useState<string | null>(null)
+    const [pendingImageFiles, setPendingImageFiles] = useState<File[]>([])
 
     const [formData, setFormData] = useState<PropertyFormData>({
         property_name: '',
@@ -130,6 +132,22 @@ export default function SubmitPropertyPage() {
             }
 
             const property = await response.json()
+
+            // Upload images if any were added
+            if (pendingImageFiles.length > 0) {
+                try {
+                    const formData = new FormData()
+                    pendingImageFiles.forEach(file => formData.append('images', file))
+
+                    await fetch(`${API_BASE}/crm/properties/${property.id}/images`, {
+                        method: 'POST',
+                        body: formData,
+                    })
+                } catch (imgErr) {
+                    console.warn('Images uploaded partially or failed, property still created:', imgErr)
+                }
+            }
+
             router.push(`/dashboard/deals/properties/${property.id}`)
         } catch (err) {
             console.error('Submit error:', err)
@@ -145,13 +163,13 @@ export default function SubmitPropertyPage() {
             <div className="flex items-center justify-between">
                 <div className="flex items-center gap-4">
                     <Link href="/dashboard/deals/properties">
-                        <Button variant="ghost" size="icon" className="text-zinc-400 hover:text-white">
+                        <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-foreground">
                             <ArrowLeft className="h-5 w-5" />
                         </Button>
                     </Link>
                     <div>
-                        <h1 className="font-mono text-xl text-white">Submit Property</h1>
-                        <p className="font-mono text-[10px] text-zinc-500 mt-1">
+                        <h1 className="font-mono text-xl text-foreground">Submit Property</h1>
+                        <p className="font-mono text-[10px] text-muted-foreground mt-1">
                             ADD A NEW CLIENT PROPERTY TO THE CRM
                         </p>
                     </div>
@@ -169,26 +187,26 @@ export default function SubmitPropertyPage() {
                 <FormSection title="PROPERTY DETAILS">
                     <div className="grid grid-cols-2 gap-4">
                         <div className="col-span-2">
-                            <Label className="font-mono text-[10px] text-zinc-400">Property Name *</Label>
+                            <Label className="font-mono text-[10px] text-muted-foreground">Property Name *</Label>
                             <Input
                                 value={formData.property_name}
                                 onChange={(e) => handleChange('property_name', e.target.value)}
                                 placeholder="e.g., 4-Bedroom Executive House in East Legon"
                                 required
-                                className="mt-1 bg-black border-zinc-800 text-white font-mono text-sm"
+                                className="mt-1 bg-black border-border text-foreground font-mono text-sm"
                             />
                         </div>
 
                         <div>
-                            <Label className="font-mono text-[10px] text-zinc-400">Property Type *</Label>
+                            <Label className="font-mono text-[10px] text-muted-foreground">Property Type *</Label>
                             <Select
                                 value={formData.property_type}
                                 onValueChange={(v) => handleChange('property_type', v)}
                             >
-                                <SelectTrigger className="mt-1 bg-black border-zinc-800 text-white font-mono text-sm">
+                                <SelectTrigger className="mt-1 bg-black border-border text-foreground font-mono text-sm">
                                     <SelectValue />
                                 </SelectTrigger>
-                                <SelectContent className="bg-zinc-900 border-zinc-800">
+                                <SelectContent className="bg-card border-border">
                                     <SelectItem value="house" className="font-mono text-sm">
                                         <div className="flex items-center gap-2">
                                             <Home className="h-4 w-4" /> House
@@ -214,15 +232,15 @@ export default function SubmitPropertyPage() {
                         </div>
 
                         <div>
-                            <Label className="font-mono text-[10px] text-zinc-400">Listing Type *</Label>
+                            <Label className="font-mono text-[10px] text-muted-foreground">Listing Type *</Label>
                             <Select
                                 value={formData.listing_type}
                                 onValueChange={(v) => handleChange('listing_type', v)}
                             >
-                                <SelectTrigger className="mt-1 bg-black border-zinc-800 text-white font-mono text-sm">
+                                <SelectTrigger className="mt-1 bg-black border-border text-foreground font-mono text-sm">
                                     <SelectValue />
                                 </SelectTrigger>
-                                <SelectContent className="bg-zinc-900 border-zinc-800">
+                                <SelectContent className="bg-card border-border">
                                     <SelectItem value="sale" className="font-mono text-sm">For Sale</SelectItem>
                                     <SelectItem value="rent" className="font-mono text-sm">For Rent</SelectItem>
                                     <SelectItem value="lease" className="font-mono text-sm">For Lease</SelectItem>
@@ -231,53 +249,115 @@ export default function SubmitPropertyPage() {
                         </div>
 
                         <div className="col-span-2">
-                            <Label className="font-mono text-[10px] text-zinc-400">Description</Label>
+                            <Label className="font-mono text-[10px] text-muted-foreground">Description</Label>
                             <Textarea
                                 value={formData.description}
                                 onChange={(e) => handleChange('description', e.target.value)}
                                 placeholder="Describe the property..."
                                 rows={3}
-                                className="mt-1 bg-black border-zinc-800 text-white font-mono text-sm"
+                                className="mt-1 bg-black border-border text-foreground font-mono text-sm"
                             />
                         </div>
                     </div>
+                </FormSection>
+
+                {/* Property Images */}
+                <FormSection title="PROPERTY IMAGES">
+                    <p className="text-xs text-muted-foreground mb-3">
+                        Add photos of the property. Images will be uploaded after submission.
+                    </p>
+                    <div
+                        className={cn(
+                            'relative border-2 border-dashed rounded-lg p-6 text-center transition-colors cursor-pointer',
+                            'border-border hover:border-primary/50'
+                        )}
+                        onClick={() => document.getElementById('property-images-input')?.click()}
+                    >
+                        <input
+                            type="file"
+                            multiple
+                            accept="image/jpeg,image/png,image/webp"
+                            className="hidden"
+                            id="property-images-input"
+                            onChange={(e) => {
+                                if (e.target.files) {
+                                    setPendingImageFiles(prev => [...prev, ...Array.from(e.target.files!)])
+                                    e.target.value = ''
+                                }
+                            }}
+                        />
+                        <div className="flex flex-col items-center gap-2">
+                            <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
+                                <Camera className="h-6 w-6 text-primary" />
+                            </div>
+                            <p className="text-sm font-medium text-foreground">
+                                Drop images here or click to browse
+                            </p>
+                            <p className="text-xs text-muted-foreground">
+                                JPEG, PNG, WebP up to 10MB each • {pendingImageFiles.length}/20 images
+                            </p>
+                        </div>
+                    </div>
+                    {pendingImageFiles.length > 0 && (
+                        <div className="grid grid-cols-4 gap-2 mt-3">
+                            {pendingImageFiles.map((file, i) => (
+                                <div key={i} className="relative aspect-square rounded overflow-hidden border border-border bg-muted group">
+                                    <img
+                                        src={URL.createObjectURL(file)}
+                                        alt={file.name}
+                                        className="w-full h-full object-cover"
+                                    />
+                                    <button
+                                        type="button"
+                                        onClick={() => setPendingImageFiles(prev => prev.filter((_, idx) => idx !== i))}
+                                        className="absolute top-1 right-1 w-6 h-6 rounded-full bg-black/60 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity text-xs"
+                                    >
+                                        ×
+                                    </button>
+                                    <div className="absolute bottom-0 left-0 right-0 bg-black/50 p-1">
+                                        <p className="text-[9px] text-white truncate">{file.name}</p>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    )}
                 </FormSection>
 
                 {/* Location */}
                 <FormSection title="LOCATION">
                     <div className="grid grid-cols-2 gap-4">
                         <div className="col-span-2">
-                            <Label className="font-mono text-[10px] text-zinc-400">Address *</Label>
+                            <Label className="font-mono text-[10px] text-muted-foreground">Address *</Label>
                             <Input
                                 value={formData.address}
                                 onChange={(e) => handleChange('address', e.target.value)}
                                 placeholder="Street address"
                                 required
-                                className="mt-1 bg-black border-zinc-800 text-white font-mono text-sm"
+                                className="mt-1 bg-black border-border text-foreground font-mono text-sm"
                             />
                         </div>
 
                         <div>
-                            <Label className="font-mono text-[10px] text-zinc-400">City *</Label>
+                            <Label className="font-mono text-[10px] text-muted-foreground">City *</Label>
                             <Input
                                 value={formData.city}
                                 onChange={(e) => handleChange('city', e.target.value)}
                                 placeholder="e.g., Accra"
                                 required
-                                className="mt-1 bg-black border-zinc-800 text-white font-mono text-sm"
+                                className="mt-1 bg-black border-border text-foreground font-mono text-sm"
                             />
                         </div>
 
                         <div>
-                            <Label className="font-mono text-[10px] text-zinc-400">Region *</Label>
+                            <Label className="font-mono text-[10px] text-muted-foreground">Region *</Label>
                             <Select
                                 value={formData.region}
                                 onValueChange={(v) => handleChange('region', v)}
                             >
-                                <SelectTrigger className="mt-1 bg-black border-zinc-800 text-white font-mono text-sm">
+                                <SelectTrigger className="mt-1 bg-black border-border text-foreground font-mono text-sm">
                                     <SelectValue />
                                 </SelectTrigger>
-                                <SelectContent className="bg-zinc-900 border-zinc-800 max-h-[200px]">
+                                <SelectContent className="bg-card border-border max-h-[200px]">
                                     {GHANA_REGIONS.map(region => (
                                         <SelectItem key={region} value={region} className="font-mono text-sm">
                                             {region}
@@ -288,12 +368,12 @@ export default function SubmitPropertyPage() {
                         </div>
 
                         <div>
-                            <Label className="font-mono text-[10px] text-zinc-400">Ghana Post GPS Address</Label>
+                            <Label className="font-mono text-[10px] text-muted-foreground">Ghana Post GPS Address</Label>
                             <Input
                                 value={formData.digital_address}
                                 onChange={(e) => handleChange('digital_address', e.target.value)}
                                 placeholder="e.g., GA-123-4567"
-                                className="mt-1 bg-black border-zinc-800 text-white font-mono text-sm"
+                                className="mt-1 bg-black border-border text-foreground font-mono text-sm"
                             />
                         </div>
                     </div>
@@ -303,7 +383,7 @@ export default function SubmitPropertyPage() {
                 <FormSection title="PRICING">
                     <div className="grid grid-cols-3 gap-4">
                         <div className="col-span-2">
-                            <Label className="font-mono text-[10px] text-zinc-400">
+                            <Label className="font-mono text-[10px] text-muted-foreground">
                                 {formData.listing_type === 'rent' ? 'Monthly Rent' : 'Asking Price'} *
                             </Label>
                             <Input
@@ -312,20 +392,20 @@ export default function SubmitPropertyPage() {
                                 onChange={(e) => handleChange('price', e.target.value)}
                                 placeholder="0.00"
                                 required
-                                className="mt-1 bg-black border-zinc-800 text-white font-mono text-sm"
+                                className="mt-1 bg-black border-border text-foreground font-mono text-sm"
                             />
                         </div>
 
                         <div>
-                            <Label className="font-mono text-[10px] text-zinc-400">Currency</Label>
+                            <Label className="font-mono text-[10px] text-muted-foreground">Currency</Label>
                             <Select
                                 value={formData.currency}
                                 onValueChange={(v) => handleChange('currency', v)}
                             >
-                                <SelectTrigger className="mt-1 bg-black border-zinc-800 text-white font-mono text-sm">
+                                <SelectTrigger className="mt-1 bg-black border-border text-foreground font-mono text-sm">
                                     <SelectValue />
                                 </SelectTrigger>
-                                <SelectContent className="bg-zinc-900 border-zinc-800">
+                                <SelectContent className="bg-card border-border">
                                     <SelectItem value="GHS" className="font-mono text-sm">GHS (₵)</SelectItem>
                                     <SelectItem value="USD" className="font-mono text-sm">USD ($)</SelectItem>
                                     <SelectItem value="EUR" className="font-mono text-sm">EUR (€)</SelectItem>
@@ -341,50 +421,50 @@ export default function SubmitPropertyPage() {
                     <FormSection title="PROPERTY SPECIFICATIONS">
                         <div className="grid grid-cols-4 gap-4">
                             <div>
-                                <Label className="font-mono text-[10px] text-zinc-400">Bedrooms</Label>
+                                <Label className="font-mono text-[10px] text-muted-foreground">Bedrooms</Label>
                                 <Input
                                     type="number"
                                     value={formData.bedrooms}
                                     onChange={(e) => handleChange('bedrooms', e.target.value)}
                                     placeholder="0"
                                     min="0"
-                                    className="mt-1 bg-black border-zinc-800 text-white font-mono text-sm"
+                                    className="mt-1 bg-black border-border text-foreground font-mono text-sm"
                                 />
                             </div>
 
                             <div>
-                                <Label className="font-mono text-[10px] text-zinc-400">Bathrooms</Label>
+                                <Label className="font-mono text-[10px] text-muted-foreground">Bathrooms</Label>
                                 <Input
                                     type="number"
                                     value={formData.bathrooms}
                                     onChange={(e) => handleChange('bathrooms', e.target.value)}
                                     placeholder="0"
                                     min="0"
-                                    className="mt-1 bg-black border-zinc-800 text-white font-mono text-sm"
+                                    className="mt-1 bg-black border-border text-foreground font-mono text-sm"
                                 />
                             </div>
 
                             <div>
-                                <Label className="font-mono text-[10px] text-zinc-400">Building Area (sqm)</Label>
+                                <Label className="font-mono text-[10px] text-muted-foreground">Building Area (sqm)</Label>
                                 <Input
                                     type="number"
                                     value={formData.area_sqm}
                                     onChange={(e) => handleChange('area_sqm', e.target.value)}
                                     placeholder="0"
                                     min="0"
-                                    className="mt-1 bg-black border-zinc-800 text-white font-mono text-sm"
+                                    className="mt-1 bg-black border-border text-foreground font-mono text-sm"
                                 />
                             </div>
 
                             <div>
-                                <Label className="font-mono text-[10px] text-zinc-400">Land Size (sqm)</Label>
+                                <Label className="font-mono text-[10px] text-muted-foreground">Land Size (sqm)</Label>
                                 <Input
                                     type="number"
                                     value={formData.land_size_sqm}
                                     onChange={(e) => handleChange('land_size_sqm', e.target.value)}
                                     placeholder="0"
                                     min="0"
-                                    className="mt-1 bg-black border-zinc-800 text-white font-mono text-sm"
+                                    className="mt-1 bg-black border-border text-foreground font-mono text-sm"
                                 />
                             </div>
                         </div>
@@ -395,7 +475,7 @@ export default function SubmitPropertyPage() {
                     <FormSection title="LAND SPECIFICATIONS">
                         <div className="grid grid-cols-2 gap-4">
                             <div>
-                                <Label className="font-mono text-[10px] text-zinc-400">Land Size (sqm) *</Label>
+                                <Label className="font-mono text-[10px] text-muted-foreground">Land Size (sqm) *</Label>
                                 <Input
                                     type="number"
                                     value={formData.land_size_sqm}
@@ -403,7 +483,7 @@ export default function SubmitPropertyPage() {
                                     placeholder="0"
                                     required
                                     min="0"
-                                    className="mt-1 bg-black border-zinc-800 text-white font-mono text-sm"
+                                    className="mt-1 bg-black border-border text-foreground font-mono text-sm"
                                 />
                             </div>
                         </div>
@@ -414,41 +494,41 @@ export default function SubmitPropertyPage() {
                 <FormSection title="PROPERTY OWNER">
                     <div className="grid grid-cols-3 gap-4">
                         <div>
-                            <Label className="font-mono text-[10px] text-zinc-400">Owner Name</Label>
+                            <Label className="font-mono text-[10px] text-muted-foreground">Owner Name</Label>
                             <div className="relative mt-1">
-                                <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-500" />
+                                <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                                 <Input
                                     value={formData.owner_name}
                                     onChange={(e) => handleChange('owner_name', e.target.value)}
                                     placeholder="Full name"
-                                    className="pl-10 bg-black border-zinc-800 text-white font-mono text-sm"
+                                    className="pl-10 bg-black border-border text-foreground font-mono text-sm"
                                 />
                             </div>
                         </div>
 
                         <div>
-                            <Label className="font-mono text-[10px] text-zinc-400">Phone Number</Label>
+                            <Label className="font-mono text-[10px] text-muted-foreground">Phone Number</Label>
                             <div className="relative mt-1">
-                                <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-500" />
+                                <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                                 <Input
                                     value={formData.owner_contact}
                                     onChange={(e) => handleChange('owner_contact', e.target.value)}
                                     placeholder="+233..."
-                                    className="pl-10 bg-black border-zinc-800 text-white font-mono text-sm"
+                                    className="pl-10 bg-black border-border text-foreground font-mono text-sm"
                                 />
                             </div>
                         </div>
 
                         <div>
-                            <Label className="font-mono text-[10px] text-zinc-400">Email</Label>
+                            <Label className="font-mono text-[10px] text-muted-foreground">Email</Label>
                             <div className="relative mt-1">
-                                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-500" />
+                                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                                 <Input
                                     type="email"
                                     value={formData.owner_email}
                                     onChange={(e) => handleChange('owner_email', e.target.value)}
                                     placeholder="owner@example.com"
-                                    className="pl-10 bg-black border-zinc-800 text-white font-mono text-sm"
+                                    className="pl-10 bg-black border-border text-foreground font-mono text-sm"
                                 />
                             </div>
                         </div>
@@ -458,14 +538,14 @@ export default function SubmitPropertyPage() {
                 {/* Actions */}
                 <div className="flex items-center justify-end gap-4 pt-4">
                     <Link href="/dashboard/deals/properties">
-                        <Button type="button" variant="outline" className="border-zinc-700 text-zinc-300 font-mono text-xs">
+                        <Button type="button" variant="outline" className="border-border text-foreground font-mono text-xs">
                             CANCEL
                         </Button>
                     </Link>
                     <Button 
                         type="submit" 
                         disabled={isSubmitting}
-                        className="bg-amber-500 hover:bg-amber-600 text-black font-mono text-xs"
+                        className="bg-primary hover:bg-primary/90 text-black font-mono text-xs"
                     >
                         {isSubmitting ? (
                             <>

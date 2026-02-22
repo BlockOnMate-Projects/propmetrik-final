@@ -79,9 +79,9 @@ function PropertyCard({ property, onViewDeals }: {
     const router = useRouter()
     
     const statusColors: Record<string, string> = {
-        'pending': 'bg-zinc-500/20 text-zinc-400 border-zinc-500/30',
+        'pending': 'bg-zinc-500/20 text-muted-foreground border-zinc-500/30',
         'active': 'bg-green-500/20 text-green-400 border-green-500/30',
-        'under_offer': 'bg-amber-500/20 text-amber-400 border-amber-500/30',
+        'under_offer': 'bg-primary/20 text-amber-400 border-primary/30',
         'sold': 'bg-purple-500/20 text-purple-400 border-purple-500/30',
         'rented': 'bg-purple-500/20 text-purple-400 border-purple-500/30',
         'withdrawn': 'bg-red-500/20 text-red-400 border-red-500/30',
