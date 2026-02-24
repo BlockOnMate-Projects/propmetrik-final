@@ -277,20 +277,26 @@ config/credentials.json
 *.temp
 
 # Database dumps and exports
-*.sql
+# NOTE: Do NOT use *.sql — it blocks migration files.
+# Only ignore dump/export directories and specific dump extensions.
 *.dump
-*.backup
 database-exports/
 db-dumps/
+*.sql.bak
+*.sql.dump
 
-# Media and uploads
-uploads/
-media/
-images/
-documents/
-files/
-public/uploads/
-static/uploads/
+# Media and uploads (scoped to actual upload/asset directories)
+# NOTE: Do NOT use bare 'documents/', 'images/', or 'uploads/' — they match source code dirs.
+# Use specific paths for each known upload location.
+/uploads/
+/media/
+/backend/uploads/
+/frontend/public/uploads/
+/static/uploads/
+**/uploads/envelopes/
+**/uploads/csv/*.csv
+**/uploads/excel/*.xlsx
+**/uploads/xml/*.xml
 
 # Test files and coverage
 test-results/
@@ -300,14 +306,18 @@ coverage/
 junit.xml
 coverage.xml
 
-# Build artifacts
-build/
-dist/
-lib/
-out/
-target/
-.build/
-compiled/
+# Build artifacts (scoped — do NOT use bare 'lib/' which catches src/lib/ source code)
+/build/
+/dist/
+/out/
+/target/
+/.build/
+/compiled/
+# Per-package build output
+/backend/dist/
+/frontend/.next/
+/blockchain/dist/
+/packages/*/dist/
 
 # Generated documentation
 docs/generated/
@@ -356,12 +366,12 @@ cleaning-logs/
 etl-logs/
 data-quality-reports/
 
-# Reports and exports
-reports/
-exports/
-property-reports/
-valuation-reports/
-market-reports/
+# Reports and exports (scoped to actual generated output, not source code)
+/exports/
+/property-reports/
+/valuation-reports/
+/market-reports/
+# NOTE: Do NOT use bare 'reports/' — it matches frontend/src/**/reports/ source pages.
 
 # Development databases
 *.sqlite
