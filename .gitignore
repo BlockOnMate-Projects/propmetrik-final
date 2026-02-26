@@ -287,7 +287,7 @@ db-dumps/
 uploads/
 media/
 images/
-documents/
+/documents/
 files/
 public/uploads/
 static/uploads/
@@ -303,7 +303,7 @@ coverage.xml
 # Build artifacts
 build/
 dist/
-lib/
+/lib/
 out/
 target/
 .build/
@@ -357,8 +357,8 @@ etl-logs/
 data-quality-reports/
 
 # Reports and exports
-reports/
-exports/
+/reports/
+/exports/
 property-reports/
 valuation-reports/
 market-reports/
