@@ -1,0 +1,477 @@
+/* Report Editor Styles for TipTap ProseMirror - Word-like Page Layout */
+
+/* ============================================================================
+   ROOT & CONTAINER STYLES
+   ============================================================================ */
+
+.report-editor-root {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* Main pages container */
+.paged-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 20px 0;
+  transition: transform 0.2s ease;
+}
+
+/* ============================================================================
+   STICKY TOOLBAR & SIDEBAR
+   ============================================================================ */
+
+/* Toolbar stays fixed at top */
+.report-editor-root > div:nth-child(3) {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+}
+
+/* ============================================================================
+   PAGE STYLES
+   ============================================================================ */
+
+/* Page wrapper */
+.page-wrapper {
+  transition: all 0.2s ease;
+  break-inside: avoid;
+}
+
+.page-wrapper.active .page {
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2), 0 0 0 2px rgba(217, 119, 6, 0.4) !important;
+}
+
+/* Page styling - paper look */
+.page {
+  background: #ffffff !important;
+  position: relative;
+  transition: box-shadow 0.2s ease;
+  border-radius: 2px;
+  break-inside: avoid;
+  page-break-inside: avoid;
+}
+
+.page:hover {
+  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.18), 0 0 0 1px rgba(0, 0, 0, 0.1) !important;
+}
+
+/* Page content area - handles multi-page flow via CSS columns */
+.page-content {
+  position: relative;
+  break-inside: auto;
+  orphans: 3;
+  widows: 3;
+}
+
+/* Prevent elements from breaking across pages/columns */
+.page-content h1,
+.page-content h2,
+.page-content h3,
+.page-content h4 {
+  break-after: avoid;
+  page-break-after: avoid;
+}
+
+.page-content table {
+  break-inside: avoid;
+  page-break-inside: avoid;
+}
+
+.page-content img {
+  break-inside: avoid;
+  page-break-inside: avoid;
+}
+
+.page-content p {
+  orphans: 3;
+  widows: 3;
+}
+
+/* Section header styling */
+.section-header h1 {
+  margin: 0;
+}
+
+/* ============================================================================
+   EDITOR CONTENT STYLES - Matches Microsoft Word
+   ============================================================================ */
+
+.report-editor-content {
+  color: #000000;
+  font-family: 'Times New Roman', Georgia, serif;
+  line-height: 1.5;
+  font-size: 12pt;
+}
+
+.report-editor-content .ProseMirror {
+  outline: none;
+  min-height: 200px;
+  color: #000 !important;
+}
+
+.report-editor-content .ProseMirror * {
+  color: inherit;
+}
+
+/* Headings */
+.report-editor-content .ProseMirror h1,
+.report-editor-content h1 {
+  font-size: 1.875rem;
+  font-weight: 700;
+  margin-bottom: 1rem;
+  margin-top: 1.5rem;
+  color: #000;
+}
+
+.report-editor-content .ProseMirror h2,
+.report-editor-content h2 {
+  font-size: 1.5rem;
+  font-weight: 700;
+  margin-bottom: 0.75rem;
+  margin-top: 1.25rem;
+  color: #000;
+}
+
+.report-editor-content .ProseMirror h3,
+.report-editor-content h3 {
+  font-size: 1.25rem;
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+  margin-top: 1rem;
+  color: #000;
+}
+
+.report-editor-content .ProseMirror h4,
+.report-editor-content h4 {
+  font-size: 1.125rem;
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+  margin-top: 0.75rem;
+  color: #000;
+}
+
+/* Paragraphs */
+.report-editor-content .ProseMirror p,
+.report-editor-content p {
+  line-height: 1.625;
+  margin: 0.75rem 0;
+  font-size: 1rem;
+  color: #000;
+}
+
+/* Text formatting */
+.report-editor-content .ProseMirror strong,
+.report-editor-content strong {
+  font-weight: 700;
+  color: #000;
+}
+
+.report-editor-content .ProseMirror em,
+.report-editor-content em {
+  font-style: italic;
+}
+
+/* Lists */
+.report-editor-content .ProseMirror ul,
+.report-editor-content ul {
+  list-style-type: disc;
+  padding-left: 1.5rem;
+  margin: 0.75rem 0;
+}
+
+.report-editor-content .ProseMirror ol,
+.report-editor-content ol {
+  list-style-type: decimal;
+  padding-left: 1.5rem;
+  margin: 0.75rem 0;
+}
+
+.report-editor-content .ProseMirror li,
+.report-editor-content li {
+  margin: 0.25rem 0;
+  color: #000;
+}
+
+/* Blockquote */
+.report-editor-content .ProseMirror blockquote,
+.report-editor-content blockquote {
+  border-left: 4px solid #d97706;
+  padding-left: 1rem;
+  font-style: italic;
+  color: #4b5563;
+  margin: 1rem 0;
+}
+
+/* Code */
+.report-editor-content .ProseMirror code,
+.report-editor-content code {
+  background-color: #f3f4f6;
+  padding: 0.125rem 0.25rem;
+  border-radius: 0.25rem;
+  font-size: 0.875rem;
+  font-family: 'Courier New', monospace;
+}
+
+.report-editor-content .ProseMirror pre,
+.report-editor-content pre {
+  background-color: #1f2937;
+  padding: 1rem;
+  border-radius: 0.5rem;
+  overflow-x: auto;
+}
+
+.report-editor-content .ProseMirror pre code,
+.report-editor-content pre code {
+  background: none;
+  color: #f3f4f6;
+}
+
+/* Links */
+.report-editor-content .ProseMirror a,
+.report-editor-content a {
+  color: #2563eb;
+  text-decoration: underline;
+}
+
+/* Tables */
+.report-editor-content .ProseMirror table,
+.report-editor-content table {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 1rem 0;
+}
+
+.report-editor-content .ProseMirror th,
+.report-editor-content th {
+  border: 1px solid #9ca3af;
+  background-color: #f3f4f6;
+  padding: 0.5rem;
+  text-align: left;
+  font-weight: 600;
+  color: #000;
+}
+
+.report-editor-content .ProseMirror td,
+.report-editor-content td {
+  border: 1px solid #d1d5db;
+  padding: 0.5rem;
+  color: #000;
+}
+
+/* Horizontal rule */
+.report-editor-content .ProseMirror hr,
+.report-editor-content hr {
+  margin: 1.5rem 0;
+  border: none;
+  border-top: 2px solid #e5e7eb;
+}
+
+/* Images */
+.report-editor-content .ProseMirror img,
+.report-editor-content img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 4px;
+}
+
+/* Placeholder styling */
+.report-editor-content .ProseMirror p.is-editor-empty:first-child::before {
+  color: #9ca3af;
+  content: attr(data-placeholder);
+  float: left;
+  height: 0;
+  pointer-events: none;
+}
+
+/* Highlight styling */
+.report-editor-content .ProseMirror mark,
+.report-editor-content mark {
+  background-color: #fef08a;
+}
+
+/* Selection styling */
+.report-editor-content .ProseMirror ::selection {
+  background-color: #fef3c7;
+}
+
+/* ============================================================================
+   PAGE BREAK STYLES
+   ============================================================================ */
+
+.page-break {
+  page-break-after: always;
+  break-after: page;
+  height: 0;
+  margin: 2rem 0;
+  border: none;
+  border-top: 2px dashed #d1d5db;
+  position: relative;
+}
+
+.page-break::after {
+  content: 'Page Break';
+  position: absolute;
+  left: 50%;
+  top: -10px;
+  transform: translateX(-50%);
+  background: #f3f4f6;
+  padding: 0 0.5rem;
+  font-size: 0.75rem;
+  color: #9ca3af;
+  text-transform: uppercase;
+}
+
+/* ============================================================================
+   FORMATTING MARKS (Show/Hide)
+   ============================================================================ */
+
+.show-formatting .report-editor-content .ProseMirror p::after {
+  content: '¶';
+  color: #cbd5e1;
+  margin-left: 2px;
+}
+
+.show-formatting .report-editor-content .ProseMirror br::after {
+  content: '↵';
+  color: #cbd5e1;
+}
+
+/* ============================================================================
+   RULER STYLES
+   ============================================================================ */
+
+/* Ruler container - handled by component */
+
+/* ============================================================================
+   SCROLLBAR STYLES
+   ============================================================================ */
+
+.report-editor-root ::-webkit-scrollbar {
+  width: 12px;
+  height: 12px;
+}
+
+.report-editor-root ::-webkit-scrollbar-track {
+  background: #3f4346;
+}
+
+.report-editor-root ::-webkit-scrollbar-thumb {
+  background: #6b7280;
+  border-radius: 6px;
+  border: 3px solid #3f4346;
+}
+
+.report-editor-root ::-webkit-scrollbar-thumb:hover {
+  background: #9ca3af;
+}
+
+/* ============================================================================
+   PRINT STYLES
+   ============================================================================ */
+
+@media print {
+  .report-editor-root {
+    background: white !important;
+  }
+
+  .report-editor-root > div:first-child {
+    display: none !important; /* Hide toolbar */
+  }
+
+  .report-editor-root .page-wrapper {
+    margin: 0 !important;
+    page-break-after: always;
+  }
+
+  .report-editor-root .page {
+    box-shadow: none !important;
+    border: none !important;
+    width: 100% !important;
+    min-height: auto !important;
+    padding: 0 !important;
+  }
+
+  .report-editor-root .section-header {
+    margin-top: 0;
+  }
+
+  .paged-container {
+    transform: none !important;
+  }
+
+  /* Hide sidebar */
+  .report-editor-root > div:last-child > div:first-child {
+    display: none !important;
+  }
+
+  /* Full width for document area */
+  .report-editor-root > div:last-child > div:last-child {
+    width: 100% !important;
+  }
+
+  .page-break {
+    display: block;
+    height: 0;
+    page-break-after: always;
+    margin: 0;
+    border: none;
+  }
+
+  .page-break::after {
+    display: none;
+  }
+}
+
+/* ============================================================================
+   RESPONSIVE ADJUSTMENTS
+   ============================================================================ */
+
+@media (max-width: 1200px) {
+  .paged-container {
+    transform: scale(0.8) !important;
+    transform-origin: top center;
+  }
+}
+
+@media (max-width: 900px) {
+  .paged-container {
+    transform: scale(0.6) !important;
+    transform-origin: top center;
+  }
+}
+
+/* ============================================================================
+   FIND & REPLACE HIGHLIGHT
+   ============================================================================ */
+
+.search-highlight {
+  background-color: #fbbf24;
+  color: #000;
+}
+
+.search-highlight-current {
+  background-color: #f97316;
+  color: #fff;
+}
+
+/* ============================================================================
+   ANIMATIONS
+   ============================================================================ */
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+.saving-indicator {
+  animation: pulse 1s ease-in-out infinite;
+}
