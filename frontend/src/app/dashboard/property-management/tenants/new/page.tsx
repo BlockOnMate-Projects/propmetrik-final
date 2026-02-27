@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import {
@@ -73,7 +73,7 @@ const UTILITIES = [
     'Waste Collection'
 ]
 
-export default function NewTenantPage() {
+function NewTenantContent() {
     const router = useRouter()
     const searchParams = useSearchParams()
     const preSelectedPropertyId = searchParams.get('propertyId')
@@ -1065,5 +1065,13 @@ export default function NewTenantPage() {
                 )}
             </div>
         </div>
+    )
+}
+
+export default function NewTenantPage() {
+    return (
+        <Suspense fallback={<div className="flex items-center justify-center min-h-screen"><Loader2 className="h-8 w-8 animate-spin" /></div>}>
+            <NewTenantContent />
+        </Suspense>
     )
 }

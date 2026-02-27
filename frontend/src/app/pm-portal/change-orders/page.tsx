@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, Suspense } from 'react';
 import { useParams, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { 
@@ -79,7 +79,7 @@ const statusConfig: Record<ChangeOrderStatus, { label: string; bg: string; text:
   void: { label: 'Void', bg: 'bg-zinc-600/20', text: 'text-zinc-500' },
 };
 
-export default function ChangeOrdersPage() {
+function ChangeOrdersContent() {
   const params = useParams();
   const searchParams = useSearchParams();
   const projectId = params?.id as string | undefined;
@@ -566,5 +566,13 @@ export default function ChangeOrdersPage() {
         </SheetContent>
       </Sheet>
     </div>
+  );
+}
+
+export default function ChangeOrdersPage() {
+  return (
+    <Suspense fallback={<div className="flex items-center justify-center min-h-screen"><Loader2 className="h-8 w-8 animate-spin" /></div>}>
+      <ChangeOrdersContent />
+    </Suspense>
   );
 }
