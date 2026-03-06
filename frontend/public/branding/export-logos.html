@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PropMetrik Brand Assets - Export Tool</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@700&display=swap" rel="stylesheet">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { 
+      font-family: 'JetBrains Mono', monospace; 
+      background: #18181B; 
+      color: #fff; 
+      padding: 40px;
+      min-height: 100vh;
+    }
+    h1 { color: #F59E0B; margin-bottom: 10px; }
+    .subtitle { color: #71717A; font-size: 12px; margin-bottom: 40px; }
+    .section { margin-bottom: 60px; }
+    .section-title { 
+      font-size: 12px; 
+      color: #F59E0B; 
+      margin-bottom: 20px; 
+      padding-bottom: 10px;
+      border-bottom: 1px solid #27272A;
+    }
+    .assets-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 30px; }
+    .asset-card {
+      background: #000;
+      border: 1px solid #27272A;
+      padding: 30px;
+    }
+    .asset-card.light-bg {
+      background: #FAFAFA;
+    }
+    .asset-label {
+      font-size: 10px;
+      color: #71717A;
+      margin-bottom: 15px;
+    }
+    .asset-card.light-bg .asset-label { color: #52525B; }
+    .logo-container {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px 0;
+    }
+    /* Logo Styles */
+    .logo {
+      font-family: 'JetBrains Mono', monospace;
+      font-weight: 700;
+      letter-spacing: -1px;
+    }
+    .logo-large { font-size: 48px; }
+    .logo-medium { font-size: 36px; }
+    .logo-small { font-size: 24px; }
+    .logo .amber { color: #F59E0B; }
+    .logo .white { color: #FFFFFF; }
+    .logo .dark { color: #18181B; }
+    /* Favicon Styles */
+    .favicon {
+      font-family: 'JetBrains Mono', monospace;
+      font-weight: 700;
+      letter-spacing: -5px;
+    }
+    .favicon-xl { font-size: 120px; }
+    .favicon-lg { font-size: 64px; }
+    .favicon-md { font-size: 32px; }
+    .favicon-sm { font-size: 16px; }
+    .favicon .amber { color: #F59E0B; }
+    .favicon .white { color: #FFFFFF; }
+    .favicon .dark { color: #18181B; }
+    /* Export Section */
+    .export-section {
+      background: #000;
+      border: 1px solid #27272A;
+      padding: 30px;
+      margin-top: 40px;
+    }
+    .export-title {
+      font-size: 14px;
+      color: #F59E0B;
+      margin-bottom: 20px;
+    }
+    .export-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 20px;
+    }
+    .export-item {
+      text-align: center;
+      padding: 20px;
+      border: 1px dashed #27272A;
+    }
+    .export-item canvas {
+      display: block;
+      margin: 0 auto 15px;
+      border: 1px solid #27272A;
+    }
+    .export-btn {
+      background: #F59E0B;
+      color: #000;
+      border: none;
+      padding: 8px 16px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 10px;
+      font-weight: 700;
+      cursor: pointer;
+      margin-top: 10px;
+    }
+    .export-btn:hover { background: #D97706; }
+    .size-label {
+      font-size: 10px;
+      color: #71717A;
+      margin-top: 5px;
+    }
+    .instructions {
+      background: #27272A;
+      padding: 20px;
+      margin-top: 40px;
+      font-size: 12px;
+      color: #A1A1AA;
+    }
+    .instructions h3 { color: #F59E0B; margin-bottom: 10px; }
+    .instructions ol { margin-left: 20px; line-height: 1.8; }
+    .color-swatches {
+      display: flex;
+      gap: 20px;
+      margin-top: 40px;
+    }
+    .swatch {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .swatch-color {
+      width: 40px;
+      height: 40px;
+      border: 1px solid #27272A;
+    }
+    .swatch-info {
+      font-size: 11px;
+    }
+    .swatch-name { color: #fff; }
+    .swatch-hex { color: #71717A; }
+  </style>
+</head>
+<body>
+  <h1>PROPMETRIK BRAND ASSETS</h1>
+  <p class="subtitle">Logo & Favicon Export Tool — Right-click and save, or use the canvas exports below</p>
+
+  <!-- Logo Section -->
+  <div class="section">
+    <div class="section-title">LOGO VARIATIONS</div>
+    <div class="assets-grid">
+      <div class="asset-card">
+        <div class="asset-label">PRIMARY LOGO — BLACK BACKGROUND</div>
+        <div class="logo-container">
+          <span class="logo logo-large"><span class="amber">PROP</span><span class="white">METRIK</span></span>
+        </div>
+      </div>
+      <div class="asset-card light-bg">
+        <div class="asset-label">PRIMARY LOGO — LIGHT BACKGROUND</div>
+        <div class="logo-container">
+          <span class="logo logo-large"><span class="amber">PROP</span><span class="dark">METRIK</span></span>
+        </div>
+      </div>
+      <div class="asset-card">
+        <div class="asset-label">MEDIUM LOGO — BLACK BACKGROUND</div>
+        <div class="logo-container">
+          <span class="logo logo-medium"><span class="amber">PROP</span><span class="white">METRIK</span></span>
+        </div>
+      </div>
+      <div class="asset-card light-bg">
+        <div class="asset-label">MEDIUM LOGO — LIGHT BACKGROUND</div>
+        <div class="logo-container">
+          <span class="logo logo-medium"><span class="amber">PROP</span><span class="dark">METRIK</span></span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Favicon Section -->
+  <div class="section">
+    <div class="section-title">FAVICON / ICON VARIATIONS</div>
+    <div class="assets-grid">
+      <div class="asset-card">
+        <div class="asset-label">FAVICON — BLACK BACKGROUND</div>
+        <div class="logo-container">
+          <span class="favicon favicon-xl"><span class="amber">P</span><span class="white">M</span></span>
+        </div>
+      </div>
+      <div class="asset-card light-bg">
+        <div class="asset-label">FAVICON — LIGHT BACKGROUND</div>
+        <div class="logo-container">
+          <span class="favicon favicon-xl"><span class="amber">P</span><span class="dark">M</span></span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Color Palette -->
+  <div class="section">
+    <div class="section-title">BRAND COLORS</div>
+    <div class="color-swatches">
+      <div class="swatch">
+        <div class="swatch-color" style="background: #F59E0B;"></div>
+        <div class="swatch-info">
+          <div class="swatch-name">PropMetrik Amber</div>
+          <div class="swatch-hex">#F59E0B | RGB(245, 158, 11)</div>
+        </div>
+      </div>
+      <div class="swatch">
+        <div class="swatch-color" style="background: #FFFFFF;"></div>
+        <div class="swatch-info">
+          <div class="swatch-name">White</div>
+          <div class="swatch-hex">#FFFFFF | RGB(255, 255, 255)</div>
+        </div>
+      </div>
+      <div class="swatch">
+        <div class="swatch-color" style="background: #18181B;"></div>
+        <div class="swatch-info">
+          <div class="swatch-name">Terminal Dark</div>
+          <div class="swatch-hex">#18181B | RGB(24, 24, 27)</div>
+        </div>
+      </div>
+      <div class="swatch">
+        <div class="swatch-color" style="background: #000000;"></div>
+        <div class="swatch-info">
+          <div class="swatch-name">Pure Black</div>
+          <div class="swatch-hex">#000000 | RGB(0, 0, 0)</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Canvas Export Section -->
+  <div class="export-section">
+    <div class="export-title">PNG EXPORTS (Click to Download)</div>
+    <div class="export-grid">
+      <div class="export-item">
+        <canvas id="logo-black-2000" width="2000" height="400"></canvas>
+        <div class="size-label">Logo Black BG — 2000×400</div>
+        <button class="export-btn" onclick="downloadCanvas('logo-black-2000', 'propmetrik-logo-black-2000x400.png')">DOWNLOAD PNG</button>
+      </div>
+      <div class="export-item">
+        <canvas id="logo-white-2000" width="2000" height="400"></canvas>
+        <div class="size-label">Logo Light BG — 2000×400</div>
+        <button class="export-btn" onclick="downloadCanvas('logo-white-2000', 'propmetrik-logo-light-2000x400.png')">DOWNLOAD PNG</button>
+      </div>
+      <div class="export-item">
+        <canvas id="favicon-black-512" width="512" height="512"></canvas>
+        <div class="size-label">Favicon Black — 512×512</div>
+        <button class="export-btn" onclick="downloadCanvas('favicon-black-512', 'propmetrik-favicon-black-512x512.png')">DOWNLOAD PNG</button>
+      </div>
+      <div class="export-item">
+        <canvas id="favicon-white-512" width="512" height="512"></canvas>
+        <div class="size-label">Favicon Light — 512×512</div>
+        <button class="export-btn" onclick="downloadCanvas('favicon-white-512', 'propmetrik-favicon-light-512x512.png')">DOWNLOAD PNG</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Instructions -->
+  <div class="instructions">
+    <h3>HOW TO USE</h3>
+    <ol>
+      <li>Wait for the page to fully load (fonts need to render)</li>
+      <li>Click any "DOWNLOAD PNG" button to save the file</li>
+      <li>For other sizes, right-click any logo above and "Save Image As"</li>
+      <li>SVG files are available in /public/branding/ folder for vector editing</li>
+      <li>Font used: JetBrains Mono Bold</li>
+    </ol>
+  </div>
+
+  <script>
+    // Wait for fonts to load
+    document.fonts.ready.then(() => {
+      renderAllCanvases();
+    });
+
+    function renderAllCanvases() {
+      // Logo Black Background 2000x400
+      renderLogo('logo-black-2000', 2000, 400, '#000000', '#F59E0B', '#FFFFFF');
+      
+      // Logo Light Background 2000x400
+      renderLogo('logo-white-2000', 2000, 400, '#FAFAFA', '#F59E0B', '#18181B');
+      
+      // Favicon Black 512x512
+      renderFavicon('favicon-black-512', 512, '#000000', '#F59E0B', '#FFFFFF');
+      
+      // Favicon Light 512x512
+      renderFavicon('favicon-white-512', 512, '#FAFAFA', '#F59E0B', '#18181B');
+    }
+
+    function renderLogo(canvasId, width, height, bgColor, amberColor, textColor) {
+      const canvas = document.getElementById(canvasId);
+      const ctx = canvas.getContext('2d');
+      
+      // Background
+      ctx.fillStyle = bgColor;
+      ctx.fillRect(0, 0, width, height);
+      
+      // Text settings
+      const fontSize = height * 0.6;
+      ctx.font = `700 ${fontSize}px 'JetBrains Mono', monospace`;
+      ctx.textBaseline = 'middle';
+      
+      // Calculate positions
+      const propText = 'PROP';
+      const metrikText = 'METRIK';
+      const propWidth = ctx.measureText(propText).width;
+      const metrikWidth = ctx.measureText(metrikText).width;
+      const totalWidth = propWidth + metrikWidth;
+      const startX = (width - totalWidth) / 2;
+      const y = height / 2;
+      
+      // Draw PROP
+      ctx.fillStyle = amberColor;
+      ctx.fillText(propText, startX, y);
+      
+      // Draw METRIK
+      ctx.fillStyle = textColor;
+      ctx.fillText(metrikText, startX + propWidth, y);
+    }
+
+    function renderFavicon(canvasId, size, bgColor, amberColor, textColor) {
+      const canvas = document.getElementById(canvasId);
+      const ctx = canvas.getContext('2d');
+      
+      // Background
+      ctx.fillStyle = bgColor;
+      ctx.fillRect(0, 0, size, size);
+      
+      // Text settings
+      const fontSize = size * 0.45;
+      ctx.font = `700 ${fontSize}px 'JetBrains Mono', monospace`;
+      ctx.textBaseline = 'middle';
+      
+      // Calculate positions
+      const pText = 'P';
+      const mText = 'M';
+      const pWidth = ctx.measureText(pText).width;
+      const mWidth = ctx.measureText(mText).width;
+      const spacing = -size * 0.02; // Slight negative spacing
+      const totalWidth = pWidth + mWidth + spacing;
+      const startX = (size - totalWidth) / 2;
+      const y = size / 2;
+      
+      // Draw P
+      ctx.fillStyle = amberColor;
+      ctx.fillText(pText, startX, y);
+      
+      // Draw M
+      ctx.fillStyle = textColor;
+      ctx.fillText(mText, startX + pWidth + spacing, y);
+    }
+
+    function downloadCanvas(canvasId, filename) {
+      const canvas = document.getElementById(canvasId);
+      const link = document.createElement('a');
+      link.download = filename;
+      link.href = canvas.toDataURL('image/png');
+      link.click();
+    }
+  </script>
+</body>
+</html>

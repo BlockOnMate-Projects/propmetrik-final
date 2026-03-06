@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <style>
+      @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@700&amp;display=swap');
+      .favicon-text { font-family: 'JetBrains Mono', monospace; font-weight: 700; font-size: 240px; letter-spacing: -20px; }
+      .amber { fill: #F59E0B; }
+      .dark { fill: #18181B; }
+    </style>
+  </defs>
+  <text x="256" y="340" text-anchor="middle" class="favicon-text">
+    <tspan class="amber">P</tspan><tspan class="dark">M</tspan>
+  </text>
+</svg>
