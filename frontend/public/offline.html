@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Offline - PropMetrik</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    body {
+      font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+      background: #000;
+      color: #fff;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+    
+    .container {
+      text-align: center;
+      max-width: 400px;
+    }
+    
+    .icon {
+      width: 64px;
+      height: 64px;
+      margin-bottom: 24px;
+      opacity: 0.5;
+    }
+    
+    h1 {
+      font-size: 20px;
+      color: #f59e0b;
+      margin-bottom: 12px;
+      letter-spacing: 0.1em;
+    }
+    
+    p {
+      font-size: 12px;
+      color: #71717a;
+      line-height: 1.6;
+      margin-bottom: 24px;
+    }
+    
+    .retry-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 12px 24px;
+      background: #27272a;
+      border: 1px solid #3f3f46;
+      color: #fff;
+      font-family: inherit;
+      font-size: 11px;
+      letter-spacing: 0.05em;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    
+    .retry-btn:hover {
+      background: #3f3f46;
+      border-color: #52525b;
+    }
+    
+    .retry-btn svg {
+      width: 14px;
+      height: 14px;
+    }
+    
+    .status {
+      margin-top: 32px;
+      padding: 12px 16px;
+      background: #18181b;
+      border: 1px solid #27272a;
+      font-size: 10px;
+      color: #52525b;
+    }
+    
+    .status.online {
+      border-color: #22c55e;
+      color: #22c55e;
+    }
+    
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.5; }
+    }
+    
+    .checking {
+      animation: pulse 1.5s infinite;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <path d="M1 1l22 22M16.72 11.06A10.94 10.94 0 0 1 19 12.55"/>
+      <path d="M5 12.55a10.94 10.94 0 0 1 5.17-2.39"/>
+      <path d="M10.71 5.05A16 16 0 0 1 22.58 9"/>
+      <path d="M1.42 9a15.91 15.91 0 0 1 4.7-2.88"/>
+      <path d="M8.53 16.11a6 6 0 0 1 6.95 0"/>
+      <line x1="12" y1="20" x2="12.01" y2="20"/>
+    </svg>
+    
+    <h1>YOU'RE OFFLINE</h1>
+    
+    <p>
+      It looks like you've lost your internet connection. 
+      Some features may be unavailable until you're back online.
+    </p>
+    
+    <button class="retry-btn" onclick="retryConnection()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M23 4v6h-6"/>
+        <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
+      </svg>
+      TRY AGAIN
+    </button>
+    
+    <div class="status" id="status">
+      Waiting for connection...
+    </div>
+  </div>
+  
+  <script>
+    const statusEl = document.getElementById('status');
+    
+    function updateStatus() {
+      if (navigator.onLine) {
+        statusEl.textContent = 'Connection restored! Redirecting...';
+        statusEl.classList.add('online');
+        setTimeout(() => {
+          window.location.reload();
+        }, 1000);
+      } else {
+        statusEl.textContent = 'Still offline. Checking...';
+        statusEl.classList.remove('online');
+      }
+    }
+    
+    function retryConnection() {
+      statusEl.textContent = 'Checking connection...';
+      statusEl.classList.add('checking');
+      
+      fetch('/api/health', { method: 'HEAD' })
+        .then(() => {
+          statusEl.textContent = 'Connection restored! Redirecting...';
+          statusEl.classList.add('online');
+          statusEl.classList.remove('checking');
+          setTimeout(() => {
+            window.location.href = '/dashboard';
+          }, 500);
+        })
+        .catch(() => {
+          statusEl.textContent = 'Still offline. Please try again.';
+          statusEl.classList.remove('online', 'checking');
+        });
+    }
+    
+    // Listen for online/offline events
+    window.addEventListener('online', updateStatus);
+    window.addEventListener('offline', updateStatus);
+    
+    // Initial check
+    updateStatus();
+  </script>
+</body>
+</html>
