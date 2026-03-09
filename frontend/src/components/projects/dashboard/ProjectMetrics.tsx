@@ -1,36 +1,45 @@
-import React from 'react'
+import React, { useMemo } from 'react'
 import {
   TrendingUp,
   DollarSign,
   Calendar,
   Home,
   CheckCircle2,
-  AlertTriangle
+  AlertTriangle,
+  ShieldAlert,
+  Pause,
+  XCircle,
+  Clock
 } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Progress } from '@/components/ui/progress'
 import { formatCurrency } from '@/lib/utils'
-import { BudgetSummary, ProjectStats, UnitStats } from '@/types/projects'
+import { BudgetSummary, ProjectStats, UnitStats, DevelopmentProject, ProjectPhase } from '@/types/projects'
 import { cn } from '@/lib/utils'
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts'
 
 interface ProjectMetricsProps {
+  project?: DevelopmentProject
+  phases?: ProjectPhase[]
   budget?: BudgetSummary
   stats?: ProjectStats
   units?: UnitStats
   currency?: string
+  rfiStats?: { total: number; overdue: number; by_status?: Record<string, number> }
+  coStats?: { total: number; total_cost_impact: number; total_pending: number; by_status?: Record<string, number> }
 }
 
 export function ProjectMetrics({
+  project,
+  phases,
   budget,
   stats,
   units,
-  currency = 'GHS'
+  currency = 'GHS',
+  rfiStats,
+  coStats,
 }: ProjectMetricsProps) {
 
-  // Calculate Progress Percentages
-  // According to types/projects.ts:
-  // BudgetSummary has total_revised_budget, total_actual
+  // ─── Budget calculations ───
   const totalBudgetVal = budget?.total_revised_budget || budget?.total_original_budget || 0
   const totalSpentVal = budget?.total_actual || 0
 
@@ -51,33 +60,113 @@ export function ProjectMetrics({
     { name: 'Remaining', value: Math.max(0, totalBudgetVal - totalSpentVal), color: '#27272a' }
   ] : []
 
+  // ─── Timeline calculations ───
+  const timeline = useMemo(() => {
+    const start = project?.actual_start_date || project?.planned_start_date
+    const end = project?.planned_end_date || project?.planned_completion_date
+
+    if (!start || !end) return { weeksElapsed: 0, totalWeeks: 0, currentPhase: null as ProjectPhase | null, overallProgress: project?.overall_progress || 0, targetProgress: 0 }
+
+    const startDate = new Date(start)
+    const endDate = new Date(end)
+    const now = new Date()
+
+    const totalMs = endDate.getTime() - startDate.getTime()
+    const elapsedMs = now.getTime() - startDate.getTime()
+
+    const totalWeeks = Math.max(1, Math.round(totalMs / (7 * 24 * 60 * 60 * 1000)))
+    const weeksElapsed = Math.max(0, Math.min(totalWeeks, Math.round(elapsedMs / (7 * 24 * 60 * 60 * 1000))))
+
+    const currentPhase = phases?.find(p => p.status === 'in_progress') || null
+
+    // Overall progress: weighted average of phase completion, or project-level field
+    const totalPhases = phases?.length || 0
+    const overallProgress = totalPhases > 0
+      ? Math.round(phases!.reduce((sum, p) => sum + (p.progress_percentage || 0), 0) / totalPhases)
+      : (project?.overall_progress || 0)
+
+    const targetProgress = Math.round((weeksElapsed / totalWeeks) * 100)
+
+    return { weeksElapsed, totalWeeks, currentPhase, overallProgress, targetProgress }
+  }, [project, phases])
+
+  const scheduleVariance = timeline.overallProgress - timeline.targetProgress
+
+  // ─── Overall Health calculation ───
+  const health = useMemo(() => {
+    if (!project) return { label: 'No Data', color: 'zinc', bgColor: 'bg-zinc-500/10', textColor: 'text-zinc-400', borderColor: 'border-zinc-500/20', icon: Clock, description: 'No project data loaded' }
+
+    // Terminal project states
+    if (project.status === 'on_hold') return { label: 'On Hold', color: 'zinc', bgColor: 'bg-zinc-500/10', textColor: 'text-zinc-400', borderColor: 'border-zinc-500/20', icon: Pause, description: 'Project is on hold' }
+    if (project.status === 'cancelled') return { label: 'Cancelled', color: 'red', bgColor: 'bg-red-500/10', textColor: 'text-red-400', borderColor: 'border-red-500/20', icon: XCircle, description: 'Project has been cancelled' }
+    if (project.status === 'completed' || project.status === 'sold_out') return { label: 'Completed', color: 'emerald', bgColor: 'bg-emerald-500/10', textColor: 'text-emerald-400', borderColor: 'border-emerald-500/20', icon: CheckCircle2, description: 'Project completed successfully' }
+
+    // Count risk factors
+    let issues = 0
+    let warnings = 0
+    const riskTags: string[] = []
+
+    // Budget risk
+    if (budgetUtilization > 100) { issues++; riskTags.push('Over Budget') }
+    else if (budgetUtilization > 90) { warnings++; riskTags.push('Budget Risk') }
+
+    // Delayed or blocked phases
+    const delayedPhases = phases?.filter(p => p.status === 'delayed' || p.status === 'blocked') || []
+    if (delayedPhases.length > 0) { issues += delayedPhases.length; riskTags.push(`${delayedPhases.length} Phase${delayedPhases.length > 1 ? 's' : ''} Delayed`) }
+
+    // Schedule variance (behind schedule by >10%?)
+    if (scheduleVariance < -15) { issues++; riskTags.push('Behind Schedule') }
+    else if (scheduleVariance < -5) { warnings++; riskTags.push('Schedule Slip') }
+
+    // Overdue RFIs
+    if (rfiStats && rfiStats.overdue > 0) { warnings++; riskTags.push(`${rfiStats.overdue} Overdue RFI${rfiStats.overdue > 1 ? 's' : ''}`) }
+
+    // Pending change orders with cost impact
+    if (coStats && coStats.total_pending > 0 && coStats.total_cost_impact > 0) { warnings++; riskTags.push('Pending COs') }
+
+    if (issues > 0) return { label: 'At Risk', color: 'red', bgColor: 'bg-red-500/10', textColor: 'text-red-400', borderColor: 'border-red-500/20', icon: ShieldAlert, description: riskTags.slice(0, 2).join(' · '), riskTags }
+    if (warnings > 0) return { label: 'Caution', color: 'amber', bgColor: 'bg-amber-500/10', textColor: 'text-amber-400', borderColor: 'border-amber-500/20', icon: AlertTriangle, description: riskTags.slice(0, 2).join(' · '), riskTags }
+    return { label: 'On Track', color: 'emerald', bgColor: 'bg-emerald-500/10', textColor: 'text-emerald-400', borderColor: 'border-emerald-500/20', icon: CheckCircle2, description: 'No critical issues detected', riskTags: [] }
+  }, [project, phases, budgetUtilization, scheduleVariance, rfiStats, coStats])
+
+  const HealthIcon = health.icon
+
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5 mb-8">
 
-      {/* 1. HEALTH / OVERVIEW CARD */}
+      {/* 1. HEALTH / OVERVIEW CARD — computed from real data */}
       <Card className="bg-zinc-950/50 border-zinc-800 backdrop-blur-sm shadow-xl hover:border-zinc-700 transition-colors">
         <CardHeader className="flex flex-row items-center justify-between pb-3 space-y-0 border-b border-zinc-800/50 mb-3">
           <CardTitle className="text-[11px] font-sans font-semibold text-zinc-400 uppercase tracking-widest">
             Overall Health
           </CardTitle>
-          <div className="p-1.5 bg-emerald-500/10 rounded-md">
-            <TrendingUp className="h-4 w-4 text-emerald-500" />
+          <div className={cn("p-1.5 rounded-md", health.bgColor)}>
+            <HealthIcon className={cn("h-4 w-4", health.textColor)} />
           </div>
         </CardHeader>
         <CardContent>
-          <div className="text-2xl font-semibold text-white tracking-tight mb-1">On Track</div>
+          <div className={cn("text-2xl font-semibold tracking-tight mb-1", health.textColor)}>{health.label}</div>
           <p className="text-xs text-zinc-500 font-medium">
-            No critical operational issues detected
+            {health.description}
           </p>
-          <div className="mt-5 flex items-center gap-2">
-            <div className="flex items-center gap-1.5 px-2.5 py-1 bg-emerald-500/10 rounded border border-emerald-500/20">
-              <CheckCircle2 className="h-3 w-3 text-emerald-500" />
-              <span className="text-[10px] text-emerald-400 font-medium uppercase tracking-wider">Compliance OK</span>
+          <div className="mt-5 flex items-center gap-2 flex-wrap">
+            {/* Overall progress badge */}
+            <div className="flex items-center gap-1.5 px-2.5 py-1 bg-zinc-800/50 rounded border border-zinc-700">
+              <TrendingUp className="h-3 w-3 text-zinc-400" />
+              <span className="text-[10px] text-zinc-300 font-medium uppercase tracking-wider">{timeline.overallProgress}% Done</span>
             </div>
-            {budgetUtilization > 95 && (
-              <div className="flex items-center gap-1.5 px-2.5 py-1 bg-amber-500/10 rounded border border-amber-500/20 shadow-[0_0_10px_rgba(245,158,11,0.1)]">
-                <AlertTriangle className="h-3 w-3 text-amber-500 animate-pulse" />
-                <span className="text-[10px] text-amber-400 font-medium uppercase tracking-wider">Budget Risk</span>
+            {/* Risk tags */}
+            {health.riskTags?.slice(0, 2).map((tag, i) => (
+              <div key={i} className={cn("flex items-center gap-1.5 px-2.5 py-1 rounded border", health.bgColor, health.borderColor)}>
+                <AlertTriangle className={cn("h-3 w-3", health.textColor, health.color === 'amber' && 'animate-pulse')} />
+                <span className={cn("text-[10px] font-medium uppercase tracking-wider", health.textColor)}>{tag}</span>
+              </div>
+            ))}
+            {/* Show compliance OK only when healthy */}
+            {health.label === 'On Track' && (
+              <div className="flex items-center gap-1.5 px-2.5 py-1 bg-emerald-500/10 rounded border border-emerald-500/20">
+                <CheckCircle2 className="h-3 w-3 text-emerald-500" />
+                <span className="text-[10px] text-emerald-400 font-medium uppercase tracking-wider">All Clear</span>
               </div>
             )}
           </div>
@@ -190,7 +279,7 @@ export function ProjectMetrics({
         </CardContent>
       </Card>
 
-      {/* 4. SCHEDULE / TIMELINE CARD */}
+      {/* 4. SCHEDULE / TIMELINE CARD — computed from real dates + phases */}
       <Card className="bg-zinc-950/50 border-zinc-800 backdrop-blur-sm shadow-xl hover:border-zinc-700 transition-colors">
         <CardHeader className="flex flex-row items-center justify-between pb-3 space-y-0 border-b border-zinc-800/50 mb-3">
           <CardTitle className="text-[11px] font-sans font-semibold text-zinc-400 uppercase tracking-widest">
@@ -201,23 +290,58 @@ export function ProjectMetrics({
           </div>
         </CardHeader>
         <CardContent>
-          {/* Placeholder for timeline calculation */}
-          <div className="text-2xl font-semibold text-white tracking-tight mb-1">Week 12 <span className="text-sm text-zinc-500 font-normal tracking-normal">/ 48</span></div>
-          <p className="text-xs text-zinc-400 font-medium truncate">
-            Current: Phase 2 Foundation
-          </p>
+          {timeline.totalWeeks > 0 ? (
+            <>
+              <div className="text-2xl font-semibold text-white tracking-tight mb-1">
+                Week {timeline.weeksElapsed} <span className="text-sm text-zinc-500 font-normal tracking-normal">/ {timeline.totalWeeks}</span>
+              </div>
+              <p className="text-xs text-zinc-400 font-medium truncate">
+                {timeline.currentPhase
+                  ? `Current: ${timeline.currentPhase.phase_name}`
+                  : phases && phases.length > 0
+                    ? phases.every(p => p.status === 'completed') ? 'All phases completed' : 'No active phase'
+                    : 'No phases defined'}
+              </p>
 
-          <div className="mt-5 space-y-2">
-            <div className="flex justify-between text-[10px] font-mono uppercase tracking-wider">
-              <span className="text-indigo-400 font-semibold">35% Complete</span>
-              <span className="text-zinc-500">Target: 40%</span>
+              <div className="mt-5 space-y-2">
+                <div className="flex justify-between text-[10px] font-mono uppercase tracking-wider">
+                  <span className={cn(
+                    "font-semibold",
+                    scheduleVariance >= 0 ? 'text-indigo-400' : scheduleVariance > -10 ? 'text-amber-400' : 'text-red-400'
+                  )}>
+                    {timeline.overallProgress}% Complete
+                  </span>
+                  <span className="text-zinc-500">Target: {timeline.targetProgress}%</span>
+                </div>
+                <div className="relative w-full h-1.5 bg-zinc-800 rounded-full overflow-hidden">
+                  {/* Target Marker */}
+                  {timeline.targetProgress > 0 && timeline.targetProgress <= 100 && (
+                    <div className="absolute top-0 bottom-0 w-0.5 bg-zinc-500 z-10" style={{ left: `${Math.min(timeline.targetProgress, 100)}%` }}></div>
+                  )}
+                  <div
+                    className={cn(
+                      "absolute top-0 bottom-0 rounded-full",
+                      scheduleVariance >= 0 ? 'bg-indigo-500' : scheduleVariance > -10 ? 'bg-amber-500' : 'bg-red-500'
+                    )}
+                    style={{ width: `${Math.min(timeline.overallProgress, 100)}%` }}
+                  ></div>
+                </div>
+                {scheduleVariance !== 0 && (
+                  <div className={cn(
+                    "text-[10px] font-mono",
+                    scheduleVariance > 0 ? 'text-emerald-400' : scheduleVariance > -10 ? 'text-amber-400' : 'text-red-400'
+                  )}>
+                    {scheduleVariance > 0 ? `+${scheduleVariance}% ahead` : `${scheduleVariance}% behind schedule`}
+                  </div>
+                )}
+              </div>
+            </>
+          ) : (
+            <div className="flex flex-col items-center justify-center h-[104px] text-zinc-600 text-xs text-center p-4">
+              <Calendar className="h-6 w-6 mb-2 opacity-20" />
+              No timeline dates set
             </div>
-            <div className="relative w-full h-1.5 bg-zinc-800 rounded-full overflow-hidden">
-              {/* Target Marker */}
-              <div className="absolute top-0 bottom-0 w-0.5 bg-zinc-500 z-10" style={{ left: '40%' }}></div>
-              <div className="absolute top-0 bottom-0 bg-indigo-500 rounded-full" style={{ width: '35%' }}></div>
-            </div>
-          </div>
+          )}
         </CardContent>
       </Card>
 

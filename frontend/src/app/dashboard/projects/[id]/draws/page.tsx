@@ -22,6 +22,9 @@ import {
   TrendingUp,
   Landmark,
 } from 'lucide-react';
+import { authedFetch } from '@/lib/authed-fetch';
+
+const fetch = authedFetch;
 
 // Types
 interface DrawLineItem {

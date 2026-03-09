@@ -251,7 +251,7 @@ class PortfolioMetricsServiceImpl extends BaseService {
          COUNT(p.id) FILTER (WHERE date_trunc('month', p.actual_start_date) = m.month) as projects_started,
          COUNT(p.id) FILTER (WHERE date_trunc('month', p.actual_completion_date) = m.month) as projects_completed,
          COALESCE(SUM(p.total_budget) FILTER (WHERE date_trunc('month', p.created_at) = m.month), 0) as budget_allocated,
-         COALESCE(SUM(c.amount) FILTER (WHERE date_trunc('month', c.created_at) = m.month), 0) as spent_amount
+         COALESCE(SUM(c.actual_costs) FILTER (WHERE date_trunc('month', c.created_at) = m.month), 0) as spent_amount
        FROM months m
        LEFT JOIN development_projects p ON p.organization_id = $1
        LEFT JOIN project_costs c ON c.project_id = p.id

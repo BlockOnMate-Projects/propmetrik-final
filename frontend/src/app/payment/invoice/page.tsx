@@ -32,6 +32,8 @@ interface InvoiceData {
     platformFee: number
     totalAmount: number
     currency: string
+    paystackAmountGHS: number
+    fxRate: number
     status: string
     invoiceDate: string
     dueDate: string | null
@@ -52,8 +54,11 @@ declare global {
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api/v1'
 
-function formatCurrency(amount: number): string {
-    return `GHS ${amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+const currencySymbols: Record<string, string> = { GHS: 'GH₵', USD: '$', GBP: '£', EUR: '€' }
+
+function formatCurrency(amount: number, currency = 'GHS'): string {
+    const sym = currencySymbols[currency] || `${currency} `
+    return `${sym}${amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
 }
 
 // ============================================================================
@@ -88,13 +93,27 @@ function InvoicePaymentInner() {
 
         async function fetchInvoice() {
             try {
-                const res = await fetch(`${API_BASE}/valuation-invoices/public/invoice/${invoiceId}`)
-                const data = await res.json()
+                // Try valuation invoice first
+                let res = await fetch(`${API_BASE}/valuation-invoices/public/invoice/${invoiceId}`)
+                let data = await res.json()
                 if (data.success) {
                     setInvoice(data.data)
-                } else {
-                    setError(data.error || 'Invoice not found')
+                    return
                 }
+
+                // Fallback: try PM invoice endpoint
+                res = await fetch(`${API_BASE}/pm-invoices/public/${invoiceId}`)
+                data = await res.json()
+                if (data.success) {
+                    setInvoice(data.data)
+                    return
+                }
+
+                // Extract error message from object or string
+                const errMsg = typeof data.error === 'string'
+                    ? data.error
+                    : data.error?.message || 'Invoice not found'
+                setError(errMsg)
             } catch {
                 setError('Failed to load invoice')
             } finally {
@@ -115,11 +134,22 @@ function InvoicePaymentInner() {
     const verifyPayment = async (reference: string) => {
         setVerifying(true)
         try {
-            const res = await fetch(`${API_BASE}/valuation-invoices/public/invoice/${invoiceId}/verify-payment/${reference}`)
-            const data = await res.json()
+            // Try valuation invoice verify first
+            let res = await fetch(`${API_BASE}/valuation-invoices/public/invoice/${invoiceId}/verify-payment/${reference}`)
+            let data = await res.json()
             if (data.success) {
                 setPaymentSuccess(true)
+                return
             }
+            // Fallback: try PM invoice verify endpoint
+            res = await fetch(`${API_BASE}/pm-invoices/public/${invoiceId}/verify-payment/${reference}`)
+            data = await res.json()
+            if (data.success) {
+                setPaymentSuccess(true)
+                return
+            }
+            // Even if both fail, treat as success (webhook will handle it)
+            setPaymentSuccess(true)
         } catch {
             // Even if verify fails, the webhook will handle it
             setPaymentSuccess(true)
@@ -159,7 +189,7 @@ function InvoicePaymentInner() {
                 popup.newTransaction({
                     key: invoice.paystackPublicKey,
                     email: invoice.clientEmail,
-                    amount: Math.round(invoice.totalAmount * 100), // pesewas
+                    amount: Math.round((invoice.paystackAmountGHS || invoice.totalAmount) * 100), // pesewas (GHS-converted)
                     currency: 'GHS',
                     ref: `PM-INV-${Date.now()}-${Math.random().toString(36).substring(2, 8)}`,
                     channels: paymentMethod === 'momo'
@@ -207,7 +237,8 @@ function InvoicePaymentInner() {
     const handleCryptoPay = () => {
         if (!invoice) return
         setProcessing(true)
-        window.location.href = `/payment/crypto?invoiceId=${invoice.id}&amount=${invoice.totalAmount}&ref=${invoice.invoiceNumber}`
+        const type = invoice.feeModel === 'project_management' ? 'pm' : 'valuation'
+        window.location.href = `/payment/crypto?invoiceId=${invoice.id}&amount=${invoice.totalAmount}&ref=${invoice.invoiceNumber}&type=${type}`
     }
 
     // ─── Loading state ───────────────────────────────────────────────
@@ -271,7 +302,7 @@ function InvoicePaymentInner() {
                         <div className="bg-zinc-800/50 border border-zinc-700 rounded-lg p-4 mb-6">
                             <div className="flex justify-between font-mono text-sm mb-2">
                                 <span className="text-zinc-400">Amount Paid</span>
-                                <span className="text-green-400 font-bold">{formatCurrency(invoice.totalAmount)}</span>
+                                <span className="text-green-400 font-bold">{formatCurrency(invoice.totalAmount, invoice.currency)}</span>
                             </div>
                             <div className="flex justify-between font-mono text-xs">
                                 <span className="text-zinc-500">Invoice</span>
@@ -387,7 +418,7 @@ function InvoicePaymentInner() {
                                         <tr key={i} className="border-b border-zinc-800/50">
                                             <td className="py-2 text-zinc-300">{item.description}</td>
                                             <td className="py-2 text-center text-zinc-500">{item.quantity}</td>
-                                            <td className="py-2 text-right text-zinc-300">{formatCurrency(item.amount)}</td>
+                                            <td className="py-2 text-right text-zinc-300">{formatCurrency(item.amount, invoice.currency)}</td>
                                         </tr>
                                     ))}
                                 </tbody>
@@ -399,18 +430,17 @@ function InvoicePaymentInner() {
                             <div className="w-56 space-y-1">
                                 <div className="flex justify-between font-mono text-xs">
                                     <span className="text-zinc-500">Subtotal</span>
-                                    <span className="text-zinc-300">{formatCurrency(invoice.subtotal)}</span>
+                                    <span className="text-zinc-300">{formatCurrency(invoice.subtotal, invoice.currency)}</span>
                                 </div>
-                                {invoice.platformFee > 0 && (
-                                    <div className="flex justify-between font-mono text-[10px]">
-                                        <span className="text-zinc-500">Platform Fee</span>
-                                        <span className="text-zinc-400">{formatCurrency(invoice.platformFee)}</span>
-                                    </div>
-                                )}
                                 <div className="flex justify-between font-mono text-base font-bold border-t border-zinc-700 pt-2 mt-1">
                                     <span className="text-white">Total Due</span>
-                                    <span className="text-amber-500">{formatCurrency(invoice.totalAmount)}</span>
+                                    <span className="text-amber-500">{formatCurrency(invoice.totalAmount, invoice.currency)}</span>
                                 </div>
+                                {invoice.currency !== 'GHS' && invoice.paystackAmountGHS && invoice.fxRate > 1 && (
+                                    <div className="font-mono text-[9px] text-zinc-600 text-right mt-1">
+                                        FX: 1 {invoice.currency} = {invoice.fxRate.toFixed(4)} GHS &bull; Paystack charges in GH₵{invoice.paystackAmountGHS.toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                                    </div>
+                                )}
                             </div>
                         </div>
                     </div>
@@ -512,11 +542,18 @@ function InvoicePaymentInner() {
                         <div className="flex items-center justify-between bg-black border border-zinc-700 rounded-lg p-4">
                             <div>
                                 <div className="font-mono text-[10px] text-zinc-500 uppercase tracking-wider">Amount to Pay</div>
-                                <div className="font-mono text-xl text-amber-500 font-bold">{formatCurrency(invoice.totalAmount)}</div>
+                                <div className="font-mono text-xl text-amber-500 font-bold">
+                                    {formatCurrency(invoice.paystackAmountGHS || invoice.totalAmount, 'GHS')}
+                                </div>
+                                {invoice.currency !== 'GHS' && invoice.paystackAmountGHS && (
+                                    <div className="font-mono text-[9px] text-zinc-600">
+                                        ({formatCurrency(invoice.totalAmount, invoice.currency)} at FX {invoice.fxRate.toFixed(2)})
+                                    </div>
+                                )}
                             </div>
                             <button
                                 onClick={paymentMethod === 'crypto' ? handleCryptoPay : handlePaystackInline}
-                                disabled={processing || (paymentMethod !== 'crypto' && !paystackReady && !invoice.paymentLink)}
+                                disabled={processing || (paymentMethod !== 'crypto' && !paystackReady)}
                                 className={`flex items-center gap-2 px-6 py-3 font-mono text-sm font-bold rounded-lg transition-all ${
                                     paymentMethod === 'crypto'
                                         ? 'bg-purple-600 text-white hover:bg-purple-500'
@@ -527,7 +564,7 @@ function InvoicePaymentInner() {
                                     <><Loader2 className="w-4 h-4 animate-spin" /> Processing...</>
                                 ) : (
                                     <>
-                                        PAY {formatCurrency(invoice.totalAmount)}
+                                        PAY {formatCurrency(invoice.paystackAmountGHS || invoice.totalAmount, 'GHS')}
                                         <ArrowRight className="w-4 h-4" />
                                     </>
                                 )}

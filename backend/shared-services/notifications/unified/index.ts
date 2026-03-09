@@ -28,6 +28,12 @@ export interface SMSMessage {
     from?: string;
 }
 
+export interface EmailAttachment {
+    filename: string;
+    content: Buffer;
+    contentType?: string;
+}
+
 export interface EmailMessage {
     to: string;
     subject: string;
@@ -36,6 +42,7 @@ export interface EmailMessage {
     from?: string;
     fromName?: string;
     replyTo?: string;
+    attachments?: EmailAttachment[];
 }
 
 export interface NotificationResult {
@@ -292,6 +299,13 @@ export class GoogleSMTPEmailService {
             if (message.html) mailOptions.html = message.html;
             if (message.text) mailOptions.text = message.text;
             if (message.replyTo) mailOptions.replyTo = message.replyTo;
+            if (message.attachments?.length) {
+                mailOptions.attachments = message.attachments.map(a => ({
+                    filename: a.filename,
+                    content: a.content,
+                    contentType: a.contentType || 'application/octet-stream',
+                }));
+            }
 
             const result = await this.transporter.sendMail(mailOptions);
 
@@ -413,6 +427,16 @@ export class MicrosoftGraphEmailService {
                                     },
                                 },
                             ],
+                        }
+                        : {}),
+                    ...(message.attachments?.length
+                        ? {
+                            attachments: message.attachments.map(a => ({
+                                '@odata.type': '#microsoft.graph.fileAttachment',
+                                name: a.filename,
+                                contentType: a.contentType || 'application/octet-stream',
+                                contentBytes: a.content.toString('base64'),
+                            })),
                         }
                         : {}),
                 },

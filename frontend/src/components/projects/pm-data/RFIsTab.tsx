@@ -524,7 +524,7 @@ export function RFIsTab({ projectId, organizationId, onRefresh }: RFIsTabProps) 
                 value={responseText}
                 onChange={(e) => setResponseText(e.target.value)}
                 placeholder="Enter your response to this RFI..."
-                className="bg-zinc-800 border-zinc-700 font-mono text-sm min-h-[150px]"
+                className="bg-zinc-800 border-zinc-700 font-mono text-sm min-h-[150px] text-white placeholder:text-zinc-500"
               />
             </div>
             

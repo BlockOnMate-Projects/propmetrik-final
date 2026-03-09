@@ -320,7 +320,10 @@ class ProjectCostCurrencyService {
       if (constructionEstimate && constructionEstimate.estimates.total > 0) {
         baseCostPerSqm = constructionEstimate.estimates.cost_per_sqm;
         dataSources.push('Data Hub Construction Cost Service');
-        assumptions.push(`Cost estimate calculated with ${constructionEstimate.assumptions.length} assumptions`);
+        // Forward detailed assumptions from the construction cost service
+        if (constructionEstimate.assumptions && constructionEstimate.assumptions.length > 0) {
+          assumptions.push(...constructionEstimate.assumptions);
+        }
       } else {
         throw new Error('No construction estimate available');
       }

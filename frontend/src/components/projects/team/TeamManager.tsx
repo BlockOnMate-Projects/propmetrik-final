@@ -93,11 +93,15 @@ interface TeamManagerProps {
 // =====================================================
 
 const ROLE_CATEGORY_LABELS: Record<RoleCategory, { label: string; color: string }> = {
-  construction: { label: 'Construction', color: 'bg-amber-100 text-amber-800' },
-  professional: { label: 'Professional', color: 'bg-blue-100 text-blue-800' },
-  government: { label: 'Government', color: 'bg-purple-100 text-purple-800' },
-  stakeholder: { label: 'Stakeholder', color: 'bg-green-100 text-green-800' },
-  internal: { label: 'Internal', color: 'bg-gray-100 text-gray-800' },
+  construction: { label: 'Construction', color: 'bg-amber-900/40 text-amber-400 border border-amber-700/50' },
+  professional: { label: 'Professional', color: 'bg-blue-900/40 text-blue-400 border border-blue-700/50' },
+  government: { label: 'Government', color: 'bg-purple-900/40 text-purple-400 border border-purple-700/50' },
+  stakeholder: { label: 'Stakeholder', color: 'bg-green-900/40 text-green-400 border border-green-700/50' },
+  internal: { label: 'Internal', color: 'bg-zinc-800 text-zinc-300 border border-zinc-700' },
+  contractor: { label: 'Contractor', color: 'bg-orange-900/40 text-orange-400 border border-orange-700/50' },
+  consultant: { label: 'Consultant', color: 'bg-cyan-900/40 text-cyan-400 border border-cyan-700/50' },
+  vendor: { label: 'Vendor', color: 'bg-rose-900/40 text-rose-400 border border-rose-700/50' },
+  other: { label: 'Other', color: 'bg-zinc-800 text-zinc-400 border border-zinc-700' },
 }
 
 const DEFAULT_PERMISSIONS: TeamMemberPermissions = {
@@ -166,7 +170,7 @@ function RoleSelector({
                   onClick={() => onSelect(role.role)}
                   className={cn(
                     'flex w-full items-center justify-between rounded-md px-3 py-2 text-left text-sm hover:bg-muted',
-                    selectedRole === role.role && 'bg-amber-50 ring-1 ring-amber-200'
+                    selectedRole === role.role && 'bg-amber-900/30 ring-1 ring-amber-600'
                   )}
                 >
                   <div>

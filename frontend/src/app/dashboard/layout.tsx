@@ -4,9 +4,11 @@ import { TopNav } from '@/components/layout'
 import { UpgradeGateProvider } from '@/components/UpgradeGate'
 import { FloatingWindowManager } from '@/components/workspace/window-manager/FloatingWindowManager'
 import { WorkspaceWidget } from '@/components/workspace/WorkspacePanel'
+import { GlobalSearch } from '@/components/layout/GlobalSearch'
 import { useState, useEffect } from 'react'
 import { usePathname } from 'next/navigation'
 import { useSession } from 'next-auth/react'
+import { prefetchRbacConfig } from '@/lib/rbac'
 
 export default function DashboardLayout({
   children,
@@ -19,6 +21,13 @@ export default function DashboardLayout({
   useEffect(() => {
     setMounted(true)
   }, [])
+
+  // Pre-fetch RBAC config when session is available
+  useEffect(() => {
+    if (session?.accessToken) {
+      prefetchRbacConfig(session.accessToken);
+    }
+  }, [session?.accessToken])
 
   return (
     <UpgradeGateProvider>
@@ -47,6 +56,7 @@ export default function DashboardLayout({
           {children}
         </main>
         <FloatingWindowManager />
+        <GlobalSearch />
         {/* Global Workspace Widget (Only if not handled by page-specific logic) */}
         {!pathname.includes('/projects/') && !pathname.includes('/valuations/') && (
           <WorkspaceWidget

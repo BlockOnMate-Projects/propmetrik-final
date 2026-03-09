@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback } from 'react'
 import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import { cn } from '@/lib/utils'
+import { authedFetch } from '@/lib/authed-fetch'
 import { useUpgradeGate, LockedBadge } from '@/components/UpgradeGate'
 import { canAccessPlatformTab } from '@/lib/rbac'
 
@@ -345,12 +346,12 @@ export default function DashboardPage() {
   const fetchAll = useCallback(async () => {
     try {
       const [tickerRes, overviewRes, mgmtRes, cciRes, priceRes, haiRes] = await Promise.allSettled([
-        fetch('/api/ticker').then(r => r.ok ? r.json() : null),
-        fetch('/api/user/overview').then(r => r.ok ? r.json() : null),
-        fetch('/api/analytics/management/summary').then(r => r.ok ? r.json() : null),
-        fetch('/api/analytics/platform/construction/index').then(r => r.ok ? r.json() : null),
-        fetch('/api/analytics/market/price-index').then(r => r.ok ? r.json() : null),
-        fetch('/api/analytics/platform/hai/current').then(r => r.ok ? r.json() : null),
+        authedFetch('/api/ticker').then(r => r.ok ? r.json() : null),
+        authedFetch('/api/user/overview').then(r => r.ok ? r.json() : null),
+        authedFetch('/api/analytics/management/summary').then(r => r.ok ? r.json() : null),
+        authedFetch('/api/analytics/platform/construction/index').then(r => r.ok ? r.json() : null),
+        authedFetch('/api/analytics/market/price-index').then(r => r.ok ? r.json() : null),
+        authedFetch('/api/analytics/platform/hai/current').then(r => r.ok ? r.json() : null),
       ])
 
       if (tickerRes.status === 'fulfilled' && tickerRes.value?.data) setTicker(tickerRes.value.data)

@@ -19,6 +19,7 @@
 
 import { Router, Request, Response, NextFunction } from 'express';
 import { authenticate, requireOrganization, requireRoles } from '../middleware/auth';
+import { requirePMWrite } from '../middleware/pmAuth';
 import { body, param, query, validationResult } from 'express-validator';
 import { logger } from '../utils/logger';
 import workflowService, { TriggerEvent, ExecutionContext, ExecutionStatus } from '../../shared-services/workflow/workflowService';
@@ -104,6 +105,7 @@ router.post(
   authenticate,
   requireOrganization(),
   requireRoles('admin', 'manager'),
+  requirePMWrite,
   [
     body('name').isString().trim().isLength({ min: 1, max: 255 }),
     body('description').optional().isString(),
@@ -176,6 +178,7 @@ router.post(
   authenticate,
   requireOrganization(),
   requireRoles('admin', 'manager'),
+  requirePMWrite,
   [
     body('template_id').isUUID(),
     body('name').optional().isString().trim()
@@ -269,6 +272,7 @@ router.put(
   authenticate,
   requireOrganization(),
   requireRoles('admin', 'manager'),
+  requirePMWrite,
   [
     param('id').isUUID(),
     body('name').optional().isString().trim().isLength({ min: 1, max: 255 }),
@@ -321,6 +325,7 @@ router.delete(
   authenticate,
   requireOrganization(),
   requireRoles('admin'),
+  requirePMWrite,
   [
     param('id').isUUID()
   ],
@@ -359,6 +364,7 @@ router.post(
   authenticate,
   requireOrganization(),
   requireRoles('admin', 'manager'),
+  requirePMWrite,
   [
     param('id').isUUID()
   ],
@@ -397,6 +403,7 @@ router.post(
   authenticate,
   requireOrganization(),
   requireRoles('admin', 'manager'),
+  requirePMWrite,
   [
     param('id').isUUID()
   ],
@@ -435,6 +442,7 @@ router.post(
   authenticate,
   requireOrganization(),
   requireRoles('admin', 'manager'),
+  requirePMWrite,
   [
     param('id').isUUID(),
     body('entity_type').isString().isIn(['deal', 'contact', 'property']),
@@ -498,6 +506,7 @@ router.post(
   authenticate,
   requireOrganization(),
   requireRoles('admin', 'manager'),
+  requirePMWrite,
   [
     param('id').isUUID(),
     body('context').isObject()
@@ -618,6 +627,7 @@ router.post(
   authenticate,
   requireOrganization(),
   requireRoles('admin', 'manager'),
+  requirePMWrite,
   [
     param('executionId').isUUID()
   ],

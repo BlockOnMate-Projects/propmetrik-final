@@ -12,9 +12,14 @@
 import { Router, Request, Response } from 'express';
 import { teamService, VendorCategory } from '../services/project-management/teamService';
 import { logger } from '../utils/logger';
+import { registerPMParamValidation, requirePMWrite } from '../middleware/pmAuth';
+import { pool } from '../database';
 
 const ts = teamService as any;
 const router = Router();
+
+// Register UUID parameter validation
+registerPMParamValidation(router);
 
 // ============================================================================
 // VENDOR DIRECTORY
@@ -24,7 +29,7 @@ const router = Router();
  * POST /vendors
  * Add a vendor to the directory
  */
-router.post('/', async (req: Request, res: Response) => {
+router.post('/', requirePMWrite, async (req: Request, res: Response) => {
   try {
     const userId = (req as any).user?.id || req.body.createdBy;
     
@@ -52,24 +57,47 @@ router.post('/', async (req: Request, res: Response) => {
  */
 router.get('/', async (req: Request, res: Response) => {
   try {
-    const filters = {
-      organizationId: req.query.organizationId as string,
-      category: req.query.category as VendorCategory | undefined,
-      isApproved: req.query.isApproved === 'true' ? true : req.query.isApproved === 'false' ? false : undefined,
-      search: req.query.search as string,
-      minRating: req.query.minRating ? parseFloat(req.query.minRating as string) : undefined,
-    };
-    
+    const search = req.query.search as string | undefined;
+    const category = req.query.category as string | undefined;
+    const status = req.query.status as string | undefined;
     const limit = parseInt(req.query.limit as string) || 50;
     const offset = parseInt(req.query.offset as string) || 0;
-    
-    const { vendors, total } = await ts.getVendors(filters, limit, offset);
-    
+
+    const conditions: string[] = [];
+    const params: any[] = [];
+    let idx = 1;
+
+    if (search) {
+      conditions.push(`(business_name ILIKE $${idx} OR contact_person ILIKE $${idx})`);
+      params.push(`%${search}%`);
+      idx++;
+    }
+    if (category) {
+      conditions.push(`$${idx} = ANY(service_categories)`);
+      params.push(category);
+      idx++;
+    }
+    if (status) {
+      conditions.push(`status = $${idx}`);
+      params.push(status);
+      idx++;
+    }
+
+    const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
+
+    const [dataRes, countRes] = await Promise.all([
+      pool.query(
+        `SELECT * FROM vendors ${where} ORDER BY business_name LIMIT $${idx} OFFSET $${idx + 1}`,
+        [...params, limit, offset]
+      ),
+      pool.query(`SELECT COUNT(*) as total FROM vendors ${where}`, params),
+    ]);
+
     res.json({
       success: true,
-      data: vendors,
+      data: dataRes.rows,
       pagination: {
-        total,
+        total: parseInt(countRes.rows[0]?.total) || 0,
         limit,
         offset,
       },
@@ -115,7 +143,7 @@ router.get('/:id', async (req: Request, res: Response) => {
  * PUT /vendors/:id
  * Update a vendor
  */
-router.put('/:id', async (req: Request, res: Response) => {
+router.put('/:id', requirePMWrite, async (req: Request, res: Response) => {
   try {
     const vendor = await ts.updateVendor(req.params.id, req.body);
     
@@ -136,7 +164,7 @@ router.put('/:id', async (req: Request, res: Response) => {
  * POST /vendors/:id/approve
  * Approve a vendor
  */
-router.post('/:id/approve', async (req: Request, res: Response) => {
+router.post('/:id/approve', requirePMWrite, async (req: Request, res: Response) => {
   try {
     const userId = (req as any).user?.id || req.body.approvedBy;
     
@@ -159,7 +187,7 @@ router.post('/:id/approve', async (req: Request, res: Response) => {
  * POST /vendors/:id/suspend
  * Suspend a vendor
  */
-router.post('/:id/suspend', async (req: Request, res: Response) => {
+router.post('/:id/suspend', requirePMWrite, async (req: Request, res: Response) => {
   try {
     const { reason } = req.body;
     
@@ -182,7 +210,7 @@ router.post('/:id/suspend', async (req: Request, res: Response) => {
  * DELETE /vendors/:id
  * Delete a vendor
  */
-router.delete('/:id', async (req: Request, res: Response) => {
+router.delete('/:id', requirePMWrite, async (req: Request, res: Response) => {
   try {
     await ts.deleteVendor(req.params.id);
     
@@ -207,7 +235,7 @@ router.delete('/:id', async (req: Request, res: Response) => {
  * POST /vendors/:id/ratings
  * Rate a vendor's performance
  */
-router.post('/:id/ratings', async (req: Request, res: Response) => {
+router.post('/:id/ratings', requirePMWrite, async (req: Request, res: Response) => {
   try {
     const { id: vendorId } = req.params;
     const userId = (req as any).user?.id || req.body.ratedBy;
@@ -285,7 +313,7 @@ router.get('/:id/ratings/summary', async (req: Request, res: Response) => {
  * POST /vendors/:id/assignments
  * Assign a vendor to a project
  */
-router.post('/:id/assignments', async (req: Request, res: Response) => {
+router.post('/:id/assignments', requirePMWrite, async (req: Request, res: Response) => {
   try {
     const { id: vendorId } = req.params;
     const userId = (req as any).user?.id || req.body.assignedBy;
@@ -359,7 +387,7 @@ router.get('/projects/:projectId/vendors', async (req: Request, res: Response) =
  * PUT /vendors/assignments/:assignmentId
  * Update a vendor assignment
  */
-router.put('/assignments/:assignmentId', async (req: Request, res: Response) => {
+router.put('/assignments/:assignmentId', requirePMWrite, async (req: Request, res: Response) => {
   try {
     const { assignmentId } = req.params;
     
@@ -382,7 +410,7 @@ router.put('/assignments/:assignmentId', async (req: Request, res: Response) => 
  * POST /vendors/assignments/:assignmentId/complete
  * Mark a vendor assignment as complete
  */
-router.post('/assignments/:assignmentId/complete', async (req: Request, res: Response) => {
+router.post('/assignments/:assignmentId/complete', requirePMWrite, async (req: Request, res: Response) => {
   try {
     const { assignmentId } = req.params;
     
@@ -405,7 +433,7 @@ router.post('/assignments/:assignmentId/complete', async (req: Request, res: Res
  * DELETE /vendors/assignments/:assignmentId
  * Remove a vendor from a project
  */
-router.delete('/assignments/:assignmentId', async (req: Request, res: Response) => {
+router.delete('/assignments/:assignmentId', requirePMWrite, async (req: Request, res: Response) => {
   try {
     const { assignmentId } = req.params;
     
@@ -432,7 +460,7 @@ router.delete('/assignments/:assignmentId', async (req: Request, res: Response) 
  * PUT /vendors/:id/compliance
  * Update vendor compliance documents
  */
-router.put('/:id/compliance', async (req: Request, res: Response) => {
+router.put('/:id/compliance', requirePMWrite, async (req: Request, res: Response) => {
   try {
     const { id: vendorId } = req.params;
     const { complianceDocuments } = req.body;

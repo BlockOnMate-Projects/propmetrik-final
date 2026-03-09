@@ -208,19 +208,19 @@ export default function AdminOverviewPage() {
           <div className="space-y-1">
             <ActivityItem
               action="Created new organization: PROPMETRIK GROUP"
-              user="eric@propmetrik.com"
+              user="admin"
               time="2 hours ago"
               type="create"
             />
             <ActivityItem
-              action="Updated user permissions for eric@propmetrik.com"
+              action="Updated user permissions"
               user="system"
               time="3 hours ago"
               type="update"
             />
             <ActivityItem
               action="User login from new device"
-              user="eric@propmetrik.com"
+              user="admin"
               time="5 hours ago"
               type="login"
             />
@@ -232,7 +232,7 @@ export default function AdminOverviewPage() {
             />
             <ActivityItem
               action="New valuation report generated"
-              user="eric@propmetrik.com"
+              user="admin"
               time="8 hours ago"
               type="create"
             />

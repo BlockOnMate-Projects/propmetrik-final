@@ -8,6 +8,8 @@ import multer from 'multer';
 import path from 'path';
 import fs from 'fs';
 import { createHash } from 'crypto';
+import { scanUploadedFile } from '../middleware/virusScan';
+import { authenticate } from '../middleware/auth';
 import {
     signingService,
     auditLogService,
@@ -62,18 +64,19 @@ const asyncHandler = (fn: Function) => (req: Request, res: Response, next: NextF
     Promise.resolve(fn(req, res, next)).catch(next);
 };
 
-// Extract user ID from JWT or header
+// Extract user ID from JWT (set by auth middleware)
+// Throws a structured error for proper 401 response via asyncHandler + error handler
 const getUserId = (req: Request): string => {
-    // Try to get from JWT token first (added by auth middleware)
     const jwtUserId = (req as any).userId || (req as any).user?.id;
     if (jwtUserId) return jwtUserId;
 
-    // Fall back to header
+    // Fall back to header (for internal/webhook calls)
     const headerUserId = req.headers['x-user-id'] as string;
     if (headerUserId) return headerUserId;
 
-    // Default to Eric Danso for development
-    return 'ed4a50d7-a1b2-4c3d-8e5f-6a7b8c9d0e1f';
+    const err: any = new Error('Authentication required');
+    err.statusCode = 401;
+    throw err;
 };
 
 // Extract user email from JWT or header
@@ -1369,7 +1372,7 @@ router.post('/envelopes/from-template', asyncHandler(async (req: Request, res: R
  * For self-signed envelopes, generates a Certificate of Completion
  * and appends it to the stored PDF.
  */
-router.post('/envelopes/create', esignUpload.single('files'), asyncHandler(async (req: Request, res: Response) => {
+router.post('/envelopes/create', esignUpload.single('files'), scanUploadedFile, asyncHandler(async (req: Request, res: Response) => {
     const organizationId = getOrganizationId(req) || await getDefaultOrgId();
     const userId = getUserId(req);
 
@@ -1574,7 +1577,7 @@ router.post('/envelopes/create', esignUpload.single('files'), asyncHandler(async
  * Create and send a new envelope (supports both JSON body and FormData/file upload)
  * POST /api/v1/esign/envelopes
  */
-router.post('/envelopes', esignUpload.single('file'), asyncHandler(async (req: Request, res: Response) => {
+router.post('/envelopes', esignUpload.single('file'), scanUploadedFile, asyncHandler(async (req: Request, res: Response) => {
     const organizationId = getOrganizationId(req) || await getDefaultOrgId();
     const userId = getUserId(req);
 
@@ -2469,7 +2472,7 @@ async function getDefaultOrgId(): Promise<string> {
  * Documents upload (creates envelope with document)
  * POST /api/v1/esign/documents/upload
  */
-router.post('/documents/upload', esignUpload.single('file'), asyncHandler(async (req: Request, res: Response) => {
+router.post('/documents/upload', esignUpload.single('file'), scanUploadedFile, asyncHandler(async (req: Request, res: Response) => {
     if (!req.file) {
         return res.status(400).json({ error: 'No file uploaded' });
     }

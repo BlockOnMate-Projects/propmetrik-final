@@ -171,12 +171,22 @@ export interface Invoice {
 }
 
 export interface InvoiceSummary {
-  totalInvoices: number;
-  totalAmount: number;
-  paidAmount: number;
-  pendingAmount: number;
-  overdueAmount: number;
-  byStatus: Record<InvoiceStatus, { count: number; amount: number }>;
+  // Frontend-expected fields
+  totalInvoices?: number;
+  totalAmount?: number;
+  paidAmount?: number;
+  pendingAmount?: number;
+  overdueAmount?: number;
+  byStatus?: Record<InvoiceStatus, { count: number; amount: number }>;
+  // Backend-returned fields
+  projectId?: string;
+  totalInvoiced?: number;
+  totalPaid?: number;
+  totalPending?: number;
+  totalOverdue?: number;
+  overdueCount?: number;
+  averageDaysToPay?: number;
+  [key: string]: any;
 }
 
 // Expense Types
@@ -639,5 +649,59 @@ export const paymentMilestoneApi = {
     return fetchApi(`${BUDGET_BASE}/milestones/${id}`, {
       method: 'DELETE',
     });
+  },
+};
+
+// =====================================================
+// REVENUE SUMMARY
+// =====================================================
+
+export interface RevenueTransaction {
+  id: string;
+  invoiceNumber: string;
+  clientName: string | null;
+  vendorCompany: string | null;
+  projectId: string;
+  projectName: string | null;
+  amount: number;
+  totalAmount: number;
+  currency: string;
+  status: string;
+  paidDate: string | null;
+  sentAt: string | null;
+  createdAt: string;
+  platformFee: number;
+  paymentMethod: string | null;
+}
+
+export interface MonthlyRevenue {
+  month: string;
+  invoiced: number;
+  paid: number;
+}
+
+export interface RevenueSummary {
+  currency: string;
+  totalBudget: number;
+  totalInvoiced: number;
+  totalPaid: number;
+  totalPending: number;
+  totalOverdue: number;
+  platformFeesCollected: number;
+  overdueCount: number;
+  paidCount: number;
+  sentCount: number;
+  totalCount: number;
+  activeProjectCount: number;
+  projects: Array<{ id: string; name: string; currency: string }>;
+  recentTransactions: RevenueTransaction[];
+  monthlyRevenue: MonthlyRevenue[];
+}
+
+export const revenueApi = {
+  getSummary: async (projectId?: string): Promise<RevenueSummary> => {
+    const params = projectId ? `?projectId=${projectId}` : '';
+    const res = await fetchApi<{ success: boolean; data: RevenueSummary }>(`${BUDGET_BASE}/revenue/summary${params}`);
+    return res.data;
   },
 };

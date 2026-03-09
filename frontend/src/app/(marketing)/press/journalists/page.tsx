@@ -5,12 +5,12 @@ import { motion } from 'framer-motion';
 const resources = [
   {
     title: 'Embeddable Widgets',
-    desc: 'Embed live PROPMETRIK index charts directly into your articles with a single code snippet. Auto-updates with PropMetrik branding.',
+    desc: 'Embed live PROPMETRIK index charts directly into your articles with a single code snippet. Auto-updates with PROPMETRIK branding.',
     icon: '📊',
   },
   {
     title: 'Pre-formatted Charts',
-    desc: 'Publication-ready PNG/SVG charts of CCI, GHAI, GHPI indices with PropMetrik attribution. Ready for print and digital.',
+    desc: 'Publication-ready PNG/SVG charts of CCI, GHAI, GHPI indices with PROPMETRIK attribution. Ready for print and digital.',
     icon: '📈',
   },
   {

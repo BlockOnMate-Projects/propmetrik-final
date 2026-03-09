@@ -8,15 +8,20 @@ import { Router, Request, Response } from 'express';
 import { advancedAnalyticsService } from '../../shared-services/analytics';
 import { logger } from '../utils/logger';
 import ExcelJS from 'exceljs';
-import PDFDocument from 'pdfkit';
+import {
+  COLORS as C, PAGE, PDF, fmtGHS,
+  pdfCover, pdfSection, pdfStatCards, pdfTable, pdfSeparator,
+} from '../utils/pdfReportKit';
 
 const router = Router();
 
-// Middleware to get user context
+// Middleware to get user context from authenticated request
 const getUserContext = (req: Request) => {
-  const userId = req.headers['x-user-id'] as string || 'anonymous';
-  const organizationId = req.headers['x-organization-id'] as string || '00000000-0000-0000-0000-000000000001';
-  return { userId, organizationId };
+  const user = (req as any).user;
+  const userId = user?.id || user?.sub || (req.headers['x-user-id'] as string);
+  const organizationId = user?.organizationId || user?.organization_id || (req.headers['x-organization-id'] as string);
+  if (!organizationId) throw new Error('Organization ID required');
+  return { userId: userId || 'unknown', organizationId };
 };
 
 /**
@@ -299,7 +304,7 @@ router.get('/export/pdf', async (req: Request, res: Response) => {
     const cohorts = await advancedAnalyticsService.getCohortAnalysis(organizationId);
     
     // Create PDF
-    const doc = new PDFDocument({ margin: 50 });
+    const doc = PDF.create();
     
     // Set response headers
     res.setHeader('Content-Type', 'application/pdf');
@@ -311,75 +316,55 @@ router.get('/export/pdf', async (req: Request, res: Response) => {
     // Pipe to response
     doc.pipe(res);
     
-    // Header
-    doc
-      .fontSize(24)
-      .text('PROPMETRIK Analytics Report', { align: 'center' })
-      .moveDown(0.5);
-    
-    doc
-      .fontSize(10)
-      .fillColor('#666')
-      .text(`Generated on ${new Date().toLocaleDateString()}`, { align: 'center' })
-      .moveDown(2);
-    
-    // Summary Section
-    doc
-      .fontSize(16)
-      .fillColor('#000')
-      .text('Monthly Summary', { underline: true })
-      .moveDown(0.5);
-    
-    doc
-      .fontSize(12)
-      .text(`This Month: ${summary.thisMonth.deals} deals | $${summary.thisMonth.value.toLocaleString()} | ${summary.thisMonth.winRate}% win rate`)
-      .moveDown(0.3)
-      .text(`Last Month: ${summary.lastMonth.deals} deals | $${summary.lastMonth.value.toLocaleString()} | ${summary.lastMonth.winRate}% win rate`)
-      .moveDown(0.3)
-      .text(`Pipeline: ${summary.pipeline.totalDeals} active deals worth $${summary.pipeline.totalValue.toLocaleString()}`)
-      .moveDown(1.5);
-    
-    // Cohort Analysis
-    doc
-      .fontSize(16)
-      .text('Cohort Analysis (Last 6 Months)', { underline: true })
-      .moveDown(0.5);
-    
-    // Simple table
-    const tableTop = doc.y;
-    const itemHeight = 20;
-    
-    // Headers
-    doc
-      .fontSize(10)
-      .text('Cohort', 50, tableTop)
-      .text('Deals', 130, tableTop)
-      .text('Won', 180, tableTop)
-      .text('Win Rate', 230, tableTop)
-      .text('Value', 300, tableTop)
-      .text('Avg Cycle', 380, tableTop);
-    
-    doc.moveTo(50, tableTop + 15).lineTo(450, tableTop + 15).stroke();
-    
-    // Data rows
-    cohorts.slice(0, 6).forEach((cohort, i) => {
-      const y = tableTop + 20 + (i * itemHeight);
-      doc
-        .fontSize(9)
-        .text(cohort.cohort, 50, y)
-        .text(cohort.totalDeals.toString(), 130, y)
-        .text(cohort.wonDeals.toString(), 180, y)
-        .text(`${cohort.winRate}%`, 230, y)
-        .text(`$${cohort.totalValue.toLocaleString()}`, 300, y)
-        .text(`${cohort.avgCycleTime}d`, 380, y);
+    // Cover page
+    pdfCover(doc, {
+      title: 'Analytics Report',
+      subtitle: 'Platform Performance Summary',
+      reportType: 'ANALYTICS',
+      meta: [
+        `${summary.thisMonth.deals} deals this month | ${summary.pipeline.totalDeals} in pipeline`,
+        `Pipeline Value: $${summary.pipeline.totalValue.toLocaleString()}`,
+      ],
     });
     
-    // Footer
-    doc
-      .fontSize(8)
-      .fillColor('#999')
-      .text('PROPMETRIK - Real Estate Intelligence Platform', 50, 750, { align: 'center' });
+    // Summary Section
+    pdfSection(doc, 'Monthly Summary');
+    pdfStatCards(doc, [
+      { label: 'This Month Deals', value: String(summary.thisMonth.deals), color: C.info },
+      { label: 'This Month Value', value: `$${summary.thisMonth.value.toLocaleString()}`, color: C.positive },
+      { label: 'Win Rate', value: `${summary.thisMonth.winRate}%`, color: C.warning },
+      { label: 'Pipeline Deals', value: String(summary.pipeline.totalDeals), color: C.heading },
+    ]);
+
+    doc.moveDown(0.5);
+    pdfTable(doc, ['Period', 'Deals', 'Value', 'Win Rate'],
+      [
+        ['This Month', String(summary.thisMonth.deals), `$${summary.thisMonth.value.toLocaleString()}`, `${summary.thisMonth.winRate}%`],
+        ['Last Month', String(summary.lastMonth.deals), `$${summary.lastMonth.value.toLocaleString()}`, `${summary.lastMonth.winRate}%`],
+        ['Pipeline', String(summary.pipeline.totalDeals), `$${summary.pipeline.totalValue.toLocaleString()}`, '-'],
+      ],
+      [PAGE.contentWidth * 0.3, PAGE.contentWidth * 0.2, PAGE.contentWidth * 0.3, PAGE.contentWidth * 0.2]);
+
+    pdfSeparator(doc);
     
+    // Cohort Analysis
+    pdfSection(doc, 'Cohort Analysis (Last 6 Months)');
+    
+    const cohortRows = cohorts.slice(0, 6).map((cohort) => [
+      cohort.cohort,
+      String(cohort.totalDeals),
+      String(cohort.wonDeals),
+      `${cohort.winRate}%`,
+      `$${cohort.totalValue.toLocaleString()}`,
+      `${cohort.avgCycleTime}d`,
+    ]);
+
+    pdfTable(doc,
+      ['Cohort', 'Deals', 'Won', 'Win Rate', 'Value', 'Avg Cycle'],
+      cohortRows,
+      [PAGE.contentWidth * 0.2, PAGE.contentWidth * 0.12, PAGE.contentWidth * 0.12, PAGE.contentWidth * 0.15, PAGE.contentWidth * 0.25, PAGE.contentWidth * 0.16]);
+    
+    PDF.addFooters(doc);
     doc.end();
     
   } catch (error) {

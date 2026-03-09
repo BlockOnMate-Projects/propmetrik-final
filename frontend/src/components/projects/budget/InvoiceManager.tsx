@@ -95,12 +95,12 @@ const STATUS_CONFIG: Record<InvoiceStatus, {
   icon: React.ElementType
   color: string
 }> = {
-  draft: { label: 'Draft', icon: Edit, color: 'bg-gray-100 text-gray-700' },
-  pending: { label: 'Pending', icon: Clock, color: 'bg-yellow-100 text-yellow-700' },
-  approved: { label: 'Approved', icon: CheckCircle, color: 'bg-green-100 text-green-700' },
-  paid: { label: 'Paid', icon: DollarSign, color: 'bg-blue-100 text-blue-700' },
-  rejected: { label: 'Rejected', icon: XCircle, color: 'bg-red-100 text-red-700' },
-  cancelled: { label: 'Cancelled', icon: Trash2, color: 'bg-gray-100 text-gray-500' },
+  draft: { label: 'Draft', icon: Edit, color: 'bg-zinc-800 text-zinc-300 border border-zinc-700' },
+  pending: { label: 'Pending', icon: Clock, color: 'bg-amber-900/40 text-amber-400 border border-amber-800/50' },
+  approved: { label: 'Approved', icon: CheckCircle, color: 'bg-green-900/40 text-green-400 border border-green-800/50' },
+  paid: { label: 'Paid', icon: DollarSign, color: 'bg-blue-900/40 text-blue-400 border border-blue-800/50' },
+  rejected: { label: 'Rejected', icon: XCircle, color: 'bg-red-900/40 text-red-400 border border-red-800/50' },
+  cancelled: { label: 'Cancelled', icon: Trash2, color: 'bg-zinc-800 text-zinc-500 border border-zinc-700' },
 }
 
 // =====================================================
@@ -110,62 +110,75 @@ const STATUS_CONFIG: Record<InvoiceStatus, {
 function SummaryCards({ summary }: { summary: InvoiceSummary | null }) {
   if (!summary) return null
 
+  // Backend returns: totalInvoiced, totalPaid, totalPending, totalOverdue, overdueCount, averageDaysToPay
+  // Map to display fields with safe fallbacks
+  const totalAmount = summary.totalAmount ?? summary.totalInvoiced ?? 0
+  const paidAmount = summary.paidAmount ?? summary.totalPaid ?? 0
+  const pendingAmount = summary.pendingAmount ?? summary.totalPending ?? 0
+  const overdueAmount = summary.overdueAmount ?? summary.totalOverdue ?? 0
+  const totalCount = summary.totalInvoices ?? 0
+  const overdueCount = summary.overdueCount ?? 0
+
   return (
     <div className="grid gap-4 md:grid-cols-4">
-      <Card>
+      <Card className="bg-zinc-900 border-zinc-800">
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-sm font-medium">Total Invoices</CardTitle>
-          <FileText className="h-4 w-4 text-muted-foreground" />
+          <CardTitle className="text-sm font-medium text-zinc-300">Total Invoiced</CardTitle>
+          <FileText className="h-4 w-4 text-zinc-500" />
         </CardHeader>
         <CardContent>
-          <div className="text-2xl font-bold">{summary.totalInvoices}</div>
-          <p className="text-xs text-muted-foreground">
-            {formatCurrency(summary.totalAmount, 'GHS')} total
-          </p>
+          <div className="text-2xl font-bold text-white">
+            {formatCurrency(totalAmount, 'GHS')}
+          </div>
+          {totalCount > 0 && (
+            <p className="text-xs text-zinc-500">
+              {totalCount} invoices
+            </p>
+          )}
         </CardContent>
       </Card>
 
-      <Card>
+      <Card className="bg-zinc-900 border-zinc-800">
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-sm font-medium">Paid</CardTitle>
+          <CardTitle className="text-sm font-medium text-zinc-300">Paid</CardTitle>
           <CheckCircle className="h-4 w-4 text-green-500" />
         </CardHeader>
         <CardContent>
-          <div className="text-2xl font-bold text-green-600">
-            {formatCurrency(summary.paidAmount, 'GHS')}
+          <div className="text-2xl font-bold text-green-400">
+            {formatCurrency(paidAmount, 'GHS')}
           </div>
-          <p className="text-xs text-muted-foreground">
-            {summary.byStatus.paid?.count || 0} invoices
+          <p className="text-xs text-zinc-500">
+            {summary.averageDaysToPay ? `Avg ${Math.round(summary.averageDaysToPay)}d to pay` : 'No payments yet'}
           </p>
         </CardContent>
       </Card>
 
-      <Card>
+      <Card className="bg-zinc-900 border-zinc-800">
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-sm font-medium">Pending</CardTitle>
-          <Clock className="h-4 w-4 text-yellow-500" />
+          <CardTitle className="text-sm font-medium text-zinc-300">Pending</CardTitle>
+          <Clock className="h-4 w-4 text-amber-500" />
         </CardHeader>
         <CardContent>
-          <div className="text-2xl font-bold text-yellow-600">
-            {formatCurrency(summary.pendingAmount, 'GHS')}
+          <div className="text-2xl font-bold text-amber-400">
+            {formatCurrency(pendingAmount, 'GHS')}
           </div>
-          <p className="text-xs text-muted-foreground">
-            {(summary.byStatus.pending?.count || 0) + (summary.byStatus.approved?.count || 0)} invoices
+          <p className="text-xs text-zinc-500">
+            Awaiting payment
           </p>
         </CardContent>
       </Card>
 
-      <Card>
+      <Card className="bg-zinc-900 border-zinc-800">
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-sm font-medium">Overdue</CardTitle>
+          <CardTitle className="text-sm font-medium text-zinc-300">Overdue</CardTitle>
           <AlertTriangle className="h-4 w-4 text-red-500" />
         </CardHeader>
         <CardContent>
-          <div className="text-2xl font-bold text-red-600">
-            {formatCurrency(summary.overdueAmount, 'GHS')}
+          <div className="text-2xl font-bold text-red-400">
+            {formatCurrency(overdueAmount, 'GHS')}
           </div>
-          <p className="text-xs text-muted-foreground">
-            Requires attention
+          <p className="text-xs text-zinc-500">
+            {overdueCount > 0 ? `${overdueCount} overdue` : 'None overdue'}
           </p>
         </CardContent>
       </Card>
@@ -207,22 +220,27 @@ function InvoiceForm({
     onSubmit(formData)
   }
 
+  const inputClasses = "bg-zinc-800 border-zinc-700 text-zinc-100 placeholder:text-zinc-600"
+  const textareaClasses = "bg-zinc-800 border-zinc-700 text-zinc-100 placeholder:text-zinc-600"
+
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       <div className="grid gap-4 md:grid-cols-2">
         <div className="space-y-2">
-          <Label htmlFor="vendorName">Vendor Name *</Label>
+          <Label htmlFor="vendorName" className="text-zinc-300">Vendor Name *</Label>
           <Input
             id="vendorName"
+            className={inputClasses}
             value={formData.vendorName}
             onChange={(e) => setFormData(prev => ({ ...prev, vendorName: e.target.value }))}
             required
           />
         </div>
         <div className="space-y-2">
-          <Label htmlFor="invoiceNumber">Invoice Number *</Label>
+          <Label htmlFor="invoiceNumber" className="text-zinc-300">Invoice Number *</Label>
           <Input
             id="invoiceNumber"
+            className={inputClasses}
             value={formData.invoiceNumber}
             onChange={(e) => setFormData(prev => ({ ...prev, invoiceNumber: e.target.value }))}
             required
@@ -231,9 +249,10 @@ function InvoiceForm({
       </div>
 
       <div className="space-y-2">
-        <Label htmlFor="description">Description *</Label>
+        <Label htmlFor="description" className="text-zinc-300">Description *</Label>
         <Textarea
           id="description"
+          className={textareaClasses}
           value={formData.description}
           onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
           required
@@ -242,26 +261,27 @@ function InvoiceForm({
 
       <div className="grid gap-4 md:grid-cols-3">
         <div className="space-y-2">
-          <Label htmlFor="amount">Amount *</Label>
+          <Label htmlFor="amount" className="text-zinc-300">Amount *</Label>
           <Input
             id="amount"
             type="number"
             step="0.01"
+            className={inputClasses}
             value={formData.amount}
             onChange={(e) => setFormData(prev => ({ ...prev, amount: parseFloat(e.target.value) || 0 }))}
             required
           />
         </div>
         <div className="space-y-2">
-          <Label htmlFor="currency">Currency</Label>
+          <Label htmlFor="currency" className="text-zinc-300">Currency</Label>
           <Select
             value={formData.currency}
             onValueChange={(value) => setFormData(prev => ({ ...prev, currency: value }))}
           >
-            <SelectTrigger>
+            <SelectTrigger className="bg-zinc-800 border-zinc-700 text-zinc-100">
               <SelectValue />
             </SelectTrigger>
-            <SelectContent>
+            <SelectContent className="bg-zinc-900 border-zinc-700">
               <SelectItem value="GHS">GHS - Ghana Cedi</SelectItem>
               <SelectItem value="USD">USD - US Dollar</SelectItem>
               <SelectItem value="GBP">GBP - British Pound</SelectItem>
@@ -270,11 +290,12 @@ function InvoiceForm({
           </Select>
         </div>
         <div className="space-y-2">
-          <Label htmlFor="taxAmount">Tax Amount</Label>
+          <Label htmlFor="taxAmount" className="text-zinc-300">Tax Amount</Label>
           <Input
             id="taxAmount"
             type="number"
             step="0.01"
+            className={inputClasses}
             value={formData.taxAmount}
             onChange={(e) => setFormData(prev => ({ ...prev, taxAmount: parseFloat(e.target.value) || 0 }))}
           />
@@ -283,20 +304,22 @@ function InvoiceForm({
 
       <div className="grid gap-4 md:grid-cols-2">
         <div className="space-y-2">
-          <Label htmlFor="invoiceDate">Invoice Date *</Label>
+          <Label htmlFor="invoiceDate" className="text-zinc-300">Invoice Date *</Label>
           <Input
             id="invoiceDate"
             type="date"
+            className={inputClasses}
             value={formData.invoiceDate ? new Date(formData.invoiceDate).toISOString().split('T')[0] : ''}
             onChange={(e) => setFormData(prev => ({ ...prev, invoiceDate: new Date(e.target.value) }))}
             required
           />
         </div>
         <div className="space-y-2">
-          <Label htmlFor="dueDate">Due Date *</Label>
+          <Label htmlFor="dueDate" className="text-zinc-300">Due Date *</Label>
           <Input
             id="dueDate"
             type="date"
+            className={inputClasses}
             value={formData.dueDate ? new Date(formData.dueDate).toISOString().split('T')[0] : ''}
             onChange={(e) => setFormData(prev => ({ ...prev, dueDate: new Date(e.target.value) }))}
             required
@@ -305,19 +328,20 @@ function InvoiceForm({
       </div>
 
       <div className="space-y-2">
-        <Label htmlFor="notes">Notes</Label>
+        <Label htmlFor="notes" className="text-zinc-300">Notes</Label>
         <Textarea
           id="notes"
+          className={textareaClasses}
           value={formData.notes || ''}
           onChange={(e) => setFormData(prev => ({ ...prev, notes: e.target.value }))}
         />
       </div>
 
       <DialogFooter>
-        <Button type="button" variant="outline" onClick={onCancel}>
+        <Button type="button" variant="outline" onClick={onCancel} className="border-zinc-700 text-zinc-300 hover:bg-zinc-800">
           Cancel
         </Button>
-        <Button type="submit" disabled={isSubmitting}>
+        <Button type="submit" disabled={isSubmitting} className="bg-amber-600 hover:bg-amber-700 text-white">
           {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
           {invoice?.id ? 'Update Invoice' : 'Create Invoice'}
         </Button>
@@ -348,13 +372,13 @@ function InvoiceDetail({
   const StatusIcon = statusConfig.icon
 
   return (
-    <SheetContent className="w-full sm:max-w-lg overflow-y-auto">
+    <SheetContent className="w-full sm:max-w-lg overflow-y-auto bg-zinc-900 border-zinc-700 text-zinc-100">
       <SheetHeader>
-        <SheetTitle className="flex items-center gap-2">
+        <SheetTitle className="flex items-center gap-2 text-zinc-100">
           <FileText className="h-5 w-5" />
           Invoice {invoice.invoiceNumber}
         </SheetTitle>
-        <SheetDescription>
+        <SheetDescription className="text-zinc-400">
           <Badge className={cn('mt-2', statusConfig.color)}>
             <StatusIcon className="mr-1 h-3 w-3" />
             {statusConfig.label}
@@ -365,7 +389,7 @@ function InvoiceDetail({
       <div className="mt-6 space-y-6">
         {/* Vendor Info */}
         <div className="space-y-2">
-          <Label className="text-muted-foreground">Vendor</Label>
+          <Label className="text-zinc-400">Vendor</Label>
           <div className="flex items-center gap-2">
             <Building2 className="h-4 w-4" />
             <span className="font-medium">{invoice.vendorName}</span>
@@ -374,17 +398,17 @@ function InvoiceDetail({
 
         {/* Amount */}
         <div className="space-y-2">
-          <Label className="text-muted-foreground">Amount</Label>
-          <p className="text-2xl font-bold">
+          <Label className="text-zinc-400">Amount</Label>
+          <p className="text-2xl font-bold text-white">
             {formatCurrency(invoice.amount + (invoice.taxAmount || 0), invoice.currency)}
           </p>
           {invoice.taxAmount > 0 && (
-            <p className="text-sm text-muted-foreground">
+            <p className="text-sm text-zinc-500">
               Includes {formatCurrency(invoice.taxAmount, invoice.currency)} tax
             </p>
           )}
           {invoice.exchangeRateAtCreation && invoice.exchangeRateAtCreation !== 1 && (
-            <p className="text-sm text-muted-foreground">
+            <p className="text-sm text-zinc-500">
               FX Rate: {invoice.exchangeRateAtCreation.toFixed(4)}
             </p>
           )}
@@ -393,17 +417,17 @@ function InvoiceDetail({
         {/* Dates */}
         <div className="grid grid-cols-2 gap-4">
           <div className="space-y-2">
-            <Label className="text-muted-foreground">Invoice Date</Label>
+            <Label className="text-zinc-400">Invoice Date</Label>
             <div className="flex items-center gap-2">
               <Calendar className="h-4 w-4" />
               <span>{formatDate(invoice.invoiceDate)}</span>
             </div>
           </div>
           <div className="space-y-2">
-            <Label className="text-muted-foreground">Due Date</Label>
+            <Label className="text-zinc-400">Due Date</Label>
             <div className="flex items-center gap-2">
               <Calendar className="h-4 w-4" />
-              <span className={cn(invoice.isOverdue && 'text-red-600')}>
+              <span className={cn(invoice.isOverdue && 'text-red-400')}>
                 {formatDate(invoice.dueDate)}
               </span>
             </div>
@@ -412,25 +436,25 @@ function InvoiceDetail({
 
         {/* Description */}
         <div className="space-y-2">
-          <Label className="text-muted-foreground">Description</Label>
+          <Label className="text-zinc-400">Description</Label>
           <p>{invoice.description}</p>
         </div>
 
         {/* Notes */}
         {invoice.notes && (
           <div className="space-y-2">
-            <Label className="text-muted-foreground">Notes</Label>
+            <Label className="text-zinc-400">Notes</Label>
             <p className="text-sm">{invoice.notes}</p>
           </div>
         )}
 
         {/* Approval Info */}
         {invoice.approvedBy && (
-          <div className="rounded-lg border bg-green-50 p-3">
-            <p className="text-sm">
+          <div className="rounded-lg border border-green-800/50 bg-green-900/30 p-3">
+            <p className="text-sm text-green-300">
               <strong>Approved by:</strong> {invoice.approvedBy}
             </p>
-            <p className="text-xs text-muted-foreground">
+            <p className="text-xs text-zinc-500">
               {formatDate(invoice.approvedAt!)}
             </p>
           </div>
@@ -438,12 +462,12 @@ function InvoiceDetail({
 
         {/* Rejection Info */}
         {invoice.rejectedBy && (
-          <div className="rounded-lg border bg-red-50 p-3">
-            <p className="text-sm">
+          <div className="rounded-lg border border-red-800/50 bg-red-900/30 p-3">
+            <p className="text-sm text-red-300">
               <strong>Rejected by:</strong> {invoice.rejectedBy}
             </p>
-            <p className="text-sm text-red-700">{invoice.rejectionReason}</p>
-            <p className="text-xs text-muted-foreground">
+            <p className="text-sm text-red-400">{invoice.rejectionReason}</p>
+            <p className="text-xs text-zinc-500">
               {formatDate(invoice.rejectedAt!)}
             </p>
           </div>
@@ -451,13 +475,13 @@ function InvoiceDetail({
 
         {/* Payment Info */}
         {invoice.paidDate && (
-          <div className="rounded-lg border bg-blue-50 p-3">
-            <p className="text-sm">
+          <div className="rounded-lg border border-blue-800/50 bg-blue-900/30 p-3">
+            <p className="text-sm text-blue-300">
               <strong>Paid:</strong> {formatDate(invoice.paidDate)}
             </p>
-            <p className="text-sm">Ref: {invoice.paymentReference}</p>
+            <p className="text-sm text-blue-200">Ref: {invoice.paymentReference}</p>
             {invoice.paymentMethod && (
-              <p className="text-xs text-muted-foreground">
+              <p className="text-xs text-zinc-500">
                 Method: {invoice.paymentMethod}
               </p>
             )}
@@ -465,7 +489,7 @@ function InvoiceDetail({
         )}
 
         {/* Actions */}
-        <div className="flex flex-wrap gap-2 border-t pt-4">
+        <div className="flex flex-wrap gap-2 border-t border-zinc-800 pt-4">
           {invoice.status === 'draft' && (
             <>
               <Button size="sm" onClick={() => onAction('submit')}>
@@ -492,20 +516,21 @@ function InvoiceDetail({
                     Reject
                   </Button>
                 </DialogTrigger>
-                <DialogContent>
+                <DialogContent className="bg-zinc-900 border-zinc-700 text-zinc-100">
                   <DialogHeader>
-                    <DialogTitle>Reject Invoice</DialogTitle>
-                    <DialogDescription>
+                    <DialogTitle className="text-zinc-100">Reject Invoice</DialogTitle>
+                    <DialogDescription className="text-zinc-400">
                       Please provide a reason for rejecting this invoice.
                     </DialogDescription>
                   </DialogHeader>
                   <Textarea
+                    className="bg-zinc-800 border-zinc-700 text-zinc-100 placeholder:text-zinc-600"
                     placeholder="Enter rejection reason..."
                     value={rejectReason}
                     onChange={(e) => setRejectReason(e.target.value)}
                   />
                   <DialogFooter>
-                    <Button variant="outline" onClick={() => setShowRejectDialog(false)}>
+                    <Button variant="outline" onClick={() => setShowRejectDialog(false)} className="border-zinc-700 text-zinc-300 hover:bg-zinc-800">
                       Cancel
                     </Button>
                     <Button
@@ -532,17 +557,18 @@ function InvoiceDetail({
                   Mark as Paid
                 </Button>
               </DialogTrigger>
-              <DialogContent>
+              <DialogContent className="bg-zinc-900 border-zinc-700 text-zinc-100">
                 <DialogHeader>
-                  <DialogTitle>Record Payment</DialogTitle>
-                  <DialogDescription>
+                  <DialogTitle className="text-zinc-100">Record Payment</DialogTitle>
+                  <DialogDescription className="text-zinc-400">
                     Enter payment details for this invoice.
                   </DialogDescription>
                 </DialogHeader>
                 <div className="space-y-4">
                   <div className="space-y-2">
-                    <Label>Payment Reference *</Label>
+                    <Label className="text-zinc-300">Payment Reference *</Label>
                     <Input
+                      className="bg-zinc-800 border-zinc-700 text-zinc-100 placeholder:text-zinc-600"
                       placeholder="e.g., CHQ-001234 or TRF-567890"
                       value={paymentReference}
                       onChange={(e) => setPaymentReference(e.target.value)}
@@ -550,10 +576,11 @@ function InvoiceDetail({
                   </div>
                 </div>
                 <DialogFooter>
-                  <Button variant="outline" onClick={() => setShowPayDialog(false)}>
+                  <Button variant="outline" onClick={() => setShowPayDialog(false)} className="border-zinc-700 text-zinc-300 hover:bg-zinc-800">
                     Cancel
                   </Button>
                   <Button
+                    className="bg-amber-600 hover:bg-amber-700 text-white"
                     onClick={() => {
                       onAction('pay', { paymentReference })
                       setShowPayDialog(false)
@@ -609,13 +636,17 @@ export function InvoiceManager({
       setIsLoading(true)
       setError(null)
 
-      const [invoicesData, summaryData] = await Promise.all([
+      const [invoicesResult, summaryResult] = await Promise.all([
         invoiceApi.getByProject(projectId),
         invoiceApi.getProjectSummary(projectId),
       ])
 
-      setInvoices(invoicesData)
-      setSummary(summaryData)
+      // Backend wraps responses in { success, data }
+      const invoicesData = (invoicesResult as any)?.data || invoicesResult
+      const summaryUnwrapped = (summaryResult as any)?.data || summaryResult
+
+      setInvoices(Array.isArray(invoicesData) ? invoicesData : [])
+      setSummary(summaryUnwrapped)
     } catch (err) {
       console.error('Error fetching invoices:', err)
       setError('Failed to load invoices')
@@ -741,23 +772,23 @@ export function InvoiceManager({
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div className="flex items-center gap-2">
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-500" />
             <Input
               placeholder="Search invoices..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-10 w-64"
+              className="pl-10 w-64 bg-zinc-900 border-zinc-700 text-zinc-100 placeholder:text-zinc-600"
             />
           </div>
           <Select
             value={statusFilter}
             onValueChange={(value) => setStatusFilter(value as InvoiceStatus | 'all')}
           >
-            <SelectTrigger className="w-36">
+            <SelectTrigger className="w-36 bg-zinc-900 border-zinc-700 text-zinc-100">
               <Filter className="mr-2 h-4 w-4" />
               <SelectValue />
             </SelectTrigger>
-            <SelectContent>
+            <SelectContent className="bg-zinc-900 border-zinc-700">
               <SelectItem value="all">All Status</SelectItem>
               {Object.entries(STATUS_CONFIG).map(([key, config]) => (
                 <SelectItem key={key} value={key}>
@@ -770,15 +801,15 @@ export function InvoiceManager({
 
         <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
           <DialogTrigger asChild>
-            <Button>
+            <Button className="bg-amber-600 hover:bg-amber-700 text-white">
               <Plus className="mr-2 h-4 w-4" />
               New Invoice
             </Button>
           </DialogTrigger>
-          <DialogContent className="max-w-2xl">
+          <DialogContent className="max-w-2xl bg-zinc-900 border-zinc-700 text-zinc-100">
             <DialogHeader>
-              <DialogTitle>Create Invoice</DialogTitle>
-              <DialogDescription>
+              <DialogTitle className="text-zinc-100">Create Invoice</DialogTitle>
+              <DialogDescription className="text-zinc-400">
                 Add a new invoice to track payments.
               </DialogDescription>
             </DialogHeader>
@@ -792,17 +823,17 @@ export function InvoiceManager({
       </div>
 
       {/* Table */}
-      <Card>
+      <Card className="bg-zinc-900 border-zinc-800">
         <Table>
           <TableHeader>
-            <TableRow>
-              <TableHead>Invoice #</TableHead>
-              <TableHead>Vendor</TableHead>
+            <TableRow className="border-zinc-800 hover:bg-zinc-800/50">
+              <TableHead className="text-zinc-400">Invoice #</TableHead>
+              <TableHead className="text-zinc-400">Vendor</TableHead>
               <TableHead>
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="-ml-3"
+                  className="-ml-3 text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800"
                   onClick={() => {
                     if (sortField === 'amount') {
                       setSortOrder(prev => prev === 'asc' ? 'desc' : 'asc')
@@ -820,7 +851,7 @@ export function InvoiceManager({
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="-ml-3"
+                  className="-ml-3 text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800"
                   onClick={() => {
                     if (sortField === 'dueDate') {
                       setSortOrder(prev => prev === 'asc' ? 'desc' : 'asc')
@@ -834,16 +865,16 @@ export function InvoiceManager({
                   <ArrowUpDown className="ml-2 h-4 w-4" />
                 </Button>
               </TableHead>
-              <TableHead>Status</TableHead>
+              <TableHead className="text-zinc-400">Status</TableHead>
               <TableHead className="w-12"></TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {filteredInvoices.length === 0 ? (
-              <TableRow>
+              <TableRow className="border-zinc-800">
                 <TableCell colSpan={6} className="text-center py-8">
-                  <FileText className="mx-auto h-12 w-12 text-muted-foreground" />
-                  <p className="mt-2 text-muted-foreground">No invoices found</p>
+                  <FileText className="mx-auto h-12 w-12 text-zinc-600" />
+                  <p className="mt-2 text-zinc-500">No invoices found</p>
                 </TableCell>
               </TableRow>
             ) : (
@@ -854,7 +885,7 @@ export function InvoiceManager({
                 return (
                   <TableRow
                     key={invoice.id}
-                    className="cursor-pointer"
+                    className="cursor-pointer border-zinc-800 hover:bg-zinc-800/50 text-zinc-200"
                     onClick={() => setSelectedInvoice(invoice)}
                   >
                     <TableCell className="font-medium">
@@ -869,7 +900,7 @@ export function InvoiceManager({
                     <TableCell>
                       {formatCurrency(invoice.amount, invoice.currency)}
                     </TableCell>
-                    <TableCell className={cn(invoice.isOverdue && 'text-red-600')}>
+                    <TableCell className={cn(invoice.isOverdue && 'text-red-400')}>
                       {formatDate(invoice.dueDate)}
                     </TableCell>
                     <TableCell>
@@ -881,19 +912,19 @@ export function InvoiceManager({
                     <TableCell>
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
-                          <Button variant="ghost" size="icon">
+                          <Button variant="ghost" size="icon" className="hover:bg-zinc-800 text-zinc-400">
                             <MoreHorizontal className="h-4 w-4" />
                           </Button>
                         </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                          <DropdownMenuSeparator />
-                          <DropdownMenuItem onClick={() => setSelectedInvoice(invoice)}>
+                        <DropdownMenuContent align="end" className="bg-zinc-900 border-zinc-700 text-zinc-100">
+                          <DropdownMenuLabel className="text-zinc-400">Actions</DropdownMenuLabel>
+                          <DropdownMenuSeparator className="bg-zinc-700" />
+                          <DropdownMenuItem className="focus:bg-zinc-800" onClick={() => setSelectedInvoice(invoice)}>
                             <Eye className="mr-2 h-4 w-4" />
                             View Details
                           </DropdownMenuItem>
                           {invoice.status === 'draft' && (
-                            <DropdownMenuItem onClick={() => setEditingInvoice(invoice)}>
+                            <DropdownMenuItem className="focus:bg-zinc-800" onClick={() => setEditingInvoice(invoice)}>
                               <Edit className="mr-2 h-4 w-4" />
                               Edit
                             </DropdownMenuItem>
@@ -922,10 +953,10 @@ export function InvoiceManager({
 
       {/* Edit Invoice Dialog */}
       <Dialog open={!!editingInvoice} onOpenChange={() => setEditingInvoice(null)}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="max-w-2xl bg-zinc-900 border-zinc-700 text-zinc-100">
           <DialogHeader>
-            <DialogTitle>Edit Invoice</DialogTitle>
-            <DialogDescription>
+            <DialogTitle className="text-zinc-100">Edit Invoice</DialogTitle>
+            <DialogDescription className="text-zinc-400">
               Update invoice details.
             </DialogDescription>
           </DialogHeader>

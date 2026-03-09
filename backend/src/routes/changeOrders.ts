@@ -31,8 +31,14 @@ import {
 } from '../services/project-management/changeOrderService';
 import { logger } from '../utils/logger';
 import { pool, query as dbQuery } from '../database';
+import { registerPMParamValidation, getAuthUserId, getAuthOrgId, requirePMWrite } from '../middleware/pmAuth';
+import { validate } from '../middleware/validation';
+import { createChangeOrderSchema, updateChangeOrderSchema, changeOrderLineItemSchema } from '../middleware/pmProjectValidation';
 
 const router = Router();
+
+// Register UUID parameter validation
+registerPMParamValidation(router);
 
 // Helper to get organization ID from project
 async function getOrgIdFromProject(projectId: string): Promise<string | null> {
@@ -51,17 +57,18 @@ async function getOrgIdFromProject(projectId: string): Promise<string | null> {
 // Helper to get default org ID (fallback)
 async function getDefaultOrgId(): Promise<string> {
   const result = await dbQuery('SELECT id FROM organizations LIMIT 1');
-  return result.rows[0]?.id || '00000000-0000-0000-0000-000000000001';
+  if (!result.rows[0]?.id) throw new Error('No organizations found in database');
+  return result.rows[0].id;
 }
 
-// Helper to extract user ID from request
+// Helper to extract user ID from authenticated user (no header fallback)
 const getUserId = (req: Request): string | undefined => {
-  return (req as any).userId || (req as any).user?.id || req.headers['x-user-id'] as string;
+  return (req as any).user?.id || (req as any).user?.sub;
 };
 
-// Helper to extract organization ID
+// Helper to extract organization ID from authenticated user (no header fallback)
 const getOrganizationId = (req: Request): string | undefined => {
-  return (req as any).organizationId || req.headers['x-organization-id'] as string;
+  return (req as any).user?.organizationId || (req as any).user?.organization_id;
 };
 
 /**
@@ -156,7 +163,7 @@ router.get('/:id', async (req: Request, res: Response, next: NextFunction) => {
  * POST /api/change-orders
  * Create a new Change Order
  */
-router.post('/', async (req: Request, res: Response, next: NextFunction) => {
+router.post('/', requirePMWrite, validate(createChangeOrderSchema), async (req: Request, res: Response, next: NextFunction) => {
   try {
     const userId = getUserId(req);
     
@@ -224,7 +231,7 @@ router.post('/', async (req: Request, res: Response, next: NextFunction) => {
  * PUT /api/change-orders/:id
  * Update a Change Order
  */
-router.put('/:id', async (req: Request, res: Response, next: NextFunction) => {
+router.put('/:id', requirePMWrite, validate(updateChangeOrderSchema), async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { id } = req.params;
     const userId = getUserId(req);
@@ -259,7 +266,7 @@ router.put('/:id', async (req: Request, res: Response, next: NextFunction) => {
  * POST /api/change-orders/:id/items
  * Add line items to a Change Order
  */
-router.post('/:id/items', async (req: Request, res: Response, next: NextFunction) => {
+router.post('/:id/items', requirePMWrite, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { id } = req.params;
     const userId = getUserId(req);
@@ -289,7 +296,7 @@ router.post('/:id/items', async (req: Request, res: Response, next: NextFunction
  * PUT /api/change-orders/items/:itemId
  * Update a line item
  */
-router.put('/items/:itemId', async (req: Request, res: Response, next: NextFunction) => {
+router.put('/items/:itemId', requirePMWrite, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { itemId } = req.params;
     const userId = getUserId(req);
@@ -322,7 +329,7 @@ router.put('/items/:itemId', async (req: Request, res: Response, next: NextFunct
  * DELETE /api/change-orders/items/:itemId
  * Delete a line item
  */
-router.delete('/items/:itemId', async (req: Request, res: Response, next: NextFunction) => {
+router.delete('/items/:itemId', requirePMWrite, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { itemId } = req.params;
     await changeOrderService.deleteItem(itemId);
@@ -341,7 +348,7 @@ router.delete('/items/:itemId', async (req: Request, res: Response, next: NextFu
  * POST /api/change-orders/:id/submit
  * Submit Change Order for review
  */
-router.post('/:id/submit', async (req: Request, res: Response, next: NextFunction) => {
+router.post('/:id/submit', requirePMWrite, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { id } = req.params;
     const userId = getUserId(req);
@@ -370,7 +377,7 @@ router.post('/:id/submit', async (req: Request, res: Response, next: NextFunctio
  * POST /api/change-orders/:id/request-approval
  * Request approval for Change Order
  */
-router.post('/:id/request-approval', async (req: Request, res: Response, next: NextFunction) => {
+router.post('/:id/request-approval', requirePMWrite, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { id } = req.params;
     const userId = getUserId(req);
@@ -399,7 +406,7 @@ router.post('/:id/request-approval', async (req: Request, res: Response, next: N
  * POST /api/change-orders/:id/sign
  * Sign a specific signature line
  */
-router.post('/:id/sign', async (req: Request, res: Response, next: NextFunction) => {
+router.post('/:id/sign', requirePMWrite, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { id } = req.params;
     const userId = getUserId(req);
@@ -436,7 +443,7 @@ router.post('/:id/sign', async (req: Request, res: Response, next: NextFunction)
  * POST /api/change-orders/:id/approve
  * Approve Change Order (bypass signatures)
  */
-router.post('/:id/approve', async (req: Request, res: Response, next: NextFunction) => {
+router.post('/:id/approve', requirePMWrite, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { id } = req.params;
     const userId = getUserId(req);
@@ -466,7 +473,7 @@ router.post('/:id/approve', async (req: Request, res: Response, next: NextFuncti
  * POST /api/change-orders/:id/reject
  * Reject Change Order
  */
-router.post('/:id/reject', async (req: Request, res: Response, next: NextFunction) => {
+router.post('/:id/reject', requirePMWrite, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { id } = req.params;
     const userId = getUserId(req);
@@ -503,7 +510,7 @@ router.post('/:id/reject', async (req: Request, res: Response, next: NextFunctio
  * POST /api/change-orders/:id/execute
  * Execute Change Order (apply to contract)
  */
-router.post('/:id/execute', async (req: Request, res: Response, next: NextFunction) => {
+router.post('/:id/execute', requirePMWrite, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { id } = req.params;
     const userId = getUserId(req);
@@ -532,7 +539,7 @@ router.post('/:id/execute', async (req: Request, res: Response, next: NextFuncti
  * POST /api/change-orders/:id/void
  * Void Change Order
  */
-router.post('/:id/void', async (req: Request, res: Response, next: NextFunction) => {
+router.post('/:id/void', requirePMWrite, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { id } = req.params;
     const userId = getUserId(req);

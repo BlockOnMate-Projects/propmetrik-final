@@ -498,9 +498,15 @@ export const documentsApi = {
         if (metadata.tags) formData.append('tags', JSON.stringify(metadata.tags));
 
         const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api/v1';
+        const { getSession } = await import('next-auth/react');
+        const session = await getSession();
+        const token = (session as any)?.accessToken;
+        const authHeaders: Record<string, string> = {};
+        if (token) authHeaders['Authorization'] = `Bearer ${token}`;
         const response = await fetch(`${API_BASE}${CRM_BASE}/documents`, {
             method: 'POST',
-            body: formData
+            body: formData,
+            headers: authHeaders,
         });
 
         if (!response.ok) {

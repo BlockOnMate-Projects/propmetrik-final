@@ -20,6 +20,7 @@
 import { Router, Request, Response } from 'express';
 import { valuationInvoiceService, MWH_MAN_DAY_RATES, type FeeModel } from '../services/valuation-engine/valuationInvoiceService';
 import { authenticate } from '../middleware/auth';
+import { requireServiceAccess } from '../middleware/serviceAccess';
 import { logger } from '../utils/logger';
 import crypto from 'crypto';
 
@@ -27,9 +28,10 @@ const router = Router();
 
 /** Extract organization ID from the authenticated user (set by auth middleware) */
 function getOrgId(req: Request): string {
-    return (req as any).user?.organizationId
-        || (req as any).user?.organization_id
-        || '00000000-0000-0000-0000-000000000001';
+    const orgId = (req as any).user?.organizationId
+        || (req as any).user?.organization_id;
+    if (!orgId) throw new Error('Organization ID required — authentication missing');
+    return orgId;
 }
 
 // All routes require authentication (except webhook and public pay page)
@@ -37,6 +39,13 @@ router.use((req, res, next) => {
     if (req.path === '/webhook/paystack') return next();
     if (req.path.startsWith('/public/')) return next();
     return authenticate(req, res, next);
+});
+
+// Service access gating (skipped for same public/webhook paths)
+router.use((req, res, next) => {
+    if (req.path === '/webhook/paystack') return next();
+    if (req.path.startsWith('/public/')) return next();
+    return requireServiceAccess('valuations')(req, res, next);
 });
 
 // ============================================================================
@@ -619,7 +628,13 @@ router.get('/public/crypto/nowpayments-status/:paymentId', async (req: Request, 
                             `UPDATE valuation_invoices SET status = 'paid', paid_at = NOW(), payment_reference = $1 WHERE id = $2 AND status != 'paid'`,
                             [paymentRef, invoiceId]
                         );
-                        logger.info('Crypto polling: invoice marked as paid', { invoiceId, paymentRef, paymentId });
+                        logger.info('Crypto polling: valuation invoice marked as paid', { invoiceId, paymentRef, paymentId });
+                    } else if (invoiceId && npRow.rows[0].domain_record_type === 'project_invoice') {
+                        await pool.query(
+                            `UPDATE project_invoices SET status = 'paid', paid_date = NOW(), payment_reference = $1, payment_method = 'crypto' WHERE id = $2 AND status != 'paid'`,
+                            [paymentRef, invoiceId]
+                        );
+                        logger.info('Crypto polling: PM invoice marked as paid', { invoiceId, paymentRef, paymentId });
                     }
                 }
             } else if (status.payment_status === 'failed' || status.payment_status === 'expired' || status.payment_status === 'refunded') {
@@ -835,7 +850,17 @@ router.post('/webhook/nowpayments-ipn', async (req: Request, res: Response) => {
                         `UPDATE valuation_invoices SET status = 'paid', paid_at = NOW(), payment_reference = $1 WHERE id = $2 AND status != 'paid'`,
                         [paymentRef, invoiceId]
                     );
-                    logger.info('NOWPayments IPN: invoice marked as paid', {
+                    logger.info('NOWPayments IPN: valuation invoice marked as paid', {
+                        invoiceId,
+                        paymentRef,
+                        paymentId,
+                    });
+                } else if (invoiceId && npRow.rows[0].domain_record_type === 'project_invoice') {
+                    await pool.query(
+                        `UPDATE project_invoices SET status = 'paid', paid_date = NOW(), payment_reference = $1, payment_method = 'crypto' WHERE id = $2 AND status != 'paid'`,
+                        [paymentRef, invoiceId]
+                    );
+                    logger.info('NOWPayments IPN: PM invoice marked as paid', {
                         invoiceId,
                         paymentRef,
                         paymentId,
@@ -884,7 +909,7 @@ router.get('/payments/account', async (req: Request, res: Response) => {
 
         const result = await pool.query(
             `SELECT * FROM payment_accounts
-             WHERE entity_id = $1 AND entity_type = 'organization' AND is_active = TRUE
+             WHERE entity_id = $1 AND entity_type = 'organization' AND service_type = 'valuation' AND is_active = TRUE
              LIMIT 1`,
             [organizationId]
         );
@@ -947,7 +972,7 @@ router.post('/payments/register-account', async (req: Request, res: Response) =>
 
         const { paystackService } = await import('../services/property-management/payment/paystackService');
         const result = await paystackService.registerPropertyManagerAccount(
-            organizationId, bankCode, accountNumber, businessName, contactEmail, contactPhone
+            organizationId, bankCode, accountNumber, businessName, contactEmail, contactPhone, 'valuation'
         );
 
         if (!result.success) {
@@ -997,7 +1022,7 @@ router.get('/payments/crypto-wallet', async (req: Request, res: Response) => {
         const result = await pool.query(
             `SELECT crypto_wallet_address, crypto_wallet_verified, crypto_wallet_registered_at
              FROM payment_accounts
-             WHERE entity_id = $1 AND entity_type = 'organization' AND is_active = TRUE
+             WHERE entity_id = $1 AND entity_type = 'organization' AND service_type = 'valuation' AND is_active = TRUE
              LIMIT 1`,
             [organizationId]
         );
@@ -1034,9 +1059,9 @@ router.post('/payments/crypto-wallet', async (req: Request, res: Response) => {
 
         const { pool } = await import('../database');
         const upsertResult = await pool.query(`
-            INSERT INTO payment_accounts (id, entity_type, entity_id, crypto_wallet_address, crypto_wallet_registered_at, updated_at, is_active)
-            VALUES (gen_random_uuid(), 'organization', $1, $2, NOW(), NOW(), TRUE)
-            ON CONFLICT (entity_type, entity_id) DO UPDATE SET
+            INSERT INTO payment_accounts (id, entity_type, entity_id, service_type, crypto_wallet_address, crypto_wallet_registered_at, updated_at, is_active)
+            VALUES (gen_random_uuid(), 'organization', $1, 'valuation', $2, NOW(), NOW(), TRUE)
+            ON CONFLICT (entity_id, entity_type, service_type) DO UPDATE SET
                 crypto_wallet_address = $2,
                 crypto_wallet_registered_at = NOW(),
                 updated_at = NOW()
@@ -1050,7 +1075,7 @@ router.post('/payments/crypto-wallet', async (req: Request, res: Response) => {
         try {
             const { cryptoPaymentService } = await import('../../shared-services/payments/crypto');
             if (cryptoPaymentService.isConfigured()) {
-                await cryptoPaymentService.registerRecipientWallet('organization', organizationId, walletAddress);
+                await cryptoPaymentService.registerRecipientWallet('organization', organizationId, walletAddress, 'valuation');
                 onChainRegistered = true;
                 await pool.query(`UPDATE payment_accounts SET crypto_wallet_verified = true WHERE id = $1`, [row.id]);
             }

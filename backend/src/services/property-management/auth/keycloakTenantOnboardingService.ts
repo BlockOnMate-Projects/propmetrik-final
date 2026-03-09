@@ -4,6 +4,7 @@ import { pool } from '../../../database';
 import config, { keycloakConfig } from '../../../config';
 import { logger } from '../../../utils/logger';
 import { tenantAuthService } from './tenantAuthService';
+import { keycloakAdminService } from '../../keycloakAdminService';
 
 interface KeycloakTenantTokenPayload extends JWTPayload {
     sub: string;
@@ -93,8 +94,12 @@ export class KeycloakTenantOnboardingService {
             throw new Error('Tenant email is required for Keycloak onboarding');
         }
 
-        const adminToken = await this.getAdminAccessToken();
-        const keycloakUser = await this.ensureKeycloakUser(adminToken, tenant.email, tenant.full_name);
+        const keycloakUser = await keycloakAdminService.ensureUser(
+            tenant.email,
+            tenant.full_name?.split(/\s+/)[0] || 'Tenant',
+            tenant.full_name?.split(/\s+/).slice(1).join(' ') || 'User',
+            { emailVerified: false, requiredActions: ['VERIFY_EMAIL', 'UPDATE_PASSWORD'] },
+        );
         const invitedByUserId = this.isUuid(invitedBy) ? invitedBy : null;
 
         const inviteExpiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
@@ -113,7 +118,11 @@ export class KeycloakTenantOnboardingService {
 
         const safeRedirectUri = redirectUri || defaultRedirectUri;
         if (process.env.KEYCLOAK_SEND_EXECUTE_ACTIONS_EMAIL === 'true') {
-            await this.sendExecuteActionsEmail(adminToken, keycloakUser.id, safeRedirectUri);
+            await keycloakAdminService.sendActionsEmail(
+                keycloakUser.id,
+                ['VERIFY_EMAIL', 'UPDATE_PASSWORD'],
+                { clientId: tenantClientId, redirectUri: safeRedirectUri },
+            );
         }
 
         logger.info('Tenant invited to Keycloak tenant portal', {
@@ -228,8 +237,12 @@ export class KeycloakTenantOnboardingService {
         }
 
         const tenant = tenantResult.rows[0];
-        const adminToken = await this.getAdminAccessToken();
-        const keycloakUser = await this.ensureKeycloakUser(adminToken, tenant.email, tenant.full_name);
+        const keycloakUser = await keycloakAdminService.ensureUser(
+            tenant.email,
+            tenant.full_name?.split(/\s+/)[0] || 'Tenant',
+            tenant.full_name?.split(/\s+/).slice(1).join(' ') || 'User',
+            { emailVerified: false, requiredActions: ['VERIFY_EMAIL', 'UPDATE_PASSWORD'] },
+        );
 
         await pool.query(
             `UPDATE tenants
@@ -253,59 +266,17 @@ export class KeycloakTenantOnboardingService {
             throw new Error('Password must be at least 8 characters long');
         }
 
-        const adminToken = await this.getAdminAccessToken();
-        const keycloakUser = await this.ensureKeycloakUser(adminToken, email, 'Tenant User');
-
-        await axios.put(
-            `${keycloakUrl}/admin/realms/${keycloakRealm}/users/${keycloakUser.id}/reset-password`,
-            {
-                type: 'password',
-                temporary: false,
-                value: password
-            },
-            {
-                headers: {
-                    Authorization: `Bearer ${adminToken}`,
-                    'Content-Type': 'application/json'
-                }
-            }
+        const keycloakUser = await keycloakAdminService.ensureUser(
+            email,
+            'Tenant',
+            'User',
+            { emailVerified: false, requiredActions: ['VERIFY_EMAIL', 'UPDATE_PASSWORD'] },
         );
 
-        const userResponse = await axios.get(
-            `${keycloakUrl}/admin/realms/${keycloakRealm}/users/${keycloakUser.id}`,
-            {
-                headers: {
-                    Authorization: `Bearer ${adminToken}`
-                }
-            }
-        );
-
-        const existingRequiredActions: string[] = Array.isArray(userResponse.data?.requiredActions)
-            ? userResponse.data.requiredActions
-            : [];
-
-        const requiredActions = existingRequiredActions.filter(
-            (action) => action !== 'UPDATE_PASSWORD' && action !== 'VERIFY_EMAIL'
-        );
-
-        await axios.put(
-            `${keycloakUrl}/admin/realms/${keycloakRealm}/users/${keycloakUser.id}`,
-            {
-                username: userResponse.data?.username || email,
-                email,
-                firstName: userResponse.data?.firstName,
-                lastName: userResponse.data?.lastName,
-                enabled: true,
-                emailVerified: true,
-                requiredActions
-            },
-            {
-                headers: {
-                    Authorization: `Bearer ${adminToken}`,
-                    'Content-Type': 'application/json'
-                }
-            }
-        );
+        await keycloakAdminService.setPassword(keycloakUser.id, password, {
+            clearActions: ['UPDATE_PASSWORD', 'VERIFY_EMAIL'],
+            markEmailVerified: true,
+        });
     }
 
     getResetPasswordUrl(
@@ -432,167 +403,6 @@ export class KeycloakTenantOnboardingService {
         }
 
         return result.rows[0];
-    }
-
-    private async getAdminAccessToken(): Promise<string> {
-        const adminClientId = config.keycloak.adminClientId || config.keycloak.clientId;
-        const adminSecret = config.keycloak.adminSecret || config.keycloak.clientSecret;
-        const adminRealm = config.keycloak.adminRealm || 'master';
-        const adminUsername = config.keycloak.adminUsername;
-        const adminPassword = config.keycloak.adminPassword;
-
-        const requestToken = async (realm: string, params: Record<string, string>) => {
-            const tokenUrl = `${keycloakUrl}/realms/${realm}/protocol/openid-connect/token`;
-            const response = await axios.post(tokenUrl, new URLSearchParams(params), {
-                headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
-            });
-            return response.data.access_token;
-        };
-
-        const attempts: Array<() => Promise<{ token: string; method: string }>> = [];
-
-        if (adminClientId && adminSecret) {
-            attempts.push(async () => ({
-                token: await requestToken(keycloakRealm, {
-                    grant_type: 'client_credentials',
-                    client_id: adminClientId,
-                    client_secret: adminSecret,
-                }),
-                method: `client_credentials@${keycloakRealm}`
-            }));
-
-            if (adminRealm !== keycloakRealm) {
-                attempts.push(async () => ({
-                    token: await requestToken(adminRealm, {
-                        grant_type: 'client_credentials',
-                        client_id: adminClientId,
-                        client_secret: adminSecret,
-                    }),
-                    method: `client_credentials@${adminRealm}`
-                }));
-            }
-        }
-
-        if (adminUsername && adminPassword) {
-            attempts.push(async () => ({
-                token: await requestToken(adminRealm, {
-                    grant_type: 'password',
-                    client_id: adminClientId || 'admin-cli',
-                    username: adminUsername,
-                    password: adminPassword,
-                }),
-                method: `password@${adminRealm}`
-            }));
-        }
-
-        if (attempts.length === 0) {
-            throw new Error('Keycloak admin credentials are missing (client secret or username/password)');
-        }
-
-        const errors: string[] = [];
-        for (const attempt of attempts) {
-            try {
-                const result = await attempt();
-                logger.info('Keycloak admin auth resolved', { method: result.method });
-                return result.token;
-            } catch (error: any) {
-                const message = error?.response?.data
-                    ? JSON.stringify(error.response.data)
-                    : error?.message || 'unknown';
-                errors.push(message);
-            }
-        }
-
-        throw new Error(`Unable to authenticate Keycloak admin token: ${errors.join(' | ')}`);
-    }
-
-    private async ensureKeycloakUser(
-        adminToken: string,
-        email: string,
-        fullName: string
-    ): Promise<{ id: string }> {
-        const existing = await this.findKeycloakUserByEmail(adminToken, email);
-        if (existing) {
-            return existing;
-        }
-
-        const { firstName, lastName } = this.splitName(fullName);
-
-        await axios.post(
-            `${keycloakUrl}/admin/realms/${keycloakRealm}/users`,
-            {
-                email,
-                username: email,
-                firstName,
-                lastName,
-                enabled: true,
-                emailVerified: false,
-                requiredActions: ['VERIFY_EMAIL', 'UPDATE_PASSWORD']
-            },
-            {
-                headers: {
-                    Authorization: `Bearer ${adminToken}`,
-                    'Content-Type': 'application/json'
-                }
-            }
-        );
-
-        const created = await this.findKeycloakUserByEmail(adminToken, email);
-        if (!created) {
-            throw new Error('Failed to create Keycloak tenant user');
-        }
-
-        return created;
-    }
-
-    private async findKeycloakUserByEmail(adminToken: string, email: string): Promise<{ id: string } | null> {
-        const response = await axios.get(
-            `${keycloakUrl}/admin/realms/${keycloakRealm}/users`,
-            {
-                params: { email, exact: true },
-                headers: { Authorization: `Bearer ${adminToken}` }
-            }
-        );
-
-        const user = response.data?.[0];
-        return user?.id ? { id: user.id } : null;
-    }
-
-    private async sendExecuteActionsEmail(adminToken: string, keycloakUserId: string, redirectUri: string): Promise<void> {
-        try {
-            await axios.put(
-                `${keycloakUrl}/admin/realms/${keycloakRealm}/users/${keycloakUserId}/execute-actions-email`,
-                ['VERIFY_EMAIL', 'UPDATE_PASSWORD'],
-                {
-                    params: {
-                        client_id: tenantClientId,
-                        redirect_uri: redirectUri,
-                        lifespan: 604800,
-                    },
-                    headers: {
-                        Authorization: `Bearer ${adminToken}`,
-                        'Content-Type': 'application/json'
-                    }
-                }
-            );
-        } catch (error: any) {
-            logger.warn('Failed to send Keycloak execute actions email', {
-                keycloakUserId,
-                error: error?.message
-            });
-        }
-    }
-
-    private splitName(fullName: string): { firstName: string; lastName: string } {
-        const normalized = (fullName || '').trim();
-        if (!normalized) {
-            return { firstName: 'Tenant', lastName: 'User' };
-        }
-
-        const parts = normalized.split(/\s+/);
-        const firstName = parts.shift() || 'Tenant';
-        const lastName = parts.join(' ') || 'User';
-        return { firstName, lastName };
     }
 }
 

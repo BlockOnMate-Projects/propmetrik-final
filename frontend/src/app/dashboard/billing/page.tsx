@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
+import { authedFetch } from '@/lib/authed-fetch';
 
 // ============================================================
 // Types
@@ -97,7 +98,7 @@ const API = '/api/subscriptions';
 
 async function fetchJSON<T>(url: string): Promise<T | null> {
     try {
-        const res = await fetch(url);
+        const res = await authedFetch(url);
         if (!res.ok) return null;
         return res.json();
     } catch {
@@ -201,7 +202,7 @@ export default function BillingPage() {
         if (!subscription) return;
         setActionLoading(true);
         try {
-            await fetch(`${API}/subscription`, {
+            await authedFetch(`${API}/subscription`, {
                 method: 'DELETE',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ reason: cancelReason, immediate: false }),
@@ -217,7 +218,7 @@ export default function BillingPage() {
     const handleReactivate = async () => {
         setActionLoading(true);
         try {
-            await fetch(`${API}/subscription/reactivate`, { method: 'POST' });
+            await authedFetch(`${API}/subscription/reactivate`, { method: 'POST' });
             await loadData();
         } finally {
             setActionLoading(false);
@@ -227,7 +228,7 @@ export default function BillingPage() {
     const handleChangePlan = async (planSlug: string) => {
         setActionLoading(true);
         try {
-            await fetch(`${API}/subscription/change-plan`, {
+            await authedFetch(`${API}/subscription/change-plan`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ plan_slug: planSlug }),
@@ -242,7 +243,7 @@ export default function BillingPage() {
     const handleRemoveAddon = async (addonId: string) => {
         setActionLoading(true);
         try {
-            await fetch(`${API}/subscription/addons/${addonId}`, { method: 'DELETE' });
+            await authedFetch(`${API}/subscription/addons/${addonId}`, { method: 'DELETE' });
             await loadData();
         } finally {
             setActionLoading(false);

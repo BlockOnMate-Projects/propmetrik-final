@@ -20,6 +20,7 @@ import {
     Timer,
     UserCheck,
 } from 'lucide-react'
+import { authedFetch } from '@/lib/authed-fetch'
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api/v1'
 
@@ -64,7 +65,7 @@ interface FirmAnalytics {
 
 async function apiFetch(path: string) {
     const headers = getHeaders()
-    const res = await fetch(`${API_BASE}/enterprise${path}`, { headers })
+    const res = await authedFetch(`${API_BASE}/enterprise${path}`, { headers })
     if (!res.ok) return null
     return res.json()
 }
@@ -129,9 +130,9 @@ export default function AnalyticsPage() {
         const headers = getHeaders()
         try {
             const [summaryRes, clientsRes, valuationsRes] = await Promise.all([
-                fetch(`${API_BASE}/valuation-invoices/summary`, { headers }).catch(() => null),
-                fetch(`${API_BASE}/valuation-clients?limit=200`, { headers }).catch(() => null),
-                fetch(`${API_BASE}/valuations?limit=500`, { headers }).catch(() => null),
+                authedFetch(`${API_BASE}/valuation-invoices/summary`, { headers }).catch(() => null),
+                authedFetch(`${API_BASE}/valuation-clients?limit=200`, { headers }).catch(() => null),
+                authedFetch(`${API_BASE}/valuations?limit=500`, { headers }).catch(() => null),
             ])
 
             if (summaryRes?.ok) {

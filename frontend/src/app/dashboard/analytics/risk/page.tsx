@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { cn } from '@/lib/utils'
+import { authedFetch } from '@/lib/authed-fetch'
 import {
   AlertTriangle,
   Droplets,
@@ -82,7 +83,7 @@ interface LitigationTrend {
 
 async function fetchFlood<T>(endpoint: string, signal?: AbortSignal): Promise<T | null> {
   try {
-    const res = await fetch(`/api/flood-risk${endpoint}`, { signal })
+    const res = await authedFetch(`/api/flood-risk${endpoint}`, { signal })
     if (!res.ok) return null
     const json = await res.json()
     return json.data ?? null
@@ -93,7 +94,7 @@ async function fetchFlood<T>(endpoint: string, signal?: AbortSignal): Promise<T 
 
 async function fetchLitigation<T>(endpoint: string, signal?: AbortSignal): Promise<T | null> {
   try {
-    const res = await fetch(`/api/litigation${endpoint}`, { signal })
+    const res = await authedFetch(`/api/litigation${endpoint}`, { signal })
     if (!res.ok) return null
     const json = await res.json()
     return json.data ?? null

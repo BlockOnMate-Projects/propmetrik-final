@@ -18,6 +18,7 @@ import {
     CardTitle,
 } from '@/components/ui/card'
 import { cn } from '@/lib/utils'
+import { authedFetch } from '@/lib/authed-fetch'
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api/v1'
 
@@ -57,7 +58,7 @@ export function RelationshipMap({ entityId, entityType }: RelationshipMapProps) 
 
                 // Fetch contact details if contact
                 if (entityType === 'contact') {
-                    const contactRes = await fetch(`${API_BASE}/crm/contacts/${entityId}`, { credentials: 'include' })
+                    const contactRes = await authedFetch(`${API_BASE}/crm/contacts/${entityId}`, { credentials: 'include' })
                     if (contactRes.ok) {
                         const contact = await contactRes.json()
                         nodesMap.set(entityId, {
@@ -69,7 +70,7 @@ export function RelationshipMap({ entityId, entityType }: RelationshipMapProps) 
                     }
 
                     // Fetch contact's deals
-                    const dealsRes = await fetch(`${API_BASE}/crm/contacts/${entityId}/deals`, { credentials: 'include' })
+                    const dealsRes = await authedFetch(`${API_BASE}/crm/contacts/${entityId}/deals`, { credentials: 'include' })
                     if (dealsRes.ok) {
                         const deals = await dealsRes.json()
                         for (const deal of deals.slice(0, 10)) {
@@ -86,7 +87,7 @@ export function RelationshipMap({ entityId, entityType }: RelationshipMapProps) 
 
                 if (entityType === 'deal') {
                     // Fetch deal details
-                    const dealRes = await fetch(`${API_BASE}/crm/deals/${entityId}`, { credentials: 'include' })
+                    const dealRes = await authedFetch(`${API_BASE}/crm/deals/${entityId}`, { credentials: 'include' })
                     if (dealRes.ok) {
                         const deal = await dealRes.json()
                         nodesMap.set(entityId, {
@@ -98,7 +99,7 @@ export function RelationshipMap({ entityId, entityType }: RelationshipMapProps) 
 
                         if (deal.primary_contact_id) {
                             try {
-                                const cRes = await fetch(`${API_BASE}/crm/contacts/${deal.primary_contact_id}`, { credentials: 'include' })
+                                const cRes = await authedFetch(`${API_BASE}/crm/contacts/${deal.primary_contact_id}`, { credentials: 'include' })
                                 if (cRes.ok) {
                                     const c = await cRes.json()
                                     nodesMap.set(c.id, { id: c.id, type: 'contact', label: `${c.first_name} ${c.last_name}`, subtitle: c.email })

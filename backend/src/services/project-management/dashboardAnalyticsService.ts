@@ -286,7 +286,7 @@ export async function getPortfolioMetrics(
   
   try {
     // Build WHERE clause for filters
-    const whereConditions = ['dp.organization_id = $1', 'dp.is_deleted = false'];
+    const whereConditions = ['dp.organization_id = $1', 'dp.deleted_at IS NULL'];
     const params: any[] = [organizationId];
     let paramIndex = 2;
     
@@ -314,16 +314,16 @@ export async function getPortfolioMetrics(
     const summaryQuery = `
       SELECT 
         COUNT(*) as total_projects,
-        COUNT(*) FILTER (WHERE dp.status IN ('planning', 'pre_construction', 'construction', 'finishing')) as active_projects,
+        COUNT(*) FILTER (WHERE dp.status IN ('planning', 'pre_construction', 'under_construction', 'finishing')) as active_projects,
         COUNT(*) FILTER (WHERE dp.status = 'completed') as completed_projects,
         COUNT(*) FILTER (WHERE dp.status = 'on_hold') as on_hold_projects,
-        COALESCE(SUM(dp.total_project_cost), 0) as total_budget,
+        COALESCE(SUM(dp.total_budget), 0) as total_budget,
         COALESCE(SUM(
-          (SELECT COALESCE(SUM(pc.actual_cost), 0) FROM project_costs pc WHERE pc.project_id = dp.id)
+          (SELECT COALESCE(SUM(pc.actual_costs), 0) FROM project_costs pc WHERE pc.project_id = dp.id)
         ), 0) as total_spent,
         COALESCE(SUM(dp.total_units), 0) as total_units,
         COALESCE(AVG(
-          (SELECT COALESCE(AVG(pp.progress_percentage), 0) FROM project_phases pp WHERE pp.project_id = dp.id)
+          (SELECT COALESCE(AVG(pp.progress), 0) FROM project_phases pp WHERE pp.project_id = dp.id)
         ), 0) as average_progress
       FROM development_projects dp
       WHERE ${whereClause}
@@ -337,8 +337,8 @@ export async function getPortfolioMetrics(
       SELECT 
         dp.status,
         COUNT(*) as count,
-        COALESCE(SUM(dp.total_project_cost), 0) as total_budget,
-        ROUND(COUNT(*)::numeric / NULLIF((SELECT COUNT(*) FROM development_projects WHERE organization_id = $1 AND is_deleted = false), 0) * 100, 1) as percent_of_total
+        COALESCE(SUM(dp.total_budget), 0) as total_budget,
+        ROUND(COUNT(*)::numeric / NULLIF((SELECT COUNT(*) FROM development_projects WHERE organization_id = $1 AND deleted_at IS NULL), 0) * 100, 1) as percent_of_total
       FROM development_projects dp
       WHERE ${whereClause}
       GROUP BY dp.status
@@ -352,9 +352,9 @@ export async function getPortfolioMetrics(
       SELECT 
         dp.project_type,
         COUNT(*) as count,
-        COALESCE(SUM(dp.total_project_cost), 0) as total_budget,
+        COALESCE(SUM(dp.total_budget), 0) as total_budget,
         COALESCE(AVG(
-          (SELECT COALESCE(AVG(pp.progress_percentage), 0) FROM project_phases pp WHERE pp.project_id = dp.id)
+          (SELECT COALESCE(AVG(pp.progress), 0) FROM project_phases pp WHERE pp.project_id = dp.id)
         ), 0) as average_progress
       FROM development_projects dp
       WHERE ${whereClause}
@@ -369,7 +369,7 @@ export async function getPortfolioMetrics(
       SELECT 
         dp.region,
         COUNT(*) as count,
-        COALESCE(SUM(dp.total_project_cost), 0) as total_budget
+        COALESCE(SUM(dp.total_budget), 0) as total_budget
       FROM development_projects dp
       WHERE ${whereClause} AND dp.region IS NOT NULL
       GROUP BY dp.region
@@ -385,13 +385,13 @@ export async function getPortfolioMetrics(
         TO_CHAR(month, 'YYYY-MM') as month,
         COUNT(*) FILTER (WHERE dp.created_at >= month AND dp.created_at < month + INTERVAL '1 month') as projects_started,
         COUNT(*) FILTER (WHERE dp.status = 'completed' AND dp.updated_at >= month AND dp.updated_at < month + INTERVAL '1 month') as projects_completed,
-        COALESCE(SUM(dp.total_project_cost) FILTER (WHERE dp.created_at >= month AND dp.created_at < month + INTERVAL '1 month'), 0) as budget_allocated
+        COALESCE(SUM(dp.total_budget) FILTER (WHERE dp.created_at >= month AND dp.created_at < month + INTERVAL '1 month'), 0) as budget_allocated
       FROM generate_series(
         DATE_TRUNC('month', CURRENT_DATE - INTERVAL '11 months'),
         DATE_TRUNC('month', CURRENT_DATE),
         INTERVAL '1 month'
       ) as month
-      LEFT JOIN development_projects dp ON dp.organization_id = $1 AND dp.is_deleted = false
+      LEFT JOIN development_projects dp ON dp.organization_id = $1 AND dp.deleted_at IS NULL
       GROUP BY month
       ORDER BY month
     `;
@@ -455,16 +455,16 @@ export async function getBudgetOverview(
     // Overall budget summary
     const summaryQuery = `
       SELECT 
-        COALESCE(SUM(dp.total_project_cost), 0) as total_budget,
+        COALESCE(SUM(dp.total_budget), 0) as total_budget,
         COALESCE(SUM(
-          (SELECT COALESCE(SUM(pc.actual_cost), 0) FROM project_costs pc WHERE pc.project_id = dp.id)
+          (SELECT COALESCE(SUM(pc.actual_costs), 0) FROM project_costs pc WHERE pc.project_id = dp.id)
         ), 0) as total_actual,
         COALESCE(SUM(
-          (SELECT COALESCE(SUM(pc.budgeted_cost), 0) - COALESCE(SUM(pc.actual_cost), 0) 
-           FROM project_costs pc WHERE pc.project_id = dp.id AND pc.status IN ('pending', 'approved'))
+          (SELECT COALESCE(SUM(pc.original_budget), 0) - COALESCE(SUM(pc.actual_costs), 0) 
+           FROM project_costs pc WHERE pc.project_id = dp.id AND pc.status IN ('draft', 'committed', 'approved'))
         ), 0) as total_committed
       FROM development_projects dp
-      WHERE dp.organization_id = $1 AND dp.is_deleted = false
+      WHERE dp.organization_id = $1 AND dp.deleted_at IS NULL
     `;
     
     const summaryResult = await client.query(summaryQuery, [organizationId]);
@@ -480,13 +480,13 @@ export async function getBudgetOverview(
     // By cost category
     const categoryQuery = `
       SELECT 
-        pc.cost_category as category,
-        COALESCE(SUM(pc.budgeted_cost), 0) as budgeted,
-        COALESCE(SUM(pc.actual_cost), 0) as actual
+        pc.category as category,
+        COALESCE(SUM(pc.original_budget), 0) as budgeted,
+        COALESCE(SUM(pc.actual_costs), 0) as actual
       FROM project_costs pc
       JOIN development_projects dp ON dp.id = pc.project_id
-      WHERE dp.organization_id = $1 AND dp.is_deleted = false
-      GROUP BY pc.cost_category
+      WHERE dp.organization_id = $1 AND dp.deleted_at IS NULL
+      GROUP BY pc.category
       ORDER BY budgeted DESC
     `;
     
@@ -497,14 +497,14 @@ export async function getBudgetOverview(
       SELECT 
         dp.id as project_id,
         dp.project_name,
-        dp.total_project_cost as total_budget,
-        COALESCE(SUM(pc.actual_cost), 0) as actual_cost
+        dp.total_budget as total_budget,
+        COALESCE(SUM(pc.actual_costs), 0) as actual_cost
       FROM development_projects dp
       LEFT JOIN project_costs pc ON pc.project_id = dp.id
-      WHERE dp.organization_id = $1 AND dp.is_deleted = false
+      WHERE dp.organization_id = $1 AND dp.deleted_at IS NULL
         AND dp.status NOT IN ('completed', 'cancelled')
-      GROUP BY dp.id, dp.project_name, dp.total_project_cost
-      ORDER BY dp.total_project_cost DESC NULLS LAST
+      GROUP BY dp.id, dp.project_name, dp.total_budget
+      ORDER BY dp.total_budget DESC NULLS LAST
       LIMIT 20
     `;
     
@@ -514,8 +514,8 @@ export async function getBudgetOverview(
     const trendQuery = `
       SELECT 
         TO_CHAR(month, 'YYYY-MM') as month,
-        COALESCE(SUM(pc.budgeted_cost), 0) as budgeted,
-        COALESCE(SUM(pc.actual_cost), 0) as actual
+        COALESCE(SUM(pc.original_budget), 0) as budgeted,
+        COALESCE(SUM(pc.actual_costs), 0) as actual
       FROM generate_series(
         DATE_TRUNC('month', CURRENT_DATE - INTERVAL '11 months'),
         DATE_TRUNC('month', CURRENT_DATE),
@@ -524,7 +524,7 @@ export async function getBudgetOverview(
       LEFT JOIN project_costs pc ON 
         DATE_TRUNC('month', pc.created_at) = month
       LEFT JOIN development_projects dp ON 
-        dp.id = pc.project_id AND dp.organization_id = $1 AND dp.is_deleted = false
+        dp.id = pc.project_id AND dp.organization_id = $1 AND dp.deleted_at IS NULL
       GROUP BY month
       ORDER BY month
     `;
@@ -610,25 +610,25 @@ export async function getTimelineStatus(
       SELECT 
         dp.id as project_id,
         dp.project_name,
-        dp.expected_completion_date as planned_end_date,
+        dp.estimated_completion_date as planned_end_date,
         dp.status,
         (
           SELECT pp.name 
           FROM project_phases pp 
           WHERE pp.project_id = dp.id AND pp.status = 'in_progress' 
-          ORDER BY pp.sequence_order 
+          ORDER BY pp.phase_number 
           LIMIT 1
         ) as current_phase,
         (
-          SELECT COALESCE(AVG(pp.progress_percentage), 0)
+          SELECT COALESCE(AVG(pp.progress), 0)
           FROM project_phases pp 
           WHERE pp.project_id = dp.id
         ) as percent_complete
       FROM development_projects dp
       WHERE dp.organization_id = $1 
-        AND dp.is_deleted = false
+        AND dp.deleted_at IS NULL
         AND dp.status NOT IN ('cancelled', 'on_hold')
-      ORDER BY dp.expected_completion_date ASC NULLS LAST
+      ORDER BY dp.estimated_completion_date ASC NULLS LAST
       LIMIT 50
     `;
     
@@ -785,7 +785,7 @@ export async function getComplianceStatus(
         COUNT(*) FILTER (WHERE pp.expiration_date BETWEEN CURRENT_DATE AND CURRENT_DATE + INTERVAL '30 days') as expiring_30
       FROM project_permits pp
       JOIN development_projects dp ON dp.id = pp.project_id
-      WHERE dp.organization_id = $1 AND dp.is_deleted = false
+      WHERE dp.organization_id = $1 AND dp.deleted_at IS NULL
     `;
     
     const summaryResult = await client.query(summaryQuery, [organizationId]);
@@ -802,7 +802,7 @@ export async function getComplianceStatus(
       FROM project_permits pp
       JOIN permit_types pt ON pt.id = pp.permit_type_id
       JOIN development_projects dp ON dp.id = pp.project_id
-      WHERE dp.organization_id = $1 AND dp.is_deleted = false
+      WHERE dp.organization_id = $1 AND dp.deleted_at IS NULL
       GROUP BY pt.name
       ORDER BY total DESC
     `;
@@ -821,7 +821,7 @@ export async function getComplianceStatus(
       JOIN permit_types pt ON pt.id = pp.permit_type_id
       JOIN development_projects dp ON dp.id = pp.project_id
       WHERE dp.organization_id = $1 
-        AND dp.is_deleted = false
+        AND dp.deleted_at IS NULL
         AND pp.status = 'approved'
         AND pp.expiration_date BETWEEN CURRENT_DATE AND CURRENT_DATE + INTERVAL '90 days'
       ORDER BY pp.expiration_date ASC
@@ -841,7 +841,7 @@ export async function getComplianceStatus(
       JOIN permit_types pt ON pt.id = pp.permit_type_id
       JOIN development_projects dp ON dp.id = pp.project_id
       WHERE dp.organization_id = $1 
-        AND dp.is_deleted = false
+        AND dp.deleted_at IS NULL
         AND pp.status = 'approved'
         AND pp.approval_date >= CURRENT_DATE - INTERVAL '30 days'
       ORDER BY pp.approval_date DESC
@@ -901,14 +901,14 @@ export async function getProjectHealthScore(
       SELECT 
         dp.project_name,
         dp.status,
-        dp.total_project_cost,
-        dp.expected_completion_date,
+        dp.total_budget,
+        dp.estimated_completion_date,
         (
-          SELECT COALESCE(AVG(pp.progress_percentage), 0)
+          SELECT COALESCE(AVG(pp.progress), 0)
           FROM project_phases pp WHERE pp.project_id = dp.id
         ) as overall_progress,
         (
-          SELECT COALESCE(SUM(pc.actual_cost), 0)
+          SELECT COALESCE(SUM(pc.actual_costs), 0)
           FROM project_costs pc WHERE pc.project_id = dp.id
         ) as total_spent
       FROM development_projects dp
@@ -929,9 +929,9 @@ export async function getProjectHealthScore(
     let scheduleScore = 100;
     const progress = parseFloat(project.overall_progress) || 0;
     
-    if (project.expected_completion_date) {
+    if (project.estimated_completion_date) {
       const today = new Date();
-      const endDate = new Date(project.expected_completion_date);
+      const endDate = new Date(project.estimated_completion_date);
       const totalDays = Math.ceil((endDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
       
       if (totalDays < 0) {
@@ -956,7 +956,7 @@ export async function getProjectHealthScore(
     
     // Calculate Budget Score (0-100)
     let budgetScore = 100;
-    const totalBudget = parseFloat(project.total_project_cost) || 0;
+    const totalBudget = parseFloat(project.total_budget) || 0;
     const totalSpent = parseFloat(project.total_spent) || 0;
     
     if (totalBudget > 0) {
@@ -1094,7 +1094,7 @@ export async function getBudgetVarianceAnalysis(
   try {
     // Get project budget
     const projectQuery = `
-      SELECT dp.total_project_cost
+      SELECT dp.total_budget
       FROM development_projects dp
       WHERE dp.id = $1 AND dp.organization_id = $2
     `;
@@ -1105,22 +1105,22 @@ export async function getBudgetVarianceAnalysis(
       throw new Error('Project not found');
     }
     
-    const totalBudget = parseFloat(projectResult.rows[0].total_project_cost) || 0;
+    const totalBudget = parseFloat(projectResult.rows[0].total_budget) || 0;
     
     // Get phase-level analysis
     const phaseQuery = `
       SELECT 
         pp.id as phase_id,
         pp.name as phase_name,
-        COALESCE(pp.budgeted_cost, 0) as budgeted_cost,
+        COALESCE(pp.budget, 0) as budgeted_cost,
         COALESCE(
-          (SELECT SUM(pc.actual_cost) FROM project_costs pc WHERE pc.phase_id = pp.id),
+          (SELECT SUM(pc.actual_costs) FROM project_costs pc WHERE pc.phase_id = pp.id),
           0
         ) as actual_cost,
-        pp.progress_percentage
+        pp.progress
       FROM project_phases pp
       WHERE pp.project_id = $1
-      ORDER BY pp.sequence_order
+      ORDER BY pp.phase_number
     `;
     
     const phaseResult = await client.query(phaseQuery, [projectId]);
@@ -1132,7 +1132,7 @@ export async function getBudgetVarianceAnalysis(
     const phases = phaseResult.rows.map(row => {
       const budgeted = parseFloat(row.budgeted_cost) || 0;
       const actual = parseFloat(row.actual_cost) || 0;
-      const progress = parseFloat(row.progress_percentage) || 0;
+      const progress = parseFloat(row.progress) || 0;
       
       const earnedValue = budgeted * (progress / 100);
       const variance = budgeted - actual;
@@ -1164,12 +1164,12 @@ export async function getBudgetVarianceAnalysis(
     // Get cost by category
     const categoryQuery = `
       SELECT 
-        pc.cost_category as category,
-        COALESCE(SUM(pc.budgeted_cost), 0) as budgeted,
-        COALESCE(SUM(pc.actual_cost), 0) as actual
+        pc.category as category,
+        COALESCE(SUM(pc.original_budget), 0) as budgeted,
+        COALESCE(SUM(pc.actual_costs), 0) as actual
       FROM project_costs pc
       WHERE pc.project_id = $1
-      GROUP BY pc.cost_category
+      GROUP BY pc.category
       ORDER BY budgeted DESC
     `;
     
@@ -1259,16 +1259,16 @@ export async function getProgressTrend(
     const progressQuery = projectId
       ? `
         SELECT 
-          COALESCE(AVG(pp.progress_percentage), 0) as current_progress
+          COALESCE(AVG(pp.progress), 0) as current_progress
         FROM project_phases pp
         WHERE pp.project_id = $1
       `
       : `
         SELECT 
-          COALESCE(AVG(pp.progress_percentage), 0) as current_progress
+          COALESCE(AVG(pp.progress), 0) as current_progress
         FROM project_phases pp
         JOIN development_projects dp ON dp.id = pp.project_id
-        WHERE dp.organization_id = $1 AND dp.is_deleted = false
+        WHERE dp.organization_id = $1 AND dp.deleted_at IS NULL
       `;
     
     const params = projectId ? [projectId] : [organizationId];
@@ -1358,9 +1358,9 @@ export async function forecastCompletion(
   try {
     const query = `
       SELECT 
-        dp.expected_completion_date,
-        dp.project_start_date,
-        COALESCE(AVG(pp.progress_percentage), 0) as current_progress
+        dp.estimated_completion_date,
+        dp.planned_start_date,
+        COALESCE(AVG(pp.progress), 0) as current_progress
       FROM development_projects dp
       LEFT JOIN project_phases pp ON pp.project_id = dp.id
       WHERE dp.id = $1 AND dp.organization_id = $2
@@ -1375,8 +1375,8 @@ export async function forecastCompletion(
     
     const project = result.rows[0];
     const currentProgress = parseFloat(project.current_progress) || 0;
-    const originalEndDate = project.expected_completion_date;
-    const startDate = project.project_start_date ? new Date(project.project_start_date) : new Date();
+    const originalEndDate = project.estimated_completion_date;
+    const startDate = project.planned_start_date ? new Date(project.planned_start_date) : new Date();
     
     const assumptions: string[] = [];
     let forecastEndDate: Date;
@@ -1419,7 +1419,9 @@ export async function forecastCompletion(
     return {
       projectId,
       currentProgress,
-      originalEndDate: originalEndDate?.toISOString().split('T')[0] || null,
+      originalEndDate: originalEndDate
+        ? (originalEndDate instanceof Date ? originalEndDate.toISOString().split('T')[0] : String(originalEndDate).split('T')[0])
+        : null,
       forecastEndDate: forecastEndDate.toISOString().split('T')[0],
       daysVariance,
       confidence,

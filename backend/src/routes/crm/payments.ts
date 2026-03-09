@@ -107,7 +107,7 @@ router.get('/payments/account', paymentRateLimiter, asyncHandler(async (req: Req
     const { pool } = await import('../../database');
     const result = await pool.query(
         `SELECT * FROM payment_accounts
-         WHERE entity_id = $1 AND entity_type = 'organization' AND is_active = TRUE
+         WHERE entity_id = $1 AND entity_type = 'organization' AND service_type = 'deals' AND is_active = TRUE
          LIMIT 1`,
         [organizationId]
     );
@@ -185,7 +185,7 @@ router.post('/payments/register-account', paymentRateLimiter, asyncHandler(async
     const { paystackService } = await import('../../services/property-management/payment/paystackService');
 
     const result = await paystackService.registerPropertyManagerAccount(
-        organizationId, bankCode, accountNumber, businessName, contactEmail, contactPhone
+        organizationId, bankCode, accountNumber, businessName, contactEmail, contactPhone, 'deals'
     );
 
     if (!result.success) {
@@ -235,7 +235,7 @@ router.get('/payments/crypto-wallet', asyncHandler(async (req: Request, res: Res
     const result = await pool.query(
         `SELECT crypto_wallet_address, crypto_wallet_verified, crypto_wallet_registered_at
          FROM payment_accounts
-         WHERE entity_id = $1 AND entity_type = 'organization' AND is_active = TRUE
+         WHERE entity_id = $1 AND entity_type = 'organization' AND service_type = 'deals' AND is_active = TRUE
          LIMIT 1`,
         [organizationId]
     );
@@ -267,9 +267,9 @@ router.post('/payments/crypto-wallet', paymentRateLimiter, asyncHandler(async (r
 
     const { pool } = await import('../../database');
     const upsertResult = await pool.query(`
-        INSERT INTO payment_accounts (id, entity_type, entity_id, crypto_wallet_address, crypto_wallet_registered_at, updated_at, is_active)
-        VALUES (gen_random_uuid(), 'organization', $1, $2, NOW(), NOW(), TRUE)
-        ON CONFLICT (entity_type, entity_id) DO UPDATE SET
+        INSERT INTO payment_accounts (id, entity_type, entity_id, service_type, crypto_wallet_address, crypto_wallet_registered_at, updated_at, is_active)
+        VALUES (gen_random_uuid(), 'organization', $1, 'deals', $2, NOW(), NOW(), TRUE)
+        ON CONFLICT (entity_id, entity_type, service_type) DO UPDATE SET
             crypto_wallet_address = $2,
             crypto_wallet_registered_at = NOW(),
             updated_at = NOW()
@@ -282,7 +282,7 @@ router.post('/payments/crypto-wallet', paymentRateLimiter, asyncHandler(async (r
     try {
         const { cryptoPaymentService } = await import('../../../shared-services/payments/crypto');
         if (cryptoPaymentService.isConfigured()) {
-            await cryptoPaymentService.registerRecipientWallet('organization', organizationId, walletAddress);
+            await cryptoPaymentService.registerRecipientWallet('organization', organizationId, walletAddress, 'deals');
             onChainRegistered = true;
             await pool.query(`UPDATE payment_accounts SET crypto_wallet_verified = true WHERE id = $1`, [row.id]);
         }
@@ -335,7 +335,7 @@ router.put('/payments/crypto-settlement', paymentRateLimiter, asyncHandler(async
         try {
             const { cryptoPaymentService } = await import('../../../shared-services/payments/crypto');
             if (cryptoPaymentService.isConfigured()) {
-                await cryptoPaymentService.registerRecipientWallet('organization', organizationId, walletAddress);
+                await cryptoPaymentService.registerRecipientWallet('organization', organizationId, walletAddress, 'deals');
             }
         } catch {
             // On-chain optional

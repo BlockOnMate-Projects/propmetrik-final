@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { cn } from '@/lib/utils'
+import { authedFetch } from '@/lib/authed-fetch'
 import Link from 'next/link'
 import {
   ArrowLeft,
@@ -68,7 +69,7 @@ const API_BASE = '/api/analytics/market'
 
 async function fetchData<T>(endpoint: string): Promise<T | null> {
   try {
-    const res = await fetch(`${API_BASE}${endpoint}`)
+    const res = await authedFetch(`${API_BASE}${endpoint}`)
     if (!res.ok) return null
     const json = await res.json()
     return json.data ?? null

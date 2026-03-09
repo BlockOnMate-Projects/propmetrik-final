@@ -53,6 +53,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
+import { authedFetch } from '@/lib/authed-fetch';
 
 // Types
 interface WhatsAppMessage {
@@ -345,7 +346,7 @@ export function WhatsAppChat({
             if (dealId) url += `&deal_id=${dealId}`;
             if (contactPhone && !contactId) url += `&phone=${contactPhone}`;
 
-            const response = await fetch(url, { credentials: 'include' });
+            const response = await authedFetch(url, { credentials: 'include' });
             if (response.ok) {
                 const data = await response.json();
                 setMessages((data.messages || []).reverse());
@@ -360,7 +361,7 @@ export function WhatsAppChat({
     // Fetch templates
     const fetchTemplates = useCallback(async () => {
         try {
-            const response = await fetch(`${API_BASE}/api/messaging/templates`, { credentials: 'include' });
+            const response = await authedFetch(`${API_BASE}/api/messaging/templates`, { credentials: 'include' });
             if (response.ok) {
                 const data = await response.json();
                 setTemplates(data.templates || []);
@@ -388,7 +389,7 @@ export function WhatsAppChat({
 
         setSending(true);
         try {
-            const response = await fetch(`${API_BASE}/api/messaging/send`, {
+            const response = await authedFetch(`${API_BASE}/api/messaging/send`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 credentials: 'include',
@@ -421,7 +422,7 @@ export function WhatsAppChat({
 
         setSending(true);
         try {
-            const response = await fetch(`${API_BASE}/api/messaging/send-template`, {
+            const response = await authedFetch(`${API_BASE}/api/messaging/send-template`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 credentials: 'include',

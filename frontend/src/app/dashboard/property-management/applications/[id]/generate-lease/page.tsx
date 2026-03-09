@@ -38,7 +38,7 @@ import {
     Users
 } from 'lucide-react'
 import { propertyManagementApi, Application, ApplicationStatus, LeaseTemplate, GeneratedLeaseDocument } from '@/lib/property-management-api'
-import { useAuth } from '@/lib/auth-context'
+import { useSession } from 'next-auth/react'
 import { format, addMonths } from 'date-fns'
 import Link from 'next/link'
 
@@ -77,7 +77,8 @@ export default function GenerateLeasePage() {
     const router = useRouter()
     const params = useParams()
     const applicationId = params.id as string
-    const { user } = useAuth()
+    const { data: session } = useSession()
+    const user = session?.user
 
     const [application, setApplication] = useState<Application | null>(null)
     const [templates, setTemplates] = useState<LeaseTemplate[]>([])

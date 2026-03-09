@@ -51,6 +51,7 @@ import {
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
 import { cn } from '@/lib/utils'
+import { authedFetch } from '@/lib/authed-fetch'
 import { formatDistanceToNow } from 'date-fns'
 // import { toast } from 'sonner'
 import { MetricCard } from '@/components/layout'
@@ -109,7 +110,7 @@ interface PullSchedule {
 const pullIntegrationsApi = {
   getEndpoints: async (): Promise<{ data: PartnerEndpoint[]; count: number }> => {
     try {
-      const response = await fetch('/api/v1/pull-integrations/endpoints')
+      const response = await authedFetch('/api/v1/pull-integrations/endpoints')
       if (!response.ok) {
         throw new Error('Failed to fetch endpoints')
       }
@@ -130,7 +131,7 @@ const pullIntegrationsApi = {
 
   getJobs: async (): Promise<{ data: PullJob[]; count: number }> => {
     try {
-      const response = await fetch('/api/v1/pull-integrations/jobs')
+      const response = await authedFetch('/api/v1/pull-integrations/jobs')
       if (!response.ok) {
         throw new Error('Failed to fetch jobs')
       }
@@ -151,7 +152,7 @@ const pullIntegrationsApi = {
 
   getSchedules: async (): Promise<{ data: PullSchedule[]; count: number }> => {
     try {
-      const response = await fetch('/api/v1/pull-integrations/schedules')
+      const response = await authedFetch('/api/v1/pull-integrations/schedules')
       if (!response.ok) {
         throw new Error('Failed to fetch schedules')
       }

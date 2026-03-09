@@ -7,6 +7,54 @@ import CredentialsProvider from "next-auth/providers/credentials";
 // in server-side fetch; use the internal backend URL directly.
 const API_BASE = (process.env.INTERNAL_API_URL || 'http://localhost:4000').replace(/\/api\/v1$/, '');
 
+/** Decode a JWT payload without verification (just to read exp) */
+function decodeJwtPayload(token: string): Record<string, any> | null {
+  try {
+    return JSON.parse(Buffer.from(token.split('.')[1], 'base64').toString());
+  } catch {
+    return null;
+  }
+}
+
+/** Refresh the backend-issued local JWT via POST /api/v1/auth/refresh */
+async function refreshBackendToken(accessToken: string): Promise<{ token: string } | null> {
+  try {
+    const res = await fetch(`${API_BASE}/api/v1/auth/refresh`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${accessToken}`,
+      },
+    });
+    if (!res.ok) return null;
+    const data = await res.json();
+    return data.success ? { token: data.token } : null;
+  } catch {
+    return null;
+  }
+}
+
+/** Refresh Keycloak tokens via POST /api/v1/auth/refresh with refresh_token body */
+async function refreshKeycloakToken(refreshToken: string): Promise<{
+  token?: string;
+  keycloak_access_token?: string;
+  keycloak_refresh_token?: string;
+  keycloak_expires_in?: number;
+} | null> {
+  try {
+    const res = await fetch(`${API_BASE}/api/v1/auth/refresh`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ refresh_token: refreshToken }),
+    });
+    if (!res.ok) return null;
+    const data = await res.json();
+    return data.success ? data : null;
+  } catch {
+    return null;
+  }
+}
+
 export const { handlers, signIn, signOut, auth } = NextAuth({
   providers: [
     // Email/Password Authentication (Default)
@@ -77,7 +125,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         console.log('[Auth JWT] callback triggered', { hasUser: !!user, hasAccount: !!account });
       }
       
-      // Handle credentials login
+      // Handle credentials login — store backend JWT + compute expiry
       if (user && 'accessToken' in user) {
         console.log('[Auth JWT] Setting credentials token data');
         token.accessToken = user.accessToken as string;
@@ -86,6 +134,12 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         token.organizationId = user.organizationId as string;
         token.organizationName = user.organizationName as string;
         token.roles = [user.role as string];
+
+        // Extract exp from backend JWT so we know when to refresh
+        const payload = decodeJwtPayload(token.accessToken as string);
+        if (payload?.exp) {
+          token.backendTokenExp = payload.exp as number;
+        }
       }
       
       // Handle Keycloak SSO login
@@ -108,6 +162,53 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           }
         }
       }
+
+      // ── Token Refresh Logic ────────────────────────────────────────────
+      // Refresh the backend JWT when it's within 60 seconds of expiring
+      const now = Math.floor(Date.now() / 1000);
+
+      // For Keycloak SSO sessions: use refresh_token
+      if (token.refreshToken && token.expiresAt) {
+        if (now >= (token.expiresAt as number) - 60) {
+          console.log('[Auth JWT] Keycloak token expiring, refreshing...');
+          const refreshed = await refreshKeycloakToken(token.refreshToken as string);
+          if (refreshed) {
+            if (refreshed.keycloak_access_token) {
+              token.accessToken = refreshed.keycloak_access_token;
+              token.expiresAt = now + (refreshed.keycloak_expires_in || 300);
+            }
+            if (refreshed.keycloak_refresh_token) {
+              token.refreshToken = refreshed.keycloak_refresh_token;
+            }
+            if (refreshed.token) {
+              // Also got a synced local JWT
+              token.accessToken = refreshed.token;
+              const payload = decodeJwtPayload(refreshed.token);
+              if (payload?.exp) token.backendTokenExp = payload.exp;
+            }
+            console.log('[Auth JWT] Keycloak token refreshed');
+          } else {
+            console.error('[Auth JWT] Keycloak refresh failed — session may expire');
+            token.error = 'RefreshTokenError';
+          }
+        }
+      }
+      // For credentials sessions: use local JWT refresh
+      else if (token.accessToken && token.backendTokenExp) {
+        if (now >= (token.backendTokenExp as number) - 60) {
+          console.log('[Auth JWT] Backend token expiring, refreshing...');
+          const refreshed = await refreshBackendToken(token.accessToken as string);
+          if (refreshed) {
+            token.accessToken = refreshed.token;
+            const payload = decodeJwtPayload(refreshed.token);
+            if (payload?.exp) token.backendTokenExp = payload.exp;
+            console.log('[Auth JWT] Backend token refreshed');
+          } else {
+            console.error('[Auth JWT] Backend token refresh failed');
+            token.error = 'RefreshTokenError';
+          }
+        }
+      }
       
       return token;
     },
@@ -120,6 +221,11 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       session.user.tier = token.tier as string;
       session.user.organizationId = token.organizationId as string | undefined;
       session.user.organizationName = token.organizationName as string | undefined;
+
+      // Surface refresh errors so the client can redirect to login
+      if (token.error) {
+        (session as any).error = token.error;
+      }
       
       return session;
     },
@@ -142,6 +248,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
 declare module "next-auth" {
   interface Session {
     accessToken?: string;
+    error?: string;
     user: {
       id: string;
       name?: string | null;
@@ -159,12 +266,14 @@ declare module "next-auth" {
     accessToken?: string;
     refreshToken?: string;
     expiresAt?: number;
+    backendTokenExp?: number;
     idToken?: string;
     roles?: string[];
     role?: string;
     tier?: string;
     organizationId?: string;
     organizationName?: string;
+    error?: string;
   }
 
   interface User {

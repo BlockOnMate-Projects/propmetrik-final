@@ -2,7 +2,7 @@
  * Fee Collection Service
  *
  * Handles platform fee collection for ALL NOWPayments direct-mode payments
- * across every PropMetrik vertical:
+ * across every PROPMETRIK vertical:
  *
  *   - Property Management (rent):  max(1%, GHS 25)
  *   - Deal Management (CRM):       0.25% of deal transaction value

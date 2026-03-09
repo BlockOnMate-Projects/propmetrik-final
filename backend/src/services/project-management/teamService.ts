@@ -768,18 +768,42 @@ class TeamService {
   }
   
   /**
-   * Remove team member from project
+   * Remove team member from project.
+   * If the member is already inactive/terminated, hard-delete the row.
+   * Otherwise, soft-delete (deactivate) first.
    */
   async removeTeamMember(memberId: string): Promise<void> {
     try {
-      await pool.query(
-        `UPDATE project_team_members 
-         SET is_active = false, status = 'terminated', end_date = CURRENT_DATE, updated_at = NOW()
-         WHERE id = $1`,
+      // Check current status
+      const check = await pool.query(
+        `SELECT is_active, status FROM project_team_members WHERE id = $1`,
         [memberId]
       );
-      
-      logger.info('Team member removed', { memberId });
+
+      if (check.rows.length === 0) {
+        logger.warn('Team member not found for removal', { memberId });
+        return;
+      }
+
+      const { is_active, status } = check.rows[0];
+
+      if (!is_active || status === 'terminated') {
+        // Already inactive — hard delete
+        await pool.query(
+          `DELETE FROM project_team_members WHERE id = $1`,
+          [memberId]
+        );
+        logger.info('Team member permanently removed', { memberId });
+      } else {
+        // Active — soft delete (deactivate)
+        await pool.query(
+          `UPDATE project_team_members 
+           SET is_active = false, status = 'terminated', end_date = CURRENT_DATE, updated_at = NOW()
+           WHERE id = $1`,
+          [memberId]
+        );
+        logger.info('Team member deactivated', { memberId });
+      }
     } catch (error) {
       logger.error('Error removing team member', { memberId, error });
       throw error;
@@ -1405,6 +1429,70 @@ class TeamService {
       loggedBy: row.logged_by,
       loggedAt: row.logged_at,
     };
+  }
+
+  // ============================================================================
+  // ROLES
+  // ============================================================================
+
+  private static readonly GHANA_ROLES: Array<{ role: GhanaTeamRole; category: string; displayName: string; description: string }> = [
+    // Internal
+    { role: 'project_owner', category: 'internal', displayName: 'Project Owner', description: 'Owner/developer of the project' },
+    { role: 'project_manager', category: 'internal', displayName: 'Project Manager', description: 'Overall project coordinator' },
+    { role: 'assistant_project_manager', category: 'internal', displayName: 'Assistant PM', description: 'Supports the project manager' },
+    { role: 'site_manager', category: 'internal', displayName: 'Site Manager', description: 'On-site operations manager' },
+    { role: 'accountant', category: 'internal', displayName: 'Accountant', description: 'Financial management' },
+    { role: 'procurement_officer', category: 'internal', displayName: 'Procurement Officer', description: 'Manages purchasing and suppliers' },
+    { role: 'security_coordinator', category: 'internal', displayName: 'Security Coordinator', description: 'Site security management' },
+    { role: 'logistics_coordinator', category: 'internal', displayName: 'Logistics Coordinator', description: 'Materials and transport logistics' },
+    { role: 'mobile_money_agent', category: 'internal', displayName: 'Mobile Money Agent', description: 'Handles mobile payment operations' },
+    // Consultant
+    { role: 'architect', category: 'consultant', displayName: 'Architect', description: 'Building design and planning' },
+    { role: 'structural_engineer', category: 'consultant', displayName: 'Structural Engineer', description: 'Structural design and analysis' },
+    { role: 'quantity_surveyor', category: 'consultant', displayName: 'Quantity Surveyor', description: 'Cost estimation and BOQ' },
+    { role: 'mechanical_engineer', category: 'consultant', displayName: 'Mechanical Engineer', description: 'HVAC and mechanical systems' },
+    { role: 'electrical_engineer', category: 'consultant', displayName: 'Electrical Engineer', description: 'Electrical systems design' },
+    { role: 'civil_engineer', category: 'consultant', displayName: 'Civil Engineer', description: 'Civil works and infrastructure' },
+    { role: 'geotechnical_engineer', category: 'consultant', displayName: 'Geotechnical Engineer', description: 'Soil and foundation analysis' },
+    { role: 'interior_designer', category: 'consultant', displayName: 'Interior Designer', description: 'Interior space design' },
+    { role: 'surveyor', category: 'consultant', displayName: 'Surveyor', description: 'Land and building surveying' },
+    { role: 'legal_advisor', category: 'consultant', displayName: 'Legal Advisor', description: 'Legal counsel and contract review' },
+    { role: 'consultant', category: 'consultant', displayName: 'Consultant', description: 'General project consultant' },
+    // Contractor
+    { role: 'main_contractor', category: 'contractor', displayName: 'Main Contractor', description: 'Primary construction contractor' },
+    { role: 'site_supervisor', category: 'contractor', displayName: 'Site Supervisor', description: 'Supervises construction on-site' },
+    { role: 'foreman', category: 'contractor', displayName: 'Foreman', description: 'Leads construction crew' },
+    { role: 'safety_officer', category: 'contractor', displayName: 'Safety Officer', description: 'Site health & safety' },
+    { role: 'electrical_contractor', category: 'contractor', displayName: 'Electrical Contractor', description: 'Electrical installations' },
+    { role: 'plumbing_contractor', category: 'contractor', displayName: 'Plumbing Contractor', description: 'Plumbing and water systems' },
+    { role: 'masonry_contractor', category: 'contractor', displayName: 'Masonry Contractor', description: 'Block laying and masonry works' },
+    { role: 'steel_contractor', category: 'contractor', displayName: 'Steel Contractor', description: 'Steel fabrication and fixing' },
+    { role: 'roofing_contractor', category: 'contractor', displayName: 'Roofing Contractor', description: 'Roofing installations' },
+    { role: 'painting_contractor', category: 'contractor', displayName: 'Painting Contractor', description: 'Interior and exterior painting' },
+    { role: 'tiling_contractor', category: 'contractor', displayName: 'Tiling Contractor', description: 'Floor and wall tiling' },
+    { role: 'landscaping_contractor', category: 'contractor', displayName: 'Landscaping Contractor', description: 'Landscape and outdoor works' },
+    { role: 'hvac_contractor', category: 'contractor', displayName: 'HVAC Contractor', description: 'Air conditioning and ventilation' },
+    // Government
+    { role: 'lands_commission_officer', category: 'government', displayName: 'Lands Commission Officer', description: 'Land registration and title' },
+    { role: 'assembly_officer', category: 'government', displayName: 'Assembly Officer', description: 'District/Municipal assembly liaison' },
+    { role: 'fire_service_inspector', category: 'government', displayName: 'Fire Service Inspector', description: 'Fire safety compliance' },
+    { role: 'epa_officer', category: 'government', displayName: 'EPA Officer', description: 'Environmental compliance' },
+    { role: 'town_planning_officer', category: 'government', displayName: 'Town Planning Officer', description: 'Building permits and zoning' },
+    // Stakeholder
+    { role: 'traditional_chief', category: 'stakeholder', displayName: 'Traditional Chief', description: 'Traditional authority / chief' },
+    { role: 'community_liaison', category: 'stakeholder', displayName: 'Community Liaison', description: 'Community engagement representative' },
+    { role: 'investor', category: 'stakeholder', displayName: 'Investor', description: 'Project investor or financier' },
+    { role: 'financier', category: 'stakeholder', displayName: 'Financier', description: 'Bank or financial institution rep' },
+    // Other
+    { role: 'other', category: 'other', displayName: 'Other', description: 'Other team role' },
+  ];
+
+  async getGhanaRoles(): Promise<Array<{ role: GhanaTeamRole; category: string; displayName: string; description: string }>> {
+    return TeamService.GHANA_ROLES;
+  }
+
+  async getRolesByCategory(category: string): Promise<Array<{ role: GhanaTeamRole; category: string; displayName: string; description: string }>> {
+    return TeamService.GHANA_ROLES.filter(r => r.category === category);
   }
 }
 

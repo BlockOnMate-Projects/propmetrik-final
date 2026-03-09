@@ -495,7 +495,7 @@ const TAXONOMY = {
     },
     {
       value: 'podcast',
-      label: 'PropMetrik Perspectives Podcast',
+      label: 'PROPMETRIK Perspectives Podcast',
       description: 'Weekly audio',
       editions: ['weekly'],
       autopilot: false,

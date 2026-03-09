@@ -37,17 +37,8 @@ interface PriceData {
   source?: string
 }
 
-// Fallback mock data for when API returns no results
-const MOCK_PRICES: PriceData[] = [
-  { id: 'mp-1', category: 'cement', material_name: 'Portland Cement (Dangote)', specification: '50kg bag', unitPrice: 85, currency: 'GHS', uom: 'bag', region: 'Greater Accra', vendorName: 'B5 Plus', effectiveDate: '2026-01-22', source: 'Market Survey' },
-  { id: 'mp-2', category: 'cement', material_name: 'Portland Cement (Ghacem)', specification: '50kg bag', unitPrice: 82, currency: 'GHS', uom: 'bag', region: 'Greater Accra', vendorName: 'Devtraco', effectiveDate: '2026-01-22', source: 'Market Survey' },
-  { id: 'mp-3', category: 'steel', material_name: 'Steel Rebar (12mm)', specification: 'Y12 reinforcement', unitPrice: 42, currency: 'GHS', uom: 'length', region: 'Greater Accra', vendorName: 'Tema Steel', effectiveDate: '2026-01-21', source: 'Vendor Quote' },
-  { id: 'mp-4', category: 'steel', material_name: 'Steel Rebar (16mm)', specification: 'Y16 reinforcement', unitPrice: 68, currency: 'GHS', uom: 'length', region: 'Greater Accra', vendorName: 'Tema Steel', effectiveDate: '2026-01-21', source: 'Vendor Quote' },
-  { id: 'mp-5', category: 'blocks', material_name: 'Hollow Blocks (6")', specification: '150mm x 450mm', unitPrice: 8.50, currency: 'GHS', uom: 'unit', region: 'Greater Accra', vendorName: 'Regiblock', effectiveDate: '2026-01-20', source: 'Market Survey' },
-  { id: 'mp-6', category: 'sand', material_name: 'Sharp Sand', specification: 'Washed, 10 tons', unitPrice: 2800, currency: 'GHS', uom: 'trip', region: 'Greater Accra', vendorName: 'Local Supplier', effectiveDate: '2026-01-18', source: 'Scraper' },
-  { id: 'mp-7', category: 'sand', material_name: 'Quarry Dust', specification: 'Fine aggregate', unitPrice: 2500, currency: 'GHS', uom: 'trip', region: 'Greater Accra', vendorName: 'Nsawam Quarry', effectiveDate: '2026-01-18', source: 'Scraper' },
-  { id: 'mp-8', category: 'wood', material_name: 'Plywood (18mm)', specification: '8x4 Marine Grade', unitPrice: 420, currency: 'GHS', uom: 'sheet', region: 'Greater Accra', vendorName: 'Timber Market', effectiveDate: '2026-01-19', source: 'Market Survey' },
-];
+// Fallback data shown only when the DB table is truly empty
+const EMPTY_STATE_MESSAGE = 'No material prices available for this region yet.';
 
 export function MaterialPriceTracker({ defaultRegion = 'Greater Accra' }: MaterialPriceTrackerProps) {
   const [loading, setLoading] = useState(false)
@@ -63,22 +54,14 @@ export function MaterialPriceTracker({ defaultRegion = 'Greater Accra' }: Materi
       if (filterCategory !== 'all') filters.category = filterCategory
       
       const result = await constructionApi.getMarketPrices(filters)
-      // Use mock data if API returns empty, filtering by category if needed
       if (!result || result.length === 0) {
-        const filtered = filterCategory === 'all' 
-          ? MOCK_PRICES 
-          : MOCK_PRICES.filter(p => p.category === filterCategory);
-        setData(filtered);
+        setData([]);
       } else {
         setData(result)
       }
     } catch (error) {
       console.error(error)
-      // Fallback to mock data on error
-      const filtered = filterCategory === 'all' 
-        ? MOCK_PRICES 
-        : MOCK_PRICES.filter(p => p.category === filterCategory);
-      setData(filtered);
+      setData([]);
     } finally {
       setLoading(false)
     }
@@ -138,9 +121,10 @@ export function MaterialPriceTracker({ defaultRegion = 'Greater Accra' }: Materi
                 <SelectItem value="all">All Materials</SelectItem>
                 <SelectItem value="cement">Cement</SelectItem>
                 <SelectItem value="steel">Steel / Iron</SelectItem>
-                <SelectItem value="sand">Sand</SelectItem>
-                <SelectItem value="blocks">Blocks</SelectItem>
-                <SelectItem value="wood">Wood</SelectItem>
+                <SelectItem value="sand">Sand / Aggregates</SelectItem>
+                <SelectItem value="paint">Paint / Finishes</SelectItem>
+                <SelectItem value="plumbing">Plumbing / Tools</SelectItem>
+                <SelectItem value="roofing">Roofing</SelectItem>
               </SelectContent>
             </Select>
           </div>

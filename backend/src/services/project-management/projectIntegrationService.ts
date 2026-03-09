@@ -461,14 +461,14 @@ class ProjectIntegrationService {
         COUNT(CASE WHEN status = 'available' THEN 1 END) as available_units,
         COALESCE(SUM(CASE WHEN status IN ('sold', 'under_contract') THEN sale_price ELSE 0 END), 0) as total_revenue
       FROM project_units
-      WHERE project_id = $1 AND deleted_at IS NULL
+      WHERE project_id = $1
     `, [projectId]);
     
     // Get cost summary
     const costSummary = await pool.query(`
-      SELECT COALESCE(SUM(actual_amount), 0) as total_cost
+      SELECT COALESCE(SUM(actual_costs), 0) as total_cost
       FROM project_costs
-      WHERE project_id = $1 AND deleted_at IS NULL
+      WHERE project_id = $1
     `, [projectId]);
     
     const totalRevenue = parseFloat(unitSummary.rows[0].total_revenue) || 0;
@@ -503,10 +503,10 @@ class ProjectIntegrationService {
     const budgetByCategory = await pool.query(`
       SELECT 
         category,
-        COALESCE(SUM(budgeted_amount), 0) as budget,
-        COALESCE(SUM(actual_amount), 0) as actual
+        COALESCE(SUM(original_budget), 0) as budget,
+        COALESCE(SUM(actual_costs), 0) as actual
       FROM project_costs
-      WHERE project_id = $1 AND deleted_at IS NULL
+      WHERE project_id = $1
       GROUP BY category
     `, [projectId]);
     
@@ -519,7 +519,7 @@ class ProjectIntegrationService {
         total_revenue: totalRevenue,
         total_cost: totalCost,
         gross_margin: totalRevenue > 0 ? ((totalRevenue - totalCost) / totalRevenue) * 100 : 0,
-        percent_complete: parseFloat(project.percent_complete) || 0,
+        percent_complete: parseFloat(project.overall_progress) || 0,
       },
       sales: {
         by_month: salesByMonth.rows.map(row => ({

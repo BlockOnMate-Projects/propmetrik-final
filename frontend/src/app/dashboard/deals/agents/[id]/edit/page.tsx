@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { cn } from '@/lib/utils'
+import { authedFetch } from '@/lib/authed-fetch'
 import { 
     ArrowLeft, 
     Save, 
@@ -134,7 +135,7 @@ export default function EditAgentPage() {
 
     const fetchAgent = async () => {
         try {
-            const res = await fetch(`http://localhost:4000/api/v1/crm/agents/${agentId}`)
+            const res = await authedFetch(`http://localhost:4000/api/v1/crm/agents/${agentId}`)
             if (!res.ok) throw new Error('Failed to fetch agent')
             const agent = await res.json()
             
@@ -188,7 +189,7 @@ export default function EditAgentPage() {
                 bio: formData.bio || null
             }
 
-            const res = await fetch(`http://localhost:4000/api/v1/crm/agents/${agentId}`, {
+            const res = await authedFetch(`http://localhost:4000/api/v1/crm/agents/${agentId}`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(payload)

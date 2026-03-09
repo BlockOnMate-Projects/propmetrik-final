@@ -29,7 +29,7 @@ const sections = [
   },
   {
     title: 'Podcasts & Video',
-    description: 'PropMetrik Perspectives podcast, webinar recordings, and video market commentary.',
+    description: 'PROPMETRIK Perspectives podcast, webinar recordings, and video market commentary.',
     href: '/insights/podcasts-video',
     icon: '🎙️',
   },

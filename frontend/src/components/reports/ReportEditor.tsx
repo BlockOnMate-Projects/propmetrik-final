@@ -17,6 +17,7 @@ import { TableRow } from '@tiptap/extension-table-row'
 import { TableCell } from '@tiptap/extension-table-cell'
 import { TableHeader } from '@tiptap/extension-table-header'
 import FontFamily from '@tiptap/extension-font-family'
+import { authedFetch } from '@/lib/authed-fetch'
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import './ReportEditor.css'
 import {
@@ -880,7 +881,7 @@ export function ReportEditor({
       const url = `${API_BASE}/reports/${reportId}/content${forceRegenerate ? '?regenerate=true' : ''}`
       
       console.log('Loading report content from:', url)
-      const response = await fetch(url)
+      const response = await authedFetch(url)
 
       if (response.ok) {
         const data = await response.json()
@@ -970,7 +971,7 @@ export function ReportEditor({
     try {
       setSaving(true)
       const API_BASE = process.env.NEXT_PUBLIC_API_URL || '/api'
-      const response = await fetch(`${API_BASE}/reports/${reportId}/content`, {
+      const response = await authedFetch(`${API_BASE}/reports/${reportId}/content`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ sections }),
@@ -1025,7 +1026,7 @@ export function ReportEditor({
       formData.append('file', file)
       formData.append('reportId', reportId)
 
-      const response = await fetch(`${API_BASE}/reports/${reportId}/images`, {
+      const response = await authedFetch(`${API_BASE}/reports/${reportId}/images`, {
         method: 'POST',
         body: formData,
       })

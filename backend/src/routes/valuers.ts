@@ -16,6 +16,7 @@ import { Router, Request, Response, NextFunction } from 'express';
 import multer from 'multer';
 import { v4 as uuidv4 } from 'uuid';
 import { logger } from '../utils/logger';
+import { scanUploadedFile } from '../middleware/virusScan';
 import { approvalService } from '../services/valuation-engine';
 import { uploadFile, getPresignedDownloadUrl, buckets } from '../database/minio';
 import { query } from '../database';
@@ -206,6 +207,7 @@ router.post(
   '/:id/signature',
   validateUUID('id'),
   signatureUpload.single('signature'),
+  scanUploadedFile,
   async (req: Request, res: Response) => {
     try {
       // Check if valuer exists

@@ -15,8 +15,14 @@ import { budgetAnalyticsService } from '../services/project-management/budgetAna
 import { invoiceService, InvoiceStatus } from '../services/project-management/invoiceService';
 import { expenseLogService, ExpenseType, ExpenseStatus } from '../services/project-management/expenseLogService';
 import { logger } from '../utils/logger';
+import { registerPMParamValidation, requirePMWrite } from '../middleware/pmAuth';
+import { validate } from '../middleware/validation';
+import { createExpenseSchema, updateExpenseSchema, createBudgetInvoiceSchema } from '../middleware/pmProjectValidation';
 
 const router = Router();
+
+// Register UUID parameter validation
+registerPMParamValidation(router);
 
 // ============================================================================
 // BUDGET ANALYTICS
@@ -157,7 +163,7 @@ router.get('/:projectId/trend', async (req: Request, res: Response) => {
  * POST /budget/:projectId/rate-locks
  * Lock an exchange rate for budget planning
  */
-router.post('/:projectId/rate-locks', async (req: Request, res: Response) => {
+router.post('/:projectId/rate-locks', requirePMWrite, async (req: Request, res: Response) => {
   try {
     const { projectId } = req.params;
     const { organizationId, fromCurrency, toCurrency, lockedRate, lockReason, validFrom, validUntil, budgetAmountLocked } = req.body;
@@ -216,7 +222,7 @@ router.get('/:projectId/rate-locks', async (req: Request, res: Response) => {
  * DELETE /budget/rate-locks/:lockId
  * Release an exchange rate lock
  */
-router.delete('/rate-locks/:lockId', async (req: Request, res: Response) => {
+router.delete('/rate-locks/:lockId', requirePMWrite, async (req: Request, res: Response) => {
   try {
     const { lockId } = req.params;
     
@@ -243,7 +249,7 @@ router.delete('/rate-locks/:lockId', async (req: Request, res: Response) => {
  * POST /budget/:projectId/snapshots
  * Create a budget snapshot
  */
-router.post('/:projectId/snapshots', async (req: Request, res: Response) => {
+router.post('/:projectId/snapshots', requirePMWrite, async (req: Request, res: Response) => {
   try {
     const { projectId } = req.params;
     const { organizationId, snapshotType } = req.body;
@@ -300,7 +306,7 @@ router.get('/:projectId/alerts', async (req: Request, res: Response) => {
  * POST /budget/:projectId/alerts/check
  * Check budget thresholds and generate alerts
  */
-router.post('/:projectId/alerts/check', async (req: Request, res: Response) => {
+router.post('/:projectId/alerts/check', requirePMWrite, async (req: Request, res: Response) => {
   try {
     const { projectId } = req.params;
     const { organizationId } = req.body;
@@ -325,7 +331,7 @@ router.post('/:projectId/alerts/check', async (req: Request, res: Response) => {
  * POST /budget/alerts/:alertId/acknowledge
  * Acknowledge an alert
  */
-router.post('/alerts/:alertId/acknowledge', async (req: Request, res: Response) => {
+router.post('/alerts/:alertId/acknowledge', requirePMWrite, async (req: Request, res: Response) => {
   try {
     const { alertId } = req.params;
     const userId = (req as any).user?.id || req.body.acknowledgedBy;
@@ -353,12 +359,39 @@ router.post('/alerts/:alertId/acknowledge', async (req: Request, res: Response) 
  * POST /budget/invoices
  * Create a new invoice
  */
-router.post('/invoices', async (req: Request, res: Response) => {
+router.post('/invoices', requirePMWrite, validate(createBudgetInvoiceSchema), async (req: Request, res: Response) => {
   try {
     const userId = (req as any).user?.id;
+    const b = req.body;
     
+    // Zod schema uses snake_case; invoiceService expects camelCase
     const invoice = await invoiceService.create({
-      ...req.body,
+      projectId: b.project_id,
+      organizationId: b.organization_id || (req as any).user?.organizationId,
+      costId: b.cost_id,
+      vendorId: b.vendor_id,
+      invoiceNumber: b.invoice_number,
+      referenceNumber: b.reference_number,
+      amount: b.amount,
+      currency: b.currency,
+      taxAmount: b.tax_amount,
+      discountAmount: b.discount_amount,
+      invoiceDate: b.issue_date,
+      dueDate: b.due_date,
+      receivedDate: b.received_date,
+      paymentMethod: b.payment_method,
+      fileUrl: b.file_url,
+      fileName: b.file_name,
+      lineItems: b.line_items?.map((li: any) => ({
+        description: li.description,
+        quantity: li.quantity,
+        unit: li.unit || 'unit',
+        unitPrice: li.unit_price,
+        amount: li.amount,
+      })),
+      description: b.description,
+      notes: b.notes,
+      internalNotes: b.internal_notes,
       createdBy: userId,
     });
     
@@ -465,6 +498,34 @@ router.get('/:projectId/invoices', async (req: Request, res: Response) => {
 });
 
 /**
+ * GET /budget/revenue/summary
+ * Get organization-level revenue summary across all projects
+ * Query params: ?projectId=xxx to filter by specific project
+ */
+router.get('/revenue/summary', async (req: Request, res: Response) => {
+  try {
+    const organizationId = (req as any).user?.organizationId;
+    if (!organizationId) {
+      return res.status(400).json({ success: false, error: 'Organization not found' });
+    }
+
+    const projectId = req.query.projectId as string | undefined;
+    const summary = await invoiceService.getOrgRevenueSummary(organizationId, projectId);
+
+    res.json({
+      success: true,
+      data: summary,
+    });
+  } catch (error) {
+    logger.error('Error getting revenue summary', { error });
+    res.status(500).json({
+      success: false,
+      error: 'Failed to get revenue summary',
+    });
+  }
+});
+
+/**
  * GET /budget/:projectId/invoices/summary
  * Get invoice summary for a project
  */
@@ -491,7 +552,7 @@ router.get('/:projectId/invoices/summary', async (req: Request, res: Response) =
  * PUT /budget/invoices/:id
  * Update an invoice
  */
-router.put('/invoices/:id', async (req: Request, res: Response) => {
+router.put('/invoices/:id', requirePMWrite, async (req: Request, res: Response) => {
   try {
     const userId = (req as any).user?.id;
     
@@ -517,7 +578,7 @@ router.put('/invoices/:id', async (req: Request, res: Response) => {
  * POST /budget/invoices/:id/submit
  * Submit invoice for approval
  */
-router.post('/invoices/:id/submit', async (req: Request, res: Response) => {
+router.post('/invoices/:id/submit', requirePMWrite, async (req: Request, res: Response) => {
   try {
     const userId = (req as any).user?.id || req.body.submittedBy;
     
@@ -540,7 +601,7 @@ router.post('/invoices/:id/submit', async (req: Request, res: Response) => {
  * POST /budget/invoices/:id/approve
  * Approve an invoice
  */
-router.post('/invoices/:id/approve', async (req: Request, res: Response) => {
+router.post('/invoices/:id/approve', requirePMWrite, async (req: Request, res: Response) => {
   try {
     const userId = (req as any).user?.id || req.body.approvedBy;
     
@@ -563,7 +624,7 @@ router.post('/invoices/:id/approve', async (req: Request, res: Response) => {
  * POST /budget/invoices/:id/reject
  * Reject an invoice
  */
-router.post('/invoices/:id/reject', async (req: Request, res: Response) => {
+router.post('/invoices/:id/reject', requirePMWrite, async (req: Request, res: Response) => {
   try {
     const userId = (req as any).user?.id || req.body.rejectedBy;
     const { reason } = req.body;
@@ -594,7 +655,7 @@ router.post('/invoices/:id/reject', async (req: Request, res: Response) => {
  * POST /budget/invoices/:id/pay
  * Mark invoice as paid
  */
-router.post('/invoices/:id/pay', async (req: Request, res: Response) => {
+router.post('/invoices/:id/pay', requirePMWrite, async (req: Request, res: Response) => {
   try {
     const { paidDate, paymentReference, paymentMethod } = req.body;
     
@@ -626,6 +687,58 @@ router.post('/invoices/:id/pay', async (req: Request, res: Response) => {
 });
 
 /**
+ * POST /budget/invoices/:id/send
+ * Send invoice — generates Paystack payment link (with split payment if subaccount
+ * configured), sends branded email to client, and updates invoice with payment ref.
+ * Follows the same proven pattern as valuation invoice sending.
+ *
+ * Body: {
+ *   clientEmail: string,
+ *   clientName: string,
+ *   vendorCompany?: string,
+ *   vendorEmail?: string,
+ *   projectName?: string,
+ *   lineItems?: { description, quantity, amount }[],
+ *   totalAmount?: number,
+ *   currency?: string,
+ *   dueDate?: string,
+ *   platformFee?: number,
+ * }
+ */
+router.post('/invoices/:id/send', requirePMWrite, async (req: Request, res: Response) => {
+  try {
+    const { clientEmail, clientName, ...sendData } = req.body;
+
+    if (!clientEmail) {
+      return res.status(400).json({
+        success: false,
+        error: 'clientEmail is required to send an invoice',
+      });
+    }
+
+    const result = await invoiceService.sendInvoice(
+      req.params.id,
+      clientEmail,
+      clientName || 'Client',
+      sendData
+    );
+
+    res.json({
+      success: true,
+      data: result.invoice,
+      paymentLink: result.paymentLink,
+      paystackReference: result.paystackReference,
+    });
+  } catch (error: any) {
+    logger.error('Error sending invoice', { error });
+    res.status(error.message?.includes('not found') ? 404 : 500).json({
+      success: false,
+      error: error.message || 'Failed to send invoice',
+    });
+  }
+});
+
+/**
  * GET /budget/invoices/overdue
  * Get overdue invoices
  */
@@ -652,7 +765,7 @@ router.get('/invoices/overdue', async (req: Request, res: Response) => {
  * DELETE /budget/invoices/:id
  * Delete an invoice (draft/cancelled only)
  */
-router.delete('/invoices/:id', async (req: Request, res: Response) => {
+router.delete('/invoices/:id', requirePMWrite, async (req: Request, res: Response) => {
   try {
     await invoiceService.delete(req.params.id);
     
@@ -677,7 +790,7 @@ router.delete('/invoices/:id', async (req: Request, res: Response) => {
  * POST /budget/expenses
  * Create a new expense log
  */
-router.post('/expenses', async (req: Request, res: Response) => {
+router.post('/expenses', requirePMWrite, validate(createExpenseSchema), async (req: Request, res: Response) => {
   try {
     const userId = (req as any).user?.id || req.body.loggedBy;
     
@@ -703,7 +816,7 @@ router.post('/expenses', async (req: Request, res: Response) => {
  * POST /budget/expenses/bulk
  * Bulk create expenses (for offline sync)
  */
-router.post('/expenses/bulk', async (req: Request, res: Response) => {
+router.post('/expenses/bulk', requirePMWrite, async (req: Request, res: Response) => {
   try {
     const { expenses } = req.body;
     
@@ -848,7 +961,7 @@ router.get('/:projectId/expenses/summary', async (req: Request, res: Response) =
  * PUT /budget/expenses/:id
  * Update an expense
  */
-router.put('/expenses/:id', async (req: Request, res: Response) => {
+router.put('/expenses/:id', requirePMWrite, validate(updateExpenseSchema), async (req: Request, res: Response) => {
   try {
     const userId = (req as any).user?.id;
     
@@ -874,7 +987,7 @@ router.put('/expenses/:id', async (req: Request, res: Response) => {
  * POST /budget/expenses/:id/approve
  * Approve an expense
  */
-router.post('/expenses/:id/approve', async (req: Request, res: Response) => {
+router.post('/expenses/:id/approve', requirePMWrite, async (req: Request, res: Response) => {
   try {
     const userId = (req as any).user?.id || req.body.approvedBy;
     
@@ -897,7 +1010,7 @@ router.post('/expenses/:id/approve', async (req: Request, res: Response) => {
  * POST /budget/expenses/:id/reject
  * Reject an expense
  */
-router.post('/expenses/:id/reject', async (req: Request, res: Response) => {
+router.post('/expenses/:id/reject', requirePMWrite, async (req: Request, res: Response) => {
   try {
     const { reason } = req.body;
     
@@ -927,7 +1040,7 @@ router.post('/expenses/:id/reject', async (req: Request, res: Response) => {
  * POST /budget/expenses/bulk-approve
  * Bulk approve expenses
  */
-router.post('/expenses/bulk-approve', async (req: Request, res: Response) => {
+router.post('/expenses/bulk-approve', requirePMWrite, async (req: Request, res: Response) => {
   try {
     const { ids } = req.body;
     const userId = (req as any).user?.id || req.body.approvedBy;
@@ -958,7 +1071,7 @@ router.post('/expenses/bulk-approve', async (req: Request, res: Response) => {
  * DELETE /budget/expenses/:id
  * Delete an expense (pending only)
  */
-router.delete('/expenses/:id', async (req: Request, res: Response) => {
+router.delete('/expenses/:id', requirePMWrite, async (req: Request, res: Response) => {
   try {
     await expenseLogService.delete(req.params.id);
     
@@ -1004,6 +1117,338 @@ router.get('/expenses/nearby', async (req: Request, res: Response) => {
       success: false,
       error: 'Failed to get nearby expenses',
     });
+  }
+});
+
+// ============================================================================
+// PAYMENT MILESTONES
+// ============================================================================
+
+/**
+ * GET /budget/:projectId/milestones
+ * List payment milestones for a project
+ */
+router.get('/:projectId/milestones', async (req: Request, res: Response) => {
+  try {
+    const { projectId } = req.params;
+    const orgId = (req as any).user?.organizationId;
+    const { phaseId, status } = req.query;
+
+    let sql = `
+      SELECT * FROM payment_milestones
+      WHERE project_id = $1 AND organization_id = $2
+    `;
+    const params: any[] = [projectId, orgId];
+    let idx = 3;
+
+    if (phaseId) {
+      sql += ` AND phase_id = $${idx++}`;
+      params.push(phaseId);
+    }
+    if (status) {
+      sql += ` AND status = $${idx++}`;
+      params.push(status);
+    }
+
+    sql += ` ORDER BY scheduled_date ASC, created_at ASC`;
+
+    const { pool } = await import('../database');
+    const { rows } = await pool.query(sql, params);
+
+    // Map to camelCase for the frontend PaymentMilestone interface
+    const milestones = rows.map((r: any) => ({
+      id: r.id,
+      projectId: r.project_id,
+      phaseId: r.phase_id,
+      costId: r.cost_id,
+      vendorId: r.vendor_id,
+      name: r.name,
+      description: r.description,
+      percentage: r.payment_percentage ? Number(r.payment_percentage) : undefined,
+      amount: Number(r.payment_amount),
+      currency: r.currency || 'GHS',
+      dueDate: r.scheduled_date,
+      triggerCondition: r.trigger_condition,
+      status: r.status || 'pending',
+      completionPercentage: r.completion_percentage ? Number(r.completion_percentage) : 0,
+      paidAmount: r.actual_amount ? Number(r.actual_amount) : undefined,
+      paidDate: r.actual_payment_date,
+      invoiceId: r.invoice_id,
+      milestoneOrder: 0,
+      createdBy: r.created_by,
+      createdAt: r.created_at,
+      updatedAt: r.created_at,
+    }));
+
+    res.json(milestones);
+  } catch (error) {
+    logger.error('Error fetching payment milestones', { error });
+    res.status(500).json({
+      success: false,
+      error: 'Failed to fetch payment milestones',
+    });
+  }
+});
+
+/**
+ * POST /budget/:projectId/milestones
+ * Create a payment milestone
+ */
+router.post('/:projectId/milestones', requirePMWrite, async (req: Request, res: Response) => {
+  try {
+    const { projectId } = req.params;
+    const orgId = (req as any).user?.organizationId;
+    const userId = (req as any).user?.id;
+    const {
+      phaseId, costId, vendorId, name, description,
+      percentage, amount, currency, dueDate,
+      triggerCondition, status,
+    } = req.body;
+
+    if (!name || !amount) {
+      return res.status(400).json({ success: false, error: 'name and amount are required' });
+    }
+
+    const { pool } = await import('../database');
+    const { rows } = await pool.query(`
+      INSERT INTO payment_milestones
+        (project_id, organization_id, phase_id, cost_id, vendor_id,
+         name, description, payment_percentage, payment_amount, currency,
+         scheduled_date, trigger_condition, status, created_by)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+      RETURNING *
+    `, [
+      projectId, orgId, phaseId || null, costId || null, vendorId || null,
+      name, description || null,
+      percentage || null, amount, currency || 'GHS',
+      dueDate || new Date(), triggerCondition || null,
+      status || 'scheduled', userId,
+    ]);
+
+    const r = rows[0];
+    res.status(201).json({
+      id: r.id,
+      projectId: r.project_id,
+      phaseId: r.phase_id,
+      name: r.name,
+      description: r.description,
+      amount: Number(r.payment_amount),
+      currency: r.currency,
+      dueDate: r.scheduled_date,
+      status: r.status,
+      createdBy: r.created_by,
+      createdAt: r.created_at,
+    });
+  } catch (error) {
+    logger.error('Error creating payment milestone', { error });
+    res.status(500).json({
+      success: false,
+      error: 'Failed to create payment milestone',
+    });
+  }
+});
+
+/**
+ * GET /budget/milestones/:id
+ * Get a single payment milestone
+ */
+router.get('/milestones/:id', async (req: Request, res: Response) => {
+  try {
+    const orgId = (req as any).user?.organizationId;
+    const { pool } = await import('../database');
+    const { rows } = await pool.query(
+      `SELECT * FROM payment_milestones WHERE id = $1 AND organization_id = $2`,
+      [req.params.id, orgId]
+    );
+
+    if (rows.length === 0) {
+      return res.status(404).json({ success: false, error: 'Milestone not found' });
+    }
+
+    const r = rows[0];
+    res.json({
+      id: r.id,
+      projectId: r.project_id,
+      phaseId: r.phase_id,
+      name: r.name,
+      description: r.description,
+      amount: Number(r.payment_amount),
+      currency: r.currency,
+      dueDate: r.scheduled_date,
+      status: r.status,
+      paidAmount: r.actual_amount ? Number(r.actual_amount) : undefined,
+      paidDate: r.actual_payment_date,
+      createdBy: r.created_by,
+      createdAt: r.created_at,
+    });
+  } catch (error) {
+    logger.error('Error fetching milestone', { error });
+    res.status(500).json({ success: false, error: 'Failed to fetch milestone' });
+  }
+});
+
+/**
+ * PUT /budget/milestones/:id
+ * Update a payment milestone
+ */
+router.put('/milestones/:id', requirePMWrite, async (req: Request, res: Response) => {
+  try {
+    const orgId = (req as any).user?.organizationId;
+    const userId = (req as any).user?.id;
+    const { name, description, amount, currency, dueDate, status, percentage, triggerCondition } = req.body;
+
+    const sets: string[] = [];
+    const vals: any[] = [];
+    let idx = 3;
+
+    if (name !== undefined) { sets.push(`name = $${idx++}`); vals.push(name); }
+    if (description !== undefined) { sets.push(`description = $${idx++}`); vals.push(description); }
+    if (amount !== undefined) { sets.push(`payment_amount = $${idx++}`); vals.push(amount); }
+    if (currency !== undefined) { sets.push(`currency = $${idx++}`); vals.push(currency); }
+    if (dueDate !== undefined) { sets.push(`scheduled_date = $${idx++}`); vals.push(dueDate); }
+    if (status !== undefined) { sets.push(`status = $${idx++}`); vals.push(status); }
+    if (percentage !== undefined) { sets.push(`payment_percentage = $${idx++}`); vals.push(percentage); }
+    if (triggerCondition !== undefined) { sets.push(`trigger_condition = $${idx++}`); vals.push(triggerCondition); }
+    sets.push(`updated_by = $${idx++}`); vals.push(userId);
+
+    if (sets.length <= 1) {
+      return res.status(400).json({ success: false, error: 'Nothing to update' });
+    }
+
+    const { pool } = await import('../database');
+    const { rows } = await pool.query(
+      `UPDATE payment_milestones SET ${sets.join(', ')} WHERE id = $1 AND organization_id = $2 RETURNING *`,
+      [req.params.id, orgId, ...vals]
+    );
+
+    if (rows.length === 0) {
+      return res.status(404).json({ success: false, error: 'Milestone not found' });
+    }
+
+    const r = rows[0];
+    res.json({
+      id: r.id,
+      projectId: r.project_id,
+      name: r.name,
+      amount: Number(r.payment_amount),
+      currency: r.currency,
+      dueDate: r.scheduled_date,
+      status: r.status,
+    });
+  } catch (error) {
+    logger.error('Error updating milestone', { error });
+    res.status(500).json({ success: false, error: 'Failed to update milestone' });
+  }
+});
+
+/**
+ * POST /budget/milestones/:id/pay
+ * Mark a payment milestone as paid
+ */
+router.post('/milestones/:id/pay', requirePMWrite, async (req: Request, res: Response) => {
+  try {
+    const orgId = (req as any).user?.organizationId;
+    const userId = (req as any).user?.id;
+    const { paidDate } = req.body;
+
+    const { pool } = await import('../database');
+    const { rows } = await pool.query(
+      `UPDATE payment_milestones
+       SET status = 'paid', actual_payment_date = $3, completion_percentage = 100,
+           completion_verified_by = $4, completion_verified_at = NOW(), updated_by = $4
+       WHERE id = $1 AND organization_id = $2
+       RETURNING *`,
+      [req.params.id, orgId, paidDate || new Date(), userId]
+    );
+
+    if (rows.length === 0) {
+      return res.status(404).json({ success: false, error: 'Milestone not found' });
+    }
+
+    const r = rows[0];
+    res.json({
+      id: r.id,
+      projectId: r.project_id,
+      name: r.name,
+      status: r.status,
+      paidDate: r.actual_payment_date,
+    });
+  } catch (error) {
+    logger.error('Error marking milestone as paid', { error });
+    res.status(500).json({ success: false, error: 'Failed to mark milestone as paid' });
+  }
+});
+
+/**
+ * POST /budget/milestones/:id/cancel
+ * Cancel a payment milestone
+ */
+router.post('/milestones/:id/cancel', requirePMWrite, async (req: Request, res: Response) => {
+  try {
+    const orgId = (req as any).user?.organizationId;
+    const userId = (req as any).user?.id;
+
+    const { pool } = await import('../database');
+    const { rows } = await pool.query(
+      `UPDATE payment_milestones SET status = 'cancelled', updated_by = $3
+       WHERE id = $1 AND organization_id = $2 RETURNING *`,
+      [req.params.id, orgId, userId]
+    );
+
+    if (rows.length === 0) {
+      return res.status(404).json({ success: false, error: 'Milestone not found' });
+    }
+
+    res.json({ id: rows[0].id, status: 'cancelled' });
+  } catch (error) {
+    logger.error('Error cancelling milestone', { error });
+    res.status(500).json({ success: false, error: 'Failed to cancel milestone' });
+  }
+});
+
+/**
+ * POST /budget/milestones/:milestoneId/invoices/:invoiceId
+ * Link an invoice to a milestone
+ */
+router.post('/milestones/:milestoneId/invoices/:invoiceId', requirePMWrite, async (req: Request, res: Response) => {
+  try {
+    const orgId = (req as any).user?.organizationId;
+    const { milestoneId, invoiceId } = req.params;
+
+    const { pool } = await import('../database');
+    await pool.query(
+      `UPDATE payment_milestones SET invoice_id = $3
+       WHERE id = $1 AND organization_id = $2`,
+      [milestoneId, orgId, invoiceId]
+    );
+
+    res.json({ success: true });
+  } catch (error) {
+    logger.error('Error linking invoice to milestone', { error });
+    res.status(500).json({ success: false, error: 'Failed to link invoice' });
+  }
+});
+
+/**
+ * DELETE /budget/milestones/:milestoneId/invoices/:invoiceId
+ * Unlink an invoice from a milestone
+ */
+router.delete('/milestones/:milestoneId/invoices/:invoiceId', requirePMWrite, async (req: Request, res: Response) => {
+  try {
+    const orgId = (req as any).user?.organizationId;
+    const { milestoneId } = req.params;
+
+    const { pool } = await import('../database');
+    await pool.query(
+      `UPDATE payment_milestones SET invoice_id = NULL
+       WHERE id = $1 AND organization_id = $2`,
+      [milestoneId, orgId]
+    );
+
+    res.json({ success: true });
+  } catch (error) {
+    logger.error('Error unlinking invoice from milestone', { error });
+    res.status(500).json({ success: false, error: 'Failed to unlink invoice' });
   }
 });
 

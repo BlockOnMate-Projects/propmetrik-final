@@ -1,4 +1,4 @@
-# PropMetrik Public Marketplace - Technical Specification
+# PROPMETRIK Public Marketplace - Technical Specification
 
 **Version:** 2.0 (Enhanced with OpenSearch, Geocoding & Maps)  
 **Date:** February 21, 2026  
@@ -31,7 +31,7 @@
 
 ### What is the Marketplace?
 
-The PropMetrik Marketplace is a **public-facing property listing page** that aggregates properties from both:
+The PROPMETRIK Marketplace is a **public-facing property listing page** that aggregates properties from both:
 - **Property Management (PM)** - Rental properties managed by landlords/property managers
 - **Deal Management (CRM)** - Sale properties listed by deal managers/agents
 

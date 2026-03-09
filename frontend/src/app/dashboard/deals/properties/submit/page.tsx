@@ -20,6 +20,7 @@ import {
     SelectValue,
 } from '@/components/ui/select'
 import { PropertyImageUploader, PropertyImage } from '@/components/crm/PropertyImageUploader'
+import { authedFetch } from '@/lib/authed-fetch'
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api/v1'
 
@@ -111,7 +112,7 @@ export default function SubmitPropertyPage() {
         setError(null)
 
         try {
-            const response = await fetch(`${API_BASE}/crm/properties/submit`, {
+            const response = await authedFetch(`${API_BASE}/crm/properties/submit`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -139,7 +140,7 @@ export default function SubmitPropertyPage() {
                     const formData = new FormData()
                     pendingImageFiles.forEach(file => formData.append('images', file))
 
-                    await fetch(`${API_BASE}/crm/properties/${property.id}/images`, {
+                    await authedFetch(`${API_BASE}/crm/properties/${property.id}/images`, {
                         method: 'POST',
                         body: formData,
                     })

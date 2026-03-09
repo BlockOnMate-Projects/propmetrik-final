@@ -7,6 +7,7 @@
 import { Router } from 'express';
 import { ricsComplianceService } from '../../shared-services/compliance/ricsComplianceService';
 import { logger } from '../utils/logger';
+import { scanUploadedFile } from '../middleware/virusScan';
 import multer from 'multer';
 import path from 'path';
 import fs from 'fs';
@@ -38,7 +39,7 @@ if (!fs.existsSync(uploadDir)) {
  * POST /api/v1/rics-compliance/analyze
  * Analyze a PDF valuation report for RICS compliance
  */
-router.post('/analyze', upload.single('report'), async (req, res) => {
+router.post('/analyze', upload.single('report'), scanUploadedFile, async (req, res) => {
     try {
         if (!req.file) {
             return res.status(400).json({

@@ -16,6 +16,9 @@
  */
 
 import { Router, Request, Response, NextFunction } from 'express';
+import { registerPMParamValidation, getAuthUserId, getAuthOrgId, requirePMWrite } from '../middleware/pmAuth';
+import { validate } from '../middleware/validation';
+import { createProjectSchema, updateProjectSchema, createPhaseSchema, updatePhaseSchema, createMilestoneSchema, updateMilestoneSchema, createDailyLogSchema, createPunchItemSchema, updatePunchItemSchema } from '../middleware/pmProjectValidation';
 import projectService from '../services/project-management/projectService';
 import phaseService from '../services/project-management/phaseService';
 import unitService from '../services/project-management/unitService';
@@ -38,6 +41,8 @@ import {
   getAmenitiesForType,
   requiresEPAPermit
 } from '../services/project-management/projectDefaults';
+// Data Hub Services (construction costs, FX, etc.)
+import { constructionCostService } from '../services/data-hub/constructionCostService';
 // Phase 2: Dashboard & Gantt Services
 import dashboardAnalyticsService from '../services/project-management/dashboardAnalyticsService';
 import milestoneService from '../services/project-management/milestoneService';
@@ -46,22 +51,29 @@ import ganttService from '../services/project-management/ganttService';
 import { complianceService } from '../services/project-management/complianceService';
 import { projectDocumentService } from '../services/project-management/projectDocumentService';
 import { complianceReportService } from '../services/project-management/complianceReportService';
+// PDF Report Services
+import rfiService from '../services/project-management/rfiService';
+import submittalService from '../services/project-management/submittalService';
+import changeOrderService from '../services/project-management/changeOrderService';
+import multer from 'multer';
+import PDFDocument from 'pdfkit';
+import { uploadFile, getPresignedDownloadUrl, buckets } from '../database/minio';
+import { v4 as uuidv4 } from 'uuid';
+
+// Configure multer for project document uploads
+const documentUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 10 * 1024 * 1024 }, // 10MB
+});
 
 const router = Router();
 
-// Development mode organization ID (valid UUID for testing)
-const DEV_ORG_ID = '00000000-0000-0000-0000-000000000001';
-// Development mode user ID (valid UUID for testing)
-const DEV_USER_ID = 'ed4a50d7-a1b2-4c3d-8e5f-6a7b8c9d0e1f';
+// Register UUID parameter validation for all PM param names
+registerPMParamValidation(router);
 
-// Helper to get organization ID from request
-const getOrgId = (req: Request): string => {
-  return (req as any).organizationId || (req as any).user?.organizationId || (req as any).user?.organization_id || DEV_ORG_ID;
-};
-
-const getUserId = (req: Request): string => {
-  return (req as any).user?.id || (req as any).user?.sub || (req as any).userId || DEV_USER_ID;
-};
+// Secure helpers — always use authenticated user context (never raw headers)
+const getOrgId = (req: Request): string => getAuthOrgId(req);
+const getUserId = (req: Request): string => getAuthUserId(req);
 
 // ============================================================================
 // PROJECTS
@@ -130,7 +142,7 @@ router.get('/phase-templates', async (req: Request, res: Response, next: NextFun
 });
 
 // Create phase template
-router.post('/phase-templates', async (req: Request, res: Response, next: NextFunction) => {
+router.post('/phase-templates', requirePMWrite, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const orgId = getOrgId(req);
     const { template_name, phases, project_type } = req.body;
@@ -142,7 +154,7 @@ router.post('/phase-templates', async (req: Request, res: Response, next: NextFu
 });
 
 // Create project
-router.post('/', async (req: Request, res: Response, next: NextFunction) => {
+router.post('/', requirePMWrite, validate(createProjectSchema), async (req: Request, res: Response, next: NextFunction) => {
   try {
     const orgId = getOrgId(req);
     const userId = getUserId(req);
@@ -159,22 +171,67 @@ router.post('/', async (req: Request, res: Response, next: NextFunction) => {
   }
 });
 
-// Get single project
-// Note: This must come AFTER all specific path routes like /ghana-regions, /ghana-districts, /validate-gps, etc.
-// Use a middleware to skip non-UUID paths
-router.get('/:id', async (req: Request, res: Response, next: NextFunction) => {
-  // Skip if path matches known non-ID routes (let them fall through to later handlers)
-  const nonIdPaths = [
-    'summaries', 'stats', 'defaults', 'phase-templates', 'wizard', 'search', 'nearby',
-    'traditional-authorities', 'assemblies', 'ghana-regions', 'ghana-districts', 
-    'validate-gps', 'validate-location', 'reverse-geocode', 'estimate-costs',
-    'suggest-budget-breakdown', 'required-permits', 'with-location'
-  ];
-  
-  if (nonIdPaths.includes(req.params.id)) {
-    return next('route');
-  }
+// ============================================================================
+// AGGREGATED DOCUMENTS (across all projects in org)
+// ============================================================================
+router.get('/all-documents', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const orgId = getOrgId(req);
+    const { pool } = await import('../database');
+    const { category, search, page: pageQ, limit: limitQ } = req.query;
+    const page = parseInt(pageQ as string) || 1;
+    const limit = Math.min(parseInt(limitQ as string) || 25, 100);
+    const offset = (page - 1) * limit;
 
+    let whereClause = `pd.organization_id = $1 AND pd.status = 'active' AND pd.is_current = true`;
+    const params: any[] = [orgId];
+    let paramIdx = 2;
+
+    if (category && category !== 'all') {
+      whereClause += ` AND pd.document_type = $${paramIdx}`;
+      params.push(category);
+      paramIdx++;
+    }
+
+    if (search) {
+      whereClause += ` AND (pd.name ILIKE $${paramIdx} OR pd.original_filename ILIKE $${paramIdx})`;
+      params.push(`%${search}%`);
+      paramIdx++;
+    }
+
+    const countResult = await pool.query(
+      `SELECT COUNT(*) FROM project_documents pd WHERE ${whereClause}`, params
+    );
+    const total = parseInt(countResult.rows[0].count);
+
+    const result = await pool.query(
+      `SELECT pd.*, 
+              u.full_name as uploaded_by_name, 
+              dp.project_name as project_name
+       FROM project_documents pd
+       LEFT JOIN users u ON pd.uploaded_by::text = u.id::text
+       LEFT JOIN development_projects dp ON pd.project_id::text = dp.id::text
+       WHERE ${whereClause}
+       ORDER BY pd.created_at DESC
+       LIMIT $${paramIdx} OFFSET $${paramIdx + 1}`,
+      [...params, limit, offset]
+    );
+
+    res.json({
+      data: result.rows,
+      total,
+      page,
+      totalPages: Math.ceil(total / limit),
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Get single project
+// UUID param validation in pmAuth.ts skips non-UUID values via next('route'),
+// so this handler only fires for valid UUID :id params.
+router.get('/:id', async (req: Request, res: Response, next: NextFunction) => {
   try {
     const orgId = getOrgId(req);
     const project = await projectService.getById(req.params.id, orgId);
@@ -190,7 +247,7 @@ router.get('/:id', async (req: Request, res: Response, next: NextFunction) => {
 });
 
 // Update project
-router.put('/:id', async (req: Request, res: Response, next: NextFunction) => {
+router.put('/:id', requirePMWrite, validate(updateProjectSchema), async (req: Request, res: Response, next: NextFunction) => {
   try {
     const orgId = getOrgId(req);
     const userId = getUserId(req);
@@ -211,7 +268,7 @@ router.put('/:id', async (req: Request, res: Response, next: NextFunction) => {
 });
 
 // Update project status
-router.patch('/:id/status', async (req: Request, res: Response, next: NextFunction) => {
+router.patch('/:id/status', requirePMWrite, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const orgId = getOrgId(req);
     const userId = getUserId(req);
@@ -230,7 +287,7 @@ router.patch('/:id/status', async (req: Request, res: Response, next: NextFuncti
 });
 
 // Delete project (soft)
-router.delete('/:id', async (req: Request, res: Response, next: NextFunction) => {
+router.delete('/:id', requirePMWrite, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const orgId = getOrgId(req);
     const userId = getUserId(req);
@@ -272,7 +329,7 @@ router.get('/:id/gantt', async (req: Request, res: Response, next: NextFunction)
 });
 
 // Create phase
-router.post('/:id/phases', async (req: Request, res: Response, next: NextFunction) => {
+router.post('/:id/phases', requirePMWrite, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const orgId = getOrgId(req);
     const userId = getUserId(req);
@@ -291,7 +348,7 @@ router.post('/:id/phases', async (req: Request, res: Response, next: NextFunctio
 });
 
 // Bulk create phases
-router.post('/:id/phases/bulk', async (req: Request, res: Response, next: NextFunction) => {
+router.post('/:id/phases/bulk', requirePMWrite, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const orgId = getOrgId(req);
     const userId = getUserId(req);
@@ -313,7 +370,7 @@ router.post('/:id/phases/bulk', async (req: Request, res: Response, next: NextFu
 });
 
 // Update phase
-router.put('/phases/:phaseId', async (req: Request, res: Response, next: NextFunction) => {
+router.put('/phases/:phaseId', requirePMWrite, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const userId = getUserId(req);
     
@@ -333,7 +390,7 @@ router.put('/phases/:phaseId', async (req: Request, res: Response, next: NextFun
 });
 
 // Update phase progress
-router.patch('/phases/:phaseId/progress', async (req: Request, res: Response, next: NextFunction) => {
+router.patch('/phases/:phaseId/progress', requirePMWrite, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const userId = getUserId(req);
     const { progress } = req.body;
@@ -351,7 +408,7 @@ router.patch('/phases/:phaseId/progress', async (req: Request, res: Response, ne
 });
 
 // Update phase status
-router.patch('/phases/:phaseId/status', async (req: Request, res: Response, next: NextFunction) => {
+router.patch('/phases/:phaseId/status', requirePMWrite, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const userId = getUserId(req);
     const { status } = req.body;
@@ -369,7 +426,7 @@ router.patch('/phases/:phaseId/status', async (req: Request, res: Response, next
 });
 
 // Reorder phases
-router.put('/:id/phases/reorder', async (req: Request, res: Response, next: NextFunction) => {
+router.put('/:id/phases/reorder', requirePMWrite, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { phaseIds } = req.body;
     await phaseService.reorderPhases(req.params.id, phaseIds);
@@ -390,7 +447,7 @@ router.get('/phases/:phaseId/can-start', async (req: Request, res: Response, nex
 });
 
 // Delete phase
-router.delete('/phases/:phaseId', async (req: Request, res: Response, next: NextFunction) => {
+router.delete('/phases/:phaseId', requirePMWrite, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const deleted = await phaseService.delete(req.params.phaseId);
     
@@ -409,7 +466,7 @@ router.delete('/phases/:phaseId', async (req: Request, res: Response, next: Next
 // ============================================================================
 
 // Add milestone to phase
-router.post('/phases/:phaseId/milestones', async (req: Request, res: Response, next: NextFunction) => {
+router.post('/phases/:phaseId/milestones', requirePMWrite, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const phase = await phaseService.addMilestone(req.params.phaseId, req.body);
     
@@ -424,7 +481,7 @@ router.post('/phases/:phaseId/milestones', async (req: Request, res: Response, n
 });
 
 // Update milestone
-router.put('/phases/:phaseId/milestones/:milestoneId', async (req: Request, res: Response, next: NextFunction) => {
+router.put('/phases/:phaseId/milestones/:milestoneId', requirePMWrite, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const phase = await phaseService.updateMilestone(req.params.phaseId, req.params.milestoneId, req.body);
     
@@ -439,7 +496,7 @@ router.put('/phases/:phaseId/milestones/:milestoneId', async (req: Request, res:
 });
 
 // Complete milestone
-router.post('/phases/:phaseId/milestones/:milestoneId/complete', async (req: Request, res: Response, next: NextFunction) => {
+router.post('/phases/:phaseId/milestones/:milestoneId/complete', requirePMWrite, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const phase = await phaseService.completeMilestone(req.params.phaseId, req.params.milestoneId);
     
@@ -454,7 +511,7 @@ router.post('/phases/:phaseId/milestones/:milestoneId/complete', async (req: Req
 });
 
 // Delete milestone
-router.delete('/phases/:phaseId/milestones/:milestoneId', async (req: Request, res: Response, next: NextFunction) => {
+router.delete('/phases/:phaseId/milestones/:milestoneId', requirePMWrite, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const phase = await phaseService.deleteMilestone(req.params.phaseId, req.params.milestoneId);
     
@@ -531,7 +588,7 @@ router.get('/upgrades/categories', async (req: Request, res: Response, next: Nex
 });
 
 // Create unit
-router.post('/:id/units', async (req: Request, res: Response, next: NextFunction) => {
+router.post('/:id/units', requirePMWrite, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const orgId = getOrgId(req);
     const userId = getUserId(req);
@@ -550,7 +607,7 @@ router.post('/:id/units', async (req: Request, res: Response, next: NextFunction
 });
 
 // Bulk create units
-router.post('/:id/units/bulk', async (req: Request, res: Response, next: NextFunction) => {
+router.post('/:id/units/bulk', requirePMWrite, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const orgId = getOrgId(req);
     const userId = getUserId(req);
@@ -584,7 +641,7 @@ router.get('/units/:unitId', async (req: Request, res: Response, next: NextFunct
 });
 
 // Update unit
-router.put('/units/:unitId', async (req: Request, res: Response, next: NextFunction) => {
+router.put('/units/:unitId', requirePMWrite, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const userId = getUserId(req);
     
@@ -604,7 +661,7 @@ router.put('/units/:unitId', async (req: Request, res: Response, next: NextFunct
 });
 
 // Reserve unit
-router.post('/units/:unitId/reserve', async (req: Request, res: Response, next: NextFunction) => {
+router.post('/units/:unitId/reserve', requirePMWrite, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const userId = getUserId(req);
     
@@ -624,7 +681,7 @@ router.post('/units/:unitId/reserve', async (req: Request, res: Response, next: 
 });
 
 // Move to contract
-router.post('/units/:unitId/contract', async (req: Request, res: Response, next: NextFunction) => {
+router.post('/units/:unitId/contract', requirePMWrite, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { sale_price, contract_date, deal_id } = req.body;
     
@@ -646,7 +703,7 @@ router.post('/units/:unitId/contract', async (req: Request, res: Response, next:
 });
 
 // Mark as sold
-router.post('/units/:unitId/sold', async (req: Request, res: Response, next: NextFunction) => {
+router.post('/units/:unitId/sold', requirePMWrite, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const unit = await unitService.markAsSold(req.params.unitId);
     
@@ -661,7 +718,7 @@ router.post('/units/:unitId/sold', async (req: Request, res: Response, next: Nex
 });
 
 // Handover unit
-router.post('/units/:unitId/handover', async (req: Request, res: Response, next: NextFunction) => {
+router.post('/units/:unitId/handover', requirePMWrite, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { handover_date } = req.body;
     
@@ -678,7 +735,7 @@ router.post('/units/:unitId/handover', async (req: Request, res: Response, next:
 });
 
 // Cancel reservation
-router.post('/units/:unitId/cancel-reservation', async (req: Request, res: Response, next: NextFunction) => {
+router.post('/units/:unitId/cancel-reservation', requirePMWrite, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { reason } = req.body;
     
@@ -695,7 +752,7 @@ router.post('/units/:unitId/cancel-reservation', async (req: Request, res: Respo
 });
 
 // Add upgrade to unit
-router.post('/units/:unitId/upgrades', async (req: Request, res: Response, next: NextFunction) => {
+router.post('/units/:unitId/upgrades', requirePMWrite, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const userId = getUserId(req);
     
@@ -715,7 +772,7 @@ router.post('/units/:unitId/upgrades', async (req: Request, res: Response, next:
 });
 
 // Remove upgrade from unit
-router.delete('/units/:unitId/upgrades/:upgradeId', async (req: Request, res: Response, next: NextFunction) => {
+router.delete('/units/:unitId/upgrades/:upgradeId', requirePMWrite, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const unit = await unitService.removeUpgrade(req.params.unitId, req.params.upgradeId);
     
@@ -730,7 +787,7 @@ router.delete('/units/:unitId/upgrades/:upgradeId', async (req: Request, res: Re
 });
 
 // Record payment on unit
-router.post('/units/:unitId/payments', async (req: Request, res: Response, next: NextFunction) => {
+router.post('/units/:unitId/payments', requirePMWrite, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { amount } = req.body;
     
@@ -747,7 +804,7 @@ router.post('/units/:unitId/payments', async (req: Request, res: Response, next:
 });
 
 // Link unit to deal
-router.post('/units/:unitId/link-deal', async (req: Request, res: Response, next: NextFunction) => {
+router.post('/units/:unitId/link-deal', requirePMWrite, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { deal_id } = req.body;
     
@@ -764,7 +821,7 @@ router.post('/units/:unitId/link-deal', async (req: Request, res: Response, next
 });
 
 // Delete unit
-router.delete('/units/:unitId', async (req: Request, res: Response, next: NextFunction) => {
+router.delete('/units/:unitId', requirePMWrite, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const deleted = await unitService.delete(req.params.unitId);
     
@@ -824,7 +881,7 @@ router.get('/cost-codes', async (req: Request, res: Response, next: NextFunction
 });
 
 // Create cost
-router.post('/:id/costs', async (req: Request, res: Response, next: NextFunction) => {
+router.post('/:id/costs', requirePMWrite, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const orgId = getOrgId(req);
     const userId = getUserId(req);
@@ -843,7 +900,7 @@ router.post('/:id/costs', async (req: Request, res: Response, next: NextFunction
 });
 
 // Create costs from template
-router.post('/:id/costs/from-template', async (req: Request, res: Response, next: NextFunction) => {
+router.post('/:id/costs/from-template', requirePMWrite, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const orgId = getOrgId(req);
     const userId = getUserId(req);
@@ -856,7 +913,7 @@ router.post('/:id/costs/from-template', async (req: Request, res: Response, next
 });
 
 // Update cost
-router.put('/costs/:costId', async (req: Request, res: Response, next: NextFunction) => {
+router.put('/costs/:costId', requirePMWrite, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const userId = getUserId(req);
     
@@ -876,7 +933,7 @@ router.put('/costs/:costId', async (req: Request, res: Response, next: NextFunct
 });
 
 // Record invoice
-router.post('/costs/:costId/invoice', async (req: Request, res: Response, next: NextFunction) => {
+router.post('/costs/:costId/invoice', requirePMWrite, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { invoice_number, invoice_date, due_date, amount, document_url } = req.body;
     
@@ -900,7 +957,7 @@ router.post('/costs/:costId/invoice', async (req: Request, res: Response, next: 
 });
 
 // Approve for payment
-router.post('/costs/:costId/approve', async (req: Request, res: Response, next: NextFunction) => {
+router.post('/costs/:costId/approve', requirePMWrite, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const userId = getUserId(req);
     
@@ -917,7 +974,7 @@ router.post('/costs/:costId/approve', async (req: Request, res: Response, next: 
 });
 
 // Record payment
-router.post('/costs/:costId/pay', async (req: Request, res: Response, next: NextFunction) => {
+router.post('/costs/:costId/pay', requirePMWrite, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const userId = getUserId(req);
     const { payment_reference, payment_method } = req.body;
@@ -940,7 +997,7 @@ router.post('/costs/:costId/pay', async (req: Request, res: Response, next: Next
 });
 
 // Bulk approve costs
-router.post('/costs/bulk-approve', async (req: Request, res: Response, next: NextFunction) => {
+router.post('/costs/bulk-approve', requirePMWrite, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const userId = getUserId(req);
     const { cost_ids } = req.body;
@@ -953,7 +1010,7 @@ router.post('/costs/bulk-approve', async (req: Request, res: Response, next: Nex
 });
 
 // Delete cost
-router.delete('/costs/:costId', async (req: Request, res: Response, next: NextFunction) => {
+router.delete('/costs/:costId', requirePMWrite, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const deleted = await projectCostService.delete(req.params.costId);
     
@@ -1013,7 +1070,7 @@ router.get('/contractors/trades', async (req: Request, res: Response, next: Next
 });
 
 // Create contractor
-router.post('/contractors', async (req: Request, res: Response, next: NextFunction) => {
+router.post('/contractors', requirePMWrite, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const orgId = getOrgId(req);
     const userId = getUserId(req);
@@ -1046,7 +1103,7 @@ router.get('/contractors/:contractorId', async (req: Request, res: Response, nex
 });
 
 // Update contractor
-router.put('/contractors/:contractorId', async (req: Request, res: Response, next: NextFunction) => {
+router.put('/contractors/:contractorId', requirePMWrite, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const userId = getUserId(req);
     
@@ -1066,7 +1123,7 @@ router.put('/contractors/:contractorId', async (req: Request, res: Response, nex
 });
 
 // Approve contractor
-router.post('/contractors/:contractorId/approve', async (req: Request, res: Response, next: NextFunction) => {
+router.post('/contractors/:contractorId/approve', requirePMWrite, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const userId = getUserId(req);
     const contractor = await contractorService.approve(req.params.contractorId, userId);
@@ -1082,7 +1139,7 @@ router.post('/contractors/:contractorId/approve', async (req: Request, res: Resp
 });
 
 // Activate contractor
-router.post('/contractors/:contractorId/activate', async (req: Request, res: Response, next: NextFunction) => {
+router.post('/contractors/:contractorId/activate', requirePMWrite, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const userId = getUserId(req);
     const contractor = await contractorService.activate(req.params.contractorId, userId);
@@ -1098,7 +1155,7 @@ router.post('/contractors/:contractorId/activate', async (req: Request, res: Res
 });
 
 // Suspend contractor
-router.post('/contractors/:contractorId/suspend', async (req: Request, res: Response, next: NextFunction) => {
+router.post('/contractors/:contractorId/suspend', requirePMWrite, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const userId = getUserId(req);
     const contractor = await contractorService.suspend(req.params.contractorId, userId);
@@ -1114,7 +1171,7 @@ router.post('/contractors/:contractorId/suspend', async (req: Request, res: Resp
 });
 
 // Rate contractor
-router.post('/contractors/:contractorId/rate', async (req: Request, res: Response, next: NextFunction) => {
+router.post('/contractors/:contractorId/rate', requirePMWrite, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const userId = getUserId(req);
     const { rating } = req.body;
@@ -1132,7 +1189,7 @@ router.post('/contractors/:contractorId/rate', async (req: Request, res: Respons
 });
 
 // Add document to contractor
-router.post('/contractors/:contractorId/documents', async (req: Request, res: Response, next: NextFunction) => {
+router.post('/contractors/:contractorId/documents', requirePMWrite, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const contractor = await contractorService.addDocument(req.params.contractorId, req.body);
     
@@ -1157,7 +1214,7 @@ router.get('/contractors/:contractorId/assignments', async (req: Request, res: R
 });
 
 // Delete contractor
-router.delete('/contractors/:contractorId', async (req: Request, res: Response, next: NextFunction) => {
+router.delete('/contractors/:contractorId', requirePMWrite, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const deleted = await contractorService.delete(req.params.contractorId);
     
@@ -1186,7 +1243,7 @@ router.get('/:id/contractors', async (req: Request, res: Response, next: NextFun
 });
 
 // Create assignment
-router.post('/:id/contractors', async (req: Request, res: Response, next: NextFunction) => {
+router.post('/:id/contractors', requirePMWrite, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const orgId = getOrgId(req);
     const userId = getUserId(req);
@@ -1205,7 +1262,7 @@ router.post('/:id/contractors', async (req: Request, res: Response, next: NextFu
 });
 
 // Update assignment
-router.put('/assignments/:assignmentId', async (req: Request, res: Response, next: NextFunction) => {
+router.put('/assignments/:assignmentId', requirePMWrite, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const assignment = await contractorService.updateAssignment(req.params.assignmentId, req.body);
     
@@ -1220,7 +1277,7 @@ router.put('/assignments/:assignmentId', async (req: Request, res: Response, nex
 });
 
 // Update assignment progress
-router.patch('/assignments/:assignmentId/progress', async (req: Request, res: Response, next: NextFunction) => {
+router.patch('/assignments/:assignmentId/progress', requirePMWrite, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { percentage } = req.body;
     
@@ -1237,7 +1294,7 @@ router.patch('/assignments/:assignmentId/progress', async (req: Request, res: Re
 });
 
 // Record billing
-router.post('/assignments/:assignmentId/bill', async (req: Request, res: Response, next: NextFunction) => {
+router.post('/assignments/:assignmentId/bill', requirePMWrite, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { amount } = req.body;
     
@@ -1254,7 +1311,7 @@ router.post('/assignments/:assignmentId/bill', async (req: Request, res: Respons
 });
 
 // Record payment to contractor
-router.post('/assignments/:assignmentId/pay', async (req: Request, res: Response, next: NextFunction) => {
+router.post('/assignments/:assignmentId/pay', requirePMWrite, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { amount } = req.body;
     
@@ -1271,7 +1328,7 @@ router.post('/assignments/:assignmentId/pay', async (req: Request, res: Response
 });
 
 // Complete assignment
-router.post('/assignments/:assignmentId/complete', async (req: Request, res: Response, next: NextFunction) => {
+router.post('/assignments/:assignmentId/complete', requirePMWrite, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const assignment = await contractorService.completeAssignment(req.params.assignmentId);
     
@@ -1333,7 +1390,7 @@ router.get('/draws/:drawId', async (req: Request, res: Response, next: NextFunct
 });
 
 // Create draw request
-router.post('/:projectId/draws', async (req: Request, res: Response, next: NextFunction) => {
+router.post('/:projectId/draws', requirePMWrite, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const orgId = getOrgId(req);
     const userId = getUserId(req);
@@ -1352,7 +1409,7 @@ router.post('/:projectId/draws', async (req: Request, res: Response, next: NextF
 });
 
 // Submit draw for approval
-router.post('/draws/:drawId/submit', async (req: Request, res: Response, next: NextFunction) => {
+router.post('/draws/:drawId/submit', requirePMWrite, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const userId = getUserId(req);
     const draw = await drawService.submit(req.params.drawId, userId);
@@ -1368,7 +1425,7 @@ router.post('/draws/:drawId/submit', async (req: Request, res: Response, next: N
 });
 
 // Approve draw request
-router.post('/draws/:drawId/approve', async (req: Request, res: Response, next: NextFunction) => {
+router.post('/draws/:drawId/approve', requirePMWrite, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const userId = getUserId(req);
     const { notes } = req.body;
@@ -1386,7 +1443,7 @@ router.post('/draws/:drawId/approve', async (req: Request, res: Response, next: 
 });
 
 // Reject draw request
-router.post('/draws/:drawId/reject', async (req: Request, res: Response, next: NextFunction) => {
+router.post('/draws/:drawId/reject', requirePMWrite, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const userId = getUserId(req);
     const { reason } = req.body;
@@ -1404,7 +1461,7 @@ router.post('/draws/:drawId/reject', async (req: Request, res: Response, next: N
 });
 
 // Record funding for draw
-router.post('/draws/:drawId/fund', async (req: Request, res: Response, next: NextFunction) => {
+router.post('/draws/:drawId/fund', requirePMWrite, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const userId = getUserId(req);
     const { amount, referenceNumber, notes } = req.body;
@@ -1428,7 +1485,7 @@ router.post('/draws/:drawId/fund', async (req: Request, res: Response, next: Nex
 });
 
 // Update draw line items
-router.put('/draws/:drawId/items', async (req: Request, res: Response, next: NextFunction) => {
+router.put('/draws/:drawId/items', requirePMWrite, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { items } = req.body;
     const draw = await drawService.updateLineItems(req.params.drawId, items);
@@ -1444,7 +1501,7 @@ router.put('/draws/:drawId/items', async (req: Request, res: Response, next: Nex
 });
 
 // Add document to draw
-router.post('/draws/:drawId/documents', async (req: Request, res: Response, next: NextFunction) => {
+router.post('/draws/:drawId/documents', requirePMWrite, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { documentUrl, documentType, name } = req.body;
     const draw = await drawService.addDocument(req.params.drawId, documentUrl, documentType, name);
@@ -1538,7 +1595,7 @@ router.get('/logs/:logId', async (req: Request, res: Response, next: NextFunctio
 });
 
 // Create daily log
-router.post('/:projectId/logs', async (req: Request, res: Response, next: NextFunction) => {
+router.post('/:projectId/logs', requirePMWrite, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const orgId = getOrgId(req);
     const userId = getUserId(req);
@@ -1557,7 +1614,7 @@ router.post('/:projectId/logs', async (req: Request, res: Response, next: NextFu
 });
 
 // Update daily log
-router.put('/logs/:logId', async (req: Request, res: Response, next: NextFunction) => {
+router.put('/logs/:logId', requirePMWrite, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const log = await dailyLogService.update(req.params.logId, req.body);
     
@@ -1572,7 +1629,7 @@ router.put('/logs/:logId', async (req: Request, res: Response, next: NextFunctio
 });
 
 // Delete daily log
-router.delete('/logs/:logId', async (req: Request, res: Response, next: NextFunction) => {
+router.delete('/logs/:logId', requirePMWrite, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const success = await dailyLogService.delete(req.params.logId);
     
@@ -1587,7 +1644,7 @@ router.delete('/logs/:logId', async (req: Request, res: Response, next: NextFunc
 });
 
 // Add photo to daily log
-router.post('/logs/:logId/photos', async (req: Request, res: Response, next: NextFunction) => {
+router.post('/logs/:logId/photos', requirePMWrite, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const userId = getUserId(req);
     const { photoUrl, caption } = req.body;
@@ -1605,7 +1662,7 @@ router.post('/logs/:logId/photos', async (req: Request, res: Response, next: Nex
 });
 
 // Remove photo from daily log
-router.delete('/logs/:logId/photos/:photoId', async (req: Request, res: Response, next: NextFunction) => {
+router.delete('/logs/:logId/photos/:photoId', requirePMWrite, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const success = await dailyLogService.removePhoto(req.params.logId, req.params.photoId);
     
@@ -1620,7 +1677,7 @@ router.delete('/logs/:logId/photos/:photoId', async (req: Request, res: Response
 });
 
 // Add activity to daily log
-router.post('/logs/:logId/activities', async (req: Request, res: Response, next: NextFunction) => {
+router.post('/logs/:logId/activities', requirePMWrite, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const log = await dailyLogService.addActivity(req.params.logId, req.body);
     
@@ -1635,7 +1692,7 @@ router.post('/logs/:logId/activities', async (req: Request, res: Response, next:
 });
 
 // Approve daily log
-router.post('/logs/:logId/approve', async (req: Request, res: Response, next: NextFunction) => {
+router.post('/logs/:logId/approve', requirePMWrite, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const userId = getUserId(req);
     const log = await dailyLogService.approve(req.params.logId, userId);
@@ -1651,7 +1708,7 @@ router.post('/logs/:logId/approve', async (req: Request, res: Response, next: Ne
 });
 
 // Revoke daily log approval
-router.post('/logs/:logId/revoke', async (req: Request, res: Response, next: NextFunction) => {
+router.post('/logs/:logId/revoke', requirePMWrite, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const log = await dailyLogService.revokeApproval(req.params.logId);
     
@@ -1735,7 +1792,7 @@ router.get('/units/:unitId/payment-plan', async (req: Request, res: Response, ne
 });
 
 // Create payment plan for a unit
-router.post('/units/:unitId/payment-plan', async (req: Request, res: Response, next: NextFunction) => {
+router.post('/units/:unitId/payment-plan', requirePMWrite, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const orgId = getOrgId(req);
     const userId = getUserId(req);
@@ -1764,7 +1821,7 @@ router.get('/payment-plans/:planId/schedule', async (req: Request, res: Response
 });
 
 // Record payment
-router.post('/payment-plans/:planId/payments', async (req: Request, res: Response, next: NextFunction) => {
+router.post('/payment-plans/:planId/payments', requirePMWrite, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const userId = getUserId(req);
     
@@ -1794,7 +1851,7 @@ router.get('/payment-plans/:planId/payments', async (req: Request, res: Response
 });
 
 // Mark plan as defaulted
-router.post('/payment-plans/:planId/default', async (req: Request, res: Response, next: NextFunction) => {
+router.post('/payment-plans/:planId/default', requirePMWrite, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { reason } = req.body;
     const plan = await paymentPlanService.markDefaulted(req.params.planId, reason);
@@ -1810,7 +1867,7 @@ router.post('/payment-plans/:planId/default', async (req: Request, res: Response
 });
 
 // Cancel payment plan
-router.post('/payment-plans/:planId/cancel', async (req: Request, res: Response, next: NextFunction) => {
+router.post('/payment-plans/:planId/cancel', requirePMWrite, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { reason } = req.body;
     const success = await paymentPlanService.cancel(req.params.planId, reason);
@@ -1828,6 +1885,44 @@ router.post('/payment-plans/:planId/cancel', async (req: Request, res: Response,
 // ============================================================================
 // PUNCH LISTS
 // ============================================================================
+
+// Get punch item stats for a project (used by overview dashboard)
+router.get('/:id/punch-items/stats', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const orgId = getOrgId(req);
+    const projectId = req.params.id;
+
+    // Direct query — avoids fragile getSummary with missing columns
+    const result = await require('../database').pool.query(`
+      SELECT
+        COUNT(*) as total,
+        COUNT(CASE WHEN pli.status = 'open' THEN 1 END) as open_count,
+        COUNT(CASE WHEN pli.status = 'in_progress' THEN 1 END) as in_progress_count,
+        COUNT(CASE WHEN pli.status = 'completed' THEN 1 END) as completed_count,
+        COUNT(CASE WHEN pli.status = 'verified' THEN 1 END) as verified_count,
+        COUNT(CASE WHEN pli.due_date < NOW() AND pli.status NOT IN ('completed', 'verified', 'deferred') THEN 1 END) as overdue_count
+      FROM punch_list_items pli
+      WHERE pli.organization_id = $1
+        AND pli.project_id = $2
+    `, [orgId, projectId]);
+
+    const row = result.rows[0] || {};
+
+    res.json({
+      total: parseInt(row.total) || 0,
+      by_status: {
+        open: parseInt(row.open_count) || 0,
+        in_progress: parseInt(row.in_progress_count) || 0,
+        completed: parseInt(row.completed_count) || 0,
+        closed: parseInt(row.verified_count) || 0,
+        ready_for_inspection: 0,
+      },
+      overdue: parseInt(row.overdue_count) || 0,
+    });
+  } catch (error) {
+    next(error);
+  }
+});
 
 // Get all punch list items for organization
 router.get('/punch-lists', async (req: Request, res: Response, next: NextFunction) => {
@@ -1910,7 +2005,7 @@ router.get('/punch-lists/:itemId', async (req: Request, res: Response, next: Nex
 });
 
 // Create punch list item
-router.post('/units/:unitId/punch-list', async (req: Request, res: Response, next: NextFunction) => {
+router.post('/units/:unitId/punch-list', requirePMWrite, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const orgId = getOrgId(req);
     const userId = getUserId(req);
@@ -1929,7 +2024,7 @@ router.post('/units/:unitId/punch-list', async (req: Request, res: Response, nex
 });
 
 // Create bulk punch list items
-router.post('/units/:unitId/punch-list/bulk', async (req: Request, res: Response, next: NextFunction) => {
+router.post('/units/:unitId/punch-list/bulk', requirePMWrite, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const orgId = getOrgId(req);
     const userId = getUserId(req);
@@ -1951,7 +2046,7 @@ router.post('/units/:unitId/punch-list/bulk', async (req: Request, res: Response
 });
 
 // Update punch list item
-router.put('/punch-lists/:itemId', async (req: Request, res: Response, next: NextFunction) => {
+router.put('/punch-lists/:itemId', requirePMWrite, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const item = await punchListService.update(req.params.itemId, req.body);
     
@@ -1966,7 +2061,7 @@ router.put('/punch-lists/:itemId', async (req: Request, res: Response, next: Nex
 });
 
 // Delete punch list item
-router.delete('/punch-lists/:itemId', async (req: Request, res: Response, next: NextFunction) => {
+router.delete('/punch-lists/:itemId', requirePMWrite, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const success = await punchListService.delete(req.params.itemId);
     
@@ -1981,7 +2076,7 @@ router.delete('/punch-lists/:itemId', async (req: Request, res: Response, next: 
 });
 
 // Assign punch list item to contractor
-router.post('/punch-lists/:itemId/assign', async (req: Request, res: Response, next: NextFunction) => {
+router.post('/punch-lists/:itemId/assign', requirePMWrite, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { contractorId, dueDate } = req.body;
     const item = await punchListService.assign(
@@ -2001,7 +2096,7 @@ router.post('/punch-lists/:itemId/assign', async (req: Request, res: Response, n
 });
 
 // Start work on punch list item
-router.post('/punch-lists/:itemId/start', async (req: Request, res: Response, next: NextFunction) => {
+router.post('/punch-lists/:itemId/start', requirePMWrite, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const item = await punchListService.startWork(req.params.itemId);
     
@@ -2016,7 +2111,7 @@ router.post('/punch-lists/:itemId/start', async (req: Request, res: Response, ne
 });
 
 // Complete punch list item
-router.post('/punch-lists/:itemId/complete', async (req: Request, res: Response, next: NextFunction) => {
+router.post('/punch-lists/:itemId/complete', requirePMWrite, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const userId = getUserId(req);
     const { notes } = req.body;
@@ -2034,7 +2129,7 @@ router.post('/punch-lists/:itemId/complete', async (req: Request, res: Response,
 });
 
 // Verify punch list item
-router.post('/punch-lists/:itemId/verify', async (req: Request, res: Response, next: NextFunction) => {
+router.post('/punch-lists/:itemId/verify', requirePMWrite, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const userId = getUserId(req);
     const item = await punchListService.verify(req.params.itemId, userId);
@@ -2050,7 +2145,7 @@ router.post('/punch-lists/:itemId/verify', async (req: Request, res: Response, n
 });
 
 // Reject punch list item verification
-router.post('/punch-lists/:itemId/reject', async (req: Request, res: Response, next: NextFunction) => {
+router.post('/punch-lists/:itemId/reject', requirePMWrite, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { reason } = req.body;
     const item = await punchListService.rejectVerification(req.params.itemId, reason);
@@ -2066,7 +2161,7 @@ router.post('/punch-lists/:itemId/reject', async (req: Request, res: Response, n
 });
 
 // Defer punch list item
-router.post('/punch-lists/:itemId/defer', async (req: Request, res: Response, next: NextFunction) => {
+router.post('/punch-lists/:itemId/defer', requirePMWrite, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { reason } = req.body;
     const item = await punchListService.defer(req.params.itemId, reason);
@@ -2082,7 +2177,7 @@ router.post('/punch-lists/:itemId/defer', async (req: Request, res: Response, ne
 });
 
 // Add photo to punch list item
-router.post('/punch-lists/:itemId/photos', async (req: Request, res: Response, next: NextFunction) => {
+router.post('/punch-lists/:itemId/photos', requirePMWrite, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const userId = getUserId(req);
     const { photoUrl, photoType, caption } = req.body;
@@ -2102,7 +2197,7 @@ router.post('/punch-lists/:itemId/photos', async (req: Request, res: Response, n
 });
 
 // Remove photo from punch list item
-router.delete('/punch-lists/:itemId/photos/:photoId', async (req: Request, res: Response, next: NextFunction) => {
+router.delete('/punch-lists/:itemId/photos/:photoId', requirePMWrite, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const success = await punchListService.removePhoto(req.params.photoId);
     
@@ -2117,7 +2212,7 @@ router.delete('/punch-lists/:itemId/photos/:photoId', async (req: Request, res: 
 });
 
 // Complete all punch list items for a unit
-router.post('/units/:unitId/punch-list/complete-all', async (req: Request, res: Response, next: NextFunction) => {
+router.post('/units/:unitId/punch-list/complete-all', requirePMWrite, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const userId = getUserId(req);
     const count = await punchListService.completeAllForUnit(req.params.unitId, userId);
@@ -2132,7 +2227,7 @@ router.post('/units/:unitId/punch-list/complete-all', async (req: Request, res: 
 // ============================================================================
 
 // Link unit to deal
-router.post('/units/:unitId/link-deal', async (req: Request, res: Response, next: NextFunction) => {
+router.post('/units/:unitId/link-deal', requirePMWrite, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const userId = getUserId(req);
     const { dealId, linkType } = req.body;
@@ -2161,7 +2256,7 @@ router.get('/:projectId/deals', async (req: Request, res: Response, next: NextFu
 });
 
 // Unlink deal
-router.delete('/deal-links/:linkId', async (req: Request, res: Response, next: NextFunction) => {
+router.delete('/deal-links/:linkId', requirePMWrite, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const success = await projectIntegrationService.unlinkDeal(req.params.linkId);
     
@@ -2186,7 +2281,7 @@ router.get('/:projectId/buyers', async (req: Request, res: Response, next: NextF
 });
 
 // Assign buyer to unit
-router.post('/units/:unitId/assign-buyer', async (req: Request, res: Response, next: NextFunction) => {
+router.post('/units/:unitId/assign-buyer', requirePMWrite, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { contactId, salePrice, status } = req.body;
     
@@ -2204,7 +2299,7 @@ router.post('/units/:unitId/assign-buyer', async (req: Request, res: Response, n
 });
 
 // Record unit handover
-router.post('/units/:unitId/handover', async (req: Request, res: Response, next: NextFunction) => {
+router.post('/units/:unitId/handover', requirePMWrite, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { handoverDate, notes } = req.body;
     
@@ -2240,8 +2335,664 @@ router.get('/:projectId/report', async (req: Request, res: Response, next: NextF
   }
 });
 
+// ============================================================================
+// PDF REPORT GENERATION — Uses shared pdfReportKit
+// ============================================================================
+import {
+  COLORS as C, PAGE, PDF,
+  fmtGHS, fmtPct, titleCase, safeDate, ensureSpace,
+  pdfCover, pdfSection, pdfStatCards, pdfKeyValueGrid, pdfProgressBar,
+  pdfTable as pdfRichTable, pdfInfoPanel, pdfBudgetBar, pdfBudgetLegend,
+  pdfPageHeader, pdfSeparator,
+} from '../utils/pdfReportKit';
+
+const MARGIN = PAGE.margin;
+const CONTENT_W = PAGE.contentWidth;
+
+// ============================================================================
+// PORTFOLIO-LEVEL PDF REPORT (must be before /:projectId routes)
+// ============================================================================
+router.get('/portfolio/reports/:reportType', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const orgId = getAuthOrgId(req);
+    const { reportType } = req.params;
+
+    // Gather ALL portfolio data in parallel
+    const [metricsData, budgetData, timelineData, complianceData, alertsData, milestonesData] = await Promise.all([
+      dashboardAnalyticsService.getPortfolioMetrics(orgId).catch(() => null),
+      dashboardAnalyticsService.getBudgetOverview(orgId).catch(() => null),
+      dashboardAnalyticsService.getTimelineStatus(orgId).catch(() => null),
+      dashboardAnalyticsService.getComplianceStatus(orgId).catch(() => null),
+      dashboardAnalyticsService.getActiveAlerts(orgId).catch(() => []),
+      dashboardAnalyticsService.getUpcomingMilestones(orgId).catch(() => []),
+    ]);
+
+    const doc = PDF.create();
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `inline; filename="portfolio-${reportType}-${new Date().toISOString().split('T')[0]}.pdf"`);
+    doc.pipe(res);
+
+    const m: any = metricsData || {};
+    const s: any = m.summary || m;
+    const b: any = budgetData || {};
+    const t: any = timelineData || {};
+
+    // ── Summary ──
+    if (reportType === 'summary' || reportType === 'all') {
+      pdfCover(doc, {
+        title: 'Portfolio Summary Report',
+        subtitle: 'All Projects Overview',
+        reportType: 'PORTFOLIO SUMMARY',
+        meta: [
+          `${s.totalProjects ?? s.total_projects ?? 0} Projects | ${fmtGHS(s.totalBudget ?? s.total_budget)} Total Budget`,
+        ],
+      });
+
+      // KPI Cards
+      pdfSection(doc, 'Portfolio Overview');
+      pdfStatCards(doc, [
+        { label: 'Total Projects', value: String(s.totalProjects ?? s.total_projects ?? 0), color: C.info },
+        { label: 'Active', value: String(s.activeProjects ?? s.active_projects ?? 0), color: C.positive },
+        { label: 'Completed', value: String(s.completedProjects ?? s.completed_projects ?? 0), color: C.brand },
+        { label: 'On Hold', value: String(s.onHoldProjects ?? s.on_hold_projects ?? 0), color: C.warning },
+      ]);
+
+      pdfStatCards(doc, [
+        { label: 'Total Budget', value: fmtGHS(s.totalBudget ?? s.total_budget), color: C.heading },
+        { label: 'Total Spent', value: fmtGHS(s.totalSpent ?? s.total_spent), color: C.negative },
+        { label: 'Total Units', value: String(s.totalUnits ?? s.total_units ?? 0), color: C.info },
+        { label: 'Avg Progress', value: fmtPct(s.averageProgress ?? s.avgProgress ?? s.avg_progress), color: C.positive },
+      ]);
+
+      // Budget health
+      const bh: any = m.budgetHealth || {};
+      if (bh.underBudget || bh.onBudget || bh.overBudget) {
+        pdfSection(doc, 'Budget Health');
+        pdfStatCards(doc, [
+          { label: 'Under Budget', value: String(bh.underBudget ?? bh.under_budget ?? 0), color: C.positive },
+          { label: 'On Budget', value: String(bh.onBudget ?? bh.on_budget ?? 0), color: C.info },
+          { label: 'Over Budget', value: String(bh.overBudget ?? bh.over_budget ?? 0), color: C.negative },
+        ]);
+      }
+
+      // Projects by status breakdown
+      if (m.byStatus?.length) {
+        pdfSection(doc, 'Projects by Status');
+        pdfRichTable(doc,
+          ['Status', 'Count', 'Total Budget', '% of Total'],
+          m.byStatus.map((r: any) => [titleCase(r.status), String(r.count), fmtGHS(r.totalBudget), fmtPct(r.percentOfTotal)]),
+          [160, 80, 130, 120], { rightAlignFrom: 1 }
+        );
+      }
+
+      // Projects by type
+      if (m.byProjectType?.length) {
+        pdfSection(doc, 'Projects by Type');
+        pdfRichTable(doc,
+          ['Type', 'Count', 'Total Budget', 'Avg Progress'],
+          m.byProjectType.map((r: any) => [titleCase(r.projectType), String(r.count), fmtGHS(r.totalBudget), fmtPct(r.averageProgress)]),
+          [160, 80, 130, 120], { rightAlignFrom: 1 }
+        );
+      }
+
+      // By region
+      if (m.byRegion?.length) {
+        pdfSection(doc, 'Projects by Region');
+        pdfRichTable(doc,
+          ['Region', 'Projects', 'Total Budget'],
+          m.byRegion.map((r: any) => [titleCase(r.region), String(r.count), fmtGHS(r.totalBudget)]),
+          [200, 100, 190], { rightAlignFrom: 1 }
+        );
+      }
+
+      // Active alerts
+      const alerts = (alertsData as any[]) || [];
+      if (alerts.length > 0) {
+        pdfSection(doc, 'Active Alerts');
+        alerts.slice(0, 8).forEach((a: any) => {
+          const alertType = a.severity === 'critical' ? 'danger' : a.severity === 'high' ? 'warning' : 'info';
+          pdfInfoPanel(doc, `[${(a.severity || 'info').toUpperCase()}] ${a.title || a.message} — ${a.projectName || ''}`, alertType as any);
+        });
+      }
+    }
+
+    // ── Budget Report ──
+    if (reportType === 'budget' || reportType === 'all') {
+      if (reportType === 'all') doc.addPage();
+      pdfCover(doc, {
+        title: 'Portfolio Budget Report',
+        subtitle: 'Financial Analysis',
+        reportType: 'BUDGET REPORT',
+        meta: [
+          `Total Budget: ${fmtGHS(b.totalBudget)} | Spent: ${fmtGHS(b.totalActualCost)}`,
+          `Variance: ${fmtGHS(b.overallVariance)} (${fmtPct(b.overallVariancePercent)})`,
+        ],
+      });
+
+      pdfSection(doc, 'Financial Summary');
+      pdfStatCards(doc, [
+        { label: 'Total Budget', value: fmtGHS(b.totalBudget), color: C.info },
+        { label: 'Actual Cost', value: fmtGHS(b.totalActualCost), color: C.heading },
+        { label: 'Committed', value: fmtGHS(b.totalCommitted), color: C.warning },
+        { label: 'Remaining', value: fmtGHS(b.totalRemaining), color: C.positive },
+      ]);
+
+      const varianceColor = (b.overallVariance ?? 0) < 0 ? C.negative : C.positive;
+      pdfStatCards(doc, [
+        { label: 'Variance', value: fmtGHS(b.overallVariance), color: varianceColor },
+        { label: 'Variance %', value: fmtPct(b.overallVariancePercent), color: varianceColor },
+      ]);
+
+      if ((b.overallVariance ?? 0) < 0) {
+        pdfInfoPanel(doc, `Portfolio is over budget by ${fmtGHS(Math.abs(b.overallVariance))} (${fmtPct(Math.abs(b.overallVariancePercent))}). Review cost categories below for details.`, 'danger');
+      } else {
+        pdfInfoPanel(doc, `Portfolio is within budget. ${fmtGHS(b.totalRemaining)} remaining across all projects.`, 'success');
+      }
+
+      // Budget by category with visual bars
+      if (b.byCategory?.length > 0) {
+        pdfSection(doc, 'Budget by Category');
+        // Legend
+        doc.fontSize(7).fillColor(C.info).text('■ Budget', MARGIN + 105, doc.y, { continued: true });
+        doc.fillColor(C.positive).text('   ■ Actual (under)', { continued: true });
+        doc.fillColor(C.negative).text('   ■ Actual (over)');
+        doc.moveDown(0.5);
+        b.byCategory.forEach((c: any) => {
+          pdfBudgetBar(doc, c.category, c.budgeted, c.actual);
+        });
+        doc.moveDown(0.5);
+        pdfRichTable(doc,
+          ['Category', 'Budgeted', 'Actual', 'Variance', 'Var %', 'Util %'],
+          b.byCategory.map((c: any) => [
+            titleCase(c.category),
+            fmtGHS(c.budgeted), fmtGHS(c.actual), fmtGHS(c.variance),
+            fmtPct(c.variancePercent), fmtPct(c.utilizationPercent),
+          ]),
+          [90, 80, 80, 80, 65, 65], { rightAlignFrom: 1 }
+        );
+      }
+
+      // Budget by project
+      if (b.byProject?.length > 0) {
+        pdfSection(doc, 'Budget by Project');
+        pdfRichTable(doc,
+          ['Project', 'Budget', 'Actual', 'Variance', 'Status'],
+          b.byProject.map((p: any) => [
+            (p.projectName || '—').substring(0, 30),
+            fmtGHS(p.totalBudget ?? p.budget), fmtGHS(p.actualCost),
+            fmtGHS(p.variance),
+            titleCase(p.status),
+          ]),
+          [150, 90, 90, 90, 75], { rightAlignFrom: 1 }
+        );
+      }
+
+      // Monthly trend
+      if (b.monthlyTrend?.length > 0) {
+        pdfSection(doc, 'Monthly Spend Trend');
+        pdfRichTable(doc,
+          ['Month', 'Budgeted', 'Actual', 'Cumulative'],
+          b.monthlyTrend.map((m: any) => [m.month, fmtGHS(m.budgeted), fmtGHS(m.actual), fmtGHS(m.cumulative)]),
+          [130, 110, 110, 140], { rightAlignFrom: 1 }
+        );
+      }
+    }
+
+    // ── Issues / Risk Report ──
+    if (reportType === 'issues' || reportType === 'all') {
+      if (reportType === 'all') doc.addPage();
+      pdfCover(doc, {
+        title: 'Portfolio Risk & Timeline Report',
+        subtitle: 'Schedule & Risk Analysis',
+        reportType: 'RISK ANALYSIS',
+        meta: [
+          `On Track: ${t.onTrack ?? 0} | At Risk: ${t.atRisk ?? 0} | Delayed: ${t.delayed ?? 0}`,
+        ],
+      });
+
+      pdfSection(doc, 'Schedule Overview');
+      pdfStatCards(doc, [
+        { label: 'On Track', value: String(t.onTrack ?? t.on_track ?? 0), color: C.positive },
+        { label: 'At Risk', value: String(t.atRisk ?? t.at_risk ?? 0), color: C.warning },
+        { label: 'Delayed', value: String(t.delayed ?? 0), color: C.negative },
+        { label: 'Completed', value: String(t.completed ?? 0), color: C.info },
+      ]);
+
+      // Project timeline details
+      if (t.projects?.length > 0) {
+        pdfSection(doc, 'Project Timeline Status');
+        pdfRichTable(doc,
+          ['Project', 'Status', 'Phase', 'Progress', 'Days Var'],
+          t.projects.map((p: any) => [
+            (p.projectName || p.name || '—').substring(0, 25),
+            titleCase(p.status),
+            titleCase(p.currentPhase || '—'),
+            fmtPct(p.percentComplete),
+            String(p.daysVariance ?? 0),
+          ]),
+          [130, 80, 100, 70, 60]
+        );
+      }
+
+      // Upcoming milestones
+      const ms = (milestonesData as any[]) || [];
+      if (ms.length > 0) {
+        pdfSection(doc, 'Upcoming Milestones');
+        pdfRichTable(doc,
+          ['Milestone', 'Project', 'Due Date', 'Days Left', 'Priority'],
+          ms.slice(0, 15).map((m: any) => [
+            (m.milestoneName || m.milestone?.name || '—').substring(0, 25),
+            (m.projectName || m.project?.name || '—').substring(0, 20),
+            safeDate(m.targetDate || m.milestone?.target_date),
+            String(m.daysUntilDue ?? 0),
+            titleCase(m.priority || m.milestone?.priority || '—'),
+          ]),
+          [130, 110, 80, 60, 60]
+        );
+      }
+
+      // Compliance
+      const comp: any = complianceData || {};
+      if (comp.permits || comp.totalPermits) {
+        pdfSection(doc, 'Compliance Status');
+        const permits = comp.permits || comp;
+        pdfStatCards(doc, [
+          { label: 'Total Permits', value: String(permits.total ?? permits.totalPermits ?? 0), color: C.info },
+          { label: 'Active', value: String(permits.active ?? 0), color: C.positive },
+          { label: 'Expiring Soon', value: String(permits.expiringSoon ?? permits.expiring_soon ?? 0), color: C.warning },
+          { label: 'Expired', value: String(permits.expired ?? 0), color: C.negative },
+        ]);
+      }
+    }
+
+    PDF.addFooters(doc);
+    doc.end();
+  } catch (error) {
+    next(error);
+  }
+});
+
+// ============================================================================
+// SINGLE-PROJECT PDF REPORT
+// ============================================================================
+router.get('/:projectId/reports/:reportType', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const orgId = getAuthOrgId(req);
+    const { projectId, reportType } = req.params;
+
+    // Gather ALL project-level data in parallel
+    const [report, phases, unitStats, drawSummary, punchSummary, rfiStats, submittalStats, coStats, assignments] = await Promise.all([
+      projectIntegrationService.getProjectReport(projectId),
+      phaseService.getByProject(projectId).catch(() => []),
+      unitService.getStats(projectId).catch(() => null),
+      drawService.getSummary(projectId).catch(() => null),
+      punchListService.getSummary(orgId, projectId).catch(() => null),
+      rfiService.getStats(projectId).catch(() => null),
+      submittalService.getStats(projectId).catch(() => null),
+      changeOrderService.getStats(projectId).catch(() => null),
+      contractorService.getProjectAssignments(projectId).catch(() => []),
+    ]);
+
+    const proj = report.project;
+    const projName = proj.name || proj.project_name || 'Project';
+    const sum = report.summary;
+    const budget = report.budget;
+
+    const doc = PDF.create();
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `inline; filename="${projName.replace(/[^a-zA-Z0-9]/g, '_')}-${reportType}-${new Date().toISOString().split('T')[0]}.pdf"`);
+    doc.pipe(res);
+
+    // ── Summary ──
+    if (reportType === 'summary' || reportType === 'all') {
+      pdfCover(doc, {
+        title: projName,
+        subtitle: 'Project Summary Report',
+        reportType: 'PROJECT SUMMARY',
+        meta: [
+          `${titleCase(proj.status)} | ${proj.city || ''}, ${proj.region || ''}`,
+          `Budget: ${fmtGHS(proj.total_budget)} | ${proj.total_units || 0} Units`,
+        ],
+      });
+
+      // Project Details
+      pdfSection(doc, 'Project Details');
+      pdfKeyValueGrid(doc, [
+        ['Project Name', projName],
+        ['Status', titleCase(proj.status)],
+        ['Project Type', titleCase(proj.project_type)],
+        ['Location', `${proj.city || '—'}, ${proj.region || '—'}`],
+        ['Address', proj.address_line1 || '—'],
+        ['Land Size', proj.land_size_acres ? `${proj.land_size_acres} acres` : '—'],
+        ['Total Buildings', String(proj.total_buildings || '—')],
+        ['Total Floors', String(proj.total_floors || '—')],
+        ['Planned Start', safeDate(proj.planned_start_date)],
+        ['Planned End', safeDate(proj.planned_completion_date)],
+        ['Actual Start', safeDate(proj.actual_start_date)],
+        ['Est. Completion', safeDate(proj.estimated_completion_date)],
+      ]);
+
+      // Progress
+      pdfSection(doc, 'Progress');
+      pdfProgressBar(doc, 'Overall', proj.overall_progress || 0);
+      pdfProgressBar(doc, 'Construction', proj.construction_progress || 0);
+      pdfProgressBar(doc, 'Sales', proj.sales_progress || 0);
+
+      // Financial KPIs
+      pdfSection(doc, 'Financial Overview');
+      pdfStatCards(doc, [
+        { label: 'Total Budget', value: fmtGHS(proj.total_budget), color: C.info },
+        { label: 'Total Spent', value: fmtGHS(proj.total_spent ?? sum.total_cost), color: C.heading },
+        { label: 'Revenue', value: fmtGHS(proj.actual_revenue ?? sum.total_revenue), color: C.positive },
+        { label: 'Gross Margin', value: fmtPct(sum.gross_margin), color: sum.gross_margin >= 0 ? C.positive : C.negative },
+      ]);
+
+      // Unit KPIs
+      if (unitStats) {
+        pdfSection(doc, 'Unit Summary');
+        const u: any = unitStats;
+        pdfStatCards(doc, [
+          { label: 'Total Units', value: String(u.total_units ?? 0), color: C.info },
+          { label: 'Available', value: String(u.by_status?.available ?? 0), color: C.positive },
+          { label: 'Sold', value: String(u.by_status?.sold ?? 0), color: C.brand },
+          { label: 'Under Contract', value: String(u.by_status?.under_contract ?? 0), color: C.warning },
+        ]);
+        pdfStatCards(doc, [
+          { label: 'List Value', value: fmtGHS(u.total_list_value), color: C.heading },
+          { label: 'Sold Value', value: fmtGHS(u.total_sold_value), color: C.positive },
+          { label: 'Collected', value: fmtGHS(u.total_collected), color: C.info },
+          { label: 'Avg/sqm', value: fmtGHS(u.avg_price_per_sqm), color: C.muted },
+        ]);
+
+        // By type
+        if (u.by_type && Object.keys(u.by_type).length > 0) {
+          pdfRichTable(doc,
+            ['Unit Type', 'Count'],
+            Object.entries(u.by_type).map(([k, v]) => [titleCase(k), String(v)]),
+            [300, 190], { rightAlignFrom: 1 }
+          );
+        }
+      }
+
+      // Phases with progress
+      if (phases.length > 0) {
+        pdfSection(doc, 'Construction Phases');
+        (phases as any[]).forEach(p => {
+          pdfProgressBar(doc, (p.name || p.phase_name || `Phase ${p.phase_number}`).substring(0, 20), p.progress ?? 0);
+        });
+        doc.moveDown(0.5);
+        pdfRichTable(doc,
+          ['Phase', 'Status', 'Progress', 'Budget', 'Spent'],
+          (phases as any[]).map(p => [
+            (p.name || `Phase ${p.phase_number}`).substring(0, 20),
+            titleCase(p.status),
+            fmtPct(p.progress),
+            fmtGHS(p.budget),
+            fmtGHS(p.spent),
+          ]),
+          [130, 90, 70, 100, 100], { rightAlignFrom: 2 }
+        );
+      }
+
+      // Construction Activity Summary
+      pdfSection(doc, 'Construction Activity');
+      const activityStats: { label: string; value: string; color?: string }[] = [];
+      if (rfiStats) {
+        const r: any = rfiStats;
+        activityStats.push({ label: 'Total RFIs', value: String(r.total ?? 0), color: C.info });
+        activityStats.push({ label: 'Open RFIs', value: String(r.by_status?.open ?? 0), color: r.by_status?.open > 0 ? C.warning : C.positive });
+      }
+      if (coStats) {
+        const co: any = coStats;
+        activityStats.push({ label: 'Change Orders', value: String(co.total ?? 0), color: C.info });
+      }
+      if (punchSummary) {
+        const pl: any = punchSummary;
+        activityStats.push({ label: 'Punch Items', value: String(pl.total_items ?? 0), color: C.info });
+      }
+      if (activityStats.length > 0) pdfStatCards(doc, activityStats.slice(0, 4));
+
+      // Contractors
+      const assigns = (assignments as any[]) || [];
+      if (assigns.length > 0) {
+        pdfSection(doc, 'Contractor Team');
+        pdfRichTable(doc,
+          ['Company', 'Trade', 'Contract Value', 'Billed', 'Progress'],
+          assigns.slice(0, 15).map(a => [
+            (a.contractor?.company_name || a.company_name || '—').substring(0, 22),
+            titleCase(a.contractor?.trade || a.trade || '—'),
+            fmtGHS(a.contract_value),
+            fmtGHS(a.amount_billed),
+            fmtPct(a.work_completed_percentage),
+          ]),
+          [120, 90, 90, 90, 70], { rightAlignFrom: 2 }
+        );
+      }
+    }
+
+    // ── Budget ──
+    if (reportType === 'budget' || reportType === 'all') {
+      if (reportType === 'all') doc.addPage();
+      pdfCover(doc, {
+        title: projName,
+        subtitle: 'Budget & Financial Report',
+        reportType: 'BUDGET REPORT',
+        meta: [
+          `Budget: ${fmtGHS(proj.total_budget)} | Spent: ${fmtGHS(proj.total_spent ?? sum.total_cost)}`,
+        ],
+      });
+
+      pdfSection(doc, 'Budget Overview');
+      pdfStatCards(doc, [
+        { label: 'Total Budget', value: fmtGHS(proj.total_budget), color: C.info },
+        { label: 'Total Spent', value: fmtGHS(proj.total_spent ?? sum.total_cost), color: C.heading },
+        { label: 'Revenue', value: fmtGHS(sum.total_revenue), color: C.positive },
+        { label: 'Margin', value: fmtPct(sum.gross_margin), color: sum.gross_margin >= 0 ? C.positive : C.negative },
+      ]);
+
+      // Variance info
+      const budgetVar = (proj.total_spent ?? sum.total_cost ?? 0) - (proj.total_budget ?? 0);
+      if (budgetVar > 0) {
+        pdfInfoPanel(doc, `Project is over budget by ${fmtGHS(budgetVar)}. Immediate review recommended.`, 'danger');
+      } else {
+        pdfInfoPanel(doc, `Project is within budget. ${fmtGHS(Math.abs(budgetVar))} remaining.`, 'success');
+      }
+
+      // Category breakdown with visual bars
+      if (budget.by_category.length > 0) {
+        pdfSection(doc, 'Cost Breakdown by Category');
+        doc.fontSize(7).fillColor(C.info).text('■ Budget', MARGIN + 105, doc.y, { continued: true });
+        doc.fillColor(C.positive).text('   ■ Actual (under)', { continued: true });
+        doc.fillColor(C.negative).text('   ■ Actual (over)');
+        doc.moveDown(0.5);
+        budget.by_category.forEach((c: any) => {
+          pdfBudgetBar(doc, c.category, c.budget, c.actual);
+        });
+        doc.moveDown(0.5);
+        pdfRichTable(doc,
+          ['Category', 'Budgeted', 'Actual', 'Variance'],
+          budget.by_category.map((c: any) => [
+            titleCase(c.category), fmtGHS(c.budget), fmtGHS(c.actual), fmtGHS(c.actual - c.budget),
+          ]),
+          [150, 110, 110, 110], { rightAlignFrom: 1 }
+        );
+      }
+
+      // Draw summary
+      if (drawSummary) {
+        const ds: any = drawSummary;
+        pdfSection(doc, 'Draw Request Summary');
+        pdfStatCards(doc, [
+          { label: 'Total Draws', value: String(ds.total_draws ?? 0), color: C.info },
+          { label: 'Total Drawn', value: fmtGHS(ds.total_drawn), color: C.heading },
+          { label: 'Total Funded', value: fmtGHS(ds.total_funded), color: C.positive },
+          { label: 'Retention Held', value: fmtGHS(ds.retention_held), color: C.warning },
+        ]);
+
+        if (ds.draw_history?.length > 0) {
+          pdfRichTable(doc,
+            ['Draw #', 'Amount', 'Status', 'Date'],
+            ds.draw_history.map((d: any) => [
+              String(d.draw_number ?? '—'),
+              fmtGHS(d.amount),
+              titleCase(d.status),
+              safeDate(d.date),
+            ]),
+            [80, 140, 120, 150], { rightAlignFrom: 1 }
+          );
+        }
+      }
+
+      // Sales by month
+      if (report.sales.by_month.length > 0) {
+        pdfSection(doc, 'Monthly Sales');
+        pdfRichTable(doc,
+          ['Month', 'Units Sold', 'Revenue'],
+          report.sales.by_month.map(m => [m.month, String(m.units), fmtGHS(m.value)]),
+          [180, 100, 210], { rightAlignFrom: 1 }
+        );
+      }
+    }
+
+    // ── Issues / Risk ──
+    if (reportType === 'issues' || reportType === 'all') {
+      if (reportType === 'all') doc.addPage();
+      pdfCover(doc, {
+        title: projName,
+        subtitle: 'Issues & Risk Report',
+        reportType: 'RISK ANALYSIS',
+        meta: [
+          `Status: ${titleCase(proj.status)} | Progress: ${proj.overall_progress || 0}%`,
+        ],
+      });
+
+      // Overall status
+      pdfSection(doc, 'Project Health');
+      const health: { label: string; value: string; color?: string }[] = [
+        { label: 'Status', value: titleCase(proj.status), color: proj.status === 'on_hold' ? C.warning : C.positive },
+        { label: 'Progress', value: fmtPct(proj.overall_progress), color: C.info },
+      ];
+      const budgetHealth = (proj.total_spent ?? sum.total_cost ?? 0) > (proj.total_budget ?? 0) ? 'OVER BUDGET' : 'ON TRACK';
+      health.push({ label: 'Budget', value: budgetHealth, color: budgetHealth === 'OVER BUDGET' ? C.negative : C.positive });
+      pdfStatCards(doc, health);
+
+      // RFIs
+      if (rfiStats) {
+        const r: any = rfiStats;
+        pdfSection(doc, 'Request for Information (RFIs)');
+        pdfStatCards(doc, [
+          { label: 'Total RFIs', value: String(r.total ?? 0), color: C.info },
+          { label: 'Open', value: String(r.by_status?.open ?? 0), color: C.warning },
+          { label: 'Overdue', value: String(r.overdue ?? 0), color: r.overdue > 0 ? C.negative : C.positive },
+          { label: 'Avg Response', value: `${(r.avg_response_days ?? 0).toFixed(1)} days`, color: C.muted },
+        ]);
+
+        pdfRichTable(doc,
+          ['Status', 'Count'],
+          Object.entries(r.by_status || {}).filter(([_, v]) => (v as number) > 0).map(([k, v]) => [titleCase(k), String(v)]),
+          [300, 190], { rightAlignFrom: 1 }
+        );
+
+        if (r.by_priority && Object.values(r.by_priority).some((v: any) => v > 0)) {
+          pdfRichTable(doc,
+            ['Priority', 'Count'],
+            Object.entries(r.by_priority).filter(([_, v]) => (v as number) > 0).map(([k, v]) => [titleCase(k), String(v)]),
+            [300, 190], { rightAlignFrom: 1 }
+          );
+        }
+      }
+
+      // Submittals
+      if (submittalStats) {
+        const st: any = submittalStats;
+        pdfSection(doc, 'Submittals');
+        pdfStatCards(doc, [
+          { label: 'Total', value: String(st.total_submittals ?? 0), color: C.info },
+          { label: 'Approved', value: String(st.approved_count ?? 0), color: C.positive },
+          { label: 'Pending', value: String(st.pending_count ?? 0), color: C.warning },
+          { label: 'Approval Rate', value: fmtPct(st.approval_rate), color: C.info },
+        ]);
+        if (st.overdue_count > 0) {
+          pdfInfoPanel(doc, `${st.overdue_count} submittals are overdue. ${st.due_this_week || 0} due this week.`, 'warning');
+        }
+      }
+
+      // Change Orders
+      if (coStats) {
+        const co: any = coStats;
+        pdfSection(doc, 'Change Orders');
+        pdfStatCards(doc, [
+          { label: 'Total COs', value: String(co.total ?? 0), color: C.info },
+          { label: 'Pending Approval', value: String(co.pending_approval ?? 0), color: C.warning },
+          { label: 'Net Change', value: fmtGHS(co.net_change), color: (co.net_change ?? 0) > 0 ? C.negative : C.positive },
+          { label: 'Schedule Impact', value: `${co.total_schedule_impact_days ?? 0} days`, color: (co.total_schedule_impact_days ?? 0) > 0 ? C.warning : C.positive },
+        ]);
+
+        if (co.total_additions || co.total_deductions) {
+          pdfKeyValueGrid(doc, [
+            ['Total Additions', fmtGHS(co.total_additions)],
+            ['Total Deductions', fmtGHS(co.total_deductions)],
+            ['Net Change', fmtGHS(co.net_change)],
+            ['Avg Processing', `${(co.avg_processing_days ?? 0).toFixed(0)} days`],
+          ]);
+        }
+
+        if (co.by_reason && Object.values(co.by_reason).some((v: any) => v > 0)) {
+          pdfRichTable(doc,
+            ['Reason', 'Count'],
+            Object.entries(co.by_reason).filter(([_, v]) => (v as number) > 0).map(([k, v]) => [titleCase(k), String(v)]),
+            [300, 190], { rightAlignFrom: 1 }
+          );
+        }
+      }
+
+      // Punch List
+      if (punchSummary) {
+        const pl: any = punchSummary;
+        pdfSection(doc, 'Punch List');
+        pdfStatCards(doc, [
+          { label: 'Total Items', value: String(pl.total_items ?? 0), color: C.info },
+          { label: 'Open', value: String(pl.open_items ?? 0), color: C.warning },
+          { label: 'Completed', value: String(pl.completed_items ?? 0), color: C.positive },
+          { label: 'Completion Rate', value: fmtPct(pl.completion_rate), color: C.info },
+        ]);
+
+        if (pl.by_category?.length > 0) {
+          pdfRichTable(doc,
+            ['Category', 'Count'],
+            pl.by_category.map((c: any) => [titleCase(c.category), String(c.count)]),
+            [300, 190], { rightAlignFrom: 1 }
+          );
+        }
+        if (pl.by_priority?.length > 0) {
+          pdfRichTable(doc,
+            ['Priority', 'Count'],
+            pl.by_priority.map((p: any) => [titleCase(p.priority), String(p.count)]),
+            [300, 190], { rightAlignFrom: 1 }
+          );
+        }
+      }
+
+      // Sales Analysis
+      if (report.sales.by_type.length > 0) {
+        pdfSection(doc, 'Sales Analysis');
+        pdfRichTable(doc,
+          ['Unit Type', 'Sold Count'],
+          report.sales.by_type.map(t => [titleCase(t.type || 'Unknown'), String(t.count)]),
+          [300, 190], { rightAlignFrom: 1 }
+        );
+      }
+    }
+
+    PDF.addFooters(doc);
+    doc.end();
+  } catch (error) {
+    next(error);
+  }
+});
+
 // Add project to portfolio
-router.post('/:projectId/add-to-portfolio', async (req: Request, res: Response, next: NextFunction) => {
+router.post('/:projectId/add-to-portfolio', requirePMWrite, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const userId = getUserId(req);
     const { portfolioId, includeUnits, asStatus } = req.body;
@@ -2289,7 +3040,7 @@ router.get('/wizard/drafts', async (req: Request, res: Response, next: NextFunct
 });
 
 // Create new wizard draft
-router.post('/wizard/drafts', async (req: Request, res: Response, next: NextFunction) => {
+router.post('/wizard/drafts', requirePMWrite, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const userId = getUserId(req);
     const orgId = getOrgId(req);
@@ -2326,7 +3077,7 @@ router.get('/wizard/drafts/:draftId', async (req: Request, res: Response, next: 
 });
 
 // Update draft (auto-save)
-router.patch('/wizard/drafts/:draftId', async (req: Request, res: Response, next: NextFunction) => {
+router.patch('/wizard/drafts/:draftId', requirePMWrite, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const orgId = getOrgId(req);
     const userId = getUserId(req);
@@ -2350,7 +3101,7 @@ router.patch('/wizard/drafts/:draftId', async (req: Request, res: Response, next
 });
 
 // Validate wizard step
-router.post('/wizard/drafts/:draftId/validate-step', async (req: Request, res: Response, next: NextFunction) => {
+router.post('/wizard/drafts/:draftId/validate-step', requirePMWrite, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const orgId = getOrgId(req);
     const { step } = req.body;
@@ -2368,7 +3119,7 @@ router.post('/wizard/drafts/:draftId/validate-step', async (req: Request, res: R
 });
 
 // Complete wizard step
-router.post('/wizard/drafts/:draftId/complete-step', async (req: Request, res: Response, next: NextFunction) => {
+router.post('/wizard/drafts/:draftId/complete-step', requirePMWrite, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const orgId = getOrgId(req);
     const { stepNumber } = req.body;
@@ -2386,7 +3137,7 @@ router.post('/wizard/drafts/:draftId/complete-step', async (req: Request, res: R
 });
 
 // Get cost estimate from wizard data
-router.post('/wizard/drafts/:draftId/cost-estimate', async (req: Request, res: Response, next: NextFunction) => {
+router.post('/wizard/drafts/:draftId/cost-estimate', requirePMWrite, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const orgId = getOrgId(req);
     
@@ -2402,7 +3153,7 @@ router.post('/wizard/drafts/:draftId/cost-estimate', async (req: Request, res: R
 });
 
 // Submit wizard and create project
-router.post('/wizard/drafts/:draftId/submit', async (req: Request, res: Response, next: NextFunction) => {
+router.post('/wizard/drafts/:draftId/submit', requirePMWrite, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const orgId = getOrgId(req);
     const userId = getUserId(req);
@@ -2420,7 +3171,7 @@ router.post('/wizard/drafts/:draftId/submit', async (req: Request, res: Response
 });
 
 // Delete draft
-router.delete('/wizard/drafts/:draftId', async (req: Request, res: Response, next: NextFunction) => {
+router.delete('/wizard/drafts/:draftId', requirePMWrite, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const orgId = getOrgId(req);
     
@@ -2437,7 +3188,7 @@ router.delete('/wizard/drafts/:draftId', async (req: Request, res: Response, nex
 // ============================================================================
 
 // Validate Ghana PostGPS code
-router.post('/validate-gps', async (req: Request, res: Response, next: NextFunction) => {
+router.post('/validate-gps', requirePMWrite, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { gps_code } = req.body;
     
@@ -2476,7 +3227,7 @@ router.post('/validate-gps', async (req: Request, res: Response, next: NextFunct
 });
 
 // Validate and enrich location
-router.post('/validate-location', async (req: Request, res: Response, next: NextFunction) => {
+router.post('/validate-location', requirePMWrite, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { ghana_post_gps, latitude, longitude, address_line1, city, region } = req.body;
     
@@ -2496,7 +3247,7 @@ router.post('/validate-location', async (req: Request, res: Response, next: Next
 });
 
 // Reverse geocode coordinates
-router.post('/reverse-geocode', async (req: Request, res: Response, next: NextFunction) => {
+router.post('/reverse-geocode', requirePMWrite, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { latitude, longitude } = req.body;
     
@@ -2824,7 +3575,7 @@ router.get('/ghana-districts', async (req: Request, res: Response, next: NextFun
 });
 
 // Create project with location validation
-router.post('/with-location', async (req: Request, res: Response, next: NextFunction) => {
+router.post('/with-location', requirePMWrite, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const orgId = getOrgId(req);
     const userId = getUserId(req);
@@ -3267,8 +4018,118 @@ router.get('/exchange-rates', async (req: Request, res: Response, next: NextFunc
   }
 });
 
+// ============================================================================
+// COST ESTIMATOR MARKET DATA — single aggregate endpoint for the frontend
+// Returns: FX rates, regional multipliers, base costs, material prices, labor rates
+// ============================================================================
+router.get('/cost-estimator/market-data', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    // 1. FX rates (real-time from fxFeedService via projectCostCurrencyService)
+    const fxData = await projectCostCurrencyService.getAllExchangeRates();
+
+    // FX rates are stored as  currency → GHS (e.g. USD → GHS = 16)
+    // Frontend needs GHS → currency (e.g. GHS → USD = 1/16 = 0.0625)
+    const fxRates: Record<string, number> = { GHS: 1 };
+    for (const [currency, rateToGhs] of Object.entries(fxData.rates)) {
+      if (currency === 'GHS') continue;
+      fxRates[currency] = Math.round((1 / (rateToGhs as number)) * 1_000_000) / 1_000_000;
+    }
+
+    // 2. Regional multipliers (from constructionCostService DB)
+    const regionalMultipliers = await constructionCostService.getAllRegionalMultipliers();
+
+    // 3. Base costs per sqm for all property type + quality combos
+    const propertyTypes = ['residential', 'commercial', 'industrial'] as const;
+    const qualityLevels = ['basic', 'standard', 'premium', 'luxury'] as const;
+    const baseCosts: Record<string, { cost_ghs: number; source: string; material_pct: number; labor_pct: number }> = {};
+
+    for (const pt of propertyTypes) {
+      for (const ql of qualityLevels) {
+        const bc = await constructionCostService.getCalculatedBaseCost(pt, ql, 'greater_accra');
+        if (bc && bc.cost_ghs > 0) {
+          const total = bc.cost_ghs;
+          baseCosts[`${pt}_${ql}`] = {
+            cost_ghs: Math.round(total),
+            source: bc.calculation_source || 'database',
+            material_pct: total > 0 ? Math.round((bc.material_component_ghs / total) * 100) : 55,
+            labor_pct: total > 0 ? Math.round((bc.labor_component_ghs / total) * 100) : 30,
+          };
+        }
+      }
+    }
+
+    // 4. Material prices (latest for Greater Accra as reference)
+    let materialPrices: Array<{ category: string; name: string; price_ghs: number; previous_price_ghs: number | null; price_change_percent: number | null; unit: string }> = [];
+    try {
+      const prices = await constructionCostService.getMaterialPrices({ region: 'greater_accra' });
+      materialPrices = prices.map(p => ({
+        category: p.material_category,
+        name: p.material_name,
+        price_ghs: parseFloat(p.price_ghs as any) || 0,
+        previous_price_ghs: (p as any).previous_price_ghs != null ? parseFloat((p as any).previous_price_ghs) : null,
+        price_change_percent: (p as any).price_change_percent != null ? parseFloat((p as any).price_change_percent) : null,
+        unit: p.unit,
+      }));
+    } catch (e) {
+      // No material prices available
+    }
+
+    // 5. Labor rates (latest for Greater Accra as reference)
+    let laborRates: Array<{ category: string; skill_level: string; daily_rate_ghs: number; rate_change_percent: number | null }> = [];
+    try {
+      const rates = await constructionCostService.getLaborRates({ region: 'greater_accra' });
+      laborRates = rates.map(r => ({
+        category: r.labor_category,
+        skill_level: r.skill_level,
+        daily_rate_ghs: parseFloat(r.rate_ghs as any) || 0,
+        rate_change_percent: (r as any).rate_change_percent != null ? parseFloat((r as any).rate_change_percent) : null,
+      }));
+    } catch (e) {
+      // No labor rates available
+    }
+
+    // 6. Construction cost index (includes separate material & labor sub-indices)
+    let constructionIndex: {
+      value: number; base_value: number; period: string; source: string;
+      material_index: number; labor_index: number;
+      change_yoy: number | null;
+    } | null = null;
+    try {
+      const idx = await constructionCostService.getLatestConstructionIndex();
+      if (idx) {
+        constructionIndex = {
+          value: idx.index_value,
+          base_value: idx.base_value,
+          period: idx.period_end?.toISOString?.() || new Date().toISOString(),
+          source: idx.source,
+          material_index: (idx as any).material_index ?? idx.index_value,
+          labor_index: (idx as any).labor_index ?? idx.index_value,
+          change_yoy: (idx as any).change_year_on_year ?? null,
+        };
+      }
+    } catch (e) {
+      // No index available
+    }
+
+    res.json({
+      fx_rates: fxRates,
+      fx_sources: fxData.sources,
+      fx_timestamp: fxData.timestamp,
+      regional_multipliers: regionalMultipliers,
+      base_costs: baseCosts,
+      material_prices: materialPrices,
+      labor_rates: laborRates,
+      construction_index: constructionIndex,
+      generated_at: new Date().toISOString(),
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+
 // Convert currency
-router.post('/convert-currency', async (req: Request, res: Response, next: NextFunction) => {
+router.post('/convert-currency', requirePMWrite, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { amount, fromCurrency, toCurrency } = req.body;
     
@@ -3285,11 +4146,12 @@ router.post('/convert-currency', async (req: Request, res: Response, next: NextF
 });
 
 // Generate cost estimate
-router.post('/estimate-costs', async (req: Request, res: Response, next: NextFunction) => {
+router.post('/estimate-costs', requirePMWrite, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { 
       project_type, 
-      total_sqm, 
+      total_sqm,
+      sqm, // Accept sqm as alias for total_sqm
       total_floors,
       region,
       finish_level,
@@ -3298,11 +4160,13 @@ router.post('/estimate-costs', async (req: Request, res: Response, next: NextFun
       display_currency 
     } = req.body;
     
+    const effectiveSqm = total_sqm || sqm;
+    
     const estimate = await projectCostCurrencyService.generateCostEstimate(
       {
         project_type,
-        total_sqm,
-        total_floors,
+        total_sqm: effectiveSqm,
+        total_floors: total_floors || 1,
         region,
         finish_level: finish_level || 'standard',
         include_land,
@@ -3349,7 +4213,7 @@ router.get('/benchmarks/labor', async (req: Request, res: Response, next: NextFu
 });
 
 // Capture exchange rate snapshot for project
-router.post('/:projectId/capture-exchange-rates', async (req: Request, res: Response, next: NextFunction) => {
+router.post('/:projectId/capture-exchange-rates', requirePMWrite, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const snapshot = await projectCostCurrencyService.captureExchangeRateSnapshot(
       req.params.projectId
@@ -3376,7 +4240,7 @@ router.get('/:projectId/permits', async (req: Request, res: Response, next: Next
 });
 
 // Add permit to project
-router.post('/:projectId/permits', async (req: Request, res: Response, next: NextFunction) => {
+router.post('/:projectId/permits', requirePMWrite, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const userId = getUserId(req);
     const { 
@@ -3410,7 +4274,7 @@ router.post('/:projectId/permits', async (req: Request, res: Response, next: Nex
 });
 
 // Update permit status
-router.patch('/:projectId/permits/:permitId', async (req: Request, res: Response, next: NextFunction) => {
+router.patch('/:projectId/permits/:permitId', requirePMWrite, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const userId = getUserId(req);
     
@@ -3562,7 +4426,7 @@ router.get('/dashboard/alerts', async (req: Request, res: Response, next: NextFu
 });
 
 // Acknowledge alert
-router.post('/dashboard/alerts/:id/acknowledge', async (req: Request, res: Response, next: NextFunction) => {
+router.post('/dashboard/alerts/:id/acknowledge', requirePMWrite, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const userId = getUserId(req);
     await dashboardAnalyticsService.acknowledgeAlert(req.params.id, userId);
@@ -3573,7 +4437,7 @@ router.post('/dashboard/alerts/:id/acknowledge', async (req: Request, res: Respo
 });
 
 // Resolve alert
-router.post('/dashboard/alerts/:id/resolve', async (req: Request, res: Response, next: NextFunction) => {
+router.post('/dashboard/alerts/:id/resolve', requirePMWrite, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const userId = getUserId(req);
     await dashboardAnalyticsService.resolveAlert(req.params.id, userId);
@@ -3584,7 +4448,7 @@ router.post('/dashboard/alerts/:id/resolve', async (req: Request, res: Response,
 });
 
 // Dismiss alert
-router.post('/dashboard/alerts/:id/dismiss', async (req: Request, res: Response, next: NextFunction) => {
+router.post('/dashboard/alerts/:id/dismiss', requirePMWrite, async (req: Request, res: Response, next: NextFunction) => {
   try {
     await dashboardAnalyticsService.dismissAlert(req.params.id);
     res.json({ success: true });
@@ -3594,7 +4458,7 @@ router.post('/dashboard/alerts/:id/dismiss', async (req: Request, res: Response,
 });
 
 // Snooze alert
-router.post('/dashboard/alerts/:id/snooze', async (req: Request, res: Response, next: NextFunction) => {
+router.post('/dashboard/alerts/:id/snooze', requirePMWrite, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { days } = req.body;
     await dashboardAnalyticsService.snoozeAlert(req.params.id, days || 1);
@@ -3716,7 +4580,7 @@ router.get('/:projectId/milestones/:milestoneId', async (req: Request, res: Resp
 });
 
 // Create milestone
-router.post('/:id/milestones', async (req: Request, res: Response, next: NextFunction) => {
+router.post('/:id/milestones', requirePMWrite, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const orgId = getOrgId(req);
     const userId = getUserId(req);
@@ -3741,7 +4605,7 @@ router.post('/:id/milestones', async (req: Request, res: Response, next: NextFun
 });
 
 // Update milestone
-router.put('/:projectId/milestones/:milestoneId', async (req: Request, res: Response, next: NextFunction) => {
+router.put('/:projectId/milestones/:milestoneId', requirePMWrite, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const orgId = getOrgId(req);
     const userId = getUserId(req);
@@ -3771,7 +4635,7 @@ router.put('/:projectId/milestones/:milestoneId', async (req: Request, res: Resp
 });
 
 // Delete milestone
-router.delete('/:projectId/milestones/:milestoneId', async (req: Request, res: Response, next: NextFunction) => {
+router.delete('/:projectId/milestones/:milestoneId', requirePMWrite, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const orgId = getOrgId(req);
     const deleted = await milestoneService.deleteMilestone(req.params.milestoneId, orgId);
@@ -3787,7 +4651,7 @@ router.delete('/:projectId/milestones/:milestoneId', async (req: Request, res: R
 });
 
 // Complete milestone
-router.post('/:projectId/milestones/:milestoneId/complete', async (req: Request, res: Response, next: NextFunction) => {
+router.post('/:projectId/milestones/:milestoneId/complete', requirePMWrite, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const orgId = getOrgId(req);
     const userId = getUserId(req);
@@ -3811,7 +4675,7 @@ router.post('/:projectId/milestones/:milestoneId/complete', async (req: Request,
 });
 
 // Reschedule milestone
-router.post('/:projectId/milestones/:milestoneId/reschedule', async (req: Request, res: Response, next: NextFunction) => {
+router.post('/:projectId/milestones/:milestoneId/reschedule', requirePMWrite, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const orgId = getOrgId(req);
     const userId = getUserId(req);
@@ -3884,7 +4748,7 @@ router.get('/:projectId/milestones/:milestoneId/with-subphases', async (req: Req
 });
 
 // Create a sub-phase
-router.post('/:projectId/milestones/:milestoneId/subphases', async (req: Request, res: Response, next: NextFunction) => {
+router.post('/:projectId/milestones/:milestoneId/subphases', requirePMWrite, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const orgId = getOrgId(req);
     const userId = getUserId(req);
@@ -3930,7 +4794,7 @@ router.get('/:projectId/milestones/:milestoneId/subphases/:subphaseId', async (r
 });
 
 // Update a sub-phase
-router.put('/:projectId/milestones/:milestoneId/subphases/:subphaseId', async (req: Request, res: Response, next: NextFunction) => {
+router.put('/:projectId/milestones/:milestoneId/subphases/:subphaseId', requirePMWrite, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const orgId = getOrgId(req);
     const userId = getUserId(req);
@@ -3972,7 +4836,7 @@ router.put('/:projectId/milestones/:milestoneId/subphases/:subphaseId', async (r
 });
 
 // Delete a sub-phase
-router.delete('/:projectId/milestones/:milestoneId/subphases/:subphaseId', async (req: Request, res: Response, next: NextFunction) => {
+router.delete('/:projectId/milestones/:milestoneId/subphases/:subphaseId', requirePMWrite, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const orgId = getOrgId(req);
     const deleted = await milestoneService.deleteSubphase(
@@ -3991,7 +4855,7 @@ router.delete('/:projectId/milestones/:milestoneId/subphases/:subphaseId', async
 });
 
 // Reorder sub-phases
-router.post('/:projectId/milestones/:milestoneId/subphases/reorder', async (req: Request, res: Response, next: NextFunction) => {
+router.post('/:projectId/milestones/:milestoneId/subphases/reorder', requirePMWrite, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const orgId = getOrgId(req);
     const { orderedIds } = req.body;
@@ -4013,7 +4877,7 @@ router.post('/:projectId/milestones/:milestoneId/subphases/reorder', async (req:
 });
 
 // Apply Ghana milestone templates
-router.post('/:id/milestones/apply-ghana-templates', async (req: Request, res: Response, next: NextFunction) => {
+router.post('/:id/milestones/apply-ghana-templates', requirePMWrite, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const orgId = getOrgId(req);
     const userId = getUserId(req);
@@ -4067,7 +4931,7 @@ router.get('/:id/gantt', async (req: Request, res: Response, next: NextFunction)
 });
 
 // Calculate critical path
-router.post('/:id/gantt/calculate-critical-path', async (req: Request, res: Response, next: NextFunction) => {
+router.post('/:id/gantt/calculate-critical-path', requirePMWrite, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const orgId = getOrgId(req);
     const result = await ganttService.calculateCriticalPath(req.params.id, orgId);
@@ -4078,7 +4942,7 @@ router.post('/:id/gantt/calculate-critical-path', async (req: Request, res: Resp
 });
 
 // Update phase dates
-router.put('/:projectId/gantt/phases/:phaseId/dates', async (req: Request, res: Response, next: NextFunction) => {
+router.put('/:projectId/gantt/phases/:phaseId/dates', requirePMWrite, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const orgId = getOrgId(req);
     const { startDate, endDate, cascadeToSuccessors } = req.body;
@@ -4097,7 +4961,7 @@ router.put('/:projectId/gantt/phases/:phaseId/dates', async (req: Request, res: 
 });
 
 // Update phase dependencies
-router.put('/:id/gantt/dependencies', async (req: Request, res: Response, next: NextFunction) => {
+router.put('/:id/gantt/dependencies', requirePMWrite, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const orgId = getOrgId(req);
     const { updates } = req.body; // Array of { phaseId, dependencyIds }
@@ -4141,7 +5005,7 @@ router.get('/:projectId/baselines/:baselineId', async (req: Request, res: Respon
 });
 
 // Create baseline
-router.post('/:id/baselines', async (req: Request, res: Response, next: NextFunction) => {
+router.post('/:id/baselines', requirePMWrite, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const orgId = getOrgId(req);
     const userId = getUserId(req);
@@ -4162,7 +5026,7 @@ router.post('/:id/baselines', async (req: Request, res: Response, next: NextFunc
 });
 
 // Set active baseline
-router.post('/:projectId/baselines/:baselineId/set-active', async (req: Request, res: Response, next: NextFunction) => {
+router.post('/:projectId/baselines/:baselineId/set-active', requirePMWrite, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const orgId = getOrgId(req);
     await ganttService.setActiveBaseline(req.params.baselineId, req.params.projectId, orgId);
@@ -4173,7 +5037,7 @@ router.post('/:projectId/baselines/:baselineId/set-active', async (req: Request,
 });
 
 // Delete baseline
-router.delete('/:projectId/baselines/:baselineId', async (req: Request, res: Response, next: NextFunction) => {
+router.delete('/:projectId/baselines/:baselineId', requirePMWrite, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const orgId = getOrgId(req);
     const deleted = await ganttService.deleteBaseline(req.params.baselineId, orgId);
@@ -4251,7 +5115,7 @@ router.get('/:id/permits', async (req: Request, res: Response, next: NextFunctio
 });
 
 // Create a permit
-router.post('/:id/permits', async (req: Request, res: Response, next: NextFunction) => {
+router.post('/:id/permits', requirePMWrite, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const orgId = getOrgId(req);
     const userId = getUserId(req);
@@ -4285,7 +5149,7 @@ router.get('/:projectId/permits/:permitId', async (req: Request, res: Response, 
 });
 
 // Update a permit
-router.put('/:projectId/permits/:permitId', async (req: Request, res: Response, next: NextFunction) => {
+router.put('/:projectId/permits/:permitId', requirePMWrite, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const userId = getUserId(req);
     
@@ -4305,7 +5169,7 @@ router.put('/:projectId/permits/:permitId', async (req: Request, res: Response, 
 });
 
 // Delete a permit
-router.delete('/:projectId/permits/:permitId', async (req: Request, res: Response, next: NextFunction) => {
+router.delete('/:projectId/permits/:permitId', requirePMWrite, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const deleted = await complianceService.deletePermit(req.params.permitId);
     
@@ -4330,7 +5194,7 @@ router.get('/:projectId/permits/:permitId/inspections', async (req: Request, res
 });
 
 // Create an inspection
-router.post('/:projectId/permits/:permitId/inspections', async (req: Request, res: Response, next: NextFunction) => {
+router.post('/:projectId/permits/:permitId/inspections', requirePMWrite, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const userId = getUserId(req);
     
@@ -4348,7 +5212,7 @@ router.post('/:projectId/permits/:permitId/inspections', async (req: Request, re
 });
 
 // Update an inspection
-router.put('/:projectId/inspections/:inspectionId', async (req: Request, res: Response, next: NextFunction) => {
+router.put('/:projectId/inspections/:inspectionId', requirePMWrite, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const inspection = await complianceService.updateInspection(req.params.inspectionId, req.body);
     
@@ -4363,7 +5227,7 @@ router.put('/:projectId/inspections/:inspectionId', async (req: Request, res: Re
 });
 
 // Delete an inspection
-router.delete('/:projectId/inspections/:inspectionId', async (req: Request, res: Response, next: NextFunction) => {
+router.delete('/:projectId/inspections/:inspectionId', requirePMWrite, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const deleted = await complianceService.deleteInspection(req.params.inspectionId);
     
@@ -4410,7 +5274,7 @@ router.get('/compliance/templates', async (req: Request, res: Response, next: Ne
 });
 
 // Apply regulatory template to project
-router.post('/:id/compliance/apply-template', async (req: Request, res: Response, next: NextFunction) => {
+router.post('/:id/compliance/apply-template', requirePMWrite, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const orgId = getOrgId(req);
     const userId = getUserId(req);
@@ -4485,7 +5349,7 @@ router.get('/:id/folders', async (req: Request, res: Response, next: NextFunctio
 });
 
 // Create a folder
-router.post('/:id/folders', async (req: Request, res: Response, next: NextFunction) => {
+router.post('/:id/folders', requirePMWrite, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const orgId = getOrgId(req);
     const userId = getUserId(req);
@@ -4504,7 +5368,7 @@ router.post('/:id/folders', async (req: Request, res: Response, next: NextFuncti
 });
 
 // Update a folder
-router.put('/:projectId/folders/:folderId', async (req: Request, res: Response, next: NextFunction) => {
+router.put('/:projectId/folders/:folderId', requirePMWrite, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const folder = await projectDocumentService.updateFolder(req.params.folderId, req.body);
     
@@ -4519,7 +5383,7 @@ router.put('/:projectId/folders/:folderId', async (req: Request, res: Response, 
 });
 
 // Delete a folder
-router.delete('/:projectId/folders/:folderId', async (req: Request, res: Response, next: NextFunction) => {
+router.delete('/:projectId/folders/:folderId', requirePMWrite, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { moveDocumentsTo } = req.query;
     const deleted = await projectDocumentService.deleteFolder(
@@ -4577,17 +5441,44 @@ router.get('/:id/documents/stats', async (req: Request, res: Response, next: Nex
   }
 });
 
-// Create a document
-router.post('/:id/documents', async (req: Request, res: Response, next: NextFunction) => {
+// Create a document (supports both JSON and multipart/form-data file uploads)
+router.post('/:id/documents', requirePMWrite, documentUpload.single('file'), async (req: Request, res: Response, next: NextFunction) => {
   try {
     const orgId = getOrgId(req);
     const userId = getUserId(req);
-    
+    const file = (req as any).file as Express.Multer.File | undefined;
+
+    let fileUrl = req.body.file_url || '';
+    let fileKey: string | undefined;
+    let fileSize: number | undefined;
+    let mimeType: string | undefined;
+    let originalFilename: string | undefined;
+
+    // If a file was uploaded via FormData, store it in MinIO
+    if (file) {
+      const ext = file.originalname.split('.').pop() || 'bin';
+      const key = `projects/${req.params.id}/documents/${uuidv4()}.${ext}`;
+      const bucket = buckets.documents || 'propmetrik-documents';
+
+      await uploadFile(bucket, key, file.buffer, file.mimetype);
+      fileUrl = await getPresignedDownloadUrl(bucket, key);
+      fileKey = `${bucket}/${key}`;
+      fileSize = file.size;
+      mimeType = file.mimetype;
+      originalFilename = file.originalname;
+    }
+
     const document = await projectDocumentService.createDocument({
       ...req.body,
       project_id: req.params.id,
       organization_id: orgId,
       uploaded_by: userId,
+      file_url: fileUrl,
+      file_key: fileKey || req.body.file_key,
+      file_size: fileSize || req.body.file_size,
+      mime_type: mimeType || req.body.mime_type,
+      original_filename: originalFilename || req.body.original_filename,
+      document_type: req.body.document_type || req.body.category,
     });
     
     res.status(201).json(document);
@@ -4615,8 +5506,32 @@ router.get('/:projectId/documents/:documentId', async (req: Request, res: Respon
   }
 });
 
+// Download a document (generates a fresh presigned URL)
+router.get('/:projectId/documents/:documentId/download', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const document = await projectDocumentService.getDocumentById(req.params.documentId);
+    if (!document) {
+      return res.status(404).json({ error: 'Document not found' });
+    }
+
+    if (!document.file_key) {
+      return res.status(400).json({ error: 'No file associated with this document' });
+    }
+
+    // file_key is stored as "bucket/key"
+    const slashIdx = document.file_key.indexOf('/');
+    const bucket = document.file_key.substring(0, slashIdx);
+    const key = document.file_key.substring(slashIdx + 1);
+
+    const downloadUrl = await getPresignedDownloadUrl(bucket, key, 3600);
+    res.json({ download_url: downloadUrl, filename: document.original_filename || document.name });
+  } catch (error) {
+    next(error);
+  }
+});
+
 // Update a document
-router.put('/:projectId/documents/:documentId', async (req: Request, res: Response, next: NextFunction) => {
+router.put('/:projectId/documents/:documentId', requirePMWrite, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const document = await projectDocumentService.updateDocument(req.params.documentId, req.body);
     
@@ -4631,7 +5546,7 @@ router.put('/:projectId/documents/:documentId', async (req: Request, res: Respon
 });
 
 // Delete a document
-router.delete('/:projectId/documents/:documentId', async (req: Request, res: Response, next: NextFunction) => {
+router.delete('/:projectId/documents/:documentId', requirePMWrite, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { hard } = req.query;
     const deleted = await projectDocumentService.deleteDocument(
@@ -4650,7 +5565,7 @@ router.delete('/:projectId/documents/:documentId', async (req: Request, res: Res
 });
 
 // Archive a document
-router.post('/:projectId/documents/:documentId/archive', async (req: Request, res: Response, next: NextFunction) => {
+router.post('/:projectId/documents/:documentId/archive', requirePMWrite, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const document = await projectDocumentService.archiveDocument(req.params.documentId);
     
@@ -4665,7 +5580,7 @@ router.post('/:projectId/documents/:documentId/archive', async (req: Request, re
 });
 
 // Restore a document
-router.post('/:projectId/documents/:documentId/restore', async (req: Request, res: Response, next: NextFunction) => {
+router.post('/:projectId/documents/:documentId/restore', requirePMWrite, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const document = await projectDocumentService.restoreDocument(req.params.documentId);
     
@@ -4680,7 +5595,7 @@ router.post('/:projectId/documents/:documentId/restore', async (req: Request, re
 });
 
 // Upload a new version
-router.post('/:projectId/documents/:documentId/versions', async (req: Request, res: Response, next: NextFunction) => {
+router.post('/:projectId/documents/:documentId/versions', requirePMWrite, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const userId = getUserId(req);
     
@@ -4706,7 +5621,7 @@ router.get('/:projectId/documents/:documentId/versions', async (req: Request, re
 });
 
 // Revert to a version
-router.post('/:projectId/documents/:documentId/versions/:versionId/revert', async (req: Request, res: Response, next: NextFunction) => {
+router.post('/:projectId/documents/:documentId/versions/:versionId/revert', requirePMWrite, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const userId = getUserId(req);
     
@@ -4723,7 +5638,7 @@ router.post('/:projectId/documents/:documentId/versions/:versionId/revert', asyn
 });
 
 // Create a share link
-router.post('/:projectId/documents/:documentId/share', async (req: Request, res: Response, next: NextFunction) => {
+router.post('/:projectId/documents/:documentId/share', requirePMWrite, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const userId = getUserId(req);
     
@@ -4750,7 +5665,7 @@ router.get('/:projectId/documents/:documentId/shares', async (req: Request, res:
 });
 
 // Delete a share
-router.delete('/:projectId/shares/:shareId', async (req: Request, res: Response, next: NextFunction) => {
+router.delete('/:projectId/shares/:shareId', requirePMWrite, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const deleted = await projectDocumentService.deleteShare(req.params.shareId);
     
@@ -4836,7 +5751,7 @@ router.get('/documents/expired', async (req: Request, res: Response, next: NextF
 // ============================================================================
 
 // Generate compliance report for a project
-router.post('/:id/compliance/report', async (req: Request, res: Response, next: NextFunction) => {
+router.post('/:id/compliance/report', requirePMWrite, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const orgId = getOrgId(req);
     const userId = getUserId(req);
@@ -4926,7 +5841,7 @@ router.get('/payments/account', async (req: Request, res: Response, next: NextFu
     const { pool } = await import('../database');
     const result = await pool.query(
       `SELECT * FROM payment_accounts
-       WHERE entity_id = $1 AND entity_type = 'organization' AND is_active = TRUE
+       WHERE entity_id = $1 AND entity_type = 'organization' AND service_type = 'project_management' AND is_active = TRUE
        LIMIT 1`,
       [organizationId]
     );
@@ -5000,7 +5915,7 @@ router.get('/payments/banks', async (req: Request, res: Response, next: NextFunc
  * POST /api/v1/projects/payments/register-account
  * Register or update the organization's bank account for payouts
  */
-router.post('/payments/register-account', async (req: Request, res: Response, next: NextFunction) => {
+router.post('/payments/register-account', requirePMWrite, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const organizationId = getOrgId(req);
     const { bankCode, accountNumber, businessName, contactEmail, contactPhone } = req.body;
@@ -5012,7 +5927,7 @@ router.post('/payments/register-account', async (req: Request, res: Response, ne
     const { paystackService } = await import('../services/property-management/payment/paystackService');
 
     const result = await paystackService.registerPropertyManagerAccount(
-      organizationId, bankCode, accountNumber, businessName, contactEmail, contactPhone
+      organizationId, bankCode, accountNumber, businessName, contactEmail, contactPhone, 'project_management'
     );
 
     if (!result.success) {
@@ -5029,7 +5944,7 @@ router.post('/payments/register-account', async (req: Request, res: Response, ne
  * POST /api/v1/projects/payments/resolve-account
  * Verify a bank account number (name enquiry)
  */
-router.post('/payments/resolve-account', async (req: Request, res: Response, next: NextFunction) => {
+router.post('/payments/resolve-account', requirePMWrite, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { accountNumber, bankCode } = req.body;
 
@@ -5066,7 +5981,7 @@ router.get('/payments/crypto-wallet', async (req: Request, res: Response, next: 
     const result = await pool.query(
       `SELECT crypto_wallet_address, crypto_wallet_verified, crypto_wallet_registered_at
        FROM payment_accounts
-       WHERE entity_id = $1 AND entity_type = 'organization' AND is_active = TRUE
+       WHERE entity_id = $1 AND entity_type = 'organization' AND service_type = 'project_management' AND is_active = TRUE
        LIMIT 1`,
       [organizationId]
     );
@@ -5091,7 +6006,7 @@ router.get('/payments/crypto-wallet', async (req: Request, res: Response, next: 
  * POST /api/v1/projects/payments/crypto-wallet
  * Save/update crypto wallet address for the project management org
  */
-router.post('/payments/crypto-wallet', async (req: Request, res: Response, next: NextFunction) => {
+router.post('/payments/crypto-wallet', requirePMWrite, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const organizationId = getOrgId(req);
     const { walletAddress } = req.body;
@@ -5102,9 +6017,9 @@ router.post('/payments/crypto-wallet', async (req: Request, res: Response, next:
 
     const { pool } = await import('../database');
     const upsertResult = await pool.query(`
-      INSERT INTO payment_accounts (id, entity_type, entity_id, crypto_wallet_address, crypto_wallet_registered_at, updated_at, is_active)
-      VALUES (gen_random_uuid(), 'organization', $1, $2, NOW(), NOW(), TRUE)
-      ON CONFLICT (entity_type, entity_id) DO UPDATE SET
+      INSERT INTO payment_accounts (id, entity_type, entity_id, service_type, crypto_wallet_address, crypto_wallet_registered_at, updated_at, is_active)
+      VALUES (gen_random_uuid(), 'organization', $1, 'project_management', $2, NOW(), NOW(), TRUE)
+      ON CONFLICT (entity_id, entity_type, service_type) DO UPDATE SET
         crypto_wallet_address = $2,
         crypto_wallet_registered_at = NOW(),
         updated_at = NOW()
@@ -5117,7 +6032,7 @@ router.post('/payments/crypto-wallet', async (req: Request, res: Response, next:
     try {
       const { cryptoPaymentService } = await import('../../shared-services/payments/crypto');
       if (cryptoPaymentService.isConfigured()) {
-        await cryptoPaymentService.registerRecipientWallet('organization', organizationId, walletAddress);
+        await cryptoPaymentService.registerRecipientWallet('organization', organizationId, walletAddress, 'project_management');
         onChainRegistered = true;
         await pool.query(`UPDATE payment_accounts SET crypto_wallet_verified = true WHERE id = $1`, [row.id]);
       }
@@ -5161,7 +6076,7 @@ router.post('/payments/crypto-wallet', async (req: Request, res: Response, next:
  *   paymentPlanId?: string
  * }
  */
-router.post('/payments/initiate', async (req: Request, res: Response, next: NextFunction) => {
+router.post('/payments/initiate', requirePMWrite, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const organizationId = getOrgId(req);
     const { projectId, amount, email, description, channel, callbackUrl, milestoneId, paymentPlanId } = req.body;
@@ -5212,7 +6127,7 @@ router.post('/payments/initiate', async (req: Request, res: Response, next: Next
  *   paymentPlanId?: string
  * }
  */
-router.post('/payments/crypto/initiate', async (req: Request, res: Response, next: NextFunction) => {
+router.post('/payments/crypto/initiate', requirePMWrite, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const organizationId = getOrgId(req);
     const {
@@ -5287,6 +6202,450 @@ router.get('/payments/crypto/estimate', async (req: Request, res: Response, next
       feeMode: fee.feeMode,
       feePercentage: fee.percentageRateApplied,
       feeDescription: fee.feeDescription,
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// ============================================================================
+// COST ESTIMATES — CRUD for persisted historical estimates
+// ============================================================================
+
+/**
+ * GET /cost-estimates — list all saved estimates for the org
+ * Query params: ?status=active&sort=created_at&order=desc&limit=50&offset=0
+ */
+router.get('/cost-estimates', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const orgId = getOrgId(req);
+    const status = (req.query.status as string) || 'active';
+    const sort = (req.query.sort as string) || 'created_at';
+    const order = (req.query.order as string)?.toUpperCase() === 'ASC' ? 'ASC' : 'DESC';
+    const limit = Math.min(parseInt(req.query.limit as string) || 50, 200);
+    const offset = parseInt(req.query.offset as string) || 0;
+
+    // Whitelist sortable columns
+    const sortCol = ['created_at', 'total_cost', 'name', 'gfa_sqm', 'project_type'].includes(sort) ? sort : 'created_at';
+
+    const { rows } = await require('../database').pool.query(`
+      SELECT id, name, project_type, region, gfa_sqm, floors, spec_tier,
+             currency, total_cost, hard_cost, soft_cost, contingency, cost_per_sqm,
+             status, notes, created_by, created_at, updated_at
+      FROM project_cost_estimates
+      WHERE organization_id = $1 AND status = $2
+      ORDER BY ${sortCol} ${order}
+      LIMIT $3 OFFSET $4
+    `, [orgId, status, limit, offset]);
+
+    const { rows: countRows } = await require('../database').pool.query(
+      `SELECT COUNT(*) as total FROM project_cost_estimates WHERE organization_id = $1 AND status = $2`,
+      [orgId, status]
+    );
+
+    // Aggregate stats
+    const { rows: statsRows } = await require('../database').pool.query(`
+      SELECT
+        COUNT(*) as total_estimates,
+        COALESCE(SUM(total_cost), 0) as total_value,
+        COALESCE(AVG(total_cost), 0) as avg_cost,
+        COALESCE(AVG(cost_per_sqm), 0) as avg_cost_per_sqm,
+        COALESCE(AVG(gfa_sqm), 0) as avg_gfa
+      FROM project_cost_estimates
+      WHERE organization_id = $1 AND status = 'active'
+    `, [orgId]);
+
+    res.json({
+      success: true,
+      estimates: rows,
+      total: parseInt(countRows[0]?.total || '0'),
+      stats: statsRows[0] || {},
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
+ * GET /cost-estimates/:id — get a single estimate with full snapshot
+ */
+router.get('/cost-estimates/:estimateId', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const orgId = getOrgId(req);
+    const { estimateId } = req.params;
+
+    const { rows } = await require('../database').pool.query(
+      `SELECT * FROM project_cost_estimates WHERE id = $1 AND organization_id = $2`,
+      [estimateId, orgId]
+    );
+
+    if (rows.length === 0) {
+      return res.status(404).json({ success: false, error: 'Estimate not found' });
+    }
+
+    res.json({ success: true, estimate: rows[0] });
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
+ * POST /cost-estimates — save a new estimate
+ */
+router.post('/cost-estimates', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const orgId = getOrgId(req);
+    const userId = getUserId(req);
+    const {
+      name, projectType, region, gfaSqm, floors, specTier, currency,
+      totalCost, hardCost, softCost, contingency, costPerSqm,
+      snapshot, notes
+    } = req.body;
+
+    if (!name || !projectType || !region || !totalCost) {
+      return res.status(400).json({ success: false, error: 'Missing required fields: name, projectType, region, totalCost' });
+    }
+
+    const { rows } = await require('../database').pool.query(`
+      INSERT INTO project_cost_estimates
+        (organization_id, created_by, name, project_type, region, gfa_sqm, floors,
+         spec_tier, currency, total_cost, hard_cost, soft_cost, contingency, cost_per_sqm,
+         snapshot, notes)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
+      RETURNING *
+    `, [
+      orgId, userId, name, projectType, region,
+      gfaSqm || 0, floors || 1, specTier || 'standard', currency || 'GHS',
+      totalCost, hardCost || 0, softCost || 0, contingency || 0, costPerSqm || 0,
+      JSON.stringify(snapshot || {}), notes || null
+    ]);
+
+    res.status(201).json({ success: true, estimate: rows[0] });
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
+ * PATCH /cost-estimates/:id — update name, notes, or status
+ */
+router.patch('/cost-estimates/:estimateId', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const orgId = getOrgId(req);
+    const { estimateId } = req.params;
+    const { name, notes, status } = req.body;
+
+    const sets: string[] = [];
+    const vals: any[] = [];
+    let idx = 3;
+
+    if (name !== undefined) { sets.push(`name = $${idx++}`); vals.push(name); }
+    if (notes !== undefined) { sets.push(`notes = $${idx++}`); vals.push(notes); }
+    if (status !== undefined) { sets.push(`status = $${idx++}`); vals.push(status); }
+    sets.push(`updated_at = NOW()`);
+
+    if (sets.length <= 1) {
+      return res.status(400).json({ success: false, error: 'Nothing to update' });
+    }
+
+    const { rows } = await require('../database').pool.query(`
+      UPDATE project_cost_estimates
+      SET ${sets.join(', ')}
+      WHERE id = $1 AND organization_id = $2
+      RETURNING *
+    `, [estimateId, orgId, ...vals]);
+
+    if (rows.length === 0) {
+      return res.status(404).json({ success: false, error: 'Estimate not found' });
+    }
+
+    res.json({ success: true, estimate: rows[0] });
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
+ * DELETE /cost-estimates/:id — soft-delete (sets status='deleted')
+ */
+router.delete('/cost-estimates/:estimateId', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const orgId = getOrgId(req);
+    const { estimateId } = req.params;
+
+    const { rowCount } = await require('../database').pool.query(`
+      UPDATE project_cost_estimates SET status = 'deleted', updated_at = NOW()
+      WHERE id = $1 AND organization_id = $2 AND status != 'deleted'
+    `, [estimateId, orgId]);
+
+    if (rowCount === 0) {
+      return res.status(404).json({ success: false, error: 'Estimate not found' });
+    }
+
+    res.json({ success: true, message: 'Estimate deleted' });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// ============================================================================
+// CONVERT ESTIMATE → PROJECT
+// ============================================================================
+
+/**
+ * POST /cost-estimates/:estimateId/convert-to-project
+ *
+ * Creates a development project pre-filled with data from the cost estimate.
+ * Auto-provisions phases from template and cost codes. Links the estimate
+ * to the new project via project_id FK.
+ *
+ * Body (optional overrides):
+ *   startDate        — planned start date (default: today)
+ *   endDate          — planned end date (auto-calculated if omitted)
+ *   landTenure       — land_tenure_type (default: leasehold)
+ *   city             — city / locality
+ *   addressLine1     — street address
+ *   ghanaPostGps     — Ghana Post digital address
+ *   description      — project description
+ */
+router.post('/cost-estimates/:estimateId/convert-to-project', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const orgId = getOrgId(req);
+    const userId = getUserId(req);
+    const { estimateId } = req.params;
+    const { pool: dbPool } = await import('../database');
+
+    // 1) Fetch the estimate
+    const { rows: estRows } = await dbPool.query(
+      `SELECT * FROM project_cost_estimates
+       WHERE id = $1 AND organization_id = $2 AND status = 'active'`,
+      [estimateId, orgId]
+    );
+
+    if (estRows.length === 0) {
+      return res.status(404).json({ success: false, error: 'Estimate not found or already deleted' });
+    }
+
+    const est = estRows[0];
+
+    // Guard: already converted?
+    if (est.project_id) {
+      return res.status(409).json({
+        success: false,
+        error: 'Estimate already converted to a project',
+        projectId: est.project_id,
+      });
+    }
+
+    // 2) Map estimate project_type to development_projects project_type
+    const TYPE_MAP: Record<string, string> = {
+      residential_single: 'residential_single',
+      residential_multi: 'residential_multi',
+      commercial_office: 'commercial',
+      retail: 'commercial',
+      mixed_use: 'mixed_use',
+      industrial: 'industrial',
+    };
+    const projectType = TYPE_MAP[est.project_type] || 'residential_single';
+
+    // 3) Extract optional overrides from body
+    const {
+      startDate,
+      endDate,
+      landTenure,
+      city,
+      addressLine1,
+      ghanaPostGps,
+      description,
+    } = req.body;
+
+    // Parse snapshot for extra info (client info, etc.)
+    const snapshot = est.snapshot || {};
+    const clientInfo = snapshot.clientInfo || {};
+
+    // 4) Get phase template durations for auto-calculating end date
+    const phases = getPhaseTemplateForType(projectType);
+    const totalDurationDays = phases.reduce((sum: number, p: any) => sum + (p.duration_days || 30), 0);
+    const plannedStart = startDate ? new Date(startDate) : new Date();
+    const plannedEnd = endDate
+      ? new Date(endDate)
+      : new Date(plannedStart.getTime() + totalDurationDays * 86400000);
+
+    // 5) Create the project via projectService.create()
+    const project = await projectService.create({
+      organization_id: orgId,
+      name: est.name,
+      description: description || `Converted from cost estimate: ${est.name}`,
+      project_type: projectType as any,
+      region: est.region,
+      city: city || undefined,
+      address_line1: addressLine1 || undefined,
+      ghana_post_gps: ghanaPostGps || undefined,
+      country: 'Ghana',
+      total_floors: est.floors,
+      total_budget: Number(est.total_cost),
+      land_size_sqm: snapshot.includeLand && snapshot.landPricePerSqm
+        ? Number(est.gfa_sqm)
+        : undefined,
+      planned_start_date: plannedStart,
+      planned_completion_date: plannedEnd,
+      developer_name: clientInfo.clientName || clientInfo.clientCompany || clientInfo.name || undefined,
+      developer_contact: clientInfo.clientPhone || clientInfo.phone || undefined,
+      developer_email: clientInfo.clientEmail || clientInfo.email || undefined,
+      created_by: userId,
+    });
+
+    // 6) Create phases from template with proper date chaining
+    //    and auto-create payment milestones for each phase
+    let phaseStart = new Date(plannedStart);
+    const totalBudget = Number(est.total_cost);
+
+    for (const tmpl of phases) {
+      const phaseEnd = new Date(phaseStart);
+      phaseEnd.setDate(phaseEnd.getDate() + (tmpl.duration_days || 30));
+
+      const phaseResult = await dbPool.query(
+        `INSERT INTO project_phases (
+          id, project_id, organization_id,
+          phase_number, name, weight, duration_days,
+          planned_start_date, planned_end_date,
+          color, created_by
+        ) VALUES (gen_random_uuid(), $1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+        RETURNING id`,
+        [
+          project.id, orgId,
+          tmpl.phase_number, tmpl.name, tmpl.weight, tmpl.duration_days,
+          phaseStart, phaseEnd,
+          tmpl.color || '#3B82F6', userId,
+        ]
+      );
+
+      // Create a payment milestone for this phase
+      const phaseId = phaseResult.rows[0].id;
+      const milestoneAmount = (totalBudget * (tmpl.weight || 0)) / 100;
+
+      await dbPool.query(
+        `INSERT INTO payment_milestones
+          (project_id, organization_id, phase_id, name, description,
+           payment_percentage, payment_amount, currency, scheduled_date,
+           trigger_condition, status, created_by)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)`,
+        [
+          project.id, orgId, phaseId,
+          `${tmpl.name} — Payment Milestone`,
+          `Payment for ${tmpl.name} phase (${tmpl.weight}% of total budget)`,
+          tmpl.weight,
+          milestoneAmount,
+          est.currency || 'GHS',
+          phaseEnd,
+          `Completion of ${tmpl.name} phase`,
+          'scheduled',
+          userId,
+        ]
+      );
+
+      phaseStart = new Date(phaseEnd);
+      phaseStart.setDate(phaseStart.getDate() + 1);
+    }
+
+    // 7) Create cost codes from template
+    await projectCostService.createFromTemplate(project.id, orgId, userId);
+
+    // 8) Populate cost-code budgets from estimate snapshot categories
+    if (snapshot.categories && Array.isArray(snapshot.categories)) {
+      // Map estimate category IDs → CSI cost codes (matches CostEstimator.tsx CATEGORY_DEFINITIONS)
+      const CATEGORY_CODE_MAP: Record<string, string> = {
+        // By category ID (primary, most reliable)
+        'site_acquisition': '40-000',                     // Land Acquisition
+        'site_prep': '02-000',                            // Site Preparation
+        'foundation': '03-000',                           // Concrete & Foundation
+        'structural': '04-000',                           // Masonry (structural frame)
+        'exterior': '07-000',                             // Roofing (exterior envelope)
+        'mep': '16-000',                                  // Electrical (MEP combined)
+        'interior': '09-000',                             // Interior Finishes
+        'ffe': '10-000',                                  // Specialties (FF&E)
+        'external_works': '32-000',                       // Exterior Improvements
+        'prelims': '01-000',                              // General Requirements
+        'labor': '01-000',                                // General Requirements (labor)
+        // By category name (fallback for display names)
+        'Site Acquisition & Due Diligence': '40-000',
+        'Site Preparation & Demolition': '02-000',
+        'Foundation & Substructure': '03-000',
+        'Structural Frame': '04-000',
+        'Exterior Envelope (Roof, Cladding, Windows, Doors)': '07-000',
+        'Mechanical, Electrical & Plumbing (MEP)': '16-000',
+        'Interior Finishes': '09-000',
+        'Fittings, Fixtures & Equipment (FF&E)': '10-000',
+        'External Works & Landscaping': '32-000',
+        'Preliminaries & Site Overheads': '01-000',
+        'Labor & Workforce': '01-000',
+      };
+
+      for (const cat of snapshot.categories) {
+        // Look up by id first, then by name
+        const code = CATEGORY_CODE_MAP[cat.id] || CATEGORY_CODE_MAP[cat.name] || CATEGORY_CODE_MAP[cat.category];
+        const amount = Number(cat.subtotal || cat.total || 0);
+        if (code && amount > 0) {
+          await dbPool.query(
+            `UPDATE project_costs
+             SET original_budget = original_budget + $1, updated_at = NOW()
+             WHERE project_id = $2 AND organization_id = $3 AND cost_code = $4`,
+            [amount, project.id, orgId, code]
+          );
+        }
+      }
+
+      // Also populate professional fees & contingency into their cost codes
+      const softCostMap: Record<string, string> = {
+        'Professional Fees': '50-000',
+        'Contingency': '99-000',
+        'Financing Costs': '60-000',
+      };
+      // Soft costs from snapshot (fees total, contingency total)
+      if (snapshot.fees && Array.isArray(snapshot.fees)) {
+        const feesTotal = snapshot.fees.reduce((s: number, f: any) => s + (Number(f.amount || 0)), 0);
+        if (feesTotal > 0) {
+          await dbPool.query(
+            `UPDATE project_costs SET original_budget = original_budget + $1, updated_at = NOW()
+             WHERE project_id = $2 AND organization_id = $3 AND cost_code = '50-000'`,
+            [feesTotal, project.id, orgId]
+          );
+        }
+      }
+      if (snapshot.contingencies && Array.isArray(snapshot.contingencies)) {
+        const contTotal = snapshot.contingencies.reduce((s: number, c: any) => s + (Number(c.amount || 0)), 0);
+        if (contTotal > 0) {
+          await dbPool.query(
+            `UPDATE project_costs SET original_budget = original_budget + $1, updated_at = NOW()
+             WHERE project_id = $2 AND organization_id = $3 AND cost_code = '99-000'`,
+            [contTotal, project.id, orgId]
+          );
+        }
+      }
+    }
+
+    // 9) Link estimate → project
+    await dbPool.query(
+      `UPDATE project_cost_estimates
+       SET project_id = $1, updated_at = NOW()
+       WHERE id = $2 AND organization_id = $3`,
+      [project.id, estimateId, orgId]
+    );
+
+    res.status(201).json({
+      success: true,
+      project: {
+        id: project.id,
+        name: project.name,
+        project_number: (project as any).project_number,
+        project_type: project.project_type,
+        status: project.status,
+        total_budget: project.total_budget,
+        planned_start_date: project.planned_start_date,
+        planned_completion_date: project.planned_completion_date,
+      },
+      estimateId,
+      message: `Project "${project.name}" created successfully from estimate`,
     });
   } catch (error) {
     next(error);

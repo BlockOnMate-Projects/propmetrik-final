@@ -1,17 +1,18 @@
 /**
  * Authentication Routes
  * 
- * Handles email/password login, signup (Keycloak-integrated), and session management
+ * Handles email/password login (Keycloak-primary with local fallback),
+ * signup (Keycloak-integrated), session management, and token refresh.
  */
 
 import { Router, Request, Response } from 'express';
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
-import axios from 'axios';
 import { v4 as uuidv4 } from 'uuid';
 import { pool } from '../database';
 import { logger } from '../utils/logger';
 import config from '../config';
+import { keycloakAdminService } from '../services/keycloakAdminService';
 
 const router = Router();
 
@@ -20,135 +21,7 @@ const JWT_EXPIRES_IN = config.jwt.expiresIn;
 // Cast JWT_EXPIRES_IN for jsonwebtoken compatibility
 const jwtExpiresIn = JWT_EXPIRES_IN as jwt.SignOptions['expiresIn'];
 
-// Keycloak Admin helpers
-const keycloakUrl = (config.keycloak.url || '').replace(/\/$/, '');
-const keycloakRealm = config.keycloak.realm || '';
-const keycloakEnabled = !!(keycloakUrl && keycloakRealm);
-
-async function getKeycloakAdminToken(): Promise<string | null> {
-  if (!keycloakEnabled) return null;
-
-  const adminClientId = config.keycloak.adminClientId || config.keycloak.clientId;
-  const adminSecret = config.keycloak.adminSecret || config.keycloak.clientSecret;
-  const adminRealm = config.keycloak.adminRealm || 'master';
-  const adminUsername = config.keycloak.adminUsername;
-  const adminPassword = config.keycloak.adminPassword;
-
-  const requestToken = async (realm: string, params: Record<string, string>): Promise<string> => {
-    const tokenUrl = `${keycloakUrl}/realms/${realm}/protocol/openid-connect/token`;
-    const response = await axios.post(tokenUrl, new URLSearchParams(params), {
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      timeout: 10000,
-    });
-    return response.data.access_token;
-  };
-
-  // Strategy 1: client_credentials on app realm
-  try {
-    if (adminClientId && adminSecret) {
-      return await requestToken(keycloakRealm, {
-        grant_type: 'client_credentials',
-        client_id: adminClientId,
-        client_secret: adminSecret,
-      });
-    }
-  } catch { /* fall through */ }
-
-  // Strategy 2: client_credentials on admin realm
-  try {
-    if (adminClientId && adminSecret && adminRealm !== keycloakRealm) {
-      return await requestToken(adminRealm, {
-        grant_type: 'client_credentials',
-        client_id: adminClientId,
-        client_secret: adminSecret,
-      });
-    }
-  } catch { /* fall through */ }
-
-  // Strategy 3: password grant with admin credentials
-  try {
-    if (adminUsername && adminPassword) {
-      return await requestToken(adminRealm, {
-        grant_type: 'password',
-        client_id: adminClientId || 'admin-cli',
-        username: adminUsername,
-        password: adminPassword,
-      });
-    }
-  } catch { /* fall through */ }
-
-  logger.warn('Could not obtain Keycloak admin token — all strategies failed');
-  return null;
-}
-
-async function createKeycloakUser(
-  adminToken: string,
-  email: string,
-  firstName: string,
-  lastName: string,
-  password: string
-): Promise<string | null> {
-  try {
-    // Create user
-    await axios.post(
-      `${keycloakUrl}/admin/realms/${keycloakRealm}/users`,
-      {
-        email,
-        username: email,
-        firstName,
-        lastName,
-        enabled: true,
-        emailVerified: false,
-        credentials: [{
-          type: 'password',
-          value: password,
-          temporary: false,
-        }],
-      },
-      {
-        headers: {
-          Authorization: `Bearer ${adminToken}`,
-          'Content-Type': 'application/json',
-        },
-        timeout: 10000,
-      }
-    );
-
-    // Look up the created user to get the Keycloak ID
-    const searchRes = await axios.get(
-      `${keycloakUrl}/admin/realms/${keycloakRealm}/users`,
-      {
-        params: { email, exact: true },
-        headers: { Authorization: `Bearer ${adminToken}` },
-        timeout: 10000,
-      }
-    );
-
-    const kcUser = searchRes.data?.[0];
-    if (kcUser?.id) {
-      logger.info('Keycloak user created', { email, keycloakId: kcUser.id });
-      return kcUser.id;
-    }
-
-    return null;
-  } catch (err: any) {
-    // 409 = user already exists in Keycloak
-    if (err?.response?.status === 409) {
-      logger.info('User already exists in Keycloak, linking', { email });
-      const searchRes = await axios.get(
-        `${keycloakUrl}/admin/realms/${keycloakRealm}/users`,
-        {
-          params: { email, exact: true },
-          headers: { Authorization: `Bearer ${adminToken}` },
-          timeout: 10000,
-        }
-      );
-      return searchRes.data?.[0]?.id || null;
-    }
-    logger.error('Failed to create Keycloak user', { email, error: err?.message });
-    return null;
-  }
-}
+// Keycloak Admin — delegated to centralized KeycloakAdminService
 
 // ============================================================================
 // Signup (Keycloak + Local DB)
@@ -227,9 +100,14 @@ router.post('/signup', async (req: Request, res: Response) => {
     // ---- Create user in Keycloak (best-effort) ----
     let keycloakUserId: string | null = null;
     try {
-      const adminToken = await getKeycloakAdminToken();
-      if (adminToken) {
-        keycloakUserId = await createKeycloakUser(adminToken, normalizedEmail, firstName.trim(), lastName.trim(), password);
+      if (keycloakAdminService.enabled) {
+        const kcResult = await keycloakAdminService.ensureUser(
+          normalizedEmail,
+          firstName.trim(),
+          lastName.trim(),
+          { emailVerified: false, password },
+        );
+        keycloakUserId = kcResult.id;
         if (keycloakUserId) {
           await client.query(
             'UPDATE users SET keycloak_id = $1 WHERE id = $2',
@@ -319,52 +197,84 @@ router.post('/login', async (req: Request, res: Response) => {
       });
     }
 
-    // Find user by email
+    const normalizedEmail = email.toLowerCase().trim();
+
+    // Find user in local DB
     const userResult = await pool.query(
       `SELECT 
-        id, 
-        email, 
-        password_hash, 
-        first_name, 
-        last_name, 
-        role, 
-        organization_id,
-        subscription_tier,
-        is_active,
-        email_verified
-      FROM users 
-      WHERE email = $1`,
-      [email.toLowerCase()]
+        id, email, password_hash, first_name, last_name, role,
+        organization_id, subscription_tier, is_active, email_verified, keycloak_id
+      FROM users WHERE email = $1`,
+      [normalizedEmail]
     );
 
     const user = userResult.rows[0];
 
     if (!user) {
-      logger.warn('Login attempt for non-existent user', { email });
+      logger.warn('Login attempt for non-existent user', { email: normalizedEmail });
       return res.status(401).json({ 
         success: false,
         message: 'Invalid email or password' 
       });
     }
 
-    // Check if user is active
     if (!user.is_active) {
-      logger.warn('Login attempt for inactive user', { email, userId: user.id });
+      logger.warn('Login attempt for inactive user', { email: normalizedEmail, userId: user.id });
       return res.status(401).json({ 
         success: false,
         message: 'Account is disabled. Please contact support.' 
       });
     }
 
-    // Verify password
-    const isValidPassword = await bcrypt.compare(password, user.password_hash);
+    // ── Strategy 1: Authenticate via Keycloak (primary) ─────────────────────
+    let keycloakToken: string | null = null;
+    let authMethod: 'keycloak' | 'local' = 'local';
 
-    if (!isValidPassword) {
-      logger.warn('Invalid password attempt', { email, userId: user.id });
-      return res.status(401).json({ 
-        success: false,
-        message: 'Invalid email or password' 
-      });
+    if (keycloakAdminService.enabled && config.keycloak.clientId) {
+      try {
+        const tokenUrl = `${config.keycloak.url}/realms/${config.keycloak.realm}/protocol/openid-connect/token`;
+        const kcResponse = await fetch(tokenUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+          body: new URLSearchParams({
+            grant_type: 'password',
+            client_id: config.keycloak.clientId,
+            ...(config.keycloak.clientSecret ? { client_secret: config.keycloak.clientSecret } : {}),
+            username: normalizedEmail,
+            password,
+          }),
+        });
+
+        if (kcResponse.ok) {
+          const kcData = await kcResponse.json() as { access_token: string };
+          keycloakToken = kcData.access_token;
+          authMethod = 'keycloak';
+          logger.info('Keycloak authentication succeeded', { email: normalizedEmail });
+        } else {
+          logger.debug('Keycloak auth failed — falling back to local DB', { email: normalizedEmail, status: kcResponse.status });
+        }
+      } catch (kcErr) {
+        logger.debug('Keycloak auth unavailable — falling back to local DB', { error: (kcErr as Error).message });
+      }
+    }
+
+    // ── Strategy 2: Local bcrypt verification (fallback) ────────────────────
+    if (!keycloakToken) {
+      if (!user.password_hash) {
+        return res.status(401).json({ success: false, message: 'Invalid email or password' });
+      }
+      const isValidPassword = await bcrypt.compare(password, user.password_hash);
+      if (!isValidPassword) {
+        logger.warn('Invalid password attempt', { email: normalizedEmail, userId: user.id });
+        return res.status(401).json({ success: false, message: 'Invalid email or password' });
+      }
+
+      // Sync password to Keycloak (best-effort) if user has a keycloak_id
+      if (keycloakAdminService.enabled && user.keycloak_id) {
+        keycloakAdminService.setPassword(user.keycloak_id, password).catch((err) => {
+          logger.debug('Failed to sync password to Keycloak', { error: (err as Error).message });
+        });
+      }
     }
 
     // Get organization info
@@ -377,12 +287,12 @@ router.post('/login', async (req: Request, res: Response) => {
       organization = orgResult.rows[0] || null;
     }
 
-    // Generate JWT token
+    // Generate JWT token (always a local JWT for consistency)
     const token = jwt.sign(
       {
         userId: user.id,
         email: user.email,
-        name: user.name,
+        name: `${user.first_name || ''} ${user.last_name || ''}`.trim(),
         role: user.role,
         organizationId: user.organization_id,
         tier: user.subscription_tier,
@@ -400,7 +310,8 @@ router.post('/login', async (req: Request, res: Response) => {
     logger.info('User logged in successfully', { 
       userId: user.id, 
       email: user.email,
-      role: user.role 
+      role: user.role,
+      authMethod,
     });
 
     res.json({
@@ -546,21 +457,91 @@ router.get('/me', async (req: Request, res: Response) => {
 
 /**
  * POST /api/v1/auth/refresh
- * Refresh JWT token
+ * Refresh JWT token.
+ *
+ * Accepts either:
+ * - Authorization: Bearer <localJwt>  (refreshes the local JWT)
+ * - Body: { refresh_token }           (exchanges Keycloak refresh token)
  */
 router.post('/refresh', async (req: Request, res: Response) => {
   try {
+    // ── Strategy 1: Keycloak refresh_token in request body ────────────────
+    const { refresh_token: refreshToken } = req.body || {};
+    if (refreshToken && keycloakAdminService.enabled && config.keycloak.clientId) {
+      try {
+        const tokenUrl = `${config.keycloak.url}/realms/${config.keycloak.realm}/protocol/openid-connect/token`;
+        const kcResponse = await fetch(tokenUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+          body: new URLSearchParams({
+            grant_type: 'refresh_token',
+            client_id: config.keycloak.clientId,
+            ...(config.keycloak.clientSecret ? { client_secret: config.keycloak.clientSecret } : {}),
+            refresh_token: refreshToken,
+          }),
+        });
+
+        if (kcResponse.ok) {
+          const kcData = await kcResponse.json() as { access_token: string; refresh_token: string; expires_in: number };
+
+          // Decode the new access_token to get the user ID
+          let keycloakSub: string | null = null;
+          try {
+            const payload = JSON.parse(Buffer.from(kcData.access_token.split('.')[1], 'base64').toString());
+            keycloakSub = payload.sub;
+          } catch { /* ignore */ }
+
+          // Look up local user by keycloak_id to issue a synced local JWT
+          if (keycloakSub) {
+            const userResult = await pool.query(
+              `SELECT id, email, first_name, last_name, role, organization_id, subscription_tier, is_active
+               FROM users WHERE keycloak_id = $1`,
+              [keycloakSub]
+            );
+            if (userResult.rows.length > 0 && userResult.rows[0].is_active) {
+              const u = userResult.rows[0];
+              const newToken = jwt.sign(
+                { userId: u.id, email: u.email, name: `${u.first_name || ''} ${u.last_name || ''}`.trim(), role: u.role, organizationId: u.organization_id, tier: u.subscription_tier },
+                JWT_SECRET,
+                { expiresIn: jwtExpiresIn }
+              );
+              logger.info('Token refreshed via Keycloak', { userId: u.id, email: u.email });
+              return res.json({
+                success: true,
+                token: newToken,
+                keycloak_access_token: kcData.access_token,
+                keycloak_refresh_token: kcData.refresh_token,
+                keycloak_expires_in: kcData.expires_in,
+              });
+            }
+          }
+
+          // If we can't map to a local user, return the refreshed Keycloak tokens directly
+          return res.json({
+            success: true,
+            keycloak_access_token: kcData.access_token,
+            keycloak_refresh_token: kcData.refresh_token,
+            keycloak_expires_in: kcData.expires_in,
+          });
+        } else {
+          const errBody = await kcResponse.text();
+          logger.debug('Keycloak refresh failed', { status: kcResponse.status, body: errBody });
+          return res.status(401).json({ success: false, message: 'Refresh token expired or invalid. Please login again.' });
+        }
+      } catch (kcErr) {
+        logger.error('Keycloak refresh error', { error: (kcErr as Error).message });
+        return res.status(401).json({ success: false, message: 'Token refresh failed' });
+      }
+    }
+
+    // ── Strategy 2: Local JWT refresh via Authorization header ────────────
     const authHeader = req.headers.authorization;
-    
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return res.status(401).json({ 
-        success: false,
-        message: 'No token provided' 
-      });
+      return res.status(401).json({ success: false, message: 'No token provided' });
     }
 
     const oldToken = authHeader.split(' ')[1];
-    
+
     try {
       const decoded = jwt.verify(oldToken, JWT_SECRET, { ignoreExpiration: true }) as {
         userId: string;
@@ -571,38 +552,33 @@ router.post('/refresh', async (req: Request, res: Response) => {
         exp: number;
       };
 
-      // Only allow refresh within 7 days of expiration
+      // Use the configurable refresh window (default: 30 days)
+      const refreshMaxAgeSec = parseExpiry(config.jwt.refreshExpiresIn);
       const now = Math.floor(Date.now() / 1000);
-      const sevenDaysInSeconds = 7 * 24 * 60 * 60;
-      
-      if (decoded.exp && (now - decoded.exp) > sevenDaysInSeconds) {
-        return res.status(401).json({ 
+
+      if (decoded.exp && (now - decoded.exp) > refreshMaxAgeSec) {
+        return res.status(401).json({
           success: false,
-          message: 'Token too old to refresh. Please login again.' 
+          message: 'Token too old to refresh. Please login again.',
         });
       }
 
       // Verify user still exists and is active
       const userResult = await pool.query(
-        'SELECT id, role, organization_id, subscription_tier, is_active FROM users WHERE id = $1',
+        'SELECT id, email, first_name, last_name, role, organization_id, subscription_tier, is_active FROM users WHERE id = $1',
         [decoded.userId]
       );
 
       const user = userResult.rows[0];
-
       if (!user || !user.is_active) {
-        return res.status(401).json({ 
-          success: false,
-          message: 'User not found or inactive' 
-        });
+        return res.status(401).json({ success: false, message: 'User not found or inactive' });
       }
 
-      // Generate new token with fresh data
       const newToken = jwt.sign(
         {
           userId: user.id,
-          email: decoded.email,
-          name: user.name,
+          email: user.email,
+          name: `${user.first_name || ''} ${user.last_name || ''}`.trim(),
           role: user.role,
           organizationId: user.organization_id,
           tier: user.subscription_tier,
@@ -611,23 +587,28 @@ router.post('/refresh', async (req: Request, res: Response) => {
         { expiresIn: jwtExpiresIn }
       );
 
-      res.json({
-        success: true,
-        token: newToken,
-      });
+      res.json({ success: true, token: newToken });
     } catch {
-      return res.status(401).json({ 
-        success: false,
-        message: 'Invalid token' 
-      });
+      return res.status(401).json({ success: false, message: 'Invalid token' });
     }
   } catch (error) {
     logger.error('Token refresh error', { error });
-    res.status(500).json({ 
-      success: false,
-      message: 'An error occurred' 
-    });
+    res.status(500).json({ success: false, message: 'An error occurred' });
   }
 });
+
+/** Parse a duration string like '30d', '7d', '24h' into seconds */
+function parseExpiry(value: string): number {
+  const match = value.match(/^(\d+)([dhms])$/);
+  if (!match) return 30 * 24 * 3600; // default 30 days
+  const num = parseInt(match[1]);
+  switch (match[2]) {
+    case 'd': return num * 86400;
+    case 'h': return num * 3600;
+    case 'm': return num * 60;
+    case 's': return num;
+    default: return 30 * 86400;
+  }
+}
 
 export default router;

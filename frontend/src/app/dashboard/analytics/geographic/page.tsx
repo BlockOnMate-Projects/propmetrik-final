@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { cn } from '@/lib/utils';
+import { authedFetch } from '@/lib/authed-fetch';
 import {
   MapPin,
   Building2,
@@ -58,14 +59,14 @@ interface RentalByRegion {
 const geoApi = {
   async getDistribution(signal?: AbortSignal): Promise<GeographicDistribution[]> {
     try {
-      const res = await fetch('/api/data-hub/analytics/geographic', { signal });
+      const res = await authedFetch('/api/data-hub/analytics/geographic', { signal });
       const data = await res.json();
       return data.data || [];
     } catch { return []; }
   },
   async getRegionalInvestment(signal?: AbortSignal): Promise<RegionalInvestment[]> {
     try {
-      const res = await fetch('/api/analytics/market/investment/regional', { signal });
+      const res = await authedFetch('/api/analytics/market/investment/regional', { signal });
       const data = await res.json();
       return data.data || [];
     } catch { return []; }
@@ -75,21 +76,21 @@ const geoApi = {
       const url = region
         ? `/api/analytics/market/price-index?region=${region}`
         : '/api/analytics/market/price-index';
-      const res = await fetch(url, { signal });
+      const res = await authedFetch(url, { signal });
       const data = await res.json();
       return Array.isArray(data.data) ? data.data : [data.data].filter(Boolean);
     } catch { return []; }
   },
   async getRentalByRegion(signal?: AbortSignal): Promise<RentalByRegion[]> {
     try {
-      const res = await fetch('/api/analytics/market/rental/by-region', { signal });
+      const res = await authedFetch('/api/analytics/market/rental/by-region', { signal });
       const data = await res.json();
       return data.data || [];
     } catch { return []; }
   },
   async getSupplyDemand(region: string, signal?: AbortSignal) {
     try {
-      const res = await fetch(`/api/analytics/market/supply-demand?region=${region}`, { signal });
+      const res = await authedFetch(`/api/analytics/market/supply-demand?region=${region}`, { signal });
       const data = await res.json();
       return data.data || null;
     } catch { return null; }

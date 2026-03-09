@@ -4,10 +4,10 @@ import { motion } from 'framer-motion';
 import Link from 'next/link';
 import { CheckCircle2, ClipboardList, BarChart3, Shield, Users, Calendar, DollarSign, Layers } from 'lucide-react';
 import ProjectDashboardVisual from '@/components/marketing/motion/ProjectDashboardVisual';
-import ProjectPhaseVisual from '@/components/marketing/motion/ProjectPhaseVisual';
 import ProcessTimeline from '@/components/marketing/motion/ProcessTimeline';
 import StatsCounter from '@/components/marketing/motion/StatsCounter';
 import PremiumCTASection from '@/components/marketing/motion/PremiumCTASection';
+import ProjectLifecycleSection from '@/components/marketing/motion/ProjectLifecycleSection';
 
 export default function ProjectManagementPage() {
     const capabilities = [
@@ -164,6 +164,9 @@ export default function ProjectManagementPage() {
                 </div>
             </section>
 
+            {/* ====== Motion-Picture Lifecycle Section ====== */}
+            <ProjectLifecycleSection />
+
             {/* ====== Live Dashboard Visual ====== */}
             <section className="py-24 bg-zinc-900">
                 <div className="container mx-auto px-4 md:px-6">
@@ -231,10 +234,10 @@ export default function ProjectManagementPage() {
                 </div>
             </section>
 
-            {/* ====== Phase Visual ====== */}
-            <section className="py-24 bg-zinc-900">
+            {/* Phase-by-phase detail callout — simplified since lifecycle section above covers the journey */}
+            <section className="py-20 bg-zinc-900">
                 <div className="container mx-auto px-4 md:px-6">
-                    <div className="grid lg:grid-cols-2 gap-12 items-center">
+                    <div className="grid md:grid-cols-2 gap-12 items-center max-w-5xl mx-auto">
                         <motion.div
                             initial={{ opacity: 0, x: -30 }}
                             whileInView={{ opacity: 1, x: 0 }}
@@ -249,35 +252,32 @@ export default function ProjectManagementPage() {
                             <p className="text-lg text-zinc-400 mb-8 leading-relaxed">
                                 From planning through handover, every phase is tracked with dependencies, approvals, and gated milestones. No phase starts until the prior one is signed off.
                             </p>
-                            <div className="space-y-4">
-                                {[
-                                    'Automated phase-gate approvals with audit trail',
-                                    'Dependency mapping prevents out-of-sequence work',
-                                    'Weather and supply-chain delay intelligence',
-                                    'Client-facing progress portal with photo timelines',
-                                ].map((item, i) => (
-                                    <motion.div
-                                        key={i}
-                                        initial={{ opacity: 0, x: -10 }}
-                                        whileInView={{ opacity: 1, x: 0 }}
-                                        viewport={{ once: true }}
-                                        transition={{ delay: 0.2 + i * 0.1 }}
-                                        className="flex items-start gap-3"
-                                    >
-                                        <CheckCircle2 className="w-5 h-5 text-primary shrink-0 mt-0.5" />
-                                        <span className="text-zinc-300 text-sm">{item}</span>
-                                    </motion.div>
-                                ))}
-                            </div>
                         </motion.div>
-
                         <motion.div
                             initial={{ opacity: 0, x: 30 }}
                             whileInView={{ opacity: 1, x: 0 }}
                             viewport={{ once: true }}
-                            transition={{ delay: 0.2 }}
+                            transition={{ delay: 0.15 }}
+                            className="grid grid-cols-1 gap-4"
                         >
-                            <ProjectPhaseVisual />
+                            {[
+                                'Automated phase-gate approvals with audit trail',
+                                'Dependency mapping prevents out-of-sequence work',
+                                'Weather and supply-chain delay intelligence',
+                                'Client-facing progress portal with photo timelines',
+                            ].map((item, i) => (
+                                <motion.div
+                                    key={i}
+                                    initial={{ opacity: 0, x: 10 }}
+                                    whileInView={{ opacity: 1, x: 0 }}
+                                    viewport={{ once: true }}
+                                    transition={{ delay: 0.1 + i * 0.08 }}
+                                    className="flex items-start gap-3 p-4 rounded-lg bg-zinc-950 border border-zinc-800 hover:border-primary/40 transition-colors"
+                                >
+                                    <CheckCircle2 className="w-5 h-5 text-primary shrink-0 mt-0.5" />
+                                    <span className="text-zinc-300 text-sm">{item}</span>
+                                </motion.div>
+                            ))}
                         </motion.div>
                     </div>
                 </div>
@@ -431,11 +431,10 @@ export default function ProjectManagementPage() {
                                 whileInView={{ opacity: 1, y: 0 }}
                                 viewport={{ once: true }}
                                 transition={{ delay: i * 0.1 }}
-                                className={`relative rounded-xl p-8 border transition-colors ${
-                                    plan.featured
+                                className={`relative rounded-xl p-8 border transition-colors ${plan.featured
                                         ? 'bg-zinc-950 border-primary/50 ring-1 ring-primary/20'
                                         : 'bg-zinc-950 border-zinc-800 hover:border-zinc-700'
-                                }`}
+                                    }`}
                             >
                                 {plan.featured && (
                                     <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-1 bg-primary text-zinc-950 text-[10px] font-bold uppercase tracking-wider rounded-full">
@@ -460,11 +459,10 @@ export default function ProjectManagementPage() {
                                     <motion.button
                                         whileHover={{ scale: 1.02 }}
                                         whileTap={{ scale: 0.98 }}
-                                        className={`w-full mt-8 py-3 font-bold uppercase tracking-wider text-sm transition-colors ${
-                                            plan.featured
+                                        className={`w-full mt-8 py-3 font-bold uppercase tracking-wider text-sm transition-colors ${plan.featured
                                                 ? 'bg-gradient-to-r from-primary to-yellow-400 text-zinc-950'
                                                 : 'border border-zinc-700 text-white hover:border-primary hover:text-primary'
-                                        }`}
+                                            }`}
                                     >
                                         Get Started
                                     </motion.button>

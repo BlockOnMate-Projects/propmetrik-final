@@ -16,12 +16,19 @@
 import express, { Request, Response } from 'express';
 import { photoService, PhotoFilters } from '../services/project-management/photoService';
 import { logger } from '../utils/logger';
+import { scanUploadedFiles } from '../middleware/virusScan';
 import multer from 'multer';
 import path from 'path';
 import { v4 as uuidv4 } from 'uuid';
 import fs from 'fs/promises';
+import { registerPMParamValidation, requirePMWrite } from '../middleware/pmAuth';
+import { validate } from '../middleware/validation';
+import { createAlbumSchema, updateAlbumSchema } from '../middleware/pmProjectValidation';
 
 const router = express.Router();
+
+// Register UUID parameter validation
+registerPMParamValidation(router);
 
 // ============================================================================
 // File Upload Configuration
@@ -60,13 +67,13 @@ const upload = multer({
   }
 });
 
-// Helper to get user info from request
+// Helper to get user info from authenticated request (no header fallback)
 const getUserId = (req: Request): string => {
-  return (req as any).user?.id || req.headers['x-user-id'] as string || 'system';
+  return (req as any).user?.id || (req as any).user?.sub || 'system';
 };
 
 const getOrganizationId = (req: Request): string => {
-  return (req as any).user?.organizationId || req.headers['x-organization-id'] as string || 'default';
+  return (req as any).user?.organizationId || (req as any).user?.organization_id || 'default';
 };
 
 // ============================================================================
@@ -135,7 +142,7 @@ router.get('/:id', async (req: Request, res: Response) => {
  * POST /
  * Create photo record (metadata only, without file)
  */
-router.post('/', async (req: Request, res: Response) => {
+router.post('/', requirePMWrite, async (req: Request, res: Response) => {
   try {
     const userId = getUserId(req);
     const organizationId = getOrganizationId(req);
@@ -157,7 +164,7 @@ router.post('/', async (req: Request, res: Response) => {
  * POST /upload
  * Upload photos with files
  */
-router.post('/upload', upload.array('photos', 20), async (req: Request, res: Response) => {
+router.post('/upload', requirePMWrite, upload.array('photos', 20), scanUploadedFiles, async (req: Request, res: Response) => {
   try {
     const files = req.files as Express.Multer.File[];
     
@@ -225,7 +232,7 @@ router.post('/upload', upload.array('photos', 20), async (req: Request, res: Res
  * PUT /:id
  * Update photo metadata
  */
-router.put('/:id', async (req: Request, res: Response) => {
+router.put('/:id', requirePMWrite, async (req: Request, res: Response) => {
   try {
     const userId = getUserId(req);
     const photo = await photoService.update(req.params.id, req.body, userId);
@@ -241,7 +248,7 @@ router.put('/:id', async (req: Request, res: Response) => {
  * POST /:id/approve
  * Approve a photo
  */
-router.post('/:id/approve', async (req: Request, res: Response) => {
+router.post('/:id/approve', requirePMWrite, async (req: Request, res: Response) => {
   try {
     const userId = getUserId(req);
     const photo = await photoService.approve(req.params.id, userId);
@@ -257,7 +264,7 @@ router.post('/:id/approve', async (req: Request, res: Response) => {
  * POST /:id/reject
  * Reject a photo
  */
-router.post('/:id/reject', async (req: Request, res: Response) => {
+router.post('/:id/reject', requirePMWrite, async (req: Request, res: Response) => {
   try {
     const userId = getUserId(req);
     const { reason } = req.body;
@@ -274,7 +281,7 @@ router.post('/:id/reject', async (req: Request, res: Response) => {
  * DELETE /:id
  * Soft delete a photo
  */
-router.delete('/:id', async (req: Request, res: Response) => {
+router.delete('/:id', requirePMWrite, async (req: Request, res: Response) => {
   try {
     const deleted = await photoService.delete(req.params.id);
 
@@ -293,7 +300,7 @@ router.delete('/:id', async (req: Request, res: Response) => {
  * POST /:id/tags
  * Add tags to a photo
  */
-router.post('/:id/tags', async (req: Request, res: Response) => {
+router.post('/:id/tags', requirePMWrite, async (req: Request, res: Response) => {
   try {
     const { tags } = req.body;
 
@@ -314,7 +321,7 @@ router.post('/:id/tags', async (req: Request, res: Response) => {
  * DELETE /:id/tags
  * Remove tags from a photo
  */
-router.delete('/:id/tags', async (req: Request, res: Response) => {
+router.delete('/:id/tags', requirePMWrite, async (req: Request, res: Response) => {
   try {
     const { tags } = req.body;
 
@@ -373,7 +380,7 @@ router.get('/albums/:id', async (req: Request, res: Response) => {
  * POST /albums
  * Create a new album
  */
-router.post('/albums', async (req: Request, res: Response) => {
+router.post('/albums', requirePMWrite, validate(createAlbumSchema), async (req: Request, res: Response) => {
   try {
     const userId = getUserId(req);
     const organizationId = getOrganizationId(req);
@@ -395,7 +402,7 @@ router.post('/albums', async (req: Request, res: Response) => {
  * PUT /albums/:id
  * Update album
  */
-router.put('/albums/:id', async (req: Request, res: Response) => {
+router.put('/albums/:id', requirePMWrite, validate(updateAlbumSchema), async (req: Request, res: Response) => {
   try {
     const album = await photoService.updateAlbum(req.params.id, req.body);
 
@@ -410,7 +417,7 @@ router.put('/albums/:id', async (req: Request, res: Response) => {
  * POST /albums/:id/photos
  * Add photos to an album
  */
-router.post('/albums/:id/photos', async (req: Request, res: Response) => {
+router.post('/albums/:id/photos', requirePMWrite, async (req: Request, res: Response) => {
   try {
     const { photoIds } = req.body;
 
@@ -432,7 +439,7 @@ router.post('/albums/:id/photos', async (req: Request, res: Response) => {
  * DELETE /albums/:id/photos
  * Remove photos from an album
  */
-router.delete('/albums/:id/photos', async (req: Request, res: Response) => {
+router.delete('/albums/:id/photos', requirePMWrite, async (req: Request, res: Response) => {
   try {
     const { photoIds } = req.body;
 
@@ -453,7 +460,7 @@ router.delete('/albums/:id/photos', async (req: Request, res: Response) => {
  * PUT /albums/:id/reorder
  * Reorder photos in an album
  */
-router.put('/albums/:id/reorder', async (req: Request, res: Response) => {
+router.put('/albums/:id/reorder', requirePMWrite, async (req: Request, res: Response) => {
   try {
     const { photoOrders } = req.body;
 
@@ -474,7 +481,7 @@ router.put('/albums/:id/reorder', async (req: Request, res: Response) => {
  * DELETE /albums/:id
  * Delete an album
  */
-router.delete('/albums/:id', async (req: Request, res: Response) => {
+router.delete('/albums/:id', requirePMWrite, async (req: Request, res: Response) => {
   try {
     const deleted = await photoService.deleteAlbum(req.params.id);
 
@@ -512,7 +519,7 @@ router.get('/:id/comments', async (req: Request, res: Response) => {
  * POST /:id/comments
  * Add a comment to a photo
  */
-router.post('/:id/comments', async (req: Request, res: Response) => {
+router.post('/:id/comments', requirePMWrite, async (req: Request, res: Response) => {
   try {
     const userId = getUserId(req);
 
@@ -533,7 +540,7 @@ router.post('/:id/comments', async (req: Request, res: Response) => {
  * PUT /comments/:id
  * Update a comment
  */
-router.put('/comments/:id', async (req: Request, res: Response) => {
+router.put('/comments/:id', requirePMWrite, async (req: Request, res: Response) => {
   try {
     const { comment } = req.body;
 
@@ -554,7 +561,7 @@ router.put('/comments/:id', async (req: Request, res: Response) => {
  * DELETE /comments/:id
  * Delete a comment
  */
-router.delete('/comments/:id', async (req: Request, res: Response) => {
+router.delete('/comments/:id', requirePMWrite, async (req: Request, res: Response) => {
   try {
     const deleted = await photoService.deleteComment(req.params.id);
 
@@ -611,7 +618,7 @@ router.get('/comparisons/:id', async (req: Request, res: Response) => {
  * POST /comparisons
  * Create a before/after comparison
  */
-router.post('/comparisons', async (req: Request, res: Response) => {
+router.post('/comparisons', requirePMWrite, async (req: Request, res: Response) => {
   try {
     const userId = getUserId(req);
 
@@ -631,7 +638,7 @@ router.post('/comparisons', async (req: Request, res: Response) => {
  * DELETE /comparisons/:id
  * Delete a comparison
  */
-router.delete('/comparisons/:id', async (req: Request, res: Response) => {
+router.delete('/comparisons/:id', requirePMWrite, async (req: Request, res: Response) => {
   try {
     const deleted = await photoService.deleteComparison(req.params.id);
 
@@ -654,7 +661,7 @@ router.delete('/comparisons/:id', async (req: Request, res: Response) => {
  * POST /share/photo/:id
  * Create a share link for a photo
  */
-router.post('/share/photo/:id', async (req: Request, res: Response) => {
+router.post('/share/photo/:id', requirePMWrite, async (req: Request, res: Response) => {
   try {
     const userId = getUserId(req);
     const { expiresInDays, password, maxViews, allowDownload } = req.body;
@@ -677,7 +684,7 @@ router.post('/share/photo/:id', async (req: Request, res: Response) => {
  * POST /share/album/:id
  * Create a share link for an album
  */
-router.post('/share/album/:id', async (req: Request, res: Response) => {
+router.post('/share/album/:id', requirePMWrite, async (req: Request, res: Response) => {
   try {
     const userId = getUserId(req);
     const { expiresInDays, password, maxViews, allowDownload } = req.body;
@@ -723,7 +730,7 @@ router.get('/share/:token', async (req: Request, res: Response) => {
  * DELETE /share/:id
  * Delete a share link
  */
-router.delete('/share/:id', async (req: Request, res: Response) => {
+router.delete('/share/:id', requirePMWrite, async (req: Request, res: Response) => {
   try {
     const deleted = await photoService.deleteShareLink(req.params.id);
 

@@ -3,13 +3,14 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 
-export type UserRole = 'admin' | 'project_manager' | 'tenant' | 'investor';
+export type UserRole = 'admin' | 'project_manager' | 'tenant' | 'investor' | 'super_admin';
 
 interface User {
   id: string;
   name: string;
   email: string;
   role: UserRole;
+  organizationId?: string;
   avatar?: string;
 }
 
@@ -17,11 +18,13 @@ interface AuthContextType {
   user: User | null;
   token: string | null;
   loading: boolean;
-  login: (email: string, role?: UserRole, password?: string) => Promise<void>;
+  login: (email: string, password: string) => Promise<void>;
   logout: () => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
+
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api/v1';
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
@@ -30,103 +33,58 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
 
-  const PM_EMAIL = 'eric@propmetrik.com';
-  const PM_PASSWORD = 'eric1234';
-  const PM_USER_ID = 'ed4a50d7-a1b2-4c3d-8e5f-6a7b8c9d0e1f';
-  const PM_LOCK_KEY = 'pm_login_lock_until';
-  const PM_ATTEMPTS_KEY = 'pm_login_attempts';
-  const PM_MAX_ATTEMPTS = 5;
-  const PM_LOCK_MS = 5 * 60 * 1000;
-
   useEffect(() => {
-    // Check for stored session (simulate persistence)
+    // Restore stored session
     const storedUser = localStorage.getItem('pm_user_session');
     const storedToken = localStorage.getItem('pm_access_token');
-    if (storedUser) {
-      const parsedUser = JSON.parse(storedUser);
-      setUser(parsedUser);
-      
-      // Generate token if user exists but token doesn't (migration for existing sessions)
-      if (storedToken) {
-        setToken(storedToken);
-      } else {
-        // Generate token without expiration for E-Sign compatibility
-        const tokenPayload = {
-          sub: parsedUser.id,
-          email: parsedUser.email,
-          name: parsedUser.name,
-          role: parsedUser.role,
-          iat: Math.floor(Date.now() / 1000)
-        };
-        const newToken = btoa(JSON.stringify(tokenPayload));
-        setToken(newToken);
-        localStorage.setItem('pm_access_token', newToken);
-      }
+    if (storedUser && storedToken) {
+      setUser(JSON.parse(storedUser));
+      setToken(storedToken);
     }
     setLoading(false);
   }, []);
 
-  const login = async (email: string, role: UserRole = 'project_manager', password?: string) => {
+  const login = async (email: string, password: string) => {
     setLoading(true);
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 400));
+    try {
+      // Call the real backend authentication endpoint
+      const response = await fetch(`${API_BASE}/auth/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password }),
+      });
 
-    if (role === 'project_manager') {
-      const lockUntil = localStorage.getItem(PM_LOCK_KEY);
-      if (lockUntil && Date.now() < Number(lockUntil)) {
-        setLoading(false);
-        throw new Error('Too many attempts. Try again in a few minutes.');
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data?.error?.message || data?.message || 'Login failed');
       }
 
-      if (email.toLowerCase() !== PM_EMAIL || password !== PM_PASSWORD) {
-        const attempts = Number(localStorage.getItem(PM_ATTEMPTS_KEY) || '0') + 1;
-        localStorage.setItem(PM_ATTEMPTS_KEY, String(attempts));
-
-        if (attempts >= PM_MAX_ATTEMPTS) {
-          localStorage.setItem(PM_LOCK_KEY, String(Date.now() + PM_LOCK_MS));
-          localStorage.setItem(PM_ATTEMPTS_KEY, '0');
-        }
-
-        setLoading(false);
-        throw new Error('Invalid credentials.');
+      const accessToken = data.token || data.accessToken || data.data?.token;
+      if (!accessToken) {
+        throw new Error('No token received from server');
       }
 
-      localStorage.removeItem(PM_ATTEMPTS_KEY);
-      localStorage.removeItem(PM_LOCK_KEY);
-    }
-    
-    const mockUser: User = {
-      id: email.toLowerCase() === PM_EMAIL ? PM_USER_ID : 'u-123',
-      name: email.toLowerCase() === PM_EMAIL ? 'Eric Danso' : email.split('@')[0],
-      email,
-      role,
-      avatar: 'https://github.com/shadcn.png'
-    };
+      // Extract user info from response
+      const userData: User = {
+        id: data.user?.id || data.data?.user?.id || '',
+        name: data.user?.name || data.user?.email || email,
+        email: data.user?.email || email,
+        role: (data.user?.role || 'project_manager') as UserRole,
+        organizationId: data.user?.organizationId || data.user?.organization_id,
+        avatar: data.user?.avatar,
+      };
 
-    setUser(mockUser);
-    localStorage.setItem('pm_user_session', JSON.stringify(mockUser));
-    
-    // Generate token without expiration for E-Sign and internal services
-    const tokenPayload = {
-      sub: mockUser.id,
-      email: mockUser.email,
-      name: mockUser.name,
-      role: mockUser.role,
-      iat: Math.floor(Date.now() / 1000)
-    };
-    const accessToken = btoa(JSON.stringify(tokenPayload));
-    setToken(accessToken);
-    localStorage.setItem('pm_access_token', accessToken);
-    
-    // REDIRECT LOGIC
-    if (role === 'project_manager') {
+      setUser(userData);
+      setToken(accessToken);
+      localStorage.setItem('pm_user_session', JSON.stringify(userData));
+      localStorage.setItem('pm_access_token', accessToken);
+
       router.push('/pm-portal/dashboard');
-    } else if (role === 'admin') {
-      router.push('/dashboard');
-    } else {
-       router.push('/'); 
+    } catch (error) {
+      setLoading(false);
+      throw error;
     }
-    
     setLoading(false);
   };
 

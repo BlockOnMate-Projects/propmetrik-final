@@ -11,8 +11,14 @@ import submittalService, {
   SubmittalFilters,
   SubmittalReviewInput 
 } from '../services/project-management/submittalService';
+import { registerPMParamValidation, requirePMWrite } from '../middleware/pmAuth';
+import { validate } from '../middleware/validation';
+import { createSubmittalSchema, updateSubmittalSchema, submittalReviewSchema } from '../middleware/pmProjectValidation';
 
 const router = Router();
+
+// Register UUID parameter validation
+registerPMParamValidation(router);
 
 /**
  * @route GET /api/submittals
@@ -49,7 +55,7 @@ router.get('/', async (req: Request, res: Response) => {
  * @route POST /api/submittals
  * @desc Create a new submittal
  */
-router.post('/', async (req: Request, res: Response) => {
+router.post('/', requirePMWrite, validate(createSubmittalSchema), async (req: Request, res: Response) => {
   try {
     const input: CreateSubmittalInput = {
       ...req.body,
@@ -113,7 +119,7 @@ router.get('/:id', async (req: Request, res: Response) => {
  * @route PUT /api/submittals/:id
  * @desc Update a submittal
  */
-router.put('/:id', async (req: Request, res: Response) => {
+router.put('/:id', requirePMWrite, validate(updateSubmittalSchema), async (req: Request, res: Response) => {
   try {
     const input: UpdateSubmittalInput = {
       ...req.body,
@@ -135,7 +141,7 @@ router.put('/:id', async (req: Request, res: Response) => {
  * @route POST /api/submittals/:id/submit
  * @desc Submit for review
  */
-router.post('/:id/submit', async (req: Request, res: Response) => {
+router.post('/:id/submit', requirePMWrite, async (req: Request, res: Response) => {
   try {
     const userId = req.body.user_id || (req as any).user?.id;
     const submittal = await submittalService.submit(req.params.id, userId);
@@ -153,7 +159,7 @@ router.post('/:id/submit', async (req: Request, res: Response) => {
  * @route POST /api/submittals/:id/assign
  * @desc Assign a reviewer
  */
-router.post('/:id/assign', async (req: Request, res: Response) => {
+router.post('/:id/assign', requirePMWrite, async (req: Request, res: Response) => {
   try {
     const { reviewer_id } = req.body;
     const assignedBy = req.body.assigned_by || (req as any).user?.id;
@@ -177,7 +183,7 @@ router.post('/:id/assign', async (req: Request, res: Response) => {
  * @route POST /api/submittals/:id/review
  * @desc Review a submittal
  */
-router.post('/:id/review', async (req: Request, res: Response) => {
+router.post('/:id/review', requirePMWrite, validate(submittalReviewSchema), async (req: Request, res: Response) => {
   try {
     const input: SubmittalReviewInput = {
       reviewer_id: req.body.reviewer_id || (req as any).user?.id,
@@ -207,7 +213,7 @@ router.post('/:id/review', async (req: Request, res: Response) => {
  * @route POST /api/submittals/:id/void
  * @desc Void a submittal
  */
-router.post('/:id/void', async (req: Request, res: Response) => {
+router.post('/:id/void', requirePMWrite, async (req: Request, res: Response) => {
   try {
     const userId = req.body.user_id || (req as any).user?.id;
     const submittal = await submittalService.void(req.params.id, userId, req.body.reason);
@@ -225,7 +231,7 @@ router.post('/:id/void', async (req: Request, res: Response) => {
  * @route POST /api/submittals/:id/attachments
  * @desc Add attachments to a submittal
  */
-router.post('/:id/attachments', async (req: Request, res: Response) => {
+router.post('/:id/attachments', requirePMWrite, async (req: Request, res: Response) => {
   try {
     const userId = req.body.user_id || (req as any).user?.id;
     const submittal = await submittalService.addAttachments(req.params.id, req.body.attachments, userId);
@@ -271,7 +277,7 @@ router.get('/:id/history', async (req: Request, res: Response) => {
  * @route DELETE /api/submittals/:id
  * @desc Delete a submittal (draft only)
  */
-router.delete('/:id', async (req: Request, res: Response) => {
+router.delete('/:id', requirePMWrite, async (req: Request, res: Response) => {
   try {
     const userId = (req as any).user?.id;
     const deleted = await submittalService.delete(req.params.id, userId);
@@ -291,7 +297,7 @@ router.delete('/:id', async (req: Request, res: Response) => {
  * @route POST /api/submittals/packages
  * @desc Create a submittal package
  */
-router.post('/packages', async (req: Request, res: Response) => {
+router.post('/packages', requirePMWrite, async (req: Request, res: Response) => {
   try {
     const pkg = await submittalService.createPackage(req.body.project_id, {
       package_number: req.body.package_number,
@@ -328,7 +334,7 @@ router.get('/packages/:id', async (req: Request, res: Response) => {
  * @route POST /api/submittals/packages/:id/items
  * @desc Add a submittal to a package
  */
-router.post('/packages/:id/items', async (req: Request, res: Response) => {
+router.post('/packages/:id/items', requirePMWrite, async (req: Request, res: Response) => {
   try {
     await submittalService.addToPackage(req.params.id, req.body.submittal_id);
     res.json({ success: true });

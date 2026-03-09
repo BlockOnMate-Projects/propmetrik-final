@@ -53,6 +53,9 @@ interface ProjectFormData {
   description: string
   projectManagerId: string
   milestoneFrameworkId: string
+  developerName: string
+  developerContact: string
+  developerEmail: string
   location: LocationData | null
   landTenure: 'freehold' | 'leasehold' | 'customary' | 'vested'
   traditionalAuthority?: string
@@ -241,6 +244,9 @@ export default function EnhancedProjectWizard() {
     description: '',
     projectManagerId: '',
     milestoneFrameworkId: '',
+    developerName: '',
+    developerContact: '',
+    developerEmail: '',
     location: null,
     landTenure: 'leasehold',
     landAreaSqm: 0,
@@ -310,7 +316,10 @@ export default function EnhancedProjectWizard() {
             project_type: formData.projectType, 
           description: formData.description,
           project_manager_id: formData.projectManagerId || undefined,
-          milestone_framework_id: formData.milestoneFrameworkId || undefined
+          milestone_framework_id: formData.milestoneFrameworkId || undefined,
+          developer_name: formData.developerName || undefined,
+          developer_contact: formData.developerContact || undefined,
+          developer_email: formData.developerEmail || undefined,
          }
       } else if (currentStep === 2) {
          stepData = {
@@ -654,6 +663,38 @@ export default function EnhancedProjectWizard() {
               </div>
             </Panel>
 
+            <Panel title="PROPERTY OWNER / DEVELOPER">
+              <div className="space-y-4">
+                <FormField label="Owner / Developer Name" hint="Individual or organization that owns the property">
+                  <Input
+                    value={formData.developerName}
+                    onChange={(e) => handleChange('developerName', e.target.value)}
+                    placeholder="Full name or company name"
+                    className="bg-zinc-900 border-zinc-800 font-mono text-sm"
+                  />
+                </FormField>
+                <div className="grid grid-cols-2 gap-4">
+                  <FormField label="Phone / Contact">
+                    <Input
+                      value={formData.developerContact}
+                      onChange={(e) => handleChange('developerContact', e.target.value)}
+                      placeholder="+233 XX XXX XXXX"
+                      className="bg-zinc-900 border-zinc-800 font-mono text-sm"
+                    />
+                  </FormField>
+                  <FormField label="Email">
+                    <Input
+                      type="email"
+                      value={formData.developerEmail}
+                      onChange={(e) => handleChange('developerEmail', e.target.value)}
+                      placeholder="owner@example.com"
+                      className="bg-zinc-900 border-zinc-800 font-mono text-sm"
+                    />
+                  </FormField>
+                </div>
+              </div>
+            </Panel>
+
             <Panel title="HERO IMAGE">
               <HeroImageUpload
                 value={formData.heroImageUrl || null}
@@ -868,6 +909,12 @@ export default function EnhancedProjectWizard() {
                       <span className="font-mono text-[10px] text-zinc-500">Type</span>
                       <p className="font-mono text-zinc-200 capitalize">{formData.projectType.replace('_', ' ')}</p>
                     </div>
+                    {formData.developerName && (
+                      <div>
+                        <span className="font-mono text-[10px] text-zinc-500">Property Owner</span>
+                        <p className="font-mono text-zinc-200">{formData.developerName}</p>
+                      </div>
+                    )}
                   </div>
                 </div>
 

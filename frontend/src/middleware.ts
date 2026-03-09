@@ -1,39 +1,59 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
+// Routes that require authentication (redirect to /login if no session)
+const PROTECTED_PREFIXES = ['/dashboard'];
+// Routes that should redirect to /dashboard if already authenticated
+const AUTH_PAGES = ['/login'];
+
+function hasSessionCookie(request: NextRequest): boolean {
+  // NextAuth v5 session cookies (dev + production names)
+  return (
+    request.cookies.has('authjs.session-token') ||
+    request.cookies.has('__Secure-authjs.session-token')
+  );
+}
+
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const url = request.nextUrl.clone();
-  
-  // Get the port from the host header
-  const host = request.headers.get('host') || '';
-  const port = host.split(':')[1] || '3000';
 
-  // PM Portal runs on port 3002
-  if (port === '3002') {
-    // If accessing root, redirect to PM Portal dashboard
-    if (pathname === '/') {
-      url.pathname = '/pm-portal/dashboard';
-      return NextResponse.redirect(url);
-    }
-    
-    // If trying to access /dashboard (main dashboard), redirect to PM Portal
-    if (pathname === '/dashboard' || pathname.startsWith('/dashboard/')) {
-      url.pathname = pathname.replace('/dashboard', '/pm-portal/dashboard');
-      return NextResponse.redirect(url);
-    }
-  }
-  
-  // Agents Portal runs on port 3003
-  if (port === '3003') {
-    if (pathname === '/') {
-      url.pathname = '/agents-portal/dashboard';
-      return NextResponse.redirect(url);
-    }
+  // Redirect legacy PM Portal routes to unified dashboard/projects
+  if (pathname.startsWith('/pm-portal')) {
+    const newPath = pathname.replace('/pm-portal', '/dashboard/projects');
+    url.pathname = newPath === '/dashboard/projects/dashboard'
+      ? '/dashboard/projects'
+      : newPath;
+    return NextResponse.redirect(url);
   }
 
-  // Default behavior for port 3000 (main dashboard)
-  // Let the page.tsx handle the redirect to /dashboard
+  // Redirect legacy Agent Portal routes to unified dashboard/deals
+  if (pathname.startsWith('/agent')) {
+    const subPath = pathname.replace('/agent', '');
+    if (subPath === '' || subPath === '/') {
+      url.pathname = '/dashboard/deals';
+    } else if (subPath === '/login') {
+      url.pathname = '/login';
+    } else {
+      url.pathname = `/dashboard/deals${subPath}`;
+    }
+    return NextResponse.redirect(url);
+  }
+
+  // Auth guard: redirect unauthenticated users to /login for protected routes
+  const isProtected = PROTECTED_PREFIXES.some(prefix => pathname.startsWith(prefix));
+  if (isProtected && !hasSessionCookie(request)) {
+    url.pathname = '/login';
+    url.searchParams.set('callbackUrl', pathname);
+    return NextResponse.redirect(url);
+  }
+
+  // Already logged in: redirect /login → /dashboard
+  const isAuthPage = AUTH_PAGES.some(page => pathname === page);
+  if (isAuthPage && hasSessionCookie(request)) {
+    url.pathname = '/dashboard';
+    return NextResponse.redirect(url);
+  }
 
   return NextResponse.next();
 }

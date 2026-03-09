@@ -314,7 +314,8 @@ router.post('/crypto/register-wallet', asyncHandler(async (req: Request, res: Re
         return res.status(503).json({ error: 'Crypto rail not configured' });
     }
 
-    const result = await cryptoPaymentService.registerRecipientWallet(entityType, entityId, walletAddress);
+    const serviceType = req.body.serviceType || 'property_management';
+    const result = await cryptoPaymentService.registerRecipientWallet(entityType, entityId, walletAddress, serviceType);
     res.json(result);
 }));
 
@@ -329,7 +330,7 @@ router.get('/crypto/recipient-wallet/:entityType/:entityId', asyncHandler(async 
         return res.status(503).json({ error: 'Crypto rail not configured' });
     }
 
-    const wallet = await cryptoPaymentService.getRecipientWallet(entityType, entityId);
+    const wallet = await cryptoPaymentService.getRecipientWallet(entityType, entityId, req.query.serviceType as string || 'property_management');
     res.json({ entityType, entityId, walletAddress: wallet });
 }));
 
@@ -351,7 +352,8 @@ router.put('/crypto/recipient-preferred-token', asyncHandler(async (req: Request
     }
 
     const tokenAddr = preferredTokenAddress || '0x0000000000000000000000000000000000000000';
-    const result = await cryptoPaymentService.setRecipientPreferredToken(entityType, entityId, tokenAddr);
+    const serviceType = req.body.serviceType || 'property_management';
+    const result = await cryptoPaymentService.setRecipientPreferredToken(entityType, entityId, tokenAddr, serviceType);
     res.json({ success: true, ...result, preferredTokenAddress: tokenAddr });
 }));
 
@@ -366,7 +368,7 @@ router.get('/crypto/recipient-preferred-token/:entityType/:entityId', asyncHandl
         return res.status(503).json({ error: 'Crypto rail not configured' });
     }
 
-    const preferredToken = await cryptoPaymentService.getRecipientPreferredToken(entityType, entityId);
+    const preferredToken = await cryptoPaymentService.getRecipientPreferredToken(entityType, entityId, req.query.serviceType as string || 'property_management');
     res.json({ entityType, entityId, preferredTokenAddress: preferredToken });
 }));
 
@@ -454,7 +456,8 @@ router.put('/crypto/client-settlement', asyncHandler(async (req: Request, res: R
     if (!result.useNowPayments && /^0x[a-fA-F0-9]{40}$/.test(walletAddress)) {
         try {
             if (cryptoPaymentService.isConfigured()) {
-                await cryptoPaymentService.registerRecipientWallet(entityType, entityId, walletAddress);
+                const svcType = req.body.serviceType || 'property_management';
+                await cryptoPaymentService.registerRecipientWallet(entityType, entityId, walletAddress, svcType);
             }
         } catch (err: any) {
             // On-chain registration failed but DB config saved
@@ -1030,7 +1033,7 @@ router.get('/crypto/wallets', asyncHandler(async (req: Request, res: Response) =
  * Used from the PaymentSettings UI to configure crypto receiving address.
  */
 router.post('/crypto/wallets/save', asyncHandler(async (req: Request, res: Response) => {
-    const { entityType, entityId, walletAddress } = req.body;
+    const { entityType, entityId, walletAddress, serviceType } = req.body;
 
     if (!entityType || !entityId || !walletAddress) {
         return res.status(400).json({ error: 'entityType, entityId, and walletAddress are required' });
@@ -1040,16 +1043,18 @@ router.post('/crypto/wallets/save', asyncHandler(async (req: Request, res: Respo
         return res.status(400).json({ error: 'Invalid wallet address. Must be a valid Ethereum/Polygon address (0x...)' });
     }
 
-    // Upsert: update existing payment_account row if one exists for this entity
+    const svcType = serviceType || 'property_management';
+
+    // Upsert: update existing payment_account row if one exists for this entity + service
     const upsertResult = await pool.query(`
-        INSERT INTO payment_accounts (id, entity_type, entity_id, crypto_wallet_address, crypto_wallet_registered_at, updated_at)
-        VALUES (gen_random_uuid(), $1, $2, $3, NOW(), NOW())
-        ON CONFLICT (entity_type, entity_id) DO UPDATE SET
+        INSERT INTO payment_accounts (id, entity_type, entity_id, service_type, crypto_wallet_address, crypto_wallet_registered_at, updated_at)
+        VALUES (gen_random_uuid(), $1, $2, $4, $3, NOW(), NOW())
+        ON CONFLICT (entity_id, entity_type, service_type) DO UPDATE SET
             crypto_wallet_address = $3,
             crypto_wallet_registered_at = NOW(),
             updated_at = NOW()
         RETURNING id, entity_type, entity_id, crypto_wallet_address, crypto_wallet_verified, crypto_wallet_registered_at
-    `, [entityType, entityId, walletAddress]);
+    `, [entityType, entityId, walletAddress, svcType]);
 
     const row = upsertResult.rows[0];
 
@@ -1057,7 +1062,7 @@ router.post('/crypto/wallets/save', asyncHandler(async (req: Request, res: Respo
     let onChainRegistered = false;
     if (cryptoPaymentService.isConfigured()) {
         try {
-            await cryptoPaymentService.registerRecipientWallet(entityType, entityId, walletAddress);
+            await cryptoPaymentService.registerRecipientWallet(entityType, entityId, walletAddress, svcType);
             onChainRegistered = true;
             // Mark as verified since on-chain registration succeeded
             await pool.query(`

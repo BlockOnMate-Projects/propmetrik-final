@@ -14,6 +14,7 @@ import {
 } from 'lucide-react'
 import { FileUploadModal } from './FileUploadModal'
 import { cn, formatRelativeTime } from '@/lib/utils'
+import { authedFetch } from '@/lib/authed-fetch'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { dataSourcesApi } from '@/lib/api'
 import { DataSource } from '@/types/data-hub'
@@ -41,7 +42,7 @@ export function DataIngestionPanel() {
     const { data: recentUploads } = useQuery({
         queryKey: ['recent-uploads'],
         queryFn: async () => {
-            const response = await fetch(`${API_BASE}/data-hub/uploads?page=1&limit=10`)
+            const response = await authedFetch(`${API_BASE}/data-hub/uploads?page=1&limit=10`)
             if (!response.ok) return []
             const result = await response.json().catch(() => null)
             return (result?.data || []) as any[]

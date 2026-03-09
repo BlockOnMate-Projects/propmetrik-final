@@ -18,11 +18,13 @@ import type { AutopilotSchedule } from '../../shared-services/publications/autop
 
 const router = Router();
 
-// Helper to extract user context from headers
+// Helper to extract user context from authenticated request
 const getUserContext = (req: Request) => {
-  const userId = req.headers['x-user-id'] as string || 'anonymous';
-  const organizationId = req.headers['x-organization-id'] as string || '00000000-0000-0000-0000-000000000001';
-  return { userId, organizationId };
+  const user = (req as any).user;
+  const userId = user?.id || user?.sub || (req.headers['x-user-id'] as string);
+  const organizationId = user?.organizationId || user?.organization_id || (req.headers['x-organization-id'] as string);
+  if (!organizationId) throw new Error('Organization ID required');
+  return { userId: userId || 'unknown', organizationId };
 };
 
 // ============================================================

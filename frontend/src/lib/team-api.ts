@@ -75,7 +75,7 @@ export type GhanaTeamRole =
   | 'it_support'
   | 'other';
 
-export type RoleCategory = 'construction' | 'professional' | 'government' | 'stakeholder' | 'internal';
+export type RoleCategory = 'construction' | 'professional' | 'government' | 'stakeholder' | 'internal' | 'contractor' | 'consultant' | 'vendor' | 'other';
 
 export interface RoleInfo {
   role: GhanaTeamRole;

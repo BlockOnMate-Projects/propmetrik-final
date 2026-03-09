@@ -12,30 +12,18 @@ import {
   type MilestoneTemplate,
 } from '../services/project-management/governance';
 import { logger } from '../utils/logger';
+import { registerPMParamValidation, requirePMWrite, getAuthOrgId, getAuthUserId } from '../middleware/pmAuth';
+import { validate } from '../middleware/validation';
+import { createFrameworkSchema, updateFrameworkSchema } from '../middleware/pmProjectValidation';
 
 const router = Router();
 
-// Development mode organization ID (valid UUID for testing)
-const DEV_ORG_ID = '00000000-0000-0000-0000-000000000001';
-// Development mode user ID (valid UUID for testing)
-const DEV_USER_ID = 'ed4a50d7-a1b2-4c3d-8e5f-6a7b8c9d0e1f';
+// Register UUID parameter validation
+registerPMParamValidation(router);
 
-// Helper to get organization ID from request
-const getOrgId = (req: Request): string => {
-  return (req as any).organizationId || 
-    (req as any).user?.organizationId || 
-    (req as any).user?.organization_id || 
-    req.headers['x-organization-id'] as string ||
-    DEV_ORG_ID;
-};
-
-const getUserId = (req: Request): string => {
-  return (req as any).user?.id || 
-    (req as any).user?.sub || 
-    (req as any).userId || 
-    req.headers['x-user-id'] as string ||
-    DEV_USER_ID;
-};
+// Secure helpers — always use authenticated user context (never raw headers)
+const getOrgId = (req: Request): string => getAuthOrgId(req);
+const getUserId = (req: Request): string => getAuthUserId(req);
 
 // =============================================================================
 // MILESTONE FRAMEWORKS
@@ -116,7 +104,7 @@ router.get('/milestone-frameworks/:id', async (req: Request, res: Response, next
  * @desc Create a new milestone framework
  * @access Private (Admin only)
  */
-router.post('/milestone-frameworks', async (req: Request, res: Response, next: NextFunction) => {
+router.post('/milestone-frameworks', requirePMWrite, validate(createFrameworkSchema), async (req: Request, res: Response, next: NextFunction) => {
   try {
     const organizationId = getOrgId(req);
     const userId = getUserId(req);
@@ -142,7 +130,7 @@ router.post('/milestone-frameworks', async (req: Request, res: Response, next: N
  * @desc Update a milestone framework
  * @access Private (Admin only)
  */
-router.put('/milestone-frameworks/:id', async (req: Request, res: Response, next: NextFunction) => {
+router.put('/milestone-frameworks/:id', requirePMWrite, validate(updateFrameworkSchema), async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { id } = req.params;
     const userId = getUserId(req);
@@ -167,7 +155,7 @@ router.put('/milestone-frameworks/:id', async (req: Request, res: Response, next
  * @desc Lock a framework (prevents modifications)
  * @access Private (Admin only)
  */
-router.post('/milestone-frameworks/:id/lock', async (req: Request, res: Response, next: NextFunction) => {
+router.post('/milestone-frameworks/:id/lock', requirePMWrite, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { id } = req.params;
     const userId = getUserId(req);
@@ -192,7 +180,7 @@ router.post('/milestone-frameworks/:id/lock', async (req: Request, res: Response
  * @desc Create a new version of a locked framework
  * @access Private (Admin only)
  */
-router.post('/milestone-frameworks/:id/version', async (req: Request, res: Response, next: NextFunction) => {
+router.post('/milestone-frameworks/:id/version', requirePMWrite, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { id } = req.params;
     const userId = getUserId(req);
@@ -218,7 +206,7 @@ router.post('/milestone-frameworks/:id/version', async (req: Request, res: Respo
  * @access Private (Admin only)
  * @todo Implement deleteFramework in MilestoneFrameworkService
  */
-router.delete('/milestone-frameworks/:id', async (req: Request, res: Response, next: NextFunction) => {
+router.delete('/milestone-frameworks/:id', requirePMWrite, async (req: Request, res: Response, next: NextFunction) => {
   try {
     // TODO: Implement deleteFramework in MilestoneFrameworkService
     res.status(501).json({
@@ -268,7 +256,7 @@ router.get('/milestone-frameworks/:frameworkId/phases', async (req: Request, res
  * @desc Add a phase to a framework
  * @access Private (Admin only)
  */
-router.post('/milestone-frameworks/:frameworkId/phases', async (req: Request, res: Response, next: NextFunction) => {
+router.post('/milestone-frameworks/:frameworkId/phases', requirePMWrite, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { frameworkId } = req.params;
     const userId = getUserId(req);
@@ -294,7 +282,7 @@ router.post('/milestone-frameworks/:frameworkId/phases', async (req: Request, re
  * @access Private (Admin only)
  * @todo Implement updatePhase in MilestoneFrameworkService
  */
-router.put('/framework-phases/:id', async (req: Request, res: Response, next: NextFunction) => {
+router.put('/framework-phases/:id', requirePMWrite, async (req: Request, res: Response, next: NextFunction) => {
   try {
     // TODO: Implement updatePhase in MilestoneFrameworkService
     res.status(501).json({
@@ -316,7 +304,7 @@ router.put('/framework-phases/:id', async (req: Request, res: Response, next: Ne
  * @access Private (Admin only)
  * @todo Implement deletePhase in MilestoneFrameworkService
  */
-router.delete('/framework-phases/:id', async (req: Request, res: Response, next: NextFunction) => {
+router.delete('/framework-phases/:id', requirePMWrite, async (req: Request, res: Response, next: NextFunction) => {
   try {
     // TODO: Implement deletePhase in MilestoneFrameworkService
     res.status(501).json({
@@ -366,7 +354,7 @@ router.get('/framework-phases/:phaseId/templates', async (req: Request, res: Res
  * @desc Add a milestone template to a phase
  * @access Private (Admin only)
  */
-router.post('/framework-phases/:phaseId/templates', async (req: Request, res: Response, next: NextFunction) => {
+router.post('/framework-phases/:phaseId/templates', requirePMWrite, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { phaseId } = req.params;
     const userId = getUserId(req);
@@ -392,7 +380,7 @@ router.post('/framework-phases/:phaseId/templates', async (req: Request, res: Re
  * @access Private (Admin only)
  * @todo Implement updateMilestoneTemplate in MilestoneFrameworkService
  */
-router.put('/milestone-templates/:id', async (req: Request, res: Response, next: NextFunction) => {
+router.put('/milestone-templates/:id', requirePMWrite, async (req: Request, res: Response, next: NextFunction) => {
   try {
     // TODO: Implement updateMilestoneTemplate in MilestoneFrameworkService
     res.status(501).json({
@@ -414,7 +402,7 @@ router.put('/milestone-templates/:id', async (req: Request, res: Response, next:
  * @access Private (Admin only)
  * @todo Implement deleteMilestoneTemplate in MilestoneFrameworkService
  */
-router.delete('/milestone-templates/:id', async (req: Request, res: Response, next: NextFunction) => {
+router.delete('/milestone-templates/:id', requirePMWrite, async (req: Request, res: Response, next: NextFunction) => {
   try {
     // TODO: Implement deleteMilestoneTemplate in MilestoneFrameworkService
     res.status(501).json({

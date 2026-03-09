@@ -14,6 +14,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import SignaturePad, { SignaturePadRef } from './SignaturePad';
+import { authedFetch } from '@/lib/authed-fetch';
 
 // =====================================================
 // TYPES
@@ -139,7 +140,7 @@ export const ApprovalModal: React.FC<ApprovalModalProps> = ({
     // Upload signature to server if valuer doesn't have one
     if (!valuer?.has_signature) {
       try {
-        const response = await fetch(`${apiBaseUrl}/valuers/${valuer?.id}/signature`, {
+        const response = await authedFetch(`${apiBaseUrl}/valuers/${valuer?.id}/signature`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ signature_data_url: dataUrl }),
@@ -164,7 +165,7 @@ export const ApprovalModal: React.FC<ApprovalModalProps> = ({
     setError(null);
 
     try {
-      const response = await fetch(`${apiBaseUrl}/reports/${reportId}/approve`, {
+      const response = await authedFetch(`${apiBaseUrl}/reports/${reportId}/approve`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

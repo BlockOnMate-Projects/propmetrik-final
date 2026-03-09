@@ -60,6 +60,7 @@ import {
     TableRow,
 } from '@/components/ui/table';
 import { EmptyState } from '@/components/crm/EmptyState';
+import { authedFetch } from '@/lib/authed-fetch';
 import { toast } from 'sonner';
 
 // Types
@@ -391,7 +392,7 @@ function CreateTargetDialog({
         setLoading(true);
 
         try {
-            const response = await fetch(`${API_BASE}/api/crm/targets`, {
+            const response = await authedFetch(`${API_BASE}/api/crm/targets`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 credentials: 'include',
@@ -516,9 +517,9 @@ export default function TargetsPage() {
     const fetchData = useCallback(async () => {
         try {
             const [targetsRes, leaderboardRes, achievementsRes] = await Promise.all([
-                fetch(`${API_BASE}/api/crm/targets?limit=100`, { credentials: 'include' }),
-                fetch(`${API_BASE}/api/crm/targets/leaderboard`, { credentials: 'include' }),
-                fetch(`${API_BASE}/api/crm/targets/achievements?limit=50`, { credentials: 'include' }),
+                authedFetch(`${API_BASE}/api/crm/targets?limit=100`, { credentials: 'include' }),
+                authedFetch(`${API_BASE}/api/crm/targets/leaderboard`, { credentials: 'include' }),
+                authedFetch(`${API_BASE}/api/crm/targets/achievements?limit=50`, { credentials: 'include' }),
             ]);
 
             if (targetsRes.ok) {

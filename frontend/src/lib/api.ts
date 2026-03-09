@@ -28,7 +28,36 @@ import {
 export type { RegionCode } from '@/types/data-hub';
 export { mapPropertyRegionToConstructionCluster, getPropertyRegionDisplayName, mapShortRegionToDataHub } from '@/types/data-hub';
 
+import { getSession } from 'next-auth/react';
+
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api/v1';
+
+// Cache the session token to avoid hitting NextAuth on every request
+let _cachedToken: string | null = null;
+let _tokenFetchedAt = 0;
+const TOKEN_CACHE_TTL = 60_000; // 1 minute
+
+async function getAuthToken(): Promise<string | null> {
+  if (typeof window === 'undefined') return null;
+  const now = Date.now();
+  if (_cachedToken && now - _tokenFetchedAt < TOKEN_CACHE_TTL) {
+    return _cachedToken;
+  }
+  try {
+    const session = await getSession();
+    _cachedToken = (session as any)?.accessToken ?? null;
+    _tokenFetchedAt = now;
+    return _cachedToken;
+  } catch {
+    return null;
+  }
+}
+
+// Call this on logout to clear the cached token
+export function clearApiTokenCache() {
+  _cachedToken = null;
+  _tokenFetchedAt = 0;
+}
 
 export async function fetchApi<T>(
   endpoint: string,
@@ -36,10 +65,19 @@ export async function fetchApi<T>(
 ): Promise<T> {
   const url = `${API_BASE}${endpoint}`;
 
+  // Attach auth token from NextAuth session
+  const token = await getAuthToken();
+  const authHeaders: Record<string, string> = {
+    'Content-Type': 'application/json',
+  };
+  if (token) {
+    authHeaders['Authorization'] = `Bearer ${token}`;
+  }
+
   const response = await fetch(url, {
     credentials: 'include',
     headers: {
-      'Content-Type': 'application/json',
+      ...authHeaders,
       ...options?.headers,
     },
     ...options,

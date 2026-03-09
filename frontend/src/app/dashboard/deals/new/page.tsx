@@ -3,6 +3,7 @@
 import React, { useEffect, useState, useCallback } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { cn, formatCurrency } from '@/lib/utils'
+import { authedFetch } from '@/lib/authed-fetch'
 import {
     ArrowLeft,
     Loader2,
@@ -155,7 +156,7 @@ export default function NewDealPage() {
                 const [pipelinesData, contactsData, propertiesRes, agentsData] = await Promise.all([
                     pipelinesApi.getAll(true),
                     contactsApi.getAll({ limit: 100 }),
-                    fetch(`${API_BASE}/crm/properties?limit=100`).then(r => r.ok ? r.json() : { properties: [] }),
+                    authedFetch(`${API_BASE}/crm/properties?limit=100`).then(r => r.ok ? r.json() : { properties: [] }),
                     agentsApi.getAll({ status: AgentStatus.ACTIVE })
                 ])
 
@@ -246,7 +247,7 @@ export default function NewDealPage() {
 
         const calculateProbability = async () => {
             try {
-                const res = await fetch(
+                const res = await authedFetch(
                     `${API_BASE}/crm/probability/calculate?agent_id=${assignedAgentId}&stage_id=${stageId}`
                 )
                 if (res.ok) {

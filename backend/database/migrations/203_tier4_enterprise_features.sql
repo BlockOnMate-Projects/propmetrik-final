@@ -82,11 +82,11 @@ CREATE TABLE IF NOT EXISTS safety_inspections (
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
-CREATE INDEX idx_safety_incidents_project ON safety_incidents(project_id);
-CREATE INDEX idx_safety_incidents_status ON safety_incidents(status);
-CREATE INDEX idx_safety_incidents_type ON safety_incidents(incident_type);
-CREATE INDEX idx_safety_observations_project ON safety_observations(project_id);
-CREATE INDEX idx_safety_inspections_project ON safety_inspections(project_id);
+CREATE INDEX IF NOT EXISTS idx_safety_incidents_project ON safety_incidents(project_id);
+CREATE INDEX IF NOT EXISTS idx_safety_incidents_status ON safety_incidents(status);
+CREATE INDEX IF NOT EXISTS idx_safety_incidents_type ON safety_incidents(incident_type);
+CREATE INDEX IF NOT EXISTS idx_safety_observations_project ON safety_observations(project_id);
+CREATE INDEX IF NOT EXISTS idx_safety_inspections_project ON safety_inspections(project_id);
 
 -- ============================================================================
 -- 2. TIME TRACKING / TIMESHEETS
@@ -165,13 +165,13 @@ CREATE TABLE IF NOT EXISTS crew_schedules (
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
-CREATE INDEX idx_time_entries_project ON time_entries(project_id);
-CREATE INDEX idx_time_entries_user ON time_entries(user_id);
-CREATE INDEX idx_time_entries_date ON time_entries(entry_date);
-CREATE INDEX idx_timesheets_project ON timesheets(project_id);
-CREATE INDEX idx_timesheets_user ON timesheets(user_id);
-CREATE INDEX idx_crew_schedules_project ON crew_schedules(project_id);
-CREATE INDEX idx_crew_schedules_date ON crew_schedules(schedule_date);
+CREATE INDEX IF NOT EXISTS idx_time_entries_project ON time_entries(project_id);
+CREATE INDEX IF NOT EXISTS idx_time_entries_user ON time_entries(user_id);
+CREATE INDEX IF NOT EXISTS idx_time_entries_date ON time_entries(entry_date);
+CREATE INDEX IF NOT EXISTS idx_timesheets_project ON timesheets(project_id);
+CREATE INDEX IF NOT EXISTS idx_timesheets_user ON timesheets(user_id);
+CREATE INDEX IF NOT EXISTS idx_crew_schedules_project ON crew_schedules(project_id);
+CREATE INDEX IF NOT EXISTS idx_crew_schedules_date ON crew_schedules(schedule_date);
 
 -- ============================================================================
 -- 3. EQUIPMENT TRACKING
@@ -247,12 +247,12 @@ CREATE TABLE IF NOT EXISTS equipment_maintenance (
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
-CREATE INDEX idx_equipment_org ON equipment(organization_id);
-CREATE INDEX idx_equipment_status ON equipment(status);
-CREATE INDEX idx_equipment_category ON equipment(category);
-CREATE INDEX idx_equipment_assignments_project ON equipment_assignments(project_id);
-CREATE INDEX idx_equipment_assignments_equipment ON equipment_assignments(equipment_id);
-CREATE INDEX idx_equipment_maintenance_equipment ON equipment_maintenance(equipment_id);
+CREATE INDEX IF NOT EXISTS idx_equipment_org ON equipment(organization_id);
+CREATE INDEX IF NOT EXISTS idx_equipment_status ON equipment(status);
+CREATE INDEX IF NOT EXISTS idx_equipment_category ON equipment(category);
+CREATE INDEX IF NOT EXISTS idx_equipment_assignments_project ON equipment_assignments(project_id);
+CREATE INDEX IF NOT EXISTS idx_equipment_assignments_equipment ON equipment_assignments(equipment_id);
+CREATE INDEX IF NOT EXISTS idx_equipment_maintenance_equipment ON equipment_maintenance(equipment_id);
 
 -- ============================================================================
 -- 4. BIDDING & PREQUALIFICATION
@@ -330,7 +330,7 @@ CREATE TABLE IF NOT EXISTS vendor_prequalifications (
   safety_emr DECIMAL(5,3),  -- Experience Modification Rate
   safety_trir DECIMAL(5,3),  -- Total Recordable Incident Rate
   osha_violations INT DEFAULT 0,
-  references TEXT,  -- JSON array
+  "references" TEXT,  -- JSON array
   certifications TEXT,  -- JSON array (MBE, WBE, DBE, etc.)
   financial_statements_provided BOOLEAN DEFAULT FALSE,
   status VARCHAR(20) NOT NULL DEFAULT 'pending',  -- pending, approved, conditional, rejected, expired
@@ -343,12 +343,12 @@ CREATE TABLE IF NOT EXISTS vendor_prequalifications (
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
-CREATE INDEX idx_bid_packages_project ON bid_packages(project_id);
-CREATE INDEX idx_bid_packages_status ON bid_packages(status);
-CREATE INDEX idx_bids_package ON bids(bid_package_id);
-CREATE INDEX idx_bids_status ON bids(status);
-CREATE INDEX idx_vendor_prequalifications_org ON vendor_prequalifications(organization_id);
-CREATE INDEX idx_vendor_prequalifications_status ON vendor_prequalifications(status);
+CREATE INDEX IF NOT EXISTS idx_bid_packages_project ON bid_packages(project_id);
+CREATE INDEX IF NOT EXISTS idx_bid_packages_status ON bid_packages(status);
+CREATE INDEX IF NOT EXISTS idx_bids_package ON bids(bid_package_id);
+CREATE INDEX IF NOT EXISTS idx_bids_status ON bids(status);
+CREATE INDEX IF NOT EXISTS idx_vendor_prequalifications_org ON vendor_prequalifications(organization_id);
+CREATE INDEX IF NOT EXISTS idx_vendor_prequalifications_status ON vendor_prequalifications(status);
 
 -- ============================================================================
 -- 5. CLOSEOUT & WARRANTY MANAGEMENT
@@ -441,12 +441,12 @@ CREATE TABLE IF NOT EXISTS warranty_claims (
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
-CREATE INDEX idx_project_closeout_project ON project_closeout(project_id);
-CREATE INDEX idx_closeout_items_closeout ON closeout_items(closeout_id);
-CREATE INDEX idx_warranties_project ON warranties(project_id);
-CREATE INDEX idx_warranties_status ON warranties(status);
-CREATE INDEX idx_warranties_end_date ON warranties(end_date);
-CREATE INDEX idx_warranty_claims_warranty ON warranty_claims(warranty_id);
+CREATE INDEX IF NOT EXISTS idx_project_closeout_project ON project_closeout(project_id);
+CREATE INDEX IF NOT EXISTS idx_closeout_items_closeout ON closeout_items(closeout_id);
+CREATE INDEX IF NOT EXISTS idx_warranties_project ON warranties(project_id);
+CREATE INDEX IF NOT EXISTS idx_warranties_status ON warranties(status);
+CREATE INDEX IF NOT EXISTS idx_warranties_end_date ON warranties(end_date);
+CREATE INDEX IF NOT EXISTS idx_warranty_claims_warranty ON warranty_claims(warranty_id);
 
 -- ============================================================================
 -- 6. GLOBAL AUDIT LOG (SOC 2 Compliance)
@@ -473,11 +473,11 @@ CREATE TABLE IF NOT EXISTS audit_log (
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
-CREATE INDEX idx_audit_log_org ON audit_log(organization_id);
-CREATE INDEX idx_audit_log_user ON audit_log(user_id);
-CREATE INDEX idx_audit_log_action ON audit_log(action);
-CREATE INDEX idx_audit_log_resource ON audit_log(resource_type, resource_id);
-CREATE INDEX idx_audit_log_created ON audit_log(created_at);
+CREATE INDEX IF NOT EXISTS idx_audit_log_org ON audit_log(organization_id);
+CREATE INDEX IF NOT EXISTS idx_audit_log_user ON audit_log(user_id);
+CREATE INDEX IF NOT EXISTS idx_audit_log_action ON audit_log(action);
+CREATE INDEX IF NOT EXISTS idx_audit_log_resource ON audit_log(resource_type, resource_id);
+CREATE INDEX IF NOT EXISTS idx_audit_log_created ON audit_log(created_at);
 
 -- ============================================================================
 -- 7. CUSTOM FIELDS FRAMEWORK
@@ -521,9 +521,9 @@ CREATE TABLE IF NOT EXISTS custom_field_values (
   UNIQUE(field_definition_id, entity_id)
 );
 
-CREATE INDEX idx_custom_field_defs_org ON custom_field_definitions(organization_id, entity_type);
-CREATE INDEX idx_custom_field_values_entity ON custom_field_values(entity_type, entity_id);
-CREATE INDEX idx_custom_field_values_def ON custom_field_values(field_definition_id);
+CREATE INDEX IF NOT EXISTS idx_custom_field_defs_org ON custom_field_definitions(organization_id, entity_type);
+CREATE INDEX IF NOT EXISTS idx_custom_field_values_entity ON custom_field_values(entity_type, entity_id);
+CREATE INDEX IF NOT EXISTS idx_custom_field_values_def ON custom_field_values(field_definition_id);
 
 -- ============================================================================
 -- 8. INTEGRATION FRAMEWORK / APP MARKETPLACE
@@ -584,10 +584,10 @@ CREATE TABLE IF NOT EXISTS api_keys (
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
-CREATE INDEX idx_integrations_org ON integrations(organization_id);
-CREATE INDEX idx_integrations_type ON integrations(integration_type);
-CREATE INDEX idx_integrations_status ON integrations(status);
-CREATE INDEX idx_integration_logs_integration ON integration_logs(integration_id);
-CREATE INDEX idx_integration_logs_created ON integration_logs(created_at);
-CREATE INDEX idx_api_keys_org ON api_keys(organization_id);
-CREATE INDEX idx_api_keys_prefix ON api_keys(key_prefix);
+CREATE INDEX IF NOT EXISTS idx_integrations_org ON integrations(organization_id);
+CREATE INDEX IF NOT EXISTS idx_integrations_type ON integrations(integration_type);
+CREATE INDEX IF NOT EXISTS idx_integrations_status ON integrations(status);
+CREATE INDEX IF NOT EXISTS idx_integration_logs_integration ON integration_logs(integration_id);
+CREATE INDEX IF NOT EXISTS idx_integration_logs_created ON integration_logs(created_at);
+CREATE INDEX IF NOT EXISTS idx_api_keys_org ON api_keys(organization_id);
+CREATE INDEX IF NOT EXISTS idx_api_keys_prefix ON api_keys(key_prefix);

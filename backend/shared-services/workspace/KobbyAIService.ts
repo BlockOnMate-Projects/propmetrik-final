@@ -321,7 +321,7 @@ function buildSystemPrompt(ctx: KobbyContext): string {
         .map((m) => `[${m.time}] ${m.sender}: ${m.content}`)
         .join('\n');
 
-    return `You are Kobby AI, PropMetrik's embedded real estate intelligence assistant.
+    return `You are Kobby AI, PROPMETRIK's embedded real estate intelligence assistant.
 You are operating inside the Workspace for:
   Entity Type: ${ctx.entityType}
   Entity Name: ${ctx.entityName}
@@ -336,7 +336,7 @@ ${chatSection || 'No recent messages'}
 ${ctx.marketData ? `MARKET CONTEXT:\n${JSON.stringify(ctx.marketData, null, 2)}` : ''}
 
 RULES:
-- Focus exclusively on PropMetrik data for ${ctx.entityType} "${ctx.entityName}"
+- Focus exclusively on PROPMETRIK data for ${ctx.entityType} "${ctx.entityName}"
 - Ground every answer in the provided data. If data is missing, say so explicitly
 - Be concise and actionable: use bullet points, numbers, GHS currency, dates
 - Ghana/West Africa real estate context applies to all market reasoning
@@ -349,7 +349,7 @@ You MUST respond with a valid JSON object matching this exact schema:
 {
   "answer": "Your detailed markdown response here",
   "confidence": 0.95,
-  "sources": ["PropMetrik Database: Project", "Market Trend Report"],
+  "sources": ["PROPMETRIK Database: Project", "Market Trend Report"],
   "followUpSuggestions": ["Tell me about the budget phase", "Show me comparable properties"],
   "dataPoints": [
     { "metric": "Total Spent", "value": "GHS 1,200,000", "source": "Project Expenses" }
@@ -372,7 +372,7 @@ class KobbyAIServiceImpl {
         entityType: EntityType,
         entityId: string,
         workspaceId: string,
-        organizationName = 'PropMetrik Client'
+        organizationName = 'PROPMETRIK Client'
     ): Promise<KobbyContext> {
         // Fetch entity data + recent chat in parallel
         const [entityData, messageHistory] = await Promise.allSettled([
@@ -472,7 +472,7 @@ class KobbyAIServiceImpl {
             return {
                 answer: parsed.answer || 'I could not generate a response for that query.',
                 confidence: parsed.confidence || 0.8,
-                sources: parsed.sources || ['PropMetrik Entity Data'],
+                sources: parsed.sources || ['PROPMETRIK Entity Data'],
                 followUpSuggestions: parsed.followUpSuggestions || [],
                 dataPoints: (parsed.dataPoints || []).slice(0, 5),
             };
@@ -491,7 +491,7 @@ class KobbyAIServiceImpl {
         return {
             answer: this.buildFallbackResponse(userQuery, context),
             confidence: 0.5,
-            sources: ['PropMetrik entity data (AI Offline)'],
+            sources: ['PROPMETRIK entity data (AI Offline)'],
             followUpSuggestions: ['Check the entity dashboard for more details'],
             dataPoints: [],
         };
@@ -532,7 +532,7 @@ class KobbyAIServiceImpl {
         }
 
         // Generic fallback
-        return `I'm analyzing the ${entityType} **${entityName}** based on live PropMetrik data.\n\n${JSON.stringify(entityData, null, 2)}\n\n*Note: The AI assistant is temporarily offline. Showing raw data instead.*`;
+        return `I'm analyzing the ${entityType} **${entityName}** based on live PROPMETRIK data.\n\n${JSON.stringify(entityData, null, 2)}\n\n*Note: The AI assistant is temporarily offline. Showing raw data instead.*`;
     }
 
     /**

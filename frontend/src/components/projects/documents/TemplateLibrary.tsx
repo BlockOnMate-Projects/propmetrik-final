@@ -27,6 +27,7 @@ import {
   Home
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { authedFetch } from '@/lib/authed-fetch';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -142,7 +143,7 @@ const templateApi = {
   getTemplates: async (category?: string): Promise<DocumentTemplate[]> => {
     const url = new URL(`${API_URL}/projects/documents/templates`);
     if (category) url.searchParams.set('category', category);
-    const response = await fetch(url.toString());
+    const response = await authedFetch(url.toString());
     if (!response.ok) throw new Error('Failed to fetch templates');
     return response.json();
   },
@@ -156,7 +157,7 @@ const templateApi = {
       folder_id?: string;
     }
   ) => {
-    const response = await fetch(`${API_URL}/projects/${projectId}/documents/from-template`, {
+    const response = await authedFetch(`${API_URL}/projects/${projectId}/documents/from-template`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({

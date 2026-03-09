@@ -228,7 +228,7 @@ export default function LeaseEnvelopePage() {
                     src={getIframeUrl()}
                     className="w-full h-full border-0"
                     style={{ minHeight: 'calc(100vh - 80px)' }}
-                    title="PropMetrik E-Sign"
+                    title="PROPMETRIK E-Sign"
                     onLoad={() => {
                         // Send auth token when iframe loads
                         const token = getAuthToken()

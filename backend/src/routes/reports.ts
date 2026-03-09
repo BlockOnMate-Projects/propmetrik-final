@@ -20,6 +20,8 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import { logger } from '../utils/logger';
 import { pool } from '../database';
+import { scanUploadedFiles } from '../middleware/virusScan';
+import { authenticate } from '../middleware/auth';
 import {
   reportService,
   ReportStatus,
@@ -106,6 +108,51 @@ const validateCreateReport = (req: Request, res: Response, next: NextFunction) =
 
   next();
 };
+
+// =====================================================
+// PUBLIC ENDPOINTS (no auth required — verification)
+// These MUST be defined BEFORE router.use(authenticate)
+// =====================================================
+
+/**
+ * GET /api/reports/verify/:hash
+ * Public: Verify report by digital seal hash (QR code verification)
+ */
+router.get('/verify/:hash', async (req: Request, res: Response) => {
+  try {
+    const hash = req.params.hash;
+    const ipAddress = req.ip || req.headers['x-forwarded-for'] as string;
+    const result = await approvalService.verifyByHash(hash);
+    if (result.valid && result.report) {
+      await auditLogService.logVerified(result.report.id, ipAddress, true);
+    }
+    res.json({ hash, ...result });
+  } catch (error: any) {
+    logger.error('Failed to verify by hash', { hash: req.params.hash, error: error.message });
+    res.status(500).json({ error: 'Internal Server Error', message: 'Failed to verify report' });
+  }
+});
+
+/**
+ * GET /api/reports/:id/verify
+ * Public: Verify report by ID
+ */
+router.get('/:id/verify', validateUUID('id'), async (req: Request, res: Response) => {
+  try {
+    const ipAddress = req.ip || req.headers['x-forwarded-for'] as string;
+    const result = await approvalService.verifyReportById(req.params.id);
+    await auditLogService.logVerified(req.params.id, ipAddress, result.valid);
+    res.json({ report_id: req.params.id, ...result });
+  } catch (error: any) {
+    logger.error('Failed to verify report', { reportId: req.params.id, error: error.message });
+    res.status(500).json({ error: 'Internal Server Error', message: 'Failed to verify report' });
+  }
+});
+
+// =====================================================
+// AUTH GUARD — all routes below require authentication
+// =====================================================
+router.use(authenticate);
 
 // =====================================================
 // REPORT CRUD ENDPOINTS
@@ -1278,6 +1325,7 @@ router.post(
   '/:id/photos/upload',
   validateUUID('id'),
   photoUpload.array('photos', 10),
+  scanUploadedFiles,
   async (req: Request, res: Response) => {
     try {
       const files = req.files as Express.Multer.File[];
@@ -1922,69 +1970,8 @@ router.get('/:id/download/docx', validateUUID('id'), async (req: Request, res: R
 });
 
 // =====================================================
-// PHASE 4: VERIFICATION ENDPOINTS
+// PHASE 4: INTEGRITY & QR CODE ENDPOINTS
 // =====================================================
-
-/**
- * GET /api/reports/:id/verify
- * Verify report by ID
- */
-router.get('/:id/verify', validateUUID('id'), async (req: Request, res: Response) => {
-  try {
-    const ipAddress = req.ip || req.headers['x-forwarded-for'] as string;
-
-    const result = await approvalService.verifyReportById(req.params.id);
-
-    // Log verification attempt
-    await auditLogService.logVerified(req.params.id, ipAddress, result.valid);
-
-    res.json({
-      report_id: req.params.id,
-      ...result,
-    });
-  } catch (error: any) {
-    logger.error('Failed to verify report', {
-      reportId: req.params.id,
-      error: error.message,
-    });
-    res.status(500).json({
-      error: 'Internal Server Error',
-      message: 'Failed to verify report',
-    });
-  }
-});
-
-/**
- * GET /api/reports/verify/:hash
- * Verify report by digital seal hash
- */
-router.get('/verify/:hash', async (req: Request, res: Response) => {
-  try {
-    const hash = req.params.hash;
-    const ipAddress = req.ip || req.headers['x-forwarded-for'] as string;
-
-    const result = await approvalService.verifyByHash(hash);
-
-    if (result.valid && result.report) {
-      // Log verification
-      await auditLogService.logVerified(result.report.id, ipAddress, true);
-    }
-
-    res.json({
-      hash,
-      ...result,
-    });
-  } catch (error: any) {
-    logger.error('Failed to verify by hash', {
-      hash: req.params.hash,
-      error: error.message,
-    });
-    res.status(500).json({
-      error: 'Internal Server Error',
-      message: 'Failed to verify report',
-    });
-  }
-});
 
 /**
  * GET /api/reports/:id/integrity

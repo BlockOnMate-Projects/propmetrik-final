@@ -55,7 +55,7 @@ async function runProactiveSweep() {
                         metadata: {
                             query: 'Proactive System Sweep',
                             confidence: 1.0,
-                            sources: [`PropMetrik ${ws.entity_type} data`],
+                            sources: [`PROPMETRIK ${ws.entity_type} data`],
                             followUpSuggestions: [
                                 `Show me the full ${ws.entity_type} dashboard`,
                                 'How can we resolve this delay?'

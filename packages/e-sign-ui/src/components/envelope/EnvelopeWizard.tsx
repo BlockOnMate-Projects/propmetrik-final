@@ -52,7 +52,7 @@ interface CurrentUser {
   email: string;
 }
 
-// External document data from PropMetrik integration
+// External document data from PROPMETRIK integration
 export interface ExternalDocumentData {
   documentUrl: string;
   documentKey: string;
@@ -108,7 +108,7 @@ export default function EnvelopeWizard({ onComplete, onCancel, currentUser, exte
   const [signedFields, setSignedFields] = useState<Set<string>>(new Set());
   const [isLoadingExternalDoc, setIsLoadingExternalDoc] = useState(false);
 
-  // Load external document if provided (from PropMetrik integration)
+  // Load external document if provided (from PROPMETRIK integration)
   useEffect(() => {
     if (externalDocument) {
       loadExternalDocument(externalDocument);

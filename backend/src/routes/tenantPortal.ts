@@ -12,6 +12,7 @@
 
 import { Router, Request, Response, NextFunction } from 'express';
 import multer from 'multer';
+import { scanUploadedFile, scanUploadedFiles } from '../middleware/virusScan';
 import { tenantAuthService, AuthMethod } from '../services/property-management/auth/tenantAuthService';
 import { keycloakTenantOnboardingService } from '../services/property-management/auth/keycloakTenantOnboardingService';
 import { rentScheduleService } from '../services/property-management/rent-collection/rentScheduleService';
@@ -1270,7 +1271,7 @@ router.get('/maintenance/:tenancyId', requireTenantAuth, asyncHandler(async (req
  * POST /api/v1/tenant-portal/maintenance
  * Submit a maintenance request
  */
-router.post('/maintenance', requireTenantAuth, upload.array('images', 5), asyncHandler(async (req: Request, res: Response) => {
+router.post('/maintenance', requireTenantAuth, upload.array('images', 5), scanUploadedFiles, asyncHandler(async (req: Request, res: Response) => {
     const tenant = (req as any).tenant;
     const { tenancyId, title, category, description, priority = 'medium', photos } = req.body;
 
@@ -1715,7 +1716,7 @@ router.post('/notifications/mark-all-read', requireTenantAuth, asyncHandler(asyn
  * POST /api/v1/tenant-portal/documents/upload
  * Upload a document (ID card, passport, etc.)
  */
-router.post('/documents/upload', requireTenantAuth, upload.single('file'), asyncHandler(async (req: Request, res: Response) => {
+router.post('/documents/upload', requireTenantAuth, upload.single('file'), scanUploadedFile, asyncHandler(async (req: Request, res: Response) => {
     const tenant = (req as any).tenant;
     const file = (req as any).file;
     const { tenancyId, documentType, title, description } = req.body;

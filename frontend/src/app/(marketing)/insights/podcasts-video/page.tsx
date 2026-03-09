@@ -64,7 +64,7 @@ export default function InsightsPodcastsVideoPage() {
             <div className="text-sm font-bold text-primary uppercase tracking-[0.2em] mb-4">Listen &amp; Watch</div>
             <h1 className="text-5xl md:text-7xl font-bold tracking-tight text-white mb-5">Podcasts &amp; Video</h1>
             <p className="text-zinc-400 text-lg">
-              PropMetrik Perspectives podcast, webinar recordings, and video market commentary from our analysts.
+              PROPMETRIK Perspectives podcast, webinar recordings, and video market commentary from our analysts.
             </p>
           </div>
         </div>

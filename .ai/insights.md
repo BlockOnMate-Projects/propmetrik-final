@@ -54,7 +54,7 @@ The original architecture listed 15+ separate publication titles across 6 cadenc
 | **S&P Global** | Market intelligence platform, data subscriptions, research tiers | Terminal data feed, tiered API access, research library |
 | **JLL** | Global Real Estate Perspective (monthly), tech/AI focus, regional outlooks | Ghana Real Estate Outlook (monthly), PropTech commentary |
 | **Knight Frank** | Property sector taxonomy, topic-based navigation, flagship publications (Wealth Report, Africa Horizons) | Sector-based research, Annual Outlook with Horizons appendix |
-| **CBRE** | MarketBeat quarterly reports, weekly podcast, content pillars | Ghana Real Estate Outlook (quarterly), PropMetrik Perspectives podcast |
+| **CBRE** | MarketBeat quarterly reports, weekly podcast, content pillars | Ghana Real Estate Outlook (quarterly), PROPMETRIK Perspectives podcast |
 | **Cushman & Wakefield** | MarketBeat local reports, AI Impact Barometer, topic filters | Regional snapshots within the Outlook, AI-assisted generation |
 | **Colliers** | Property Snapshots (monthly), Capital Markets Snapshots (quarterly), Global Investor Outlook (annual) | Ghana Property Snapshot (weekly), Ghana Real Estate Outlook (annual) |
 
@@ -221,7 +221,7 @@ Three content types do **not** fold into the Outlook or the Snapshot. They have 
 |:---|:---|:---|
 | **Policy Papers** | Ad-hoc | Commissioned or event-driven. Formal PDF format for government and Bank of Ghana. Cannot be auto-generated from market data alone — requires analyst authorship and institutional framing. |
 | **Press Releases** | Ad-hoc | Company and product announcements. Require human initiation and editorial approval. Live in the Press Room, not the Insights section. |
-| **Podcast — PropMetrik Perspectives** | Weekly (Thursday) | Audio format with a distinct production workflow. Covers similar themes to the Snapshot but is a conversation, not a data report. Cross-references the weekly Snapshot for listener continuity. |
+| **Podcast — PROPMETRIK Perspectives** | Weekly (Thursday) | Audio format with a distinct production workflow. Covers similar themes to the Snapshot but is a conversation, not a data report. Cross-references the weekly Snapshot for listener continuity. |
 
 ---
 
@@ -317,7 +317,7 @@ Indices are **embedded, not published separately**. They feed into the Outlook a
 |:---|:---|:---|:---|
 | **Ghana House Price Index (GHPI)** | Monthly | Monthly Outlook § 03 | Headline number on website + Snapshot Index Pulse |
 | **Construction Cost Index (CCI)** | Monthly | Monthly Outlook § 05 | Headline + Snapshot (Week 1 lead) |
-| **PropMetrik Sentiment Index (PSI)** | Weekly | Snapshot Index Pulse | Live ticker on website homepage |
+| **PROPMETRIK Sentiment Index (PSI)** | Weekly | Snapshot Index Pulse | Live ticker on website homepage |
 | **Ghana Housing Affordability (GHAI)** | Quarterly | Quarterly Outlook § 03 | Headline number + chart on /indices page |
 | **Ghana Commercial Property (GCPI)** | Quarterly | Quarterly Outlook § 04 | Headline + chart on /indices page |
 | **Ghana Property Risk Score (GPRS)** | Quarterly | Quarterly Outlook § 08 | Risk map on /indices page |
@@ -347,7 +347,7 @@ With two clear products, the website navigation collapses from a sprawling multi
 | **Sectors** | Residential Sales · Residential Lettings · Office · Retail · Industrial & Logistics · Hospitality · Land · Infrastructure & Mixed-Use · Healthcare & Education |
 | **Data Terminal** | Live Market Tickers · Price Heatmaps · Investment Analytics · Comparables · Index Dashboard (Professional subscribers) |
 | **Press & Media** | Press Releases · In the Media · Media Kit · Data for Journalists · Expert Commentary |
-| **Events** | Upcoming Webinars · Past Webinars · Podcast Archive (PropMetrik Perspectives) |
+| **Events** | Upcoming Webinars · Past Webinars · Podcast Archive (PROPMETRIK Perspectives) |
 
 ### 9.2 Footer Structure
 
@@ -803,7 +803,7 @@ household can afford only 38% of the median home price. Construction costs
 have moderated, with the CCI declining 1.8% month-over-month, which may
 provide relief to the supply pipeline in H2 2026."
 
-— PropMetrik Research, [Auto-Date]
+— PROPMETRIK Research, [Auto-Date]
    Attribution: PROPMETRIK Ghana Real Estate Intelligence
 ```
 

@@ -17,9 +17,15 @@ import {
 } from '../services/project-management/teamService';
 import { pool } from '../database';
 import { logger } from '../utils/logger';
+import { registerPMParamValidation, requirePMWrite } from '../middleware/pmAuth';
+import { validate } from '../middleware/validation';
+import { addTeamMemberSchema, updateTeamMemberSchema } from '../middleware/pmProjectValidation';
 
 const ts = teamService as any;
 const router = Router();
+
+// Register UUID parameter validation
+registerPMParamValidation(router);
 
 // ============================================================================
 // TEAM MEMBERS
@@ -29,7 +35,7 @@ const router = Router();
  * POST /team/members
  * Add a team member to a project
  */
-router.post('/members', async (req: Request, res: Response) => {
+router.post('/members', requirePMWrite, validate(addTeamMemberSchema), async (req: Request, res: Response) => {
   try {
     const userId = (req as any).user?.id || req.body.addedBy;
     
@@ -194,7 +200,7 @@ router.get('/projects/:projectId/members', async (req: Request, res: Response) =
  * PUT /team/members/:id
  * Update a team member
  */
-router.put('/members/:id', async (req: Request, res: Response) => {
+router.put('/members/:id', requirePMWrite, validate(updateTeamMemberSchema), async (req: Request, res: Response) => {
   try {
     const member = await ts.updateTeamMember(req.params.id, req.body);
     
@@ -215,7 +221,7 @@ router.put('/members/:id', async (req: Request, res: Response) => {
  * PUT /team/members/:id/permissions
  * Update team member permissions
  */
-router.put('/members/:id/permissions', async (req: Request, res: Response) => {
+router.put('/members/:id/permissions', requirePMWrite, async (req: Request, res: Response) => {
   try {
     const { permissions } = req.body;
     
@@ -238,7 +244,7 @@ router.put('/members/:id/permissions', async (req: Request, res: Response) => {
  * POST /team/members/:id/deactivate
  * Deactivate a team member
  */
-router.post('/members/:id/deactivate', async (req: Request, res: Response) => {
+router.post('/members/:id/deactivate', requirePMWrite, async (req: Request, res: Response) => {
   try {
     const member = await ts.deactivateMember(req.params.id);
     
@@ -259,7 +265,7 @@ router.post('/members/:id/deactivate', async (req: Request, res: Response) => {
  * POST /team/members/:id/reactivate
  * Reactivate a team member
  */
-router.post('/members/:id/reactivate', async (req: Request, res: Response) => {
+router.post('/members/:id/reactivate', requirePMWrite, async (req: Request, res: Response) => {
   try {
     const member = await ts.reactivateMember(req.params.id);
     
@@ -280,7 +286,7 @@ router.post('/members/:id/reactivate', async (req: Request, res: Response) => {
  * DELETE /team/members/:id
  * Remove a team member from project
  */
-router.delete('/members/:id', async (req: Request, res: Response) => {
+router.delete('/members/:id', requirePMWrite, async (req: Request, res: Response) => {
   try {
     await teamService.removeTeamMember(req.params.id);
     
@@ -361,7 +367,7 @@ router.get('/roles/:category', async (req: Request, res: Response) => {
  * POST /team/members/:id/availability
  * Set team member availability
  */
-router.post('/members/:id/availability', async (req: Request, res: Response) => {
+router.post('/members/:id/availability', requirePMWrite, async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
     const { date, startTime, endTime, isAvailable, notes } = req.body;
@@ -445,7 +451,7 @@ router.get('/projects/:projectId/availability', async (req: Request, res: Respon
  * POST /team/communications
  * Log a communication
  */
-router.post('/communications', async (req: Request, res: Response) => {
+router.post('/communications', requirePMWrite, async (req: Request, res: Response) => {
   try {
     const userId = (req as any).user?.id || req.body.loggedBy;
     
@@ -561,7 +567,7 @@ router.get('/projects/:projectId/communications', async (req: Request, res: Resp
  * PUT /team/communications/:id
  * Update a communication log
  */
-router.put('/communications/:id', async (req: Request, res: Response) => {
+router.put('/communications/:id', requirePMWrite, async (req: Request, res: Response) => {
   try {
     const log = await ts.updateCommunication(req.params.id, req.body);
     
@@ -582,7 +588,7 @@ router.put('/communications/:id', async (req: Request, res: Response) => {
  * POST /team/communications/:id/complete-followup
  * Mark follow-up as complete
  */
-router.post('/communications/:id/complete-followup', async (req: Request, res: Response) => {
+router.post('/communications/:id/complete-followup', requirePMWrite, async (req: Request, res: Response) => {
   try {
     const log = await ts.completeFollowUp(req.params.id);
     
@@ -626,7 +632,7 @@ router.get('/follow-ups/pending', async (req: Request, res: Response) => {
  * DELETE /team/communications/:id
  * Delete a communication log
  */
-router.delete('/communications/:id', async (req: Request, res: Response) => {
+router.delete('/communications/:id', requirePMWrite, async (req: Request, res: Response) => {
   try {
     await ts.deleteCommunication(req.params.id);
     

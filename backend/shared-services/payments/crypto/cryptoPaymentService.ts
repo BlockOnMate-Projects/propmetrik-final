@@ -31,6 +31,18 @@ import { exchangeRateService } from './exchangeRateService';
 import contractArtifact from './abi/PROPMETRIKPayments.json';
 const contractAbi = contractArtifact.abi;
 
+/**
+ * Map CryptoPaymentType → service_type used in payment_accounts.
+ * This determines the on-chain entity hash: keccak256(entityType, entityId, serviceType)
+ * so each service gets its own on-chain wallet/recipient entry.
+ */
+const PAYMENT_TYPE_TO_SERVICE: Record<string, string> = {
+  rent: 'property_management',
+  deal: 'deals',
+  project: 'project_management',
+  valuation: 'valuation',
+};
+
 // Network name map for ethers provider
 const CHAIN_NAMES: Record<number, string> = {
   1: 'mainnet',
@@ -81,6 +93,20 @@ class CryptoPaymentService {
   /** Check if crypto rail is configured and ready */
   isConfigured(): boolean {
     return this.config !== null && this.contract !== null;
+  }
+
+  /**
+   * Compute the on-chain entity ID hash.
+   * v2.3+: includes serviceType so each service (rent, deal, project, valuation)
+   * gets its own on-chain wallet/recipient entry — mirrors Paystack service isolation.
+   *
+   * Hash = keccak256(abi.encodePacked(entityType, entityId, serviceType))
+   */
+  private computeEntityIdHash(entityType: string, entityId: string, serviceType: string): string {
+    return ethers.solidityPackedKeccak256(
+      ['string', 'string', 'string'],
+      [entityType, entityId, serviceType],
+    );
   }
 
   // =======================================================
@@ -138,11 +164,9 @@ class CryptoPaymentService {
     const totalSubunits = principalSubunits + feeSubunits;
     const totalAmount = principalAmount + feeAmount;
 
-    // --- Build entity ID (matches contract's keccak256(entityType, entityId)) ---
-    const recipientEntityId = ethers.solidityPackedKeccak256(
-      ['string', 'string'],
-      [entityType, entityId],
-    );
+    // --- Build entity ID (v2.3: includes serviceType for per-service wallet isolation) ---
+    const serviceType = PAYMENT_TYPE_TO_SERVICE[paymentType] || 'property_management';
+    const recipientEntityId = this.computeEntityIdHash(entityType, entityId, serviceType);
 
     // --- Get recipient wallet from contract ---
     const recipientWallet: string = await this.contract!.getRecipientWallet(recipientEntityId);
@@ -299,21 +323,20 @@ class CryptoPaymentService {
   /**
    * Register a PROPMETRIK entity (org, deal manager, etc.) on-chain.
    * Only callable by contract owner (admin signer).
+   * v2.3: serviceType included in entity hash for per-service wallet isolation.
    */
   async registerRecipientWallet(
     entityType: string,
     entityId: string,
     walletAddress: string,
+    serviceType: string = 'property_management',
   ): Promise<{ txHash: string; entityIdHash: string }> {
     this.ensureConfigured();
     if (!this.adminSigner) {
       throw new Error('Admin signer not configured (CRYPTO_ADMIN_PRIVATE_KEY missing)');
     }
 
-    const entityIdHash = ethers.solidityPackedKeccak256(
-      ['string', 'string'],
-      [entityType, entityId],
-    );
+    const entityIdHash = this.computeEntityIdHash(entityType, entityId, serviceType);
 
     const contractWithSigner = this.contract!.connect(this.adminSigner) as ethers.Contract;
     const tx = await contractWithSigner.registerRecipient(entityIdHash, walletAddress);
@@ -339,14 +362,12 @@ class CryptoPaymentService {
 
   /**
    * Look up a recipient wallet from the on-chain registry.
+   * v2.3: serviceType included in entity hash for per-service lookup.
    */
-  async getRecipientWallet(entityType: string, entityId: string): Promise<string | null> {
+  async getRecipientWallet(entityType: string, entityId: string, serviceType: string = 'property_management'): Promise<string | null> {
     this.ensureConfigured();
 
-    const entityIdHash = ethers.solidityPackedKeccak256(
-      ['string', 'string'],
-      [entityType, entityId],
-    );
+    const entityIdHash = this.computeEntityIdHash(entityType, entityId, serviceType);
 
     const wallet: string = await this.contract!.getRecipientWallet(entityIdHash);
     return wallet === ethers.ZeroAddress ? null : wallet;
@@ -368,16 +389,14 @@ class CryptoPaymentService {
     entityType: string,
     entityId: string,
     preferredTokenAddress: string,
+    serviceType: string = 'property_management',
   ): Promise<{ txHash: string; entityIdHash: string }> {
     this.ensureConfigured();
     if (!this.adminSigner) {
       throw new Error('Admin signer not configured (CRYPTO_ADMIN_PRIVATE_KEY missing)');
     }
 
-    const entityIdHash = ethers.solidityPackedKeccak256(
-      ['string', 'string'],
-      [entityType, entityId],
-    );
+    const entityIdHash = this.computeEntityIdHash(entityType, entityId, serviceType);
 
     const contractWithSigner = this.contract!.connect(this.adminSigner) as ethers.Contract;
     const tx = await contractWithSigner.setRecipientPreferredToken(entityIdHash, preferredTokenAddress);
@@ -403,13 +422,10 @@ class CryptoPaymentService {
   /**
    * Look up a recipient's preferred token from the on-chain registry.
    */
-  async getRecipientPreferredToken(entityType: string, entityId: string): Promise<string | null> {
+  async getRecipientPreferredToken(entityType: string, entityId: string, serviceType: string = 'property_management'): Promise<string | null> {
     this.ensureConfigured();
 
-    const entityIdHash = ethers.solidityPackedKeccak256(
-      ['string', 'string'],
-      [entityType, entityId],
-    );
+    const entityIdHash = this.computeEntityIdHash(entityType, entityId, serviceType);
 
     const preferredToken: string = await this.contract!.recipientPreferredTokens(entityIdHash);
     return preferredToken === ethers.ZeroAddress ? null : preferredToken;

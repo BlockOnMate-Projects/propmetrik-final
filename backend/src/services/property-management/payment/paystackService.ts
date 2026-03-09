@@ -327,15 +327,16 @@ export class PaystackService {
      */
     async getPaymentAccountConfig(
         entityId: string,
-        entityType: string = 'organization'
+        entityType: string = 'organization',
+        serviceType: string = 'property_management'
     ): Promise<PaymentAccountConfig | null> {
         try {
-            // 1. Try new unified payment_accounts table
+            // 1. Try new unified payment_accounts table (filtered by service_type)
             const newResult = await pool.query(
                 `SELECT * FROM payment_accounts
-                 WHERE entity_id = $1 AND entity_type = $2 AND is_active = TRUE
+                 WHERE entity_id = $1 AND entity_type = $2 AND service_type = $3 AND is_active = TRUE
                  LIMIT 1`,
-                [entityId, entityType]
+                [entityId, entityType, serviceType]
             );
 
             if (newResult.rows.length > 0) {
@@ -383,7 +384,8 @@ export class PaystackService {
         accountNumber: string,
         businessName: string,
         contactEmail?: string,
-        contactPhone?: string
+        contactPhone?: string,
+        serviceType: string = 'property_management'
     ): Promise<{ success: boolean; subaccountCode?: string; error?: string }> {
         try {
             // First verify the account
@@ -413,18 +415,32 @@ export class PaystackService {
                 return { success: false, error: 'Failed to create sub-account with Paystack' };
             }
 
+            // Determine default fees based on service type (must match feeEngine defaults)
+            // rent (property_management): max_of 1% / GH₵25
+            // deal (deals):               percentage 0.25% / GH₵0
+            // project (project_management): percentage 0.25% / GH₵0
+            // valuation:                   percentage 2.5% / GH₵0
+            const feeDefaults: Record<string, { pct: number; flat: number }> = {
+                property_management: { pct: 0.0100, flat: 25.00 },
+                project_management:  { pct: 0.0025, flat: 0.00 },
+                deals:               { pct: 0.0025, flat: 0.00 },
+                valuation:           { pct: 0.0250, flat: 0.00 },
+            };
+            const { pct: defaultFeePercentage, flat: defaultFeeFlat } =
+                feeDefaults[serviceType] || feeDefaults.property_management;
+
             // Store in BOTH tables (new + legacy) for backward compatibility
-            // New unified table
+            // New unified table (keyed by entity_id + entity_type + service_type)
             await pool.query(
                 `INSERT INTO payment_accounts (
-                    entity_id, entity_type,
+                    entity_id, entity_type, service_type,
                     paystack_subaccount_code,
                     account_number, bank_code, bank_name, account_name,
                     settlement_method,
                     platform_fee_percentage, platform_fee_flat,
                     is_verified, verified_at, verification_method
-                ) VALUES ($1, 'organization', $2, $3, $4, $5, $6, 'bank', 0.0100, 25.00, TRUE, NOW(), 'paystack_resolve')
-                ON CONFLICT (entity_id, entity_type)
+                ) VALUES ($1, 'organization', $7, $2, $3, $4, $5, $6, 'bank', $8, $9, TRUE, NOW(), 'paystack_resolve')
+                ON CONFLICT (entity_id, entity_type, service_type)
                 DO UPDATE SET
                     paystack_subaccount_code = EXCLUDED.paystack_subaccount_code,
                     account_number = EXCLUDED.account_number,
@@ -441,7 +457,10 @@ export class PaystackService {
                     accountNumber,
                     bankCode,
                     subaccountResponse.data.settlement_bank,
-                    verification.data.account_name
+                    verification.data.account_name,
+                    serviceType,
+                    defaultFeePercentage,
+                    defaultFeeFlat
                 ]
             );
 

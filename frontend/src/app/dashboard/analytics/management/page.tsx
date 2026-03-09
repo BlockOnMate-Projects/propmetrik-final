@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { cn } from '@/lib/utils';
+import { authedFetch } from '@/lib/authed-fetch';
 import {
   Landmark,
   TrendingUp,
@@ -196,7 +197,7 @@ export default function ManagementMetricsPage() {
         selectedRegion === 'all'
           ? '/api/analytics/management/summary'
           : `/api/analytics/management/summary?region=${selectedRegion}`;
-      const res = await fetch(url, { signal });
+      const res = await authedFetch(url, { signal });
       const json = await res.json();
       if (signal?.aborted) return;
       setData(json.data || null);

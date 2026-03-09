@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { cn } from '@/lib/utils'
+import { authedFetch } from '@/lib/authed-fetch'
 import {
   TrendingUp,
   TrendingDown,
@@ -80,7 +81,7 @@ const PLATFORM_BASE = '/api/analytics/platform'
 
 async function fetchPlatform<T>(endpoint: string, signal?: AbortSignal): Promise<T | null> {
   try {
-    const res = await fetch(`${PLATFORM_BASE}${endpoint}`, { signal })
+    const res = await authedFetch(`${PLATFORM_BASE}${endpoint}`, { signal })
     if (!res.ok) return null
     const json = await res.json()
     return json.data ?? null

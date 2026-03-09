@@ -181,6 +181,11 @@ export interface DevelopmentProject {
   project_manager_name?: string;
   land_property_id?: string;
   milestone_framework_id?: string;
+
+  // Property Owner / Developer
+  developer_name?: string;
+  developer_contact?: string;
+  developer_email?: string;
   
   // Metadata
   hero_image_url?: string;

@@ -4,6 +4,7 @@ import React, { useEffect, useState, useCallback } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { cn, formatCurrency } from '@/lib/utils'
+import { authedFetch } from '@/lib/authed-fetch'
 import {
     Loader2, ArrowLeft, Plus, MapPin, Home, Building2, LandPlot,
     Users, Phone, Mail, Calendar, FileText, ChevronRight, Clock,
@@ -241,7 +242,7 @@ export default function PropertyDetailPage() {
         
         try {
             setIsChangingStage(true)
-            const response = await fetch(`${API_BASE}/crm/properties/${propertyId}/stage`, {
+            const response = await authedFetch(`${API_BASE}/crm/properties/${propertyId}/stage`, {
                 method: 'PATCH',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ stage_id: stageId })
@@ -264,7 +265,7 @@ export default function PropertyDetailPage() {
             setError(null)
 
             // Fetch single property by ID (includes images, description, etc.)
-            const propertyRes = await fetch(`${API_BASE}/crm/properties/${propertyId}`)
+            const propertyRes = await authedFetch(`${API_BASE}/crm/properties/${propertyId}`)
             if (propertyRes.ok) {
                 const foundProperty = await propertyRes.json()
                 if (foundProperty && foundProperty.id) {
@@ -318,7 +319,7 @@ export default function PropertyDetailPage() {
             }
 
             // Fetch deals for this property
-            const dealsRes = await fetch(`${API_BASE}/crm/deals?propertyId=${propertyId}`)
+            const dealsRes = await authedFetch(`${API_BASE}/crm/deals?propertyId=${propertyId}`)
             if (dealsRes.ok) {
                 const dealsData = await dealsRes.json()
                 // Ensure deals is always an array
@@ -330,7 +331,7 @@ export default function PropertyDetailPage() {
             }
 
             // Fetch pipeline stages (use default sales pipeline)
-            const pipelinesRes = await fetch(`${API_BASE}/crm/pipelines?include_stages=true`)
+            const pipelinesRes = await authedFetch(`${API_BASE}/crm/pipelines?include_stages=true`)
             if (pipelinesRes.ok) {
                 const pipelinesData = await pipelinesRes.json()
                 // Ensure pipelinesData is an array
@@ -358,7 +359,7 @@ export default function PropertyDetailPage() {
 
     const fetchPropertyStages = async (propId: string) => {
         try {
-            const response = await fetch(`${API_BASE}/crm/properties/${propId}/stages`)
+            const response = await authedFetch(`${API_BASE}/crm/properties/${propId}/stages`)
             if (response.ok) {
                 const data = await response.json()
                 if (data.stages) {
@@ -500,7 +501,7 @@ export default function PropertyDetailPage() {
                                                 const formData = new FormData()
                                                 Array.from(e.target.files).forEach(f => formData.append('images', f))
                                                 try {
-                                                    const res = await fetch(`${API_BASE}/crm/properties/${propertyId}/images`, {
+                                                    const res = await authedFetch(`${API_BASE}/crm/properties/${propertyId}/images`, {
                                                         method: 'POST',
                                                         body: formData,
                                                     })
@@ -530,7 +531,7 @@ export default function PropertyDetailPage() {
                                             const formData = new FormData()
                                             Array.from(e.target.files).forEach(f => formData.append('images', f))
                                             try {
-                                                const res = await fetch(`${API_BASE}/crm/properties/${propertyId}/images`, {
+                                                const res = await authedFetch(`${API_BASE}/crm/properties/${propertyId}/images`, {
                                                     method: 'POST',
                                                     body: formData,
                                                 })
@@ -565,7 +566,7 @@ export default function PropertyDetailPage() {
                                                 onClick={async (e) => {
                                                     e.stopPropagation()
                                                     try {
-                                                        const res = await fetch(`${API_BASE}/crm/properties/${propertyId}/images/${img.id}`, { method: 'DELETE' })
+                                                        const res = await authedFetch(`${API_BASE}/crm/properties/${propertyId}/images/${img.id}`, { method: 'DELETE' })
                                                         if (res.ok) loadPropertyData()
                                                     } catch (err) {
                                                         console.error('Delete failed:', err)

@@ -365,10 +365,30 @@ export interface TeamMember {
 // API HELPER
 // =====================================================
 
-// Default PM user ID for development - Eric Danso (super_admin)
-const DEFAULT_PM_USER_ID = 'ed4a50d7-a1b2-4c3d-8e5f-6a7b8c9d0e1f';
-// Default organization ID for development
-const DEFAULT_ORG_ID = '00000000-0000-0000-0000-000000000001';
+/**
+ * Module-level token storage.
+ * Components call configureAuth(token) with the NextAuth session token.
+ * This replaces the old localStorage-based PM Portal auth.
+ */
+let _sessionToken: string | null = null;
+
+/**
+ * Set the auth token for API requests.
+ * Call this from a React component/layout that has access to the NextAuth session.
+ */
+export function configureAuth(token: string | null) {
+  _sessionToken = token;
+}
+
+/**
+ * Get the authentication token.
+ * Priority: 1) Explicitly configured session token (NextAuth)
+ *           2) Legacy PM Portal localStorage token (migration fallback)
+ */
+function getAuthToken(): string | null {
+  if (typeof window === 'undefined') return null;
+  return _sessionToken || localStorage.getItem('pm_access_token') || null;
+}
 
 async function apiRequest<T>(
   endpoint: string,
@@ -377,11 +397,18 @@ async function apiRequest<T>(
   const url = `${API_BASE}${endpoint}`;
   
   try {
+    // Build auth headers from real session token
+    const token = getAuthToken();
+    const authHeaders: Record<string, string> = {
+      'Content-Type': 'application/json',
+    };
+    if (token) {
+      authHeaders['Authorization'] = `Bearer ${token}`;
+    }
+
     const response = await fetch(url, {
       headers: {
-        'Content-Type': 'application/json',
-        'x-user-id': DEFAULT_PM_USER_ID,
-        'x-organization-id': DEFAULT_ORG_ID,
+        ...authHeaders,
         ...options?.headers,
       },
       ...options,
