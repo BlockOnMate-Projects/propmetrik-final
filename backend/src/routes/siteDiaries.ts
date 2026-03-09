@@ -6,9 +6,15 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import { pool } from '../database';
 import { SiteDiaryService } from '../services/project-management/siteDiaryService';
+import { registerPMParamValidation, requirePMWrite } from '../middleware/pmAuth';
+import { validate } from '../middleware/validation';
+import { createSiteDiarySchema, updateSiteDiarySchema } from '../middleware/pmProjectValidation';
 
 const router = Router();
 const service = new SiteDiaryService(pool);
+
+// Register UUID parameter validation
+registerPMParamValidation(router);
 
 // Get all site diaries
 router.get('/', async (req: Request, res: Response, next: NextFunction) => {
@@ -45,9 +51,9 @@ router.get('/:id', async (req: Request, res: Response, next: NextFunction) => {
 });
 
 // Create site diary
-router.post('/', async (req: Request, res: Response, next: NextFunction) => {
+router.post('/', requirePMWrite, validate(createSiteDiarySchema), async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const submittedBy = req.body.submittedBy || req.headers['x-user-id'] as string;
+    const submittedBy = req.body.submittedBy || (req as any).user?.id || (req as any).user?.sub;
     const diary = await service.createSiteDiary({
       ...req.body,
       submittedBy
@@ -59,7 +65,7 @@ router.post('/', async (req: Request, res: Response, next: NextFunction) => {
 });
 
 // Update site diary
-router.put('/:id', async (req: Request, res: Response, next: NextFunction) => {
+router.put('/:id', requirePMWrite, validate(updateSiteDiarySchema), async (req: Request, res: Response, next: NextFunction) => {
   try {
     const diary = await service.updateSiteDiary(req.params.id, req.body);
     if (!diary) {
@@ -72,7 +78,7 @@ router.put('/:id', async (req: Request, res: Response, next: NextFunction) => {
 });
 
 // Delete site diary
-router.delete('/:id', async (req: Request, res: Response, next: NextFunction) => {
+router.delete('/:id', requirePMWrite, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const success = await service.deleteSiteDiary(req.params.id);
     if (!success) {

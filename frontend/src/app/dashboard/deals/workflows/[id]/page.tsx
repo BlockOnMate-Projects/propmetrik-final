@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import Link from 'next/link';
+import { authedFetch } from '@/lib/authed-fetch';
 import {
   ArrowLeft,
   Save,
@@ -106,7 +107,7 @@ export default function WorkflowEditorPage() {
 
   const fetchWorkflow = async () => {
     try {
-      const response = await fetch(`/api/v1/workflows/${workflowId}`);
+      const response = await authedFetch(`/api/v1/workflows/${workflowId}`);
       const data = await response.json();
       if (data.success) {
         setWorkflow(data.data);
@@ -125,7 +126,7 @@ export default function WorkflowEditorPage() {
       const url = isNew ? '/api/v1/workflows' : `/api/v1/workflows/${workflowId}`;
       const method = isNew ? 'POST' : 'PUT';
       
-      const response = await fetch(url, {
+      const response = await authedFetch(url, {
         method,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -158,7 +159,7 @@ export default function WorkflowEditorPage() {
     
     try {
       const endpoint = workflow.is_active ? 'deactivate' : 'activate';
-      const response = await fetch(`/api/v1/workflows/${workflowId}/${endpoint}`, {
+      const response = await authedFetch(`/api/v1/workflows/${workflowId}/${endpoint}`, {
         method: 'POST'
       });
       if (response.ok) {

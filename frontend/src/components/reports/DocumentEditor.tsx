@@ -23,6 +23,7 @@ import {
   ExternalLink,
   CheckCircle2
 } from 'lucide-react';
+import { authedFetch } from '@/lib/authed-fetch';
 
 // =====================================================
 // TYPES
@@ -81,7 +82,7 @@ async function fetchEditorConfig(reportId: string, mode: 'edit' | 'view' = 'edit
   documentServerUrl: string;
   config: EditorConfig;
 }> {
-  const response = await fetch(`${API_BASE}/reports/${reportId}/editor-config?mode=${mode}`, {
+  const response = await authedFetch(`${API_BASE}/reports/${reportId}/editor-config?mode=${mode}`, {
     credentials: 'include',
   });
   
@@ -94,14 +95,14 @@ async function fetchEditorConfig(reportId: string, mode: 'edit' | 'view' = 'edit
 }
 
 async function checkEditorStatus(): Promise<{ available: boolean; serverUrl: string }> {
-  const response = await fetch(`${API_BASE}/reports/editor-status`, {
+  const response = await authedFetch(`${API_BASE}/reports/editor-status`, {
     credentials: 'include',
   });
   return response.json();
 }
 
 async function forceSaveDocument(reportId: string): Promise<void> {
-  const response = await fetch(`${API_BASE}/reports/${reportId}/force-save`, {
+  const response = await authedFetch(`${API_BASE}/reports/${reportId}/force-save`, {
     method: 'POST',
     credentials: 'include',
   });

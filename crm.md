@@ -1,4 +1,4 @@
-# PropMetrik CRM — Enterprise Readiness Audit & Improvement Plan
+# PROPMETRIK CRM — Enterprise Readiness Audit & Improvement Plan
 
 > **Date**: February 21, 2026  
 > **Scope**: Deal Management Module competitive analysis against AscendixRE, DealMerge, RealDealCRM, HubSpot CRM, Twenty CRM (OSS), and erxes (OSS)  
@@ -25,7 +25,7 @@
 ## 1. Executive Summary
 
 ### What's Good
-PropMetrik's CRM backend is **surprisingly robust** — 176 API endpoints, 18 service files, 10+ database tables, full pipeline management with stage-transition enforcement, e-sign integration, commission engine with tiers/splits/clawbacks, sales target gamification, document generation via Handlebars→Puppeteer→PDF, WhatsApp integration, crypto payments, and Ghana-specific localization. The pipeline architecture (24-stage Property Sales, 12-stage Rental, 17-stage Land Acquisition) with enforced `allowed_next_stages` is more sophisticated than most competitors.
+PROPMETRIK's CRM backend is **surprisingly robust** — 176 API endpoints, 18 service files, 10+ database tables, full pipeline management with stage-transition enforcement, e-sign integration, commission engine with tiers/splits/clawbacks, sales target gamification, document generation via Handlebars→Puppeteer→PDF, WhatsApp integration, crypto payments, and Ghana-specific localization. The pipeline architecture (24-stage Property Sales, 12-stage Rental, 17-stage Land Acquisition) with enforced `allowed_next_stages` is more sophisticated than most competitors.
 
 ### What's Broken
 ~~The **frontend fails to expose 70%+ of the backend's capabilities**.~~ After a focused 5-phase implementation effort, the frontend now exposes the majority of backend capabilities including DnD Kanban, inline editing, React Query caching, advanced filtering, bulk operations, AI assistant, email integration, stacking plans, and analytics dashboards. **Remaining gaps**: deal form still uses raw `useState` (contact form migrated to react-hook-form), ~4 secondary components still have hardcoded zinc/amber colors, saved views are client-side only (no backend persistence), no first-run onboarding wizard, no dashboard builder, no deal cloning, no email drip campaigns.
@@ -39,7 +39,7 @@ The **backend is at ~90% of enterprise readiness** (up from 75%). The **frontend
 
 ### Backend Strengths (What Competitors Would Envy)
 
-| Feature | PropMetrik | AscendixRE | DealMerge | HubSpot |
+| Feature | PROPMETRIK | AscendixRE | DealMerge | HubSpot |
 |---------|-----------|------------|-----------|---------|
 | Multi-pipeline with stage enforcement | ✅ 3 seeded + custom | ✅ | ✅ Basic | ✅ |
 | E-sign auto-trigger on stage change | ✅ Unique | ❌ | ❌ | ✅ (via DocuSign addon) |
@@ -82,7 +82,7 @@ The **backend is at ~90% of enterprise readiness** (up from 75%). The **frontend
 
 ### Deal Management Core
 
-| Feature | PropMetrik | AscendixRE | DealMerge | HubSpot | Twenty (OSS) | erxes (OSS) |
+| Feature | PROPMETRIK | AscendixRE | DealMerge | HubSpot | Twenty (OSS) | erxes (OSS) |
 |---------|:---------:|:----------:|:---------:|:-------:|:------------:|:-----------:|
 | Kanban board | ✅ DnD | ✅ DnD | ✅ DnD | ✅ DnD | ✅ DnD | ✅ DnD |
 | Table/List view | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
@@ -98,7 +98,7 @@ The **backend is at ~90% of enterprise readiness** (up from 75%). The **frontend
 
 ### Contact/Relationship Management
 
-| Feature | PropMetrik | AscendixRE | DealMerge | HubSpot | Twenty (OSS) | erxes (OSS) |
+| Feature | PROPMETRIK | AscendixRE | DealMerge | HubSpot | Twenty (OSS) | erxes (OSS) |
 |---------|:---------:|:----------:|:---------:|:-------:|:------------:|:-----------:|
 | Contact management | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | Company management | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
@@ -114,7 +114,7 @@ The **backend is at ~90% of enterprise readiness** (up from 75%). The **frontend
 
 ### Properties & Real Estate Specific
 
-| Feature | PropMetrik | AscendixRE | DealMerge | HubSpot | Twenty | erxes |
+| Feature | PROPMETRIK | AscendixRE | DealMerge | HubSpot | Twenty | erxes |
 |---------|:---------:|:----------:|:---------:|:-------:|:-----:|:-----:|
 | Property management | ✅ | ✅ | ✅ | ❌ | ❌ | ✅ (EE) |
 | Geo/Map search | ⚠️ Backend only | ✅ Ascendix Search | ❌ | ❌ | ❌ | ❌ |
@@ -127,7 +127,7 @@ The **backend is at ~90% of enterprise readiness** (up from 75%). The **frontend
 
 ### Intelligence & Automation
 
-| Feature | PropMetrik | AscendixRE | DealMerge | HubSpot | Twenty | erxes |
+| Feature | PROPMETRIK | AscendixRE | DealMerge | HubSpot | Twenty | erxes |
 |---------|:---------:|:----------:|:---------:|:-------:|:-----:|:-----:|
 | AI assistant/chatbot | ✅ Gemini + fallback | ✅ (Coming) | ✅ | ✅ | ✅ | ✅ |
 | AI note-taking/summarization | ⚠️ Doc summarization | ✅ Voice | ✅ | ✅ | ✅ | ❌ |
@@ -140,7 +140,7 @@ The **backend is at ~90% of enterprise readiness** (up from 75%). The **frontend
 
 ### Platform & UX
 
-| Feature | PropMetrik | AscendixRE | DealMerge | HubSpot | Twenty | erxes |
+| Feature | PROPMETRIK | AscendixRE | DealMerge | HubSpot | Twenty | erxes |
 |---------|:---------:|:----------:|:---------:|:-------:|:-----:|:-----:|
 | Mobile app | ❌ | ✅ iOS/Android | ❌ | ✅ | ❌ | ✅ |
 | Dark mode | ✅ Toggle | ❌ | ❌ | ❌ | ✅ Toggle | ✅ Toggle |
@@ -550,7 +550,7 @@ Every empty page needs:
 ```
 
 Add a **first-run wizard** for new organizations:
-1. "Welcome to PropMetrik CRM" → Choose your pipeline type
+1. "Welcome to PROPMETRIK CRM" → Choose your pipeline type
 2. "Add your first agent" → Quick name/email/phone form
 3. "Import your contacts" → CSV upload or manual entry
 4. "Create a deal" → Pre-filled with sample data they can edit
@@ -759,7 +759,7 @@ Enterprise customers **expect light mode as default** — every competitor defau
 
 ## 9. AI & Intelligence Layer
 
-Every major competitor is adding AI. Here's what would make PropMetrik stand out:
+Every major competitor is adding AI. Here's what would make PROPMETRIK stand out:
 
 ### 9.1 CRM AI Assistant (Conversational) ✅ DONE
 
@@ -942,11 +942,11 @@ Enhanced:
 | **HubSpot** | $0-$5,000/mo | General enterprise |
 | **Twenty CRM** | Free (OSS) | Self-hosted, general |
 | **erxes** | Free (OSS) | Self-hosted, modular |
-| **PropMetrik** | TBD | Ghana → Africa → Global RE |
+| **PROPMETRIK** | TBD | Ghana → Africa → Global RE |
 
 ### Our Positioning
 
-PropMetrik is unique as the **only real estate CRM with**:
+PROPMETRIK is unique as the **only real estate CRM with**:
 - Blockchain transaction recording
 - Cryptocurrency payment acceptance  
 - Ghana-specific legal document generation

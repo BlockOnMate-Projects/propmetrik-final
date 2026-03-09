@@ -71,7 +71,7 @@ export default function SettingsPage() {
 
     const defaultSettings = {
         // General
-        companyName: 'PropMetrik Valuations',
+        companyName: 'PROPMETRIK Valuations',
         ghisRegistration: 'GhIS/REG/2024/001',
         tinNumber: 'C0012345678',
         companyAddress: 'No. 15 Independence Avenue, Accra',

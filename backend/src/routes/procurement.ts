@@ -6,9 +6,15 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import { pool } from '../database';
 import { ProcurementService } from '../services/project-management/procurementService';
+import { registerPMParamValidation, requirePMWrite } from '../middleware/pmAuth';
+import { validate } from '../middleware/validation';
+import { createPurchaseOrderSchema, updatePurchaseOrderSchema } from '../middleware/pmProjectValidation';
 
 const router = Router();
 const service = new ProcurementService(pool);
+
+// Register UUID parameter validation
+registerPMParamValidation(router);
 
 // ============================================================================
 // PURCHASE ORDERS
@@ -52,7 +58,7 @@ router.get('/:id', async (req: Request, res: Response, next: NextFunction) => {
 });
 
 // Create purchase order
-router.post('/', async (req: Request, res: Response, next: NextFunction) => {
+router.post('/', requirePMWrite, validate(createPurchaseOrderSchema), async (req: Request, res: Response, next: NextFunction) => {
   try {
     const createdBy = req.body.createdBy || req.headers['x-user-id'] as string;
     const organizationId = req.body.organizationId || req.headers['x-organization-id'] as string;
@@ -68,7 +74,7 @@ router.post('/', async (req: Request, res: Response, next: NextFunction) => {
 });
 
 // Update purchase order
-router.put('/:id', async (req: Request, res: Response, next: NextFunction) => {
+router.put('/:id', requirePMWrite, validate(updatePurchaseOrderSchema), async (req: Request, res: Response, next: NextFunction) => {
   try {
     const updatedBy = req.body.updatedBy || req.headers['x-user-id'] as string;
     const po = await service.updatePurchaseOrder(req.params.id, req.body, updatedBy);
@@ -82,7 +88,7 @@ router.put('/:id', async (req: Request, res: Response, next: NextFunction) => {
 });
 
 // Submit for approval
-router.post('/:id/submit', async (req: Request, res: Response, next: NextFunction) => {
+router.post('/:id/submit', requirePMWrite, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const submittedBy = req.body.submittedBy || req.headers['x-user-id'] as string;
     const po = await service.submitForApproval(req.params.id, submittedBy);
@@ -93,7 +99,7 @@ router.post('/:id/submit', async (req: Request, res: Response, next: NextFunctio
 });
 
 // Approve purchase order
-router.post('/:id/approve', async (req: Request, res: Response, next: NextFunction) => {
+router.post('/:id/approve', requirePMWrite, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const approvedBy = req.body.approvedBy || req.headers['x-user-id'] as string;
     const po = await service.approvePurchaseOrder(req.params.id, approvedBy, req.body.notes);
@@ -104,7 +110,7 @@ router.post('/:id/approve', async (req: Request, res: Response, next: NextFuncti
 });
 
 // Reject purchase order
-router.post('/:id/reject', async (req: Request, res: Response, next: NextFunction) => {
+router.post('/:id/reject', requirePMWrite, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { reason } = req.body;
     if (!reason) {
@@ -119,7 +125,7 @@ router.post('/:id/reject', async (req: Request, res: Response, next: NextFunctio
 });
 
 // Mark as ordered
-router.post('/:id/order', async (req: Request, res: Response, next: NextFunction) => {
+router.post('/:id/order', requirePMWrite, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const orderedBy = req.body.orderedBy || req.headers['x-user-id'] as string;
     const po = await service.markAsOrdered(req.params.id, orderedBy, req.body.orderDate);
@@ -130,7 +136,7 @@ router.post('/:id/order', async (req: Request, res: Response, next: NextFunction
 });
 
 // Cancel purchase order
-router.post('/:id/cancel', async (req: Request, res: Response, next: NextFunction) => {
+router.post('/:id/cancel', requirePMWrite, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { reason } = req.body;
     if (!reason) {
@@ -149,7 +155,7 @@ router.post('/:id/cancel', async (req: Request, res: Response, next: NextFunctio
 // ============================================================================
 
 // Add item to PO
-router.post('/:id/items', async (req: Request, res: Response, next: NextFunction) => {
+router.post('/:id/items', requirePMWrite, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const item = await service.addPOItem(req.params.id, req.body);
     res.status(201).json({ success: true, data: item });
@@ -159,7 +165,7 @@ router.post('/:id/items', async (req: Request, res: Response, next: NextFunction
 });
 
 // Update PO item
-router.put('/items/:itemId', async (req: Request, res: Response, next: NextFunction) => {
+router.put('/items/:itemId', requirePMWrite, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const item = await service.updatePOItem(req.params.itemId, req.body);
     if (!item) {
@@ -172,7 +178,7 @@ router.put('/items/:itemId', async (req: Request, res: Response, next: NextFunct
 });
 
 // Delete PO item
-router.delete('/items/:itemId', async (req: Request, res: Response, next: NextFunction) => {
+router.delete('/items/:itemId', requirePMWrite, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const success = await service.deletePOItem(req.params.itemId);
     if (!success) {
@@ -199,7 +205,7 @@ router.get('/:id/deliveries', async (req: Request, res: Response, next: NextFunc
 });
 
 // Record delivery
-router.post('/:id/deliveries', async (req: Request, res: Response, next: NextFunction) => {
+router.post('/:id/deliveries', requirePMWrite, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const receivedBy = req.body.receivedBy || req.headers['x-user-id'] as string;
     const delivery = await service.recordDelivery({

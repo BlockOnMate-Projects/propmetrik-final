@@ -239,8 +239,8 @@ router.get('/preview', async (req: Request, res: Response) => {
 
     const response = await fetch(apiUrl, {
       headers: {
-        'x-user-id': req.headers['x-user-id'] as string || '',
-        'x-organization-id': req.headers['x-organization-id'] as string || '00000000-0000-0000-0000-000000000001',
+        'x-user-id': req.headers['x-user-id'] as string || (req as any).user?.id || '',
+        'x-organization-id': req.headers['x-organization-id'] as string || (req as any).user?.organizationId || '',
       },
     });
 

@@ -184,7 +184,8 @@ contract PROPMETRIKPayments is ReentrancyGuard, Pausable, Ownable2Step {
         propmetrikWallet = _propmetrikWallet;
 
         // Default fee schedule — matches backend FeeEngine
-        feeConfigs[PaymentType.RENT]      = FeeConfig({ percentageBasisPoints: 100, minimumFeeUSD6: 1_650000, enabled: true });
+        // RENT minimum: GH₵25 ≈ $1.67 USD at ~15 GHS/USD (updated for v2.3)
+        feeConfigs[PaymentType.RENT]      = FeeConfig({ percentageBasisPoints: 100, minimumFeeUSD6: 1_670000, enabled: true });
         feeConfigs[PaymentType.DEAL]      = FeeConfig({ percentageBasisPoints: 25,  minimumFeeUSD6: 0,        enabled: true });
         feeConfigs[PaymentType.PROJECT]   = FeeConfig({ percentageBasisPoints: 25,  minimumFeeUSD6: 0,        enabled: true });
         feeConfigs[PaymentType.VALUATION] = FeeConfig({ percentageBasisPoints: 250, minimumFeeUSD6: 0,        enabled: true });

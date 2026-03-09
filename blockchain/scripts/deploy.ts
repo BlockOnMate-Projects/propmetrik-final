@@ -211,7 +211,7 @@ async function main() {
   // ── Save deployment info ───────────────────────────────────────
   const finalOwner = isMainnet ? SAFE_WALLET : deployer.address;
   const deployment = {
-    version: "2.3.0-full-cross-currency",
+    version: "2.3.1-per-service-isolation",
     network: network.name,
     chainId,
     deployer: deployer.address,

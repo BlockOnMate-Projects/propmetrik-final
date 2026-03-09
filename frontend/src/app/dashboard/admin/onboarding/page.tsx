@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import Link from 'next/link'
+import { authedFetch } from '@/lib/authed-fetch'
 import {
   CheckCircle,
   Circle,
@@ -63,7 +64,7 @@ export default function OnboardingPage() {
 
   const load = useCallback(async () => {
     try {
-      const res = await fetch('/api/admin/platform/onboarding/checklist')
+      const res = await authedFetch('/api/admin/platform/onboarding/checklist')
       if (!res.ok) throw new Error('Failed to fetch')
       const json = await res.json()
       if (json.data) setData(json.data)

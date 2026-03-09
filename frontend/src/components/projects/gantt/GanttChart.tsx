@@ -1,28 +1,15 @@
 'use client'
 
-import React, { useState, useMemo, useRef, useCallback, useEffect } from 'react'
+import React, { useState, useMemo, useRef, useCallback } from 'react'
 import { cn } from '@/lib/utils'
 import {
-  Calendar,
-  ChevronLeft,
-  ChevronRight,
   ZoomIn,
   ZoomOut,
   Download,
-  Flag,
-  AlertTriangle,
   Loader2,
   RotateCcw,
-  Milestone,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
 import { Badge } from '@/components/ui/badge'
 import {
   Tooltip,
@@ -30,11 +17,12 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip'
-import { format, differenceInDays, addDays, startOfWeek, endOfWeek, eachDayOfInterval, eachWeekOfInterval, eachMonthOfInterval, startOfMonth, isWithinInterval, isSameDay } from 'date-fns'
-import html2canvas from 'html2canvas'
+import { format, differenceInDays } from 'date-fns'
+import { Gantt, Task, ViewMode } from 'gantt-task-react'
+import 'gantt-task-react/dist/index.css'
 
 // =====================================================
-// TYPES
+// TYPES (preserved for backward compatibility)
 // =====================================================
 export interface GanttPhase {
   id: string
@@ -95,6 +83,8 @@ type ZoomLevel = 'day' | 'week' | 'month'
 // =====================================================
 // CONSTANTS
 // =====================================================
+// CONSTANTS
+// =====================================================
 const PHASE_COLORS: Record<string, string> = {
   planning: '#3b82f6',
   land_acquisition: '#f59e0b',
@@ -105,20 +95,14 @@ const PHASE_COLORS: Record<string, string> = {
   default: '#6b7280',
 }
 
-const STATUS_COLORS: Record<string, string> = {
-  not_started: '#6b7280',
-  in_progress: '#3b82f6',
-  completed: '#10b981',
-  delayed: '#ef4444',
-  blocked: '#dc2626',
+const ZOOM_MAP: Record<ZoomLevel, ViewMode> = {
+  day: ViewMode.Day,
+  week: ViewMode.Week,
+  month: ViewMode.Month,
 }
 
-const ROW_HEIGHT = 40
-const HEADER_HEIGHT = 60
-const LEFT_PANEL_WIDTH = 250
-
 // =====================================================
-// HELPER FUNCTIONS
+// HELPERS
 // =====================================================
 function getPhaseColor(phase: GanttPhase): string {
   if (phase.isCriticalPath) return '#ef4444'
@@ -126,415 +110,65 @@ function getPhaseColor(phase: GanttPhase): string {
   return PHASE_COLORS[phase.name.toLowerCase().replace(/\s+/g, '_')] || PHASE_COLORS.default
 }
 
-function calculatePosition(date: string, startDate: Date, dayWidth: number): number {
-  const d = new Date(date)
-  const days = differenceInDays(d, startDate)
-  return days * dayWidth
-}
-
-function calculateWidth(startDate: string, endDate: string, dayWidth: number): number {
-  const start = new Date(startDate)
-  const end = new Date(endDate)
-  const days = differenceInDays(end, start) + 1
-  return Math.max(days * dayWidth, dayWidth)
+function safeDate(v: string | Date): Date {
+  const d = new Date(v)
+  return isNaN(d.getTime()) ? new Date() : d
 }
 
 // =====================================================
-// TIME HEADER COMPONENT
+// CUSTOM TOOLTIP
 // =====================================================
-function TimeHeader({
-  startDate,
-  endDate,
-  zoomLevel,
-  dayWidth,
-}: {
-  startDate: Date
-  endDate: Date
-  zoomLevel: ZoomLevel
-  dayWidth: number
+function CustomTooltip({ task, fontSize, fontFamily }: {
+  task: Task
+  fontSize: string
+  fontFamily: string
 }) {
-  const units = useMemo(() => {
-    if (zoomLevel === 'day') {
-      return eachDayOfInterval({ start: startDate, end: endDate }).map(d => ({
-        date: d,
-        label: format(d, 'd'),
-        subLabel: format(d, 'EEE'),
-        width: dayWidth,
-      }))
-    } else if (zoomLevel === 'week') {
-      return eachWeekOfInterval({ start: startDate, end: endDate }).map(d => ({
-        date: d,
-        label: `W${format(d, 'w')}`,
-        subLabel: format(d, 'MMM d'),
-        width: dayWidth * 7,
-      }))
-    } else {
-      return eachMonthOfInterval({ start: startDate, end: endDate }).map(d => ({
-        date: d,
-        label: format(d, 'MMM'),
-        subLabel: format(d, 'yyyy'),
-        width: dayWidth * 30,
-      }))
-    }
-  }, [startDate, endDate, zoomLevel, dayWidth])
+  const phase = (task as any).__phase as GanttPhase | undefined
+  const milestone = (task as any).__milestone as GanttMilestone | undefined
 
   return (
-    <div 
-      className="flex border-b border-zinc-700 bg-zinc-900 sticky top-0 z-10"
-      style={{ height: HEADER_HEIGHT }}
-    >
-      {units.map((unit, i) => (
-        <div
-          key={i}
-          className="border-r border-zinc-800 flex flex-col items-center justify-center shrink-0"
-          style={{ width: unit.width }}
-        >
-          <span className="font-mono text-xs text-zinc-400">{unit.label}</span>
-          <span className="font-mono text-[10px] text-zinc-600">{unit.subLabel}</span>
-        </div>
-      ))}
-    </div>
-  )
-}
-
-// =====================================================
-// DRAGGABLE PHASE BAR COMPONENT
-// =====================================================
-function DraggablePhaseBar({
-  phase,
-  startDate,
-  dayWidth,
-  showBaseline,
-  onClick,
-  onDragEnd,
-  isEditable = true,
-}: {
-  phase: GanttPhase
-  startDate: Date
-  dayWidth: number
-  showBaseline: boolean
-  onClick?: () => void
-  onDragEnd?: (phaseId: string, newStart: string, newEnd: string) => void
-  isEditable?: boolean
-}) {
-  const [isDragging, setIsDragging] = useState(false)
-  const [isResizing, setIsResizing] = useState<'left' | 'right' | null>(null)
-  const [dragOffset, setDragOffset] = useState({ x: 0, startX: 0, originalLeft: 0 })
-  const barRef = useRef<HTMLDivElement>(null)
-
-  const left = calculatePosition(phase.startDate, startDate, dayWidth)
-  const width = calculateWidth(phase.startDate, phase.endDate, dayWidth)
-  const color = getPhaseColor(phase)
-  const progressWidth = (phase.progress / 100) * width
-
-  // Calculate new dates from pixel offset
-  const calculateNewDates = useCallback((offsetX: number, resizeMode: 'left' | 'right' | null) => {
-    const daysMoved = Math.round(offsetX / dayWidth)
-    const currentStart = new Date(phase.startDate)
-    const currentEnd = new Date(phase.endDate)
-
-    if (resizeMode === 'left') {
-      const newStart = addDays(currentStart, daysMoved)
-      // Prevent start from going past end
-      if (newStart >= currentEnd) return null
-      return { start: newStart.toISOString(), end: currentEnd.toISOString() }
-    } else if (resizeMode === 'right') {
-      const newEnd = addDays(currentEnd, daysMoved)
-      // Prevent end from going before start
-      if (newEnd <= currentStart) return null
-      return { start: currentStart.toISOString(), end: newEnd.toISOString() }
-    } else {
-      // Moving the whole bar
-      return {
-        start: addDays(currentStart, daysMoved).toISOString(),
-        end: addDays(currentEnd, daysMoved).toISOString(),
-      }
-    }
-  }, [phase.startDate, phase.endDate, dayWidth])
-
-  // Mouse handlers for drag
-  const handleMouseDown = useCallback((e: React.MouseEvent, mode: 'move' | 'resize-left' | 'resize-right') => {
-    if (!isEditable || !onDragEnd) return
-    e.preventDefault()
-    e.stopPropagation()
-
-    const rect = barRef.current?.getBoundingClientRect()
-    if (!rect) return
-
-    setDragOffset({
-      x: 0,
-      startX: e.clientX,
-      originalLeft: left,
-    })
-
-    if (mode === 'move') {
-      setIsDragging(true)
-    } else if (mode === 'resize-left') {
-      setIsResizing('left')
-    } else if (mode === 'resize-right') {
-      setIsResizing('right')
-    }
-  }, [isEditable, onDragEnd, left])
-
-  // Global mouse move handler
-  useEffect(() => {
-    if (!isDragging && !isResizing) return
-
-    const handleMouseMove = (e: MouseEvent) => {
-      const offsetX = e.clientX - dragOffset.startX
-      setDragOffset(prev => ({ ...prev, x: offsetX }))
-    }
-
-    const handleMouseUp = () => {
-      if (dragOffset.x !== 0 && onDragEnd) {
-        const newDates = calculateNewDates(dragOffset.x, isResizing)
-        if (newDates) {
-          onDragEnd(phase.id, newDates.start, newDates.end)
-        }
-      }
-      setIsDragging(false)
-      setIsResizing(null)
-      setDragOffset({ x: 0, startX: 0, originalLeft: 0 })
-    }
-
-    window.addEventListener('mousemove', handleMouseMove)
-    window.addEventListener('mouseup', handleMouseUp)
-
-    return () => {
-      window.removeEventListener('mousemove', handleMouseMove)
-      window.removeEventListener('mouseup', handleMouseUp)
-    }
-  }, [isDragging, isResizing, dragOffset.startX, dragOffset.x, onDragEnd, phase.id, calculateNewDates])
-
-  // Calculate display values during drag
-  const displayLeft = isDragging ? left + dragOffset.x : (isResizing === 'left' ? left + dragOffset.x : left)
-  const displayWidth = isResizing === 'left' 
-    ? width - dragOffset.x 
-    : isResizing === 'right' 
-    ? width + dragOffset.x 
-    : width
-
-  return (
-    <TooltipProvider>
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <div
-            ref={barRef}
-            className={cn(
-              "absolute h-6 rounded transition-all",
-              phase.isCriticalPath && "ring-2 ring-red-500/50",
-              (isDragging || isResizing) && "opacity-75 ring-2 ring-amber-500",
-              isEditable && onDragEnd ? "cursor-move" : "cursor-pointer"
-            )}
-            style={{
-              left: displayLeft,
-              width: Math.max(displayWidth, 20),
-              top: (ROW_HEIGHT - 24) / 2,
-              backgroundColor: `${color}30`,
-              border: `1px solid ${color}`,
-            }}
-            onMouseDown={(e) => handleMouseDown(e, 'move')}
-            onClick={(e) => {
-              if (!isDragging && !isResizing && onClick) {
-                onClick()
-              }
-            }}
-          >
-            {/* Left resize handle */}
-            {isEditable && onDragEnd && (
-              <div
-                className="absolute left-0 top-0 bottom-0 w-2 cursor-ew-resize hover:bg-white/20 rounded-l"
-                onMouseDown={(e) => handleMouseDown(e, 'resize-left')}
-              />
-            )}
-
-            {/* Progress fill */}
-            <div
-              className="h-full rounded-l pointer-events-none"
-              style={{
-                width: progressWidth,
-                backgroundColor: color,
-              }}
-            />
-            
-            {/* Phase name */}
-            {displayWidth > 60 && (
-              <span 
-                className="absolute inset-0 flex items-center px-2 font-mono text-[10px] text-white truncate pointer-events-none"
-                style={{ textShadow: '0 1px 2px rgba(0,0,0,0.5)' }}
-              >
-                {phase.name}
-              </span>
-            )}
-
-            {/* Right resize handle */}
-            {isEditable && onDragEnd && (
-              <div
-                className="absolute right-0 top-0 bottom-0 w-2 cursor-ew-resize hover:bg-white/20 rounded-r"
-                onMouseDown={(e) => handleMouseDown(e, 'resize-right')}
-              />
-            )}
-
-            {/* Critical path indicator */}
-            {phase.isCriticalPath && (
-              <div className="absolute -top-1 -right-1 pointer-events-none">
-                <AlertTriangle className="h-3 w-3 text-red-500" />
-              </div>
-            )}
-          </div>
-        </TooltipTrigger>
-        <TooltipContent className="bg-zinc-900 border-zinc-700 p-3">
-          <div className="space-y-1">
-            <p className="font-mono text-xs font-medium text-zinc-100">{phase.name}</p>
-            <p className="font-mono text-[10px] text-zinc-400">
-              {format(new Date(phase.startDate), 'MMM d')} - {format(new Date(phase.endDate), 'MMM d, yyyy')}
-            </p>
-            <div className="flex items-center gap-2">
-              <div className="flex-1 h-1.5 bg-zinc-700 rounded-full overflow-hidden">
-                <div
-                  className="h-full rounded-full"
-                  style={{ width: `${phase.progress}%`, backgroundColor: color }}
-                />
-              </div>
-              <span className="font-mono text-[10px] text-zinc-400">{phase.progress}%</span>
-            </div>
-            {phase.isCriticalPath && (
-              <Badge className="bg-red-500/20 text-red-400 text-[9px]">
-                Critical Path
-              </Badge>
-            )}
-            {phase.slackDays > 0 && (
-              <p className="font-mono text-[10px] text-zinc-500">
-                Slack: {phase.slackDays} days
-              </p>
-            )}
-          </div>
-        </TooltipContent>
-      </Tooltip>
-
-      {/* Baseline indicator */}
-      {showBaseline && phase.baselineStartDate && phase.baselineEndDate && (
-        <div
-          className="absolute h-1 rounded opacity-50"
-          style={{
-            left: calculatePosition(phase.baselineStartDate, startDate, dayWidth),
-            width: calculateWidth(phase.baselineStartDate, phase.baselineEndDate, dayWidth),
-            top: ROW_HEIGHT - 4,
-            backgroundColor: '#6b7280',
-          }}
-        />
-      )}
-    </TooltipProvider>
-  )
-}
-
-// =====================================================
-// MILESTONE MARKER COMPONENT
-// =====================================================
-function MilestoneMarker({
-  milestone,
-  startDate,
-  dayWidth,
-  rowIndex,
-  onClick,
-}: {
-  milestone: GanttMilestone
-  startDate: Date
-  dayWidth: number
-  rowIndex: number
-  onClick?: () => void
-}) {
-  const left = calculatePosition(milestone.date, startDate, dayWidth)
-  const isCompleted = milestone.status === 'completed'
-  const isMissed = milestone.status === 'missed'
-
-  return (
-    <TooltipProvider>
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <div
-            className={cn(
-              "absolute w-4 h-4 transform rotate-45 cursor-pointer transition-all hover:scale-110",
-              isCompleted ? "bg-green-500" : isMissed ? "bg-red-500" : 
-              milestone.isGhanaSpecific ? "bg-amber-500" : "bg-blue-500"
-            )}
-            style={{
-              left: left - 8,
-              top: rowIndex * ROW_HEIGHT + HEADER_HEIGHT + (ROW_HEIGHT - 16) / 2,
-            }}
-            onClick={onClick}
-          />
-        </TooltipTrigger>
-        <TooltipContent className="bg-zinc-900 border-zinc-700">
-          <p className="font-mono text-xs text-zinc-100">{milestone.name}</p>
+    <div className="bg-zinc-900 border border-zinc-700 rounded-lg p-3 shadow-xl min-w-[200px]">
+      <p className="font-mono text-xs font-medium text-zinc-100 mb-1">{task.name}</p>
+      {task.type !== 'milestone' && (
+        <>
           <p className="font-mono text-[10px] text-zinc-400">
-            {format(new Date(milestone.date), 'MMM d, yyyy')}
+            {format(task.start, 'MMM d')} – {format(task.end, 'MMM d, yyyy')}
           </p>
-          {milestone.isGhanaSpecific && (
-            <Badge className="bg-amber-500/20 text-amber-400 text-[9px] mt-1">
-              Ghana Specific
+          <p className="font-mono text-[10px] text-zinc-400">
+            Duration: {differenceInDays(task.end, task.start) + 1} days
+          </p>
+          <div className="flex items-center gap-2 mt-1">
+            <div className="flex-1 h-1.5 bg-zinc-700 rounded-full overflow-hidden">
+              <div
+                className="h-full rounded-full bg-amber-500"
+                style={{ width: `${task.progress}%` }}
+              />
+            </div>
+            <span className="font-mono text-[10px] text-zinc-400">{task.progress}%</span>
+          </div>
+          {phase?.isCriticalPath && (
+            <Badge className="mt-1 bg-red-500/20 text-red-400 text-[9px] border-0">
+              Critical Path
             </Badge>
           )}
-        </TooltipContent>
-      </Tooltip>
-    </TooltipProvider>
-  )
-}
-
-// =====================================================
-// DEPENDENCY LINE COMPONENT
-// =====================================================
-function DependencyLine({
-  from,
-  to,
-  phases,
-  startDate,
-  dayWidth,
-}: {
-  from: string
-  to: string
-  phases: GanttPhase[]
-  startDate: Date
-  dayWidth: number
-}) {
-  const fromPhase = phases.find(p => p.id === from)
-  const toPhase = phases.find(p => p.id === to)
-  
-  if (!fromPhase || !toPhase) return null
-
-  const fromIndex = phases.indexOf(fromPhase)
-  const toIndex = phases.indexOf(toPhase)
-  
-  const fromX = calculatePosition(fromPhase.endDate, startDate, dayWidth) + calculateWidth(fromPhase.startDate, fromPhase.endDate, dayWidth)
-  const fromY = fromIndex * ROW_HEIGHT + HEADER_HEIGHT + ROW_HEIGHT / 2
-  const toX = calculatePosition(toPhase.startDate, startDate, dayWidth)
-  const toY = toIndex * ROW_HEIGHT + HEADER_HEIGHT + ROW_HEIGHT / 2
-
-  const midX = (fromX + toX) / 2
-
-  return (
-    <svg className="absolute inset-0 pointer-events-none overflow-visible" style={{ zIndex: 5 }}>
-      <defs>
-        <marker
-          id="arrowhead"
-          markerWidth="10"
-          markerHeight="7"
-          refX="10"
-          refY="3.5"
-          orient="auto"
-        >
-          <polygon points="0 0, 10 3.5, 0 7" fill="#6b7280" />
-        </marker>
-      </defs>
-      <path
-        d={`M ${fromX} ${fromY} C ${midX} ${fromY}, ${midX} ${toY}, ${toX} ${toY}`}
-        fill="none"
-        stroke="#6b7280"
-        strokeWidth="1"
-        strokeDasharray="4 2"
-        markerEnd="url(#arrowhead)"
-      />
-    </svg>
+          {phase && phase.slackDays > 0 && (
+            <p className="font-mono text-[10px] text-zinc-500 mt-0.5">
+              Slack: {phase.slackDays} days
+            </p>
+          )}
+        </>
+      )}
+      {task.type === 'milestone' && (
+        <p className="font-mono text-[10px] text-zinc-400">
+          {format(task.start, 'MMM d, yyyy')}
+        </p>
+      )}
+      {milestone?.isGhanaSpecific && (
+        <Badge className="mt-1 bg-amber-500/20 text-amber-400 text-[9px] border-0">
+          Ghana Specific
+        </Badge>
+      )}
+    </div>
   )
 }
 
@@ -552,56 +186,167 @@ export function GanttChart({
   showMilestones = true,
   className,
 }: GanttChartProps) {
-  const chartRef = useRef<HTMLDivElement>(null)
+  const containerRef = useRef<HTMLDivElement>(null)
   const [zoomLevel, setZoomLevel] = useState<ZoomLevel>('week')
-  const [scrollPosition, setScrollPosition] = useState(0)
 
-  // Calculate day width based on zoom level
-  const dayWidth = useMemo(() => {
+  // Build a lookup from phase ID → GanttPhase for click callbacks
+  const phaseMap = useMemo(() => {
+    const m = new Map<string, GanttPhase>()
+    data?.phases.forEach(p => m.set(p.id, p))
+    return m
+  }, [data])
+
+  const milestoneMap = useMemo(() => {
+    const m = new Map<string, GanttMilestone>()
+    data?.milestones.forEach(ms => m.set(ms.id, ms))
+    return m
+  }, [data])
+
+  // Build dependency map: toPhaseId → [fromPhaseId, …]
+  const depsByTarget = useMemo(() => {
+    const m = new Map<string, string[]>()
+    if (!showDependencies) return m
+    data?.dependencies.forEach(d => {
+      const list = m.get(d.toPhaseId) || []
+      list.push(d.fromPhaseId)
+      m.set(d.toPhaseId, list)
+    })
+    return m
+  }, [data, showDependencies])
+
+  // Convert our data model → gantt-task-react Task[]
+  const tasks: Task[] = useMemo(() => {
+    if (!data) return []
+
+    const items: Task[] = []
+
+    // Phases → tasks
+    data.phases.forEach(phase => {
+      const color = getPhaseColor(phase)
+      const t: Task & { __phase?: GanttPhase } = {
+        id: phase.id,
+        name: phase.name,
+        type: 'task',
+        start: safeDate(phase.startDate),
+        end: safeDate(phase.endDate),
+        progress: phase.progress,
+        dependencies: depsByTarget.get(phase.id) || [],
+        styles: {
+          backgroundColor: `${color}60`,
+          backgroundSelectedColor: `${color}90`,
+          progressColor: color,
+          progressSelectedColor: color,
+        },
+        isDisabled: !onPhaseDragEnd,
+      }
+      // Stash the original phase for tooltip / click handling
+      ;(t as any).__phase = phase
+      items.push(t)
+    })
+
+    // Milestones → zero-duration tasks
+    if (showMilestones) {
+      data.milestones.forEach(ms => {
+        const d = safeDate(ms.date)
+        const isCompleted = ms.status === 'completed'
+        const msColor = isCompleted
+          ? '#10b981'
+          : ms.isGhanaSpecific
+            ? '#f59e0b'
+            : '#3b82f6'
+
+        const t: Task & { __milestone?: GanttMilestone } = {
+          id: `ms-${ms.id}`,
+          name: ms.name,
+          type: 'milestone',
+          start: d,
+          end: d,
+          progress: isCompleted ? 100 : 0,
+          dependencies: ms.phaseId ? [ms.phaseId] : [],
+          styles: {
+            backgroundColor: msColor,
+            backgroundSelectedColor: msColor,
+            progressColor: msColor,
+            progressSelectedColor: msColor,
+          },
+          isDisabled: true,
+        }
+        ;(t as any).__milestone = ms
+        items.push(t)
+      })
+    }
+
+    // Baseline phases as separate "project" bars (ghost bars below)
+    if (showBaseline) {
+      data.phases
+        .filter(p => p.baselineStartDate && p.baselineEndDate)
+        .forEach(phase => {
+          items.push({
+            id: `bl-${phase.id}`,
+            name: `${phase.name} (baseline)`,
+            type: 'project',
+            start: safeDate(phase.baselineStartDate!),
+            end: safeDate(phase.baselineEndDate!),
+            progress: 0,
+            dependencies: [],
+            styles: {
+              backgroundColor: '#52525b40',
+              backgroundSelectedColor: '#52525b60',
+              progressColor: '#52525b',
+              progressSelectedColor: '#52525b',
+            },
+            isDisabled: true,
+            hideChildren: true,
+          })
+        })
+    }
+
+    return items
+  }, [data, depsByTarget, showMilestones, showBaseline, onPhaseDragEnd])
+
+  // Column width varies by zoom
+  const columnWidth = useMemo(() => {
     switch (zoomLevel) {
-      case 'day': return 40
-      case 'week': return 15
-      case 'month': return 4
+      case 'day': return 50
+      case 'week': return 180
+      case 'month': return 250
     }
   }, [zoomLevel])
 
-  // Parse dates
-  const dateRange = useMemo(() => {
-    if (!data) return null
-    return {
-      start: new Date(data.startDate),
-      end: new Date(data.endDate),
+  // Event handlers
+  const handleDateChange = useCallback((task: Task) => {
+    if (!onPhaseDragEnd) return
+    if (task.type === 'milestone') return
+    if (task.id.startsWith('bl-') || task.id.startsWith('ms-')) return
+
+    onPhaseDragEnd(
+      task.id,
+      task.start.toISOString(),
+      task.end.toISOString(),
+    )
+  }, [onPhaseDragEnd])
+
+  const handleClick = useCallback((task: Task) => {
+    if (task.id.startsWith('ms-')) {
+      const ms = milestoneMap.get(task.id.replace('ms-', ''))
+      if (ms && onMilestoneClick) onMilestoneClick(ms)
+    } else if (!task.id.startsWith('bl-')) {
+      const phase = phaseMap.get(task.id)
+      if (phase && onPhaseClick) onPhaseClick(phase)
     }
-  }, [data])
+  }, [phaseMap, milestoneMap, onPhaseClick, onMilestoneClick])
 
-  // Export to PNG
-  const handleExport = useCallback(async () => {
-    if (!chartRef.current) return
-
-    try {
-      const canvas = await html2canvas(chartRef.current, {
-        backgroundColor: '#18181b',
-        scale: 2,
-      })
-      
-      const link = document.createElement('a')
-      link.download = `gantt-chart-${format(new Date(), 'yyyy-MM-dd')}.png`
-      link.href = canvas.toDataURL('image/png')
-      link.click()
-    } catch (err) {
-      console.error('Export failed:', err)
+  const handleZoom = (direction: 'in' | 'out') => {
+    const levels: ZoomLevel[] = ['month', 'week', 'day']
+    const current = levels.indexOf(zoomLevel)
+    if (direction === 'in' && current < levels.length - 1) {
+      setZoomLevel(levels[current + 1])
+    } else if (direction === 'out' && current > 0) {
+      setZoomLevel(levels[current - 1])
     }
-  }, [])
-
-  // Scroll controls
-  const handleScrollLeft = () => {
-    setScrollPosition(prev => Math.max(0, prev - 200))
   }
 
-  const handleScrollRight = () => {
-    setScrollPosition(prev => prev + 200)
-  }
-
+  // ── Render ──
   if (isLoading) {
     return (
       <div className={cn("border border-zinc-800 bg-zinc-900/50 p-4", className)}>
@@ -612,27 +357,25 @@ export function GanttChart({
     )
   }
 
-  if (!data || !dateRange) {
+  if (!data || tasks.length === 0) {
     return (
       <div className={cn("border border-zinc-800 bg-zinc-900/50 p-4", className)}>
         <div className="flex flex-col items-center justify-center h-64 text-zinc-500">
-          <Calendar className="h-8 w-8 mb-2 opacity-50" />
+          <RotateCcw className="h-8 w-8 mb-2 opacity-50" />
           <span className="font-mono text-sm">No timeline data available</span>
+          <span className="font-mono text-xs text-zinc-600 mt-1">
+            Add phases to see the Gantt chart
+          </span>
         </div>
       </div>
     )
   }
-
-  const totalDurationDays = data.totalDurationDays || 30 // Default to 30 days if not set
-  const totalWidth = Math.max(totalDurationDays * dayWidth, 500) // Ensure minimum width
-  const totalHeight = HEADER_HEIGHT + data.phases.length * ROW_HEIGHT
 
   return (
     <div className={cn("border border-zinc-800 bg-zinc-900/50 overflow-hidden", className)}>
       {/* Toolbar */}
       <div className="flex items-center justify-between px-4 py-2 bg-zinc-800/50 border-b border-zinc-800">
         <div className="flex items-center gap-2">
-          <Calendar className="h-4 w-4 text-amber-500" />
           <span className="font-mono text-xs text-amber-500 tracking-wider">
             PROJECT TIMELINE
           </span>
@@ -641,177 +384,61 @@ export function GanttChart({
               Baseline Shown
             </Badge>
           )}
+          {data.criticalPath.length > 0 && (
+            <Badge variant="secondary" className="bg-red-900/30 text-red-400 text-[10px]">
+              Critical Path: {data.criticalPath.length} phases
+            </Badge>
+          )}
         </div>
 
-        <div className="flex items-center gap-2">
-          {/* Zoom controls */}
-          <Select value={zoomLevel} onValueChange={(v) => setZoomLevel(v as ZoomLevel)}>
-            <SelectTrigger className="w-24 h-7 text-xs bg-zinc-800 border-zinc-700">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent className="bg-zinc-900 border-zinc-700">
-              <SelectItem value="day" className="text-xs">Day</SelectItem>
-              <SelectItem value="week" className="text-xs">Week</SelectItem>
-              <SelectItem value="month" className="text-xs">Month</SelectItem>
-            </SelectContent>
-          </Select>
-
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-7 w-7"
-            onClick={handleScrollLeft}
-          >
-            <ChevronLeft className="h-4 w-4" />
+        <div className="flex items-center gap-1">
+          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleZoom('out')}>
+            <ZoomOut className="h-3.5 w-3.5" />
           </Button>
-
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-7 w-7"
-            onClick={handleScrollRight}
-          >
-            <ChevronRight className="h-4 w-4" />
+          <span className="font-mono text-[10px] text-zinc-400 w-12 text-center capitalize">
+            {zoomLevel}
+          </span>
+          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleZoom('in')}>
+            <ZoomIn className="h-3.5 w-3.5" />
           </Button>
-
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-7 w-7"
-            onClick={handleExport}
-          >
-            <Download className="h-4 w-4" />
+          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => {
+            // Export via html2canvas
+            if (containerRef.current) {
+              import('html2canvas').then(({ default: html2canvas }) => {
+                html2canvas(containerRef.current!, { backgroundColor: '#18181b', scale: 2 }).then(canvas => {
+                  const link = document.createElement('a')
+                  link.download = `gantt-${format(new Date(), 'yyyy-MM-dd')}.png`
+                  link.href = canvas.toDataURL('image/png')
+                  link.click()
+                })
+              }).catch(() => {})
+            }
+          }}>
+            <Download className="h-3.5 w-3.5" />
           </Button>
         </div>
       </div>
 
-      {/* Chart container */}
-      <div className="flex overflow-hidden">
-        {/* Left panel - Phase names */}
-        <div 
-          className="shrink-0 border-r border-zinc-700 bg-zinc-900"
-          style={{ width: LEFT_PANEL_WIDTH }}
-        >
-          {/* Header */}
-          <div 
-            className="flex items-center px-3 border-b border-zinc-700 bg-zinc-800"
-            style={{ height: HEADER_HEIGHT }}
-          >
-            <span className="font-mono text-xs text-zinc-400">Phases</span>
-          </div>
-          
-          {/* Phase list */}
-          {data.phases.map((phase, i) => (
-            <div
-              key={phase.id}
-              className={cn(
-                "flex items-center px-3 border-b border-zinc-800 hover:bg-zinc-800/50 cursor-pointer",
-                phase.isCriticalPath && "bg-red-500/5"
-              )}
-              style={{ height: ROW_HEIGHT }}
-              onClick={() => onPhaseClick?.(phase)}
-            >
-              <div
-                className="w-2 h-2 rounded-full mr-2 shrink-0"
-                style={{ backgroundColor: getPhaseColor(phase) }}
-              />
-              <span className="font-mono text-xs text-zinc-300 truncate flex-1">
-                {phase.name}
-              </span>
-              <span className="font-mono text-[10px] text-zinc-500">
-                {phase.progress}%
-              </span>
-            </div>
-          ))}
-        </div>
-
-        {/* Right panel - Timeline */}
-        <div 
-          ref={chartRef}
-          className="flex-1 overflow-x-auto"
-          style={{ transform: `translateX(-${scrollPosition}px)` }}
-        >
-          <div style={{ width: totalWidth, minWidth: '100%' }}>
-            {/* Time header */}
-            <TimeHeader
-              startDate={dateRange.start}
-              endDate={dateRange.end}
-              zoomLevel={zoomLevel}
-              dayWidth={dayWidth}
-            />
-
-            {/* Grid and bars */}
-            <div className="relative" style={{ height: data.phases.length * ROW_HEIGHT }}>
-              {/* Grid lines */}
-              {data.phases.map((_, i) => (
-                <div
-                  key={i}
-                  className="absolute left-0 right-0 border-b border-zinc-800"
-                  style={{ top: i * ROW_HEIGHT, height: ROW_HEIGHT }}
-                />
-              ))}
-
-              {/* Today line */}
-              {isWithinInterval(new Date(), { start: dateRange.start, end: dateRange.end }) && (
-                <div
-                  className="absolute top-0 bottom-0 w-0.5 bg-amber-500 z-20"
-                  style={{
-                    left: calculatePosition(new Date().toISOString(), dateRange.start, dayWidth),
-                  }}
-                />
-              )}
-
-              {/* Dependencies */}
-              {showDependencies && data.dependencies.map((dep, i) => (
-                <DependencyLine
-                  key={i}
-                  from={dep.fromPhaseId}
-                  to={dep.toPhaseId}
-                  phases={data.phases}
-                  startDate={dateRange.start}
-                  dayWidth={dayWidth}
-                />
-              ))}
-
-              {/* Phase bars */}
-              {data.phases.map((phase, i) => (
-                <div
-                  key={phase.id}
-                  className="absolute left-0 right-0"
-                  style={{ top: i * ROW_HEIGHT, height: ROW_HEIGHT }}
-                >
-                  <DraggablePhaseBar
-                    phase={phase}
-                    startDate={dateRange.start}
-                    dayWidth={dayWidth}
-                    showBaseline={showBaseline}
-                    onClick={() => onPhaseClick?.(phase)}
-                    onDragEnd={onPhaseDragEnd}
-                    isEditable={!!onPhaseDragEnd}
-                  />
-                </div>
-              ))}
-
-              {/* Milestones */}
-              {showMilestones && data.milestones.map((milestone) => {
-                const phaseIndex = milestone.phaseId
-                  ? data.phases.findIndex(p => p.id === milestone.phaseId)
-                  : 0
-                
-                return (
-                  <MilestoneMarker
-                    key={milestone.id}
-                    milestone={milestone}
-                    startDate={dateRange.start}
-                    dayWidth={dayWidth}
-                    rowIndex={phaseIndex >= 0 ? phaseIndex : 0}
-                    onClick={() => onMilestoneClick?.(milestone)}
-                  />
-                )
-              })}
-            </div>
-          </div>
-        </div>
+      {/* Gantt chart */}
+      <div ref={containerRef} className="gantt-dark-theme">
+        <Gantt
+          tasks={tasks}
+          viewMode={ZOOM_MAP[zoomLevel]}
+          onDateChange={handleDateChange}
+          onClick={handleClick}
+          listCellWidth=""
+          columnWidth={columnWidth}
+          ganttHeight={Math.max(tasks.length * 40 + 50, 300)}
+          rowHeight={40}
+          headerHeight={50}
+          barFill={60}
+          barCornerRadius={4}
+          arrowColor="#52525b"
+          todayColor="rgba(245, 158, 11, 0.15)"
+          fontSize="11px"
+          fontFamily="ui-monospace, SFMono-Regular, Menlo, monospace"
+          TooltipContent={CustomTooltip as any}
+        />
       </div>
 
       {/* Legend */}
@@ -820,19 +447,43 @@ export function GanttChart({
           <div className="w-3 h-3 bg-red-500 rounded" />
           <span className="font-mono text-[10px] text-zinc-400">Critical Path</span>
         </div>
-        <div className="flex items-center gap-1.5">
-          <div className="w-3 h-3 bg-amber-500 rotate-45" />
-          <span className="font-mono text-[10px] text-zinc-400">Ghana Milestone</span>
-        </div>
-        <div className="flex items-center gap-1.5">
-          <div className="w-3 h-3 bg-blue-500 rotate-45" />
-          <span className="font-mono text-[10px] text-zinc-400">Milestone</span>
-        </div>
+        {showMilestones && (
+          <>
+            <div className="flex items-center gap-1.5">
+              <div className="w-3 h-3 bg-amber-500 rotate-45" />
+              <span className="font-mono text-[10px] text-zinc-400">Ghana Milestone</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <div className="w-3 h-3 bg-blue-500 rotate-45" />
+              <span className="font-mono text-[10px] text-zinc-400">Milestone</span>
+            </div>
+          </>
+        )}
         <div className="flex items-center gap-1.5">
           <div className="w-0.5 h-3 bg-amber-500" />
           <span className="font-mono text-[10px] text-zinc-400">Today</span>
         </div>
+        {showBaseline && (
+          <div className="flex items-center gap-1.5">
+            <div className="w-3 h-1 bg-zinc-500 rounded" />
+            <span className="font-mono text-[10px] text-zinc-400">Baseline</span>
+          </div>
+        )}
       </div>
+
+      {/* Dark theme overrides for gantt-task-react */}
+      <style jsx global>{`
+        .gantt-dark-theme ._9w8d5 { background: #18181b; }
+        .gantt-dark-theme ._1nBOt { stroke: #27272a; }
+        .gantt-dark-theme ._2dZTy { fill: #a1a1aa; font-size: 10px; }
+        .gantt-dark-theme ._3ZbQT { fill: #71717a; font-size: 10px; }
+        .gantt-dark-theme ._35nLX { fill: #27272a20; }
+        .gantt-dark-theme ._RuwuK { fill: #f59e0b20; }
+        .gantt-dark-theme rect[fill="#fff"] { fill: #18181b; }
+        .gantt-dark-theme text { fill: #a1a1aa; }
+        .gantt-dark-theme ._WuQ0f { fill: #27272a; }
+        .gantt-dark-theme line { stroke: #27272a; }
+      `}</style>
     </div>
   )
 }

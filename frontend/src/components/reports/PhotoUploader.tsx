@@ -53,6 +53,7 @@ import {
   AlertCircle,
   Trash2,
 } from 'lucide-react';
+import { authedFetch } from '@/lib/authed-fetch';
 
 // =====================================================
 // TYPES
@@ -429,7 +430,7 @@ export function PhotoUploader({
         }
 
         // Upload batch
-        const response = await fetch(`${API_BASE}/api/reports/${reportId}/photos/upload`, {
+        const response = await authedFetch(`${API_BASE}/api/reports/${reportId}/photos/upload`, {
           method: 'POST',
           body: formData,
           credentials: 'include',

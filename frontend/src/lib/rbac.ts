@@ -1,9 +1,8 @@
 /**
  * Frontend RBAC — Role-Based Access Control + Subscription Tier Gating
  *
- * Mirrors the backend authorization_policies from migration 152.
- * Controls which platform services and sub-tabs a given role can see.
- * Also enforces subscription tier limits on features.
+ * Fetches authorization policies from GET /api/v1/rbac/config at runtime
+ * and falls back to hardcoded defaults when the backend is unreachable.
  *
  * Role hierarchy (lower = more authority):
  *   1  super_admin        — Full system access (platform owner)
@@ -11,6 +10,7 @@
  *  15  admin              — Organization admin
  *  20  senior_valuer      — Lead Valuer, QA
  *  25  manager            — Team manager
+ *  28  project_manager    — Project management (PM Portal)
  *  30  valuer / agent     — Independent valuer / legacy agent
  *  35  finance_manager    — Finance & billing
  *  40  compliance_officer — Regulatory
@@ -31,6 +31,7 @@ export type UserRole =
   | 'admin'
   | 'senior_valuer'
   | 'manager'
+  | 'project_manager'
   | 'valuer'
   | 'finance_manager'
   | 'compliance_officer'
@@ -50,15 +51,101 @@ const TIER_LEVEL: Record<string, number> = {
 };
 
 // ---------------------------------------------------------------------------
-// Platform-level service tabs (TopNav)
+// Remote RBAC config (fetched from backend)
 // ---------------------------------------------------------------------------
 
-/** Which roles can see each top-level service tab */
-const platformTabAccess: Record<string, UserRole[]> = {
+interface RbacConfig {
+  platformTabs: Record<string, string[]>;
+  valuationTabs: Record<string, string[]>;
+  featureGates: Record<string, { minTier: string; label: string; description: string }>;
+  policies: Array<{ resourceType: string; action: string; allowedRoles: string[] }>;
+  services: Array<{ key: string; name: string; category: string }>;
+  subscribedServices: string[];
+  user: { role: string; tier: string; userType: string; organizationId?: string };
+}
+
+let _rbacConfig: RbacConfig | null = null;
+let _rbacFetchTime = 0;
+const RBAC_CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+let _rbacFetchPromise: Promise<RbacConfig | null> | null = null;
+
+/**
+ * Fetch RBAC config from backend. Caches for 5 minutes.
+ * Returns null if fetch fails (caller should use fallback).
+ */
+async function fetchRbacConfig(accessToken?: string): Promise<RbacConfig | null> {
+  const now = Date.now();
+  if (_rbacConfig && now - _rbacFetchTime < RBAC_CACHE_TTL) {
+    return _rbacConfig;
+  }
+
+  // Deduplicate concurrent requests
+  if (_rbacFetchPromise) return _rbacFetchPromise;
+
+  _rbacFetchPromise = (async () => {
+    try {
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+      if (accessToken) {
+        headers['Authorization'] = `Bearer ${accessToken}`;
+      }
+
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || '';
+      const res = await fetch(`${apiUrl}/rbac/config`, {
+        headers,
+        credentials: 'include',
+        next: { revalidate: 300 },  // ISR: revalidate every 5 min
+      } as RequestInit);
+
+      if (!res.ok) return null;
+
+      const body = await res.json();
+      if (body.success && body.data) {
+        _rbacConfig = body.data;
+        _rbacFetchTime = Date.now();
+        return _rbacConfig;
+      }
+      return null;
+    } catch {
+      return null;
+    } finally {
+      _rbacFetchPromise = null;
+    }
+  })();
+
+  return _rbacFetchPromise;
+}
+
+/** Force-clear the RBAC config cache (call on logout or role change) */
+export function clearRbacCache(): void {
+  _rbacConfig = null;
+  _rbacFetchTime = 0;
+}
+
+/**
+ * React hook-compatible: get the cached RBAC config synchronously.
+ * Returns null if not yet fetched. Use `prefetchRbacConfig` to prime.
+ */
+export function getRbacConfig(): RbacConfig | null {
+  return _rbacConfig;
+}
+
+/**
+ * Pre-fetch RBAC config (call early, e.g. in layout or auth callback).
+ */
+export async function prefetchRbacConfig(accessToken?: string): Promise<void> {
+  await fetchRbacConfig(accessToken);
+}
+
+// ---------------------------------------------------------------------------
+// Platform-level service tabs — hardcoded FALLBACK (used when API unreachable)
+// ---------------------------------------------------------------------------
+
+/** Which roles can see each top-level service tab (fallback only) */
+const FALLBACK_platformTabAccess: Record<string, UserRole[]> = {
   // Everyone who logs in sees overview
   overview: [
     'super_admin', 'firm_principal', 'admin', 'senior_valuer', 'manager',
-    'valuer', 'finance_manager', 'compliance_officer', 'agent',
+    'project_manager', 'valuer', 'finance_manager', 'compliance_officer', 'agent',
     'probationer', 'inspector', 'analyst', 'viewer',
   ],
 
@@ -69,29 +156,30 @@ const platformTabAccess: Record<string, UserRole[]> = {
     'probationer', 'inspector', 'analyst',
   ],
 
-  // Deals — only management/admin roles (not valuation-only roles)
+  // Deals — management/admin roles + agents
   deals: [
     'super_admin', 'admin', 'manager', 'agent', 'firm_principal',
   ],
 
-  // Projects — management/admin
+  // Projects — management/admin + project managers
   projects: [
-    'super_admin', 'admin', 'manager', 'firm_principal',
+    'super_admin', 'admin', 'manager', 'project_manager', 'firm_principal',
   ],
 
-  // Platform analytics — senior roles
+  // Platform analytics — senior roles + project managers
   analytics: [
-    'super_admin', 'admin', 'firm_principal', 'manager', 'analyst',
+    'super_admin', 'admin', 'firm_principal', 'manager', 'project_manager', 'analyst',
   ],
 
-  // Property management — management/admin
+  // Property management — management/admin + project managers
   'property-management': [
-    'super_admin', 'admin', 'manager', 'firm_principal',
+    'super_admin', 'admin', 'manager', 'project_manager', 'firm_principal',
   ],
 
   // E-Sign — anyone who generates or reviews reports
   'e-sign': [
     'super_admin', 'admin', 'firm_principal', 'senior_valuer', 'manager',
+    'project_manager',
   ],
 
   // Admin panel — platform admins only
@@ -101,7 +189,7 @@ const platformTabAccess: Record<string, UserRole[]> = {
 };
 
 // ---------------------------------------------------------------------------
-// Subscription tier requirements per feature
+// Subscription tier requirements per feature — hardcoded FALLBACK
 // ---------------------------------------------------------------------------
 
 export interface FeatureGate {
@@ -115,7 +203,7 @@ export interface FeatureGate {
   category?: string;
 }
 
-/** Feature keys map to platform tabs and sub-features */
+/** Feature keys map to platform tabs and sub-features (fallback only) */
 export const featureGates: Record<string, FeatureGate> = {
   // --- Platform tabs ---
   overview:             { minTier: 'starter',      label: 'Dashboard Overview',    description: 'Real-time overview of your organization\'s metrics' },
@@ -140,11 +228,11 @@ export const featureGates: Record<string, FeatureGate> = {
 };
 
 // ---------------------------------------------------------------------------
-// Valuation sub-tabs
+// Valuation sub-tabs — hardcoded FALLBACK
 // ---------------------------------------------------------------------------
 
-/** Which roles can see each valuation sub-tab */
-const valuationTabAccess: Record<string, UserRole[]> = {
+/** Which roles can see each valuation sub-tab (fallback only) */
+const FALLBACK_valuationTabAccess: Record<string, UserRole[]> = {
   // Valuations list — everyone in valuation service
   valuations: [
     'super_admin', 'firm_principal', 'admin', 'senior_valuer', 'manager',
@@ -190,17 +278,39 @@ const valuationTabAccess: Record<string, UserRole[]> = {
 };
 
 // ---------------------------------------------------------------------------
-// Helper functions
+// Helper functions (dynamic config → hardcoded fallback)
 // ---------------------------------------------------------------------------
+
+/**
+ * Get platform tab access map (dynamic or fallback).
+ */
+function getPlatformTabAccess(): Record<string, string[]> {
+  return _rbacConfig?.platformTabs || FALLBACK_platformTabAccess;
+}
+
+/**
+ * Get valuation tab access map (dynamic or fallback).
+ */
+function getValuationTabAccess(): Record<string, string[]> {
+  return _rbacConfig?.valuationTabs || FALLBACK_valuationTabAccess;
+}
+
+/**
+ * Get feature gates (dynamic or fallback).
+ */
+function getFeatureGates(): Record<string, { minTier: string; label: string; description: string }> {
+  return _rbacConfig?.featureGates || featureGates;
+}
 
 /**
  * Check if a role can access a platform-level service tab.
  */
 export function canAccessPlatformTab(role: string | undefined | null, tabKey: string): boolean {
   if (!role) return false;
-  const allowed = platformTabAccess[tabKey];
+  const tabs = getPlatformTabAccess();
+  const allowed = tabs[tabKey];
   if (!allowed) return false;
-  return allowed.includes(role as UserRole);
+  return allowed.includes(role);
 }
 
 /**
@@ -208,9 +318,10 @@ export function canAccessPlatformTab(role: string | undefined | null, tabKey: st
  */
 export function canAccessValuationTab(role: string | undefined | null, tabKey: string): boolean {
   if (!role) return false;
-  const allowed = valuationTabAccess[tabKey];
+  const tabs = getValuationTabAccess();
+  const allowed = tabs[tabKey];
   if (!allowed) return false;
-  return allowed.includes(role as UserRole);
+  return allowed.includes(role);
 }
 
 /**
@@ -225,7 +336,8 @@ export function canAccessFeature(
   // super_admin bypasses all tier restrictions
   if (role === 'super_admin') return true;
   
-  const gate = featureGates[featureKey];
+  const gates = getFeatureGates();
+  const gate = gates[featureKey];
   if (!gate) return true; // ungated feature
   
   const userLevel = TIER_LEVEL[tier || 'starter'] || 0;
@@ -243,7 +355,9 @@ export function getUpgradeInfo(
   featureKey: string
 ): FeatureGate | null {
   if (canAccessFeature(role, tier, featureKey)) return null;
-  return featureGates[featureKey] || null;
+  const gates = getFeatureGates();
+  const gate = gates[featureKey];
+  return gate ? { minTier: gate.minTier as SubscriptionTier, label: gate.label, description: gate.description } : null;
 }
 
 /**
@@ -256,7 +370,9 @@ export function canFullyAccessTab(
 ): { hasRoleAccess: boolean; hasTierAccess: boolean; gate: FeatureGate | null } {
   const hasRoleAccess = canAccessPlatformTab(role, tabKey);
   const hasTierAccess = canAccessFeature(role, tier, tabKey);
-  const gate = !hasTierAccess ? (featureGates[tabKey] || null) : null;
+  const gates = getFeatureGates();
+  const rawGate = !hasTierAccess ? (gates[tabKey] || null) : null;
+  const gate = rawGate ? { minTier: rawGate.minTier as SubscriptionTier, label: rawGate.label, description: rawGate.description } : null;
   return { hasRoleAccess, hasTierAccess, gate };
 }
 
@@ -273,7 +389,7 @@ export function isAdminRole(role: string | undefined | null): boolean {
  */
 export function isManagerOrAbove(role: string | undefined | null): boolean {
   if (!role) return false;
-  return ['super_admin', 'admin', 'firm_principal', 'senior_valuer', 'manager'].includes(role);
+  return ['super_admin', 'admin', 'firm_principal', 'senior_valuer', 'manager', 'project_manager'].includes(role);
 }
 
 /**
@@ -292,7 +408,32 @@ export function getTierDisplayName(tier: string | undefined | null): string {
  * Get the required tier display name for a feature.
  */
 export function getRequiredTierName(featureKey: string): string {
-  const gate = featureGates[featureKey];
+  const gates = getFeatureGates();
+  const gate = gates[featureKey];
   if (!gate) return 'Starter';
   return getTierDisplayName(gate.minTier);
+}
+
+/**
+ * Check if the user has a specific policy-level permission.
+ * Uses dynamic policies from the backend if available.
+ */
+export function hasPermission(
+  role: string | undefined | null,
+  resourceType: string,
+  action: string
+): boolean {
+  if (!role) return false;
+  if (role === 'super_admin') return true;
+
+  const config = getRbacConfig();
+  if (config?.policies) {
+    const policy = config.policies.find(
+      p => p.resourceType === resourceType && p.action === action
+    );
+    return policy ? policy.allowedRoles.includes(role) : false;
+  }
+
+  // No dynamic config loaded — allow (the backend will enforce)
+  return true;
 }

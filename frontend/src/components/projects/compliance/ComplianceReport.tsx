@@ -22,6 +22,7 @@ import {
 } from 'lucide-react';
 import { formatDistanceToNow, format } from 'date-fns';
 import { cn } from '@/lib/utils';
+import { authedFetch } from '@/lib/authed-fetch';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -103,7 +104,7 @@ const complianceReportApi = {
       signees?: Signee[];
     }
   ) => {
-    const response = await fetch(`${API_URL}/projects/${projectId}/compliance/report`, {
+    const response = await authedFetch(`${API_URL}/projects/${projectId}/compliance/report`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(options),
@@ -113,7 +114,7 @@ const complianceReportApi = {
   },
 
   getReports: async (projectId: string): Promise<ComplianceReportRecord[]> => {
-    const response = await fetch(`${API_URL}/projects/${projectId}/compliance/reports`);
+    const response = await authedFetch(`${API_URL}/projects/${projectId}/compliance/reports`);
     if (!response.ok) throw new Error('Failed to fetch reports');
     return response.json();
   },

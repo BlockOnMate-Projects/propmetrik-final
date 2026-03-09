@@ -218,11 +218,11 @@ export default function PressPage() {
                 {[
                   {
                     title: 'Embeddable Widgets',
-                    desc: 'Embed live PropMetrik index charts directly into your articles with a single code snippet.',
+                    desc: 'Embed live PROPMETRIK index charts directly into your articles with a single code snippet.',
                   },
                   {
                     title: 'Pre-formatted Charts',
-                    desc: 'Publication-ready PNG/SVG charts of CCI, GHAI, GHPI indices with PropMetrik attribution.',
+                    desc: 'Publication-ready PNG/SVG charts of CCI, GHAI, GHPI indices with PROPMETRIK attribution.',
                   },
                   {
                     title: 'Market Statistics',
@@ -256,7 +256,7 @@ export default function PressPage() {
             </h2>
             <p className="text-zinc-400 mb-8">
               Need a data-driven market quote for your article? Our AI generates
-              publication-ready quotes based on the latest PropMetrik data.
+              publication-ready quotes based on the latest PROPMETRIK data.
               Attribution: PROPMETRIK Research.
             </p>
 

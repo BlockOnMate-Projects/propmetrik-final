@@ -25,6 +25,7 @@ import { WhatsAppChat } from '@/components/crm/WhatsAppChat';
 import { EmptyState } from '@/components/crm/EmptyState';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
+import { authedFetch } from '@/lib/authed-fetch';
 
 // Types
 interface Conversation {
@@ -195,9 +196,9 @@ export default function MessagingPage() {
         setLoading(true);
         try {
             const [convRes, statsRes, statusRes] = await Promise.all([
-                fetch(`${API_BASE}/api/messaging/conversations`, { credentials: 'include' }),
-                fetch(`${API_BASE}/api/messaging/stats`, { credentials: 'include' }),
-                fetch(`${API_BASE}/api/messaging/status`, { credentials: 'include' }),
+                authedFetch(`${API_BASE}/api/messaging/conversations`, { credentials: 'include' }),
+                authedFetch(`${API_BASE}/api/messaging/stats`, { credentials: 'include' }),
+                authedFetch(`${API_BASE}/api/messaging/status`, { credentials: 'include' }),
             ]);
 
             if (convRes.ok) {

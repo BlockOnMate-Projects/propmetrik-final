@@ -40,6 +40,8 @@ export interface AuthenticatedUser {
   clientRoles: string[];
   organizationId?: string;
   region?: string;
+  userType?: string;   // 'staff' | 'customer'
+  tier?: string;       // org subscription tier
 }
 
 // Extend Express Request type
@@ -50,6 +52,7 @@ declare global {
       token?: string;
       organizationId?: string;
       userId?: string;
+      currentServiceTier?: string;  // set by requireServiceAccess()
     }
   }
 }
@@ -64,22 +67,27 @@ const TOKEN_BLACKLIST_PREFIX = 'propmetrik:token:blacklist:';
 const TOKEN_BLACKLIST_TTL = 3600; // 1 hour
 
 /**
- * Extract JWT from Authorization header
+ * Extract JWT from Authorization header or query parameter.
+ * Query parameter fallback is needed for SSE (EventSource) connections
+ * which cannot set custom HTTP headers.
  */
 function extractToken(req: Request): string | null {
+  // 1. Try Authorization header first (standard)
   const authHeader = req.headers.authorization;
-  
-  if (!authHeader) {
-    return null;
+  if (authHeader) {
+    const [type, token] = authHeader.split(' ');
+    if (type.toLowerCase() === 'bearer' && token) {
+      return token;
+    }
   }
-  
-  const [type, token] = authHeader.split(' ');
-  
-  if (type.toLowerCase() !== 'bearer' || !token) {
-    return null;
+
+  // 2. Fallback: query parameter (for SSE/EventSource connections)
+  const queryToken = req.query.token as string | undefined;
+  if (queryToken) {
+    return queryToken;
   }
-  
-  return token;
+
+  return null;
 }
 
 /**
@@ -132,22 +140,80 @@ function parseTokenPayload(payload: KeycloakTokenPayload): AuthenticatedUser {
 }
 
 /**
- * Development mode mock user for testing without Keycloak
+ * Cached dev-mode user (loaded from DB on first use).
+ * No credentials are hardcoded — the first super_admin row is fetched at runtime.
  */
-const DEV_MODE_USER: AuthenticatedUser = {
-  sub: 'ed4a50d7-a1b2-4c3d-8e5f-6a7b8c9d0e1f',
-  id: 'ed4a50d7-a1b2-4c3d-8e5f-6a7b8c9d0e1f',
-  email: 'eric@propmetrik.com',
-  emailVerified: true,
-  name: 'Eric Danso',
-  username: 'eric_danso',
-  firstName: 'Eric',
-  lastName: 'Danso',
-  realmRoles: ['super_admin'],
-  clientRoles: ['super_admin'],
-  organizationId: '00000000-0000-0000-0000-000000000001',
-  region: 'GR',
-};
+let _cachedDevUser: AuthenticatedUser | null = null;
+
+async function getDevModeUser(): Promise<AuthenticatedUser> {
+  if (_cachedDevUser) return _cachedDevUser;
+  try {
+    const { query: dbQuery } = require('../database');
+    const result = await dbQuery(
+      `SELECT id, email, first_name, last_name, role,
+              organization_id, user_type
+       FROM users WHERE role = 'super_admin' AND is_active = true
+       ORDER BY created_at ASC LIMIT 1`
+    );
+    if (result.rows.length > 0) {
+      const row = result.rows[0];
+      _cachedDevUser = {
+        sub: row.id,
+        id: row.id,
+        email: row.email,
+        emailVerified: true,
+        name: `${row.first_name || ''} ${row.last_name || ''}`.trim() || row.email,
+        username: row.email,
+        firstName: row.first_name,
+        lastName: row.last_name,
+        realmRoles: [row.role],
+        clientRoles: [row.role],
+        organizationId: row.organization_id,
+        region: undefined,
+        userType: row.user_type || 'staff',
+      };
+      authLogger.info(`Dev mode user loaded from DB: ${row.email}`);
+      return _cachedDevUser;
+    }
+  } catch (err) {
+    authLogger.warn('Failed to load dev user from DB — dev mode will reject requests', { error: (err as Error).message });
+  }
+  throw new UnauthorizedError('No super_admin user found in database for dev mode');
+}
+
+/**
+ * Enrich req.user with userType and tier from the database.
+ * Called after authentication succeeds, before passing to next().
+ * Intentionally non-blocking — failures are logged, not thrown.
+ */
+async function enrichUserFromDb(req: Request): Promise<void> {
+  if (!req.user) return;
+  const userId = req.user.id || req.user.sub;
+  if (!userId) return;
+
+  // Already enriched (dev mode user or cached)
+  if (req.user.userType) return;
+
+  try {
+    const { pool } = await import('../database');
+    const result = await pool.query(
+      `SELECT u.user_type, o.subscription_tier
+       FROM users u
+       LEFT JOIN organizations o ON o.id = u.organization_id
+       WHERE u.id = $1`,
+      [userId],
+    );
+    if (result.rows.length > 0) {
+      req.user.userType = result.rows[0].user_type || 'staff';
+      req.user.tier = result.rows[0].subscription_tier || 'starter';
+    } else {
+      req.user.userType = 'staff';
+    }
+  } catch {
+    // Non-fatal — downstream middleware can resolve if needed
+    req.user.userType = 'staff';
+  }
+}
 
 /**
  * Local JWT secret — same as used by /auth/login and /auth/signup
@@ -203,12 +269,17 @@ export async function authenticate(
     
     // Development mode bypass - allow unauthenticated access
     if (!token && config.app.env === 'development') {
-      req.user = { 
-        ...DEV_MODE_USER,
-        organization_id: DEV_MODE_USER.organizationId,
-      } as any;
-      authLogger.debug('Development mode: using mock user');
-      return next();
+      try {
+        const devUser = await getDevModeUser();
+        req.user = { 
+          ...devUser,
+          organization_id: devUser.organizationId,
+        } as any;
+        authLogger.debug('Development mode: using DB user');
+        return next();
+      } catch {
+        // Fall through to "No authentication token" error
+      }
     }
     
     if (!token) {
@@ -237,6 +308,7 @@ export async function authenticate(
       username: req.user.username,
     });
     
+    await enrichUserFromDb(req);
     next();
   } catch (error: any) {
     if (error instanceof UnauthorizedError) {
@@ -255,18 +327,47 @@ export async function authenticate(
           email: localUser.email,
           role: localUser.realmRoles[0],
         });
+        await enrichUserFromDb(req);
         return next();
       }
     }
     
     if (error.code === 'ERR_JWT_EXPIRED') {
+      // In dev mode, fall back to dev user when token is expired
+      if (config.app.env === 'development') {
+        try {
+          const devUser = await getDevModeUser();
+          req.user = { ...devUser, organization_id: devUser.organizationId } as any;
+          authLogger.debug('Development mode: token expired, falling back to DB user');
+          return next();
+        } catch { /* fall through */ }
+      }
       return next(new UnauthorizedError('Token has expired'));
     }
     
     if (error.code === 'ERR_JWT_INVALID' || error.code === 'ERR_JWS_INVALID') {
+      // In dev mode, fall back to dev user when token is invalid
+      if (config.app.env === 'development') {
+        try {
+          const devUser = await getDevModeUser();
+          req.user = { ...devUser, organization_id: devUser.organizationId } as any;
+          authLogger.debug('Development mode: token invalid, falling back to DB user');
+          return next();
+        } catch { /* fall through */ }
+      }
       return next(new UnauthorizedError('Invalid token'));
     }
     
+    // In dev mode, fall back to dev user for any other auth error
+    if (config.app.env === 'development') {
+      try {
+        const devUser = await getDevModeUser();
+        req.user = { ...devUser, organization_id: devUser.organizationId } as any;
+        authLogger.debug('Development mode: auth failed, falling back to DB user');
+        return next();
+      } catch { /* fall through */ }
+    }
+
     authLogger.error('Authentication error', { error: error.message });
     next(new UnauthorizedError('Authentication failed'));
   }

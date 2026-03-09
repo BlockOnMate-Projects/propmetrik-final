@@ -1,0 +1,204 @@
+{
+  "common": {
+    "save": "Enregistrer",
+    "cancel": "Annuler",
+    "delete": "Supprimer",
+    "edit": "Modifier",
+    "create": "Créer",
+    "close": "Fermer",
+    "back": "Retour",
+    "next": "Suivant",
+    "previous": "Précédent",
+    "search": "Rechercher",
+    "filter": "Filtrer",
+    "export": "Exporter",
+    "import": "Importer",
+    "loading": "Chargement...",
+    "noData": "Aucune donnée trouvée",
+    "confirm": "Confirmer",
+    "submit": "Soumettre",
+    "approve": "Approuver",
+    "reject": "Rejeter",
+    "status": "Statut",
+    "actions": "Actions",
+    "type": "Type",
+    "date": "Date",
+    "name": "Nom",
+    "description": "Description",
+    "notes": "Notes",
+    "total": "Total",
+    "yes": "Oui",
+    "no": "Non"
+  },
+  "nav": {
+    "projects": "Projets",
+    "units": "Unités",
+    "contractors": "Entrepreneurs",
+    "costs": "Coûts",
+    "financials": "Finances",
+    "punchLists": "Listes de Réserves",
+    "documents": "Documents",
+    "issues": "Problèmes",
+    "drawings": "Plans",
+    "meetings": "Réunions",
+    "safety": "Sécurité",
+    "timesheets": "Feuilles de Temps",
+    "equipment": "Équipement",
+    "bidding": "Appels d'Offres",
+    "closeout": "Clôture",
+    "team": "Équipe",
+    "reports": "Rapports",
+    "calendar": "Calendrier",
+    "analytics": "Analytique",
+    "auditLog": "Journal d'Audit",
+    "integrations": "Intégrations",
+    "settings": "Paramètres"
+  },
+  "projects": {
+    "title": "Projets",
+    "createProject": "Créer un Projet",
+    "projectName": "Nom du Projet",
+    "projectType": "Type de Projet",
+    "location": "Emplacement",
+    "startDate": "Date de Début",
+    "endDate": "Date de Fin",
+    "budget": "Budget",
+    "status": {
+      "planning": "Planification",
+      "active": "Actif",
+      "on_hold": "En Attente",
+      "completed": "Terminé",
+      "cancelled": "Annulé"
+    }
+  },
+  "safety": {
+    "title": "Sécurité & Gestion des Incidents",
+    "subtitle": "Incidents • Observations • Inspections",
+    "incidents": "Incidents",
+    "observations": "Observations",
+    "inspections": "Inspections",
+    "createIncident": "Signaler un Incident",
+    "createObservation": "Enregistrer une Observation",
+    "createInspection": "Planifier une Inspection",
+    "severity": {
+      "low": "Faible",
+      "medium": "Moyen",
+      "high": "Élevé",
+      "critical": "Critique"
+    },
+    "stats": {
+      "totalIncidents": "Total Incidents",
+      "oshaRecordable": "Enregistrable OSHA",
+      "lostWorkDays": "Jours de Travail Perdus",
+      "injuries": "Blessures"
+    }
+  },
+  "timesheets": {
+    "title": "Suivi du Temps",
+    "subtitle": "Entrées • Feuilles de Temps • Équipes",
+    "clockIn": "Pointer l'Entrée",
+    "clockOut": "Pointer la Sortie",
+    "entries": "Entrées",
+    "timesheets": "Feuilles de Temps",
+    "crews": "Équipes",
+    "stats": {
+      "totalHours": "Heures Totales",
+      "overtime": "Heures Supplémentaires",
+      "workers": "Travailleurs Actifs",
+      "laborCost": "Coût de Main-d'Œuvre"
+    }
+  },
+  "equipment": {
+    "title": "Suivi d'Équipement",
+    "subtitle": "Inventaire • Affectations • Maintenance",
+    "addEquipment": "Ajouter un Équipement",
+    "inventory": "Inventaire",
+    "assigned": "Affecté",
+    "maintenance": "Maintenance",
+    "status": {
+      "available": "Disponible",
+      "in_use": "En Utilisation",
+      "maintenance": "Maintenance",
+      "repair": "Réparation",
+      "retired": "Retiré"
+    }
+  },
+  "bidding": {
+    "title": "Appels d'Offres & Approvisionnement",
+    "subtitle": "Dossiers d'Appel d'Offres • Préqualification des Fournisseurs • Comparaison",
+    "createPackage": "Créer un Dossier d'Appel d'Offres",
+    "registerVendor": "Enregistrer un Fournisseur",
+    "packages": "Dossiers",
+    "compare": "Comparer",
+    "vendors": "Fournisseurs",
+    "status": {
+      "draft": "Brouillon",
+      "published": "Publié",
+      "under_review": "En Révision",
+      "awarded": "Attribué",
+      "cancelled": "Annulé"
+    }
+  },
+  "closeout": {
+    "title": "Clôture du Projet",
+    "subtitle": "Liste de Vérification • Garanties • Réclamations",
+    "addWarranty": "Ajouter une Garantie",
+    "checklist": "Liste de Vérification",
+    "warranties": "Garanties",
+    "claims": "Réclamations",
+    "progress": "Progression de Clôture",
+    "stats": {
+      "activeWarranties": "Garanties Actives",
+      "expiringSoon": "Expiration Prochaine",
+      "openClaims": "Réclamations Ouvertes",
+      "totalWarranties": "Total Garanties"
+    }
+  },
+  "auditLog": {
+    "title": "Journal d'Audit",
+    "subtitle": "Conformité SOC 2 • Suivi d'Activité • Export",
+    "exportCsv": "Exporter CSV",
+    "exportJson": "Exporter JSON",
+    "stats": {
+      "totalEvents": "Total Événements",
+      "today": "Aujourd'hui",
+      "uniqueUsers": "Utilisateurs Uniques",
+      "resourceTypes": "Types de Ressources"
+    }
+  },
+  "integrations": {
+    "title": "Intégrations",
+    "subtitle": "Marketplace • Connexions • Clés API",
+    "marketplace": "Marketplace",
+    "connected": "Connecté",
+    "apiKeys": "Clés API",
+    "connect": "Connecter",
+    "manage": "Gérer",
+    "test": "Tester",
+    "sync": "Synchroniser",
+    "createApiKey": "Créer une Clé API",
+    "revokeKey": "Révoquer"
+  },
+  "customFields": {
+    "title": "Champs Personnalisés",
+    "subtitle": "Définir des champs de données personnalisés pour tout type d'entité",
+    "addField": "Ajouter un Champ",
+    "fieldName": "Nom du Champ",
+    "fieldType": "Type de Champ",
+    "entityType": "Type d'Entité",
+    "required": "Requis",
+    "fieldTypes": {
+      "text": "Texte",
+      "textarea": "Texte Long",
+      "number": "Nombre",
+      "currency": "Devise",
+      "date": "Date",
+      "select": "Sélection",
+      "multi_select": "Sélection Multiple",
+      "checkbox": "Case à Cocher",
+      "url": "URL",
+      "email": "Email",
+      "phone": "Téléphone"
+    }
+  }
+}

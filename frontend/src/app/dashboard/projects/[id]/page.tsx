@@ -3,7 +3,7 @@
 import React, { useEffect, useState, useMemo } from 'react'
 import { WorkspaceWidget } from '@/components/workspace/WorkspacePanel'
 import Link from 'next/link'
-import { useParams, useRouter } from 'next/navigation'
+import { useParams, useRouter, useSearchParams } from 'next/navigation'
 import { cn } from '@/lib/utils'
 import {
   ArrowLeft,
@@ -15,7 +15,6 @@ import {
   MapPin,
   MoreVertical,
   Plus,
-  Home,
   Users,
   DollarSign,
   TrendingUp,
@@ -27,7 +26,6 @@ import {
   Flag,
   Layers,
   BarChart3,
-  Grid3X3,
   Upload,
   Pencil,
   X,
@@ -36,6 +34,8 @@ import {
   MessageSquare,
   FileCheck2,
   FileEdit,
+  Download,
+  Trash2,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
@@ -66,8 +66,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { projectsApi, phasesApi, unitsApi, costsApi, assignmentsApi } from '@/lib/projects-api'
+import { projectsApi, phasesApi, costsApi, assignmentsApi, dashboardApi } from '@/lib/projects-api'
 import { teamApi, TeamMember } from '@/lib/team-api'
+import { rfiApi, submittalApi, changeOrderApi, punchListApi, RfiStats, SubmittalStats, ChangeOrderStats, PunchListStats } from '@/lib/unified-project-api'
 import { ProjectGantt } from '@/components/projects/gantt/ProjectGantt'
 import { SiteDiaryLog } from '@/components/projects/construction/SiteDiaryLog'
 import { PettyCashLedger } from '@/components/projects/construction/PettyCashLedger'
@@ -76,17 +77,15 @@ import { RFIsTab, SubmittalsTab, ChangeOrdersTab, MilestonesTab } from '@/compon
 import type {
   DevelopmentProject,
   ProjectPhase,
-  ProjectUnit,
   ProjectCost,
   BudgetSummary,
   ContractorAssignment,
   GanttData,
-  UnitStats,
   ProjectStatus,
   PhaseStatus,
-  UnitStatus,
 } from '@/types/projects'
 import { formatCurrency } from '@/lib/utils'
+import { authedFetch } from '@/lib/authed-fetch'
 
 // =====================================================
 // STATUS CONFIGURATIONS
@@ -110,17 +109,6 @@ const phaseStatusColors: Record<PhaseStatus, { bg: string; text: string }> = {
   delayed: { bg: 'bg-red-900/50', text: 'text-red-400' },
   blocked: { bg: 'bg-red-900/50', text: 'text-red-400' },
   cancelled: { bg: 'bg-zinc-800/50', text: 'text-zinc-500' },
-}
-
-const unitStatusColors: Record<UnitStatus, { bg: string; text: string; label: string }> = {
-  available: { bg: 'bg-green-900/50', text: 'text-green-400', label: 'Available' },
-  reserved: { bg: 'bg-yellow-900/50', text: 'text-yellow-400', label: 'Reserved' },
-  under_contract: { bg: 'bg-blue-900/50', text: 'text-blue-400', label: 'Contract' },
-  sold: { bg: 'bg-purple-900/50', text: 'text-purple-400', label: 'Sold' },
-  under_construction: { bg: 'bg-amber-900/50', text: 'text-amber-400', label: 'Building' },
-  completed: { bg: 'bg-teal-900/50', text: 'text-teal-400', label: 'Ready' },
-  handed_over: { bg: 'bg-emerald-900/50', text: 'text-emerald-400', label: 'Handed Over' },
-  not_for_sale: { bg: 'bg-zinc-800/50', text: 'text-zinc-500', label: 'N/A' },
 }
 
 // =====================================================
@@ -284,79 +272,6 @@ function GanttChart({ phases, projectStart, projectEnd }: {
         style={{ left: `${getPosition(new Date().toISOString())}%` }}
       >
         <div className="absolute -top-1 -left-2 font-mono text-[8px] text-red-400">TODAY</div>
-      </div>
-    </div>
-  )
-}
-
-// =====================================================
-// UNIT GRID
-// =====================================================
-function UnitGrid({ units }: { units: ProjectUnit[] }) {
-  // Group by building and floor
-  const grouped = useMemo(() => {
-    const byBuilding: Record<string, Record<number, ProjectUnit[]>> = {}
-
-    units.forEach(unit => {
-      const building = unit.building || 'Main'
-      const floor = unit.floor || 0
-
-      if (!byBuilding[building]) byBuilding[building] = {}
-      if (!byBuilding[building][floor]) byBuilding[building][floor] = []
-      byBuilding[building][floor].push(unit)
-    })
-
-    return byBuilding
-  }, [units])
-
-  return (
-    <div className="space-y-4">
-      {Object.entries(grouped).map(([building, floors]) => (
-        <div key={building}>
-          <h4 className="font-mono text-[10px] text-zinc-500 mb-2 uppercase">{building}</h4>
-          <div className="space-y-1">
-            {Object.entries(floors)
-              .sort(([a], [b]) => Number(b) - Number(a))
-              .map(([floor, floorUnits]) => (
-                <div key={floor} className="flex items-center gap-1">
-                  <span className="w-8 font-mono text-[10px] text-zinc-600">F{floor}</span>
-                  <div className="flex gap-1 flex-wrap">
-                    {floorUnits
-                      .sort((a, b) => a.unit_number.localeCompare(b.unit_number))
-                      .map(unit => {
-                        const config = unitStatusColors[unit.status]
-                        return (
-                          <Link
-                            key={unit.id}
-                            href={`/dashboard/projects/units/${unit.id}`}
-                            className={cn(
-                              "w-10 h-8 flex items-center justify-center border transition-all hover:scale-105",
-                              config.bg,
-                              "border-zinc-700 hover:border-amber-500/50"
-                            )}
-                            title={`${unit.unit_number} - ${config.label} - ${unit.final_price ? formatCurrency(unit.final_price, unit.currency) : 'TBD'}`}
-                          >
-                            <span className={cn("font-mono text-[9px]", config.text)}>
-                              {unit.unit_number.replace(/^[A-Z]+-/, '')}
-                            </span>
-                          </Link>
-                        )
-                      })}
-                  </div>
-                </div>
-              ))}
-          </div>
-        </div>
-      ))}
-
-      {/* Legend */}
-      <div className="flex flex-wrap gap-3 pt-3 border-t border-zinc-800">
-        {Object.entries(unitStatusColors).map(([status, config]) => (
-          <div key={status} className="flex items-center gap-1.5">
-            <div className={cn("w-3 h-3", config.bg, "border border-zinc-700")} />
-            <span className="font-mono text-[9px] text-zinc-500">{config.label}</span>
-          </div>
-        ))}
       </div>
     </div>
   )
@@ -802,49 +717,214 @@ function ContractorList({ assignments }: { assignments: ContractorAssignment[] }
 }
 
 // =====================================================
+// ROLE DISPLAY HELPERS
+// =====================================================
+const roleDisplayNames: Record<string, string> = {
+  project_manager: 'Project Manager',
+  site_manager: 'Site Manager',
+  project_engineer: 'Project Engineer',
+  quantity_surveyor: 'Quantity Surveyor',
+  site_supervisor: 'Site Supervisor',
+  foreman: 'Foreman',
+  architect: 'Architect',
+  structural_engineer: 'Structural Engineer',
+  mep_engineer: 'MEP Engineer',
+  civil_engineer: 'Civil Engineer',
+  geotechnical_engineer: 'Geotech Engineer',
+  environmental_consultant: 'Environmental',
+  land_surveyor: 'Land Surveyor',
+  interior_designer: 'Interior Designer',
+  landscape_architect: 'Landscape Architect',
+  cost_consultant: 'Cost Consultant',
+  construction_manager: 'Construction Manager',
+  health_safety_officer: 'H&S Officer',
+  quality_control_inspector: 'QC Inspector',
+  client_representative: 'Client Rep',
+  legal_counsel: 'Legal Counsel',
+  accountant: 'Accountant',
+  procurement_officer: 'Procurement',
+  admin: 'Admin',
+}
+
+function formatRole(role: string): string {
+  return roleDisplayNames[role] || role.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())
+}
+
+const roleCategoryColors: Record<string, string> = {
+  professional: 'text-blue-400',
+  construction: 'text-amber-400',
+  government: 'text-purple-400',
+  stakeholder: 'text-emerald-400',
+  internal: 'text-zinc-400',
+}
+
+// =====================================================
+// TEAM ROSTER (replaces ContractorList in sidebar)
+// =====================================================
+function TeamRoster({ teamMembers, projectManager, assignments }: {
+  teamMembers: TeamMember[];
+  projectManager: TeamMember | null;
+  assignments: ContractorAssignment[];
+}) {
+  const activeMembers = teamMembers.filter(m => m.isActive)
+  const hasAnyMembers = activeMembers.length > 0 || projectManager || assignments.length > 0
+
+  if (!hasAnyMembers) {
+    return (
+      <div className="text-center py-4">
+        <Users className="h-8 w-8 text-zinc-700 mx-auto mb-2" />
+        <p className="font-mono text-[10px] text-zinc-500">No team members assigned</p>
+      </div>
+    )
+  }
+
+  // Deduplicate PM from team members list
+  const pmUserId = projectManager?.userId
+  const otherMembers = activeMembers.filter(m => m.userId !== pmUserId)
+
+  return (
+    <div className="space-y-3">
+      {/* Project Manager (highlighted) */}
+      {projectManager && (
+        <div className="p-2 bg-amber-900/15 border border-amber-800/50">
+          <div className="flex items-center gap-2.5">
+            <div className="w-7 h-7 flex items-center justify-center bg-amber-900/50 text-amber-500 font-mono text-[10px] font-bold flex-shrink-0">
+              PM
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="font-mono text-xs text-white line-clamp-1">
+                {projectManager.fullName || projectManager.userName || projectManager.userEmail || projectManager.contactEmail || 'Assigned PM'}
+              </div>
+              <div className="font-mono text-[10px] text-amber-500">Project Manager</div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Team members */}
+      {otherMembers.length > 0 && (
+        <div className="space-y-1.5">
+          {otherMembers.slice(0, 8).map((member) => (
+            <div key={member.id} className="flex items-center gap-2.5 p-1.5 bg-zinc-800/30 border border-zinc-800">
+              <div className="w-6 h-6 flex items-center justify-center bg-zinc-800 text-zinc-400 font-mono text-[9px] font-bold flex-shrink-0 uppercase">
+                {(member.fullName || member.userName || member.userEmail || '??').substring(0, 2)}
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="font-mono text-xs text-white line-clamp-1">
+                  {member.fullName || member.userName || member.userEmail || member.contactEmail || 'Unknown'}
+                </div>
+              </div>
+              <span className={cn(
+                "font-mono text-[9px] flex-shrink-0",
+                roleCategoryColors[member.roleCategory] || 'text-zinc-500'
+              )}>
+                {formatRole(member.role)}
+              </span>
+            </div>
+          ))}
+          {otherMembers.length > 8 && (
+            <div className="font-mono text-[10px] text-zinc-500 text-center py-1">
+              +{otherMembers.length - 8} more members
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Active contractors */}
+      {assignments.length > 0 && (
+        <>
+          <div className="border-t border-zinc-800 pt-2">
+            <div className="font-mono text-[9px] text-zinc-600 uppercase tracking-wider mb-1.5">Contractors</div>
+          </div>
+          {assignments.slice(0, 4).map((assignment) => (
+            <div key={assignment.id} className="flex items-center gap-2.5 p-1.5 bg-zinc-800/30 border border-zinc-800">
+              <div className="w-6 h-6 flex items-center justify-center bg-zinc-800 text-green-500 font-mono text-[9px] font-bold flex-shrink-0">
+                <HardHat className="h-3 w-3" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="font-mono text-xs text-white line-clamp-1">
+                  {assignment.contractor?.company_name || 'Unknown'}
+                </div>
+              </div>
+              <span className="font-mono text-[9px] text-zinc-500 flex-shrink-0">
+                {assignment.contractor?.trade}
+              </span>
+            </div>
+          ))}
+          {assignments.length > 4 && (
+            <div className="font-mono text-[10px] text-zinc-500 text-center py-1">
+              +{assignments.length - 4} more contractors
+            </div>
+          )}
+        </>
+      )}
+    </div>
+  )
+}
+
+// =====================================================
 // MAIN PAGE COMPONENT
 // =====================================================
 export default function ProjectDetailPage() {
   const params = useParams()
   const router = useRouter()
+  const searchParams = useSearchParams()
   const projectId = params.id as string
+
+  const validTabs = ['overview', 'construction', 'phases', 'rfis', 'submittals', 'change-orders', 'milestones', 'budget', 'contractors', 'team', 'documents']
+  const initialTab = validTabs.includes(searchParams.get('tab') || '') ? searchParams.get('tab')! : 'overview'
 
   const [project, setProject] = useState<DevelopmentProject | null>(null)
   const [phases, setPhases] = useState<ProjectPhase[]>([])
-  const [units, setUnits] = useState<ProjectUnit[]>([])
   const [budget, setBudget] = useState<BudgetSummary | null>(null)
   const [assignments, setAssignments] = useState<ContractorAssignment[]>([])
-  const [unitStats, setUnitStats] = useState<UnitStats | null>(null)
   const [projectManager, setProjectManager] = useState<TeamMember | null>(null)
+  const [teamMembers, setTeamMembers] = useState<TeamMember[]>([])
+  const [rfiStats, setRfiStats] = useState<RfiStats | null>(null)
+  const [submittalStats, setSubmittalStats] = useState<SubmittalStats | null>(null)
+  const [coStats, setCoStats] = useState<ChangeOrderStats | null>(null)
+  const [punchStats, setPunchStats] = useState<PunchListStats | null>(null)
+  const [documents, setDocuments] = useState<any[]>([])
 
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [activeTab, setActiveTab] = useState('overview')
+  const [activeTab, setActiveTab] = useState(initialTab)
+
+  // Sync tab to URL search param
+  const handleTabChange = (tab: string) => {
+    setActiveTab(tab)
+    const url = new URL(window.location.href)
+    if (tab === 'overview') {
+      url.searchParams.delete('tab')
+    } else {
+      url.searchParams.set('tab', tab)
+    }
+    window.history.replaceState({}, '', url.toString())
+  }
 
   // Dialog states
-  const [showAddUnitDialog, setShowAddUnitDialog] = useState(false)
   const [showUploadDialog, setShowUploadDialog] = useState(false)
-  const [isAddingUnit, setIsAddingUnit] = useState(false)
   const [isUploading, setIsUploading] = useState(false)
-
-  // Unit form data
-  const [unitForm, setUnitForm] = useState({
-    unit_number: '',
-    unit_type: 'apartment',
-    floor: '1',
-    bedrooms: '1',
-    bathrooms: '1',
-    internal_area_sqm: '',
-    base_price: '',
-    status: 'available',
-  })
 
   // Document form data
   const [documentForm, setDocumentForm] = useState({
     name: '',
-    category: 'contracts',
+    category: 'contract',
     file: null as File | null,
   })
+
+  // Fetch documents for this project
+  const fetchDocuments = async () => {
+    try {
+      const res = await authedFetch(`/api/projects/${projectId}/documents`)
+      if (res.ok) {
+        const data = await res.json()
+        setDocuments(Array.isArray(data) ? data : [])
+      }
+    } catch (err) {
+      console.error('Failed to fetch documents:', err)
+    }
+  }
 
   // Fetch all data
   useEffect(() => {
@@ -853,14 +933,20 @@ export default function ProjectDetailPage() {
         setIsLoading(true)
         setError(null)
 
-        const [projectRes, phasesRes, unitsRes, budgetRes, assignmentsRes, statsRes, teamRes] = await Promise.all([
+        const [projectRes, phasesRes, budgetRes, assignmentsRes, teamRes] = await Promise.all([
           projectsApi.getById(projectId),
           phasesApi.getByProject(projectId),
-          unitsApi.getByProject(projectId, { limit: 200 }),
           costsApi.getBudgetSummary(projectId).catch(() => null),
           assignmentsApi.getByProject(projectId).catch(() => []),
-          unitsApi.getStats(projectId).catch(() => null),
           teamApi.getProjectTeam(projectId).catch(() => []),
+        ])
+
+        // Fetch PM data stats (non-blocking)
+        const [rfiStatsRes, submittalStatsRes, coStatsRes, punchStatsRes] = await Promise.all([
+          rfiApi.getStats(projectId).catch(() => null),
+          submittalApi.getStats(projectId).catch(() => null),
+          changeOrderApi.getStats(projectId).catch(() => null),
+          punchListApi.getStats(projectId).catch(() => null),
         ])
 
         const teamMembers = Array.isArray(teamRes) ? teamRes : []
@@ -884,11 +970,25 @@ export default function ProjectDetailPage() {
 
         setProject(projectRes)
         setPhases(phasesRes || [])
-        setUnits(unitsRes?.data || [])
         setBudget(budgetRes)
         setAssignments(assignmentsRes || [])
-        setUnitStats(statsRes)
         setProjectManager(resolvedPm)
+        setTeamMembers(teamMembers)
+        setRfiStats(rfiStatsRes)
+        setSubmittalStats(submittalStatsRes)
+        setCoStats(coStatsRes)
+        setPunchStats(punchStatsRes)
+
+        // Fetch documents (non-blocking)
+        try {
+          const docsRes = await authedFetch(`/api/projects/${projectId}/documents`)
+          if (docsRes.ok) {
+            const docsData = await docsRes.json()
+            setDocuments(Array.isArray(docsData) ? docsData : [])
+          }
+        } catch (err) {
+          console.error('Failed to fetch documents:', err)
+        }
       } catch (err: any) {
         console.error('Failed to fetch project:', err)
         setError(err.message || 'Failed to load project')
@@ -902,50 +1002,6 @@ export default function ProjectDetailPage() {
     }
   }, [projectId])
 
-  // Handle add unit
-  const handleAddUnit = async () => {
-    if (!unitForm.unit_number || !unitForm.base_price) return
-
-    try {
-      setIsAddingUnit(true)
-      await unitsApi.create(projectId, {
-        unit_number: unitForm.unit_number,
-        unit_type: unitForm.unit_type as any,
-        floor: parseInt(unitForm.floor) || 1,
-        bedrooms: parseInt(unitForm.bedrooms) || 1,
-        bathrooms: parseInt(unitForm.bathrooms) || 1,
-        internal_area_sqm: parseFloat(unitForm.internal_area_sqm) || undefined,
-        base_price: parseFloat(unitForm.base_price),
-        status: unitForm.status as any,
-      })
-
-      // Refresh units
-      const [unitsRes, statsRes] = await Promise.all([
-        unitsApi.getByProject(projectId, { limit: 200 }),
-        unitsApi.getStats(projectId).catch(() => null),
-      ])
-      setUnits(unitsRes?.data || [])
-      setUnitStats(statsRes)
-
-      // Reset form and close
-      setUnitForm({
-        unit_number: '',
-        unit_type: 'apartment',
-        floor: '1',
-        bedrooms: '1',
-        bathrooms: '1',
-        internal_area_sqm: '',
-        base_price: '',
-        status: 'available',
-      })
-      setShowAddUnitDialog(false)
-    } catch (err) {
-      console.error('Failed to add unit:', err)
-    } finally {
-      setIsAddingUnit(false)
-    }
-  }
-
   // Handle document upload
   const handleUploadDocument = async () => {
     if (!documentForm.name || !documentForm.file) return
@@ -957,21 +1013,59 @@ export default function ProjectDetailPage() {
       const formData = new FormData()
       formData.append('file', documentForm.file)
       formData.append('name', documentForm.name)
-      formData.append('category', documentForm.category)
+      formData.append('document_type', documentForm.category)
 
-      // Upload via API (adjust endpoint as needed)
-      await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api/v1'}/projects/${projectId}/documents`, {
+      // Upload via API — uses /api proxy which rewrites to backend
+      const res = await authedFetch(`/api/projects/${projectId}/documents`, {
         method: 'POST',
         body: formData,
       })
 
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}))
+        throw new Error(errData.error?.message || errData.message || `Upload failed (${res.status})`)
+      }
+
       // Reset form and close
-      setDocumentForm({ name: '', category: 'contracts', file: null })
+      setDocumentForm({ name: '', category: 'contract', file: null })
       setShowUploadDialog(false)
-    } catch (err) {
+      // Refresh the documents list
+      await fetchDocuments()
+    } catch (err: any) {
       console.error('Failed to upload document:', err)
+      alert(err.message || 'Failed to upload document')
     } finally {
       setIsUploading(false)
+    }
+  }
+
+  // Handle document download
+  const handleDownloadDocument = async (docId: string) => {
+    try {
+      const res = await authedFetch(`/api/projects/${projectId}/documents/${docId}/download`)
+      if (!res.ok) throw new Error('Download failed')
+      const data = await res.json()
+      if (data.download_url) {
+        window.open(data.download_url, '_blank')
+      }
+    } catch (err: any) {
+      console.error('Failed to download document:', err)
+      alert(err.message || 'Failed to download document')
+    }
+  }
+
+  // Handle document delete
+  const handleDeleteDocument = async (docId: string, docName: string) => {
+    if (!confirm(`Delete "${docName}"? This action cannot be undone.`)) return
+    try {
+      const res = await authedFetch(`/api/projects/${projectId}/documents/${docId}`, {
+        method: 'DELETE',
+      })
+      if (!res.ok) throw new Error('Delete failed')
+      await fetchDocuments()
+    } catch (err: any) {
+      console.error('Failed to delete document:', err)
+      alert(err.message || 'Failed to delete document')
     }
   }
 
@@ -1002,9 +1096,6 @@ export default function ProjectDetailPage() {
   }
 
   const statusConfig = statusColors[project.status]
-  const salesProgress = project.total_units
-    ? Math.round(((project.units_sold || 0) / project.total_units) * 100)
-    : 0
 
   return (
     <div className="min-h-screen bg-zinc-950 text-white p-6">
@@ -1019,14 +1110,13 @@ export default function ProjectDetailPage() {
         }
       />
 
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+      <Tabs value={activeTab} onValueChange={handleTabChange} className="space-y-6">
         <div className="border-b border-zinc-800">
           <TabsList className="bg-transparent p-0 h-auto gap-0 w-full justify-start">
             {[
               { value: 'overview', label: 'Overview', icon: BarChart3 },
               { value: 'construction', label: 'Site Ops', icon: ClipboardType },
               { value: 'phases', label: 'Phases', icon: Layers },
-              { value: 'units', label: 'Units', icon: Grid3X3 },
               { value: 'rfis', label: 'RFIs', icon: MessageSquare },
               { value: 'submittals', label: 'Submittals', icon: FileCheck2 },
               { value: 'change-orders', label: 'Change Orders', icon: FileEdit },
@@ -1053,10 +1143,78 @@ export default function ProjectDetailPage() {
 
         <TabsContent value="overview" className="space-y-6 mt-6">
           <ProjectMetrics
+            project={project}
+            phases={phases}
             budget={budget || undefined}
-            units={unitStats || undefined}
             currency={project.currency}
+            rfiStats={rfiStats || undefined}
+            coStats={coStats || undefined}
           />
+
+          {/* Quick Stats Row — RFIs, Submittals, Change Orders, Punch Lists */}
+          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3">
+            <div className="border border-zinc-800 bg-zinc-900/50 p-3">
+              <div className="flex items-center justify-between mb-1.5">
+                <span className="font-mono text-[10px] text-zinc-500 uppercase tracking-wider">Open RFIs</span>
+                <MessageSquare className="h-3.5 w-3.5 text-blue-400" />
+              </div>
+              <div className="font-mono text-lg text-white">{rfiStats ? (rfiStats.total - (rfiStats.by_status?.['closed'] || 0)) : 0}</div>
+              {rfiStats && rfiStats.overdue > 0 && (
+                <div className="font-mono text-[10px] text-red-400 mt-0.5">{rfiStats.overdue} overdue</div>
+              )}
+            </div>
+            <div className="border border-zinc-800 bg-zinc-900/50 p-3">
+              <div className="flex items-center justify-between mb-1.5">
+                <span className="font-mono text-[10px] text-zinc-500 uppercase tracking-wider">Submittals</span>
+                <FileCheck2 className="h-3.5 w-3.5 text-purple-400" />
+              </div>
+              <div className="font-mono text-lg text-white">{submittalStats ? (submittalStats.total - (submittalStats.by_status?.['approved'] || 0) - (submittalStats.by_status?.['approved_as_noted'] || 0)) : 0}</div>
+              {submittalStats && submittalStats.overdue > 0 && (
+                <div className="font-mono text-[10px] text-red-400 mt-0.5">{submittalStats.overdue} overdue</div>
+              )}
+            </div>
+            <div className="border border-zinc-800 bg-zinc-900/50 p-3">
+              <div className="flex items-center justify-between mb-1.5">
+                <span className="font-mono text-[10px] text-zinc-500 uppercase tracking-wider">Change Orders</span>
+                <FileEdit className="h-3.5 w-3.5 text-amber-400" />
+              </div>
+              <div className="font-mono text-lg text-white">{coStats?.total_pending || 0}</div>
+              {coStats && coStats.total_cost_impact !== 0 && (
+                <div className={cn("font-mono text-[10px] mt-0.5", coStats.total_cost_impact > 0 ? 'text-red-400' : 'text-emerald-400')}>
+                  {coStats.total_cost_impact > 0 ? '+' : ''}{formatCurrency(coStats.total_cost_impact, project.currency)} impact
+                </div>
+              )}
+            </div>
+            <div className="border border-zinc-800 bg-zinc-900/50 p-3">
+              <div className="flex items-center justify-between mb-1.5">
+                <span className="font-mono text-[10px] text-zinc-500 uppercase tracking-wider">Punch List</span>
+                <ClipboardType className="h-3.5 w-3.5 text-orange-400" />
+              </div>
+              <div className="font-mono text-lg text-white">{punchStats ? (punchStats.total - (punchStats.by_status?.['closed'] || 0) - (punchStats.by_status?.['completed'] || 0)) : 0}</div>
+            </div>
+            <div className="border border-zinc-800 bg-zinc-900/50 p-3">
+              <div className="flex items-center justify-between mb-1.5">
+                <span className="font-mono text-[10px] text-zinc-500 uppercase tracking-wider">Schedule</span>
+                <Calendar className="h-3.5 w-3.5 text-indigo-400" />
+              </div>
+              {project.planned_end_date ? (
+                <>
+                  <div className="font-mono text-xs text-white">{new Date(project.planned_end_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}</div>
+                  <div className="font-mono text-[10px] text-zinc-500 mt-0.5">Target completion</div>
+                </>
+              ) : (
+                <div className="font-mono text-xs text-zinc-500">Not set</div>
+              )}
+            </div>
+            <div className="border border-zinc-800 bg-zinc-900/50 p-3">
+              <div className="flex items-center justify-between mb-1.5">
+                <span className="font-mono text-[10px] text-zinc-500 uppercase tracking-wider">Team</span>
+                <Users className="h-3.5 w-3.5 text-green-400" />
+              </div>
+              <div className="font-mono text-lg text-white">{teamMembers.filter(m => m.isActive).length + assignments.filter(a => a.is_active).length}</div>
+              <div className="font-mono text-[10px] text-zinc-500 mt-0.5">{teamMembers.filter(m => m.isActive).length} members · {assignments.filter(a => a.is_active).length} contractors</div>
+            </div>
+          </div>
 
           {/* Main Grid */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -1073,30 +1231,18 @@ export default function ProjectDetailPage() {
                   <div className="text-center py-8">
                     <Clock className="h-8 w-8 text-zinc-700 mx-auto mb-2" />
                     <p className="font-mono text-[10px] text-zinc-500">No phases defined yet</p>
-                    <Button variant="outline" size="sm" className="mt-2 font-mono text-xs">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="mt-2 font-mono text-xs"
+                      onClick={() => handleTabChange('phases')}
+                    >
                       <Plus className="h-3 w-3 mr-1" />
                       Add Phases
                     </Button>
                   </div>
                 )}
               </Panel>
-
-              {/* Unit Availability Grid */}
-              {units.length > 0 && (
-                <Panel
-                  title="UNIT AVAILABILITY"
-                  action={
-                    <Link href={`/dashboard/projects/${project.id}/units`}>
-                      <Button variant="ghost" size="sm" className="h-5 font-mono text-[10px] text-zinc-500 hover:text-amber-500">
-                        View All
-                        <ChevronRight className="h-3 w-3 ml-1" />
-                      </Button>
-                    </Link>
-                  }
-                >
-                  <UnitGrid units={units.slice(0, 50)} />
-                </Panel>
-              )}
             </div>
 
             {/* Right Column - Sidebar */}
@@ -1113,41 +1259,81 @@ export default function ProjectDetailPage() {
                 </Panel>
               )}
 
-              {/* Phases Quick View */}
+              {/* Active Team */}
               <Panel
-                title="PHASES"
+                title="ACTIVE TEAM"
                 action={
-                  <Button variant="ghost" size="sm" className="h-5 font-mono text-[10px] text-zinc-500 hover:text-amber-500">
-                    <Plus className="h-3 w-3" />
+                  <Button variant="ghost" size="sm" className="h-5 font-mono text-[10px] text-zinc-500 hover:text-amber-500" onClick={() => handleTabChange('team')}>
+                    Manage
+                    <ChevronRight className="h-3 w-3 ml-1" />
                   </Button>
                 }
               >
-                {phases.length > 0 ? (
-                  <PhaseList phases={phases} />
-                ) : (
-                  <div className="text-center py-4">
-                    <Layers className="h-6 w-6 text-zinc-700 mx-auto mb-2" />
-                    <p className="font-mono text-[10px] text-zinc-500">No phases yet</p>
-                  </div>
-                )}
+                <TeamRoster
+                  teamMembers={teamMembers}
+                  projectManager={projectManager}
+                  assignments={assignments.filter(a => a.is_active)}
+                />
               </Panel>
 
-              {/* Contractors */}
-              <Panel title="ACTIVE CONTRACTORS">
-                <ContractorList assignments={assignments.filter(a => a.is_active)} />
-              </Panel>
+              {/* Upcoming Milestones */}
+              {phases.length > 0 && (
+                <Panel title="UPCOMING MILESTONES">
+                  {(() => {
+                    const allMilestones = phases.flatMap(p =>
+                      (p.milestones || []).map(m => ({ ...m, phase_name: p.phase_name }))
+                    )
+                    const upcoming = allMilestones
+                      .filter(m => !m.is_completed && m.target_date)
+                      .sort((a, b) => new Date(a.target_date!).getTime() - new Date(b.target_date!).getTime())
+                      .slice(0, 5)
+
+                    if (upcoming.length === 0) return (
+                      <div className="text-center py-4">
+                        <Flag className="h-6 w-6 text-zinc-700 mx-auto mb-2" />
+                        <p className="font-mono text-[10px] text-zinc-500">No upcoming milestones</p>
+                      </div>
+                    )
+
+                    return (
+                      <div className="space-y-2">
+                        {upcoming.map((m, i) => {
+                          const daysUntil = m.target_date ? Math.ceil((new Date(m.target_date).getTime() - Date.now()) / (1000 * 60 * 60 * 24)) : 0
+                          const isOverdue = daysUntil < 0
+                          return (
+                            <div key={m.id || i} className="flex items-start gap-2 p-2 bg-zinc-800/30 border border-zinc-800">
+                              <div className={cn(
+                                "w-2 h-2 mt-1.5 rotate-45 flex-shrink-0",
+                                isOverdue ? "bg-red-500" : daysUntil <= 7 ? "bg-amber-500" : "bg-zinc-600"
+                              )} />
+                              <div className="flex-1 min-w-0">
+                                <div className="font-mono text-xs text-white line-clamp-1">{m.name}</div>
+                                <div className="font-mono text-[10px] text-zinc-500">{m.phase_name}</div>
+                              </div>
+                              <div className={cn(
+                                "font-mono text-[10px] flex-shrink-0",
+                                isOverdue ? "text-red-400" : daysUntil <= 7 ? "text-amber-400" : "text-zinc-500"
+                              )}>
+                                {isOverdue ? `${Math.abs(daysUntil)}d late` : daysUntil === 0 ? 'Today' : `${daysUntil}d`}
+                              </div>
+                            </div>
+                          )
+                        })}
+                      </div>
+                    )
+                  })()}
+                </Panel>
+              )}
             </div>
           </div>
         </TabsContent>
 
-        {/* Construction Ops (Gaps) */}
+        {/* Construction / Site Ops */}
         <TabsContent value="construction" className="space-y-6 mt-6">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <SiteDiaryLog projectId={projectId} />
-            <div className="space-y-6">
-              <PettyCashLedger projectId={projectId} currency={project.currency} />
-              <MaterialPriceTracker defaultRegion={project.region || 'Greater Accra'} />
-            </div>
+            <PettyCashLedger projectId={projectId} currency={project.currency} />
+            <MaterialPriceTracker defaultRegion={project.region || 'Greater Accra'} />
           </div>
         </TabsContent>
 
@@ -1188,70 +1374,6 @@ export default function ProjectDetailPage() {
               )}
             </Panel>
           </div>
-        </TabsContent>
-
-        {/* Units Tab */}
-        <TabsContent value="units" className="mt-0">
-          <Panel
-            title={`UNITS (${units.length})`}
-            action={
-              <Button
-                size="sm"
-                className="h-6 font-mono text-[10px] bg-amber-600 hover:bg-amber-700 text-black"
-                onClick={() => setShowAddUnitDialog(true)}
-              >
-                <Plus className="h-3 w-3 mr-1" />
-                Add Units
-              </Button>
-            }
-          >
-            {units.length > 0 ? (
-              <div className="space-y-4">
-                {/* Stats */}
-                {unitStats && (
-                  <div className="grid grid-cols-2 md:grid-cols-5 gap-2 mb-4">
-                    <div className="bg-green-900/30 border border-green-800/50 p-2">
-                      <div className="font-mono text-[9px] text-green-500">AVAILABLE</div>
-                      <div className="font-mono text-lg text-green-400">{unitStats.by_status?.available || 0}</div>
-                    </div>
-                    <div className="bg-yellow-900/30 border border-yellow-800/50 p-2">
-                      <div className="font-mono text-[9px] text-yellow-500">RESERVED</div>
-                      <div className="font-mono text-lg text-yellow-400">{unitStats.by_status?.reserved || 0}</div>
-                    </div>
-                    <div className="bg-blue-900/30 border border-blue-800/50 p-2">
-                      <div className="font-mono text-[9px] text-blue-500">CONTRACT</div>
-                      <div className="font-mono text-lg text-blue-400">{unitStats.by_status?.under_contract || 0}</div>
-                    </div>
-                    <div className="bg-purple-900/30 border border-purple-800/50 p-2">
-                      <div className="font-mono text-[9px] text-purple-500">SOLD</div>
-                      <div className="font-mono text-lg text-purple-400">{unitStats.by_status?.sold || 0}</div>
-                    </div>
-                    <div className="bg-emerald-900/30 border border-emerald-800/50 p-2">
-                      <div className="font-mono text-[9px] text-emerald-500">HANDED OVER</div>
-                      <div className="font-mono text-lg text-emerald-400">{unitStats.by_status?.handed_over || 0}</div>
-                    </div>
-                  </div>
-                )}
-
-                <UnitGrid units={units} />
-              </div>
-            ) : (
-              <div className="text-center py-12">
-                <Home className="h-12 w-12 text-zinc-700 mx-auto mb-4" />
-                <h3 className="font-mono text-sm text-white mb-2">No units defined</h3>
-                <p className="font-mono text-[10px] text-zinc-500 mb-4">
-                  Add units to track sales and handovers
-                </p>
-                <Button
-                  className="bg-amber-600 hover:bg-amber-700 text-black font-mono text-xs"
-                  onClick={() => setShowAddUnitDialog(true)}
-                >
-                  <Plus className="h-4 w-4 mr-2" />
-                  Add Units
-                </Button>
-              </div>
-            )}
-          </Panel>
         </TabsContent>
 
         {/* RFIs Tab - Client views and responds to PM RFIs */}
@@ -1420,158 +1542,104 @@ export default function ProjectDetailPage() {
 
         {/* Documents Tab */}
         <TabsContent value="documents" className="mt-0">
-          <Panel title="DOCUMENTS">
-            <div className="text-center py-12">
-              <FileText className="h-12 w-12 text-zinc-700 mx-auto mb-4" />
-              <h3 className="font-mono text-sm text-white mb-2">No documents yet</h3>
-              <p className="font-mono text-[10px] text-zinc-500 mb-4">
-                Upload project documents, contracts, and permits
-              </p>
+          <Panel
+            title="DOCUMENTS"
+            action={
               <Button
-                className="bg-amber-600 hover:bg-amber-700 text-black font-mono text-xs"
+                size="sm"
+                className="h-6 font-mono text-[10px] bg-amber-600 hover:bg-amber-700 text-black"
                 onClick={() => setShowUploadDialog(true)}
               >
-                <Plus className="h-4 w-4 mr-2" />
-                Upload Document
+                <Plus className="h-3 w-3 mr-1" />
+                Upload
               </Button>
-            </div>
+            }
+          >
+            {documents.length === 0 ? (
+              <div className="text-center py-12">
+                <FileText className="h-12 w-12 text-zinc-700 mx-auto mb-4" />
+                <h3 className="font-mono text-sm text-white mb-2">No documents yet</h3>
+                <p className="font-mono text-[10px] text-zinc-500 mb-4">
+                  Upload project documents, contracts, and permits
+                </p>
+                <Button
+                  className="bg-amber-600 hover:bg-amber-700 text-black font-mono text-xs"
+                  onClick={() => setShowUploadDialog(true)}
+                >
+                  <Plus className="h-4 w-4 mr-2" />
+                  Upload Document
+                </Button>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {documents.map((doc: any) => {
+                  const ext = (doc.original_filename || doc.name || '').split('.').pop()?.toLowerCase() || ''
+                  const sizeKb = doc.file_size ? (doc.file_size / 1024).toFixed(0) : null
+                  const sizeMb = doc.file_size && doc.file_size > 1024 * 1024 ? (doc.file_size / (1024 * 1024)).toFixed(1) : null
+                  const sizeLabel = sizeMb ? `${sizeMb} MB` : sizeKb ? `${sizeKb} KB` : ''
+                  const date = doc.created_at ? new Date(doc.created_at).toLocaleDateString() : ''
+                  const docType = doc.document_type?.replace(/_/g, ' ') || doc.category || 'Uncategorized'
+                  const uploader = doc.uploaded_by_name || '—'
+
+                  return (
+                    <div
+                      key={doc.id}
+                      className="flex items-center gap-3 p-3 bg-zinc-800/50 border border-zinc-700 rounded hover:border-zinc-600 transition-colors group"
+                    >
+                      {/* File icon */}
+                      <div className="flex-shrink-0 h-9 w-9 bg-amber-900/40 border border-amber-700/50 rounded flex items-center justify-center">
+                        <span className="font-mono text-[9px] text-amber-400 uppercase">{ext || 'DOC'}</span>
+                      </div>
+
+                      {/* Info */}
+                      <div className="flex-1 min-w-0">
+                        <button
+                          className="font-mono text-xs text-white truncate block hover:text-amber-500 transition-colors cursor-pointer text-left max-w-full"
+                          onClick={() => handleDownloadDocument(doc.id)}
+                          title="Click to open document"
+                        >
+                          {doc.name}
+                        </button>
+                        <div className="flex items-center gap-2 mt-0.5">
+                          <span className="font-mono text-[10px] text-amber-500/80 capitalize">{docType}</span>
+                          <span className="text-zinc-600">·</span>
+                          <span className="font-mono text-[10px] text-zinc-500">{sizeLabel || '—'}</span>
+                          <span className="text-zinc-600">·</span>
+                          <span className="font-mono text-[10px] text-zinc-500">{date}</span>
+                          <span className="text-zinc-600">·</span>
+                          <span className="font-mono text-[10px] text-zinc-400">by {uploader}</span>
+                        </div>
+                      </div>
+
+                      {/* Actions */}
+                      <div className="flex-shrink-0 flex items-center gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="h-7 px-2 font-mono text-[10px] text-zinc-300 border-zinc-700 hover:border-amber-600 hover:text-amber-500 bg-transparent"
+                          onClick={() => handleDownloadDocument(doc.id)}
+                        >
+                          <Download className="h-3 w-3 mr-1" />
+                          Download
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="h-7 px-2 font-mono text-[10px] text-zinc-400 border-zinc-700 hover:border-red-600 hover:text-red-500 bg-transparent"
+                          onClick={() => handleDeleteDocument(doc.id, doc.name)}
+                        >
+                          <Trash2 className="h-3 w-3 mr-1" />
+                          Delete
+                        </Button>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
           </Panel>
         </TabsContent>
       </Tabs>
-
-      {/* Add Unit Dialog */}
-      <Dialog open={showAddUnitDialog} onOpenChange={setShowAddUnitDialog}>
-        <DialogContent className="bg-zinc-900 border-zinc-800 max-w-md">
-          <DialogHeader>
-            <DialogTitle className="font-mono">Add Unit</DialogTitle>
-            <DialogDescription className="font-mono text-xs text-zinc-400">
-              Add a new unit to this project
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="grid gap-4 py-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label className="font-mono text-xs">Unit Number *</Label>
-                <Input
-                  value={unitForm.unit_number}
-                  onChange={(e) => setUnitForm({ ...unitForm, unit_number: e.target.value })}
-                  placeholder="e.g., A101"
-                  className="bg-zinc-800 border-zinc-700 font-mono text-sm"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label className="font-mono text-xs">Unit Type</Label>
-                <Select
-                  value={unitForm.unit_type}
-                  onValueChange={(v) => setUnitForm({ ...unitForm, unit_type: v })}
-                >
-                  <SelectTrigger className="bg-zinc-800 border-zinc-700 font-mono text-sm">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="apartment">Apartment</SelectItem>
-                    <SelectItem value="townhouse">Townhouse</SelectItem>
-                    <SelectItem value="penthouse">Penthouse</SelectItem>
-                    <SelectItem value="studio">Studio</SelectItem>
-                    <SelectItem value="duplex">Duplex</SelectItem>
-                    <SelectItem value="villa">Villa</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-3 gap-4">
-              <div className="space-y-2">
-                <Label className="font-mono text-xs">Floor</Label>
-                <Input
-                  type="number"
-                  value={unitForm.floor}
-                  onChange={(e) => setUnitForm({ ...unitForm, floor: e.target.value })}
-                  className="bg-zinc-800 border-zinc-700 font-mono text-sm"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label className="font-mono text-xs">Bedrooms</Label>
-                <Input
-                  type="number"
-                  value={unitForm.bedrooms}
-                  onChange={(e) => setUnitForm({ ...unitForm, bedrooms: e.target.value })}
-                  className="bg-zinc-800 border-zinc-700 font-mono text-sm"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label className="font-mono text-xs">Bathrooms</Label>
-                <Input
-                  type="number"
-                  value={unitForm.bathrooms}
-                  onChange={(e) => setUnitForm({ ...unitForm, bathrooms: e.target.value })}
-                  className="bg-zinc-800 border-zinc-700 font-mono text-sm"
-                />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label className="font-mono text-xs">Area (sqm)</Label>
-                <Input
-                  type="number"
-                  value={unitForm.internal_area_sqm}
-                  onChange={(e) => setUnitForm({ ...unitForm, internal_area_sqm: e.target.value })}
-                  placeholder="e.g., 85"
-                  className="bg-zinc-800 border-zinc-700 font-mono text-sm"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label className="font-mono text-xs">Base Price (GHS) *</Label>
-                <Input
-                  type="number"
-                  value={unitForm.base_price}
-                  onChange={(e) => setUnitForm({ ...unitForm, base_price: e.target.value })}
-                  placeholder="e.g., 500000"
-                  className="bg-zinc-800 border-zinc-700 font-mono text-sm"
-                />
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <Label className="font-mono text-xs">Status</Label>
-              <Select
-                value={unitForm.status}
-                onValueChange={(v) => setUnitForm({ ...unitForm, status: v })}
-              >
-                <SelectTrigger className="bg-zinc-800 border-zinc-700 font-mono text-sm">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="available">Available</SelectItem>
-                  <SelectItem value="reserved">Reserved</SelectItem>
-                  <SelectItem value="under_construction">Under Construction</SelectItem>
-                  <SelectItem value="not_for_sale">Not For Sale</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setShowAddUnitDialog(false)}
-              className="font-mono text-xs"
-            >
-              Cancel
-            </Button>
-            <Button
-              onClick={handleAddUnit}
-              disabled={isAddingUnit || !unitForm.unit_number || !unitForm.base_price}
-              className="bg-amber-600 hover:bg-amber-700 text-black font-mono text-xs"
-            >
-              {isAddingUnit ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
-              Add Unit
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
 
       {/* Upload Document Dialog */}
       <Dialog open={showUploadDialog} onOpenChange={setShowUploadDialog}>
@@ -1585,37 +1653,40 @@ export default function ProjectDetailPage() {
 
           <div className="grid gap-4 py-4">
             <div className="space-y-2">
-              <Label className="font-mono text-xs">Document Name *</Label>
+              <Label className="font-mono text-xs text-zinc-300">Document Name *</Label>
               <Input
                 value={documentForm.name}
                 onChange={(e) => setDocumentForm({ ...documentForm, name: e.target.value })}
                 placeholder="e.g., Building Permit"
-                className="bg-zinc-800 border-zinc-700 font-mono text-sm"
+                className="bg-zinc-800 border-zinc-700 font-mono text-sm text-white placeholder:text-zinc-500"
               />
             </div>
 
             <div className="space-y-2">
-              <Label className="font-mono text-xs">Category</Label>
+              <Label className="font-mono text-xs text-zinc-300">Document Type *</Label>
               <Select
                 value={documentForm.category}
                 onValueChange={(v) => setDocumentForm({ ...documentForm, category: v })}
               >
-                <SelectTrigger className="bg-zinc-800 border-zinc-700 font-mono text-sm">
+                <SelectTrigger className="bg-zinc-800 border-zinc-700 font-mono text-sm text-white">
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="contracts">Contracts</SelectItem>
-                  <SelectItem value="permits">Permits</SelectItem>
-                  <SelectItem value="drawings">Drawings</SelectItem>
-                  <SelectItem value="reports">Reports</SelectItem>
-                  <SelectItem value="invoices">Invoices</SelectItem>
+                <SelectContent className="bg-zinc-800 border-zinc-700">
+                  <SelectItem value="contract">Contract</SelectItem>
+                  <SelectItem value="permit">Permit</SelectItem>
+                  <SelectItem value="drawing">Design / Drawing</SelectItem>
+                  <SelectItem value="submittal">Submittal</SelectItem>
+                  <SelectItem value="rfi">RFI</SelectItem>
+                  <SelectItem value="report">Report</SelectItem>
+                  <SelectItem value="invoice">Invoice</SelectItem>
+                  <SelectItem value="photo">Photo</SelectItem>
                   <SelectItem value="other">Other</SelectItem>
                 </SelectContent>
               </Select>
             </div>
 
             <div className="space-y-2">
-              <Label className="font-mono text-xs">File *</Label>
+              <Label className="font-mono text-xs text-zinc-300">File *</Label>
               <div className="border-2 border-dashed border-zinc-700 rounded-lg p-6 text-center hover:border-amber-600/50 transition-colors">
                 <input
                   type="file"

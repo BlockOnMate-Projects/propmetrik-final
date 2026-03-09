@@ -26,6 +26,7 @@ import {
     SelectValue,
 } from '@/components/ui/select'
 import { cn } from '@/lib/utils'
+import { authedFetch } from '@/lib/authed-fetch'
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api/v1'
 
@@ -67,7 +68,7 @@ export function CompTracker() {
                 params.set('sort', 'updated_at')
                 params.set('order', 'desc')
 
-                const propsRes = await fetch(`${API_BASE}/crm/properties?${params}`, { credentials: 'include' })
+                const propsRes = await authedFetch(`${API_BASE}/crm/properties?${params}`, { credentials: 'include' })
                 if (propsRes.ok) {
                     const data = await propsRes.json()
                     const properties = data.properties || []

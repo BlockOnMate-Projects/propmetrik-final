@@ -41,6 +41,7 @@ import {
 } from '@/components/ui/alert-dialog'
 import { DevelopmentProject, ProjectStatus } from '@/types/projects'
 import { cn } from '@/lib/utils'
+import { authedFetch } from '@/lib/authed-fetch'
 import { useToast } from '@/hooks/use-toast'
 
 interface ProjectHeaderProps {
@@ -73,7 +74,7 @@ export function ProjectHeader({ project, isLoading, projectManagerName }: Projec
 
     try {
       setIsArchiving(true)
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000'}/api/v1/projects/${project.id}`, {
+      const response = await authedFetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000'}/api/v1/projects/${project.id}`, {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json' },
       })

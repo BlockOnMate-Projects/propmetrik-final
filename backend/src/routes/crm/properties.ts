@@ -2,6 +2,7 @@ import { Router, Request, Response } from 'express';
 import crypto from 'crypto';
 import multer from 'multer';
 import { getOrganizationId, getUserId, asyncHandler } from './helpers';
+import { scanUploadedFiles } from '../../middleware/virusScan';
 import { crmPropertySyncService } from '../../services/crm-deal-management/crmPropertySyncService';
 import { dataHubQueueManager, DataHubQueueManager, CrmPropertySyncJobData } from '../../services/data-hub/jobQueue';
 import db from '../../database';
@@ -803,7 +804,7 @@ router.get('/contacts/:id/match-properties', asyncHandler(async (req: Request, r
 // =====================================================
 
 // POST /properties/:id/images — Upload images to a property
-router.post('/properties/:id/images', upload.array('images', 20), asyncHandler(async (req: Request, res: Response) => {
+router.post('/properties/:id/images', upload.array('images', 20), scanUploadedFiles, asyncHandler(async (req: Request, res: Response) => {
     const organizationId = await getOrganizationId(req);
     if (!organizationId || organizationId === '00000000-0000-0000-0000-000000000000') {
         return res.status(401).json({ error: 'Organization not found' });

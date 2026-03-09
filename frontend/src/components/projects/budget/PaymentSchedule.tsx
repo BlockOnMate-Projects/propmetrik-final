@@ -99,11 +99,11 @@ const STATUS_CONFIG: Record<PaymentMilestone['status'], {
   color: string;
   icon: React.ElementType;
 }> = {
-  pending: { label: 'Pending', color: 'bg-gray-100 text-gray-800', icon: Clock },
-  partially_paid: { label: 'Partial', color: 'bg-amber-100 text-amber-800', icon: DollarSign },
-  paid: { label: 'Paid', color: 'bg-green-100 text-green-800', icon: CheckCircle },
-  overdue: { label: 'Overdue', color: 'bg-red-100 text-red-800', icon: AlertTriangle },
-  cancelled: { label: 'Cancelled', color: 'bg-gray-100 text-gray-500', icon: Ban },
+  pending: { label: 'Pending', color: 'bg-zinc-800 text-zinc-300', icon: Clock },
+  partially_paid: { label: 'Partial', color: 'bg-amber-500/10 text-amber-400', icon: DollarSign },
+  paid: { label: 'Paid', color: 'bg-emerald-500/10 text-emerald-400', icon: CheckCircle },
+  overdue: { label: 'Overdue', color: 'bg-red-500/10 text-red-400', icon: AlertTriangle },
+  cancelled: { label: 'Cancelled', color: 'bg-zinc-800 text-zinc-500', icon: Ban },
 }
 
 const formatCurrency = (amount: number, currency = 'GHS') => {
@@ -154,8 +154,8 @@ function MilestoneCard({
   return (
     <Card
       className={cn(
-        'cursor-pointer transition-shadow hover:shadow-md',
-        isOverdue && 'border-red-200'
+        'cursor-pointer transition-shadow hover:shadow-md bg-zinc-900/80 border-zinc-800',
+        isOverdue && 'border-red-500/30'
       )}
       onClick={onClick}
     >
@@ -166,9 +166,9 @@ function MilestoneCard({
               <StatusIcon className="h-5 w-5" />
             </div>
             <div className="min-w-0">
-              <h4 className="font-medium line-clamp-1">{milestone.name}</h4>
+              <h4 className="font-medium text-zinc-100 line-clamp-1">{milestone.name}</h4>
               {phase && (
-                <p className="text-sm text-muted-foreground">
+                <p className="text-sm text-zinc-500">
                   {phase.name}
                 </p>
               )}
@@ -211,11 +211,11 @@ function MilestoneCard({
 
         <div className="mt-4">
           <div className="flex items-center justify-between text-sm">
-            <span className="text-muted-foreground">Amount</span>
-            <span className="font-medium">{formatCurrency(milestone.amount, milestone.currency)}</span>
+            <span className="text-zinc-500">Amount</span>
+            <span className="font-medium text-zinc-100">{formatCurrency(milestone.amount, milestone.currency)}</span>
           </div>
           <Progress value={progressPercent} className="mt-2 h-2" />
-          <div className="mt-1 flex items-center justify-between text-xs text-muted-foreground">
+          <div className="mt-1 flex items-center justify-between text-xs text-zinc-500">
             <span>{formatCurrency(paidAmount, milestone.currency)} paid</span>
             <span>{progressPercent}%</span>
           </div>
@@ -225,8 +225,8 @@ function MilestoneCard({
           <Badge className={config.color}>{config.label}</Badge>
           {milestone.dueDate && (
             <Badge variant="outline" className={cn(
-              'flex items-center gap-1',
-              isOverdue && 'border-red-300 text-red-600'
+              'flex items-center gap-1 border-zinc-700 text-zinc-400',
+              isOverdue && 'border-red-500/30 text-red-400'
             )}>
               <Calendar className="h-3 w-3" />
               {new Date(milestone.dueDate).toLocaleDateString()}
@@ -241,7 +241,7 @@ function MilestoneCard({
         </div>
 
         {milestone.description && (
-          <p className="mt-3 text-sm text-muted-foreground line-clamp-2">
+          <p className="mt-3 text-sm text-zinc-500 line-clamp-2">
             {milestone.description}
           </p>
         )}
@@ -451,7 +451,7 @@ function MilestoneDetail({
   }
 
   return (
-    <SheetContent className="w-full sm:max-w-xl overflow-y-auto">
+    <SheetContent className="w-full sm:max-w-xl overflow-y-auto bg-[#0D1117] border-zinc-800">
       <SheetHeader>
         <div className="flex items-start gap-4">
           <div className={cn('rounded-lg p-3', config.color)}>
@@ -468,26 +468,26 @@ function MilestoneDetail({
 
       <div className="mt-6 space-y-6">
         {/* Amount Summary */}
-        <Card>
+        <Card className="bg-zinc-900/80 border-zinc-800">
           <CardContent className="p-4">
             <div className="grid gap-4 sm:grid-cols-3">
               <div>
-                <p className="text-sm text-muted-foreground">Total Amount</p>
-                <p className="text-2xl font-bold">
+                <p className="text-sm text-zinc-500">Total Amount</p>
+                <p className="text-2xl font-bold text-zinc-100">
                   {formatCurrency(milestone.amount, milestone.currency)}
                 </p>
               </div>
               <div>
-                <p className="text-sm text-muted-foreground">Paid</p>
-                <p className="text-2xl font-bold text-green-600">
+                <p className="text-sm text-zinc-500">Paid</p>
+                <p className="text-2xl font-bold text-emerald-400">
                   {formatCurrency(paidAmount, milestone.currency)}
                 </p>
               </div>
               <div>
-                <p className="text-sm text-muted-foreground">Remaining</p>
+                <p className="text-sm text-zinc-500">Remaining</p>
                 <p className={cn(
                   'text-2xl font-bold',
-                  remainingAmount > 0 ? 'text-amber-600' : 'text-gray-400'
+                  remainingAmount > 0 ? 'text-amber-400' : 'text-zinc-600'
                 )}>
                   {formatCurrency(remainingAmount, milestone.currency)}
                 </p>
@@ -502,15 +502,15 @@ function MilestoneDetail({
 
         {/* Details */}
         <div className="space-y-3">
-          <h4 className="font-medium">Details</h4>
+          <h4 className="font-medium text-zinc-100">Details</h4>
           <div className="grid gap-2 text-sm">
             <div className="flex items-center justify-between">
-              <span className="text-muted-foreground">Status</span>
+              <span className="text-zinc-500">Status</span>
               <Badge className={config.color}>{config.label}</Badge>
             </div>
             <div className="flex items-center justify-between">
-              <span className="text-muted-foreground">Due Date</span>
-              <span>
+              <span className="text-zinc-500">Due Date</span>
+              <span className="text-zinc-300">
                 {milestone.dueDate 
                   ? new Date(milestone.dueDate).toLocaleDateString() 
                   : 'Not set'}
@@ -518,13 +518,13 @@ function MilestoneDetail({
             </div>
             {milestone.percentage && (
               <div className="flex items-center justify-between">
-                <span className="text-muted-foreground">% of Total</span>
-                <span>{milestone.percentage}%</span>
+                <span className="text-zinc-500">% of Total</span>
+                <span className="text-zinc-300">{milestone.percentage}%</span>
               </div>
             )}
           </div>
           {milestone.description && (
-            <p className="text-sm text-muted-foreground">
+            <p className="text-sm text-zinc-500">
               {milestone.description}
             </p>
           )}
@@ -533,7 +533,7 @@ function MilestoneDetail({
         {/* Linked Invoices */}
         <div className="space-y-3">
           <div className="flex items-center justify-between">
-            <h4 className="font-medium">Linked Invoices</h4>
+            <h4 className="font-medium text-zinc-100">Linked Invoices</h4>
             <Dialog open={isLinkingInvoice} onOpenChange={setIsLinkingInvoice}>
               <DialogTrigger asChild>
                 <Button size="sm" variant="outline">
@@ -550,7 +550,7 @@ function MilestoneDetail({
                 </DialogHeader>
                 <div className="space-y-4">
                   {unlinkableInvoices.length === 0 ? (
-                    <p className="text-sm text-muted-foreground py-4 text-center">
+                    <p className="text-sm text-zinc-500 py-4 text-center">
                       No unlinked invoices available
                     </p>
                   ) : (
@@ -584,8 +584,8 @@ function MilestoneDetail({
           </div>
 
           {linkedInvoices.length === 0 ? (
-            <Card>
-              <CardContent className="flex flex-col items-center py-6 text-muted-foreground">
+            <Card className="bg-zinc-900/80 border-zinc-800">
+              <CardContent className="flex flex-col items-center py-6 text-zinc-500">
                 <FileText className="h-8 w-8" />
                 <p className="mt-2 text-sm">No linked invoices</p>
               </CardContent>
@@ -595,26 +595,26 @@ function MilestoneDetail({
               {linkedInvoices.map((invoice) => (
                 <div
                   key={invoice.id}
-                  className="flex items-center justify-between rounded-lg border p-3"
+                  className="flex items-center justify-between rounded-lg border border-zinc-800 p-3"
                 >
                   <div className="flex items-center gap-3">
-                    <FileText className="h-5 w-5 text-muted-foreground" />
+                    <FileText className="h-5 w-5 text-zinc-500" />
                     <div>
-                      <p className="font-medium">{invoice.invoiceNumber}</p>
-                      <p className="text-xs text-muted-foreground">
+                      <p className="font-medium text-zinc-100">{invoice.invoiceNumber}</p>
+                      <p className="text-xs text-zinc-500">
                         {invoice.vendorName}
                       </p>
                     </div>
                   </div>
                   <div className="text-right">
-                    <p className="font-medium">
+                    <p className="font-medium text-zinc-100">
                       {formatCurrency(invoice.amountLocal)}
                     </p>
                     <Badge
                       variant="outline"
                       className={cn(
-                        invoice.status === 'paid' && 'text-green-600 border-green-300',
-                        invoice.status === 'pending' && 'text-amber-600 border-amber-300'
+                        invoice.status === 'paid' && 'text-emerald-400 border-emerald-500/30',
+                        invoice.status === 'pending' && 'text-amber-400 border-amber-500/30'
                       )}
                     >
                       {invoice.status.replace('_', ' ')}
@@ -661,23 +661,23 @@ function ScheduleTimeline({
   return (
     <div className="space-y-4">
       {/* Summary */}
-      <Card>
+      <Card className="bg-zinc-900/80 border-zinc-800">
         <CardContent className="p-4">
           <div className="grid gap-4 sm:grid-cols-4">
             <div>
-              <p className="text-sm text-muted-foreground">Total Schedule</p>
-              <p className="text-xl font-bold">{formatCurrency(totalAmount)}</p>
+              <p className="text-sm text-zinc-500">Total Schedule</p>
+              <p className="text-xl font-bold text-zinc-100">{formatCurrency(totalAmount)}</p>
             </div>
             <div>
-              <p className="text-sm text-muted-foreground">Paid</p>
-              <p className="text-xl font-bold text-green-600">{formatCurrency(paidAmount)}</p>
+              <p className="text-sm text-zinc-500">Paid</p>
+              <p className="text-xl font-bold text-emerald-400">{formatCurrency(paidAmount)}</p>
             </div>
             <div>
-              <p className="text-sm text-muted-foreground">Milestones</p>
-              <p className="text-xl font-bold">{milestones.length}</p>
+              <p className="text-sm text-zinc-500">Milestones</p>
+              <p className="text-xl font-bold text-zinc-100">{milestones.length}</p>
             </div>
             <div>
-              <p className="text-sm text-muted-foreground">Progress</p>
+              <p className="text-sm text-zinc-500">Progress</p>
               <div className="flex items-center gap-2">
                 <Progress value={(paidAmount / totalAmount) * 100} className="flex-1 h-2" />
                 <span className="text-sm font-medium">
@@ -692,7 +692,7 @@ function ScheduleTimeline({
       {/* Timeline */}
       <div className="relative">
         {/* Vertical line */}
-        <div className="absolute left-[19px] top-0 h-full w-0.5 bg-border" />
+        <div className="absolute left-[19px] top-0 h-full w-0.5 bg-zinc-800" />
 
         <div className="space-y-4">
           {sortedMilestones.map((milestone, idx) => {
@@ -716,23 +716,23 @@ function ScheduleTimeline({
                   <StatusIcon className="h-5 w-5" />
                 </div>
 
-                <Card className="hover:shadow-md transition-shadow">
+                <Card className="hover:shadow-md transition-shadow bg-zinc-900/80 border-zinc-800">
                   <CardContent className="p-4">
                     <div className="flex items-start justify-between">
                       <div>
-                        <h4 className="font-medium">{milestone.name}</h4>
+                        <h4 className="font-medium text-zinc-100">{milestone.name}</h4>
                         {milestone.dueDate && (
-                          <p className="text-sm text-muted-foreground">
+                          <p className="text-sm text-zinc-500">
                             Due: {new Date(milestone.dueDate).toLocaleDateString()}
                           </p>
                         )}
                       </div>
                       <div className="text-right">
-                        <p className="font-bold">
+                        <p className="font-bold text-zinc-100">
                           {formatCurrency(milestone.amount, milestone.currency)}
                         </p>
                         {milestone.percentage && (
-                          <p className="text-xs text-muted-foreground">
+                          <p className="text-xs text-zinc-500">
                             {milestone.percentage}% of total
                           </p>
                         )}
@@ -744,7 +744,7 @@ function ScheduleTimeline({
                         value={(paid / milestone.amount) * 100} 
                         className="flex-1 h-1.5" 
                       />
-                      <span className="text-xs text-muted-foreground">
+                      <span className="text-xs text-zinc-500">
                         {formatCurrency(paid)} / {formatCurrency(milestone.amount)}
                       </span>
                     </div>
@@ -874,21 +874,22 @@ export function PaymentSchedule({
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-2xl font-bold flex items-center gap-2">
+          <h2 className="text-2xl font-bold flex items-center gap-2 text-[#C9A84C]">
             <DollarSign className="h-6 w-6" />
             Payment Schedule
           </h2>
-          <p className="text-muted-foreground">
+          <p className="text-zinc-500">
             {milestones.length} payment milestones
           </p>
         </div>
 
         <div className="flex items-center gap-2">
-          <div className="flex rounded-lg border">
+          <div className="flex rounded-lg border border-zinc-700">
             <Button
               variant={viewMode === 'timeline' ? 'secondary' : 'ghost'}
               size="sm"
               onClick={() => setViewMode('timeline')}
+              className={viewMode === 'timeline' ? 'bg-zinc-800 text-zinc-100' : 'text-zinc-400 hover:text-zinc-200'}
             >
               Timeline
             </Button>
@@ -896,6 +897,7 @@ export function PaymentSchedule({
               variant={viewMode === 'cards' ? 'secondary' : 'ghost'}
               size="sm"
               onClick={() => setViewMode('cards')}
+              className={viewMode === 'cards' ? 'bg-zinc-800 text-zinc-100' : 'text-zinc-400 hover:text-zinc-200'}
             >
               Cards
             </Button>
@@ -958,11 +960,11 @@ export function PaymentSchedule({
 
       {/* Content */}
       {filteredMilestones.length === 0 ? (
-        <Card>
+        <Card className="bg-zinc-900/80 border-zinc-800">
           <CardContent className="flex flex-col items-center justify-center py-12">
-            <DollarSign className="h-12 w-12 text-muted-foreground" />
-            <h3 className="mt-4 font-medium">No Payment Milestones</h3>
-            <p className="text-sm text-muted-foreground">
+            <DollarSign className="h-12 w-12 text-zinc-600" />
+            <h3 className="mt-4 font-medium text-zinc-300">No Payment Milestones</h3>
+            <p className="text-sm text-zinc-500">
               Create your first payment milestone
             </p>
             <Button className="mt-4" onClick={() => setShowAddDialog(true)}>

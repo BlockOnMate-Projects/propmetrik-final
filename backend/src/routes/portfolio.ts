@@ -6,8 +6,12 @@
 
 import { Router, Request, Response } from 'express';
 import portfolioService, { PortfolioFilters } from '../services/project-management/portfolioService';
+import { registerPMParamValidation } from '../middleware/pmAuth';
 
 const router = Router();
+
+// Register UUID parameter validation
+registerPMParamValidation(router);
 
 /**
  * @route GET /api/portfolio/summary

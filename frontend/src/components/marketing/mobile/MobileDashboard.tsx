@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useOnlineStatus } from '@/hooks/useServiceWorker'
 import { useOfflineSync } from '@/hooks/useOfflineSync'
+import { authedFetch } from '@/lib/authed-fetch'
 import {
   Home,
   FolderOpen,
@@ -111,8 +112,8 @@ export function MobileDashboard() {
   const fetchData = useCallback(async () => {
     try {
       const [projectsRes, notificationsRes] = await Promise.all([
-        fetch('/api/projects?limit=5&status=active'),
-        fetch('/api/notifications?unread=true&limit=5'),
+        authedFetch('/api/projects?limit=5&status=active'),
+        authedFetch('/api/notifications?unread=true&limit=5'),
       ])
 
       if (projectsRes.ok) {

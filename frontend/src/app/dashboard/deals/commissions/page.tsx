@@ -60,6 +60,7 @@ import {
 } from '@/components/ui/table';
 import { Checkbox } from '@/components/ui/checkbox';
 import { EmptyState } from '@/components/crm/EmptyState';
+import { authedFetch } from '@/lib/authed-fetch';
 import { toast } from 'sonner';
 
 // Types
@@ -184,7 +185,7 @@ function CalculateDialog({
         setLoading(true);
 
         try {
-            const response = await fetch(`${API_BASE}/api/crm/commissions/calculate`, {
+            const response = await authedFetch(`${API_BASE}/api/crm/commissions/calculate`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 credentials: 'include',
@@ -293,7 +294,7 @@ function GenerateStatementDialog({
         setLoading(true);
 
         try {
-            const response = await fetch(`${API_BASE}/api/crm/commissions/statements/generate`, {
+            const response = await authedFetch(`${API_BASE}/api/crm/commissions/statements/generate`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 credentials: 'include',
@@ -619,10 +620,10 @@ export default function CommissionsPage() {
     const fetchData = useCallback(async () => {
         try {
             const [recordsRes, statementsRes, summaryRes, plansRes] = await Promise.all([
-                fetch(`${API_BASE}/api/crm/commissions/records?limit=100`, { credentials: 'include' }),
-                fetch(`${API_BASE}/api/crm/commissions/statements?limit=50`, { credentials: 'include' }),
-                fetch(`${API_BASE}/api/crm/commissions/summary`, { credentials: 'include' }),
-                fetch(`${API_BASE}/api/crm/commissions/plans`, { credentials: 'include' }),
+                authedFetch(`${API_BASE}/api/crm/commissions/records?limit=100`, { credentials: 'include' }),
+                authedFetch(`${API_BASE}/api/crm/commissions/statements?limit=50`, { credentials: 'include' }),
+                authedFetch(`${API_BASE}/api/crm/commissions/summary`, { credentials: 'include' }),
+                authedFetch(`${API_BASE}/api/crm/commissions/plans`, { credentials: 'include' }),
             ]);
 
             if (recordsRes.ok) {
@@ -655,7 +656,7 @@ export default function CommissionsPage() {
 
     const handleApproveRecord = async (id: string) => {
         try {
-            const response = await fetch(`${API_BASE}/api/crm/commissions/records/${id}/approve`, {
+            const response = await authedFetch(`${API_BASE}/api/crm/commissions/records/${id}/approve`, {
                 method: 'POST',
                 credentials: 'include',
             });
@@ -669,7 +670,7 @@ export default function CommissionsPage() {
 
     const handlePayRecord = async (id: string) => {
         try {
-            const response = await fetch(`${API_BASE}/api/crm/commissions/records/${id}/pay`, {
+            const response = await authedFetch(`${API_BASE}/api/crm/commissions/records/${id}/pay`, {
                 method: 'POST',
                 credentials: 'include',
             });
@@ -685,7 +686,7 @@ export default function CommissionsPage() {
         if (selectedIds.size === 0) return;
         
         try {
-            const response = await fetch(`${API_BASE}/api/crm/commissions/records/approve-bulk`, {
+            const response = await authedFetch(`${API_BASE}/api/crm/commissions/records/approve-bulk`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 credentials: 'include',
@@ -702,7 +703,7 @@ export default function CommissionsPage() {
 
     const handleApproveStatement = async (id: string) => {
         try {
-            const response = await fetch(`${API_BASE}/api/crm/commissions/statements/${id}/approve`, {
+            const response = await authedFetch(`${API_BASE}/api/crm/commissions/statements/${id}/approve`, {
                 method: 'POST',
                 credentials: 'include',
             });

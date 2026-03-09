@@ -139,8 +139,17 @@ export class ConstructionOpsService {
    * Fetches latest scraped data from Data Hub ('material_prices' table)
    */
   async getMarketPrices(filter: { region?: string, category?: string }) {
-    // We want the LATEST price for each material in the region
-    // Using DISTINCT ON or a simple filtered query sorted by date
+    // Map display names to DB enum values
+    const regionMap: Record<string, string> = {
+      'Greater Accra': 'greater_accra',
+      'Ashanti': 'kumasi_metro',
+      'Western': 'western_cluster',
+      'Eastern': 'eastern',
+      'Northern': 'northern_cluster',
+    };
+
+    const dbRegion = filter.region ? (regionMap[filter.region] || filter.region) : undefined;
+    const dbRegionId = filter.region ? filter.region.toLowerCase().replace(/\s+/g, '-') : undefined;
 
     let queryText = `
       SELECT DISTINCT ON (mp.material_name, mp.region)
@@ -162,11 +171,10 @@ export class ConstructionOpsService {
     const params: any[] = [];
     let paramIndex = 1;
 
-    if (filter.region) {
-      // Handle region enum vs string mismatch if necessary, simplified here
-      queryText += ` AND (mp.region::text = $${paramIndex} OR mp.region_id = $${paramIndex})`;
-      params.push(filter.region);
-      paramIndex++;
+    if (dbRegion) {
+      queryText += ` AND (mp.region::text = $${paramIndex} OR mp.region_id = $${paramIndex + 1})`;
+      params.push(dbRegion, dbRegionId);
+      paramIndex += 2;
     }
 
     if (filter.category) {

@@ -3,6 +3,7 @@
 
 import { Heart, MapPin, Bed, Bath, Square } from 'lucide-react';
 import { useState } from 'react';
+import { authedFetch } from '@/lib/authed-fetch';
 
 interface PropertyCardProps {
   property: any;
@@ -18,7 +19,7 @@ export function PropertyCard({ property, onClick, showDistance }: PropertyCardPr
     setIsFavorite(!isFavorite);
     
     // Track favorite event
-    fetch('/api/marketplace/analytics/track', {
+    authedFetch('/api/marketplace/analytics/track', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({

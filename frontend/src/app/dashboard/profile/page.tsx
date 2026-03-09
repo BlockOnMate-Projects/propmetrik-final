@@ -1,6 +1,7 @@
 'use client'
 
 import { cn } from '@/lib/utils'
+import { authedFetch } from '@/lib/authed-fetch'
 import { useState, useEffect, useCallback } from 'react'
 
 // ════════════════════════════════════════════════════════════════════
@@ -110,9 +111,9 @@ export default function ProfilePage() {
     setLoading(true)
     try {
       const [profRes, statsRes, notifRes] = await Promise.all([
-        fetch('/api/user/profile').then(r => r.json()).catch(() => null),
-        fetch('/api/user/stats').then(r => r.json()).catch(() => null),
-        fetch('/api/user/notification-preferences').then(r => r.json()).catch(() => null),
+        authedFetch('/api/user/profile').then(r => r.json()).catch(() => null),
+        authedFetch('/api/user/stats').then(r => r.json()).catch(() => null),
+        authedFetch('/api/user/notification-preferences').then(r => r.json()).catch(() => null),
       ])
 
       if (profRes?.success) {
@@ -135,7 +136,7 @@ export default function ProfilePage() {
     setSaving(true)
     setProfileMsg(null)
     try {
-      const res = await fetch('/api/user/profile', {
+      const res = await authedFetch('/api/user/profile', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ firstName, lastName, phone }),
@@ -162,7 +163,7 @@ export default function ProfilePage() {
 
     setPwSaving(true)
     try {
-      const res = await fetch('/api/user/password', {
+      const res = await authedFetch('/api/user/password', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ currentPassword: currentPw, newPassword: newPw }),
@@ -188,7 +189,7 @@ export default function ProfilePage() {
     setNotifPrefs(updated)
     setNotifMsg(null)
     try {
-      const res = await fetch('/api/user/notification-preferences', {
+      const res = await authedFetch('/api/user/notification-preferences', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(updated),

@@ -1,0 +1,209 @@
+'use client';
+
+import { useState } from 'react';
+import { useSearchParams } from 'next/navigation';
+import { authedFetch } from '@/lib/authed-fetch';
+import { useToast } from '@/hooks/use-toast';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Textarea } from '@/components/ui/textarea';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+
+const SEVERITY_COLORS: Record<string, string> = { low: 'bg-blue-500/20 text-blue-400', medium: 'bg-yellow-500/20 text-yellow-400', high: 'bg-orange-500/20 text-orange-400', critical: 'bg-red-500/20 text-red-400' };
+const STATUS_COLORS: Record<string, string> = { reported: 'bg-zinc-500/20 text-zinc-400', under_investigation: 'bg-blue-500/20 text-blue-400', corrective_action: 'bg-yellow-500/20 text-yellow-400', resolved: 'bg-green-500/20 text-green-400', closed: 'bg-zinc-700/20 text-zinc-500', open: 'bg-red-500/20 text-red-400', in_progress: 'bg-yellow-500/20 text-yellow-400', scheduled: 'bg-blue-500/20 text-blue-400', completed: 'bg-green-500/20 text-green-400', failed: 'bg-red-500/20 text-red-400' };
+
+export default function SafetyPage() {
+  const searchParams = useSearchParams();
+  const projectId = searchParams.get('projectId') || '';
+  const { toast } = useToast();
+  const qc = useQueryClient();
+  const [tab, setTab] = useState('incidents');
+  const [showCreate, setShowCreate] = useState(false);
+  const [form, setForm] = useState<any>({});
+
+  const { data: incidents } = useQuery({
+    queryKey: ['safety-incidents', projectId],
+    queryFn: () => authedFetch(`/api/projects/${projectId}/safety/incidents`).then(r => r.json()),
+    enabled: !!projectId,
+  });
+  const { data: observations } = useQuery({
+    queryKey: ['safety-observations', projectId],
+    queryFn: () => authedFetch(`/api/projects/${projectId}/safety/observations`).then(r => r.json()),
+    enabled: !!projectId,
+  });
+  const { data: inspections } = useQuery({
+    queryKey: ['safety-inspections', projectId],
+    queryFn: () => authedFetch(`/api/projects/${projectId}/safety/inspections`).then(r => r.json()),
+    enabled: !!projectId,
+  });
+  const { data: stats } = useQuery({
+    queryKey: ['safety-stats', projectId],
+    queryFn: () => authedFetch(`/api/projects/${projectId}/safety/stats`).then(r => r.json()),
+    enabled: !!projectId,
+  });
+
+  const createIncident = useMutation({
+    mutationFn: (data: any) => authedFetch(`/api/projects/${projectId}/safety/incidents`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) }).then(r => r.json()),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['safety-incidents'] }); qc.invalidateQueries({ queryKey: ['safety-stats'] }); setShowCreate(false); setForm({}); toast({ title: 'Incident reported' }); },
+  });
+  const createObservation = useMutation({
+    mutationFn: (data: any) => authedFetch(`/api/projects/${projectId}/safety/observations`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) }).then(r => r.json()),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['safety-observations'] }); setShowCreate(false); setForm({}); toast({ title: 'Observation recorded' }); },
+  });
+  const createInspection = useMutation({
+    mutationFn: (data: any) => authedFetch(`/api/projects/${projectId}/safety/inspections`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) }).then(r => r.json()),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['safety-inspections'] }); setShowCreate(false); setForm({}); toast({ title: 'Inspection scheduled' }); },
+  });
+
+  const summary = stats?.data?.summary || {};
+
+  if (!projectId) return <div className="p-8 text-center text-zinc-500">Select a project to view safety data</div>;
+
+  return (
+    <div className="p-4 md:p-6 space-y-6 bg-black min-h-screen">
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-lg font-bold text-white">SAFETY & INCIDENT MANAGEMENT</h1>
+          <p className="text-[10px] font-mono text-zinc-500">INCIDENT REPORTING • OBSERVATIONS • INSPECTIONS</p>
+        </div>
+        <Dialog open={showCreate} onOpenChange={setShowCreate}>
+          <DialogTrigger asChild>
+            <Button size="sm" className="bg-amber-500 hover:bg-amber-600 text-black text-xs">+ NEW</Button>
+          </DialogTrigger>
+          <DialogContent className="bg-zinc-900 border-zinc-800 max-w-lg">
+            <DialogHeader><DialogTitle className="text-white">{tab === 'incidents' ? 'Report Incident' : tab === 'observations' ? 'New Observation' : 'Schedule Inspection'}</DialogTitle></DialogHeader>
+            {tab === 'incidents' && (
+              <div className="space-y-3">
+                <div><Label className="text-[10px] font-mono text-zinc-500">TITLE</Label><Input className="bg-zinc-800 border-zinc-700 text-white" value={form.title || ''} onChange={e => setForm({ ...form, title: e.target.value })} /></div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div><Label className="text-[10px] font-mono text-zinc-500">TYPE</Label>
+                    <Select value={form.incident_type || 'near_miss'} onValueChange={v => setForm({ ...form, incident_type: v })}><SelectTrigger className="bg-zinc-800 border-zinc-700 text-white"><SelectValue /></SelectTrigger><SelectContent className="bg-zinc-800 border-zinc-700"><SelectItem value="near_miss">Near Miss</SelectItem><SelectItem value="first_aid">First Aid</SelectItem><SelectItem value="recordable">Recordable</SelectItem><SelectItem value="lost_time">Lost Time</SelectItem><SelectItem value="property_damage">Property Damage</SelectItem><SelectItem value="environmental">Environmental</SelectItem></SelectContent></Select></div>
+                  <div><Label className="text-[10px] font-mono text-zinc-500">SEVERITY</Label>
+                    <Select value={form.severity || 'low'} onValueChange={v => setForm({ ...form, severity: v })}><SelectTrigger className="bg-zinc-800 border-zinc-700 text-white"><SelectValue /></SelectTrigger><SelectContent className="bg-zinc-800 border-zinc-700"><SelectItem value="low">Low</SelectItem><SelectItem value="medium">Medium</SelectItem><SelectItem value="high">High</SelectItem><SelectItem value="critical">Critical</SelectItem></SelectContent></Select></div>
+                </div>
+                <div><Label className="text-[10px] font-mono text-zinc-500">LOCATION</Label><Input className="bg-zinc-800 border-zinc-700 text-white" value={form.location || ''} onChange={e => setForm({ ...form, location: e.target.value })} /></div>
+                <div><Label className="text-[10px] font-mono text-zinc-500">DESCRIPTION</Label><Textarea className="bg-zinc-800 border-zinc-700 text-white" value={form.description || ''} onChange={e => setForm({ ...form, description: e.target.value })} /></div>
+                <Button className="w-full bg-amber-500 hover:bg-amber-600 text-black" onClick={() => createIncident.mutate(form)}>Report Incident</Button>
+              </div>
+            )}
+            {tab === 'observations' && (
+              <div className="space-y-3">
+                <div className="grid grid-cols-2 gap-3">
+                  <div><Label className="text-[10px] font-mono text-zinc-500">CATEGORY</Label>
+                    <Select value={form.category || 'unsafe_condition'} onValueChange={v => setForm({ ...form, category: v })}><SelectTrigger className="bg-zinc-800 border-zinc-700 text-white"><SelectValue /></SelectTrigger><SelectContent className="bg-zinc-800 border-zinc-700"><SelectItem value="unsafe_condition">Unsafe Condition</SelectItem><SelectItem value="unsafe_act">Unsafe Act</SelectItem><SelectItem value="positive">Positive</SelectItem><SelectItem value="housekeeping">Housekeeping</SelectItem><SelectItem value="ppe">PPE</SelectItem><SelectItem value="fall_protection">Fall Protection</SelectItem></SelectContent></Select></div>
+                  <div><Label className="text-[10px] font-mono text-zinc-500">SEVERITY</Label>
+                    <Select value={form.severity || 'low'} onValueChange={v => setForm({ ...form, severity: v })}><SelectTrigger className="bg-zinc-800 border-zinc-700 text-white"><SelectValue /></SelectTrigger><SelectContent className="bg-zinc-800 border-zinc-700"><SelectItem value="low">Low</SelectItem><SelectItem value="medium">Medium</SelectItem><SelectItem value="high">High</SelectItem><SelectItem value="critical">Critical</SelectItem></SelectContent></Select></div>
+                </div>
+                <div><Label className="text-[10px] font-mono text-zinc-500">DESCRIPTION</Label><Textarea className="bg-zinc-800 border-zinc-700 text-white" value={form.description || ''} onChange={e => setForm({ ...form, description: e.target.value })} /></div>
+                <div><Label className="text-[10px] font-mono text-zinc-500">LOCATION</Label><Input className="bg-zinc-800 border-zinc-700 text-white" value={form.location || ''} onChange={e => setForm({ ...form, location: e.target.value })} /></div>
+                <div><Label className="text-[10px] font-mono text-zinc-500">CORRECTIVE ACTION</Label><Textarea className="bg-zinc-800 border-zinc-700 text-white" value={form.corrective_action || ''} onChange={e => setForm({ ...form, corrective_action: e.target.value })} /></div>
+                <Button className="w-full bg-amber-500 hover:bg-amber-600 text-black" onClick={() => createObservation.mutate(form)}>Record Observation</Button>
+              </div>
+            )}
+            {tab === 'inspections' && (
+              <div className="space-y-3">
+                <div><Label className="text-[10px] font-mono text-zinc-500">TYPE</Label>
+                  <Select value={form.inspection_type || 'routine'} onValueChange={v => setForm({ ...form, inspection_type: v })}><SelectTrigger className="bg-zinc-800 border-zinc-700 text-white"><SelectValue /></SelectTrigger><SelectContent className="bg-zinc-800 border-zinc-700"><SelectItem value="routine">Routine</SelectItem><SelectItem value="pre_task">Pre-Task</SelectItem><SelectItem value="weekly">Weekly</SelectItem><SelectItem value="monthly">Monthly</SelectItem><SelectItem value="regulatory">Regulatory</SelectItem></SelectContent></Select></div>
+                <div><Label className="text-[10px] font-mono text-zinc-500">DATE</Label><Input type="date" className="bg-zinc-800 border-zinc-700 text-white" value={form.inspection_date || ''} onChange={e => setForm({ ...form, inspection_date: e.target.value })} /></div>
+                <div><Label className="text-[10px] font-mono text-zinc-500">NOTES</Label><Textarea className="bg-zinc-800 border-zinc-700 text-white" value={form.notes || ''} onChange={e => setForm({ ...form, notes: e.target.value })} /></div>
+                <Button className="w-full bg-amber-500 hover:bg-amber-600 text-black" onClick={() => createInspection.mutate(form)}>Schedule Inspection</Button>
+              </div>
+            )}
+          </DialogContent>
+        </Dialog>
+      </div>
+
+      {/* Stats cards */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <Card className="bg-zinc-900/80 border-zinc-800"><CardContent className="p-4"><p className="text-[10px] font-mono text-zinc-500">TOTAL INCIDENTS</p><p className="text-2xl font-bold text-white">{summary.total || 0}</p></CardContent></Card>
+        <Card className="bg-zinc-900/80 border-zinc-800"><CardContent className="p-4"><p className="text-[10px] font-mono text-zinc-500">OSHA RECORDABLE</p><p className="text-2xl font-bold text-red-400">{summary.osha_recordable || 0}</p></CardContent></Card>
+        <Card className="bg-zinc-900/80 border-zinc-800"><CardContent className="p-4"><p className="text-[10px] font-mono text-zinc-500">LOST WORK DAYS</p><p className="text-2xl font-bold text-amber-400">{summary.total_lost_days || 0}</p></CardContent></Card>
+        <Card className="bg-zinc-900/80 border-zinc-800"><CardContent className="p-4"><p className="text-[10px] font-mono text-zinc-500">INJURIES</p><p className="text-2xl font-bold text-orange-400">{summary.total_injuries || 0}</p></CardContent></Card>
+      </div>
+
+      <Tabs value={tab} onValueChange={v => { setTab(v); setForm({}); }}>
+        <TabsList className="bg-zinc-900 border border-zinc-800">
+          <TabsTrigger value="incidents" className="text-xs data-[state=active]:bg-amber-500/20 data-[state=active]:text-amber-400">INCIDENTS ({incidents?.data?.length || 0})</TabsTrigger>
+          <TabsTrigger value="observations" className="text-xs data-[state=active]:bg-amber-500/20 data-[state=active]:text-amber-400">OBSERVATIONS ({observations?.data?.length || 0})</TabsTrigger>
+          <TabsTrigger value="inspections" className="text-xs data-[state=active]:bg-amber-500/20 data-[state=active]:text-amber-400">INSPECTIONS ({inspections?.data?.length || 0})</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="incidents" className="mt-4">
+          <div className="space-y-2">
+            {(incidents?.data || []).map((inc: any) => (
+              <Card key={inc.id} className="bg-zinc-900/80 border-zinc-800">
+                <CardContent className="p-4 flex items-center justify-between">
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2">
+                      <span className="text-[10px] font-mono text-amber-500">{inc.incident_number}</span>
+                      <Badge className={SEVERITY_COLORS[inc.severity] || ''}>{inc.severity}</Badge>
+                      <Badge className={STATUS_COLORS[inc.status] || ''}>{inc.status?.replace(/_/g, ' ')}</Badge>
+                    </div>
+                    <p className="text-sm text-white font-medium">{inc.title}</p>
+                    <p className="text-xs text-zinc-500">{inc.location} • {new Date(inc.incident_date).toLocaleDateString()} • Type: {inc.incident_type?.replace(/_/g, ' ')}</p>
+                  </div>
+                  <div className="text-right text-xs text-zinc-500">
+                    {inc.osha_recordable && <Badge className="bg-red-500/20 text-red-400">OSHA</Badge>}
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+            {(!incidents?.data?.length) && <p className="text-center text-zinc-500 py-8 text-sm">No incidents reported</p>}
+          </div>
+        </TabsContent>
+
+        <TabsContent value="observations" className="mt-4">
+          <div className="space-y-2">
+            {(observations?.data || []).map((obs: any) => (
+              <Card key={obs.id} className="bg-zinc-900/80 border-zinc-800">
+                <CardContent className="p-4">
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="text-[10px] font-mono text-amber-500">{obs.observation_number}</span>
+                    <Badge className={SEVERITY_COLORS[obs.severity] || ''}>{obs.severity}</Badge>
+                    <Badge className={STATUS_COLORS[obs.status] || ''}>{obs.status}</Badge>
+                    <Badge variant="outline" className="border-zinc-700 text-zinc-400">{obs.category?.replace(/_/g, ' ')}</Badge>
+                  </div>
+                  <p className="text-sm text-white">{obs.description}</p>
+                  <p className="text-xs text-zinc-500 mt-1">{obs.location} • {new Date(obs.created_at).toLocaleDateString()}</p>
+                </CardContent>
+              </Card>
+            ))}
+            {(!observations?.data?.length) && <p className="text-center text-zinc-500 py-8 text-sm">No observations recorded</p>}
+          </div>
+        </TabsContent>
+
+        <TabsContent value="inspections" className="mt-4">
+          <div className="space-y-2">
+            {(inspections?.data || []).map((ins: any) => (
+              <Card key={ins.id} className="bg-zinc-900/80 border-zinc-800">
+                <CardContent className="p-4 flex items-center justify-between">
+                  <div>
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="text-[10px] font-mono text-amber-500">{ins.inspection_number}</span>
+                      <Badge className={STATUS_COLORS[ins.status] || ''}>{ins.status}</Badge>
+                      <Badge variant="outline" className="border-zinc-700 text-zinc-400">{ins.inspection_type?.replace(/_/g, ' ')}</Badge>
+                    </div>
+                    <p className="text-xs text-zinc-500">{new Date(ins.inspection_date).toLocaleDateString()} • Inspector: {ins.inspector_name || 'Unassigned'}</p>
+                  </div>
+                  {ins.score !== null && ins.score !== undefined && (
+                    <div className="text-right">
+                      <p className="text-lg font-bold text-white">{ins.score}%</p>
+                      <p className="text-[10px] font-mono text-zinc-500">SCORE</p>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            ))}
+            {(!inspections?.data?.length) && <p className="text-center text-zinc-500 py-8 text-sm">No inspections scheduled</p>}
+          </div>
+        </TabsContent>
+      </Tabs>
+    </div>
+  );
+}

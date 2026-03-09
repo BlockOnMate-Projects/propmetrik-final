@@ -448,7 +448,7 @@ class ValuationInvoiceService {
 
             if (paystackService && invoice.clientEmail) {
                 // Check if org has a payout account (subaccount) configured
-                const payoutConfig = await paystackService.getPaymentAccountConfig(invoice.organizationId, 'organization');
+                const payoutConfig = await paystackService.getPaymentAccountConfig(invoice.organizationId, 'organization', 'valuation');
 
                 if (payoutConfig?.subaccountCode) {
                     // Split payment: client pays → valuer receives principal, PROPMETRIK retains platform fee
@@ -829,7 +829,7 @@ class ValuationInvoiceService {
 
             logger.info('Payment processed and receipt generated', { invoiceId: invoice.id, receiptNumber });
 
-            // Send branded PropMetrik receipt email
+            // Send branded PROPMETRIK receipt email
             const mappedInvoice = this.mapInvoice(updated.rows[0]);
             try {
                 await this.sendReceiptEmail(mappedInvoice, receiptNumber, paidAmount, data.channel || 'paystack', data.authorization);
@@ -847,7 +847,7 @@ class ValuationInvoiceService {
     }
 
     /**
-     * Send branded PropMetrik payment receipt email to client
+     * Send branded PROPMETRIK payment receipt email to client
      */
     private async sendReceiptEmail(
         invoice: ValuationInvoice,
@@ -859,7 +859,7 @@ class ValuationInvoiceService {
         if (!invoice.clientEmail) return;
 
         // Fetch organization details
-        let organizationName = 'PropMetrik Valuation Services';
+        let organizationName = 'PROPMETRIK Valuation Services';
         let orgPhone = '';
         let orgEmail = '';
         try {

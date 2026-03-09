@@ -152,15 +152,31 @@ async function fetchEstimate(amountGHS: number, ticker: string, invoiceId: strin
   }
 }
 
-async function initiateCrypto(invoiceId: string, ticker: string, chain: string): Promise<NowPaymentsResult> {
-  const res = await fetch(`${API_BASE}/valuation-invoices/public/invoice/${invoiceId}/initiate-crypto`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ payCurrency: ticker, payChain: chain }),
-  })
+async function initiateCrypto(invoiceId: string, ticker: string, chain: string, type: string): Promise<NowPaymentsResult> {
+  const body = JSON.stringify({ payCurrency: ticker, payChain: chain })
+  const headers = { 'Content-Type': 'application/json' }
+
+  const url = type === 'pm'
+    ? `${API_BASE}/pm-invoices/public/${invoiceId}/initiate-crypto`
+    : `${API_BASE}/valuation-invoices/public/invoice/${invoiceId}/initiate-crypto`
+
+  const res = await fetch(url, { method: 'POST', headers, body })
   const json = await res.json()
-  if (!json.success) throw new Error(json.error || 'Failed to create payment')
-  return json.data
+  if (json.success) return json.data
+  throw new Error(json.error || 'Failed to create payment')
+}
+
+async function confirmCryptoPayment(invoiceId: string, paymentRef: string, type: string): Promise<void> {
+  const url = type === 'pm'
+    ? `${API_BASE}/pm-invoices/public/${invoiceId}/confirm-crypto`
+    : `${API_BASE}/valuation-invoices/public/invoice/${invoiceId}/confirm-crypto`
+  try {
+    await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ paymentReference: paymentRef }),
+    })
+  } catch { /* non-blocking */ }
 }
 
 async function fetchNowPaymentsStatus(paymentId: number): Promise<NowPaymentsStatus> {
@@ -177,6 +193,7 @@ function CryptoPaymentInner() {
   const invoiceId = searchParams.get('invoiceId') || ''
   const amountParam = searchParams.get('amount')
   const invoiceRef = searchParams.get('ref') || ''
+  const invoiceType = searchParams.get('type') || 'valuation'
   const amountGHS = amountParam ? parseFloat(amountParam) : 0
 
   const [step, setStep] = useState<FlowStep>('loading')
@@ -242,9 +259,9 @@ function CryptoPaymentInner() {
     setError(null)
     setStep('deposit')
     try {
-      const result = await initiateCrypto(invoiceId, selectedCoin.nowpayments_ticker, selectedCoin.chain)
+      const result = await initiateCrypto(invoiceId, selectedCoin.nowpayments_ticker, selectedCoin.chain, invoiceType)
       setNpResult(result)
-      startPolling(result.paymentId)
+      startPolling(result.paymentId, result.paymentReference)
     } catch (err: any) {
       console.error('Initiate crypto error:', err)
       setError(err.message || 'Failed to initiate payment')
@@ -253,7 +270,7 @@ function CryptoPaymentInner() {
   }, [selectedCoin, invoiceId])
 
   // ─── Poll NOWPayments status ─────────────────────────────
-  const startPolling = useCallback((paymentId: number) => {
+  const startPolling = useCallback((paymentId: number, paymentRef?: string) => {
     setNpStatus('waiting')
     pollRef.current = setInterval(async () => {
       try {
@@ -261,6 +278,8 @@ function CryptoPaymentInner() {
         setNpStatus(st.status)
         if (st.status === 'finished' || st.status === 'confirmed') {
           if (pollRef.current) clearInterval(pollRef.current)
+          // Mark invoice as paid via confirm endpoint
+          if (paymentRef) confirmCryptoPayment(invoiceId, paymentRef, invoiceType)
           setStep('success')
         } else if (['failed', 'expired', 'refunded'].includes(st.status)) {
           if (pollRef.current) clearInterval(pollRef.current)

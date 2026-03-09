@@ -92,7 +92,7 @@ describe("PROPMETRIKPayments — Multi-Token", function () {
     it("initialises default fee configs", async function () {
       const rent = await contract.feeConfigs(0); // RENT
       expect(rent.percentageBasisPoints).to.equal(100);
-      expect(rent.minimumFeeUSD6).to.equal(1_650000);
+      expect(rent.minimumFeeUSD6).to.equal(1_670000);
       expect(rent.enabled).to.be.true;
 
       const deal = await contract.feeConfigs(1); // DEAL
@@ -213,10 +213,10 @@ describe("PROPMETRIKPayments — Multi-Token", function () {
   // ═══════════════════════════════════════════════════════════════════
 
   describe("3 — Fee Calculation", function () {
-    it("RENT — small amount triggers minimum fee ($1.65 USDT)", async function () {
+    it("RENT — small amount triggers minimum fee ($1.67 USDT)", async function () {
       const fee = await contract.calculateFee(await usdt.getAddress(), 0, SMALL_RENT);
-      // 1% of 100 = 1.00, but minimum is 1.65 → fee = 1_650000
-      expect(fee).to.equal(1_650000);
+      // 1% of 100 = 1.00, but minimum is 1.67 → fee = 1_670000
+      expect(fee).to.equal(1_670000);
     });
 
     it("RENT — large amount uses percentage (1%)", async function () {
@@ -304,8 +304,8 @@ describe("PROPMETRIKPayments — Multi-Token", function () {
       await contract.setTokenPricing(await weth.getAddress(), 2_500000000, true);
       const smallWeth = ethers.parseUnits("0.001", 18); // 1% = 0.00001 WETH
       const fee = await contract.calculateFee(await weth.getAddress(), 0, smallWeth);
-      // $1.65 / $2500 = 0.00066 WETH
-      expect(fee).to.equal(ethers.parseUnits("0.00066", 18));
+      // $1.67 / $2500 = 0.000668 WETH
+      expect(fee).to.equal(ethers.parseUnits("0.000668", 18));
     });
 
     it("RENT — WBTC large amount uses percentage", async function () {
@@ -349,7 +349,7 @@ describe("PROPMETRIKPayments — Multi-Token", function () {
       const usdtAddr = await usdt.getAddress();
       await contract.connect(tenant).processPayment(usdtAddr, 0, ENTITY_ID_1, SMALL_RENT, ref, "0x");
 
-      const fee = BigInt(1_650000); // minimum $1.65
+      const fee = BigInt(1_670000); // minimum $1.67
       expect(await usdt.balanceOf(tenant.address)).to.equal(tenantBefore - SMALL_RENT - fee);
       expect(await usdt.balanceOf(recipient1.address)).to.equal(recipBefore + SMALL_RENT);
       expect(await usdt.balanceOf(propmetrik.address)).to.equal(pmBefore + fee);
@@ -383,7 +383,7 @@ describe("PROPMETRIKPayments — Multi-Token", function () {
         contract.connect(tenant).processPayment(usdtAddr, 0, ENTITY_ID_1, SMALL_RENT, ref, "0x")
       )
         .to.emit(contract, "PaymentProcessed")
-        .withArgs(ref, tenant.address, recipient1.address, usdtAddr, SMALL_RENT, 1_650000, 0);
+        .withArgs(ref, tenant.address, recipient1.address, usdtAddr, SMALL_RENT, 1_670000, 0);
     });
   });
 
@@ -398,7 +398,7 @@ describe("PROPMETRIKPayments — Multi-Token", function () {
       await contract.connect(tenant).processPayment(usdcAddr, 0, ENTITY_ID_1, SMALL_RENT, ref, "0x");
 
       expect(await usdc.balanceOf(recipient1.address)).to.equal(SMALL_RENT);
-      expect(await usdc.balanceOf(propmetrik.address)).to.equal(BigInt(1_650000));
+      expect(await usdc.balanceOf(propmetrik.address)).to.equal(BigInt(1_670000));
     });
 
     it("PROJECT — 0.25% fee", async function () {

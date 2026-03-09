@@ -204,7 +204,7 @@ const worker = new Worker(
                     for (const recipient of data.recipients) {
                         await emailModule.sendEmail({
                             to: recipient,
-                            subject: `[PropMetrik] ${subject}`,
+                            subject: `[PROPMETRIK] ${subject}`,
                             text: body,
                         });
                     }

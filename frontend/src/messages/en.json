@@ -1,0 +1,204 @@
+{
+  "common": {
+    "save": "Save",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "edit": "Edit",
+    "create": "Create",
+    "close": "Close",
+    "back": "Back",
+    "next": "Next",
+    "previous": "Previous",
+    "search": "Search",
+    "filter": "Filter",
+    "export": "Export",
+    "import": "Import",
+    "loading": "Loading...",
+    "noData": "No data found",
+    "confirm": "Confirm",
+    "submit": "Submit",
+    "approve": "Approve",
+    "reject": "Reject",
+    "status": "Status",
+    "actions": "Actions",
+    "type": "Type",
+    "date": "Date",
+    "name": "Name",
+    "description": "Description",
+    "notes": "Notes",
+    "total": "Total",
+    "yes": "Yes",
+    "no": "No"
+  },
+  "nav": {
+    "projects": "Projects",
+    "units": "Units",
+    "contractors": "Contractors",
+    "costs": "Costs",
+    "financials": "Financials",
+    "punchLists": "Punch Lists",
+    "documents": "Documents",
+    "issues": "Issues",
+    "drawings": "Drawings",
+    "meetings": "Meetings",
+    "safety": "Safety",
+    "timesheets": "Timesheets",
+    "equipment": "Equipment",
+    "bidding": "Bidding",
+    "closeout": "Closeout",
+    "team": "Team",
+    "reports": "Reports",
+    "calendar": "Calendar",
+    "analytics": "Analytics",
+    "auditLog": "Audit Log",
+    "integrations": "Integrations",
+    "settings": "Settings"
+  },
+  "projects": {
+    "title": "Projects",
+    "createProject": "Create Project",
+    "projectName": "Project Name",
+    "projectType": "Project Type",
+    "location": "Location",
+    "startDate": "Start Date",
+    "endDate": "End Date",
+    "budget": "Budget",
+    "status": {
+      "planning": "Planning",
+      "active": "Active",
+      "on_hold": "On Hold",
+      "completed": "Completed",
+      "cancelled": "Cancelled"
+    }
+  },
+  "safety": {
+    "title": "Safety & Incident Management",
+    "subtitle": "Incidents • Observations • Inspections",
+    "incidents": "Incidents",
+    "observations": "Observations",
+    "inspections": "Inspections",
+    "createIncident": "Report Incident",
+    "createObservation": "Log Observation",
+    "createInspection": "Schedule Inspection",
+    "severity": {
+      "low": "Low",
+      "medium": "Medium",
+      "high": "High",
+      "critical": "Critical"
+    },
+    "stats": {
+      "totalIncidents": "Total Incidents",
+      "oshaRecordable": "OSHA Recordable",
+      "lostWorkDays": "Lost Work Days",
+      "injuries": "Injuries"
+    }
+  },
+  "timesheets": {
+    "title": "Time Tracking",
+    "subtitle": "Entries • Timesheets • Crews",
+    "clockIn": "Clock In",
+    "clockOut": "Clock Out",
+    "entries": "Entries",
+    "timesheets": "Timesheets",
+    "crews": "Crews",
+    "stats": {
+      "totalHours": "Total Hours",
+      "overtime": "Overtime Hours",
+      "workers": "Active Workers",
+      "laborCost": "Labor Cost"
+    }
+  },
+  "equipment": {
+    "title": "Equipment Tracking",
+    "subtitle": "Inventory • Assignments • Maintenance",
+    "addEquipment": "Add Equipment",
+    "inventory": "Inventory",
+    "assigned": "Assigned",
+    "maintenance": "Maintenance",
+    "status": {
+      "available": "Available",
+      "in_use": "In Use",
+      "maintenance": "Maintenance",
+      "repair": "Repair",
+      "retired": "Retired"
+    }
+  },
+  "bidding": {
+    "title": "Bidding & Procurement",
+    "subtitle": "Bid Packages • Vendor Prequalification • Comparison",
+    "createPackage": "Create Bid Package",
+    "registerVendor": "Register Vendor",
+    "packages": "Packages",
+    "compare": "Compare",
+    "vendors": "Vendors",
+    "status": {
+      "draft": "Draft",
+      "published": "Published",
+      "under_review": "Under Review",
+      "awarded": "Awarded",
+      "cancelled": "Cancelled"
+    }
+  },
+  "closeout": {
+    "title": "Project Closeout",
+    "subtitle": "Checklist • Warranties • Claims",
+    "addWarranty": "Add Warranty",
+    "checklist": "Checklist",
+    "warranties": "Warranties",
+    "claims": "Claims",
+    "progress": "Closeout Progress",
+    "stats": {
+      "activeWarranties": "Active Warranties",
+      "expiringSoon": "Expiring Soon",
+      "openClaims": "Open Claims",
+      "totalWarranties": "Total Warranties"
+    }
+  },
+  "auditLog": {
+    "title": "Audit Log",
+    "subtitle": "SOC 2 Compliance • Activity Tracking • Export",
+    "exportCsv": "Export CSV",
+    "exportJson": "Export JSON",
+    "stats": {
+      "totalEvents": "Total Events",
+      "today": "Today",
+      "uniqueUsers": "Unique Users",
+      "resourceTypes": "Resource Types"
+    }
+  },
+  "integrations": {
+    "title": "Integrations",
+    "subtitle": "Marketplace • Connections • API Keys",
+    "marketplace": "Marketplace",
+    "connected": "Connected",
+    "apiKeys": "API Keys",
+    "connect": "Connect",
+    "manage": "Manage",
+    "test": "Test",
+    "sync": "Sync",
+    "createApiKey": "Create API Key",
+    "revokeKey": "Revoke"
+  },
+  "customFields": {
+    "title": "Custom Fields",
+    "subtitle": "Define custom data fields for any entity type",
+    "addField": "Add Field",
+    "fieldName": "Field Name",
+    "fieldType": "Field Type",
+    "entityType": "Entity Type",
+    "required": "Required",
+    "fieldTypes": {
+      "text": "Text",
+      "textarea": "Long Text",
+      "number": "Number",
+      "currency": "Currency",
+      "date": "Date",
+      "select": "Select",
+      "multi_select": "Multi Select",
+      "checkbox": "Checkbox",
+      "url": "URL",
+      "email": "Email",
+      "phone": "Phone"
+    }
+  }
+}

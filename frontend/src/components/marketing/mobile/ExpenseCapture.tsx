@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { useOnlineStatus } from '@/hooks/useServiceWorker'
 import { saveExpenseOffline } from '@/lib/offline-sync'
 import { BottomNavigation } from './MobileDashboard'
+import { authedFetch } from '@/lib/authed-fetch'
 import {
   ArrowLeft,
   Camera,
@@ -104,7 +105,7 @@ export function ExpenseCapture() {
   useEffect(() => {
     const fetchProjects = async () => {
       try {
-        const response = await fetch('/api/projects?status=active')
+        const response = await authedFetch('/api/projects?status=active')
         if (response.ok) {
           const data = await response.json()
           setProjects(data.projects || [])
@@ -247,7 +248,7 @@ export function ExpenseCapture() {
     try {
       if (isOnline) {
         // Online: Submit directly
-        const response = await fetch('/api/budget/expenses', {
+        const response = await authedFetch('/api/budget/expenses', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(formData),

@@ -162,7 +162,7 @@ class ProjectHealthServiceImpl extends BaseService {
          p.id as project_id,
          p.name as project_name,
          COALESCE(p.total_budget, 0) as total_budget,
-         COALESCE(SUM(c.amount), 0) as actual_cost
+         COALESCE(SUM(c.actual_costs), 0) as actual_cost
        FROM development_projects p
        LEFT JOIN project_costs c ON c.project_id = p.id AND c.deleted_at IS NULL
        WHERE p.id = $1
@@ -183,14 +183,14 @@ class ProjectHealthServiceImpl extends BaseService {
     // Get breakdown by category
     const categoryResult = await this.query(
       `SELECT 
-         c.cost_category as category,
+         c.category as category,
          COALESCE(SUM(b.amount), 0) as budgeted,
-         COALESCE(SUM(c.amount), 0) as actual
+         COALESCE(SUM(c.actual_costs), 0) as actual
        FROM project_costs c
        LEFT JOIN project_budget_items b ON b.project_id = c.project_id 
-         AND b.category = c.cost_category
+         AND b.category = c.category
        WHERE c.project_id = $1 AND c.deleted_at IS NULL
-       GROUP BY c.cost_category`,
+       GROUP BY c.category`,
       [projectId]
     );
 

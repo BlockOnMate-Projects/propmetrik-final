@@ -3,6 +3,7 @@
 import { useState, useRef, KeyboardEvent, useCallback, useEffect } from 'react';
 import { Send, Paperclip } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { authedFetch } from '@/lib/authed-fetch';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 
@@ -70,7 +71,7 @@ export function MessageInput({
         setIsUploading(true);
         try {
             // 1. Get presigned URL
-            const res = await fetch(`/api/workspace/${workspaceId}/files/presigned-url`, {
+            const res = await authedFetch(`/api/workspace/${workspaceId}/files/presigned-url`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -88,7 +89,7 @@ export function MessageInput({
             });
 
             // 3. Persist metadata
-            const metaRes = await fetch(`/api/workspace/${workspaceId}/files`, {
+            const metaRes = await authedFetch(`/api/workspace/${workspaceId}/files`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',

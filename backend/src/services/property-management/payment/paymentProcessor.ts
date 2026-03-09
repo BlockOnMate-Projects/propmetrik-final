@@ -113,7 +113,7 @@ export class PaymentProcessor {
         }
 
         // 2. Require subaccount — rent MUST NOT go to PROPMETRIK's main account
-        const paymentConfig = await paystackService.getPaymentAccountConfig(organizationId, 'organization');
+        const paymentConfig = await paystackService.getPaymentAccountConfig(organizationId, 'organization', 'property_management');
         if (!paymentConfig || !paymentConfig.subaccountCode) {
             throw new Error(
                 'Payment account not configured for this property manager. ' +
@@ -251,8 +251,17 @@ export class PaymentProcessor {
             metadata: extraMeta
         } = params;
 
+        // Map entity type to payment_accounts service_type
+        const serviceTypeMap: Record<string, string> = {
+            project: 'project_management',
+            deal: 'deals',
+            rent: 'property_management',
+            valuation: 'valuation',
+        };
+        const serviceType = serviceTypeMap[entityType] || 'property_management';
+
         // 1. Require subaccount
-        const paymentConfig = await paystackService.getPaymentAccountConfig(recipientId, recipientType);
+        const paymentConfig = await paystackService.getPaymentAccountConfig(recipientId, recipientType, serviceType);
         if (!paymentConfig || !paymentConfig.subaccountCode) {
             throw new Error(
                 `Payment account not configured for ${recipientType} (${recipientId}). ` +

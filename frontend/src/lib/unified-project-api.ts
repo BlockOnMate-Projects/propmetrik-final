@@ -14,6 +14,19 @@
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api/v1';
 
+import { getSession } from 'next-auth/react';
+
+async function getAuthHeaders(): Promise<Record<string, string>> {
+  if (typeof window === 'undefined') return {};
+  try {
+    const session = await getSession();
+    const token = (session as any)?.accessToken;
+    return token ? { 'Authorization': `Bearer ${token}` } : {};
+  } catch {
+    return {};
+  }
+}
+
 // =====================================================
 // TYPES - Shared across both portals
 // =====================================================
@@ -458,10 +471,13 @@ async function apiRequest<T>(
     }
   }
   
+  const authHeaders = await getAuthHeaders();
+
   const response = await fetch(url, {
     ...options,
     headers: {
       'Content-Type': 'application/json',
+      ...authHeaders,
       ...options.headers,
     },
   });
@@ -479,10 +495,14 @@ async function uploadFile(
   formData: FormData
 ): Promise<any> {
   const url = `${API_BASE}${endpoint}`;
+  const authHeaders = await getAuthHeaders();
   
   const response = await fetch(url, {
     method: 'POST',
     body: formData,
+    headers: {
+      ...authHeaders,
+    },
     // Don't set Content-Type header - let browser set it with boundary
   });
   
@@ -593,7 +613,15 @@ export const rfiApi = {
   },
 
   getStats: async (projectId: string): Promise<RfiStats> => {
-    return apiRequest(`/rfis/stats/${projectId}`);
+    const res = await apiRequest<any>(`/rfis/stats/${projectId}`);
+    // Backend wraps in { success, data } — unwrap
+    const d = res?.data || res;
+    return {
+      total: d.total ?? 0,
+      by_status: d.by_status ?? {},
+      overdue: d.overdue ?? 0,
+      average_response_time_days: d.average_response_time_days,
+    };
   },
 
   // PM creates an RFI
@@ -711,7 +739,23 @@ export const submittalApi = {
   },
 
   getStats: async (projectId: string): Promise<SubmittalStats> => {
-    return apiRequest(`/submittals/stats/${projectId}`);
+    const res = await apiRequest<any>(`/submittals/stats/${projectId}`);
+    // Backend returns flat shape with different field names — normalize
+    const d = res?.data || res;
+    return {
+      total: d.total ?? d.total_submittals ?? 0,
+      by_status: d.by_status ?? {
+        draft: d.draft_count ?? 0,
+        pending_review: d.pending_count ?? d.pending_review_count ?? 0,
+        under_review: d.under_review_count ?? 0,
+        approved: d.approved_count ?? 0,
+        approved_as_noted: d.approved_as_noted_count ?? 0,
+        revise_resubmit: d.revise_resubmit_count ?? 0,
+        rejected: d.rejected_count ?? 0,
+        void: d.void_count ?? 0,
+      },
+      overdue: d.overdue ?? d.overdue_count ?? 0,
+    };
   },
 
   // PM creates a submittal
@@ -837,7 +881,15 @@ export const changeOrderApi = {
   },
 
   getStats: async (projectId: string): Promise<ChangeOrderStats> => {
-    return apiRequest(`/change-orders/stats/${projectId}`);
+    const res = await apiRequest<any>(`/change-orders/stats/${projectId}`);
+    const d = res?.data || res;
+    return {
+      total: d.total ?? 0,
+      by_status: d.by_status ?? {},
+      total_cost_impact: d.total_cost_impact ?? 0,
+      total_approved: d.total_approved ?? 0,
+      total_pending: d.total_pending ?? 0,
+    };
   },
 
   // PM creates a change order

@@ -7,6 +7,7 @@
 import { Router, Request, Response } from 'express';
 import { v4 as uuidv4 } from 'uuid';
 import { realtimeEmitter } from '../../shared-services/realtime';
+import { requirePMWrite } from '../middleware/pmAuth';
 import { logger } from '../utils/logger';
 
 const router = Router();
@@ -41,7 +42,7 @@ router.get('/events', (req: Request, res: Response) => {
  * @desc Subscribe to specific channels
  * @access Private
  */
-router.post('/subscribe', (req: Request, res: Response) => {
+router.post('/subscribe', requirePMWrite, (req: Request, res: Response) => {
   const { clientId, channels } = req.body;
   
   if (!clientId || !Array.isArray(channels)) {
@@ -63,7 +64,7 @@ router.post('/subscribe', (req: Request, res: Response) => {
  * @desc Unsubscribe from specific channels
  * @access Private
  */
-router.post('/unsubscribe', (req: Request, res: Response) => {
+router.post('/unsubscribe', requirePMWrite, (req: Request, res: Response) => {
   const { clientId, channels } = req.body;
   
   if (!clientId || !Array.isArray(channels)) {
@@ -129,7 +130,7 @@ router.get('/presence/:resourceType/:resourceId', async (req: Request, res: Resp
  * @desc Update user presence
  * @access Private
  */
-router.post('/presence', async (req: Request, res: Response) => {
+router.post('/presence', requirePMWrite, async (req: Request, res: Response) => {
   try {
     const { userId, organizationId } = getUserContext(req);
     const { sessionId, resourceType, resourceId, action, userInfo } = req.body;
@@ -163,7 +164,7 @@ router.post('/presence', async (req: Request, res: Response) => {
  * @desc Remove user presence
  * @access Private
  */
-router.delete('/presence', async (req: Request, res: Response) => {
+router.delete('/presence', requirePMWrite, async (req: Request, res: Response) => {
   try {
     const { userId } = getUserContext(req);
     const { sessionId, resourceType, resourceId } = req.body;

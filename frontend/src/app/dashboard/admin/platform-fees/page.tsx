@@ -20,6 +20,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Badge } from '@/components/ui/badge'
+import { authedFetch } from '@/lib/authed-fetch'
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api/v1'
 
@@ -89,7 +90,7 @@ export default function PlatformFeesPage() {
         try {
             setLoading(true)
             setError(null)
-            const res = await fetch(`${API_BASE}/admin/fee-configurations`, {
+            const res = await authedFetch(`${API_BASE}/admin/fee-configurations`, {
                 credentials: 'include',
             })
             if (!res.ok) throw new Error(`Failed to load: ${res.status}`)
@@ -141,7 +142,7 @@ export default function PlatformFeesPage() {
         try {
             setSaving(true)
             setError(null)
-            const res = await fetch(`${API_BASE}/admin/fee-configurations/${configId}`, {
+            const res = await authedFetch(`${API_BASE}/admin/fee-configurations/${configId}`, {
                 method: 'PUT',
                 credentials: 'include',
                 headers: { 'Content-Type': 'application/json' },

@@ -7,6 +7,7 @@ import {
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
+import { authedFetch } from '@/lib/authed-fetch'
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api/v1'
 
@@ -108,7 +109,7 @@ export function PropertyImageUploader({
         files.forEach(pf => formData.append('images', pf.file))
 
         try {
-            const response = await fetch(`${API_BASE}/crm/properties/${propertyId}/images`, {
+            const response = await authedFetch(`${API_BASE}/crm/properties/${propertyId}/images`, {
                 method: 'POST',
                 body: formData,
             })
@@ -146,7 +147,7 @@ export function PropertyImageUploader({
         const formData = new FormData()
         pendingFiles.forEach(pf => formData.append('images', pf.file))
 
-        const response = await fetch(`${API_BASE}/crm/properties/${targetPropertyId}/images`, {
+        const response = await authedFetch(`${API_BASE}/crm/properties/${targetPropertyId}/images`, {
             method: 'POST',
             body: formData,
         })
@@ -181,7 +182,7 @@ export function PropertyImageUploader({
         if (!propertyId) return
 
         try {
-            const response = await fetch(`${API_BASE}/crm/properties/${propertyId}/images/${imageId}`, {
+            const response = await authedFetch(`${API_BASE}/crm/properties/${propertyId}/images/${imageId}`, {
                 method: 'DELETE',
             })
 

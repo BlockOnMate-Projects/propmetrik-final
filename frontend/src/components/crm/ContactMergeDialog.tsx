@@ -13,6 +13,7 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Loader2, GitMerge, AlertTriangle, Check, ArrowRight } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { authedFetch } from '@/lib/authed-fetch'
 import { contactsApi } from '@/lib/crm-api'
 import { toast } from 'sonner'
 
@@ -66,7 +67,7 @@ export function ContactMergeDialog({ open, onOpenChange, onMergeComplete }: Cont
         setLoading(true)
         const fetchDuplicates = async () => {
             try {
-                const res = await fetch(
+                const res = await authedFetch(
                     `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api/v1'}/crm/contacts/duplicates?limit=50&min_confidence=0.5`,
                     { credentials: 'include' }
                 )
@@ -104,7 +105,7 @@ export function ContactMergeDialog({ open, onOpenChange, onMergeComplete }: Cont
         setMerging(true)
         try {
             const useFields = Array.from(useFromDuplicate)
-            const res = await fetch(
+            const res = await authedFetch(
                 `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api/v1'}/crm/contacts/merge`,
                 {
                     method: 'POST',

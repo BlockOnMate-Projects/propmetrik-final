@@ -7,8 +7,14 @@ import { useState, useRef, useEffect, useCallback } from 'react'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import { PWAProvider, OfflineIndicator, InstallPrompt } from '@/components/pwa'
 import { RealtimeProvider } from '@/lib/realtime-provider'
-import { AuthProvider } from '@/lib/auth-context'
 import { SessionProvider } from 'next-auth/react'
+import { I18nProvider } from '@/providers/i18n-provider'
+import { initSentryClient } from '@/lib/sentry'
+
+// Initialise Sentry as early as possible (client-side only)
+if (typeof window !== 'undefined') {
+  initSentryClient()
+}
 
 /**
  * StableSessionProvider
@@ -58,9 +64,9 @@ export function Providers({ children }: { children: React.ReactNode }) {
   return (
     <StableSessionProvider>
       <QueryClientProvider client={queryClient}>
+        <I18nProvider>
         <ThemeProvider attribute="class" defaultTheme="light" enableSystem={true}>
           <TooltipProvider>
-            <AuthProvider>
               {isDev ? (
                 <RealtimeProvider autoInvalidateQueries={true}>
                   {children}
@@ -74,9 +80,9 @@ export function Providers({ children }: { children: React.ReactNode }) {
                   <InstallPrompt />
                 </PWAProvider>
               )}
-            </AuthProvider>
           </TooltipProvider>
         </ThemeProvider>
+        </I18nProvider>
         <ReactQueryDevtools initialIsOpen={false} />
       </QueryClientProvider>
     </StableSessionProvider>

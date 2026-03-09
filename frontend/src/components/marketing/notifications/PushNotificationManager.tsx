@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { authedFetch } from '@/lib/authed-fetch'
 import { usePushNotifications } from '@/hooks/useServiceWorker'
 import {
   Bell,
@@ -63,7 +64,7 @@ export function PushNotificationManager() {
 
   const fetchPreferences = async () => {
     try {
-      const response = await fetch('/api/notifications/preferences')
+      const response = await authedFetch('/api/notifications/preferences')
       if (response.ok) {
         const data = await response.json()
         setPreferences(data.preferences || preferences)
@@ -75,7 +76,7 @@ export function PushNotificationManager() {
 
   const savePreferences = async (newPrefs: NotificationPreferences) => {
     try {
-      await fetch('/api/notifications/preferences', {
+      await authedFetch('/api/notifications/preferences', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ preferences: newPrefs }),

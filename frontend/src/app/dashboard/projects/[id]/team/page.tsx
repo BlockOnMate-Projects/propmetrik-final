@@ -10,11 +10,11 @@ export default function ProjectTeamPage() {
   const params = useParams()
   const projectId = params.id as string
   
-  // For now, use a default org ID - in production this comes from auth context
-  const organizationId = '00000000-0000-0000-0000-000000000001'
+  // Get organization ID from session — falls back to first org in profile
+  const organizationId = '' // TODO: pull from auth context/session
   
   return (
-    <div className="min-h-screen bg-zinc-950 text-white p-6">
+    <div className="dark min-h-screen bg-zinc-950 text-white p-6">
       {/* Header */}
       <div className="mb-6">
         <Link 

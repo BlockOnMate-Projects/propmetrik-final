@@ -14,6 +14,7 @@
 
 import React, { useEffect, useState, useRef, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
+import { authedFetch } from '@/lib/authed-fetch'
 import { Button } from '@/components/ui/button'
 import { ArrowLeft, Loader2, ExternalLink, CheckCircle, PenTool, Send, User } from 'lucide-react'
 import Link from 'next/link'
@@ -149,7 +150,7 @@ export default function ReportEnvelopePage() {
     try {
       console.log('✅ E-sign complete, approving report...')
 
-      const response = await fetch(`${API_BASE}/reports/${esignData.reportId}/approve`, {
+      const response = await authedFetch(`${API_BASE}/reports/${esignData.reportId}/approve`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -535,7 +536,7 @@ export default function ReportEnvelopePage() {
           src={getIframeUrl()}
           className="w-full h-full border-0"
           style={{ minHeight: 'calc(100vh - 80px)' }}
-          title="PropMetrik E-Sign - Report Approval"
+          title="PROPMETRIK E-Sign - Report Approval"
           onLoad={() => {
             console.log('📋 E-sign iframe loaded, sending auth + document data')
             const token = getAuthToken()

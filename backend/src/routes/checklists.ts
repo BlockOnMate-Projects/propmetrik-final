@@ -6,9 +6,15 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import { pool } from '../database';
 import { QualityChecklistsService } from '../services/project-management/qualityChecklistsService';
+import { registerPMParamValidation, requirePMWrite } from '../middleware/pmAuth';
+import { validate } from '../middleware/validation';
+import { createChecklistSchema, updateChecklistSchema, checklistItemResponseSchema } from '../middleware/pmProjectValidation';
 
 const router = Router();
 const service = new QualityChecklistsService(pool);
+
+// Register UUID parameter validation
+registerPMParamValidation(router);
 
 // ============================================================================
 // CATEGORIES
@@ -26,7 +32,7 @@ router.get('/categories', async (req: Request, res: Response, next: NextFunction
 });
 
 // Create category
-router.post('/categories', async (req: Request, res: Response, next: NextFunction) => {
+router.post('/categories', requirePMWrite, validate(createChecklistSchema), async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { name, organizationId, description, icon, color } = req.body;
     const category = await service.createCategory(name, organizationId, description, icon, color);
@@ -87,7 +93,7 @@ router.get('/templates/:id/full', async (req: Request, res: Response, next: Next
 });
 
 // Create template
-router.post('/templates', async (req: Request, res: Response, next: NextFunction) => {
+router.post('/templates', requirePMWrite, validate(createChecklistSchema), async (req: Request, res: Response, next: NextFunction) => {
   try {
     const template = await service.createTemplate(req.body);
     res.status(201).json({ success: true, data: template });
@@ -97,7 +103,7 @@ router.post('/templates', async (req: Request, res: Response, next: NextFunction
 });
 
 // Update template
-router.put('/templates/:id', async (req: Request, res: Response, next: NextFunction) => {
+router.put('/templates/:id', requirePMWrite, validate(updateChecklistSchema), async (req: Request, res: Response, next: NextFunction) => {
   try {
     const updatedBy = req.body.updatedBy || req.headers['x-user-id'] as string;
     const template = await service.updateTemplate(req.params.id, req.body, updatedBy);
@@ -111,7 +117,7 @@ router.put('/templates/:id', async (req: Request, res: Response, next: NextFunct
 });
 
 // Publish template
-router.post('/templates/:id/publish', async (req: Request, res: Response, next: NextFunction) => {
+router.post('/templates/:id/publish', requirePMWrite, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const publishedBy = req.body.publishedBy || req.headers['x-user-id'] as string;
     const template = await service.publishTemplate(req.params.id, publishedBy);
@@ -125,7 +131,7 @@ router.post('/templates/:id/publish', async (req: Request, res: Response, next: 
 });
 
 // Duplicate template
-router.post('/templates/:id/duplicate', async (req: Request, res: Response, next: NextFunction) => {
+router.post('/templates/:id/duplicate', requirePMWrite, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { newName, createdBy } = req.body;
     const template = await service.duplicateTemplate(req.params.id, newName, createdBy);
@@ -136,7 +142,7 @@ router.post('/templates/:id/duplicate', async (req: Request, res: Response, next
 });
 
 // Delete template
-router.delete('/templates/:id', async (req: Request, res: Response, next: NextFunction) => {
+router.delete('/templates/:id', requirePMWrite, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const success = await service.deleteTemplate(req.params.id);
     if (!success) {
@@ -163,7 +169,7 @@ router.get('/templates/:templateId/sections', async (req: Request, res: Response
 });
 
 // Add section to template
-router.post('/templates/:templateId/sections', async (req: Request, res: Response, next: NextFunction) => {
+router.post('/templates/:templateId/sections', requirePMWrite, validate(createChecklistSchema), async (req: Request, res: Response, next: NextFunction) => {
   try {
     const section = await service.addSection({
       templateId: req.params.templateId,
@@ -176,7 +182,7 @@ router.post('/templates/:templateId/sections', async (req: Request, res: Respons
 });
 
 // Update section
-router.put('/sections/:id', async (req: Request, res: Response, next: NextFunction) => {
+router.put('/sections/:id', requirePMWrite, validate(updateChecklistSchema), async (req: Request, res: Response, next: NextFunction) => {
   try {
     const section = await service.updateSection(req.params.id, req.body);
     if (!section) {
@@ -189,7 +195,7 @@ router.put('/sections/:id', async (req: Request, res: Response, next: NextFuncti
 });
 
 // Delete section
-router.delete('/sections/:id', async (req: Request, res: Response, next: NextFunction) => {
+router.delete('/sections/:id', requirePMWrite, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const success = await service.deleteSection(req.params.id);
     if (!success) {
@@ -217,7 +223,7 @@ router.get('/templates/:templateId/items', async (req: Request, res: Response, n
 });
 
 // Add item to template
-router.post('/templates/:templateId/items', async (req: Request, res: Response, next: NextFunction) => {
+router.post('/templates/:templateId/items', requirePMWrite, validate(createChecklistSchema), async (req: Request, res: Response, next: NextFunction) => {
   try {
     const item = await service.addItem({
       templateId: req.params.templateId,
@@ -230,7 +236,7 @@ router.post('/templates/:templateId/items', async (req: Request, res: Response, 
 });
 
 // Add multiple items
-router.post('/templates/:templateId/items/bulk', async (req: Request, res: Response, next: NextFunction) => {
+router.post('/templates/:templateId/items/bulk', requirePMWrite, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { items } = req.body;
     const created = await service.addItemsBulk(req.params.templateId, items);
@@ -241,7 +247,7 @@ router.post('/templates/:templateId/items/bulk', async (req: Request, res: Respo
 });
 
 // Update item
-router.put('/items/:id', async (req: Request, res: Response, next: NextFunction) => {
+router.put('/items/:id', requirePMWrite, validate(updateChecklistSchema), async (req: Request, res: Response, next: NextFunction) => {
   try {
     const item = await service.updateItem(req.params.id, req.body);
     if (!item) {
@@ -254,7 +260,7 @@ router.put('/items/:id', async (req: Request, res: Response, next: NextFunction)
 });
 
 // Delete item
-router.delete('/items/:id', async (req: Request, res: Response, next: NextFunction) => {
+router.delete('/items/:id', requirePMWrite, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const success = await service.deleteItem(req.params.id);
     if (!success) {
@@ -267,7 +273,7 @@ router.delete('/items/:id', async (req: Request, res: Response, next: NextFuncti
 });
 
 // Reorder items
-router.post('/templates/:templateId/items/reorder', async (req: Request, res: Response, next: NextFunction) => {
+router.post('/templates/:templateId/items/reorder', requirePMWrite, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { itemOrders } = req.body; // [{id, order}, ...]
     await service.reorderItems(req.params.templateId, itemOrders);
@@ -334,7 +340,7 @@ router.get('/instances/:id/full', async (req: Request, res: Response, next: Next
 });
 
 // Create instance
-router.post('/instances', async (req: Request, res: Response, next: NextFunction) => {
+router.post('/instances', requirePMWrite, validate(createChecklistSchema), async (req: Request, res: Response, next: NextFunction) => {
   try {
     const instance = await service.createInstance(req.body);
     res.status(201).json({ success: true, data: instance });
@@ -344,7 +350,7 @@ router.post('/instances', async (req: Request, res: Response, next: NextFunction
 });
 
 // Start instance
-router.post('/instances/:id/start', async (req: Request, res: Response, next: NextFunction) => {
+router.post('/instances/:id/start', requirePMWrite, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const startedBy = req.body.startedBy || req.headers['x-user-id'] as string;
     const instance = await service.startInstance(req.params.id, startedBy);
@@ -358,7 +364,7 @@ router.post('/instances/:id/start', async (req: Request, res: Response, next: Ne
 });
 
 // Submit for review
-router.post('/instances/:id/submit', async (req: Request, res: Response, next: NextFunction) => {
+router.post('/instances/:id/submit', requirePMWrite, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const submittedBy = req.body.submittedBy || req.headers['x-user-id'] as string;
     const instance = await service.submitForReview(req.params.id, submittedBy);
@@ -372,7 +378,7 @@ router.post('/instances/:id/submit', async (req: Request, res: Response, next: N
 });
 
 // Approve instance
-router.post('/instances/:id/approve', async (req: Request, res: Response, next: NextFunction) => {
+router.post('/instances/:id/approve', requirePMWrite, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { approvedBy, notes } = req.body;
     const instance = await service.approveInstance(req.params.id, approvedBy, notes);
@@ -386,7 +392,7 @@ router.post('/instances/:id/approve', async (req: Request, res: Response, next: 
 });
 
 // Reject instance
-router.post('/instances/:id/reject', async (req: Request, res: Response, next: NextFunction) => {
+router.post('/instances/:id/reject', requirePMWrite, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { rejectedBy, notes } = req.body;
     if (!notes) {
@@ -403,7 +409,7 @@ router.post('/instances/:id/reject', async (req: Request, res: Response, next: N
 });
 
 // Require reinspection
-router.post('/instances/:id/reinspection', async (req: Request, res: Response, next: NextFunction) => {
+router.post('/instances/:id/reinspection', requirePMWrite, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { requiredBy, notes } = req.body;
     if (!notes) {
@@ -434,7 +440,7 @@ router.get('/instances/:id/responses', async (req: Request, res: Response, next:
 });
 
 // Save single response
-router.post('/instances/:id/responses', async (req: Request, res: Response, next: NextFunction) => {
+router.post('/instances/:id/responses', requirePMWrite, validate(checklistItemResponseSchema), async (req: Request, res: Response, next: NextFunction) => {
   try {
     const response = await service.saveResponse({
       instanceId: req.params.id,
@@ -447,7 +453,7 @@ router.post('/instances/:id/responses', async (req: Request, res: Response, next
 });
 
 // Save multiple responses
-router.post('/instances/:id/responses/bulk', async (req: Request, res: Response, next: NextFunction) => {
+router.post('/instances/:id/responses/bulk', requirePMWrite, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { responses } = req.body;
     const responsesWithInstance = responses.map((r: any) => ({
@@ -476,7 +482,7 @@ router.get('/instances/:id/signatures', async (req: Request, res: Response, next
 });
 
 // Add signature
-router.post('/instances/:id/signatures', async (req: Request, res: Response, next: NextFunction) => {
+router.post('/instances/:id/signatures', requirePMWrite, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const signature = await service.addSignature({
       instanceId: req.params.id,

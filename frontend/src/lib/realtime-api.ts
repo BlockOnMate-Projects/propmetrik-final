@@ -4,8 +4,20 @@
  */
 
 import { useEffect, useRef, useState, useCallback } from 'react';
+import { getSession } from 'next-auth/react';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+
+async function getAuthHeaders(): Promise<Record<string, string>> {
+  if (typeof window === 'undefined') return {};
+  try {
+    const session = await getSession();
+    const token = (session as any)?.accessToken;
+    return token ? { 'Authorization': `Bearer ${token}` } : {};
+  } catch {
+    return {};
+  }
+}
 
 // Event types matching backend
 export enum RealtimeEventType {
@@ -248,9 +260,10 @@ export function usePresence(
     
     const updatePresence = async () => {
       try {
+        const authHeaders = await getAuthHeaders();
         await fetch(`${API_BASE}/realtime/presence`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 'Content-Type': 'application/json', ...authHeaders },
           body: JSON.stringify({
             sessionId,
             resourceType,
@@ -273,8 +286,10 @@ export function usePresence(
     // Fetch current presence
     const fetchPresence = async () => {
       try {
+        const authHeaders = await getAuthHeaders();
         const response = await fetch(
-          `${API_BASE}/realtime/presence/${resourceType}/${resourceId}`
+          `${API_BASE}/realtime/presence/${resourceType}/${resourceId}`,
+          { headers: authHeaders }
         );
         const data = await response.json();
         if (data.success) {
@@ -291,11 +306,13 @@ export function usePresence(
     return () => {
       clearInterval(interval);
       // Remove presence
-      fetch(`${API_BASE}/realtime/presence`, {
-        method: 'DELETE',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ sessionId, resourceType, resourceId }),
-      }).catch(() => {});
+      getAuthHeaders().then(authHeaders => {
+        fetch(`${API_BASE}/realtime/presence`, {
+          method: 'DELETE',
+          headers: { 'Content-Type': 'application/json', ...authHeaders },
+          body: JSON.stringify({ sessionId, resourceType, resourceId }),
+        }).catch(() => {});
+      });
     };
   }, [resourceType, resourceId, sessionId]);
   
@@ -303,12 +320,14 @@ export function usePresence(
   useRealtime([RealtimeEventType.PRESENCE_UPDATE, RealtimeEventType.PRESENCE_LEFT], (event) => {
     if (event.entityType === resourceType && event.entityId === resourceId) {
       // Refetch presence
-      fetch(`${API_BASE}/realtime/presence/${resourceType}/${resourceId}`)
-        .then(res => res.json())
-        .then(data => {
-          if (data.success) setPresence(data.data);
-        })
-        .catch(() => {});
+      getAuthHeaders().then(authHeaders => {
+        fetch(`${API_BASE}/realtime/presence/${resourceType}/${resourceId}`, { headers: authHeaders })
+          .then(res => res.json())
+          .then(data => {
+            if (data.success) setPresence(data.data);
+          })
+          .catch(() => {});
+      });
     }
   }, [resourceType, resourceId]);
   
@@ -404,24 +423,26 @@ export const calendarApi = {
       ...(filters?.dealId && { dealId: filters.dealId }),
       ...(filters?.service && { service: filters.service }),
     });
-    
-    const response = await fetch(`${API_BASE}/calendar/events?${params}`, { credentials: 'include' });
+    const authHeaders = await getAuthHeaders();
+    const response = await fetch(`${API_BASE}/calendar/events?${params}`, { credentials: 'include', headers: authHeaders });
     const data = await response.json();
     if (!data.success) throw new Error(data.error);
     return data.data;
   },
   
   async getUpcomingEvents(limit = 10): Promise<CalendarEvent[]> {
-    const response = await fetch(`${API_BASE}/calendar/events/upcoming?limit=${limit}`, { credentials: 'include' });
+    const authHeaders = await getAuthHeaders();
+    const response = await fetch(`${API_BASE}/calendar/events/upcoming?limit=${limit}`, { credentials: 'include', headers: authHeaders });
     const data = await response.json();
     if (!data.success) throw new Error(data.error);
     return data.data;
   },
   
   async createEvent(event: Omit<CalendarEvent, 'id'>): Promise<CalendarEvent> {
+    const authHeaders = await getAuthHeaders();
     const response = await fetch(`${API_BASE}/calendar/events`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', ...authHeaders },
       credentials: 'include',
       body: JSON.stringify(event),
     });
@@ -431,9 +452,10 @@ export const calendarApi = {
   },
   
   async updateEvent(eventId: string, updates: Partial<CalendarEvent>): Promise<CalendarEvent> {
+    const authHeaders = await getAuthHeaders();
     const response = await fetch(`${API_BASE}/calendar/events/${eventId}`, {
       method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', ...authHeaders },
       credentials: 'include',
       body: JSON.stringify(updates),
     });
@@ -443,9 +465,11 @@ export const calendarApi = {
   },
   
   async deleteEvent(eventId: string): Promise<void> {
+    const authHeaders = await getAuthHeaders();
     const response = await fetch(`${API_BASE}/calendar/events/${eventId}`, {
       method: 'DELETE',
       credentials: 'include',
+      headers: authHeaders,
     });
     const data = await response.json();
     if (!data.success) throw new Error(data.error);
@@ -453,9 +477,10 @@ export const calendarApi = {
   
   // Viewing Slots & Bookings
   async getAvailableSlots(propertyId: string, date: Date): Promise<ViewingSlot[]> {
+    const authHeaders = await getAuthHeaders();
     const response = await fetch(
       `${API_BASE}/calendar/slots/${propertyId}?date=${date.toISOString()}`,
-      { credentials: 'include' }
+      { credentials: 'include', headers: authHeaders }
     );
     const data = await response.json();
     if (!data.success) throw new Error(data.error);
@@ -467,9 +492,10 @@ export const calendarApi = {
   },
   
   async bookViewing(booking: ViewingBooking): Promise<ViewingBooking> {
+    const authHeaders = await getAuthHeaders();
     const response = await fetch(`${API_BASE}/calendar/viewings`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', ...authHeaders },
       credentials: 'include',
       body: JSON.stringify(booking),
     });
@@ -483,9 +509,10 @@ export const calendarApi = {
     status: string,
     agentNotes?: string
   ): Promise<ViewingBooking> {
+    const authHeaders = await getAuthHeaders();
     const response = await fetch(`${API_BASE}/calendar/viewings/${bookingId}/status`, {
       method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', ...authHeaders },
       credentials: 'include',
       body: JSON.stringify({ status, agentNotes }),
     });
@@ -508,7 +535,8 @@ export const calendarApi = {
     if (filters?.startDate) params.append('startDate', filters.startDate.toISOString());
     if (filters?.endDate) params.append('endDate', filters.endDate.toISOString());
     
-    const response = await fetch(`${API_BASE}/calendar/viewings?${params}`, { credentials: 'include' });
+    const authHeaders = await getAuthHeaders();
+    const response = await fetch(`${API_BASE}/calendar/viewings?${params}`, { credentials: 'include', headers: authHeaders });
     const data = await response.json();
     if (!data.success) throw new Error(data.error);
     return data.data;

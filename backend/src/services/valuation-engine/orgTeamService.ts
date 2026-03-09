@@ -14,18 +14,12 @@
 import { v4 as uuidv4 } from 'uuid';
 import crypto from 'crypto';
 import bcrypt from 'bcrypt';
-import axios from 'axios';
 import { pool } from '../../database';
-import config, { keycloakConfig } from '../../config';
+import config from '../../config';
 import { logger } from '../../utils/logger';
 import { notificationService } from '../../../shared-services/notifications/unified';
+import { keycloakAdminService } from '../keycloakAdminService';
 
-// ============================================================================
-// KEYCLOAK HELPERS  (reuse the same admin-token pattern from tenant onboarding)
-// ============================================================================
-
-const keycloakUrl = (config.keycloak.url || '').replace(/\/$/, '');
-const keycloakRealm = config.keycloak.realm || '';
 const frontendUrl = (config.app.frontendUrl || process.env.FRONTEND_URL || 'http://localhost:3000').replace(/\/$/, '');
 
 // ============================================================================
@@ -178,12 +172,11 @@ class OrgTeamService {
         (async () => {
             try {
                 // Provision Keycloak user (idempotent — won't duplicate)
-                const adminToken = await this.getKeycloakAdminToken();
-                const kcUser = await this.ensureKeycloakUser(
-                    adminToken,
+                const kcUser = await keycloakAdminService.ensureUser(
                     email.toLowerCase(),
                     firstName || email.split('@')[0],
-                    lastName || ''
+                    lastName || '',
+                    { emailVerified: true, requiredActions: ['UPDATE_PASSWORD'] },
                 );
 
                 logger.info('Keycloak user ensured for team invite', {
@@ -533,205 +526,8 @@ class OrgTeamService {
     }
 
     // --------------------------------------------------------------------------
-    // KEYCLOAK INTEGRATION
+    // KEYCLOAK INTEGRATION — delegated to centralized KeycloakAdminService
     // --------------------------------------------------------------------------
-
-    /**
-     * Obtain an admin-level Keycloak access token
-     * Tries: client_credentials on app realm → client_credentials on admin realm → password grant
-     */
-    private async getKeycloakAdminToken(): Promise<string> {
-        const adminClientId = config.keycloak.adminClientId || config.keycloak.clientId;
-        const adminSecret = config.keycloak.adminSecret || config.keycloak.clientSecret;
-        const adminRealm = config.keycloak.adminRealm || 'master';
-        const adminUsername = config.keycloak.adminUsername;
-        const adminPassword = config.keycloak.adminPassword;
-
-        const requestToken = async (realm: string, params: Record<string, string>) => {
-            const tokenUrl = `${keycloakUrl}/realms/${realm}/protocol/openid-connect/token`;
-            const response = await axios.post(tokenUrl, new URLSearchParams(params), {
-                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-            });
-            return response.data.access_token;
-        };
-
-        const attempts: Array<() => Promise<{ token: string; method: string }>> = [];
-
-        if (adminClientId && adminSecret) {
-            attempts.push(async () => ({
-                token: await requestToken(keycloakRealm, {
-                    grant_type: 'client_credentials',
-                    client_id: adminClientId,
-                    client_secret: adminSecret,
-                }),
-                method: `client_credentials@${keycloakRealm}`,
-            }));
-
-            if (adminRealm !== keycloakRealm) {
-                attempts.push(async () => ({
-                    token: await requestToken(adminRealm, {
-                        grant_type: 'client_credentials',
-                        client_id: adminClientId,
-                        client_secret: adminSecret,
-                    }),
-                    method: `client_credentials@${adminRealm}`,
-                }));
-            }
-        }
-
-        if (adminUsername && adminPassword) {
-            attempts.push(async () => ({
-                token: await requestToken(adminRealm, {
-                    grant_type: 'password',
-                    client_id: adminClientId || 'admin-cli',
-                    username: adminUsername,
-                    password: adminPassword,
-                }),
-                method: `password@${adminRealm}`,
-            }));
-        }
-
-        if (attempts.length === 0) {
-            throw new Error('Keycloak admin credentials are not configured');
-        }
-
-        const errors: string[] = [];
-        for (const attempt of attempts) {
-            try {
-                const result = await attempt();
-                logger.info('Keycloak admin auth resolved (orgTeam)', { method: result.method });
-                return result.token;
-            } catch (error: any) {
-                const msg = error?.response?.data ? JSON.stringify(error.response.data) : error?.message || 'unknown';
-                errors.push(msg);
-            }
-        }
-
-        throw new Error(`Unable to obtain Keycloak admin token: ${errors.join(' | ')}`);
-    }
-
-    /**
-     * Find or create a Keycloak user.  New users get UPDATE_PASSWORD as a required action
-     * so they are prompted to set their password on first login.
-     */
-    private async ensureKeycloakUser(
-        adminToken: string,
-        email: string,
-        firstName: string,
-        lastName: string
-    ): Promise<{ id: string; created: boolean }> {
-        // Search for existing user
-        const searchRes = await axios.get(
-            `${keycloakUrl}/admin/realms/${keycloakRealm}/users`,
-            { params: { email, exact: true }, headers: { Authorization: `Bearer ${adminToken}` } }
-        );
-
-        const existing = searchRes.data?.[0];
-        if (existing?.id) {
-            return { id: existing.id, created: false };
-        }
-
-        // Create user with UPDATE_PASSWORD required action
-        await axios.post(
-            `${keycloakUrl}/admin/realms/${keycloakRealm}/users`,
-            {
-                email,
-                username: email,
-                firstName: firstName || 'Team',
-                lastName: lastName || 'Member',
-                enabled: true,
-                emailVerified: true,
-                requiredActions: ['UPDATE_PASSWORD'],
-            },
-            {
-                headers: {
-                    Authorization: `Bearer ${adminToken}`,
-                    'Content-Type': 'application/json',
-                },
-            }
-        );
-
-        // Fetch the newly created user
-        const created = await axios.get(
-            `${keycloakUrl}/admin/realms/${keycloakRealm}/users`,
-            { params: { email, exact: true }, headers: { Authorization: `Bearer ${adminToken}` } }
-        );
-
-        const user = created.data?.[0];
-        if (!user?.id) {
-            throw new Error('Failed to create Keycloak user for team invite');
-        }
-
-        return { id: user.id, created: true };
-    }
-
-    /**
-     * Set a user's password in Keycloak and clear the UPDATE_PASSWORD required action.
-     */
-    private async setKeycloakPassword(
-        adminToken: string,
-        keycloakUserId: string,
-        password: string
-    ): Promise<void> {
-        // Reset the password
-        await axios.put(
-            `${keycloakUrl}/admin/realms/${keycloakRealm}/users/${keycloakUserId}/reset-password`,
-            { type: 'password', temporary: false, value: password },
-            {
-                headers: {
-                    Authorization: `Bearer ${adminToken}`,
-                    'Content-Type': 'application/json',
-                },
-            }
-        );
-
-        // Clear required actions
-        await axios.put(
-            `${keycloakUrl}/admin/realms/${keycloakRealm}/users/${keycloakUserId}`,
-            { requiredActions: [] },
-            {
-                headers: {
-                    Authorization: `Bearer ${adminToken}`,
-                    'Content-Type': 'application/json',
-                },
-            }
-        );
-    }
-
-    /**
-     * Send the Keycloak "execute-actions" email (UPDATE_PASSWORD) directly from Keycloak.
-     * Falls back gracefully if Keycloak email is not configured.
-     */
-    private async sendKeycloakActionsEmail(
-        adminToken: string,
-        keycloakUserId: string,
-        redirectUri: string
-    ): Promise<void> {
-        try {
-            const clientId = config.keycloak.clientId || 'propmetrik-web';
-            await axios.put(
-                `${keycloakUrl}/admin/realms/${keycloakRealm}/users/${keycloakUserId}/execute-actions-email`,
-                ['UPDATE_PASSWORD'],
-                {
-                    params: {
-                        client_id: clientId,
-                        redirect_uri: redirectUri,
-                        lifespan: 604800, // 7 days
-                    },
-                    headers: {
-                        Authorization: `Bearer ${adminToken}`,
-                        'Content-Type': 'application/json',
-                    },
-                }
-            );
-            logger.info('Keycloak execute-actions email sent', { keycloakUserId });
-        } catch (error: any) {
-            logger.warn('Failed to send Keycloak execute-actions email (falling back to app email)', {
-                keycloakUserId,
-                error: error?.message,
-            });
-        }
-    }
 
     // --------------------------------------------------------------------------
     // INVITATION EMAIL
@@ -870,16 +666,15 @@ class OrgTeamService {
             }
 
             // 2) Provision Keycloak user
-            const adminToken = await this.getKeycloakAdminToken();
-            const kcUser = await this.ensureKeycloakUser(
-                adminToken,
+            const kcUser = await keycloakAdminService.ensureUser(
                 inv.email,
                 firstName || inv.email.split('@')[0],
-                lastName || ''
+                lastName || '',
+                { emailVerified: true, requiredActions: ['UPDATE_PASSWORD'] },
             );
 
             // 3) Set the password in Keycloak
-            await this.setKeycloakPassword(adminToken, kcUser.id, password);
+            await keycloakAdminService.setPassword(kcUser.id, password);
 
             // 3b) Hash password for local DB auth
             const passwordHash = await bcrypt.hash(password, 12);

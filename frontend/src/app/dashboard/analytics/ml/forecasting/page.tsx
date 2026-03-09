@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { cn } from '@/lib/utils'
+import { authedFetch } from '@/lib/authed-fetch'
 import {
   TrendingUp,
   TrendingDown,
@@ -86,7 +87,7 @@ async function fetchForecast(
   try {
     const params = new URLSearchParams({ region, horizon: String(horizon) })
     if (propertyType) params.set('property_type', propertyType)
-    const res = await fetch(`${API_BASE}/forecast?${params}`)
+    const res = await authedFetch(`${API_BASE}/forecast?${params}`)
     if (!res.ok) return null
     const json = await res.json()
     return json.data ?? null

@@ -2,14 +2,19 @@ import { Router } from 'express';
 import { body, param } from 'express-validator';
 import { constructionOpsService } from '../services/project-management/constructionOpsService';
 import { logger } from '../utils/logger';
+import { registerPMParamValidation, requirePMWrite } from '../middleware/pmAuth';
 
 const router = Router();
+
+// Register UUID parameter validation
+registerPMParamValidation(router);
 
 // ============================================================================
 // SITE DIARY (Informal Labor Tracking)
 // ============================================================================
 router.post(
   '/projects/:projectId/site-diary',
+  requirePMWrite,
   [
     param('projectId').isUUID(),
     body('reportDate').isISO8601(),
@@ -37,6 +42,7 @@ router.post(
 // ============================================================================
 router.post(
   '/projects/:projectId/petty-cash',
+  requirePMWrite,
   [
     param('projectId').isUUID(),
     body('amount').isFloat({ min: 0 }),

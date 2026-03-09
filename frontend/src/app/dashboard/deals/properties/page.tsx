@@ -4,6 +4,7 @@ import React, { useEffect, useState, useCallback } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { cn, formatCurrency } from '@/lib/utils'
+import { authedFetch } from '@/lib/authed-fetch'
 import { 
     Loader2, Plus, Search, MapPin, Home, Building2, LandPlot,
     ChevronRight, MoreHorizontal, Eye, FileText, Users, TrendingUp, Edit
@@ -306,10 +307,10 @@ export default function CRMPropertiesPage() {
             if (filters.region !== 'all') params.append('region', filters.region)
             params.append('include_deals', 'true')
 
-            const response = await fetch(`${API_BASE}/crm/properties?${params}`)
+            const response = await authedFetch(`${API_BASE}/crm/properties?${params}`)
             if (!response.ok) {
                 // Fallback to property management if CRM properties not available
-                const pmResponse = await fetch(`${API_BASE}/property-management/properties?${params}`)
+                const pmResponse = await authedFetch(`${API_BASE}/property-management/properties?${params}`)
                 if (!pmResponse.ok) throw new Error('Failed to fetch properties')
                 const pmData = await pmResponse.json()
                 // Transform PM data to CRM format

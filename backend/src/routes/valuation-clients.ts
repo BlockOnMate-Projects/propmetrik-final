@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { ValuationClientService } from '../services/valuation-engine/valuationClientService';
 import { authenticate, requireOrganization } from '../middleware/auth';
+import { requireServiceAccess } from '../middleware/serviceAccess';
 import { notificationService } from '../../shared-services/notifications/unified';
 
 const router = Router();
@@ -8,26 +9,20 @@ const clientService = new ValuationClientService();
 
 // Middleware
 router.use(authenticate);
+router.use(requireServiceAccess('valuations'));
 router.use(requireOrganization());
 
 // List clients
 router.get('/', async (req, res) => {
     try {
-        // Use organization ID from authenticated user (secure) or header (fallback)
-        let orgId = req.user?.organizationId || (req.headers['x-organization-id'] as string);
+        const orgId = req.user?.organizationId || (req.headers['x-organization-id'] as string);
 
         console.log(`[GET /valuation-clients] UserOrg: ${req.user?.organizationId}, HeaderOrg: ${req.headers['x-organization-id']}`);
 
         // Validate UUID
         const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
         if (!orgId || !uuidRegex.test(orgId)) {
-            console.warn(`[GET /valuation-clients] Invalid Org ID: ${orgId}. Using default dev ID.`);
-            // Fallback for dev/testing if header is explicitly 'default' or invalid
-            if (process.env.NODE_ENV === 'development') {
-                orgId = '00000000-0000-0000-0000-000000000001';
-            } else {
-                return res.status(400).json({ success: false, error: 'Invalid or missing Organization ID' });
-            }
+            return res.status(400).json({ success: false, error: 'Invalid or missing Organization ID' });
         }
 
         const { limit, offset, search } = req.query;
@@ -74,7 +69,7 @@ router.get('/:id/invoices', async (req, res) => {
                 return res.status(400).json({ success: false, error: 'Invalid Org ID' });
             }
         }
-        const invoices = await clientService.getClientInvoices(req.params.id, orgId || '00000000-0000-0000-0000-000000000001');
+        const invoices = await clientService.getClientInvoices(req.params.id, orgId);
         res.json({ success: true, invoices });
     } catch (error: any) {
         res.status(500).json({ success: false, error: error.message });
@@ -90,7 +85,7 @@ router.get('/:id/valuations', async (req, res) => {
                 return res.status(400).json({ success: false, error: 'Invalid Org ID' });
             }
         }
-        const valuations = await clientService.getClientValuations(req.params.id, orgId || '00000000-0000-0000-0000-000000000001');
+        const valuations = await clientService.getClientValuations(req.params.id, orgId || '');
         res.json({ success: true, valuations });
     } catch (error: any) {
         res.status(500).json({ success: false, error: error.message });
@@ -164,7 +159,7 @@ router.post('/:id/send-email', async (req, res) => {
             }
         }
 
-        const client = await clientService.getClientById(req.params.id, orgId || '00000000-0000-0000-0000-000000000001');
+        const client = await clientService.getClientById(req.params.id, orgId || '');
         const { subject, body: messageBody, to } = req.body;
 
         if (!subject || !messageBody) {

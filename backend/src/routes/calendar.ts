@@ -8,14 +8,22 @@ import { Router, Request, Response } from 'express';
 import { calendarService } from '../../shared-services/calendar';
 import { realtimeEmitter, RealtimeEventType } from '../../shared-services/realtime';
 import { logger } from '../utils/logger';
+import { registerPMParamValidation, requirePMWrite } from '../middleware/pmAuth';
+import { validate } from '../middleware/validation';
+import { createCalendarEventSchema, updateCalendarEventSchema } from '../middleware/pmProjectValidation';
 
 const router = Router();
 
-// Middleware to get user context
+// Register UUID parameter validation
+registerPMParamValidation(router);
+
+// Middleware to get user context from authenticated request (no header fallback)
 const getUserContext = (req: Request) => {
   const user = (req as any).user;
-  const userId = user?.id || user?.sub || req.headers['x-user-id'] as string || 'anonymous';
-  const organizationId = user?.organizationId || user?.organization_id || req.headers['x-organization-id'] as string || '00000000-0000-0000-0000-000000000001';
+  const userId = user?.id || user?.sub;
+  const organizationId = user?.organizationId || user?.organization_id;
+  if (!userId) throw new Error('User ID required — authentication missing');
+  if (!organizationId) throw new Error('Organization ID required — authentication missing');
   return { userId, organizationId };
 };
 
@@ -122,7 +130,7 @@ router.get('/events/:eventId', async (req: Request, res: Response) => {
  * @desc Create a calendar event
  * @access Private
  */
-router.post('/events', async (req: Request, res: Response) => {
+router.post('/events', requirePMWrite, validate(createCalendarEventSchema), async (req: Request, res: Response) => {
   try {
     const { organizationId, userId } = getUserContext(req);
     const eventData = {
@@ -155,7 +163,7 @@ router.post('/events', async (req: Request, res: Response) => {
  * @desc Update a calendar event
  * @access Private
  */
-router.patch('/events/:eventId', async (req: Request, res: Response) => {
+router.patch('/events/:eventId', requirePMWrite, validate(updateCalendarEventSchema), async (req: Request, res: Response) => {
   try {
     const { eventId } = req.params;
     const { organizationId, userId } = getUserContext(req);
@@ -188,7 +196,7 @@ router.patch('/events/:eventId', async (req: Request, res: Response) => {
  * @desc Delete a calendar event
  * @access Private
  */
-router.delete('/events/:eventId', async (req: Request, res: Response) => {
+router.delete('/events/:eventId', requirePMWrite, async (req: Request, res: Response) => {
   try {
     const { eventId } = req.params;
     const { organizationId, userId } = getUserContext(req);
@@ -221,7 +229,7 @@ router.delete('/events/:eventId', async (req: Request, res: Response) => {
  * @desc Create a calendar event from a CRM task
  * @access Private
  */
-router.post('/events/from-task/:taskId', async (req: Request, res: Response) => {
+router.post('/events/from-task/:taskId', requirePMWrite, async (req: Request, res: Response) => {
   try {
     const { taskId } = req.params;
     const { organizationId, userId } = getUserContext(req);
@@ -265,7 +273,7 @@ router.get('/availability/:propertyId', async (req: Request, res: Response) => {
  * @desc Set viewing availability for a property
  * @access Private
  */
-router.post('/availability', async (req: Request, res: Response) => {
+router.post('/availability', requirePMWrite, async (req: Request, res: Response) => {
   try {
     const { organizationId, userId } = getUserContext(req);
     const availabilityData = {
@@ -288,7 +296,7 @@ router.post('/availability', async (req: Request, res: Response) => {
  * @desc Delete viewing availability
  * @access Private
  */
-router.delete('/availability/:availabilityId', async (req: Request, res: Response) => {
+router.delete('/availability/:availabilityId', requirePMWrite, async (req: Request, res: Response) => {
   try {
     const { availabilityId } = req.params;
     const deleted = await calendarService.deleteViewingAvailability(availabilityId);
@@ -378,7 +386,7 @@ router.get('/viewings', async (req: Request, res: Response) => {
  * @desc Book a property viewing
  * @access Private
  */
-router.post('/viewings', async (req: Request, res: Response) => {
+router.post('/viewings', requirePMWrite, async (req: Request, res: Response) => {
   try {
     const { organizationId, userId } = getUserContext(req);
     const bookingData = {
@@ -411,7 +419,7 @@ router.post('/viewings', async (req: Request, res: Response) => {
  * @desc Update viewing booking status
  * @access Private
  */
-router.patch('/viewings/:bookingId/status', async (req: Request, res: Response) => {
+router.patch('/viewings/:bookingId/status', requirePMWrite, async (req: Request, res: Response) => {
   try {
     const { bookingId } = req.params;
     const { status, agentNotes, cancellationReason } = req.body;
@@ -459,7 +467,7 @@ router.patch('/viewings/:bookingId/status', async (req: Request, res: Response) 
  * @desc Schedule a maintenance work order
  * @access Private
  */
-router.post('/maintenance/:workOrderId/schedule', async (req: Request, res: Response) => {
+router.post('/maintenance/:workOrderId/schedule', requirePMWrite, async (req: Request, res: Response) => {
   try {
     const { organizationId, userId } = getUserContext(req);
     const { workOrderId } = req.params;
@@ -508,7 +516,7 @@ router.post('/maintenance/:workOrderId/schedule', async (req: Request, res: Resp
  * @desc Reschedule a maintenance work order
  * @access Private
  */
-router.put('/maintenance/:workOrderId/reschedule', async (req: Request, res: Response) => {
+router.put('/maintenance/:workOrderId/reschedule', requirePMWrite, async (req: Request, res: Response) => {
   try {
     const { organizationId, userId } = getUserContext(req);
     const { workOrderId } = req.params;
@@ -564,7 +572,7 @@ router.put('/maintenance/:workOrderId/reschedule', async (req: Request, res: Res
  * @desc Cancel a maintenance calendar event
  * @access Private
  */
-router.delete('/maintenance/:workOrderId', async (req: Request, res: Response) => {
+router.delete('/maintenance/:workOrderId', requirePMWrite, async (req: Request, res: Response) => {
   try {
     const { organizationId, userId } = getUserContext(req);
     const { workOrderId } = req.params;
@@ -662,7 +670,7 @@ router.get('/vendor/:vendorId/availability', async (req: Request, res: Response)
  * @desc Create lease lifecycle events (start, end, renewal reminder)
  * @access Private
  */
-router.post('/lease/:tenancyId/events', async (req: Request, res: Response) => {
+router.post('/lease/:tenancyId/events', requirePMWrite, async (req: Request, res: Response) => {
   try {
     const { organizationId, userId } = getUserContext(req);
     const { tenancyId } = req.params;
@@ -685,7 +693,7 @@ router.post('/lease/:tenancyId/events', async (req: Request, res: Response) => {
  * @desc Create recurring rent payment reminders
  * @access Private
  */
-router.post('/lease/:tenancyId/payment-reminders', async (req: Request, res: Response) => {
+router.post('/lease/:tenancyId/payment-reminders', requirePMWrite, async (req: Request, res: Response) => {
   try {
     const { organizationId, userId } = getUserContext(req);
     const { tenancyId } = req.params;

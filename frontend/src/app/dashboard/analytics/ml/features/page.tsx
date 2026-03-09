@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { cn } from '@/lib/utils'
+import { authedFetch } from '@/lib/authed-fetch'
 import {
   Brain,
   Layers,
@@ -50,7 +51,7 @@ const API_BASE = '/api/analytics/ml'
 
 async function fetchData<T>(endpoint: string): Promise<T | null> {
   try {
-    const res = await fetch(`${API_BASE}${endpoint}`)
+    const res = await authedFetch(`${API_BASE}${endpoint}`)
     if (!res.ok) return null
     const json = await res.json()
     return json.data ?? null
@@ -144,7 +145,7 @@ export default function FeatureImportancePage() {
     setExplainLoading(true)
     setExplainError(null)
     try {
-      const res = await fetch(`${API_BASE}/predictions/${predictionId.trim()}/explain`)
+      const res = await authedFetch(`${API_BASE}/predictions/${predictionId.trim()}/explain`)
       if (!res.ok) {
         const err = await res.json().catch(() => ({ error: 'Request failed' }))
         setExplainError(err.error || `HTTP ${res.status}`)

@@ -10,6 +10,7 @@
  */
 
 import React, { useState, useEffect } from 'react';
+import { authedFetch } from '@/lib/authed-fetch';
 
 // =====================================================
 // TYPES
@@ -79,7 +80,7 @@ export const ReportVerificationPage: React.FC<ReportVerificationPageProps> = ({
     setResult(null);
 
     try {
-      const response = await fetch(`${apiBaseUrl}/reports/${targetId}/verify`);
+      const response = await authedFetch(`${apiBaseUrl}/reports/${targetId}/verify`);
       const data = await response.json();
 
       if (!response.ok) {
@@ -101,7 +102,7 @@ export const ReportVerificationPage: React.FC<ReportVerificationPageProps> = ({
     setResult(null);
 
     try {
-      const response = await fetch(`${apiBaseUrl}/reports/verify/${verifyHash}`);
+      const response = await authedFetch(`${apiBaseUrl}/reports/verify/${verifyHash}`);
       const data = await response.json();
 
       if (!response.ok) {

@@ -8,6 +8,7 @@ import { Router } from 'express';
 import { floodRiskService } from '../../shared-services/risk/floodRiskService';
 import { nadmoIngestionService } from '../services/data-hub/ingestion/nadmoIngestion';
 import { logger } from '../utils/logger';
+import { scanUploadedFile } from '../middleware/virusScan';
 import multer from 'multer';
 import path from 'path';
 import fs from 'fs';
@@ -141,7 +142,7 @@ router.post('/report', async (req, res) => {
  * POST /api/v1/flood-risk/ingest/nadmo
  * Upload NADMO CSV report
  */
-router.post('/ingest/nadmo', upload.single('report'), async (req, res) => {
+router.post('/ingest/nadmo', upload.single('report'), scanUploadedFile, async (req, res) => {
     try {
         if (!req.file) {
             return res.status(400).json({ success: false, error: 'No file uploaded' });

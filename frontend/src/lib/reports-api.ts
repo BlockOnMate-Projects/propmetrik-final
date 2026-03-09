@@ -22,6 +22,8 @@ import {
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || (typeof window !== 'undefined' ? '/api' : 'http://localhost:4000/api/v1');
 
+import { getSession } from 'next-auth/react';
+
 // =====================================================
 // HELPER FUNCTIONS
 // =====================================================
@@ -32,9 +34,21 @@ async function fetchApi<T>(
 ): Promise<T> {
   const url = `${API_BASE}${endpoint}`;
 
+  // Attach auth token from NextAuth session
+  const authHeaders: Record<string, string> = {
+    'Content-Type': 'application/json',
+  };
+  if (typeof window !== 'undefined') {
+    try {
+      const session = await getSession();
+      const token = (session as any)?.accessToken;
+      if (token) authHeaders['Authorization'] = `Bearer ${token}`;
+    } catch {}
+  }
+
   const response = await fetch(url, {
     headers: {
-      'Content-Type': 'application/json',
+      ...authHeaders,
       ...options?.headers,
     },
     ...options,

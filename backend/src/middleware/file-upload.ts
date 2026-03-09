@@ -9,6 +9,9 @@ import fs from 'fs';
 import { Request } from 'express';
 import { logger } from '../utils/logger';
 
+// Re-export virus scan middleware for convenience
+export { scanUploadedFile, scanUploadedFiles } from './virusScan';
+
 // Ensure upload directory exists
 const UPLOAD_DIR = path.join(__dirname, '../../uploads/temp');
 if (!fs.existsSync(UPLOAD_DIR)) {

@@ -1126,16 +1126,26 @@ export interface LocationValidation {
 }
 
 export interface CostEstimate {
-  region: string;
-  projectType: string;
-  sqm: number;
-  materials: Array<{ category: string; amount: number }>;
-  labor: Array<{ category: string; amount: number }>;
-  totalMaterials: number;
-  totalLabor: number;
-  grandTotal: number;
-  currency: string;
-  estimatedAt: string;
+  total_estimated_cost_ghs: number;
+  total_estimated_cost_display: number;
+  display_currency: string;
+  cost_per_sqm_ghs: number;
+  cost_per_sqm_display: number;
+  breakdown: Array<{
+    category: string;
+    description: string;
+    estimated_cost_ghs: number;
+    estimated_cost_display: number;
+    display_currency: string;
+    percentage_of_total: number;
+    unit_cost_per_sqm?: number;
+    data_source: string;
+    confidence: number;
+  }>;
+  assumptions: string[];
+  data_sources: string[];
+  generated_at: string;
+  valid_for_days: number;
 }
 
 export const locationApi = {
@@ -1180,10 +1190,19 @@ export const locationApi = {
 
 export const costEstimationApi = {
   // Get cost estimate
-  estimate: (projectType: string, region: string, sqm: number): Promise<CostEstimate> => {
+  estimate: (params: {
+    project_type: string;
+    region: string;
+    total_sqm: number;
+    total_floors?: number;
+    finish_level?: string;
+    include_land?: boolean;
+    land_cost_per_sqm?: number;
+    display_currency?: string;
+  }): Promise<CostEstimate> => {
     return fetchApi(`${PROJECTS_BASE}/estimate-costs`, {
       method: 'POST',
-      body: JSON.stringify({ project_type: projectType, region, sqm }),
+      body: JSON.stringify(params),
     });
   },
 

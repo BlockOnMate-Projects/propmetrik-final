@@ -9,6 +9,7 @@ import { Progress } from '@/components/ui/progress'
 import { Badge } from '@/components/ui/badge'
 import { Upload, X, FileText, FileSpreadsheet, File as FileIcon, CheckCircle, AlertCircle } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { authedFetch } from '@/lib/authed-fetch'
 
 interface FileUploadModalProps {
     isOpen: boolean
@@ -43,7 +44,7 @@ export function FileUploadModal({
 
         while (Date.now() < deadline) {
             try {
-                const res = await fetch(`${API_BASE}/data-hub/uploads/${id}`)
+                const res = await authedFetch(`${API_BASE}/data-hub/uploads/${id}`)
                 if (!res.ok) {
                     break
                 }
@@ -105,7 +106,7 @@ export function FileUploadModal({
             }, 200)
 
             // 1) Ask backend for a presigned upload URL
-            const presignRes = await fetch(`${API_BASE}/data-hub/uploads/presign`, {
+            const presignRes = await authedFetch(`${API_BASE}/data-hub/uploads/presign`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -145,7 +146,7 @@ export function FileUploadModal({
             }
 
             // 3) Notify backend upload is complete (kicks off parsing/validation)
-            const completeRes = await fetch(`${API_BASE}/data-hub/uploads/${id}/complete`, {
+            const completeRes = await authedFetch(`${API_BASE}/data-hub/uploads/${id}/complete`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
             })
@@ -181,7 +182,7 @@ export function FileUploadModal({
         setErrorMessage(null)
 
         try {
-            const res = await fetch(`${API_BASE}/data-hub/uploads/${uploadId}/import`, {
+            const res = await authedFetch(`${API_BASE}/data-hub/uploads/${uploadId}/import`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
             })

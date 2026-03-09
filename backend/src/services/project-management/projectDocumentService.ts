@@ -588,12 +588,12 @@ class ProjectDocumentService {
     projectId: string,
     filters?: Partial<DocumentFilters>
   ): Promise<ProjectDocument[]> {
-    let query = `SELECT * FROM project_documents WHERE project_id = $1 AND status = 'active'`;
+    let query = `SELECT pd.*, u.full_name as uploaded_by_name FROM project_documents pd LEFT JOIN users u ON pd.uploaded_by::text = u.id::text WHERE pd.project_id = $1 AND pd.status = 'active'`;
     const params: any[] = [projectId];
     let paramIndex = 2;
 
     if (filters?.folder_id) {
-      query += ` AND folder_id = $${paramIndex}`;
+      query += ` AND pd.folder_id = $${paramIndex}`;
       params.push(filters.folder_id);
       paramIndex++;
     }
@@ -602,30 +602,30 @@ class ProjectDocumentService {
       const types = Array.isArray(filters.document_type)
         ? filters.document_type
         : [filters.document_type];
-      query += ` AND document_type = ANY($${paramIndex})`;
+      query += ` AND pd.document_type = ANY($${paramIndex})`;
       params.push(types);
       paramIndex++;
     }
 
     if (filters?.tags && filters.tags.length > 0) {
-      query += ` AND tags && $${paramIndex}`;
+      query += ` AND pd.tags && $${paramIndex}`;
       params.push(filters.tags);
       paramIndex++;
     }
 
     if (filters?.expiring_within_days) {
-      query += ` AND expiration_date IS NOT NULL 
-                 AND expiration_date BETWEEN CURRENT_DATE 
+      query += ` AND pd.expiration_date IS NOT NULL 
+                 AND pd.expiration_date BETWEEN CURRENT_DATE 
                  AND CURRENT_DATE + INTERVAL '${filters.expiring_within_days} days'`;
     }
 
     if (filters?.search) {
-      query += ` AND (name ILIKE $${paramIndex} OR description ILIKE $${paramIndex})`;
+      query += ` AND (pd.name ILIKE $${paramIndex} OR pd.description ILIKE $${paramIndex})`;
       params.push(`%${filters.search}%`);
       paramIndex++;
     }
 
-    query += ` AND is_current = true ORDER BY created_at DESC`;
+    query += ` AND pd.is_current = true ORDER BY pd.created_at DESC`;
 
     const result = await pool.query(query, params);
     return result.rows;

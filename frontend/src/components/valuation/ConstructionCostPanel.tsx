@@ -242,10 +242,10 @@ export function ConstructionCostPanel({
         // Extract labor costs
         const laborRates = laborResponse?.data || [];
         const skilledRates = laborRates.filter((r: any) =>
-          r.skill_level === 'journeyman' || r.skill_level === 'master'
+          ['master', 'skilled'].includes(r.skill_level?.toLowerCase?.())
         );
         const unskilledRates = laborRates.filter((r: any) =>
-          r.skill_level === 'apprentice' || r.labor_category === 'general_laborer'
+          ['semi_skilled', 'unskilled', 'apprentice'].includes(r.skill_level?.toLowerCase?.()) || r.labor_category === 'general_laborer'
         );
 
         const avgSkilledDaily = skilledRates.length > 0

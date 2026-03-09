@@ -82,7 +82,7 @@ async function runDigestSweep() {
             .join('\n');
 
         const message = `Hello ${digest.name}, 📝\n\n` +
-            `You have *${totalUnread} unread messages* in your PropMetrik workspaces:\n\n` +
+            `You have *${totalUnread} unread messages* in your PROPMETRIK workspaces:\n\n` +
             `${workspaceSummary}\n\n` +
             `Log in to your dashboard to catch up: ${config.app.frontendUrl}`;
 

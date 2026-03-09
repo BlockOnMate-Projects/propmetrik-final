@@ -20,6 +20,7 @@ import { Router, Request, Response } from 'express';
 import { orgTeamService, VALID_ORG_ROLES } from '../services/valuation-engine/orgTeamService';
 import { authenticate } from '../middleware/auth';
 import { authorize } from '../middleware/authorize';
+import { requireServiceAccess } from '../middleware/serviceAccess';
 import { logger } from '../utils/logger';
 
 const router = Router();
@@ -108,6 +109,7 @@ router.post('/invitations/accept-and-setup', async (req: Request, res: Response)
 // ============================================================================
 
 router.use(authenticate);
+router.use(requireServiceAccess('valuations'));
 
 // ============================================================================
 // ROLE METADATA

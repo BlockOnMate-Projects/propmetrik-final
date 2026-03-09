@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { cn } from '@/lib/utils';
+import { authedFetch } from '@/lib/authed-fetch';
 import { 
   TrendingUp, 
   TrendingDown, 
@@ -92,7 +93,7 @@ interface DashboardSummary {
 const analyticsApi = {
   async getDashboardSummary(signal?: AbortSignal): Promise<DashboardSummary | null> {
     try {
-      const res = await fetch('/api/analytics/dashboard', { signal });
+      const res = await authedFetch('/api/analytics/dashboard', { signal });
       if (!res.ok) return null;
       const data = await res.json();
       return data.data ?? null;
@@ -100,7 +101,7 @@ const analyticsApi = {
   },
   async getCohorts(groupBy: string, signal?: AbortSignal): Promise<CohortData[]> {
     try {
-      const res = await fetch(`/api/analytics/cohorts?groupBy=${groupBy}`, { signal });
+      const res = await authedFetch(`/api/analytics/cohorts?groupBy=${groupBy}`, { signal });
       if (!res.ok) return [];
       const data = await res.json();
       return data.data ?? [];
@@ -108,7 +109,7 @@ const analyticsApi = {
   },
   async getWinLoss(period: string, signal?: AbortSignal): Promise<WinLossData[]> {
     try {
-      const res = await fetch(`/api/analytics/win-loss?period=${period}`, { signal });
+      const res = await authedFetch(`/api/analytics/win-loss?period=${period}`, { signal });
       if (!res.ok) return [];
       const data = await res.json();
       return data.data ?? [];
@@ -116,7 +117,7 @@ const analyticsApi = {
   },
   async getFunnel(pipelineId: string, signal?: AbortSignal): Promise<FunnelStage[]> {
     try {
-      const res = await fetch(`/api/analytics/funnel/${pipelineId}`, { signal });
+      const res = await authedFetch(`/api/analytics/funnel/${pipelineId}`, { signal });
       if (!res.ok) return [];
       const data = await res.json();
       return data.data ?? [];
@@ -124,7 +125,7 @@ const analyticsApi = {
   },
   async getLeadSources(signal?: AbortSignal): Promise<LeadSourceData[]> {
     try {
-      const res = await fetch('/api/analytics/lead-sources', { signal });
+      const res = await authedFetch('/api/analytics/lead-sources', { signal });
       if (!res.ok) return [];
       const data = await res.json();
       return data.data ?? [];
@@ -132,7 +133,7 @@ const analyticsApi = {
   },
   async getAgentPerformance(period: string, signal?: AbortSignal): Promise<AgentPerformance[]> {
     try {
-      const res = await fetch(`/api/analytics/agent-performance?period=${period}`, { signal });
+      const res = await authedFetch(`/api/analytics/agent-performance?period=${period}`, { signal });
       if (!res.ok) return [];
       const data = await res.json();
       return data.data ?? [];

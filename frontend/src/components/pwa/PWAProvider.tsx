@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState, createContext, useContext, ReactNode } from 'react';
+import { authedFetch } from '@/lib/authed-fetch';
 
 interface PWAContextType {
   isOnline: boolean;
@@ -170,7 +171,7 @@ export function PWAProvider({ children }: { children: ReactNode }) {
       }
 
       // Get VAPID public key from server
-      const response = await fetch('/api/push/vapid-public-key');
+      const response = await authedFetch('/api/push/vapid-public-key');
       const { publicKey } = await response.json();
 
       // Subscribe to push
@@ -180,7 +181,7 @@ export function PWAProvider({ children }: { children: ReactNode }) {
       });
 
       // Send subscription to server
-      await fetch('/api/push/subscribe', {
+      await authedFetch('/api/push/subscribe', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(subscription),

@@ -1,4 +1,4 @@
-# PropMetrik Workspace & Kobby AI Blueprint
+# PROPMETRIK Workspace & Kobby AI Blueprint
 
 > **Status**: Planning  
 > **Scope**: In-app real-time collaboration + project-wide AI agent  
@@ -8,11 +8,11 @@
 
 ## 1. Executive Summary
 
-**Workspace** is a structured, entity-linked collaboration layer built into PropMetrik that allows teams to communicate, share files, and track decisions tied to specific valuations, projects, deals, and properties — without leaving the platform.
+**Workspace** is a structured, entity-linked collaboration layer built into PROPMETRIK that allows teams to communicate, share files, and track decisions tied to specific valuations, projects, deals, and properties — without leaving the platform.
 
-**Kobby AI** is PropMetrik's embedded AI co-pilot that lives inside every Workspace channel. It has read access to the entity's full data context and can answer questions, generate summaries, flag risks, and take light actions — all in natural language within the chat thread.
+**Kobby AI** is PROPMETRIK's embedded AI co-pilot that lives inside every Workspace channel. It has read access to the entity's full data context and can answer questions, generate summaries, flag risks, and take light actions — all in natural language within the chat thread.
 
-Together they turn PropMetrik from a *data platform* into a *collaborative intelligence platform*.
+Together they turn PROPMETRIK from a *data platform* into a *collaborative intelligence platform*.
 
 ---
 
@@ -20,7 +20,7 @@ Together they turn PropMetrik from a *data platform* into a *collaborative intel
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────┐
-│                          PropMetrik Frontend (Next.js)                  │
+│                          PROPMETRIK Frontend (Next.js)                  │
 │                                                                         │
 │  ┌───────────────┐  ┌──────────────────────────────────────────────────┐│
 │  │  Entity Pages │  │          Workspace Panel (Slide-over / Embedded) ││
@@ -32,7 +32,7 @@ Together they turn PropMetrik from a *data platform* into a *collaborative intel
 └──────────────────────────────────┬──────────────────────────────────────┘
                                    │ WebSocket / SSE
 ┌──────────────────────────────────▼──────────────────────────────────────┐
-│                        PropMetrik Backend (Node.js/Express)             │
+│                        PROPMETRIK Backend (Node.js/Express)             │
 │                                                                         │
 │  ┌──────────────────┐  ┌──────────────────┐  ┌────────────────────────┐│
 │  │  Workspace API   │  │ WebSocket Server  │  │   Kobby AI Service     ││
@@ -147,7 +147,7 @@ CREATE TABLE workspace_files (
 
 ### 4.1 Stack Decision: Stay on Node.js/Express (NOT FastAPI)
 
-The user prompt suggested FastAPI/Python but **PropMetrik backend is already TypeScript/Node.js** with 60+ existing routes. Building a separate Python service adds operational complexity without clear benefit.
+The user prompt suggested FastAPI/Python but **PROPMETRIK backend is already TypeScript/Node.js** with 60+ existing routes. Building a separate Python service adds operational complexity without clear benefit.
 
 **Decision**: Implement Workspace as a new Express module + native `ws` WebSocket server mounted alongside the existing HTTP server.
 
@@ -240,7 +240,7 @@ class WorkspaceService {
 
 ### 5.1 What Kobby AI Is
 
-Kobby AI is a context-aware AI assistant embedded **inside each Workspace channel**. It is invoked by typing `@kobby` in the message input. It has access to the entity's full data, chat history, and PropMetrik's analytics APIs.
+Kobby AI is a context-aware AI assistant embedded **inside each Workspace channel**. It is invoked by typing `@kobby` in the message input. It has access to the entity's full data, chat history, and PROPMETRIK's analytics APIs.
 
 ### 5.2 Kobby AI's Data Access (Per Entity Type)
 
@@ -290,7 +290,7 @@ Kobby AI can read and reason over the following — all via **internal API calls
 | **Risk Flagging** | Proactively post messages when the AI detects anomalies (budget overrun, overdue RFI) |
 | **Document Drafting** | Generate draft RFI responses, change order summaries, or memo text |
 | **Action Items** | Extract action items from chat and post a structured list |
-| **Data Lookup** | Answer factual questions from live PropMetrik data |
+| **Data Lookup** | Answer factual questions from live PROPMETRIK data |
 | **Market Briefing** | Pull live analytics insights for the entity's region/type |
 
 ### 5.4 `KobbyAIService.ts` Architecture
@@ -340,7 +340,7 @@ class KobbyAIService {
 ### 5.5 Kobby AI System Prompt Template
 
 ```
-You are Kobby AI, PropMetrik's embedded real estate intelligence assistant.
+You are Kobby AI, PROPMETRIK's embedded real estate intelligence assistant.
 You are operating inside the Workspace for:
   Entity Type: {entity_type}
   Entity Name: {entity_name}
@@ -588,7 +588,7 @@ Redis pub/sub channels are namespaced: `workspace:{org_id}:{workspace_id}`
 
 ## 13. What Kobby AI Is NOT
 
-- ❌ Not a general-purpose LLM chatbot (it's scoped to PropMetrik entity data)
+- ❌ Not a general-purpose LLM chatbot (it's scoped to PROPMETRIK entity data)
 - ❌ Not able to make writes/mutations (read-only access to entity data)
 - ❌ Not able to send emails or WhatsApp messages on behalf of users (safety guardrail)
 - ❌ Not trained on your data (uses retrieval — no fine-tuning required initially)

@@ -36,8 +36,8 @@ BEGIN
   IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'organizations') THEN
     RAISE EXCEPTION 'Baseline validation failed: organizations table does not exist.';
   END IF;
-  IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'projects') THEN
-    RAISE EXCEPTION 'Baseline validation failed: projects table does not exist.';
+  IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'properties') THEN
+    RAISE EXCEPTION 'Baseline validation failed: properties table does not exist.';
   END IF;
 END $$;
 

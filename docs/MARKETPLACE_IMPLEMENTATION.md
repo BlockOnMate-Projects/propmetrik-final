@@ -1,8 +1,8 @@
-# PropMetrik Marketplace Implementation
+# PROPMETRIK Marketplace Implementation
 
 ## Overview
 
-Complete implementation of a property marketplace feature for PropMetrik that aggregates both Property Management (rental) and CRM (sale) properties into a public-facing marketplace similar to Zillow/Apartments.com. The implementation includes geospatial search, geocoding services, analytics tracking, and a modern dark-themed UI using the PropMetrik brand colors (Indigo 500 primary).
+Complete implementation of a property marketplace feature for PROPMETRIK that aggregates both Property Management (rental) and CRM (sale) properties into a public-facing marketplace similar to Zillow/Apartments.com. The implementation includes geospatial search, geocoding services, analytics tracking, and a modern dark-themed UI using the PROPMETRIK brand colors (Indigo 500 primary).
 
 ## Features Implemented
 
@@ -444,7 +444,7 @@ Error: Invalid Mapbox token
 ## Brand Colors Reference
 
 ```css
-/* PropMetrik Dark Theme */
+/* PROPMETRIK Dark Theme */
 --primary: hsl(243 75% 59%);           /* Indigo 500 */
 --background: hsl(222 47% 11%);        /* Slate 950 */
 --card: hsl(222 47% 11%);              /* Slate 950 */
@@ -458,7 +458,7 @@ Error: Invalid Mapbox token
 
 Implementation based on `marketplace.md` specification (3,625 lines).
 
-Built using existing PropMetrik architecture:
+Built using existing PROPMETRIK architecture:
 - Express + TypeScript backend
 - PostgreSQL with PostGIS
 - Next.js 14 with App Router

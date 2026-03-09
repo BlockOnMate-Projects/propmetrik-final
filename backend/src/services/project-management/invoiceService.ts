@@ -13,6 +13,9 @@ import { pool } from '../../database';
 import { logger } from '../../utils/logger';
 import { fxFeedService } from '../data-hub/scrapers/fxFeedService';
 import { v4 as uuidv4 } from 'uuid';
+import { feeEngine } from '../../../shared-services/payments/feeEngine';
+import { notificationService } from '../../../shared-services/notifications/unified';
+import { generateInvoicePdf } from '../../utils/invoicePdfGenerator';
 
 // ============================================================================
 // TYPES
@@ -21,14 +24,18 @@ import { v4 as uuidv4 } from 'uuid';
 export type InvoiceStatus = 
   | 'draft'
   | 'pending'
+  | 'sent'
+  | 'viewed'
   | 'under_review'
   | 'approved'
   | 'partially_paid'
   | 'paid'
+  | 'settled'
   | 'overdue'
   | 'disputed'
   | 'rejected'
-  | 'cancelled';
+  | 'cancelled'
+  | 'void';
 
 export interface InvoiceLineItem {
   description: string;
@@ -571,7 +578,7 @@ class InvoiceService {
              payment_reference = $3,
              payment_method = COALESCE($4, payment_method),
              updated_at = NOW()
-         WHERE id = $1 AND status IN ('approved', 'partially_paid')
+         WHERE id = $1 AND status IN ('sent', 'pending', 'viewed', 'approved', 'partially_paid')
          RETURNING *`,
         [id, paidDate, paymentReference, paymentMethod]
       );
@@ -586,6 +593,362 @@ class InvoiceService {
       logger.error('Error marking invoice as paid', { id, error });
       throw error;
     }
+  }
+
+  /**
+   * Send invoice — generates Paystack payment link (with split payment if subaccount configured),
+   * sends email notification to client, and updates invoice with payment reference.
+   * Follows the same pattern as valuationInvoiceService.sendInvoice().
+   */
+  async sendInvoice(
+    id: string,
+    clientEmail: string,
+    clientName: string,
+    sendData?: {
+      vendorCompany?: string;
+      vendorEmail?: string;
+      projectName?: string;
+      lineItems?: any[];
+      subtotal?: number;
+      totalAmount?: number;
+      invoiceTotal?: number;
+      totalTax?: number;
+      discount?: number;
+      retention?: number;
+      currency?: string;
+      dueDate?: string;
+      platformFee?: number;
+      customMessage?: string;
+    }
+  ): Promise<{ invoice: ProjectInvoice; paymentLink: string | null; paystackReference: string | null }> {
+    const invoice = await this.getById(id);
+    if (!invoice) throw new Error('Invoice not found');
+
+    // Allow sending from pending or draft
+    if (!['pending', 'draft'].includes(invoice.status)) {
+      throw new Error(`Invoice cannot be sent from status "${invoice.status}". Must be pending or draft.`);
+    }
+
+    const reference = `PM-INV-${Date.now()}-${uuidv4().slice(0, 8)}`;
+    let paymentLink: string | null = null;
+    let accessCode: string | null = null;
+    let platformFeePesewas = 0;
+    let platformFeeAmount = 0;
+
+    // ── Paystack split-payment ──────────────────────────────────
+    // Paystack Ghana only supports GHS. For non-GHS invoices, convert
+    // the amount to GHS using live FX rates so the payment link works.
+    try {
+      const { paystackService } = await import('../property-management/payment/paystackService').catch(() => ({ paystackService: null }));
+
+      if (paystackService && clientEmail) {
+        // ── FX conversion: always charge in GHS on Paystack ──
+        const invoiceCcy = (invoice.currency || 'GHS').toUpperCase();
+        let paystackAmountGHS = invoice.totalAmount;
+        let fxRate = 1;
+        let fxSource = 'N/A';
+
+        if (invoiceCcy !== 'GHS') {
+          try {
+            const fx = await fxFeedService.convertToGHS(invoice.totalAmount, invoiceCcy);
+            paystackAmountGHS = fx.converted_amount;
+            fxRate = fx.rate;
+            fxSource = fx.source;
+            logger.info('PM invoice: FX conversion for Paystack', {
+              from: invoiceCcy, to: 'GHS',
+              originalAmount: invoice.totalAmount,
+              convertedAmount: paystackAmountGHS,
+              rate: fxRate, source: fxSource,
+            });
+          } catch (fxErr: any) {
+            logger.warn('PM invoice: FX conversion failed, using raw amount', { error: fxErr.message });
+          }
+        }
+
+        const paystackPesewas = Math.round(paystackAmountGHS * 100);
+
+        const payoutConfig = await paystackService.getPaymentAccountConfig(invoice.organizationId, 'organization', 'project_management');
+
+        if (payoutConfig?.subaccountCode) {
+          logger.info('PM invoice: Using subaccount split payment', { orgId: invoice.organizationId, subaccount: payoutConfig.subaccountCode });
+          const feeCalc = await feeEngine.calculate('project', paystackAmountGHS, invoice.organizationId, 'organization');
+          platformFeePesewas = feeCalc.serviceFeeSubunits;
+          platformFeeAmount = feeCalc.serviceFee;
+
+          const frontendUrl = process.env.FRONTEND_URL || 'https://app.propmetrik.com';
+          const response = await paystackService.initializeWithSubaccount(
+            {
+              email: clientEmail,
+              amount: paystackPesewas,
+              currency: 'GHS',
+              reference,
+              channels: ['mobile_money', 'card', 'bank_transfer', 'bank', 'ussd', 'qr'],
+              callback_url: `${frontendUrl}/payment/invoice?id=${invoice.id}&status=success`,
+              metadata: {
+                invoiceId: invoice.id,
+                invoiceNumber: invoice.invoiceNumber,
+                clientName,
+                type: 'pm_invoice',
+                splitPayment: true,
+                originalCurrency: invoiceCcy,
+                originalAmount: invoice.totalAmount,
+                fxRate,
+                fxSource,
+              },
+            },
+            payoutConfig.subaccountCode,
+            platformFeePesewas
+          );
+
+          if (response.status) {
+            paymentLink = response.data.authorization_url;
+            accessCode = response.data.access_code;
+          }
+
+          logger.info('PM invoice sent with split payment', {
+            id, reference,
+            subaccount: payoutConfig.subaccountCode,
+            totalGHS: paystackAmountGHS,
+            platformFee: platformFeeAmount,
+            originalCurrency: invoiceCcy,
+          });
+        } else {
+          // No subaccount — basic Paystack initialization
+          logger.info('PM invoice: No subaccount found, using basic Paystack', { orgId: invoice.organizationId });
+          const paystackKey = process.env.PAYSTACK_SECRET_KEY;
+          if (paystackKey) {
+            const axios = (await import('axios')).default;
+
+            const response = await axios.post(
+              'https://api.paystack.co/transaction/initialize',
+              {
+                email: clientEmail,
+                amount: paystackPesewas,
+                reference,
+                currency: 'GHS',
+                channels: ['mobile_money', 'card', 'bank_transfer', 'bank', 'ussd', 'qr'],
+                send_notification: false,
+                callback_url: `${process.env.FRONTEND_URL || 'https://app.propmetrik.com'}/payment/invoice?id=${invoice.id}&status=success`,
+                metadata: {
+                  invoiceId: invoice.id,
+                  invoiceNumber: invoice.invoiceNumber,
+                  clientName,
+                  type: 'pm_invoice',
+                  originalCurrency: invoiceCcy,
+                  originalAmount: invoice.totalAmount,
+                  fxRate,
+                  fxSource,
+                },
+              },
+              {
+                headers: {
+                  Authorization: `Bearer ${paystackKey}`,
+                  'Content-Type': 'application/json',
+                },
+              }
+            );
+
+            logger.info('PM invoice: Paystack basic init response', {
+              status: response.data.status,
+              hasLink: !!response.data?.data?.authorization_url,
+              amountGHS: paystackAmountGHS,
+            });
+
+            if (response.data.status) {
+              paymentLink = response.data.data.authorization_url;
+              accessCode = response.data.data.access_code;
+            }
+          } else {
+            logger.warn('PM invoice: No PAYSTACK_SECRET_KEY set, cannot generate payment link');
+          }
+        }
+      }
+    } catch (error: any) {
+      logger.warn('Paystack initialization failed, invoice still marked as sent', {
+        error: error.message,
+        response: error.response?.data,
+        invoiceId: id,
+        currency: invoice.currency,
+        amount: invoice.totalAmount,
+      });
+    }
+
+    // ── Update invoice with payment references ──────────────────
+    const result = await pool.query(
+      `UPDATE project_invoices SET
+        status = 'sent',
+        paystack_reference = $2,
+        paystack_access_code = $3,
+        payment_link = $4,
+        platform_fee = $5,
+        client_name = COALESCE($6, client_name),
+        client_email = COALESCE($7, client_email),
+        total_due = COALESCE($8, total_due),
+        vendor_company = COALESCE($9, vendor_company),
+        sent_at = NOW(),
+        updated_at = NOW()
+       WHERE id = $1
+       RETURNING *`,
+      [id, reference, accessCode, paymentLink, platformFeeAmount,
+       clientName || null, clientEmail || null,
+       sendData?.totalAmount || null, sendData?.vendorCompany || null]
+    );
+
+    const sentInvoice = this.mapInvoice(result.rows[0]);
+
+    // ── Send email notification ─────────────────────────────────
+    if (clientEmail) {
+      try {
+        let organizationName = sendData?.vendorCompany || 'PROPMETRIK';
+        try {
+          const orgResult = await pool.query(
+            `SELECT name FROM organizations WHERE id = $1`,
+            [sentInvoice.organizationId]
+          );
+          if (orgResult.rows[0]?.name) organizationName = orgResult.rows[0].name;
+        } catch { /* fallback to default */ }
+
+        const dueDate = sentInvoice.dueDate
+          ? new Date(sentInvoice.dueDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })
+          : 'Upon receipt';
+
+        const ccy = sendData?.currency || sentInvoice.currency || 'GHS';
+        const fmtAmt = (n: number) => (n || 0).toLocaleString('en-US', { minimumFractionDigits: 2 });
+
+        // Use sendData.totalAmount (which is totalDue = invoiceTotal + platformFee) for display
+        const displayTotal = sendData?.totalAmount || sentInvoice.totalAmount;
+        const displaySubtotal = sendData?.invoiceTotal || sendData?.subtotal || sentInvoice.totalAmount;
+        const displayPlatformFee = sendData?.platformFee || platformFeeAmount || 0;
+
+        // Always link to the payment page — it handles inline Paystack checkout
+        // even when server-side Paystack init failed (e.g. amount over test limits)
+        const paymentPageUrl = `${process.env.FRONTEND_URL || 'https://app.propmetrik.com'}/payment/invoice?id=${sentInvoice.id}`;
+        const paymentSection = `
+            <div style="text-align: center; margin: 32px 0;">
+              <a href="${paymentPageUrl}"
+                 style="display: inline-block; background: linear-gradient(135deg, #f59e0b 0%, #eab308 100%); color: #000; padding: 16px 40px; text-decoration: none; font-weight: 700; font-size: 15px; border-radius: 8px; letter-spacing: 0.5px;">
+                  VIEW & PAY INVOICE — ${ccy} ${fmtAmt(displaySubtotal)}
+              </a>
+              <p style="margin-top: 12px; font-size: 12px; color: #94a3b8;">Pay securely via Mobile Money, Card, or Crypto</p>
+            </div>`;
+
+        // Build line items table rows
+        const items = sendData?.lineItems || sentInvoice.lineItems || [];
+        const lineItemsHtml = items.map((li: any) => {
+          const qty = li.quantity || li.qty || 1;
+          const rate = li.unitRate || li.unit_price || li.unitPrice || 0;
+          const amt = li.amount || (qty * rate);
+          return `<tr>
+            <td style="padding: 10px 12px; border-bottom: 1px solid #f1f5f9; font-size: 13px; color: #334155;">${li.description}</td>
+            <td style="padding: 10px 12px; border-bottom: 1px solid #f1f5f9; font-size: 13px; color: #334155; text-align: center;">${qty}</td>
+            <td style="padding: 10px 12px; border-bottom: 1px solid #f1f5f9; font-size: 13px; color: #334155; text-align: right;">${ccy} ${fmtAmt(amt)}</td>
+          </tr>`;
+        }).join('');
+
+        // Platform fee row (if applicable)
+        const platformFeeRow = displayPlatformFee > 0
+          ? `<tr>
+              <td colspan="2" style="padding: 8px 12px; font-size: 13px; color: #64748b;">PROPMETRIK Fee (0.25%)</td>
+              <td style="padding: 8px 12px; text-align: right; font-size: 13px; color: #64748b;">${ccy} ${fmtAmt(displayPlatformFee)}</td>
+            </tr>`
+          : '';
+
+        // ── Generate Invoice PDF ──────────────────────────────────
+        let invoicePdfBuffer: Buffer | null = null;
+        try {
+          const pdfLineItems = items.map((li: any) => ({
+            description: li.description || '—',
+            qty: li.quantity || li.qty || 1,
+            unit: li.unit || '—',
+            unitRate: li.unitRate || li.unit_price || li.unitPrice || 0,
+            amount: li.amount || ((li.quantity || li.qty || 1) * (li.unitRate || li.unit_price || li.unitPrice || 0)),
+          }));
+
+          invoicePdfBuffer = await generateInvoicePdf({
+            invoiceNumber: sentInvoice.invoiceNumber,
+            issueDate: sentInvoice.invoiceDate?.toString() || new Date().toISOString(),
+            dueDate: sentInvoice.dueDate?.toString() || '',
+            currency: ccy,
+            vendorCompany: organizationName,
+            vendorEmail: sendData?.vendorEmail,
+            clientName,
+            clientEmail,
+            lineItems: pdfLineItems,
+            subtotal: displaySubtotal,
+            taxAmount: sendData?.totalTax || sentInvoice.taxAmount || 0,
+            discount: sendData?.discount || sentInvoice.discountAmount || 0,
+            retention: sendData?.retention || 0,
+            platformFee: displayPlatformFee,
+            totalDue: displayTotal,
+            projectName: sendData?.projectName,
+            notes: sentInvoice.notes || undefined,
+            paymentLink: paymentLink || undefined,
+          });
+          logger.info('Invoice PDF generated', { invoiceId: id, size: invoicePdfBuffer.length });
+        } catch (pdfErr: any) {
+          logger.warn('Failed to generate invoice PDF, sending email without attachment', { invoiceId: id, error: pdfErr.message });
+        }
+
+        await notificationService.sendEmail({
+          to: clientEmail,
+          subject: `Invoice ${sentInvoice.invoiceNumber} from ${organizationName}${sendData?.projectName ? ` — ${sendData.projectName}` : ''}`,
+          html: `
+            <div style="font-family: 'Segoe UI', Arial, sans-serif; max-width: 640px; margin: 0 auto; color: #1e293b;">
+              <div style="background: #09090b; padding: 28px 32px; border-radius: 12px 12px 0 0; text-align: center;">
+                <h1 style="margin: 0; font-size: 20px; color: #fbbf24; letter-spacing: 3px; font-weight: 800;">PROPMETRIK</h1>
+                <p style="margin: 4px 0 0; font-size: 12px; color: #94a3b8; letter-spacing: 1px;">PROJECT MANAGEMENT</p>
+              </div>
+              <div style="background: #ffffff; padding: 32px; border: 1px solid #e2e8f0; border-top: none;">
+                <p style="margin: 0 0 8px; font-size: 15px; color: #0f172a;">Dear <strong>${clientName}</strong>,</p>
+                ${sendData?.customMessage
+                  ? `<p style="margin: 0 0 20px; font-size: 14px; color: #334155; line-height: 1.6; white-space: pre-line;">${sendData.customMessage}</p>`
+                  : `<p style="margin: 0 0 20px; font-size: 14px; color: #334155; line-height: 1.6;">Please find below the details for invoice <strong>${sentInvoice.invoiceNumber}</strong>${sendData?.projectName ? ` for project <strong>${sendData.projectName}</strong>` : ''}. Payment is due by <strong>${dueDate}</strong>.</p>`
+                }
+                <h2 style="margin: 0 0 8px; font-size: 22px; color: #0f172a;">Invoice ${sentInvoice.invoiceNumber}</h2>
+                <p style="margin: 0 0 24px; font-size: 14px; color: #64748b;">
+                  From: <strong>${organizationName}</strong>${sendData?.projectName ? ` &bull; Project: <strong>${sendData.projectName}</strong>` : ''} &bull;
+                  Due: <strong>${dueDate}</strong>
+                </p>
+                <table style="width: 100%; border-collapse: collapse; margin-bottom: 24px;">
+                  <thead>
+                    <tr style="background: #f8fafc;">
+                      <th style="padding: 10px 12px; text-align: left; font-size: 12px; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px;">Description</th>
+                      <th style="padding: 10px 12px; text-align: center; font-size: 12px; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px;">Qty</th>
+                      <th style="padding: 10px 12px; text-align: right; font-size: 12px; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px;">Amount</th>
+                    </tr>
+                  </thead>
+                  <tbody>${lineItemsHtml}</tbody>
+                  <tfoot>
+                    <tr style="background: #f8fafc;">
+                      <td colspan="2" style="padding: 12px; font-weight: 700; font-size: 14px; color: #0f172a;">TOTAL DUE</td>
+                      <td style="padding: 12px; text-align: right; font-weight: 700; font-size: 14px; color: #0f172a;">${ccy} ${fmtAmt(displaySubtotal)}</td>
+                    </tr>
+                  </tfoot>
+                </table>
+                ${paymentSection}
+              </div>
+              <div style="background: #f8fafc; padding: 20px 32px; border-radius: 0 0 12px 12px; border: 1px solid #e2e8f0; border-top: none; text-align: center;">
+                <p style="margin: 0; font-size: 12px; color: #94a3b8;">Powered by PROPMETRIK &bull; Secure payments via Paystack</p>
+              </div>
+            </div>
+          `,
+          attachments: invoicePdfBuffer ? [
+            {
+              filename: `${sentInvoice.invoiceNumber.replace(/[^a-zA-Z0-9-]/g, '_')}.pdf`,
+              content: invoicePdfBuffer,
+              contentType: 'application/pdf',
+            },
+          ] : undefined,
+        });
+
+        logger.info('Invoice email sent', { invoiceId: id, to: clientEmail });
+      } catch (error: any) {
+        logger.warn('Failed to send invoice email', { invoiceId: id, error: error.message });
+        // Non-blocking — invoice is still "sent" even if email fails
+      }
+    }
+
+    return { invoice: sentInvoice, paymentLink, paystackReference: reference };
   }
   
   /**
@@ -653,7 +1016,7 @@ class InvoiceService {
           COUNT(CASE WHEN status = 'overdue' THEN 1 END) as overdue_count,
           COALESCE(AVG(
             CASE WHEN status = 'paid' AND paid_date IS NOT NULL AND invoice_date IS NOT NULL 
-            THEN DATE_PART('day', paid_date - invoice_date) 
+            THEN (paid_date - invoice_date)
             END
           ), 0) as avg_days_to_pay
          FROM project_invoices 
@@ -677,6 +1040,185 @@ class InvoiceService {
     }
   }
   
+  /**
+   * Get organization-level revenue summary across all projects (or one specific project)
+   */
+  async getOrgRevenueSummary(organizationId: string, projectId?: string): Promise<{
+    currency: string;
+    totalBudget: number;
+    totalInvoiced: number;
+    totalPaid: number;
+    totalPending: number;
+    totalOverdue: number;
+    platformFeesCollected: number;
+    overdueCount: number;
+    paidCount: number;
+    sentCount: number;
+    totalCount: number;
+    activeProjectCount: number;
+    projects: Array<{ id: string; name: string; currency: string }>;
+    recentTransactions: Array<{
+      id: string;
+      invoiceNumber: string;
+      clientName: string | null;
+      vendorCompany: string | null;
+      projectId: string;
+      projectName: string | null;
+      amount: number;
+      totalAmount: number;
+      currency: string;
+      status: string;
+      paidDate: Date | null;
+      sentAt: Date | null;
+      createdAt: Date;
+      platformFee: number;
+      paymentMethod: string | null;
+    }>;
+    monthlyRevenue: Array<{
+      month: string;
+      invoiced: number;
+      paid: number;
+    }>;
+  }> {
+    try {
+      // Build WHERE clause
+      const invoiceWhere = projectId
+        ? `organization_id = $1 AND project_id = $2`
+        : `organization_id = $1`;
+      const invoiceParams = projectId ? [organizationId, projectId] : [organizationId];
+
+      // Summary aggregates
+      const summaryResult = await pool.query(
+        `SELECT 
+          COALESCE(SUM(CASE WHEN status != 'cancelled' THEN total_amount ELSE 0 END), 0) as total_invoiced,
+          COALESCE(SUM(CASE WHEN status = 'paid' THEN total_amount ELSE 0 END), 0) as total_paid,
+          COALESCE(SUM(CASE WHEN status IN ('sent', 'pending', 'viewed', 'approved', 'partially_paid') THEN total_amount ELSE 0 END), 0) as total_pending,
+          COALESCE(SUM(CASE WHEN status = 'overdue' THEN total_amount ELSE 0 END), 0) as total_overdue,
+          COALESCE(SUM(CASE WHEN status = 'paid' THEN COALESCE(platform_fee, 0) ELSE 0 END), 0) as platform_fees_collected,
+          COUNT(CASE WHEN status = 'overdue' THEN 1 END)::int as overdue_count,
+          COUNT(CASE WHEN status = 'paid' THEN 1 END)::int as paid_count,
+          COUNT(CASE WHEN status = 'sent' THEN 1 END)::int as sent_count,
+          COUNT(*)::int as total_count,
+          COUNT(DISTINCT project_id)::int as active_project_count
+         FROM project_invoices 
+         WHERE ${invoiceWhere}`,
+        invoiceParams
+      );
+
+      // Total budget
+      const budgetWhere = projectId
+        ? `id = $1 AND organization_id = $2 AND status != 'cancelled'`
+        : `organization_id = $1 AND status != 'cancelled'`;
+      const budgetParams = projectId ? [projectId, organizationId] : [organizationId];
+      const budgetResult = await pool.query(
+        `SELECT COALESCE(SUM(COALESCE(total_budget, 0)), 0) as total_budget
+         FROM development_projects WHERE ${budgetWhere}`,
+        budgetParams
+      );
+
+      // Projects list for dropdown (include display_currency)
+      const projectsResult = await pool.query(
+        `SELECT id, name, COALESCE(display_currency, 'GHS') as display_currency FROM development_projects 
+         WHERE organization_id = $1 AND status != 'cancelled'
+         ORDER BY name ASC`,
+        [organizationId]
+      );
+
+      // Determine dominant currency:
+      // If filtering by project, use that project's display_currency.
+      // Otherwise, use the most common invoice currency (or the first project's currency).
+      let dominantCurrency = 'GHS';
+      if (projectId) {
+        const projRow = projectsResult.rows.find(r => r.id === projectId);
+        if (projRow) dominantCurrency = projRow.display_currency || 'GHS';
+      } else {
+        // Most common invoice currency
+        const ccyResult = await pool.query(
+          `SELECT currency, COUNT(*) as cnt FROM project_invoices 
+           WHERE organization_id = $1 AND status != 'cancelled' AND currency IS NOT NULL
+           GROUP BY currency ORDER BY cnt DESC LIMIT 1`,
+          [organizationId]
+        );
+        if (ccyResult.rows.length > 0) {
+          dominantCurrency = ccyResult.rows[0].currency;
+        } else if (projectsResult.rows.length > 0) {
+          dominantCurrency = projectsResult.rows[0].display_currency || 'GHS';
+        }
+      }
+
+      // Recent transactions (last 20)
+      const recentResult = await pool.query(
+        `SELECT pi.id, pi.invoice_number, pi.client_name, pi.vendor_company, pi.project_id,
+                dp.name as project_name,
+                pi.amount, pi.total_amount, pi.currency, pi.status, pi.paid_date, pi.sent_at, pi.created_at,
+                COALESCE(pi.platform_fee, 0) as platform_fee, pi.payment_method
+         FROM project_invoices pi
+         LEFT JOIN development_projects dp ON dp.id = pi.project_id
+         WHERE pi.${invoiceWhere} AND pi.status != 'draft'
+         ORDER BY COALESCE(pi.paid_date, pi.sent_at, pi.created_at) DESC
+         LIMIT 20`,
+        invoiceParams
+      );
+
+      // Monthly revenue (last 12 months)
+      const monthlyResult = await pool.query(
+        `SELECT 
+          TO_CHAR(DATE_TRUNC('month', COALESCE(invoice_date, created_at)), 'YYYY-MM') as month,
+          COALESCE(SUM(total_amount), 0) as invoiced,
+          COALESCE(SUM(CASE WHEN status = 'paid' THEN total_amount ELSE 0 END), 0) as paid
+         FROM project_invoices
+         WHERE ${invoiceWhere}
+           AND status != 'cancelled'
+           AND COALESCE(invoice_date, created_at) >= DATE_TRUNC('month', NOW()) - INTERVAL '11 months'
+         GROUP BY DATE_TRUNC('month', COALESCE(invoice_date, created_at))
+         ORDER BY month ASC`,
+        invoiceParams
+      );
+
+      const summary = summaryResult.rows[0];
+      return {
+        currency: dominantCurrency,
+        totalBudget: parseFloat(budgetResult.rows[0].total_budget),
+        totalInvoiced: parseFloat(summary.total_invoiced),
+        totalPaid: parseFloat(summary.total_paid),
+        totalPending: parseFloat(summary.total_pending),
+        totalOverdue: parseFloat(summary.total_overdue),
+        platformFeesCollected: parseFloat(summary.platform_fees_collected),
+        overdueCount: summary.overdue_count,
+        paidCount: summary.paid_count,
+        sentCount: summary.sent_count,
+        totalCount: summary.total_count,
+        activeProjectCount: summary.active_project_count,
+        projects: projectsResult.rows.map(row => ({ id: row.id, name: row.name, currency: row.display_currency || 'GHS' })),
+        recentTransactions: recentResult.rows.map(row => ({
+          id: row.id,
+          invoiceNumber: row.invoice_number,
+          clientName: row.client_name,
+          vendorCompany: row.vendor_company,
+          projectId: row.project_id,
+          projectName: row.project_name || null,
+          amount: parseFloat(row.amount),
+          totalAmount: parseFloat(row.total_amount),
+          currency: row.currency,
+          status: row.status,
+          paidDate: row.paid_date,
+          sentAt: row.sent_at,
+          createdAt: row.created_at,
+          platformFee: parseFloat(row.platform_fee),
+          paymentMethod: row.payment_method,
+        })),
+        monthlyRevenue: monthlyResult.rows.map(row => ({
+          month: row.month,
+          invoiced: parseFloat(row.invoiced),
+          paid: parseFloat(row.paid),
+        })),
+      };
+    } catch (error) {
+      logger.error('Error getting org revenue summary', { organizationId, error });
+      throw error;
+    }
+  }
+
   /**
    * Delete invoice
    */
@@ -740,6 +1282,19 @@ class InvoiceService {
       createdBy: row.created_by,
       createdAt: row.created_at,
       updatedAt: row.updated_at,
+      // New columns from migration 205
+      paystackReference: row.paystack_reference || null,
+      paystackAccessCode: row.paystack_access_code || null,
+      paymentLink: row.payment_link || null,
+      sentAt: row.sent_at || null,
+      clientName: row.client_name || null,
+      clientEmail: row.client_email || null,
+      clientCompany: row.client_company || null,
+      vendorName: row.vendor_name || null,
+      vendorEmail: row.vendor_email || null,
+      vendorCompany: row.vendor_company || null,
+      platformFee: row.platform_fee ? parseFloat(row.platform_fee) : 0,
+      totalDue: row.total_due ? parseFloat(row.total_due) : null,
     };
   }
 }

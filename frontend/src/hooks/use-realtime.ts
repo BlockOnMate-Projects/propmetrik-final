@@ -6,6 +6,7 @@
  */
 
 import { useEffect, useRef, useCallback, useState } from 'react';
+import { getSession } from 'next-auth/react';
 
 // Event types matching backend
 export enum RealtimeEventType {
@@ -209,7 +210,7 @@ export function useRealtime(options: UseRealtimeOptions = {}): UseRealtimeReturn
     wildcardHandlers?.forEach((handler) => handler(event));
   }, []); // No dependencies — uses refs for stability
 
-  const connect = useCallback(() => {
+  const connect = useCallback(async () => {
     // Don't connect if already connected, connecting, or intentionally disconnecting
     if (eventSourceRef.current || isDisconnectingRef.current) {
       return;
@@ -219,6 +220,17 @@ export function useRealtime(options: UseRealtimeOptions = {}): UseRealtimeReturn
       // Build URL - baseUrl (from NEXT_PUBLIC_API_URL) already contains /api/v1
       // So we just append /realtime/events
       const url = new URL(`${baseUrl}/realtime/events`, window.location.origin);
+
+      // EventSource cannot send Authorization headers, so pass token as query param
+      try {
+        const session = await getSession();
+        const token = (session as any)?.accessToken;
+        if (token) {
+          url.searchParams.set('token', token);
+        }
+      } catch {
+        // Continue without token — backend may reject with 401
+      }
       
       // Create EventSource
       const eventSource = new EventSource(url.toString(), {

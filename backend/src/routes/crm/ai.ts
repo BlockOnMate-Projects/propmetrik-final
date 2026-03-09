@@ -156,7 +156,7 @@ async function fetchEntityDetail(entityType: string, entityId: string, organizat
 // AI QUERY ENDPOINT
 // =====================================================
 
-const CRM_AI_SYSTEM_PROMPT = `You are Kobby AI, the CRM intelligence assistant for PropMetrik - Ghana's premier real estate platform.
+const CRM_AI_SYSTEM_PROMPT = `You are Kobby AI, the CRM intelligence assistant for PROPMETRIK - Ghana's premier real estate platform.
 
 RULES:
 - Answer questions about CRM data: deals, contacts, pipeline, agents, revenue

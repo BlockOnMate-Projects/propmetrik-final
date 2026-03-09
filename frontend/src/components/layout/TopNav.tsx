@@ -8,6 +8,8 @@ import { useEffect, useState, useRef } from 'react'
 import { useSession, signOut } from 'next-auth/react'
 import { canAccessPlatformTab, isAdminRole, canAccessFeature } from '@/lib/rbac'
 import { useUpgradeGate } from '@/components/UpgradeGate'
+import { NotificationDropdown } from '@/components/layout/NotificationDropdown'
+import { authedFetch } from '@/lib/authed-fetch'
 
 const navigation: { name: string; href: string; key: string; fKey: string; tabKey: string; badge?: string; adminOnly?: boolean }[] = [
   { name: 'OVERVIEW', href: '/dashboard', key: 'F1', fKey: 'F1', tabKey: 'overview' },
@@ -358,7 +360,7 @@ export function TopNav() {
     let cancelled = false
     const load = async () => {
       try {
-        const res = await fetch('/api/ticker')
+        const res = await authedFetch('/api/ticker')
         if (!res.ok) return
         const json = await res.json()
         if (!cancelled && json.data) setTicker(json.data)
@@ -506,14 +508,17 @@ export function TopNav() {
         {/* Spacer on mobile */}
         <div className="flex-1 lg:hidden" />
 
-        {/* Right Side — User Menu */}
-        <UserMenu
-          session={effectiveSession}
-          sessionReady={sessionReady}
-          mounted={mounted}
-          userRole={userRole}
-          displayRole={displayRole}
-        />
+        {/* Right Side — Notifications + User Menu */}
+        <div className="flex items-center gap-2">
+          <NotificationDropdown />
+          <UserMenu
+            session={effectiveSession}
+            sessionReady={sessionReady}
+            mounted={mounted}
+            userRole={userRole}
+            displayRole={displayRole}
+          />
+        </div>
       </div>
 
       {/* Mobile Navigation Drawer */}

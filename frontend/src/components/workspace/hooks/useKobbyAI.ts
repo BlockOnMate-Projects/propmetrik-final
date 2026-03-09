@@ -3,6 +3,7 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import type { EntityType } from '@/lib/workspace-api';
 import { getSession } from 'next-auth/react';
+import { authedFetch } from '@/lib/authed-fetch';
 
 const KOBBY_API_BASE = '/api/ai/kobby';
 
@@ -50,7 +51,7 @@ export function useKobbyAI({ entityType, entityId, workspaceId, sendViaWS }: Use
         (async () => {
             try {
                 const headers = await getAuthHeaders();
-                const response = await fetch(`${KOBBY_API_BASE}/suggestions/${entityType}`, { headers });
+                const response = await authedFetch(`${KOBBY_API_BASE}/suggestions/${entityType}`, { headers });
                 const data = await response.json();
                 if (!cancelled) {
                     setSuggestions(data.suggestions || []);
@@ -91,7 +92,7 @@ export function useKobbyAI({ entityType, entityId, workspaceId, sendViaWS }: Use
             // REST fallback
             try {
                 const authHeaders = await getAuthHeaders();
-                const res = await fetch(`${KOBBY_API_BASE}/query`, {
+                const res = await authedFetch(`${KOBBY_API_BASE}/query`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json', ...authHeaders },
                     body: JSON.stringify({

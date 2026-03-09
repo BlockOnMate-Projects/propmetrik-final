@@ -3,6 +3,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { Search, MapPin, Loader2 } from 'lucide-react';
+import { authedFetch } from '@/lib/authed-fetch';
 
 interface LocationSearchProps {
   onSelect: (location: any) => void;
@@ -43,7 +44,7 @@ export function LocationSearch({ onSelect, placeholder = 'Search location...' }:
     debounceTimer.current = setTimeout(async () => {
       setLoading(true);
       try {
-        const response = await fetch(`/api/marketplace/autocomplete?q=${encodeURIComponent(query)}`);
+        const response = await authedFetch(`/api/marketplace/autocomplete?q=${encodeURIComponent(query)}`);
         const data = await response.json();
         setSuggestions(data.suggestions || []);
         setShowDropdown(true);

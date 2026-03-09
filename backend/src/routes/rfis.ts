@@ -23,8 +23,12 @@ import multer from 'multer';
 import path from 'path';
 import fs from 'fs';
 import { v4 as uuidv4 } from 'uuid';
+import { scanUploadedFile } from '../middleware/virusScan';
 import { rfiService, RfiFilters, CreateRfiInput, UpdateRfiInput, RespondToRfiInput } from '../services/project-management/rfiService';
 import { logger } from '../utils/logger';
+import { registerPMParamValidation, getAuthUserId, getAuthOrgId, requirePMWrite } from '../middleware/pmAuth';
+import { validate } from '../middleware/validation';
+import { createRfiSchema, updateRfiSchema, respondRfiSchema, rfiQuerySchema } from '../middleware/pmProjectValidation';
 
 // Configure uploads directory
 const uploadsDir = path.join(__dirname, '../../uploads/rfis');
@@ -71,17 +75,17 @@ const rfiUpload = multer({
 
 const router = Router();
 
-// Dev fallback user ID for development mode (Eric Danso - super_admin)
-const DEV_USER_ID = 'ed4a50d7-a1b2-4c3d-8e5f-6a7b8c9d0e1f';
+// Register UUID parameter validation
+registerPMParamValidation(router);
 
-// Helper to extract user ID from request (auth middleware provides this)
+// Helper to extract user ID from authenticated request (no header fallback)
 const getUserId = (req: Request): string | undefined => {
-  return (req as any).userId || (req as any).user?.id || req.headers['x-user-id'] as string || (process.env.NODE_ENV !== 'production' ? DEV_USER_ID : undefined);
+  return (req as any).user?.id || (req as any).user?.sub;
 };
 
-// Helper to extract organization ID
+// Helper to extract organization ID from authenticated user (no header fallback)
 const getOrganizationId = (req: Request): string | undefined => {
-  return (req as any).organizationId || req.headers['x-organization-id'] as string;
+  return (req as any).user?.organizationId || (req as any).user?.organization_id;
 };
 
 /**
@@ -177,7 +181,7 @@ router.get('/:id', async (req: Request, res: Response, next: NextFunction) => {
  * POST /api/rfis
  * Create a new RFI
  */
-router.post('/', async (req: Request, res: Response, next: NextFunction) => {
+router.post('/', requirePMWrite, validate(createRfiSchema), async (req: Request, res: Response, next: NextFunction) => {
   try {
     const userId = getUserId(req);
     const organizationId = getOrganizationId(req) || req.body.organization_id;
@@ -243,7 +247,7 @@ router.post('/', async (req: Request, res: Response, next: NextFunction) => {
  * PUT /api/rfis/:id
  * Update an RFI
  */
-router.put('/:id', async (req: Request, res: Response, next: NextFunction) => {
+router.put('/:id', requirePMWrite, validate(updateRfiSchema), async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { id } = req.params;
     const userId = getUserId(req);
@@ -284,7 +288,7 @@ router.put('/:id', async (req: Request, res: Response, next: NextFunction) => {
  * POST /api/rfis/:id/submit
  * Submit a draft RFI
  */
-router.post('/:id/submit', async (req: Request, res: Response, next: NextFunction) => {
+router.post('/:id/submit', requirePMWrite, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { id } = req.params;
     const userId = getUserId(req);
@@ -313,7 +317,7 @@ router.post('/:id/submit', async (req: Request, res: Response, next: NextFunctio
  * POST /api/rfis/:id/assign
  * Assign RFI to a user
  */
-router.post('/:id/assign', async (req: Request, res: Response, next: NextFunction) => {
+router.post('/:id/assign', requirePMWrite, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { id } = req.params;
     const { assignee_id } = req.body;
@@ -343,7 +347,7 @@ router.post('/:id/assign', async (req: Request, res: Response, next: NextFunctio
  * POST /api/rfis/:id/respond
  * Respond to an RFI
  */
-router.post('/:id/respond', async (req: Request, res: Response, next: NextFunction) => {
+router.post('/:id/respond', requirePMWrite, validate(respondRfiSchema), async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { id } = req.params;
     const userId = getUserId(req);
@@ -387,7 +391,7 @@ router.post('/:id/respond', async (req: Request, res: Response, next: NextFuncti
  * POST /api/rfis/:id/close
  * Close an RFI
  */
-router.post('/:id/close', async (req: Request, res: Response, next: NextFunction) => {
+router.post('/:id/close', requirePMWrite, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { id } = req.params;
     const userId = getUserId(req);
@@ -417,7 +421,7 @@ router.post('/:id/close', async (req: Request, res: Response, next: NextFunction
  * POST /api/rfis/:id/void
  * Void an RFI
  */
-router.post('/:id/void', async (req: Request, res: Response, next: NextFunction) => {
+router.post('/:id/void', requirePMWrite, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { id } = req.params;
     const userId = getUserId(req);
@@ -475,7 +479,7 @@ router.get('/:id/comments', async (req: Request, res: Response, next: NextFuncti
  * POST /api/rfis/:id/comments
  * Add a comment to an RFI
  */
-router.post('/:id/comments', async (req: Request, res: Response, next: NextFunction) => {
+router.post('/:id/comments', requirePMWrite, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { id } = req.params;
     const userId = getUserId(req);
@@ -531,7 +535,7 @@ router.get('/:id/history', async (req: Request, res: Response, next: NextFunctio
  * DELETE /api/rfis/:id
  * Delete (void) an RFI
  */
-router.delete('/:id', async (req: Request, res: Response, next: NextFunction) => {
+router.delete('/:id', requirePMWrite, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { id } = req.params;
     const userId = getUserId(req);
@@ -559,7 +563,7 @@ router.delete('/:id', async (req: Request, res: Response, next: NextFunction) =>
  * POST /api/rfis/:id/attachments
  * Upload attachment for RFI response (Client action)
  */
-router.post('/:id/attachments', rfiUpload.single('file'), async (req: Request, res: Response, next: NextFunction) => {
+router.post('/:id/attachments', requirePMWrite, rfiUpload.single('file'), scanUploadedFile, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { id } = req.params;
     const userId = getUserId(req);

@@ -16,6 +16,7 @@ import {
   HardHat,
   Save,
   Trash2,
+  User,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -41,6 +42,7 @@ import {
 } from '@/components/ui/alert-dialog'
 import { projectsApi } from '@/lib/projects-api'
 import { teamApi, TeamMember } from '@/lib/team-api'
+import { HeroImageUpload } from '@/components/projects/HeroImageUpload'
 import type { ProjectType, DevelopmentProject, ProjectStatus } from '@/types/projects'
 
 // =====================================================
@@ -159,6 +161,9 @@ export default function EditProjectPage() {
     currency: 'GHS',
     total_units: '',
     cover_image_url: '',
+    developer_name: '',
+    developer_contact: '',
+    developer_email: '',
   })
   
   // Load project data
@@ -188,6 +193,9 @@ export default function EditProjectPage() {
           currency: project.currency || 'GHS',
           total_units: project.total_units?.toString() || '',
           cover_image_url: project.hero_image_url || project.cover_image_url || '',
+          developer_name: project.developer_name || '',
+          developer_contact: project.developer_contact || '',
+          developer_email: project.developer_email || '',
         })
       } catch (err: any) {
         console.error('Failed to load project:', err)
@@ -248,6 +256,11 @@ export default function EditProjectPage() {
       if (formData.land_size_sqm) updateData.land_size_sqm = parseFloat(formData.land_size_sqm)
       if (formData.total_budget) updateData.total_budget = parseFloat(formData.total_budget)
       if (formData.cover_image_url) updateData.cover_image_url = formData.cover_image_url
+
+      // Property Owner / Developer
+      updateData.developer_name = formData.developer_name || null
+      updateData.developer_contact = formData.developer_contact || null
+      updateData.developer_email = formData.developer_email || null
 
       if (formData.project_manager_id !== initialProjectManagerId) {
         updateData.project_manager_id = formData.project_manager_id || null
@@ -450,6 +463,39 @@ export default function EditProjectPage() {
           </div>
         </Panel>
         
+        {/* Property Owner */}
+        <Panel title="PROPERTY OWNER / DEVELOPER">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="md:col-span-2">
+              <FormField label="Owner / Developer Name">
+                <Input
+                  value={formData.developer_name}
+                  onChange={(e) => handleChange('developer_name', e.target.value)}
+                  placeholder="Full name or company name"
+                  className="bg-zinc-900 border-zinc-800 font-mono text-sm"
+                />
+              </FormField>
+            </div>
+            <FormField label="Phone / Contact">
+              <Input
+                value={formData.developer_contact}
+                onChange={(e) => handleChange('developer_contact', e.target.value)}
+                placeholder="+233 XX XXX XXXX"
+                className="bg-zinc-900 border-zinc-800 font-mono text-sm"
+              />
+            </FormField>
+            <FormField label="Email">
+              <Input
+                type="email"
+                value={formData.developer_email}
+                onChange={(e) => handleChange('developer_email', e.target.value)}
+                placeholder="owner@example.com"
+                className="bg-zinc-900 border-zinc-800 font-mono text-sm"
+              />
+            </FormField>
+          </div>
+        </Panel>
+
         {/* Location */}
         <Panel title="LOCATION">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -561,29 +607,15 @@ export default function EditProjectPage() {
           </div>
         </Panel>
         
-        {/* Media */}
-        <Panel title="MEDIA">
-          <FormField label="Cover Image URL">
-            <Input
-              value={formData.cover_image_url}
-              onChange={(e) => handleChange('cover_image_url', e.target.value)}
-              placeholder="https://..."
-              className="bg-zinc-900 border-zinc-800 font-mono text-sm"
-            />
-          </FormField>
-          
-          {formData.cover_image_url && (
-            <div className="mt-4">
-              <img 
-                src={formData.cover_image_url} 
-                alt="Cover preview"
-                className="max-w-xs rounded border border-zinc-800"
-                onError={(e) => {
-                  (e.target as HTMLImageElement).style.display = 'none'
-                }}
-              />
-            </div>
-          )}
+        {/* Cover Image */}
+        <Panel title="COVER IMAGE">
+          <HeroImageUpload
+            value={formData.cover_image_url || null}
+            onChange={(url: string | null, file?: File) => {
+              handleChange('cover_image_url', url || '')
+              // TODO: upload file to S3 when backend endpoint is available
+            }}
+          />
         </Panel>
       </div>
     </div>
