@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useMemo, useCallback, useRef } from 'react'
+import React, { useState, useMemo, useCallback, useRef, lazy, Suspense } from 'react'
 import Link from 'next/link'
 import { cn, formatCurrency } from '@/lib/utils'
 import {
@@ -13,7 +13,12 @@ import {
     MapPin,
     Upload,
     CheckCircle2,
+    GitMerge,
+    Network,
 } from 'lucide-react'
+
+const ContactMergeDialog = lazy(() => import('@/components/crm/ContactMergeDialog').then(m => ({ default: m.ContactMergeDialog })))
+const RelationshipMap = lazy(() => import('@/components/crm/RelationshipMap').then(m => ({ default: m.RelationshipMap })))
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent } from '@/components/ui/card'
@@ -148,6 +153,9 @@ export default function ContactsPage() {
     const [page, setPage] = useState(1)
     const [filterGroup, setFilterGroup] = useState<FilterGroup>({ id: 'root', conjunction: 'and', conditions: [] })
     const [importWizardOpen, setImportWizardOpen] = useState(false)
+    const [mergeDialogOpen, setMergeDialogOpen] = useState(false)
+    const [showRelationshipMap, setShowRelationshipMap] = useState(false)
+    const [selectedContactId, setSelectedContactId] = useState<string | null>(null)
     const searchRef = useRef<HTMLInputElement>(null)
 
     const { data: contactsData, isLoading, error: contactsError } = useContacts({
@@ -224,12 +232,32 @@ export default function ContactsPage() {
                     <h1 className="text-2xl font-semibold tracking-tight text-foreground">Contacts</h1>
                     <p className="text-sm text-muted-foreground mt-1">Manage leads, clients, and prospects</p>
                 </div>
-                <Link href="/dashboard/deals/contacts/new">
-                    <Button className="bg-primary text-primary-foreground hover:bg-primary/90 font-medium text-sm h-9 px-4 rounded-md shadow-sm">
-                        <Plus className="h-4 w-4 mr-2" />
-                        New Contact
+                <div className="flex items-center gap-2">
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setMergeDialogOpen(true)}
+                        className="h-9"
+                    >
+                        <GitMerge className="h-4 w-4 mr-2" />
+                        Merge Contacts
                     </Button>
-                </Link>
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setShowRelationshipMap(!showRelationshipMap)}
+                        className="h-9"
+                    >
+                        <Network className="h-4 w-4 mr-2" />
+                        {showRelationshipMap ? 'Hide Map' : 'Relationship Map'}
+                    </Button>
+                    <Link href="/dashboard/deals/contacts/new">
+                        <Button className="bg-primary text-primary-foreground hover:bg-primary/90 font-medium text-sm h-9 px-4 rounded-md shadow-sm">
+                            <Plus className="h-4 w-4 mr-2" />
+                            New Contact
+                        </Button>
+                    </Link>
+                </div>
             </div>
 
             {/* Stats Cards */}
@@ -422,11 +450,33 @@ export default function ContactsPage() {
                 onClear={bulkSelection.clearSelection}
             />
 
+            {/* Relationship Map */}
+            {showRelationshipMap && (
+                <Suspense fallback={<div className="flex justify-center py-8"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>}>
+                    <RelationshipMap
+                        entityId={selectedContactId || contacts[0]?.id}
+                        entityType="contact"
+                    />
+                </Suspense>
+            )}
+
             {/* Import Wizard */}
             <ImportWizard
                 open={importWizardOpen}
                 onOpenChange={setImportWizardOpen}
             />
+
+            {/* Contact Merge Dialog */}
+            <Suspense fallback={null}>
+                <ContactMergeDialog
+                    open={mergeDialogOpen}
+                    onOpenChange={setMergeDialogOpen}
+                    onMergeComplete={() => {
+                        // Trigger a refetch by changing page back
+                        setPage(1)
+                    }}
+                />
+            </Suspense>
         </div>
     )
 }

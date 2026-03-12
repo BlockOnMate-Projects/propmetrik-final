@@ -172,31 +172,68 @@ router.get('/config', async (req: Request, res: Response) => {
     const tier = user?.tier || 'starter';
     const userType = user?.userType || 'staff';
 
-    // Fetch user's subscribed services
+    // Fetch user's subscribed services + customer service roles
     let subscribedServices: string[] = [];
+    let customerServiceRoles: Record<string, string> = {};
+    let customerSubTabAccess: Record<string, Record<string, string[]>> | undefined;
+    let customerRoleConfig: Array<{ serviceKey: string; roleKey: string; displayName: string; description: string }> | undefined;
+
     if (user?.id) {
       try {
         const { pool } = await import('../database');
         const subResult = await pool.query(
-          `SELECT ps.service_key
+          `SELECT ps.service_key, COALESCE(uss.service_role, 'service_admin') as service_role
            FROM user_service_subscriptions uss
            JOIN platform_services ps ON ps.id = uss.service_id
            WHERE uss.user_id = $1 AND uss.status = 'active'`,
           [user.id]
         );
         subscribedServices = subResult.rows.map((r: any) => r.service_key);
+
+        // For customer users, include per-service roles and available role config
+        if (userType === 'customer') {
+          for (const row of subResult.rows) {
+            customerServiceRoles[row.service_key] = row.service_role || 'service_admin';
+          }
+
+          // Fetch available customer roles for invite UI
+          try {
+            const roleConfigResult = await pool.query(
+              `SELECT service_key, service_role as role_key, display_name, description
+               FROM customer_service_role_config ORDER BY service_key, sort_order`
+            );
+            customerRoleConfig = roleConfigResult.rows.map((r: any) => ({
+              serviceKey: r.service_key,
+              roleKey: r.role_key,
+              displayName: r.display_name,
+              description: r.description,
+            }));
+          } catch {
+            // Non-fatal — role config table may not exist yet
+          }
+        }
       } catch {
         // Non-fatal — return empty list
       }
     }
 
+    const responseData: Record<string, any> = {
+      user: { role, tier, userType, organizationId: user?.organizationId },
+      ...config,
+      subscribedServices,
+    };
+
+    // Include customer-specific fields only for customer users
+    if (userType === 'customer') {
+      responseData.customerServiceRoles = customerServiceRoles;
+      if (customerRoleConfig) {
+        responseData.customerRoleConfig = customerRoleConfig;
+      }
+    }
+
     res.json({
       success: true,
-      data: {
-        user: { role, tier, userType, organizationId: user?.organizationId },
-        ...config,
-        subscribedServices,
-      },
+      data: responseData,
     });
   } catch (error: any) {
     logger.error('Failed to load RBAC config', { error: error.message, stack: error.stack });
@@ -218,10 +255,11 @@ router.post('/config/invalidate', async (req: Request, res: Response) => {
   cachedConfig = null;
   cacheTime = 0;
 
-  // Also invalidate authorize.ts policy cache
+  // Also invalidate authorize.ts policy caches (staff + customer)
   try {
-    const { invalidatePolicyCache } = await import('../middleware/authorize');
+    const { invalidatePolicyCache, clearCustomerPolicyCache } = await import('../middleware/authorize');
     invalidatePolicyCache();
+    if (clearCustomerPolicyCache) clearCustomerPolicyCache();
   } catch {
     // ignore
   }

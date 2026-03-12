@@ -896,40 +896,11 @@ router.post('/analytics/scheduled-reports', asyncHandler(async (req: Request, re
         RETURNING *
     `;
 
-    try {
-        const result = await db.query(query, [
-            organizationId, report_type, frequency, format, recipients, pipeline_id || null, nextSend, userId
-        ]);
-        res.status(201).json(result.rows[0]);
-    } catch (err: any) {
-        // Table may not exist — create it and retry
-        if (err.code === '42P01') { // undefined_table
-            await db.query(`
-                CREATE TABLE IF NOT EXISTS crm_scheduled_reports (
-                    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-                    organization_id UUID NOT NULL REFERENCES organizations(id),
-                    report_type VARCHAR(50) NOT NULL,
-                    frequency VARCHAR(20) NOT NULL,
-                    format VARCHAR(10) NOT NULL DEFAULT 'pdf',
-                    recipients TEXT[] NOT NULL,
-                    pipeline_id UUID,
-                    is_active BOOLEAN DEFAULT true,
-                    last_sent_at TIMESTAMPTZ,
-                    next_send_at TIMESTAMPTZ,
-                    created_by UUID,
-                    created_at TIMESTAMPTZ DEFAULT NOW(),
-                    updated_at TIMESTAMPTZ DEFAULT NOW(),
-                    deleted_at TIMESTAMPTZ
-                )
-            `);
-            const result = await db.query(query, [
-                organizationId, report_type, frequency, format, recipients, pipeline_id || null, nextSend, userId
-            ]);
-            res.status(201).json(result.rows[0]);
-        } else {
-            throw err;
-        }
-    }
+    // Table created by migration 219_crm_runtime_tables.sql
+    const result = await db.query(query, [
+        organizationId, report_type, frequency, format, recipients, pipeline_id || null, nextSend, userId
+    ]);
+    res.status(201).json(result.rows[0]);
 }));
 
 router.delete('/analytics/scheduled-reports/:id', asyncHandler(async (req: Request, res: Response) => {

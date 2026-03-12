@@ -15,6 +15,7 @@ import {
   ArrowRight
 } from 'lucide-react';
 import Image from 'next/image';
+import ApplicationForm from '@/components/ApplicationForm';
 
 interface Property {
   id: string;
@@ -37,7 +38,7 @@ interface Property {
   total_area_sqm?: number;
   amenities?: string[];
   features?: string[];
-  images?: string[];
+  images?: (string | { id: string; url: string; original_name?: string })[];
   listed_at: string;
   views: number;
   clicks: number;
@@ -241,37 +242,42 @@ export default function PropertyApplicationPage() {
               </div>
             )}
 
-            {/* Application Button */}
-            <button
-              onClick={handleStartApplication}
-              disabled={applying}
-              className="w-full py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors font-semibold inline-flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {applying ? (
-                <>
-                  <Loader2 className="w-5 h-5 animate-spin" />
-                  Processing...
-                </>
-              ) : (
-                <>
-                  {property.transaction_type === 'rental' ? 'Apply to Rent' : 'Express Interest'}
-                  <ArrowRight className="w-5 h-5" />
-                </>
-              )}
-            </button>
-            <p className="text-xs text-gray-500 mt-2 text-center">
-              {property.transaction_type === 'rental' 
-                ? 'Complete tenant application form' 
-                : 'Submit purchase inquiry'}
-            </p>
+            {/* PM rental properties → redirect to tenant portal */}
+            {property.source === 'pm' ? (
+              <>
+                <button
+                  onClick={handleStartApplication}
+                  disabled={applying}
+                  className="w-full py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors font-semibold inline-flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {applying ? (
+                    <>
+                      <Loader2 className="w-5 h-5 animate-spin" />
+                      Processing...
+                    </>
+                  ) : (
+                    <>
+                      Apply to Rent
+                      <ArrowRight className="w-5 h-5" />
+                    </>
+                  )}
+                </button>
+                <p className="text-xs text-gray-500 mt-2 text-center">
+                  Complete tenant application form
+                </p>
+              </>
+            ) : (
+              /* CRM sale properties → inline inquiry form */
+              <ApplicationForm property={property} token={token} />
+            )}
           </div>
         </div>
 
         {/* Property Image Gallery */}
-        {property.images && property.images.length > 0 ? (
+        {property.images && property.images.length > 0 && (typeof property.images[0] === 'string' ? property.images[0] : property.images[0]?.url) ? (
           <div className="relative h-[500px] bg-gray-100 rounded-xl overflow-hidden mb-6 border border-gray-200">
             <Image
-              src={property.images[0]}
+              src={typeof property.images[0] === 'string' ? property.images[0] : property.images[0].url}
               alt={property.title}
               fill
               className="object-cover"

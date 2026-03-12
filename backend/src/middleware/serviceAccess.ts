@@ -18,14 +18,14 @@ import logger from '../utils/logger';
 
 // In-memory cache: userId → Set<service_key> (active subscriptions)
 // Cleared every 60 seconds to pick up subscription changes.
-const subscriptionCache = new Map<string, { keys: Set<string>; tier: Map<string, string>; ts: number }>();
+const subscriptionCache = new Map<string, { keys: Set<string>; tier: Map<string, string>; roles: Map<string, string>; ts: number }>();
 const CACHE_TTL = 60_000; // 1 minute
 
 /**
  * Resolve active service subscriptions for a user.
  * Returns a set of service_keys and a map of service_key → tier.
  */
-async function getUserSubscriptions(userId: string): Promise<{ keys: Set<string>; tier: Map<string, string> }> {
+async function getUserSubscriptions(userId: string): Promise<{ keys: Set<string>; tier: Map<string, string>; roles: Map<string, string> }> {
   const now = Date.now();
   const cached = subscriptionCache.get(userId);
   if (cached && (now - cached.ts) < CACHE_TTL) {
@@ -34,11 +34,12 @@ async function getUserSubscriptions(userId: string): Promise<{ keys: Set<string>
 
   const keys = new Set<string>();
   const tier = new Map<string, string>();
+  const roles = new Map<string, string>();
 
   try {
     const { pool } = await import('../database');
     const result = await pool.query(
-      `SELECT ps.service_key, uss.tier
+      `SELECT ps.service_key, uss.tier, COALESCE(uss.service_role, 'service_admin') as service_role
        FROM user_service_subscriptions uss
        JOIN platform_services ps ON ps.id = uss.service_id
        WHERE uss.user_id = $1
@@ -49,6 +50,7 @@ async function getUserSubscriptions(userId: string): Promise<{ keys: Set<string>
     for (const row of result.rows) {
       keys.add(row.service_key);
       tier.set(row.service_key, row.tier);
+      roles.set(row.service_key, row.service_role || 'service_admin');
     }
   } catch (err: any) {
     logger.error('Failed to load user service subscriptions', {
@@ -57,11 +59,11 @@ async function getUserSubscriptions(userId: string): Promise<{ keys: Set<string>
     });
     // Fail open in dev to avoid blocking development
     if (process.env.NODE_ENV === 'development') {
-      return { keys: new Set<string>(), tier: new Map<string, string>() };
+      return { keys: new Set<string>(), tier: new Map<string, string>(), roles: new Map<string, string>() };
     }
   }
 
-  const entry = { keys, tier, ts: now };
+  const entry = { keys, tier, roles, ts: now };
   subscriptionCache.set(userId, entry);
   return entry;
 }
@@ -110,15 +112,43 @@ export function requireServiceAccess(serviceKey: string) {
     }
 
     // super_admin bypasses everything
-    const roles = [...(req.user.realmRoles || []), ...(req.user.clientRoles || [])];
-    if (roles.includes('super_admin')) {
+    const realmRoles = [...(req.user.realmRoles || []), ...(req.user.clientRoles || [])];
+    if (realmRoles.includes('super_admin')) {
       return next();
     }
 
-    // Internal org roles bypass subscription checks — they access services on behalf of the org
-    const INTERNAL_ROLES = ['admin', 'manager', 'project_manager', 'firm_principal', 'finance_manager', 'agent'];
-    if (INTERNAL_ROLES.some(r => roles.includes(r))) {
-      return next();
+    // ── Per-role, per-service access map ──────────────────────────────
+    // Internal org roles bypass subscription checks ONLY for services
+    // their role is authorized to use. Must mirror frontend RBAC config.
+    const ROLE_SERVICE_ACCESS: Record<string, string[]> = {
+      // admin / firm_principal: full platform access
+      admin:              ['valuations', 'crm', 'projects', 'analytics', 'property_management', 'data_hub', 'construction', 'budget'],
+      firm_principal:     ['valuations', 'crm', 'projects', 'analytics', 'property_management', 'data_hub', 'construction', 'budget'],
+      // manager: broad access across services
+      manager:            ['valuations', 'crm', 'projects', 'analytics', 'property_management', 'data_hub', 'construction', 'budget'],
+      // project_manager: projects + related services only
+      project_manager:    ['projects', 'analytics', 'property_management', 'construction', 'budget'],
+      // finance_manager: valuations (finance tab) only
+      finance_manager:    ['valuations'],
+      // agent: CRM deal management only
+      agent:              ['crm'],
+      // senior_valuer / valuer: valuations only
+      senior_valuer:      ['valuations'],
+      valuer:             ['valuations'],
+      // compliance_officer: valuations only
+      compliance_officer: ['valuations'],
+      // probationer / inspector: valuations (limited)
+      probationer:        ['valuations'],
+      inspector:          ['valuations'],
+      // analyst: valuations + analytics
+      analyst:            ['valuations', 'analytics'],
+    };
+
+    for (const role of realmRoles) {
+      const allowedServices = ROLE_SERVICE_ACCESS[role];
+      if (allowedServices && allowedServices.includes(serviceKey)) {
+        return next();
+      }
     }
 
     const userType = await resolveUserType(req);
@@ -144,11 +174,12 @@ export function requireServiceAccess(serviceKey: string) {
 
     // Customer: check subscription
     const userId = req.user.id || req.user.sub;
-    const { keys, tier } = await getUserSubscriptions(userId);
+    const { keys, tier, roles } = await getUserSubscriptions(userId);
 
     if (keys.has(serviceKey)) {
       // Attach service tier to request for downstream requireTier()
       (req as any).currentServiceTier = tier.get(serviceKey) || 'starter';
+      (req as any).customerServiceRole = roles.get(serviceKey) || 'service_admin';
       return next();
     }
 

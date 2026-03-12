@@ -123,7 +123,7 @@ export function GenerateDocumentDialog({
             })
             setGenerationResult({ 
                 success: true, 
-                message: `Document "${doc.document_number}" generated successfully!` 
+                message: `Document "${doc.file_name || doc.document_number || doc.id}" generated successfully!`
             })
             onDocumentGenerated?.(doc)
         } catch (err: any) {
@@ -145,9 +145,9 @@ export function GenerateDocumentDialog({
         onClose()
     }
 
-    const filteredTemplates = templates.filter(t => 
-        t.template_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        t.template_description?.toLowerCase().includes(searchTerm.toLowerCase())
+    const filteredTemplates = templates.filter(t =>
+        (t.name || t.template_name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (t.description || t.template_description || '').toLowerCase().includes(searchTerm.toLowerCase())
     )
 
     // Group templates by category
@@ -236,14 +236,14 @@ export function GenerateDocumentDialog({
                                                                 <div className="flex-1">
                                                                     <div className="flex items-center gap-2 mb-1">
                                                                         <span className="font-mono text-sm text-white">
-                                                                            {template.template_name}
+                                                                            {template.name}
                                                                         </span>
                                                                         {selectedTemplate?.id === template.id && (
                                                                             <Check className="h-4 w-4 text-amber-500" />
                                                                         )}
                                                                     </div>
                                                                     <p className="font-mono text-[11px] text-zinc-500 line-clamp-1">
-                                                                        {template.template_description || 'No description'}
+                                                                        {template.description || 'No description'}
                                                                     </p>
                                                                 </div>
                                                                 <Badge 

@@ -113,6 +113,41 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         }
       }
     }),
+    // Tenant Portal Authentication
+    CredentialsProvider({
+      id: 'tenant-credentials',
+      name: 'Tenant Login',
+      credentials: {
+        email: { label: "Email", type: "email" },
+        password: { label: "Password", type: "password" },
+      },
+      async authorize(credentials) {
+        if (!credentials?.email || !credentials?.password) return null;
+        try {
+          const res = await fetch(`${API_BASE}/api/v1/tenant-portal/auth/login`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email: credentials.email, password: credentials.password }),
+          });
+          const data = await res.json();
+          if (!res.ok || !data.success) return null;
+          return {
+            id: data.user.id,
+            email: data.user.email,
+            name: `${data.user.firstName || ''} ${data.user.lastName || ''}`.trim() || data.user.email,
+            image: null,
+            accessToken: data.token,
+            role: 'tenant',
+            tier: 'starter',
+            userType: 'tenant',
+            subscribedServices: [],
+            organizationId: data.user.organizationId,
+          };
+        } catch {
+          return null;
+        }
+      },
+    }),
     // Keycloak SSO (Enterprise Feature)
     KeycloakProvider({
       clientId: process.env.KEYCLOAK_CLIENT_ID!,

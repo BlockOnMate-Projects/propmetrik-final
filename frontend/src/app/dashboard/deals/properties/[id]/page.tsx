@@ -59,6 +59,9 @@ interface PropertyDetail {
     total_stages?: number
     days_in_stage?: number
     stage_entered_at?: string
+    // Agent assignment
+    assigned_agent_id?: string
+    assigned_agent_name?: string
 }
 
 interface PropertyDeal {
@@ -236,6 +239,8 @@ export default function PropertyDetailPage() {
     const [isLoading, setIsLoading] = useState(true)
     const [isChangingStage, setIsChangingStage] = useState(false)
     const [error, setError] = useState<string | null>(null)
+    const [agents, setAgents] = useState<Array<{ id: string; first_name: string; last_name: string }>>([])
+    const [isAssigningAgent, setIsAssigningAgent] = useState(false)
 
     const handleStageChange = async (stageId: string) => {
         if (!property || isChangingStage) return
@@ -305,6 +310,8 @@ export default function PropertyDetailPage() {
                         total_stages: parseInt(foundProperty.total_stages) || 0,
                         days_in_stage: foundProperty.days_in_stage,
                         stage_entered_at: foundProperty.stage_entered_at,
+                        assigned_agent_id: foundProperty.assigned_agent_id,
+                        assigned_agent_name: foundProperty.assigned_agent_name,
                     })
                     
                     // Fetch property pipeline stages if the property has a pipeline
@@ -323,7 +330,8 @@ export default function PropertyDetailPage() {
             if (dealsRes.ok) {
                 const dealsData = await dealsRes.json()
                 // Ensure deals is always an array
-                const dealsList = Array.isArray(dealsData) ? dealsData : 
+                const dealsList = Array.isArray(dealsData) ? dealsData :
+                                  Array.isArray(dealsData?.data) ? dealsData.data :
                                   Array.isArray(dealsData?.deals) ? dealsData.deals : []
                 setDeals(dealsList)
             } else {
@@ -347,6 +355,16 @@ export default function PropertyDetailPage() {
                         deals: []
                     })))
                 }
+            }
+
+            // Fetch agents for assignment dropdown
+            const agentsRes = await authedFetch(`${API_BASE}/crm/agents`)
+            if (agentsRes.ok) {
+                const agentsData = await agentsRes.json()
+                const agentsList = Array.isArray(agentsData) ? agentsData :
+                                   Array.isArray(agentsData?.data) ? agentsData.data :
+                                   Array.isArray(agentsData?.agents) ? agentsData.agents : []
+                setAgents(agentsList)
             }
 
         } catch (err) {
@@ -456,11 +474,99 @@ export default function PropertyDetailPage() {
                             </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end" className="bg-popover border-border">
-                            <DropdownMenuItem className="text-foreground">
+                            <DropdownMenuItem
+                                className="text-foreground cursor-pointer"
+                                onClick={() => router.push(`/dashboard/deals/properties/submit?editId=${property.id}`)}
+                            >
                                 <Edit className="h-4 w-4 mr-2" /> Edit Property
                             </DropdownMenuItem>
                             <DropdownMenuSeparator className="bg-border" />
-                            <DropdownMenuItem className="text-red-400">
+                            {/* Status Changes */}
+                            {property.status !== 'active' && (
+                                <DropdownMenuItem
+                                    className="text-green-400 cursor-pointer"
+                                    onClick={async () => {
+                                        try {
+                                            const res = await authedFetch(`${API_BASE}/crm/properties/${property.id}`, {
+                                                method: 'PATCH',
+                                                headers: { 'Content-Type': 'application/json' },
+                                                body: JSON.stringify({ status: 'active' })
+                                            })
+                                            if (res.ok) loadPropertyData()
+                                        } catch { console.error('Failed to update status') }
+                                    }}
+                                >
+                                    <CheckCircle2 className="h-4 w-4 mr-2" /> Mark as Active
+                                </DropdownMenuItem>
+                            )}
+                            {property.status !== 'under_offer' && (
+                                <DropdownMenuItem
+                                    className="text-amber-400 cursor-pointer"
+                                    onClick={async () => {
+                                        try {
+                                            const res = await authedFetch(`${API_BASE}/crm/properties/${property.id}`, {
+                                                method: 'PATCH',
+                                                headers: { 'Content-Type': 'application/json' },
+                                                body: JSON.stringify({ status: 'under_offer' })
+                                            })
+                                            if (res.ok) loadPropertyData()
+                                        } catch { console.error('Failed to update status') }
+                                    }}
+                                >
+                                    <Clock className="h-4 w-4 mr-2" /> Mark as Under Offer
+                                </DropdownMenuItem>
+                            )}
+                            {property.status !== 'sold' && property.listing_type === 'sale' && (
+                                <DropdownMenuItem
+                                    className="text-purple-400 cursor-pointer"
+                                    onClick={async () => {
+                                        try {
+                                            const res = await authedFetch(`${API_BASE}/crm/properties/${property.id}`, {
+                                                method: 'PATCH',
+                                                headers: { 'Content-Type': 'application/json' },
+                                                body: JSON.stringify({ status: 'sold' })
+                                            })
+                                            if (res.ok) loadPropertyData()
+                                        } catch { console.error('Failed to update status') }
+                                    }}
+                                >
+                                    <CheckCircle2 className="h-4 w-4 mr-2" /> Mark as Sold
+                                </DropdownMenuItem>
+                            )}
+                            {property.status !== 'withdrawn' && (
+                                <DropdownMenuItem
+                                    className="text-muted-foreground cursor-pointer"
+                                    onClick={async () => {
+                                        try {
+                                            const res = await authedFetch(`${API_BASE}/crm/properties/${property.id}`, {
+                                                method: 'PATCH',
+                                                headers: { 'Content-Type': 'application/json' },
+                                                body: JSON.stringify({ status: 'withdrawn' })
+                                            })
+                                            if (res.ok) loadPropertyData()
+                                        } catch { console.error('Failed to update status') }
+                                    }}
+                                >
+                                    <XCircle className="h-4 w-4 mr-2" /> Withdraw
+                                </DropdownMenuItem>
+                            )}
+                            <DropdownMenuSeparator className="bg-border" />
+                            <DropdownMenuItem
+                                className="text-red-400 cursor-pointer"
+                                onClick={async () => {
+                                    if (!confirm('Are you sure you want to delete this property?')) return
+                                    try {
+                                        const res = await authedFetch(`${API_BASE}/crm/properties/${property.id}`, { method: 'DELETE' })
+                                        if (res.ok) {
+                                            router.push('/dashboard/deals/properties')
+                                        } else {
+                                            alert('Failed to delete property')
+                                        }
+                                    } catch {
+                                        alert('Failed to delete property')
+                                    }
+                                }}
+                            >
                                 <Trash2 className="h-4 w-4 mr-2" /> Delete Property
                             </DropdownMenuItem>
                         </DropdownMenuContent>
@@ -665,6 +771,79 @@ export default function PropertyDetailPage() {
                             )}
                         </div>
                     )}
+
+                    {/* Assigned Agent */}
+                    <div className="border border-border bg-card p-4">
+                        <div className="font-mono text-[10px] text-muted-foreground mb-3">ASSIGNED AGENT</div>
+                        {property.assigned_agent_name ? (
+                            <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-3">
+                                    <div className="w-10 h-10 bg-emerald-500/20 rounded-full flex items-center justify-center">
+                                        <Users className="h-5 w-5 text-emerald-400" />
+                                    </div>
+                                    <div>
+                                        <div className="font-mono text-sm text-foreground">{property.assigned_agent_name}</div>
+                                        <div className="font-mono text-[10px] text-muted-foreground">Agent</div>
+                                    </div>
+                                </div>
+                                <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    disabled={isAssigningAgent}
+                                    onClick={async () => {
+                                        try {
+                                            setIsAssigningAgent(true)
+                                            const res = await authedFetch(`${API_BASE}/crm/properties/${propertyId}`, {
+                                                method: 'PATCH',
+                                                headers: { 'Content-Type': 'application/json' },
+                                                body: JSON.stringify({ assigned_agent_id: null })
+                                            })
+                                            if (res.ok) loadPropertyData()
+                                        } catch (err) {
+                                            console.error('Failed to unassign agent:', err)
+                                        } finally {
+                                            setIsAssigningAgent(false)
+                                        }
+                                    }}
+                                    className="text-muted-foreground hover:text-red-400 h-8 w-8 p-0"
+                                >
+                                    <X className="h-4 w-4" />
+                                </Button>
+                            </div>
+                        ) : (
+                            <div>
+                                <select
+                                    className="w-full bg-muted border border-border rounded px-3 py-2 font-mono text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                                    value=""
+                                    disabled={isAssigningAgent || agents.length === 0}
+                                    onChange={async (e) => {
+                                        const agentId = e.target.value
+                                        if (!agentId) return
+                                        try {
+                                            setIsAssigningAgent(true)
+                                            const res = await authedFetch(`${API_BASE}/crm/properties/${propertyId}`, {
+                                                method: 'PATCH',
+                                                headers: { 'Content-Type': 'application/json' },
+                                                body: JSON.stringify({ assigned_agent_id: agentId })
+                                            })
+                                            if (res.ok) loadPropertyData()
+                                        } catch (err) {
+                                            console.error('Failed to assign agent:', err)
+                                        } finally {
+                                            setIsAssigningAgent(false)
+                                        }
+                                    }}
+                                >
+                                    <option value="">{agents.length === 0 ? 'No agents available' : 'Select an agent...'}</option>
+                                    {agents.map((a) => (
+                                        <option key={a.id} value={a.id}>
+                                            {a.first_name} {a.last_name}
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
+                        )}
+                    </div>
 
                     {/* Pipeline Progress - Property-level tracking */}
                     {property.pipeline_name && (

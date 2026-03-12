@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, lazy, Suspense } from 'react';
 import { useRouter } from 'next/navigation';
 import {
     Target,
@@ -28,6 +28,8 @@ import {
     ChevronRight,
     Percent,
 } from 'lucide-react';
+
+const CompTracker = lazy(() => import('@/components/crm/CompTracker').then(m => ({ default: m.CompTracker })));
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -671,6 +673,10 @@ export default function TargetsPage() {
                         <Award className="h-4 w-4 mr-2" />
                         Achievements
                     </TabsTrigger>
+                    <TabsTrigger value="comps">
+                        <BarChart3 className="h-4 w-4 mr-2" />
+                        Comps
+                    </TabsTrigger>
                 </TabsList>
 
                 <TabsContent value="targets" className="space-y-4">
@@ -784,6 +790,12 @@ export default function TargetsPage() {
                             ))}
                         </div>
                     )}
+                </TabsContent>
+
+                <TabsContent value="comps" className="space-y-4">
+                    <Suspense fallback={<div className="flex items-center justify-center py-12"><RefreshCw className="h-6 w-6 animate-spin text-primary" /></div>}>
+                        <CompTracker />
+                    </Suspense>
                 </TabsContent>
             </Tabs>
 

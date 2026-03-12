@@ -115,8 +115,8 @@ export default function CalendarPage() {
       );
 
       const allMilestones: CalendarMilestone[] = milestoneResults
-        .filter((r): r is PromiseFulfilledResult<CalendarMilestone[]> => r.status === 'fulfilled')
-        .flatMap(r => r.value);
+        .filter((r) => r.status === 'fulfilled')
+        .flatMap(r => (r as PromiseFulfilledResult<CalendarMilestone[]>).value);
 
       setMilestones(allMilestones);
     } catch (error) {

@@ -40,5 +40,8 @@
     "url": "https://github.com/CedynGroup/propmetrik"
   },
   "author": "PROPMETRIK",
-  "license": "UNLICENSED"
+  "license": "UNLICENSED",
+  "dependencies": {
+    "pdfjs-dist": "^3.11.174"
+  }
 }

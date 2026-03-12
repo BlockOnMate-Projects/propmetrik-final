@@ -6,6 +6,7 @@
 import { v4 as uuidv4 } from 'uuid';
 import db from '../../database';
 import { logger } from '../../utils/logger';
+import { inviteService } from '../shared/inviteService';
 
 // =====================================================
 // TYPES
@@ -261,6 +262,30 @@ export class AgentService {
         );
 
         logger.info('Agent created', { agentId: id, organizationId });
+
+        // Send invitation email so the agent can set a password and log in
+        if (userId && data.email) {
+            try {
+                await inviteService.createInvitation({
+                    email: data.email,
+                    role: 'agent',
+                    userType: 'staff',
+                    organizationId,
+                    invitedById: userId,
+                    firstName: data.first_name,
+                    lastName: data.last_name,
+                });
+                logger.info('Agent invitation sent', { agentId: id, email: data.email });
+            } catch (inviteErr: any) {
+                // Non-fatal — agent record exists even if invitation fails
+                logger.warn('Agent invitation could not be sent', {
+                    agentId: id,
+                    email: data.email,
+                    error: inviteErr.message,
+                });
+            }
+        }
+
         return result.rows[0];
     }
 

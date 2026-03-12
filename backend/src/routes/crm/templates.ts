@@ -15,6 +15,7 @@ import { getOrganizationId, getUserId, asyncHandler } from './helpers';
 import { crmDocumentTemplateService } from '../../services/crm-deal-management/crmDocumentTemplateService';
 import { documentGenerationService } from '../../services/crm-deal-management/documentGenerationService';
 import { DocumentTemplateCategory, TemplateFilters } from '../../services/crm-deal-management/crmDocumentTemplateService';
+import * as minio from '../../database/minio';
 
 const router = Router();
 
@@ -76,7 +77,13 @@ router.post('/document-templates', asyncHandler(async (req: Request, res: Respon
         return res.status(401).json({ error: 'Organization not found' });
     }
 
-    const template = await crmDocumentTemplateService.create(organizationId, req.body, userId || 'system');
+    const body = {
+        ...req.body,
+        name: req.body.name || req.body.template_name,
+        description: req.body.description ?? req.body.template_description,
+        template_html: req.body.template_html || req.body.html_content,
+    };
+    const template = await crmDocumentTemplateService.create(organizationId, body, userId || 'system');
     res.status(201).json({ template });
 }));
 
@@ -97,10 +104,15 @@ router.put('/document-templates/:id', asyncHandler(async (req: Request, res: Res
         return res.status(401).json({ error: 'Organization not found' });
     }
 
+    const body = {
+        ...req.body,
+        name: req.body.name || req.body.template_name,
+        description: req.body.description ?? req.body.template_description,
+    };
     const template = await crmDocumentTemplateService.update(
         req.params.id,
         organizationId,
-        req.body,
+        body,
         userId || 'system'
     );
     
@@ -200,6 +212,23 @@ router.get('/generated-documents/:id', asyncHandler(async (req: Request, res: Re
         return res.status(404).json({ error: 'Document not found' });
     }
     res.json({ document });
+}));
+
+// Download URL for generated documents
+router.get('/generated-documents/:id/download', asyncHandler(async (req: Request, res: Response) => {
+    const organizationId = await getOrganizationId(req);
+    if (!organizationId) {
+        return res.status(401).json({ error: 'Organization not found' });
+    }
+
+    const document = await documentGenerationService.getById(req.params.id, organizationId);
+    if (!document) {
+        return res.status(404).json({ error: 'Document not found' });
+    }
+
+    const expiresIn = parseInt(req.query.expiresIn as string) || 3600;
+    const url = await minio.getPresignedDownloadUrl(minio.buckets.documents, document.file_url, expiresIn);
+    res.json({ url, expiresIn });
 }));
 
 // FIX DUPLICATE: Previously DELETE /documents/:id — now /generated-documents/:id to avoid conflict with documents.ts

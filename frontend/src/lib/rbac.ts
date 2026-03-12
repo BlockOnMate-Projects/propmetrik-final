@@ -39,9 +39,37 @@ export type UserRole =
   | 'probationer'
   | 'inspector'
   | 'analyst'
-  | 'viewer';
+  | 'viewer'
+  | 'tenant';
 
 export type SubscriptionTier = 'starter' | 'professional' | 'enterprise';
+
+/**
+ * Customer service-specific roles.
+ * Stored per service in `user_service_subscriptions.service_role`.
+ * service_admin = full access within a subscribed service.
+ */
+export type CustomerServiceRole =
+  | 'service_admin'
+  | 'viewer'
+  // Valuations
+  | 'senior_associate'
+  | 'associate'
+  | 'finance_officer'
+  // CRM
+  | 'sales_manager'
+  | 'sales_agent'
+  // Projects
+  | 'project_manager'
+  | 'site_supervisor'
+  | 'quantity_surveyor'
+  // Property Management
+  | 'property_manager'
+  | 'leasing_agent'
+  | 'maintenance_coordinator'
+  | 'accounts_officer'
+  // Analytics
+  | 'analyst';
 
 // Tier hierarchy for comparison (higher = more access)
 const TIER_LEVEL: Record<string, number> = {
@@ -64,6 +92,12 @@ interface RbacConfig {
   services: Array<{ key: string; name: string; category: string }>;
   subscribedServices: string[];
   user: { role: string; tier: string; userType: string; organizationId?: string };
+  /** Customer-only: per-service roles (e.g. { crm: 'sales_agent', projects: 'project_manager' }) */
+  customerServiceRoles?: Record<string, string>;
+  /** Customer-only: per-service sub-tab access map */
+  customerSubTabAccess?: Record<string, Record<string, string[]>>;
+  /** Customer-only: available roles per service for invite UI */
+  customerRoleConfig?: Array<{ serviceKey: string; roleKey: string; displayName: string; description: string }>;
 }
 
 let _rbacConfig: RbacConfig | null = null;
@@ -154,7 +188,7 @@ const FALLBACK_platformTabAccess: Record<string, UserRole[]> = {
   // Valuation service — valuation-category roles + management roles
   valuations: [
     'super_admin', 'firm_principal', 'admin', 'senior_valuer', 'manager',
-    'valuer', 'finance_manager', 'compliance_officer', 'agent',
+    'valuer', 'finance_manager', 'compliance_officer',
     'probationer', 'inspector', 'analyst',
   ],
 
@@ -168,11 +202,10 @@ const FALLBACK_platformTabAccess: Record<string, UserRole[]> = {
     'super_admin', 'admin', 'manager', 'project_manager', 'firm_principal',
   ],
 
-  // Calendar — all roles that use projects or valuations
+  // Calendar — roles that have access to projects (calendar fetches project milestones)
   calendar: [
-    'super_admin', 'firm_principal', 'admin', 'senior_valuer', 'manager',
-    'project_manager', 'valuer', 'finance_manager', 'agent',
-    'probationer', 'inspector', 'analyst',
+    'super_admin', 'firm_principal', 'admin', 'manager',
+    'project_manager',
   ],
 
   // Platform analytics — senior roles + project managers
@@ -185,15 +218,21 @@ const FALLBACK_platformTabAccess: Record<string, UserRole[]> = {
     'super_admin', 'admin', 'manager', 'project_manager', 'firm_principal',
   ],
 
-  // E-Sign — anyone who generates or reviews reports
+  // E-Sign — shared service, available to all authenticated users
   'e-sign': [
-    'super_admin', 'admin', 'firm_principal', 'senior_valuer', 'manager',
-    'project_manager',
+    'super_admin', 'firm_principal', 'admin', 'senior_valuer', 'manager',
+    'project_manager', 'valuer', 'finance_manager', 'compliance_officer', 'agent',
+    'probationer', 'inspector', 'analyst', 'viewer',
   ],
 
   // Admin panel — platform admins only
   admin: [
     'super_admin', 'admin',
+  ],
+
+  // Tenant portal — tenant role only (accessed via /dashboard/tenant)
+  tenant: [
+    'tenant',
   ],
 };
 
@@ -255,14 +294,14 @@ const FALLBACK_valuationTabAccess: Record<string, UserRole[]> = {
   // Valuations list — everyone in valuation service
   valuations: [
     'super_admin', 'firm_principal', 'admin', 'senior_valuer', 'manager',
-    'valuer', 'finance_manager', 'compliance_officer', 'agent',
+    'valuer', 'finance_manager', 'compliance_officer',
     'probationer', 'inspector', 'analyst',
   ],
 
   // Team tab — visible to all (read), but manage restricted server-side
   team: [
     'super_admin', 'firm_principal', 'admin', 'senior_valuer', 'manager',
-    'valuer', 'finance_manager', 'compliance_officer', 'agent',
+    'valuer', 'finance_manager', 'compliance_officer',
     'probationer', 'inspector', 'analyst',
   ],
 
@@ -275,13 +314,13 @@ const FALLBACK_valuationTabAccess: Record<string, UserRole[]> = {
   // Clients — valuers can read, but broader access
   clients: [
     'super_admin', 'firm_principal', 'admin', 'senior_valuer', 'manager',
-    'valuer', 'finance_manager', 'agent',
+    'valuer', 'finance_manager',
   ],
 
   // Calendar — all valuation staff
   calendar: [
     'super_admin', 'firm_principal', 'admin', 'senior_valuer', 'manager',
-    'valuer', 'agent', 'probationer', 'inspector',
+    'valuer', 'probationer', 'inspector',
   ],
 
   // Valuation analytics — senior & management
@@ -315,6 +354,7 @@ const FALLBACK_serviceSubTabAccess: Record<string, Record<string, UserRole[]>> =
     'pm-units':         ['super_admin', 'firm_principal', 'admin', 'manager', 'project_manager', 'agent'],
     'pm-analytics':     ['super_admin', 'firm_principal', 'admin', 'manager', 'analyst'],
     'pm-settings':      ['super_admin', 'firm_principal', 'admin'],
+    'pm-team':          ['super_admin', 'firm_principal', 'admin', 'manager'],
   },
 
   // ── Deal Management (CRM) ──────────────────────────────────
@@ -332,6 +372,11 @@ const FALLBACK_serviceSubTabAccess: Record<string, Record<string, UserRole[]>> =
     'crm-analytics':    ['super_admin', 'firm_principal', 'admin', 'manager', 'analyst'],
     'crm-workflows':    ['super_admin', 'firm_principal', 'admin', 'manager'],
     'crm-pipelines':    ['super_admin', 'firm_principal', 'admin'],
+    // Commissions: admin-only by default (agents are salary-paid; toggle via RBAC)
+    'crm-commissions':  ['super_admin', 'firm_principal', 'admin', 'finance_manager'],
+    'crm-targets':      ['super_admin', 'firm_principal', 'admin', 'manager', 'agent'],
+    'crm-drip-campaigns': ['super_admin', 'firm_principal', 'admin', 'manager'],
+    'crm-team':          ['super_admin', 'firm_principal', 'admin', 'manager'],
   },
 
   // ── Property Management ────────────────────────────────────
@@ -347,6 +392,7 @@ const FALLBACK_serviceSubTabAccess: Record<string, Record<string, UserRole[]>> =
     'propmgmt-vendors':       ['super_admin', 'firm_principal', 'admin', 'manager'],
     'propmgmt-financials':    ['super_admin', 'firm_principal', 'admin', 'manager', 'finance_manager'],
     'propmgmt-calendar':      ['super_admin', 'firm_principal', 'admin', 'manager', 'project_manager'],
+    'propmgmt-team':          ['super_admin', 'firm_principal', 'admin', 'manager'],
   },
 
   // ── Analytics ──────────────────────────────────────────────
@@ -363,6 +409,7 @@ const FALLBACK_serviceSubTabAccess: Record<string, Record<string, UserRole[]>> =
     'analytics-geographic':    ['super_admin', 'firm_principal', 'admin', 'manager', 'analyst'],
     'analytics-management':    ['super_admin', 'firm_principal', 'admin', 'manager'],
     'analytics-settings':      ['super_admin', 'firm_principal', 'admin'],
+    'analytics-team':          ['super_admin', 'firm_principal', 'admin'],
   },
 };
 
@@ -559,3 +606,199 @@ export function hasPermission(
   // No dynamic config loaded — allow (the backend will enforce)
   return true;
 }
+
+// ---------------------------------------------------------------------------
+// Customer service-specific role scoping (spec §5)
+// ---------------------------------------------------------------------------
+
+/**
+ * Per-service sub-tab access for CUSTOMER roles.
+ * Maps serviceKey → subTabKey → allowed CustomerServiceRole[].
+ * service_admin always bypasses (handled in canCustomerAccessSubTab).
+ */
+const FALLBACK_customerSubTabAccess: Record<string, Record<string, CustomerServiceRole[]>> = {
+  // ── Valuations ────────────────────────────────────────────
+  valuations: {
+    'val-valuations':  ['service_admin', 'senior_associate', 'associate', 'finance_officer', 'viewer'],
+    'val-finance':     ['service_admin', 'finance_officer'],
+    'val-clients':     ['service_admin', 'senior_associate', 'associate'],
+    'val-calendar':    ['service_admin', 'senior_associate', 'associate'],
+    'val-analytics':   ['service_admin', 'senior_associate'],
+    'val-team':        ['service_admin', 'senior_associate', 'associate'],
+    'val-settings':    ['service_admin'],
+  },
+
+  // ── Deal Management (CRM) ────────────────────────────────
+  deals: {
+    'crm-deals':           ['service_admin', 'sales_manager', 'sales_agent', 'viewer'],
+    'crm-properties':      ['service_admin', 'sales_manager', 'sales_agent', 'viewer'],
+    'crm-contacts':        ['service_admin', 'sales_manager', 'sales_agent', 'viewer'],
+    'crm-agents':          ['service_admin', 'sales_manager'],
+    'crm-companies':       ['service_admin', 'sales_manager', 'sales_agent', 'viewer'],
+    'crm-tasks':           ['service_admin', 'sales_manager', 'sales_agent', 'viewer'],
+    'crm-documents':       ['service_admin', 'sales_manager', 'sales_agent', 'viewer'],
+    'crm-financials':      ['service_admin', 'sales_manager'],
+    'crm-messaging':       ['service_admin', 'sales_manager', 'sales_agent', 'viewer'],
+    'crm-calendar':        ['service_admin', 'sales_manager', 'sales_agent', 'viewer'],
+    'crm-analytics':       ['service_admin', 'sales_manager'],
+    'crm-workflows':       ['service_admin', 'sales_manager'],
+    'crm-pipelines':       ['service_admin'],
+    'crm-commissions':     ['service_admin', 'sales_manager'],
+    'crm-targets':         ['service_admin', 'sales_manager', 'sales_agent'],
+    'crm-drip-campaigns':  ['service_admin', 'sales_manager'],
+    'crm-team':            ['service_admin'],
+  },
+
+  // ── Project Management ───────────────────────────────────
+  projects: {
+    'pm-overview':      ['service_admin', 'project_manager', 'site_supervisor', 'quantity_surveyor', 'viewer'],
+    'pm-construction':  ['service_admin', 'project_manager', 'site_supervisor'],
+    'pm-procurement':   ['service_admin', 'project_manager', 'quantity_surveyor'],
+    'pm-financials':    ['service_admin', 'project_manager', 'quantity_surveyor'],
+    'pm-documents':     ['service_admin', 'project_manager', 'site_supervisor', 'quantity_surveyor', 'viewer'],
+    'pm-units':         ['service_admin', 'project_manager', 'viewer'],
+    'pm-analytics':     ['service_admin', 'project_manager'],
+    'pm-settings':      ['service_admin'],
+    'pm-team':          ['service_admin'],
+  },
+
+  // ── Property Management ──────────────────────────────────
+  'property-management': {
+    'propmgmt-overview':      ['service_admin', 'property_manager', 'leasing_agent', 'maintenance_coordinator', 'accounts_officer', 'viewer'],
+    'propmgmt-properties':    ['service_admin', 'property_manager', 'leasing_agent', 'maintenance_coordinator', 'accounts_officer', 'viewer'],
+    'propmgmt-messages':      ['service_admin', 'property_manager', 'leasing_agent', 'maintenance_coordinator', 'viewer'],
+    'propmgmt-portfolios':    ['service_admin', 'property_manager', 'accounts_officer'],
+    'propmgmt-applications':  ['service_admin', 'property_manager', 'leasing_agent', 'viewer'],
+    'propmgmt-tenants':       ['service_admin', 'property_manager', 'leasing_agent', 'maintenance_coordinator', 'accounts_officer', 'viewer'],
+    'propmgmt-maintenance':   ['service_admin', 'property_manager', 'maintenance_coordinator', 'viewer'],
+    'propmgmt-documents':     ['service_admin', 'property_manager', 'leasing_agent', 'maintenance_coordinator', 'accounts_officer', 'viewer'],
+    'propmgmt-vendors':       ['service_admin', 'property_manager', 'maintenance_coordinator'],
+    'propmgmt-financials':    ['service_admin', 'accounts_officer'],
+    'propmgmt-calendar':      ['service_admin', 'property_manager', 'leasing_agent', 'maintenance_coordinator', 'viewer'],
+    'propmgmt-team':          ['service_admin'],
+  },
+
+  // ── Analytics ────────────────────────────────────────────
+  analytics: {
+    'analytics-market':        ['service_admin', 'analyst', 'viewer'],
+    'analytics-construction':  ['service_admin', 'analyst', 'viewer'],
+    'analytics-affordability': ['service_admin', 'analyst', 'viewer'],
+    'analytics-valuations':    ['service_admin', 'analyst', 'viewer'],
+    'analytics-ml':            ['service_admin', 'analyst'],
+    'analytics-risk':          ['service_admin', 'analyst', 'viewer'],
+    'analytics-short-stay':    ['service_admin', 'analyst', 'viewer'],
+    'analytics-forecasting':   ['service_admin', 'analyst'],
+    'analytics-geographic':    ['service_admin', 'analyst', 'viewer'],
+    'analytics-management':    ['service_admin'],
+    'analytics-settings':      ['service_admin'],
+    'analytics-team':          ['service_admin'],
+  },
+};
+
+/**
+ * Check if a customer service role can access a specific sub-tab within a service.
+ * service_admin always has full access.
+ * Falls back to hardcoded map when dynamic config is unavailable.
+ */
+export function canCustomerAccessSubTab(
+  serviceRole: string | undefined | null,
+  serviceKey: string,
+  subTabKey: string,
+): boolean {
+  if (!serviceRole) return false;
+  if (serviceRole === 'service_admin') return true;
+
+  // Try dynamic config first
+  const config = getRbacConfig();
+  if (config?.customerSubTabAccess?.[serviceKey]?.[subTabKey]) {
+    return config.customerSubTabAccess[serviceKey][subTabKey].includes(serviceRole);
+  }
+
+  // Fallback to hardcoded
+  const access = FALLBACK_customerSubTabAccess[serviceKey];
+  if (!access) return true; // no scoping defined = allow
+  const allowed = access[subTabKey];
+  if (!allowed) return true; // sub-tab not in map = allow
+  return allowed.includes(serviceRole as CustomerServiceRole);
+}
+
+/**
+ * Build the customer navigation: Overview + subscribed service tabs + shared services.
+ * Customers never see the Admin tab.
+ */
+const TAB_TO_SERVICE_KEY: Record<string, string> = {
+  valuations: 'valuations',
+  deals: 'crm',
+  projects: 'projects',
+  analytics: 'analytics',
+  'property-management': 'property_management',
+};
+
+export function buildCustomerNavigation<T extends { tabKey?: string; key?: string; adminOnly?: boolean }>(
+  navigation: T[],
+  subscribedServices: string[],
+): T[] {
+  return navigation.filter(item => {
+    const tabKey = item.tabKey || item.key || '';
+    // Admin tab: never shown to customers
+    if (item.adminOnly || tabKey === 'admin') return false;
+    // Overview and shared services: always shown
+    if (tabKey === 'overview' || tabKey === 'e-sign') return true;
+    // Service tabs: show only if org has subscription
+    const serviceKey = TAB_TO_SERVICE_KEY[tabKey];
+    if (serviceKey) return subscribedServices.includes(serviceKey);
+    // Unknown tabs: hide by default for customers
+    return false;
+  });
+}
+
+/**
+ * Check if a customer is a service admin (can invite team members).
+ */
+export function isCustomerServiceAdmin(serviceRole: string | undefined | null): boolean {
+  return serviceRole === 'service_admin';
+}
+
+/**
+ * Get the customer's service role for a given service.
+ * Returns from RBAC config (populated by backend from user_service_subscriptions).
+ */
+export function getCustomerServiceRole(serviceKey: string): string | undefined {
+  const config = getRbacConfig();
+  return config?.customerServiceRoles?.[serviceKey];
+}
+
+/**
+ * Roles that a service_admin can invite for each service.
+ * Excludes service_admin (only org owner gets that; cannot invite another admin from UI).
+ */
+export const CUSTOMER_INVITABLE_ROLES: Record<string, Array<{ key: CustomerServiceRole; label: string }>> = {
+  valuations: [
+    { key: 'senior_associate', label: 'Senior Valuation Associate' },
+    { key: 'associate', label: 'Valuation Associate' },
+    { key: 'finance_officer', label: 'Finance Officer' },
+    { key: 'viewer', label: 'Viewer' },
+  ],
+  crm: [
+    { key: 'sales_manager', label: 'Sales Manager' },
+    { key: 'sales_agent', label: 'Sales Agent' },
+    { key: 'viewer', label: 'Viewer' },
+  ],
+  projects: [
+    { key: 'project_manager', label: 'Project Manager' },
+    { key: 'site_supervisor', label: 'Site Supervisor' },
+    { key: 'quantity_surveyor', label: 'Quantity Surveyor' },
+    { key: 'viewer', label: 'Viewer' },
+  ],
+  property_management: [
+    { key: 'property_manager', label: 'Property Manager' },
+    { key: 'leasing_agent', label: 'Leasing Agent' },
+    { key: 'maintenance_coordinator', label: 'Maintenance Coordinator' },
+    { key: 'accounts_officer', label: 'Accounts Officer' },
+    { key: 'viewer', label: 'Viewer' },
+  ],
+  analytics: [
+    { key: 'analyst', label: 'Analyst' },
+    { key: 'viewer', label: 'Viewer' },
+  ],
+};

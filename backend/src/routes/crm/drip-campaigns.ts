@@ -13,56 +13,13 @@ import db from '../../database';
 
 const router = Router();
 
-const ensureTables = async () => {
-    await db.query(`
-        CREATE TABLE IF NOT EXISTS crm_drip_campaigns (
-            id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-            organization_id UUID NOT NULL REFERENCES organizations(id),
-            name VARCHAR(200) NOT NULL,
-            description TEXT,
-            trigger_type VARCHAR(50) NOT NULL DEFAULT 'manual',
-            is_active BOOLEAN DEFAULT false,
-            enrollment_count INTEGER DEFAULT 0,
-            created_by UUID,
-            created_at TIMESTAMPTZ DEFAULT NOW(),
-            updated_at TIMESTAMPTZ DEFAULT NOW(),
-            deleted_at TIMESTAMPTZ
-        )
-    `);
-    await db.query(`
-        CREATE TABLE IF NOT EXISTS crm_drip_campaign_steps (
-            id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-            campaign_id UUID NOT NULL REFERENCES crm_drip_campaigns(id) ON DELETE CASCADE,
-            step_order INTEGER NOT NULL DEFAULT 0,
-            delay_days INTEGER NOT NULL DEFAULT 1,
-            subject VARCHAR(300) NOT NULL,
-            body TEXT NOT NULL,
-            template_id UUID,
-            created_at TIMESTAMPTZ DEFAULT NOW()
-        )
-    `);
-    await db.query(`
-        CREATE TABLE IF NOT EXISTS crm_drip_enrollments (
-            id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-            campaign_id UUID NOT NULL REFERENCES crm_drip_campaigns(id) ON DELETE CASCADE,
-            contact_id UUID NOT NULL,
-            current_step INTEGER DEFAULT 0,
-            status VARCHAR(20) DEFAULT 'active',
-            enrolled_at TIMESTAMPTZ DEFAULT NOW(),
-            last_step_at TIMESTAMPTZ,
-            completed_at TIMESTAMPTZ
-        )
-    `);
-};
-
-let tablesReady = false;
-const ensureOnce = async () => { if (!tablesReady) { await ensureTables(); tablesReady = true; } };
+// Tables created by migration 219_crm_runtime_tables.sql
 
 // ── List campaigns ─────────────────────────────────
 router.get('/drip-campaigns', asyncHandler(async (req: Request, res: Response) => {
     const orgId = await getOrganizationId(req);
     if (!orgId) return res.status(401).json({ error: 'Unauthorized' });
-    await ensureOnce();
+
 
     const result = await db.query(
         `SELECT c.*, 
@@ -81,7 +38,7 @@ router.post('/drip-campaigns', asyncHandler(async (req: Request, res: Response) 
     const orgId = await getOrganizationId(req);
     const userId = await getUserId(req);
     if (!orgId) return res.status(401).json({ error: 'Unauthorized' });
-    await ensureOnce();
+
 
     const { name, description, trigger_type } = req.body;
     if (!name) return res.status(400).json({ error: 'name is required' });
@@ -98,7 +55,7 @@ router.post('/drip-campaigns', asyncHandler(async (req: Request, res: Response) 
 router.get('/drip-campaigns/:id', asyncHandler(async (req: Request, res: Response) => {
     const orgId = await getOrganizationId(req);
     if (!orgId) return res.status(401).json({ error: 'Unauthorized' });
-    await ensureOnce();
+
 
     const campaign = await db.query(
         `SELECT * FROM crm_drip_campaigns WHERE id = $1 AND organization_id = $2 AND deleted_at IS NULL`,
@@ -118,7 +75,7 @@ router.get('/drip-campaigns/:id', asyncHandler(async (req: Request, res: Respons
 router.put('/drip-campaigns/:id', asyncHandler(async (req: Request, res: Response) => {
     const orgId = await getOrganizationId(req);
     if (!orgId) return res.status(401).json({ error: 'Unauthorized' });
-    await ensureOnce();
+
 
     const { name, description, trigger_type, is_active } = req.body;
     const result = await db.query(
@@ -140,7 +97,7 @@ router.put('/drip-campaigns/:id', asyncHandler(async (req: Request, res: Respons
 router.delete('/drip-campaigns/:id', asyncHandler(async (req: Request, res: Response) => {
     const orgId = await getOrganizationId(req);
     if (!orgId) return res.status(401).json({ error: 'Unauthorized' });
-    await ensureOnce();
+
 
     await db.query(
         `UPDATE crm_drip_campaigns SET deleted_at = NOW() WHERE id = $1 AND organization_id = $2`,
@@ -153,7 +110,7 @@ router.delete('/drip-campaigns/:id', asyncHandler(async (req: Request, res: Resp
 router.post('/drip-campaigns/:id/steps', asyncHandler(async (req: Request, res: Response) => {
     const orgId = await getOrganizationId(req);
     if (!orgId) return res.status(401).json({ error: 'Unauthorized' });
-    await ensureOnce();
+
 
     const { step_order, delay_days, subject, body, template_id } = req.body;
     if (!subject || !body) return res.status(400).json({ error: 'subject and body are required' });
@@ -168,7 +125,7 @@ router.post('/drip-campaigns/:id/steps', asyncHandler(async (req: Request, res: 
 
 // ── Delete step ────────────────────────────────────
 router.delete('/drip-campaigns/:campaignId/steps/:stepId', asyncHandler(async (req: Request, res: Response) => {
-    await ensureOnce();
+
     await db.query(`DELETE FROM crm_drip_campaign_steps WHERE id = $1 AND campaign_id = $2`, [req.params.stepId, req.params.campaignId]);
     res.status(204).send();
 }));
@@ -177,7 +134,7 @@ router.delete('/drip-campaigns/:campaignId/steps/:stepId', asyncHandler(async (r
 router.post('/drip-campaigns/:id/enroll', asyncHandler(async (req: Request, res: Response) => {
     const orgId = await getOrganizationId(req);
     if (!orgId) return res.status(401).json({ error: 'Unauthorized' });
-    await ensureOnce();
+
 
     const { contact_ids } = req.body;
     if (!Array.isArray(contact_ids) || contact_ids.length === 0) {
@@ -211,7 +168,7 @@ router.post('/drip-campaigns/:id/enroll', asyncHandler(async (req: Request, res:
 router.get('/drip-campaigns/:id/enrollments', asyncHandler(async (req: Request, res: Response) => {
     const orgId = await getOrganizationId(req);
     if (!orgId) return res.status(401).json({ error: 'Unauthorized' });
-    await ensureOnce();
+
 
     const result = await db.query(
         `SELECT e.*, c.first_name, c.last_name, c.email

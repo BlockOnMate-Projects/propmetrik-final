@@ -217,10 +217,10 @@ export const dealsApi = {
         if (filters?.page) params.set('page', String(filters.page));
         if (filters?.limit) params.set('limit', String(filters.limit));
         if (filters?.search) params.set('search', filters.search);
-        if (filters?.deal_type) params.set('deal_type', filters.deal_type);
-        if (filters?.deal_status) params.set('deal_status', filters.deal_status);
-        if (filters?.pipeline_id) params.set('pipeline_id', filters.pipeline_id);
-        if (filters?.stage_id) params.set('stage_id', filters.stage_id);
+        if (filters?.deal_type) params.set('type', filters.deal_type);
+        if (filters?.deal_status) params.set('status', filters.deal_status);
+        if (filters?.pipeline_id) params.set('pipelineId', filters.pipeline_id);
+        if (filters?.stage_id) params.set('stageId', filters.stage_id);
         if (filters?.assigned_agent) params.set('assigned_agent', filters.assigned_agent);
         if (filters?.min_value) params.set('min_value', String(filters.min_value));
         if (filters?.max_value) params.set('max_value', String(filters.max_value));
@@ -284,7 +284,14 @@ export const dealsApi = {
     getTasks: (id: string) => fetchApi<Task[]>(`${CRM_BASE}/deals/${id}/tasks`),
 
     // Notes
-    getNotes: (id: string) => fetchApi<Note[]>(`${CRM_BASE}/deals/${id}/notes`)
+    getNotes: (id: string) => fetchApi<Note[]>(`${CRM_BASE}/deals/${id}/notes`),
+
+    // Status (won/lost/archived/active)
+    updateStatus: (id: string, data: { status: string; reason?: string; final_value?: number }) =>
+        fetchApi<Deal>(`${CRM_BASE}/deals/${id}/status`, {
+            method: 'POST',
+            body: JSON.stringify(data)
+        }),
 };
 
 // =====================================================
@@ -497,7 +504,7 @@ export const documentsApi = {
         if (metadata.description) formData.append('description', metadata.description);
         if (metadata.tags) formData.append('tags', JSON.stringify(metadata.tags));
 
-        const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api/v1';
+        const API_BASE = process.env.NEXT_PUBLIC_API_URL || '/api/v1';
         const { getSession } = await import('next-auth/react');
         const session = await getSession();
         const token = (session as any)?.accessToken;
@@ -541,7 +548,7 @@ export interface SignatureFilters {
 export const signaturesApi = {
     getAll: (filters?: SignatureFilters) => {
         const params = new URLSearchParams();
-        if (filters?.deal_id) params.set('deal_id', filters.deal_id);
+        if (filters?.deal_id) params.set('dealId', filters.deal_id);
         if (filters?.status) params.set('status', filters.status);
 
         return fetchApi<SignatureEnvelope[]>(`${CRM_BASE}/signatures?${params}`);
@@ -722,28 +729,43 @@ export type DocumentTemplateCategory =
 
 export interface DocumentTemplate {
     id: string;
-    template_name: string;
-    template_description?: string;
+    organization_id?: string;
+    name: string;
+    template_name?: string;
     category: DocumentTemplateCategory;
-    html_content: string;
+    description?: string;
+    template_description?: string;
+    template_html?: string;
+    template_pdf_url?: string;
+    merge_fields?: any[];
+    signature_fields?: any[];
+    signer_roles?: any[];
+    is_system_template?: boolean;
+    is_shared?: boolean;
+    status?: string;
+    version: number;
+    use_count?: number;
+    last_used_at?: string;
+    ghana_legal_requirements?: string;
+    requires_stamp_duty?: boolean;
+    requires_notarization?: boolean;
+    requires_witness?: boolean;
+    witness_count?: number;
+    html_content?: string;
     css_styles?: string;
     header_html?: string;
     footer_html?: string;
-    page_size: string;
-    page_orientation: string;
-    margin_top: string;
-    margin_bottom: string;
-    margin_left: string;
-    margin_right: string;
-    requires_stamp_duty: boolean;
+    page_size?: string;
+    page_orientation?: string;
+    margin_top?: string;
+    margin_bottom?: string;
+    margin_left?: string;
+    margin_right?: string;
     stamp_duty_rate?: number;
-    requires_notarization: boolean;
     notarization_instructions?: string;
-    requires_witness: boolean;
-    witness_count: number;
-    country_code: string;
-    is_active: boolean;
-    version: number;
+    country_code?: string;
+    is_active?: boolean;
+    created_by?: string;
     created_at: string;
     updated_at: string;
 }
@@ -763,15 +785,25 @@ export interface GeneratedDocument {
     id: string;
     deal_id: string;
     template_id: string;
-    template_name: string;
-    document_number: string;
+    template_name?: string;
+    document_number?: string;
+    file_name?: string;
     file_path?: string;
     file_url?: string;
     file_size?: number;
-    generation_status: 'pending' | 'generating' | 'completed' | 'failed';
+    mime_type?: string;
+    status?: string;
+    generation_status?: 'pending' | 'generating' | 'completed' | 'failed';
+    merge_data?: Record<string, any>;
+    esign_envelope_id?: string;
+    signing_url?: string;
+    signed_at?: string;
+    signed_by?: string[];
     generated_at?: string;
     error_message?: string;
+    created_by?: string;
     created_at: string;
+    updated_at?: string;
 }
 
 export interface DocumentChecklistItem {
@@ -877,31 +909,47 @@ export const documentTemplatesApi = {
 // =====================================================
 
 export const documentGenerationApi = {
-    generate: (data: {
+    generate: async (data: {
         template_id: string;
         deal_id: string;
         additional_data?: Record<string, any>;
         output_format?: 'pdf' | 'html';
-    }) =>
-        fetchApi<GeneratedDocument>(`${CRM_BASE}/documents/generate`, {
+    }): Promise<GeneratedDocument> => {
+        const res = await fetchApi<{ document: GeneratedDocument }>(`${CRM_BASE}/documents/generate`, {
             method: 'POST',
-            body: JSON.stringify(data)
-        }),
+            body: JSON.stringify({
+                templateId: data.template_id,
+                dealId: data.deal_id,
+                customData: data.additional_data,
+                outputFormat: data.output_format || 'html',
+            })
+        });
+        return res.document;
+    },
 
-    preview: (data: {
+    preview: async (data: {
         template_id: string;
         deal_id: string;
         additional_data?: Record<string, any>;
-    }) =>
-        fetchApi<{ html: string; mergeData: Record<string, any> }>(`${CRM_BASE}/documents/preview`, {
+    }): Promise<{ html: string; mergeData: Record<string, any> }> => {
+        const res = await fetchApi<{ preview: { html: string; mergeData: Record<string, any> } }>(`${CRM_BASE}/documents/preview`, {
             method: 'POST',
-            body: JSON.stringify(data)
-        }),
+            body: JSON.stringify({
+                templateId: data.template_id,
+                dealId: data.deal_id,
+                customData: data.additional_data,
+            })
+        });
+        return res.preview;
+    },
 
-    getById: (id: string) => fetchApi<GeneratedDocument>(`${CRM_BASE}/documents/${id}`),
+    getById: (id: string) => fetchApi<GeneratedDocument>(`${CRM_BASE}/generated-documents/${id}`),
+
+    getDownloadUrl: (id: string) =>
+        fetchApi<{ url: string }>(`${CRM_BASE}/generated-documents/${id}/download`),
 
     delete: (id: string) =>
-        fetchApi<void>(`${CRM_BASE}/documents/${id}`, {
+        fetchApi<void>(`${CRM_BASE}/generated-documents/${id}`, {
             method: 'DELETE'
         }),
 
@@ -910,7 +958,7 @@ export const documentGenerationApi = {
         fetchApi<DocumentChecklistItem[]>(`${CRM_BASE}/deals/${dealId}/document-checklist`),
 
     getDealDocuments: (dealId: string) =>
-        fetchApi<GeneratedDocument[]>(`${CRM_BASE}/deals/${dealId}/documents`)
+        fetchApi<GeneratedDocument[]>(`${CRM_BASE}/deals/${dealId}/generated-documents`)
 };
 
 // =====================================================
@@ -1094,6 +1142,91 @@ export const emailsApi = {
 };
 
 // =====================================================
+// =====================================================
+// DRIP CAMPAIGNS API
+// =====================================================
+
+export interface DripCampaign {
+    id: string;
+    organization_id: string;
+    name: string;
+    description: string | null;
+    trigger_type: string;
+    is_active: boolean;
+    enrollment_count: number;
+    step_count?: number;
+    active_enrollments?: number;
+    created_by: string | null;
+    created_at: string;
+    updated_at: string;
+    deleted_at: string | null;
+    steps?: DripCampaignStep[];
+}
+
+export interface DripCampaignStep {
+    id: string;
+    campaign_id: string;
+    step_order: number;
+    delay_days: number;
+    subject: string;
+    body: string;
+    template_id: string | null;
+    created_at: string;
+}
+
+export interface DripEnrollment {
+    id: string;
+    campaign_id: string;
+    contact_id: string;
+    current_step: number;
+    status: string;
+    enrolled_at: string;
+    last_step_at: string | null;
+    completed_at: string | null;
+    first_name?: string;
+    last_name?: string;
+    email?: string;
+}
+
+export const dripCampaignsApi = {
+    getAll: () => fetchApi<DripCampaign[]>(`${CRM_BASE}/drip-campaigns`),
+
+    getById: (id: string) => fetchApi<DripCampaign>(`${CRM_BASE}/drip-campaigns/${id}`),
+
+    create: (data: { name: string; description?: string; trigger_type?: string }) =>
+        fetchApi<DripCampaign>(`${CRM_BASE}/drip-campaigns`, {
+            method: 'POST',
+            body: JSON.stringify(data),
+        }),
+
+    update: (id: string, data: Partial<Pick<DripCampaign, 'name' | 'description' | 'trigger_type' | 'is_active'>>) =>
+        fetchApi<DripCampaign>(`${CRM_BASE}/drip-campaigns/${id}`, {
+            method: 'PUT',
+            body: JSON.stringify(data),
+        }),
+
+    delete: (id: string) =>
+        fetchApi<void>(`${CRM_BASE}/drip-campaigns/${id}`, { method: 'DELETE' }),
+
+    addStep: (campaignId: string, data: { step_order?: number; delay_days?: number; subject: string; body: string; template_id?: string }) =>
+        fetchApi<DripCampaignStep>(`${CRM_BASE}/drip-campaigns/${campaignId}/steps`, {
+            method: 'POST',
+            body: JSON.stringify(data),
+        }),
+
+    deleteStep: (campaignId: string, stepId: string) =>
+        fetchApi<void>(`${CRM_BASE}/drip-campaigns/${campaignId}/steps/${stepId}`, { method: 'DELETE' }),
+
+    enroll: (campaignId: string, contact_ids: string[]) =>
+        fetchApi<{ enrolled: number }>(`${CRM_BASE}/drip-campaigns/${campaignId}/enroll`, {
+            method: 'POST',
+            body: JSON.stringify({ contact_ids }),
+        }),
+
+    getEnrollments: (campaignId: string) =>
+        fetchApi<DripEnrollment[]>(`${CRM_BASE}/drip-campaigns/${campaignId}/enrollments`),
+};
+
 // COMBINED CRM API EXPORT
 // =====================================================
 
@@ -1111,6 +1244,7 @@ export const crmApi = {
     documentGeneration: documentGenerationApi,
     ai: aiApi,
     emails: emailsApi,
+    dripCampaigns: dripCampaignsApi,
 };
 
 export default crmApi;

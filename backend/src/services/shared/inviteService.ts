@@ -53,6 +53,8 @@ export interface CreateInvitationInput {
   teamId?: string;
   expiryDays?: number;
   skipKeycloak?: boolean;
+  serviceKey?: string;    // which service the customer is being invited to
+  serviceRole?: string;   // their role in that service (defaults to 'service_admin')
 }
 
 export interface AcceptInvitationInput {
@@ -79,6 +81,8 @@ export interface Invitation {
   propertyId: string | null;
   tenancyId: string | null;
   department: string | null;
+  serviceKey: string | null;
+  serviceRole: string | null;
   keycloakProvisioned: boolean;
   emailSentAt: Date | null;
   acceptedAt: Date | null;
@@ -144,6 +148,23 @@ class InviteService {
         new Error(`Invalid role: ${role}. Must be one of: ${[...INVITABLE_ROLES].join(', ')}`),
         { statusCode: 400 },
       );
+    }
+
+    // Validate customer service role
+    if (input.userType === 'customer') {
+      if (!input.serviceKey) {
+        throw new Error('serviceKey is required for customer invitations');
+      }
+      const serviceRole = input.serviceRole || 'service_admin';
+
+      // Validate role is valid for the service
+      const roleCheck = await pool.query(
+        'SELECT 1 FROM customer_service_role_config WHERE service_key = $1 AND service_role = $2',
+        [input.serviceKey, serviceRole]
+      );
+      if (roleCheck.rows.length === 0) {
+        throw new Error(`Role '${serviceRole}' is not valid for service '${input.serviceKey}'`);
+      }
     }
 
     // 2) Check for existing pending invitation
@@ -216,19 +237,22 @@ class InviteService {
         organization_id, invited_by_id, token, status,
         property_id, tenancy_id, department, team_id,
         keycloak_user_id, keycloak_provisioned, personal_message,
+        service_key, service_role,
         expires_at
       ) VALUES (
         $1, $2, $3, $4, $5::user_role_enum, $6,
         $7, $8, $9, 'pending',
         $10, $11, $12, $13,
         $14, $15, $16,
-        NOW() + ($17 || ' days')::INTERVAL
+        $17, $18,
+        NOW() + ($19 || ' days')::INTERVAL
       ) RETURNING *`,
       [
         id, normalizedEmail, firstName || null, lastName || null, role, userType,
         organizationId, invitedById, token,
         propertyId || null, tenancyId || null, department || null, teamId || null,
         keycloakUserId, keycloakProvisioned, message || null,
+        input.serviceKey || null, input.serviceRole || 'service_admin',
         String(expiryDays),
       ],
     );
@@ -382,7 +406,26 @@ class InviteService {
         );
       }
 
-      // 6) Mark invitation as accepted
+      // 6) Create service subscription for customer invites
+      if (inv.service_key && inv.service_role) {
+        const svcResult = await client.query(
+          'SELECT id FROM platform_services WHERE service_key = $1',
+          [inv.service_key]
+        );
+        if (svcResult.rows.length > 0) {
+          const serviceId = svcResult.rows[0].id;
+          await client.query(
+            `INSERT INTO user_service_subscriptions (user_id, service_id, organization_id, tier, status, service_role)
+             VALUES ($1, $2, $3, $4, 'active', $5::customer_service_role)
+             ON CONFLICT (user_id, service_id) DO UPDATE SET
+               service_role = EXCLUDED.service_role,
+               status = 'active'`,
+            [userId, serviceId, inv.organization_id, orgTier || 'starter', inv.service_role]
+          );
+        }
+      }
+
+      // 7) Mark invitation as accepted
       await client.query(
         `UPDATE unified_invitations
          SET status = 'accepted', accepted_by_user_id = $1,
@@ -449,7 +492,7 @@ class InviteService {
    */
   async listInvitations(
     organizationId: string,
-    filters?: { status?: InvitationStatus; userType?: InviteUserType },
+    filters?: { status?: InvitationStatus; userType?: InviteUserType; serviceKey?: string },
   ): Promise<Invitation[]> {
     let query = `
       SELECT ui.*, u.display_name AS invited_by_name, o.name AS organization_name
@@ -470,6 +513,12 @@ class InviteService {
     if (filters?.userType) {
       query += ` AND ui.user_type = $${idx}`;
       params.push(filters.userType);
+      idx++;
+    }
+
+    if (filters?.serviceKey) {
+      query += ` AND ui.service_key = $${idx}`;
+      params.push(filters.serviceKey);
       idx++;
     }
 
@@ -694,6 +743,8 @@ class InviteService {
       propertyId: row.property_id,
       tenancyId: row.tenancy_id,
       department: row.department,
+      serviceKey: row.service_key || null,
+      serviceRole: row.service_role || null,
       keycloakProvisioned: row.keycloak_provisioned ?? false,
       emailSentAt: row.email_sent_at,
       acceptedAt: row.accepted_at,

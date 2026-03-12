@@ -1,7 +1,7 @@
 'use client'
 
-import React, { useState } from 'react'
-import { useRouter } from 'next/navigation'
+import React, { useState, useEffect } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { cn } from '@/lib/utils'
 import { 
@@ -78,7 +78,12 @@ function FormSection({ title, children }: { title: string; children: React.React
 
 export default function SubmitPropertyPage() {
     const router = useRouter()
+    const searchParams = useSearchParams()
+    const editId = searchParams.get('editId')
+    const isEditMode = !!editId
+
     const [isSubmitting, setIsSubmitting] = useState(false)
+    const [isLoading, setIsLoading] = useState(false)
     const [error, setError] = useState<string | null>(null)
     const [pendingImageFiles, setPendingImageFiles] = useState<File[]>([])
 
@@ -102,6 +107,38 @@ export default function SubmitPropertyPage() {
         owner_email: '',
     })
 
+    // Load existing property data when editing
+    useEffect(() => {
+        if (!editId) return
+        setIsLoading(true)
+        authedFetch(`${API_BASE}/crm/properties/${editId}`)
+            .then(res => res.json())
+            .then(data => {
+                const p = data.property || data
+                setFormData({
+                    property_name: p.property_name || '',
+                    property_type: p.property_type || 'house',
+                    listing_type: p.listing_type || 'sale',
+                    address: p.address || '',
+                    city: p.city || '',
+                    region: p.region || 'Greater Accra',
+                    digital_address: p.digital_address || '',
+                    price: p.price?.toString() || '',
+                    currency: p.currency || 'GHS',
+                    bedrooms: p.bedrooms?.toString() || '',
+                    bathrooms: p.bathrooms?.toString() || '',
+                    area_sqm: p.area_sqm?.toString() || '',
+                    land_size_sqm: p.land_size_sqm?.toString() || '',
+                    description: p.description || '',
+                    owner_name: p.owner_name || '',
+                    owner_contact: p.owner_contact || '',
+                    owner_email: p.owner_email || '',
+                })
+            })
+            .catch(err => setError('Failed to load property: ' + err.message))
+            .finally(() => setIsLoading(false))
+    }, [editId])
+
     const handleChange = (field: keyof PropertyFormData, value: string) => {
         setFormData(prev => ({ ...prev, [field]: value }))
     }
@@ -112,8 +149,11 @@ export default function SubmitPropertyPage() {
         setError(null)
 
         try {
-            const response = await authedFetch(`${API_BASE}/crm/properties/submit`, {
-                method: 'POST',
+            const url = isEditMode
+                ? `${API_BASE}/crm/properties/${editId}`
+                : `${API_BASE}/crm/properties/submit`
+            const response = await authedFetch(url, {
+                method: isEditMode ? 'PUT' : 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                 },
@@ -133,23 +173,23 @@ export default function SubmitPropertyPage() {
             }
 
             const property = await response.json()
+            const propertyId = isEditMode ? editId : (property.id || property.property?.id)
 
             // Upload images if any were added
-            if (pendingImageFiles.length > 0) {
+            if (pendingImageFiles.length > 0 && propertyId) {
                 try {
                     const formData = new FormData()
                     pendingImageFiles.forEach(file => formData.append('images', file))
 
-                    await authedFetch(`${API_BASE}/crm/properties/${property.id}/images`, {
+                    await authedFetch(`${API_BASE}/crm/properties/${propertyId}/images`, {
                         method: 'POST',
                         body: formData,
                     })
                 } catch (imgErr) {
-                    console.warn('Images uploaded partially or failed, property still created:', imgErr)
                 }
             }
 
-            router.push(`/dashboard/deals/properties/${property.id}`)
+            router.push(`/dashboard/deals/properties/${propertyId}`)
         } catch (err) {
             console.error('Submit error:', err)
             setError(err instanceof Error ? err.message : 'Failed to submit property')
@@ -169,13 +209,20 @@ export default function SubmitPropertyPage() {
                         </Button>
                     </Link>
                     <div>
-                        <h1 className="font-mono text-xl text-foreground">Submit Property</h1>
+                        <h1 className="font-mono text-xl text-foreground">{isEditMode ? 'Edit Property' : 'Submit Property'}</h1>
                         <p className="font-mono text-[10px] text-muted-foreground mt-1">
-                            ADD A NEW CLIENT PROPERTY TO THE CRM
+                            {isEditMode ? 'UPDATE PROPERTY DETAILS' : 'ADD A NEW CLIENT PROPERTY TO THE CRM'}
                         </p>
                     </div>
                 </div>
             </div>
+
+            {isLoading && (
+                <div className="flex items-center justify-center py-12">
+                    <Loader2 className="h-6 w-6 animate-spin text-primary" />
+                    <span className="ml-2 font-mono text-sm text-muted-foreground">Loading property...</span>
+                </div>
+            )}
 
             {error && (
                 <div className="border border-red-500/30 bg-red-500/10 p-4 rounded">
@@ -194,7 +241,7 @@ export default function SubmitPropertyPage() {
                                 onChange={(e) => handleChange('property_name', e.target.value)}
                                 placeholder="e.g., 4-Bedroom Executive House in East Legon"
                                 required
-                                className="mt-1 bg-black border-border text-foreground font-mono text-sm"
+                                className="mt-1 bg-zinc-900 border-zinc-700 text-white font-mono text-sm"
                             />
                         </div>
 
@@ -204,7 +251,7 @@ export default function SubmitPropertyPage() {
                                 value={formData.property_type}
                                 onValueChange={(v) => handleChange('property_type', v)}
                             >
-                                <SelectTrigger className="mt-1 bg-black border-border text-foreground font-mono text-sm">
+                                <SelectTrigger className="mt-1 bg-zinc-900 border-zinc-700 text-white font-mono text-sm">
                                     <SelectValue />
                                 </SelectTrigger>
                                 <SelectContent className="bg-card border-border">
@@ -238,7 +285,7 @@ export default function SubmitPropertyPage() {
                                 value={formData.listing_type}
                                 onValueChange={(v) => handleChange('listing_type', v)}
                             >
-                                <SelectTrigger className="mt-1 bg-black border-border text-foreground font-mono text-sm">
+                                <SelectTrigger className="mt-1 bg-zinc-900 border-zinc-700 text-white font-mono text-sm">
                                     <SelectValue />
                                 </SelectTrigger>
                                 <SelectContent className="bg-card border-border">
@@ -256,7 +303,7 @@ export default function SubmitPropertyPage() {
                                 onChange={(e) => handleChange('description', e.target.value)}
                                 placeholder="Describe the property..."
                                 rows={3}
-                                className="mt-1 bg-black border-border text-foreground font-mono text-sm"
+                                className="mt-1 bg-zinc-900 border-zinc-700 text-white font-mono text-sm"
                             />
                         </div>
                     </div>
@@ -334,7 +381,7 @@ export default function SubmitPropertyPage() {
                                 onChange={(e) => handleChange('address', e.target.value)}
                                 placeholder="Street address"
                                 required
-                                className="mt-1 bg-black border-border text-foreground font-mono text-sm"
+                                className="mt-1 bg-zinc-900 border-zinc-700 text-white font-mono text-sm"
                             />
                         </div>
 
@@ -345,7 +392,7 @@ export default function SubmitPropertyPage() {
                                 onChange={(e) => handleChange('city', e.target.value)}
                                 placeholder="e.g., Accra"
                                 required
-                                className="mt-1 bg-black border-border text-foreground font-mono text-sm"
+                                className="mt-1 bg-zinc-900 border-zinc-700 text-white font-mono text-sm"
                             />
                         </div>
 
@@ -355,7 +402,7 @@ export default function SubmitPropertyPage() {
                                 value={formData.region}
                                 onValueChange={(v) => handleChange('region', v)}
                             >
-                                <SelectTrigger className="mt-1 bg-black border-border text-foreground font-mono text-sm">
+                                <SelectTrigger className="mt-1 bg-zinc-900 border-zinc-700 text-white font-mono text-sm">
                                     <SelectValue />
                                 </SelectTrigger>
                                 <SelectContent className="bg-card border-border max-h-[200px]">
@@ -374,7 +421,7 @@ export default function SubmitPropertyPage() {
                                 value={formData.digital_address}
                                 onChange={(e) => handleChange('digital_address', e.target.value)}
                                 placeholder="e.g., GA-123-4567"
-                                className="mt-1 bg-black border-border text-foreground font-mono text-sm"
+                                className="mt-1 bg-zinc-900 border-zinc-700 text-white font-mono text-sm"
                             />
                         </div>
                     </div>
@@ -393,7 +440,7 @@ export default function SubmitPropertyPage() {
                                 onChange={(e) => handleChange('price', e.target.value)}
                                 placeholder="0.00"
                                 required
-                                className="mt-1 bg-black border-border text-foreground font-mono text-sm"
+                                className="mt-1 bg-zinc-900 border-zinc-700 text-white font-mono text-sm"
                             />
                         </div>
 
@@ -403,7 +450,7 @@ export default function SubmitPropertyPage() {
                                 value={formData.currency}
                                 onValueChange={(v) => handleChange('currency', v)}
                             >
-                                <SelectTrigger className="mt-1 bg-black border-border text-foreground font-mono text-sm">
+                                <SelectTrigger className="mt-1 bg-zinc-900 border-zinc-700 text-white font-mono text-sm">
                                     <SelectValue />
                                 </SelectTrigger>
                                 <SelectContent className="bg-card border-border">
@@ -429,7 +476,7 @@ export default function SubmitPropertyPage() {
                                     onChange={(e) => handleChange('bedrooms', e.target.value)}
                                     placeholder="0"
                                     min="0"
-                                    className="mt-1 bg-black border-border text-foreground font-mono text-sm"
+                                    className="mt-1 bg-zinc-900 border-zinc-700 text-white font-mono text-sm"
                                 />
                             </div>
 
@@ -441,7 +488,7 @@ export default function SubmitPropertyPage() {
                                     onChange={(e) => handleChange('bathrooms', e.target.value)}
                                     placeholder="0"
                                     min="0"
-                                    className="mt-1 bg-black border-border text-foreground font-mono text-sm"
+                                    className="mt-1 bg-zinc-900 border-zinc-700 text-white font-mono text-sm"
                                 />
                             </div>
 
@@ -453,7 +500,7 @@ export default function SubmitPropertyPage() {
                                     onChange={(e) => handleChange('area_sqm', e.target.value)}
                                     placeholder="0"
                                     min="0"
-                                    className="mt-1 bg-black border-border text-foreground font-mono text-sm"
+                                    className="mt-1 bg-zinc-900 border-zinc-700 text-white font-mono text-sm"
                                 />
                             </div>
 
@@ -465,7 +512,7 @@ export default function SubmitPropertyPage() {
                                     onChange={(e) => handleChange('land_size_sqm', e.target.value)}
                                     placeholder="0"
                                     min="0"
-                                    className="mt-1 bg-black border-border text-foreground font-mono text-sm"
+                                    className="mt-1 bg-zinc-900 border-zinc-700 text-white font-mono text-sm"
                                 />
                             </div>
                         </div>
@@ -484,7 +531,7 @@ export default function SubmitPropertyPage() {
                                     placeholder="0"
                                     required
                                     min="0"
-                                    className="mt-1 bg-black border-border text-foreground font-mono text-sm"
+                                    className="mt-1 bg-zinc-900 border-zinc-700 text-white font-mono text-sm"
                                 />
                             </div>
                         </div>
@@ -502,7 +549,7 @@ export default function SubmitPropertyPage() {
                                     value={formData.owner_name}
                                     onChange={(e) => handleChange('owner_name', e.target.value)}
                                     placeholder="Full name"
-                                    className="pl-10 bg-black border-border text-foreground font-mono text-sm"
+                                    className="pl-10 bg-zinc-900 border-zinc-700 text-white font-mono text-sm"
                                 />
                             </div>
                         </div>
@@ -515,7 +562,7 @@ export default function SubmitPropertyPage() {
                                     value={formData.owner_contact}
                                     onChange={(e) => handleChange('owner_contact', e.target.value)}
                                     placeholder="+233..."
-                                    className="pl-10 bg-black border-border text-foreground font-mono text-sm"
+                                    className="pl-10 bg-zinc-900 border-zinc-700 text-white font-mono text-sm"
                                 />
                             </div>
                         </div>
@@ -529,7 +576,7 @@ export default function SubmitPropertyPage() {
                                     value={formData.owner_email}
                                     onChange={(e) => handleChange('owner_email', e.target.value)}
                                     placeholder="owner@example.com"
-                                    className="pl-10 bg-black border-border text-foreground font-mono text-sm"
+                                    className="pl-10 bg-zinc-900 border-zinc-700 text-white font-mono text-sm"
                                 />
                             </div>
                         </div>
@@ -551,12 +598,12 @@ export default function SubmitPropertyPage() {
                         {isSubmitting ? (
                             <>
                                 <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                                SUBMITTING...
+                                {isEditMode ? 'SAVING...' : 'SUBMITTING...'}
                             </>
                         ) : (
                             <>
                                 <Save className="h-4 w-4 mr-2" />
-                                SUBMIT PROPERTY
+                                {isEditMode ? 'SAVE CHANGES' : 'SUBMIT PROPERTY'}
                             </>
                         )}
                     </Button>

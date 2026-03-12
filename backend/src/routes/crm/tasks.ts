@@ -6,7 +6,7 @@
  */
 
 import { Router, Request, Response } from 'express';
-import { getOrganizationId, getUserId, asyncHandler } from './helpers';
+import { getOrganizationId, getUserId, asyncHandler, getUserRole } from './helpers';
 import { taskService } from '../../services/crm-deal-management';
 import { TaskPriority, TaskStatus } from '../../services/crm-deal-management/types';
 import { validate } from '../../middleware/validation';
@@ -24,10 +24,15 @@ router.get('/tasks', asyncHandler(async (req: Request, res: Response) => {
         return res.status(401).json({ error: 'Organization not found' });
     }
 
+    // Agent role: auto-scope to only their assigned tasks (uses user ID, not agent ID)
+    const role = getUserRole(req);
+    const userId = await getUserId(req);
+    const agentAssignedTo = role === 'agent' && userId ? userId : undefined;
+
     const filters = {
         status: req.query.status as TaskStatus | undefined,
         priority: req.query.priority as TaskPriority | undefined,
-        assigned_to: req.query.assignedTo as string | undefined,
+        assigned_to: agentAssignedTo || (req.query.assignedTo as string | undefined),
         deal_id: req.query.dealId as string | undefined,
         contact_id: req.query.contactId as string | undefined,
         property_id: req.query.propertyId as string | undefined,

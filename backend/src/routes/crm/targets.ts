@@ -9,6 +9,8 @@ import { Router, Request, Response } from 'express';
 import { getOrganizationId, asyncHandler } from './helpers';
 import { targetService } from '../../services/crm-deal-management/targetService';
 import { createCustomRateLimiter } from '../../middleware/rateLimiter';
+import { validate } from '../../middleware/validation';
+import { createTargetBody, updateTargetBody, bulkCreateTargetBody, createTargetCheckpointBody } from '../../middleware/schemas/crm.schemas';
 
 const bulkRateLimiter = createCustomRateLimiter('crm_bulk_targets', { points: 5, duration: 60, blockDuration: 120 });
 
@@ -40,7 +42,7 @@ router.get('/targets', asyncHandler(async (req: Request, res: Response) => {
     res.json({ targets });
 }));
 
-router.post('/targets', asyncHandler(async (req: Request, res: Response) => {
+router.post('/targets', validate(createTargetBody), asyncHandler(async (req: Request, res: Response) => {
     const organizationId = await getOrganizationId(req);
     if (!organizationId || organizationId === '00000000-0000-0000-0000-000000000000') {
         return res.status(401).json({ error: 'Organization not found' });
@@ -57,7 +59,7 @@ router.post('/targets', asyncHandler(async (req: Request, res: Response) => {
     res.status(201).json({ target });
 }));
 
-router.post('/targets/bulk', bulkRateLimiter, asyncHandler(async (req: Request, res: Response) => {
+router.post('/targets/bulk', bulkRateLimiter, validate(bulkCreateTargetBody), asyncHandler(async (req: Request, res: Response) => {
     const organizationId = await getOrganizationId(req);
     if (!organizationId || organizationId === '00000000-0000-0000-0000-000000000000') {
         return res.status(401).json({ error: 'Organization not found' });
@@ -114,7 +116,7 @@ router.get('/targets/:id', asyncHandler(async (req: Request, res: Response) => {
     res.json({ target });
 }));
 
-router.patch('/targets/:id', asyncHandler(async (req: Request, res: Response) => {
+router.patch('/targets/:id', validate(updateTargetBody), asyncHandler(async (req: Request, res: Response) => {
     const target = await targetService.update(req.params.id, req.body);
     if (!target) {
         return res.status(404).json({ error: 'Target not found' });
@@ -141,7 +143,7 @@ router.get('/targets/:id/checkpoints', asyncHandler(async (req: Request, res: Re
     res.json({ checkpoints });
 }));
 
-router.post('/targets/:id/checkpoints', asyncHandler(async (req: Request, res: Response) => {
+router.post('/targets/:id/checkpoints', validate(createTargetCheckpointBody), asyncHandler(async (req: Request, res: Response) => {
     const { checkpoint_number, expected_value, actual_value, notes } = req.body;
     const checkpoint = await targetService.createCheckpoint(
         req.params.id,

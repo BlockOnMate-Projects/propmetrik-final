@@ -33,6 +33,30 @@ export async function getUserId(req: Request): Promise<string | undefined> {
     return id;
 }
 
+/** Get the primary role from the authenticated user */
+export function getUserRole(req: Request): string {
+    const roles = [
+        ...(req.user?.realmRoles || []),
+        ...(req.user?.clientRoles || []),
+    ];
+    return roles[0] || '';
+}
+
+/** If the user has the `agent` role, resolve their agents table ID */
+export async function getAgentIdForUser(req: Request): Promise<string | null> {
+    const role = getUserRole(req);
+    if (role !== 'agent') return null;
+
+    const userId = (req as any).user?.id || (req as any).user?.sub;
+    if (!userId) return null;
+
+    const result = await db.query(
+        'SELECT id FROM agents WHERE user_id = $1 LIMIT 1',
+        [userId],
+    );
+    return result.rows[0]?.id || null;
+}
+
 export function asyncHandler(fn: (req: Request, res: Response, next: NextFunction) => Promise<void | any>) {
     return (req: Request, res: Response, next: NextFunction) => {
         Promise.resolve(fn(req, res, next)).catch(next);

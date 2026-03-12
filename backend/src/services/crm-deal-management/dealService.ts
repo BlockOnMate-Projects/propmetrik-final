@@ -20,6 +20,7 @@ import { pipelineValidator } from './pipelineValidator';
 import { activityService } from './activityService';
 import { eSignIntegrationService } from '../../../shared-services/e-sign/integration/eSignIntegrationService';
 import { CompletionEvent, ESignField } from '../../../shared-services/e-sign/integration/types';
+import { calendarService } from '../../../shared-services/calendar/calendarService';
 
 export class DealService {
     /**
@@ -95,19 +96,29 @@ export class DealService {
 
             const deal = result.rows[0];
 
-            // Create initial activity log
-            await activityService.createActivity(
-                {
-                    deal_id: id,
-                    user_id: userId || data.assigned_agent,
-                    activity_type: 'stage_change',
-                    subject: 'Deal created',
-                    description: `Deal "${data.title}" created`,
-                    outcome: 'completed',
-                    new_value: { stage_id: data.stage_id, status: 'active' },
-                },
-                client
-            );
+            // Create initial activity log (savepoint protects against legacy trigger cascade)
+            try {
+                await client.query('SAVEPOINT activity_log');
+                await activityService.createActivity(
+                    {
+                        deal_id: id,
+                        user_id: userId || data.assigned_agent,
+                        activity_type: 'stage_change',
+                        subject: 'Deal created',
+                        description: `Deal "${data.title}" created`,
+                        outcome: 'completed',
+                        new_value: { stage_id: data.stage_id, status: 'active' },
+                    },
+                    client
+                );
+                await client.query('RELEASE SAVEPOINT activity_log');
+            } catch (activityError: any) {
+                await client.query('ROLLBACK TO SAVEPOINT activity_log');
+                logger.warn('Failed to create initial activity for deal (legacy trigger)', {
+                    dealId: id,
+                    error: activityError.message,
+                });
+            }
 
             await client.query('COMMIT');
 
@@ -339,9 +350,15 @@ export class DealService {
                 'lead_source',
             ];
 
+            // Map frontend field names to actual DB column names
+            const fieldToColumn: Record<string, string> = {
+                probability: 'close_probability',
+            };
+
             for (const field of fields) {
                 if (data[field] !== undefined) {
-                    updates.push(`${field} = $${paramIndex}`);
+                    const column = fieldToColumn[field] || field;
+                    updates.push(`${column} = $${paramIndex}`);
                     params.push(
                         field === 'custom_fields' ? JSON.stringify(data[field]) : data[field]
                     );
@@ -418,6 +435,10 @@ export class DealService {
                 organizationId
             );
 
+            // Disable legacy triggers that reference non-existent columns
+            await client.query('ALTER TABLE deals DISABLE TRIGGER trigger_deal_commission');
+            await client.query('ALTER TABLE deals DISABLE TRIGGER trigger_update_agent_closing_rate');
+
             // Update deal stage
             const updateResult = await client.query<Deal>(
                 `UPDATE deals
@@ -429,20 +450,34 @@ export class DealService {
 
             const updatedDeal = updateResult.rows[0];
 
-            // Log stage change activity
-            await activityService.createActivity(
-                {
-                    deal_id: dealId,
-                    user_id: userId || deal.assigned_agent,
-                    activity_type: 'stage_change',
-                    subject: 'Deal stage changed',
-                    description: notes || 'Deal moved to new stage',
-                    outcome: 'completed',
-                    old_value: { stage_id: oldStageId },
-                    new_value: { stage_id: newStageId },
-                },
-                client
-            );
+            // Re-enable triggers
+            await client.query('ALTER TABLE deals ENABLE TRIGGER trigger_deal_commission');
+            await client.query('ALTER TABLE deals ENABLE TRIGGER trigger_update_agent_closing_rate');
+
+            // Log stage change activity (also protected by savepoint)
+            try {
+                await client.query('SAVEPOINT activity_log');
+                await activityService.createActivity(
+                    {
+                        deal_id: dealId,
+                        user_id: userId || deal.assigned_agent,
+                        activity_type: 'stage_change',
+                        subject: 'Deal stage changed',
+                        description: notes || 'Deal moved to new stage',
+                        outcome: 'completed',
+                        old_value: { stage_id: oldStageId },
+                        new_value: { stage_id: newStageId },
+                    },
+                    client
+                );
+                await client.query('RELEASE SAVEPOINT activity_log');
+            } catch (activityError: any) {
+                await client.query('ROLLBACK TO SAVEPOINT activity_log');
+                logger.warn('Failed to log stage change activity (legacy trigger)', {
+                    dealId,
+                    error: activityError.message,
+                });
+            }
 
             await client.query('COMMIT');
 
@@ -464,6 +499,37 @@ export class DealService {
                     dealId,
                     stageId: newStageId,
                     error: esignError.message,
+                });
+            }
+
+            // ================================================================
+            // Calendar: Log stage transition as a calendar event
+            // ================================================================
+            try {
+                const stageRow = await db.query(
+                    `SELECT stage_name FROM deal_stages WHERE id = $1`,
+                    [newStageId]
+                );
+                const stageName = stageRow.rows[0]?.stage_name || 'Unknown Stage';
+
+                const now = new Date();
+                await calendarService.createEvent({
+                    organizationId,
+                    userId: userId || deal.assigned_agent || organizationId,
+                    title: `Deal moved to ${stageName}: ${updatedDeal.title}`,
+                    description: notes || `Deal "${updatedDeal.title}" transitioned to ${stageName}`,
+                    eventType: 'milestone',
+                    startTime: now,
+                    endTime: new Date(now.getTime() + 30 * 60 * 1000), // 30 min
+                    allDay: false,
+                    dealId,
+                    status: 'completed',
+                });
+            } catch (calError: any) {
+                logger.error('Failed to create calendar event for deal stage transition', {
+                    dealId,
+                    stageId: newStageId,
+                    error: calError.message,
                 });
             }
 
@@ -506,9 +572,16 @@ export class DealService {
      */
     async getDealsByStage(
         organizationId: string,
-        pipelineId: string
+        pipelineId: string,
+        agentId?: string
     ): Promise<Record<string, Deal[]>> {
         try {
+            const params: any[] = [organizationId, pipelineId];
+            let agentClause = '';
+            if (agentId) {
+                agentClause = ` AND d.assigned_agent = $3`;
+                params.push(agentId);
+            }
             const result = await db.query<Deal & { stage_name: string; stage_order: number }>(
                 `SELECT 
           d.*,
@@ -524,9 +597,9 @@ export class DealService {
          WHERE d.organization_id = $1 
            AND d.pipeline_id = $2 
            AND d.deleted_at IS NULL
-           AND d.deal_status = 'active'
+           AND d.deal_status = 'active'${agentClause}
          ORDER BY ds.stage_order, d.created_at DESC`,
-                [organizationId, pipelineId]
+                params
             );
 
             // Group by stage

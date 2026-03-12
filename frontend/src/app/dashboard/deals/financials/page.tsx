@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState } from 'react'
+import React, { useState, lazy, Suspense } from 'react'
 import {
     DollarSign,
     CreditCard,
@@ -12,13 +12,15 @@ import {
     Users,
     Loader2,
 } from 'lucide-react'
+
+const RevenueForecaster = lazy(() => import('@/components/crm/RevenueForecaster'))
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import PaymentSettings from '@/components/property-management/PaymentSettings'
 import { crmPaymentConfigApi } from '@/lib/crm-api'
 
 export default function DealsFinancialsPage() {
-    const [activeTab, setActiveTab] = useState<'overview' | 'payment-settings'>('overview')
+    const [activeTab, setActiveTab] = useState<'overview' | 'payment-settings' | 'forecast'>('overview')
 
     return (
         <div className="space-y-6">
@@ -58,7 +60,25 @@ export default function DealsFinancialsPage() {
                     <CreditCard className="inline h-3.5 w-3.5 mr-1.5 -mt-0.5" />
                     Payment Settings
                 </button>
+                <button
+                    onClick={() => setActiveTab('forecast')}
+                    className={`px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${
+                        activeTab === 'forecast'
+                            ? 'border-primary text-primary'
+                            : 'border-transparent text-muted-foreground hover:text-foreground'
+                    }`}
+                >
+                    <TrendingUp className="inline h-3.5 w-3.5 mr-1.5 -mt-0.5" />
+                    Forecast
+                </button>
             </div>
+
+            {/* Tab: Forecast */}
+            {activeTab === 'forecast' && (
+                <Suspense fallback={<div className="flex items-center justify-center py-12"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>}>
+                    <RevenueForecaster />
+                </Suspense>
+            )}
 
             {/* Tab: Payment Settings */}
             {activeTab === 'payment-settings' && (

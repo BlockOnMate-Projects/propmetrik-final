@@ -70,7 +70,7 @@ router.get('/emails/auth/:provider', (req: Request, res: Response) => {
  * OAuth callback — exchanges code for tokens, redirects to frontend
  */
 router.get('/emails/auth/:provider/callback', async (req: Request, res: Response) => {
-    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+    const frontendUrl = process.env.FRONTEND_URL || '';
     try {
         const { provider } = req.params;
         const code = req.query.code as string;

@@ -3,9 +3,10 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { CheckCircle2 } from 'lucide-react';
 
-export default function SuccessPage({ searchParams }: { searchParams: { id?: string; token?: string } }) {
-  const applicationId = searchParams.id;
-  const trackingToken = searchParams.token || applicationId; // Fallback to ID if no token
+export default async function SuccessPage({ searchParams }: { searchParams: Promise<{ id?: string; token?: string }> }) {
+  const sp = await searchParams;
+  const applicationId = sp.id;
+  const trackingToken = sp.token || applicationId; // Fallback to ID if no token
 
   return (
     <div className="container flex items-center justify-center min-h-screen py-10">

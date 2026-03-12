@@ -99,6 +99,7 @@ import transmittalRoutes from './routes/transmittals';
 import transmittalService from './services/project-management/transmittalService';
 import invitationRoutes from './routes/invitations';
 import rbacRoutes from './routes/rbac';
+import serviceTeamRoutes from './routes/serviceTeam';
 import { workspaceWebSocketServer } from '../shared-services/workspace/WorkspaceWebSocketServer';
 import { initKobbyMonitor } from './jobs/kobbyAIMonitor';
 import { initWhatsAppDigest } from './jobs/whatsappDigest';
@@ -504,6 +505,8 @@ app.use('/api/v1/user', authenticate, userProfileRoutes);
 app.use('/api/user', authenticate, userProfileRoutes);  // Also mount for frontend compatibility
 app.use('/api/v1/rbac', authenticate, rbacRoutes);
 app.use('/api/rbac', authenticate, rbacRoutes);  // Also mount for frontend compatibility
+app.use('/api/v1/service-team', authenticate, serviceTeamRoutes);
+app.use('/api/service-team', authenticate, serviceTeamRoutes);  // Also mount for frontend compatibility
 app.use('/api/v1/workspace', authenticate, workspaceRoutes);
 app.use('/api/workspace', authenticate, workspaceRoutes);  // Also mount for frontend compatibility
 

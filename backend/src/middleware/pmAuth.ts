@@ -131,15 +131,15 @@ export const pmSearchQuery = pmPaginationQuery.extend({
  * Any authenticated user with one of these roles may view PM data.
  */
 const PM_READ_ROLES = [
-  'admin', 'super_admin', 'pm', 'project_manager',
-  'agent', 'team_member', 'contractor', 'valuer', 'analyst',
+  'super_admin', 'admin', 'firm_principal', 'manager',
+  'project_manager', 'finance_manager', 'inspector', 'analyst', 'viewer',
 ] as const;
 
 /**
  * Roles that may create, update, or delete PM resources.
  */
 const PM_WRITE_ROLES = [
-  'admin', 'super_admin', 'pm', 'project_manager', 'agent',
+  'super_admin', 'admin', 'firm_principal', 'manager', 'project_manager',
 ] as const;
 
 /**

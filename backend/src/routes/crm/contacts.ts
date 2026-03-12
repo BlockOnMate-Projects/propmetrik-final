@@ -6,7 +6,7 @@
  */
 
 import { Router, Request, Response } from 'express';
-import { getOrganizationId, getUserId, asyncHandler } from './helpers';
+import { getOrganizationId, getUserId, asyncHandler, getAgentIdForUser } from './helpers';
 import { contactService } from '../../services/crm-deal-management';
 import { ContactType, LeadStatus } from '../../services/crm-deal-management/types';
 import { contactMergeService } from '../../services/crm-deal-management/contactMergeService';
@@ -26,10 +26,13 @@ router.get('/contacts', asyncHandler(async (req: Request, res: Response) => {
         return res.status(401).json({ error: 'Organization not found' });
     }
 
+    // Agent role: auto-scope to only their assigned contacts
+    const agentId = await getAgentIdForUser(req);
+
     const filters = {
         contact_type: req.query.type as ContactType | undefined,
         lead_status: req.query.status as LeadStatus | undefined,
-        assigned_to: req.query.assignedTo as string | undefined,
+        assigned_to: agentId || (req.query.assignedTo as string | undefined),
         region: req.query.region as string | undefined,
         search: req.query.search as string | undefined,
         tags: req.query.tags ? (req.query.tags as string).split(',') : undefined,

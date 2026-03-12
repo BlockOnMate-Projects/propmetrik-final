@@ -1,12 +1,14 @@
 'use client'
 
-import React, { useMemo, useState, useCallback } from 'react'
+import React, { useMemo, useState, useCallback, lazy, Suspense } from 'react'
 import { cn, formatCurrency } from '@/lib/utils'
 import {
     Loader2, DollarSign, Target, BarChart3, Download, Clock,
     PieChart as PieChartIcon, ArrowLeftRight, Users, TrendingUp, Calendar,
-    FileSpreadsheet, FileText, AlertTriangle,
+    FileSpreadsheet, FileText, AlertTriangle, LayoutGrid,
 } from 'lucide-react'
+
+const DashboardBuilder = lazy(() => import('@/components/crm/DashboardBuilder').then(m => ({ default: m.DashboardBuilder })))
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
@@ -183,7 +185,7 @@ export default function AnalyticsPage() {
 
             {/* ─── Tab Navigation ────────────────────────── */}
             <Tabs value={tab} onValueChange={setTab}>
-                <TabsList className="grid w-full grid-cols-5 h-9">
+                <TabsList className="grid w-full grid-cols-6 h-9">
                     <TabsTrigger value="overview" className="text-xs gap-1">
                         <BarChart3 className="h-3.5 w-3.5" /> Overview
                     </TabsTrigger>
@@ -198,6 +200,9 @@ export default function AnalyticsPage() {
                     </TabsTrigger>
                     <TabsTrigger value="agents" className="text-xs gap-1">
                         <Users className="h-3.5 w-3.5" /> Agents
+                    </TabsTrigger>
+                    <TabsTrigger value="custom" className="text-xs gap-1">
+                        <LayoutGrid className="h-3.5 w-3.5" /> Custom
                     </TabsTrigger>
                 </TabsList>
 
@@ -594,6 +599,12 @@ export default function AnalyticsPage() {
                             )}
                         </CardContent>
                     </Card>
+                </TabsContent>
+                {/* ─────────── CUSTOM DASHBOARD TAB ────────── */}
+                <TabsContent value="custom" className="mt-4">
+                    <Suspense fallback={<div className="flex items-center justify-center py-12"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>}>
+                        <DashboardBuilder />
+                    </Suspense>
                 </TabsContent>
             </Tabs>
         </div>

@@ -312,7 +312,7 @@ export default function NewDealPage() {
                 commission_rate: data.commissionRate ? parseFloat(data.commissionRate) : undefined,
                 probability: data.probability ? parseInt(data.probability) : undefined,
                 expected_close_date: data.expectedCloseDate || undefined,
-                lead_source: data.leadSource || undefined,
+                lead_source: data.leadSource ? data.leadSource.toLowerCase().replace(/\s+/g, '_') : undefined,
                 primary_contact_id: data.primaryContactId || undefined,
                 assigned_agent: data.assignedAgentId,
                 property_ids: (data.selectedPropertyIds?.length ?? 0) > 0 ? data.selectedPropertyIds : undefined,

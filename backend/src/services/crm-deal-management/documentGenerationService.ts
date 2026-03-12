@@ -15,7 +15,7 @@ import { crmDocumentTemplateService, DocumentTemplate } from './crmDocumentTempl
 import * as minio from '../../database/minio';
 // import puppeteer from 'puppeteer';
 // import Handlebars from 'handlebars';
-const Handlebars: any = { compile: () => () => '', registerHelper: () => { } };
+const Handlebars: any = { compile: (html: string) => () => html, registerHelper: () => { } };
 const puppeteer: any = { launch: () => ({ close: () => { }, newPage: () => ({ setContent: () => { }, pdf: () => Buffer.from([]) }) }) };
 
 // =============================================
@@ -170,7 +170,8 @@ class DocumentGenerationService {
     let mimeType: string;
     let fileSize: number;
 
-    const baseName = input.fileName || `${template.name}_${new Date().toISOString().split('T')[0]}`;
+    const safeName = (template.name || 'document').replace(/[^a-zA-Z0-9_\- ]/g, '').replace(/\s+/g, '_');
+    const baseName = input.fileName || `${safeName}_${new Date().toISOString().split('T')[0]}`;
 
     if (input.outputFormat === 'html') {
       // Store as HTML
@@ -486,25 +487,26 @@ class DocumentGenerationService {
     // Fetch deal data
     if (input.dealId) {
       const dealResult = await db.query(
-        `SELECT d.*, p.name as pipeline_name, s.name as stage_name
-         FROM crm_deals d
-         LEFT JOIN crm_pipelines p ON d.pipeline_id = p.id
-         LEFT JOIN crm_stages s ON d.stage_id = s.id
+        `SELECT d.*, p.pipeline_name as pipeline_name, s.stage_name as stage_name
+         FROM deals d
+         LEFT JOIN deal_pipelines p ON d.pipeline_id = p.id
+         LEFT JOIN deal_stages s ON d.stage_id = s.id
          WHERE d.id = $1 AND d.organization_id = $2`,
         [input.dealId, organizationId]
       );
       if (dealResult.rows[0]) {
         const deal = dealResult.rows[0];
+        const dealValue = deal.deal_value ?? deal.value ?? 0;
         data.deal = {
           id: deal.id,
           title: deal.title,
-          value: deal.value,
+          value: dealValue,
           value_formatted: new Intl.NumberFormat('en-GH', {
             style: 'currency',
             currency: deal.currency || 'GHS'
-          }).format(deal.value || 0),
+          }).format(dealValue),
           currency: deal.currency || 'GHS',
-          expected_close_date: deal.expected_close_date,
+          expected_close_date: deal.estimated_close_date || deal.expected_close_date,
           pipeline_name: deal.pipeline_name,
           stage_name: deal.stage_name,
           custom_fields: deal.custom_fields || {}
@@ -514,9 +516,12 @@ class DocumentGenerationService {
         if (!input.contactId && deal.primary_contact_id) {
           input.contactId = deal.primary_contact_id;
         }
-        // Get property from deal if not specified
-        if (!input.propertyId && deal.property_id) {
-          input.propertyId = deal.property_id;
+        // Get property from deal if not specified — property_ids is an array
+        if (!input.propertyId) {
+          const propId = deal.property_id || (Array.isArray(deal.property_ids) ? deal.property_ids[0] : null);
+          if (propId) {
+            input.propertyId = propId;
+          }
         }
       }
     }
@@ -524,27 +529,28 @@ class DocumentGenerationService {
     // Fetch contact data
     if (input.contactId) {
       const contactResult = await db.query(
-        `SELECT * FROM crm_contacts WHERE id = $1 AND organization_id = $2`,
+        `SELECT * FROM contacts WHERE id = $1 AND organization_id = $2`,
         [input.contactId, organizationId]
       );
       if (contactResult.rows[0]) {
         const contact = contactResult.rows[0];
+        const cf = (typeof contact.custom_fields === 'string' ? JSON.parse(contact.custom_fields) : contact.custom_fields) || {};
         data.contact = {
           id: contact.id,
           full_name: `${contact.first_name || ''} ${contact.last_name || ''}`.trim(),
           first_name: contact.first_name,
           last_name: contact.last_name,
           email: contact.email,
-          phone: contact.phone,
-          address: contact.address,
+          phone: contact.primary_phone || contact.phone,
+          address: contact.current_address || contact.address,
           city: contact.city,
-          country: contact.country,
-          ghana_card_number: contact.ghana_card_number || contact.custom_fields?.ghana_card_number,
-          tin_number: contact.tin_number || contact.custom_fields?.tin_number,
-          passport_number: contact.passport_number || contact.custom_fields?.passport_number,
-          occupation: contact.occupation || contact.custom_fields?.occupation,
-          employer: contact.employer || contact.custom_fields?.employer,
-          custom_fields: contact.custom_fields || {}
+          country: contact.country_of_residence || contact.country,
+          ghana_card_number: cf.ghana_card_number || '',
+          tin_number: cf.tin_number || '',
+          passport_number: cf.passport_number || '',
+          occupation: contact.occupation || cf.occupation || '',
+          employer: contact.employer || cf.employer || '',
+          custom_fields: cf
         };
       }
     }
@@ -557,27 +563,28 @@ class DocumentGenerationService {
       );
       if (propResult.rows[0]) {
         const prop = propResult.rows[0];
+        const meta = (typeof prop.metadata === 'string' ? JSON.parse(prop.metadata) : prop.metadata) || {};
         data.property = {
           id: prop.id,
-          name: prop.name,
-          address: prop.address,
-          city: prop.city,
-          region: prop.region,
-          ghana_post_gps: prop.ghana_post_gps,
-          land_title: prop.land_title_number || prop.land_title,
-          plot_number: prop.plot_number,
-          block_number: prop.block_number,
-          land_size: prop.land_size,
-          land_size_unit: prop.land_size_unit || 'acres',
-          property_type: prop.property_type,
+          name: prop.title || prop.name || '',
+          address: prop.address_street || prop.address || '',
+          city: prop.address_city || prop.city || '',
+          region: prop.region || '',
+          ghana_post_gps: prop.digital_address || prop.ghana_post_gps || '',
+          land_title: meta.land_title_number || meta.land_title || '',
+          plot_number: meta.plot_number || '',
+          block_number: meta.block_number || '',
+          land_size: prop.plot_size_acres || prop.land_area_sqm || prop.land_size || '',
+          land_size_unit: prop.plot_size_acres ? 'acres' : (prop.land_area_sqm ? 'sqm' : 'acres'),
+          property_type: prop.property_type || '',
           price: prop.price,
           price_formatted: new Intl.NumberFormat('en-GH', {
             style: 'currency',
-            currency: 'GHS'
+            currency: prop.price_currency || 'GHS'
           }).format(prop.price || 0),
           bedrooms: prop.bedrooms,
           bathrooms: prop.bathrooms,
-          description: prop.description
+          description: prop.description || ''
         };
       }
     }
@@ -638,9 +645,16 @@ class DocumentGenerationService {
     );
     if (orgResult.rows[0]) {
       const org = orgResult.rows[0];
+      const addressParts = [
+        org.address_line1 || org.address_street || '',
+        org.address_line2 || '',
+        org.city || org.address_city || '',
+        org.region || org.address_region || '',
+        org.country || ''
+      ].filter(Boolean);
       data.organization = {
         name: org.name,
-        address: org.address,
+        address: addressParts.join(', ') || org.address || '',
         phone: org.phone,
         email: org.email,
         website: org.website,
@@ -695,6 +709,9 @@ class DocumentGenerationService {
     } catch (err) {
       logger.warn({ error: err }, 'Handlebars compilation failed, using simple substitution');
     }
+
+    // Remove any remaining unresolved placeholders
+    processed = processed.replace(/\{\{[a-zA-Z0-9_.]+\}\}/g, '');
 
     return processed;
   }
