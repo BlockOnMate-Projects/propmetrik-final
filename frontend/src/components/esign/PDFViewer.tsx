@@ -65,7 +65,7 @@ export default function PDFViewer({
       try {
         const pdfjsLib = await import("pdfjs-dist");
         // Set worker
-        pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
+        pdfjsLib.GlobalWorkerOptions.workerSrc = "/pdf.worker.min.js";
 
         let source: any;
         if (file) {

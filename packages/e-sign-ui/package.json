@@ -8,7 +8,7 @@
     "@types/react-router-dom": "^5.3.3",
     "axios": "^1.6.7",
     "pdf-lib": "^1.17.1",
-    "pdfjs-dist": "^5.4.449",
+    "pdfjs-dist": "^5.5.207",
     "prop-types": "^15.8.1",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",

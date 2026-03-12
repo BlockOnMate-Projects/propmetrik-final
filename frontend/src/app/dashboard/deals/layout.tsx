@@ -1,184 +1,73 @@
 'use client'
 
-import React, { useState, useCallback, useRef } from 'react'
-import Link from 'next/link'
+import React, { useState, useEffect, lazy, Suspense } from 'react'
 import { usePathname } from 'next/navigation'
-import { cn } from '@/lib/utils'
-import {
-    LayoutGrid,
-    Users,
-    Building2,
-    CheckSquare,
-    Settings,
-    BarChart3,
-    Home,
-    UserCircle,
-    Workflow,
-    FileText,
-    Calendar,
-    DollarSign,
-    Keyboard,
-    Menu,
-    X,
-    MessageSquare,
-} from 'lucide-react'
-import { CommandPalette } from '@/components/crm/CommandPalette'
+import { CrmSidebar } from '@/components/crm/CrmSidebar'
 import { useKeyboardShortcuts, KeyboardShortcutsHelp } from '@/components/crm/KeyboardShortcuts'
-import { Button } from '@/components/ui/button'
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
-import { useSession } from 'next-auth/react'
-import { canAccessServiceSubTab } from '@/lib/rbac'
 
-const crmNavItems = [
-    { href: '/dashboard/deals', label: 'Deals', icon: LayoutGrid, exact: true, subTabKey: 'crm-deals' },
-    { href: '/dashboard/deals/properties', label: 'Properties', icon: Home, subTabKey: 'crm-properties' },
-    { href: '/dashboard/deals/contacts', label: 'Contacts', icon: Users, subTabKey: 'crm-contacts' },
-    { href: '/dashboard/deals/agents', label: 'Agents', icon: UserCircle, subTabKey: 'crm-agents' },
-    { href: '/dashboard/deals/companies', label: 'Companies', icon: Building2, subTabKey: 'crm-companies' },
-    { href: '/dashboard/deals/tasks', label: 'Tasks', icon: CheckSquare, subTabKey: 'crm-tasks' },
-    { href: '/dashboard/deals/documents', label: 'Documents', icon: FileText, subTabKey: 'crm-documents' },
-    { href: '/dashboard/deals/financials', label: 'Financials', icon: DollarSign, subTabKey: 'crm-financials' },
-    { href: '/dashboard/deals/messaging', label: 'Messaging', icon: MessageSquare, subTabKey: 'crm-messaging' },
-    { href: '/dashboard/calendar?service=deals', label: 'Calendar', icon: Calendar, subTabKey: 'crm-calendar' },
-    { href: '/dashboard/deals/analytics', label: 'Analytics', icon: BarChart3, subTabKey: 'crm-analytics' },
-    { href: '/dashboard/deals/workflows', label: 'Workflows', icon: Workflow, subTabKey: 'crm-workflows' },
-    { href: '/dashboard/deals/pipelines', label: 'Pipelines', icon: Settings, subTabKey: 'crm-pipelines' },
-]
+const OnboardingWizard = lazy(() => import('@/components/crm/OnboardingWizard'))
+const CrmAIAssistant = lazy(() => import('@/components/crm/CrmAIAssistant'))
+
+const ONBOARDING_DISMISSED_KEY = 'crm-onboarding-dismissed'
 
 export default function DealsLayout({
     children,
 }: {
     children: React.ReactNode
 }) {
-    const pathname = usePathname()
     const [shortcutsHelpOpen, setShortcutsHelpOpen] = useState(false)
-    const [mobileNavOpen, setMobileNavOpen] = useState(false)
-    const { data: session } = useSession()
-
-    const userRole = session?.user?.role || ''
-
-    // Show all until session loads to avoid hydration mismatch
-    const visibleNavItems = userRole
-        ? crmNavItems.filter(item => canAccessServiceSubTab(userRole, 'deals', item.subTabKey))
-        : crmNavItems
+    const [showOnboarding, setShowOnboarding] = useState(false)
 
     useKeyboardShortcuts({
         onShowHelp: () => setShortcutsHelpOpen(true),
     })
 
-    const isActive = (item: typeof crmNavItems[0]) => {
-        if (item.exact) {
-            return pathname === item.href
+    // Show onboarding on first visit
+    useEffect(() => {
+        try {
+            const dismissed = localStorage.getItem(ONBOARDING_DISMISSED_KEY)
+            if (!dismissed) {
+                setShowOnboarding(true)
+            }
+        } catch {
+            // localStorage not available
         }
-        return pathname.startsWith(item.href)
+    }, [])
+
+    const handleOnboardingComplete = () => {
+        setShowOnboarding(false)
+        try {
+            localStorage.setItem(ONBOARDING_DISMISSED_KEY, 'true')
+        } catch {
+            // ignore
+        }
     }
 
     return (
-        <div className="min-h-screen bg-background">
-            {/* Sub-navigation */}
-            <div className="border-b border-border bg-card/50">
-                <div className="px-4 flex items-center justify-between">
-                    {/* Mobile hamburger */}
-                    <button
-                        className="md:hidden p-2 -ml-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent"
-                        onClick={() => setMobileNavOpen(!mobileNavOpen)}
-                    >
-                        {mobileNavOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
-                    </button>
+        <div className="flex min-h-[calc(100vh-7rem)]">
+            {/* CRM Left Sidebar */}
+            <CrmSidebar />
 
-                    {/* Desktop tabs */}
-                    <nav className="hidden md:flex gap-1 -mb-px overflow-x-auto flex-1">
-                        {visibleNavItems.map((item) => {
-                            const Icon = item.icon
-                            return (
-                                <Link
-                                    key={item.href}
-                                    href={item.href}
-                                    className={cn(
-                                        'flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 transition-colors whitespace-nowrap',
-                                        isActive(item)
-                                            ? 'border-primary text-primary'
-                                            : 'border-transparent text-muted-foreground hover:text-foreground hover:border-border'
-                                    )}
-                                >
-                                    <Icon className="h-4 w-4" />
-                                    <span className="hidden lg:inline">{item.label}</span>
-                                </Link>
-                            )
-                        })}
-                    </nav>
-
-                    {/* Mobile active tab label */}
-                    <span className="md:hidden text-sm font-medium text-foreground flex-1 text-center truncate">
-                        {visibleNavItems.find(i => isActive(i))?.label || 'CRM'}
-                    </span>
-
-                    <div className="flex items-center gap-2 pl-4 -mb-px py-2">
-                        <div className="hidden sm:block"><CommandPalette /></div>
-                        <TooltipProvider>
-                            <Tooltip>
-                                <TooltipTrigger asChild>
-                                    <Button
-                                        variant="ghost"
-                                        size="sm"
-                                        className="hidden sm:flex h-9 w-9 p-0 text-muted-foreground"
-                                        onClick={() => setShortcutsHelpOpen(true)}
-                                    >
-                                        <Keyboard className="h-4 w-4" />
-                                    </Button>
-                                </TooltipTrigger>
-                                <TooltipContent>
-                                    <p>Keyboard shortcuts (?)</p>
-                                </TooltipContent>
-                            </Tooltip>
-                        </TooltipProvider>
-                    </div>
-                </div>
-            </div>
-
-            {/* Mobile drawer */}
-            {mobileNavOpen && (
-                <>
-                    <div className="md:hidden fixed inset-0 bg-black/50 z-40" onClick={() => setMobileNavOpen(false)} />
-                    <nav className="md:hidden fixed inset-y-0 left-0 w-64 bg-card z-50 shadow-2xl overflow-y-auto animate-in slide-in-from-left duration-200">
-                        <div className="flex items-center justify-between px-4 py-3 border-b border-border">
-                            <span className="text-sm font-semibold">CRM Navigation</span>
-                            <button onClick={() => setMobileNavOpen(false)} className="p-1 rounded hover:bg-accent">
-                                <X className="h-4 w-4" />
-                            </button>
-                        </div>
-                        <div className="py-2">
-                            {visibleNavItems.map((item) => {
-                                const Icon = item.icon
-                                return (
-                                    <Link
-                                        key={item.href}
-                                        href={item.href}
-                                        onClick={() => setMobileNavOpen(false)}
-                                        className={cn(
-                                            'flex items-center gap-3 px-4 py-3 text-sm transition-colors',
-                                            isActive(item)
-                                                ? 'bg-primary/10 text-primary font-medium'
-                                                : 'text-muted-foreground hover:text-foreground hover:bg-accent'
-                                        )}
-                                    >
-                                        <Icon className="h-4 w-4" />
-                                        {item.label}
-                                    </Link>
-                                )
-                            })}
-                        </div>
-                    </nav>
-                </>
-            )}
-            
             {/* Content */}
-            <div className="p-2 sm:p-4 pb-10">
+            <main className="flex-1 min-w-0 p-2 sm:p-4 pb-10">
+                {/* Onboarding Wizard (first visit) */}
+                {showOnboarding && (
+                    <Suspense fallback={null}>
+                        <div className="mb-6">
+                            <OnboardingWizard onComplete={handleOnboardingComplete} />
+                        </div>
+                    </Suspense>
+                )}
                 {children}
-            </div>
+            </main>
 
             {/* Keyboard Shortcuts Help */}
             <KeyboardShortcutsHelp open={shortcutsHelpOpen} onOpenChange={setShortcutsHelpOpen} />
+
+            {/* Floating AI Assistant */}
+            <Suspense fallback={null}>
+                <CrmAIAssistant />
+            </Suspense>
         </div>
     )
 }

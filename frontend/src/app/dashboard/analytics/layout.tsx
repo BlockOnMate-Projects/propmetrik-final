@@ -4,7 +4,7 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useSession } from 'next-auth/react'
 import { cn } from '@/lib/utils'
-import { canAccessServiceSubTab } from '@/lib/rbac'
+import { canAccessServiceSubTab, canCustomerAccessSubTab } from '@/lib/rbac'
 import {
     BarChart3,
     Map,
@@ -33,6 +33,7 @@ const analyticsNavItems = [
     { href: '/dashboard/analytics/geographic', label: 'GEOGRAPHIC', icon: Map, subTabKey: 'analytics-geographic' },
     { href: '/dashboard/analytics/management', label: 'MANAGEMENT', icon: Landmark, subTabKey: 'analytics-management' },
     { href: '/dashboard/analytics/settings', label: 'SETTINGS', icon: Settings, subTabKey: 'analytics-settings' },
+    { href: '/dashboard/analytics/team', label: 'TEAM', icon: Users, subTabKey: 'analytics-team' },
 ]
 
 export default function AnalyticsLayout({
@@ -44,10 +45,16 @@ export default function AnalyticsLayout({
     const { data: session } = useSession()
 
     const userRole = session?.user?.role || ''
+    const userType = (session?.user as any)?.userType || 'staff'
+    const customerServiceRole = (session?.user as any)?.customerServiceRoles?.analytics as string | undefined
 
     // Show all until session loads to avoid hydration mismatch
-    const visibleNavItems = userRole
-        ? analyticsNavItems.filter(item => canAccessServiceSubTab(userRole, 'analytics', item.subTabKey))
+    const visibleNavItems = userRole || customerServiceRole
+        ? analyticsNavItems.filter(item =>
+            userType === 'customer'
+              ? canCustomerAccessSubTab(customerServiceRole, 'analytics', item.subTabKey)
+              : canAccessServiceSubTab(userRole, 'analytics', item.subTabKey)
+          )
         : analyticsNavItems
 
     const isActive = (href: string, exact?: boolean) => {

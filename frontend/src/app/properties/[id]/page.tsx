@@ -1,4 +1,3 @@
-
 import { notFound } from 'next/navigation';
 import { ZoneHero } from './_components/ZoneHero';
 import { ZoneValuation } from './_components/ZoneValuation';
@@ -8,6 +7,7 @@ import { ZoneComparables } from './_components/ZoneComparables';
 import { ZoneNearby } from './_components/ZoneNearby';
 import { PropertyEnrichmentResponse } from '@/types/property';
 import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
 import Link from 'next/link';
 
 // Force dynamic rendering since data changes frequently or depends on backend state
@@ -98,7 +98,7 @@ export default async function PropertyPage({ params }: { params: Promise<{ id: s
           {/* Sidebar Column */}
           <div className="lg:col-span-1 space-y-8">
              {/* Zone B: Valuation Block */}
-             <section id="zone-valuation" className="sticky top-8">
+             <section id="zone-valuation" className="sticky top-8 space-y-6">
                <ZoneValuation valuation={valuation} currency="GHS" dataQuality={property.data_quality} />
              </section>
           </div>

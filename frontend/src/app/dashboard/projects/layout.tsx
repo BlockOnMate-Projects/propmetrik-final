@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useSession } from 'next-auth/react'
 import { cn } from '@/lib/utils'
-import { canAccessFeature, canAccessServiceSubTab } from '@/lib/rbac'
+import { canAccessFeature, canAccessServiceSubTab, canCustomerAccessSubTab } from '@/lib/rbac'
 import {
     FolderKanban,
     Users,
@@ -171,19 +171,27 @@ export default function ProjectsLayout({
 
     const userRole = session?.user?.role || ''
     const userTier = session?.user?.tier || 'starter'
-    const userType = session?.user?.userType || 'staff'
+    const userType = (session?.user as any)?.userType || 'staff'
+    const customerServiceRole = (session?.user as any)?.customerServiceRoles?.projects as string | undefined
 
     // Filter groups by role access + tier access (show all until session loads)
     const visibleGroups = useMemo(() => {
         return projectsNavGroups
-            .filter(group => !userRole || !group.featureKey || canAccessServiceSubTab(userRole, 'projects', group.featureKey))
+            .filter(group => {
+                if (!userRole && !customerServiceRole) return true
+                if (!group.featureKey) return true
+                if (userType === 'customer') {
+                    return canCustomerAccessSubTab(customerServiceRole, 'projects', group.featureKey)
+                }
+                return canAccessServiceSubTab(userRole, 'projects', group.featureKey)
+            })
             .map(group => ({
                 ...group,
                 locked: group.featureKey
                     ? !canAccessFeature(userRole, userTier, group.featureKey, userType)
                     : false,
             }))
-    }, [userRole, userTier, userType])
+    }, [userRole, userTier, userType, customerServiceRole])
 
     const activeGroup = findActiveGroup(pathname, visibleGroups)
 

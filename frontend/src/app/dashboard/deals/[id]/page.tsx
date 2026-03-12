@@ -1,8 +1,9 @@
 'use client'
 
-import React, { useState } from 'react'
+import React, { useState, lazy, Suspense } from 'react'
 import Link from 'next/link'
 import { useParams, useRouter } from 'next/navigation'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { cn, formatCurrency } from '@/lib/utils'
 import { isFeatureEnabled } from '@/lib/features'
 import {
@@ -17,10 +18,19 @@ import {
     FileDown,
     LineChart,
     StickyNote,
+    Trophy,
+    XCircle,
+    Archive,
+    PenTool,
+    Calendar,
+    Send,
+    Clock,
+    CheckCircle2,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Textarea } from '@/components/ui/textarea'
+import { Input } from '@/components/ui/input'
 import {
     Dialog,
     DialogContent,
@@ -37,7 +47,7 @@ import {
     SelectValue,
 } from '@/components/ui/select'
 import { toast } from 'sonner'
-import { useDeal, useDealActivities, useDealTasks, useDealNotes, useDealDocuments, useUpdateDeal, useUpdateDealStage } from '@/hooks/crm/use-deals'
+import { dealKeys, useDeal, useDealActivities, useDealTasks, useDealNotes, useDealDocuments, useUpdateDeal, useUpdateDealStage } from '@/hooks/crm/use-deals'
 import { usePipeline } from '@/hooks/crm/use-pipelines'
 import { useCreateNote } from '@/hooks/crm/use-tasks-notes-agents'
 import type { Deal } from '@/types/crm'
@@ -45,6 +55,10 @@ import { GenerateDocumentDialog } from '@/components/deals/GenerateDocumentDialo
 import { DocumentChecklist } from '@/components/deals/DocumentChecklist'
 import { InlineEdit } from '@/components/crm/InlineEdit'
 import { UnifiedTimeline } from '@/components/crm/UnifiedTimeline'
+import crmApi from '@/lib/crm-api'
+import { calendarApi, type CalendarEvent } from '@/lib/realtime-api'
+
+const CustomDealFields = lazy(() => import('@/components/crm/CustomDealFields'))
 
 // =====================================================
 // SECTION PANEL (themed)
@@ -87,6 +101,8 @@ export default function DealDetailPage() {
     const updateStage = useUpdateDealStage()
     const createNote = useCreateNote()
 
+    const queryClient = useQueryClient()
+
     // ---------- Local UI state ----------
     const [stageDialogOpen, setStageDialogOpen] = useState(false)
     const [selectedStage, setSelectedStage] = useState('')
@@ -94,6 +110,48 @@ export default function DealDetailPage() {
     const [newNote, setNewNote] = useState('')
     const [generateDocDialogOpen, setGenerateDocDialogOpen] = useState(false)
     const [documentRefreshKey, setDocumentRefreshKey] = useState(0)
+    const [statusDialogOpen, setStatusDialogOpen] = useState(false)
+    const [statusAction, setStatusAction] = useState<'won' | 'lost' | 'archived' | 'active'>('won')
+    const [statusReason, setStatusReason] = useState('')
+    const [statusFinalValue, setStatusFinalValue] = useState('')
+
+    // ---------- E-Sign Signatures for this deal ----------
+    const { data: signatures = [] } = useQuery({
+        queryKey: ['deal-signatures', dealId],
+        queryFn: async (): Promise<Array<{ id: string; envelope_title: string; status: string; created_at: string; signers?: Array<{ name: string; email: string; status: string }> }>> => {
+            const res = await crmApi.signatures.getAll({ deal_id: dealId })
+            // Backend returns { data: [...], pagination: {...} }
+            return Array.isArray(res) ? res : (res as any)?.data || []
+        },
+        enabled: !!dealId,
+    })
+
+    // ---------- Calendar events for this deal ----------
+    const { data: dealEvents = [] } = useQuery({
+        queryKey: ['deal-calendar', dealId],
+        queryFn: () => {
+            const start = new Date()
+            start.setFullYear(start.getFullYear() - 1)
+            const end = new Date()
+            end.setFullYear(end.getFullYear() + 1)
+            return calendarApi.getEvents(start, end, { dealId })
+        },
+        enabled: !!dealId,
+    })
+
+    // ---------- Status mutation ----------
+    const updateStatusMutation = useMutation({
+        mutationFn: (data: { status: string; reason?: string; final_value?: number }) =>
+            crmApi.deals.updateStatus(dealId, data),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: dealKeys.detail(dealId) })
+            toast.success('Deal status updated')
+            setStatusDialogOpen(false)
+            setStatusReason('')
+            setStatusFinalValue('')
+        },
+        onError: () => toast.error('Failed to update status'),
+    })
 
     // ---------- Handlers ----------
     const handleStageChange = async () => {
@@ -192,6 +250,46 @@ export default function DealDetailPage() {
                     </div>
                 </div>
                 <div className="flex items-center gap-2">
+                    {deal.deal_status === 'active' && (
+                        <>
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                className="text-green-600 border-green-600/30 hover:bg-green-600/10"
+                                onClick={() => { setStatusAction('won'); setStatusDialogOpen(true) }}
+                            >
+                                <Trophy className="h-4 w-4 mr-1" />
+                                Won
+                            </Button>
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                className="text-red-600 border-red-600/30 hover:bg-red-600/10"
+                                onClick={() => { setStatusAction('lost'); setStatusDialogOpen(true) }}
+                            >
+                                <XCircle className="h-4 w-4 mr-1" />
+                                Lost
+                            </Button>
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                className="text-muted-foreground"
+                                onClick={() => { setStatusAction('archived'); setStatusDialogOpen(true) }}
+                            >
+                                <Archive className="h-4 w-4 mr-1" />
+                                Archive
+                            </Button>
+                        </>
+                    )}
+                    {((deal.deal_status as string) === 'won' || (deal.deal_status as string) === 'lost' || (deal.deal_status as string) === 'archived') && (
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => { setStatusAction('active'); setStatusDialogOpen(true) }}
+                        >
+                            Reopen
+                        </Button>
+                    )}
                     <Link href={`/dashboard/deals/${deal.id}/edit`}>
                         <Button variant="outline" size="sm">
                             <Edit className="h-4 w-4 mr-2" />
@@ -263,8 +361,8 @@ export default function DealDetailPage() {
                             <CardContent className="p-3">
                                 <div className="text-[10px] text-muted-foreground mb-1">PROBABILITY</div>
                                 <InlineEdit
-                                    value={deal.probability ?? 0}
-                                    displayValue={`${deal.probability || 0}%`}
+                                    value={(deal as any).close_probability ?? deal.probability ?? 0}
+                                    displayValue={`${(deal as any).close_probability || deal.probability || 0}%`}
                                     type="number"
                                     onSave={(v) => handleInlineUpdate('probability', v)}
                                     className="text-lg font-semibold text-foreground"
@@ -477,6 +575,13 @@ export default function DealDetailPage() {
                         </Panel>
                     )}
 
+                    {/* Custom Fields */}
+                    <Panel title="CUSTOM FIELDS">
+                        <Suspense fallback={<div className="animate-pulse h-20 bg-muted/40 rounded-lg" />}>
+                            <CustomDealFields dealId={dealId} />
+                        </Suspense>
+                    </Panel>
+
                     {/* Lead Source */}
                     {deal.lead_source && (
                         <Panel title="LEAD SOURCE">
@@ -488,6 +593,87 @@ export default function DealDetailPage() {
                             )}
                         </Panel>
                     )}
+
+                    {/* E-Sign Panel */}
+                    <Panel title="E-SIGNATURES">
+                        {signatures.length > 0 ? (
+                            <div className="space-y-2">
+                                {signatures.map((sig) => (
+                                    <div key={sig.id} className="flex items-center justify-between p-2 rounded-md bg-muted/30 border border-border">
+                                        <div className="flex items-center gap-2 min-w-0">
+                                            <PenTool className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                                            <div className="min-w-0">
+                                                <p className="text-xs text-foreground truncate">{sig.envelope_title}</p>
+                                                <p className="text-[10px] text-muted-foreground">
+                                                    {sig.signers?.length || 0} signer(s)
+                                                </p>
+                                            </div>
+                                        </div>
+                                        <span className={cn(
+                                            'text-[9px] px-1.5 py-0.5 rounded-full font-medium flex-shrink-0',
+                                            sig.status === 'signed' && 'bg-green-500/10 text-green-600 dark:text-green-400',
+                                            sig.status === 'sent' && 'bg-blue-500/10 text-blue-600 dark:text-blue-400',
+                                            sig.status === 'draft' && 'bg-zinc-500/10 text-zinc-500',
+                                            sig.status === 'voided' && 'bg-red-500/10 text-red-600 dark:text-red-400',
+                                            sig.status === 'declined' && 'bg-red-500/10 text-red-600 dark:text-red-400',
+                                        )}>
+                                            {sig.status?.toUpperCase()}
+                                        </span>
+                                    </div>
+                                ))}
+                            </div>
+                        ) : (
+                            <p className="text-xs text-muted-foreground mb-2">No signature requests yet</p>
+                        )}
+                        {documents.length > 0 && (
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                className="w-full mt-2 text-xs"
+                                onClick={() => {
+                                    // Navigate to create signature with first document
+                                    toast.info('Select a document from the Documents panel to request a signature')
+                                }}
+                            >
+                                <PenTool className="h-3 w-3 mr-1" />
+                                Request Signature
+                            </Button>
+                        )}
+                    </Panel>
+
+                    {/* Calendar Events Panel */}
+                    <Panel title="CALENDAR EVENTS">
+                        {dealEvents.length > 0 ? (
+                            <div className="space-y-2">
+                                {dealEvents.slice(0, 5).map((event, idx) => (
+                                    <div key={event.id || idx} className="flex items-start gap-2 p-2 rounded-md bg-muted/30 border border-border">
+                                        <Calendar className="h-4 w-4 text-muted-foreground flex-shrink-0 mt-0.5" />
+                                        <div className="min-w-0">
+                                            <p className="text-xs text-foreground truncate">{event.title}</p>
+                                            <p className="text-[10px] text-muted-foreground">
+                                                {new Date(event.startTime).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                                            </p>
+                                            <span className={cn(
+                                                'text-[9px]',
+                                                event.status === 'completed' && 'text-green-500',
+                                                event.status === 'scheduled' && 'text-blue-500',
+                                                event.status === 'cancelled' && 'text-red-500',
+                                            )}>
+                                                {event.status || 'scheduled'}
+                                            </span>
+                                        </div>
+                                    </div>
+                                ))}
+                                {dealEvents.length > 5 && (
+                                    <p className="text-[10px] text-muted-foreground text-center">
+                                        +{dealEvents.length - 5} more events
+                                    </p>
+                                )}
+                            </div>
+                        ) : (
+                            <p className="text-xs text-muted-foreground">No calendar events linked to this deal</p>
+                        )}
+                    </Panel>
                 </div>
             </div>
 
@@ -553,6 +739,80 @@ export default function DealDetailPage() {
                     }}
                 />
             )}
+
+            {/* ─── Status Change Dialog ─── */}
+            <Dialog open={statusDialogOpen} onOpenChange={setStatusDialogOpen}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>
+                            {statusAction === 'won' && 'Mark Deal as Won'}
+                            {statusAction === 'lost' && 'Mark Deal as Lost'}
+                            {statusAction === 'archived' && 'Archive Deal'}
+                            {statusAction === 'active' && 'Reopen Deal'}
+                        </DialogTitle>
+                        <DialogDescription className="text-xs">
+                            {statusAction === 'won' && 'Congratulations! Record the final deal value.'}
+                            {statusAction === 'lost' && 'Record the reason this deal was lost.'}
+                            {statusAction === 'archived' && 'This deal will be moved to the archive.'}
+                            {statusAction === 'active' && 'This deal will be reopened as active.'}
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-4 py-4">
+                        {statusAction === 'won' && (
+                            <div>
+                                <label className="text-[10px] text-muted-foreground mb-2 block uppercase">Final Value</label>
+                                <Input
+                                    type="number"
+                                    placeholder="Enter final deal value"
+                                    value={statusFinalValue}
+                                    onChange={(e) => setStatusFinalValue(e.target.value)}
+                                    className="text-xs"
+                                />
+                            </div>
+                        )}
+                        {(statusAction === 'lost' || statusAction === 'archived') && (
+                            <div>
+                                <label className="text-[10px] text-muted-foreground mb-2 block uppercase">Reason</label>
+                                <Textarea
+                                    placeholder={statusAction === 'lost' ? 'Why was this deal lost?' : 'Reason for archiving'}
+                                    value={statusReason}
+                                    onChange={(e) => setStatusReason(e.target.value)}
+                                    className="text-xs resize-none"
+                                    rows={3}
+                                />
+                            </div>
+                        )}
+                    </div>
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setStatusDialogOpen(false)}>Cancel</Button>
+                        <Button
+                            onClick={() => {
+                                updateStatusMutation.mutate({
+                                    status: statusAction,
+                                    reason: statusReason || undefined,
+                                    final_value: statusFinalValue ? parseFloat(statusFinalValue) : undefined,
+                                })
+                            }}
+                            disabled={updateStatusMutation.isPending}
+                            className={cn(
+                                statusAction === 'won' && 'bg-green-600 hover:bg-green-700',
+                                statusAction === 'lost' && 'bg-red-600 hover:bg-red-700',
+                            )}
+                        >
+                            {updateStatusMutation.isPending ? (
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : (
+                                <>
+                                    {statusAction === 'won' && 'Mark as Won'}
+                                    {statusAction === 'lost' && 'Mark as Lost'}
+                                    {statusAction === 'archived' && 'Archive'}
+                                    {statusAction === 'active' && 'Reopen'}
+                                </>
+                            )}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </div>
     )
 }

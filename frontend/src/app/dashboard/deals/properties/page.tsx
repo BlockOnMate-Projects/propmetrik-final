@@ -1,14 +1,16 @@
 'use client'
 
-import React, { useEffect, useState, useCallback } from 'react'
+import React, { useEffect, useState, useCallback, lazy, Suspense } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { cn, formatCurrency } from '@/lib/utils'
 import { authedFetch } from '@/lib/authed-fetch'
-import { 
+import {
     Loader2, Plus, Search, MapPin, Home, Building2, LandPlot,
-    ChevronRight, MoreHorizontal, Eye, FileText, Users, TrendingUp, Edit
+    ChevronRight, MoreHorizontal, Eye, FileText, Users, TrendingUp, Edit, Layers
 } from 'lucide-react'
+
+const StackingPlanView = lazy(() => import('@/components/crm/StackingPlanView'))
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import {
@@ -279,6 +281,8 @@ export default function CRMPropertiesPage() {
     const [properties, setProperties] = useState<CRMProperty[]>([])
     const [isLoading, setIsLoading] = useState(true)
     const [error, setError] = useState<string | null>(null)
+    const [viewMode, setViewMode] = useState<'list' | 'stacking'>('list')
+    const [selectedPropertyId, setSelectedPropertyId] = useState<string | null>(null)
     const [filters, setFilters] = useState<PropertyFilters>({
         search: '',
         listing_type: 'all',
@@ -383,6 +387,32 @@ export default function CRMPropertiesPage() {
                     </p>
                 </div>
                 <div className="flex items-center gap-2">
+                    {/* View toggle */}
+                    <div className="flex items-center bg-muted rounded-lg p-0.5">
+                        <button
+                            onClick={() => setViewMode('list')}
+                            className={cn(
+                                'px-3 py-1.5 text-xs rounded-md transition-colors',
+                                viewMode === 'list'
+                                    ? 'bg-background text-foreground shadow-sm'
+                                    : 'text-muted-foreground hover:text-foreground'
+                            )}
+                        >
+                            List View
+                        </button>
+                        <button
+                            onClick={() => setViewMode('stacking')}
+                            className={cn(
+                                'px-3 py-1.5 text-xs rounded-md transition-colors flex items-center gap-1',
+                                viewMode === 'stacking'
+                                    ? 'bg-background text-foreground shadow-sm'
+                                    : 'text-muted-foreground hover:text-foreground'
+                            )}
+                        >
+                            <Layers className="h-3 w-3" />
+                            Stacking Plan
+                        </button>
+                    </div>
                     <Link href="/dashboard/deals/properties/submit">
                         <Button className="bg-primary text-primary-foreground hover:bg-primary/90 font-medium text-sm h-9 px-4 rounded-md shadow-sm">
                             <Plus className="h-4 w-4 mr-2" />
@@ -500,12 +530,50 @@ export default function CRMPropertiesPage() {
                 </Select>
             </div>
 
+            {/* Stacking Plan View */}
+            {viewMode === 'stacking' && (
+                <div className="space-y-4">
+                    {properties.length > 0 && !selectedPropertyId && (
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                            {properties.map(p => (
+                                <button
+                                    key={p.id}
+                                    onClick={() => setSelectedPropertyId(p.id)}
+                                    className="text-left p-3 rounded-lg border border-border hover:border-primary/50 transition-colors bg-card"
+                                >
+                                    <p className="text-sm font-medium text-foreground">{p.property_name}</p>
+                                    <p className="text-xs text-muted-foreground">{p.city}, {p.region}</p>
+                                </button>
+                            ))}
+                        </div>
+                    )}
+                    {selectedPropertyId && (
+                        <div>
+                            <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => setSelectedPropertyId(null)}
+                                className="mb-3 text-xs"
+                            >
+                                &larr; Back to property list
+                            </Button>
+                            <Suspense fallback={<div className="flex justify-center py-12"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>}>
+                                <StackingPlanView propertyId={selectedPropertyId} />
+                            </Suspense>
+                        </div>
+                    )}
+                    {properties.length === 0 && !isLoading && (
+                        <p className="text-sm text-muted-foreground text-center py-8">No properties to display stacking plan for.</p>
+                    )}
+                </div>
+            )}
+
             {/* Content */}
-            {isLoading ? (
+            {viewMode === 'list' && isLoading ? (
                 <div className="flex items-center justify-center py-20">
                     <Loader2 className="h-8 w-8 text-primary animate-spin" />
                 </div>
-            ) : error ? (
+            ) : viewMode === 'list' && error ? (
                 <div className="flex flex-col items-center justify-center py-20">
                     <p className="text-sm text-red-400 mb-4">{error}</p>
                     <Button 
@@ -515,7 +583,7 @@ export default function CRMPropertiesPage() {
                         Retry
                     </Button>
                 </div>
-            ) : properties.length === 0 ? (
+            ) : viewMode === 'list' && properties.length === 0 ? (
                 <EmptyState
                     icon={Home}
                     title="No Properties Found"
@@ -532,17 +600,17 @@ export default function CRMPropertiesPage() {
                         }
                     ]}
                 />
-            ) : (
+            ) : viewMode === 'list' ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
                     {properties.map(property => (
-                        <PropertyCard 
-                            key={property.id} 
+                        <PropertyCard
+                            key={property.id}
                             property={property}
                             onViewDeals={handleViewDeals}
                         />
                     ))}
                 </div>
-            )}
+            ) : null}
         </div>
     )
 }

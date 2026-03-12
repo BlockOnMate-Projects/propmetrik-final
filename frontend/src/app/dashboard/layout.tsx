@@ -6,9 +6,9 @@ import { FloatingWindowManager } from '@/components/workspace/window-manager/Flo
 import { WorkspaceWidget } from '@/components/workspace/WorkspacePanel'
 import { GlobalSearch } from '@/components/layout/GlobalSearch'
 import { useState, useEffect } from 'react'
-import { usePathname } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
 import { useSession } from 'next-auth/react'
-import { prefetchRbacConfig } from '@/lib/rbac'
+import { prefetchRbacConfig, canAccessPlatformTab } from '@/lib/rbac'
 
 export default function DashboardLayout({
   children,
@@ -16,6 +16,7 @@ export default function DashboardLayout({
   children: React.ReactNode
 }) {
   const pathname = usePathname()
+  const router = useRouter()
   const { data: session } = useSession()
   const [mounted, setMounted] = useState(false)
   useEffect(() => {
@@ -29,10 +30,51 @@ export default function DashboardLayout({
     }
   }, [session?.accessToken])
 
+  // Role-based route guard: redirect users away from pages they can't access
+  useEffect(() => {
+    const role = session?.user?.role;
+    if (!role || !pathname) return;
+
+    // Tenant users can only access /dashboard/tenant/* routes
+    if (role === 'tenant') {
+      if (!pathname.startsWith('/dashboard/tenant')) {
+        router.replace('/dashboard/tenant');
+        return;
+      }
+      return; // Skip internal tab checks for tenants
+    }
+
+    // Non-tenant users cannot access tenant routes
+    if (pathname.startsWith('/dashboard/tenant') && role !== 'tenant') {
+      router.replace('/dashboard');
+      return;
+    }
+
+    // Map dashboard path segments to platform tab keys
+    const PATH_TO_TAB: Record<string, string> = {
+      '/dashboard/valuations': 'valuations',
+      '/dashboard/deals': 'deals',
+      '/dashboard/projects': 'projects',
+      '/dashboard/analytics': 'analytics',
+      '/dashboard/property-management': 'property-management',
+      '/dashboard/e-sign': 'e-sign',
+      '/dashboard/admin': 'admin',
+    };
+
+    for (const [prefix, tabKey] of Object.entries(PATH_TO_TAB)) {
+      if (pathname.startsWith(prefix) && !canAccessPlatformTab(role, tabKey)) {
+        router.replace('/dashboard');
+        return;
+      }
+    }
+  }, [session?.user?.role, pathname, router])
+
+  const isTenantRoute = pathname?.startsWith('/dashboard/tenant');
+
   return (
     <UpgradeGateProvider>
       <div className="min-h-screen bg-background">
-        {mounted ? <TopNav /> : (
+        {isTenantRoute ? null : mounted ? <TopNav /> : (
           <header className="sticky top-0 z-50 w-full bg-black border-b border-zinc-800">
             <div className="flex items-center justify-between h-8 px-4 bg-zinc-900 border-b border-zinc-800">
               <div className="flex items-center gap-4">
@@ -55,17 +97,21 @@ export default function DashboardLayout({
         <main className="flex-1">
           {children}
         </main>
-        <FloatingWindowManager />
-        <GlobalSearch />
-        {/* Global Workspace Widget (Only if not handled by page-specific logic) */}
-        {!pathname.includes('/projects/') && !pathname.includes('/valuations/') && (
-          <WorkspaceWidget
-            entityType="platform"
-            entityId="00000000-0000-0000-0000-000000000000"
-            entityName="Workspace"
-            currentUserId={session?.user?.id}
-            token={(session as any)?.accessToken ?? null}
-          />
+        {!isTenantRoute && (
+          <>
+            <FloatingWindowManager />
+            <GlobalSearch />
+            {/* Global Workspace Widget (Only if not handled by page-specific logic) */}
+            {!pathname.includes('/projects/') && !pathname.includes('/valuations/') && (
+              <WorkspaceWidget
+                entityType="platform"
+                entityId="00000000-0000-0000-0000-000000000000"
+                entityName="Workspace"
+                currentUserId={session?.user?.id}
+                token={(session as any)?.accessToken ?? null}
+              />
+            )}
+          </>
         )}
       </div>
     </UpgradeGateProvider>

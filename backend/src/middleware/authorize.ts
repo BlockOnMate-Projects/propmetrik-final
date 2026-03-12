@@ -20,7 +20,7 @@ let policyCacheTime = 0;
 const POLICY_CACHE_TTL = 5 * 60 * 1000; // 5 minutes
 
 // Cache for customer service subscriptions: userId → Set<service_key>
-const customerSubCache = new Map<string, { keys: Set<string>; ts: number }>();
+const customerSubCache = new Map<string, { keys: Set<string>; roles: Map<string, string>; ts: number }>();
 const CUSTOMER_SUB_CACHE_TTL = 60_000; // 1 minute
 
 /**
@@ -129,6 +129,48 @@ async function loadPolicies(): Promise<Map<string, PolicyRecord[]>> {
 }
 
 /**
+ * Customer authorization policies cache.
+ * Maps "service_key:resource_type:action" -> { allowed_roles, require_ownership }
+ */
+let customerPolicyCache: Map<string, { allowed_roles: string[]; require_ownership: boolean }> | null = null;
+let customerPolicyCacheTime = 0;
+
+async function loadCustomerPolicies(): Promise<Map<string, { allowed_roles: string[]; require_ownership: boolean }>> {
+  const now = Date.now();
+  if (customerPolicyCache && now - customerPolicyCacheTime < POLICY_CACHE_TTL) {
+    return customerPolicyCache;
+  }
+
+  try {
+    const { pool } = await import('../database');
+    const result = await pool.query(
+      'SELECT service_key, resource_type, action, allowed_roles, require_ownership FROM customer_authorization_policies WHERE is_active = true'
+    );
+
+    const map = new Map<string, { allowed_roles: string[]; require_ownership: boolean }>();
+    for (const row of result.rows) {
+      const key = `${row.service_key}:${row.resource_type}:${row.action}`;
+      map.set(key, {
+        allowed_roles: row.allowed_roles || [],
+        require_ownership: row.require_ownership || false,
+      });
+    }
+
+    customerPolicyCache = map;
+    customerPolicyCacheTime = now;
+    return map;
+  } catch (err) {
+    logger.error('Failed to load customer authorization policies', { error: err });
+    return customerPolicyCache || new Map();
+  }
+}
+
+export function clearCustomerPolicyCache(): void {
+  customerPolicyCache = null;
+  customerPolicyCacheTime = 0;
+}
+
+/**
  * Get the user's database role and organization from the request.
  * In dev mode without Keycloak, reads from x-user-role header or defaults to super_admin.
  * In production, queries the users table.
@@ -184,28 +226,29 @@ async function getUserDbInfo(req: Request): Promise<{ role: string; organization
  * Check if a customer has an active subscription for a given service.
  * Uses an in-memory cache with a short TTL to avoid repeated DB hits.
  */
-async function checkCustomerSubscription(userId: string, serviceKey: string): Promise<boolean> {
+async function checkCustomerSubscription(userId: string, serviceKey: string): Promise<{ hasAccess: boolean; serviceRole: string }> {
   const now = Date.now();
   const cached = customerSubCache.get(userId);
   if (cached && now - cached.ts < CUSTOMER_SUB_CACHE_TTL) {
-    return cached.keys.has(serviceKey);
+    return { hasAccess: cached.keys.has(serviceKey), serviceRole: cached.roles.get(serviceKey) || 'service_admin' };
   }
 
   try {
     const { pool } = await import('../database');
     const result = await pool.query(
-      `SELECT ps.service_key
+      `SELECT ps.service_key, COALESCE(uss.service_role, 'service_admin') as service_role
        FROM user_service_subscriptions uss
        JOIN platform_services ps ON ps.id = uss.service_id
        WHERE uss.user_id = $1 AND uss.status = 'active'`,
       [userId]
     );
     const keys = new Set<string>(result.rows.map((r: any) => r.service_key));
-    customerSubCache.set(userId, { keys, ts: now });
-    return keys.has(serviceKey);
+    const roles = new Map<string, string>(result.rows.map((r: any) => [r.service_key, r.service_role || 'service_admin']));
+    customerSubCache.set(userId, { keys, roles, ts: now });
+    return { hasAccess: keys.has(serviceKey), serviceRole: roles.get(serviceKey) || 'service_admin' };
   } catch (err) {
     logger.error('Failed to check customer subscription', { userId, serviceKey, error: err });
-    return false; // fail-closed
+    return { hasAccess: false, serviceRole: 'service_admin' }; // fail-closed
   }
 }
 
@@ -431,24 +474,69 @@ export function authorize(
         return next();
       }
 
-      // Customer subscription bypass — customers don't have staff roles
-      // so we check if they have an active subscription for this service.
+      // Customer service-role-based authorization
       const userType = (req.user as any).userType || 'staff';
       if (userType === 'customer') {
         const serviceKey = RESOURCE_TO_SERVICE[resourceType];
         if (serviceKey === '__shared__') {
-          // Shared services always allowed for authenticated customers
           return next();
         }
         if (serviceKey) {
-          const hasAccess = await checkCustomerSubscription(req.user.id, serviceKey);
-          if (hasAccess) {
-            // Enforce org scoping for customers too
+          const { hasAccess, serviceRole } = await checkCustomerSubscription(req.user.id, serviceKey);
+          if (!hasAccess) {
+            return next(new ForbiddenError(
+              `Service subscription required for ${resourceType}`
+            ));
+          }
+
+          // Attach service role to request for downstream use
+          (req as any).customerServiceRole = serviceRole;
+
+          // service_admin bypasses customer policy checks
+          if (serviceRole === 'service_admin') {
             if (userOrgId) {
               (req as any).authorizedOrgId = userOrgId;
             }
+            await logAuthDecision(req, resourceType, action, `customer:${serviceRole}`, 'allowed', 'service_admin_bypass');
             return next();
           }
+
+          // Check customer authorization policies
+          const customerPolicies = await loadCustomerPolicies();
+          const policyKey = `${serviceKey}:${resourceType}:${action}`;
+          const policy = customerPolicies.get(policyKey);
+
+          if (!policy) {
+            // No explicit customer policy — deny non-admin roles
+            logger.warn('No customer policy found, denying non-admin', {
+              userId: req.user.id,
+              serviceRole,
+              resource: resourceType,
+              action,
+            });
+            await logAuthDecision(req, resourceType, action, `customer:${serviceRole}`, 'denied', 'no_customer_policy');
+            return next(new ForbiddenError('Insufficient role for this action'));
+          }
+
+          if (!policy.allowed_roles.includes(serviceRole)) {
+            logger.warn('Customer role not in allowed_roles', {
+              userId: req.user.id,
+              serviceRole,
+              resource: resourceType,
+              action,
+              allowedRoles: policy.allowed_roles,
+            });
+            await logAuthDecision(req, resourceType, action, `customer:${serviceRole}`, 'denied', 'role_not_allowed');
+            return next(new ForbiddenError('Insufficient role for this action'));
+          }
+
+          // Enforce org scoping
+          if (userOrgId) {
+            (req as any).authorizedOrgId = userOrgId;
+          }
+
+          await logAuthDecision(req, resourceType, action, `customer:${serviceRole}`, 'allowed', 'customer_policy_match');
+          return next();
         }
         return next(new ForbiddenError(
           `Service subscription required for ${resourceType}`

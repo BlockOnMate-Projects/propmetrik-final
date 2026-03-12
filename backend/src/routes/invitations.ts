@@ -81,6 +81,7 @@ router.post('/', authorize('invitations', 'create'), async (req: Request, res: R
     const {
       email, role, userType, firstName, lastName,
       message, propertyId, tenancyId, department, teamId, expiryDays,
+      serviceKey, serviceRole,
     } = req.body;
 
     if (!email || !role) {
@@ -108,6 +109,8 @@ router.post('/', authorize('invitations', 'create'), async (req: Request, res: R
       department,
       teamId,
       expiryDays,
+      serviceKey,
+      serviceRole,
     });
 
     // Omit token from response — only sent via email
@@ -132,11 +135,12 @@ router.get('/', authorize('invitations', 'read'), async (req: Request, res: Resp
       return res.status(400).json({ error: 'Organization context is required' });
     }
 
-    const { status, userType } = req.query;
+    const { status, userType, serviceKey } = req.query;
 
     const invitations = await inviteService.listInvitations(organizationId, {
       status: status as any,
       userType: userType as any,
+      serviceKey: serviceKey as string | undefined,
     });
 
     // Strip tokens from list response

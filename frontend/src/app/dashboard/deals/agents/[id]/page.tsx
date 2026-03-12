@@ -20,7 +20,8 @@ import {
     FileText,
     Clock,
     CheckCircle,
-    XCircle
+    XCircle,
+    Trash2
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -113,6 +114,7 @@ export default function AgentProfilePage() {
     const [deals, setDeals] = useState<Deal[]>([])
     const [contacts, setContacts] = useState<Contact[]>([])
     const [isLoading, setIsLoading] = useState(true)
+    const [isDeleting, setIsDeleting] = useState(false)
     const [activeTab, setActiveTab] = useState('overview')
 
     // Load agent data
@@ -223,13 +225,36 @@ export default function AgentProfilePage() {
                         </div>
                     </div>
                 </div>
-                <Button 
-                    onClick={() => router.push(`/dashboard/deals/agents/${agentId}/edit`)}
-                    className="bg-primary text-primary-foreground hover:bg-primary/80 font-mono text-xs"
-                >
-                    <Edit className="h-4 w-4 mr-2" />
-                    EDIT AGENT
-                </Button>
+                <div className="flex items-center gap-2">
+                    <Button 
+                        variant="outline"
+                        onClick={async () => {
+                            if (!confirm(`Delete ${agent.first_name} ${agent.last_name}? This action cannot be undone.`)) return
+                            try {
+                                setIsDeleting(true)
+                                await agentsApi.delete(agentId)
+                                router.push('/dashboard/deals/agents')
+                            } catch (err) {
+                                console.error('Failed to delete agent:', err)
+                                alert('Failed to delete agent. They may have active deals.')
+                            } finally {
+                                setIsDeleting(false)
+                            }
+                        }}
+                        disabled={isDeleting}
+                        className="border-red-500/30 text-red-400 hover:bg-red-500/10 font-mono text-xs"
+                    >
+                        {isDeleting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Trash2 className="h-4 w-4 mr-2" />}
+                        DELETE
+                    </Button>
+                    <Button 
+                        onClick={() => router.push(`/dashboard/deals/agents/${agentId}/edit`)}
+                        className="bg-primary text-primary-foreground hover:bg-primary/80 font-mono text-xs"
+                    >
+                        <Edit className="h-4 w-4 mr-2" />
+                        EDIT AGENT
+                    </Button>
+                </div>
             </div>
 
             {/* Stats */}

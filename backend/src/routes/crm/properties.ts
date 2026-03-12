@@ -1,13 +1,15 @@
 import { Router, Request, Response } from 'express';
 import crypto from 'crypto';
 import multer from 'multer';
-import { getOrganizationId, getUserId, asyncHandler } from './helpers';
+import { getOrganizationId, getUserId, asyncHandler, getAgentIdForUser } from './helpers';
 import { scanUploadedFiles } from '../../middleware/virusScan';
 import { crmPropertySyncService } from '../../services/crm-deal-management/crmPropertySyncService';
 import { dataHubQueueManager, DataHubQueueManager, CrmPropertySyncJobData } from '../../services/data-hub/jobQueue';
 import db from '../../database';
 import { uploadFile, deleteFile, getPresignedDownloadUrl, generatePropertyImageKey, buckets } from '../../database/minio';
 import { logger } from '../../utils/logger';
+import { validate } from '../../middleware/validation';
+import { submitPropertyBody, updatePropertyBody } from '../../middleware/schemas/crm.schemas';
 
 const upload = multer({
     storage: multer.memoryStorage(),
@@ -45,6 +47,14 @@ router.get('/properties', asyncHandler(async (req: Request, res: Response) => {
     let whereClause = 'p.organization_id = $1';
     const params: any[] = [organizationId];
     let paramIndex = 2;
+
+    // Agent role: only see properties assigned to them
+    const agentId = await getAgentIdForUser(req);
+    if (agentId) {
+        params.push(agentId);
+        whereClause += ` AND p.assigned_agent_id = $${paramIndex}`;
+        paramIndex++;
+    }
 
     if (search) {
         params.push(`%${search}%`);
@@ -128,12 +138,15 @@ router.get('/properties', asyncHandler(async (req: Request, res: Response) => {
             COALESCE(sc.total_stages, 0) as total_stages,
             p.created_at,
             COALESCE(pd.deal_count, 0) as deal_count,
-            COALESCE(pd.active_deals, 0) as active_deals
+            COALESCE(pd.active_deals, 0) as active_deals,
+            p.assigned_agent_id,
+            COALESCE(ag.first_name || ' ' || ag.last_name, NULL) as assigned_agent_name
         FROM crm_properties p
         LEFT JOIN property_deals pd ON pd.property_id = p.id
         LEFT JOIN deal_pipelines dp ON dp.id = p.pipeline_id
         LEFT JOIN deal_stages ds ON ds.id = p.current_stage_id
         LEFT JOIN stage_counts sc ON sc.pipeline_id = p.pipeline_id
+        LEFT JOIN agents ag ON ag.id = p.assigned_agent_id
         WHERE ${whereClause}
         ORDER BY p.created_at DESC
         LIMIT $${limitParam} OFFSET $${offsetParam}
@@ -220,8 +233,11 @@ router.get('/properties/:id', asyncHandler(async (req: Request, res: Response) =
             p.active_deal_id,
             p.total_deals,
             p.created_at,
-            p.updated_at
+            p.updated_at,
+            p.assigned_agent_id,
+            COALESCE(ag.first_name || ' ' || ag.last_name, NULL) as assigned_agent_name
         FROM crm_properties p
+        LEFT JOIN agents ag ON ag.id = p.assigned_agent_id
         WHERE p.id = $1 AND p.organization_id = $2
     `;
 
@@ -246,7 +262,7 @@ router.get('/properties/:id', asyncHandler(async (req: Request, res: Response) =
 }));
 
 // POST /properties/submit — Submit new CRM property with geocoding
-router.post('/properties/submit', asyncHandler(async (req: Request, res: Response) => {
+router.post('/properties/submit', validate(submitPropertyBody), asyncHandler(async (req: Request, res: Response) => {
     const organizationId = await getOrganizationId(req);
     if (!organizationId || organizationId === '00000000-0000-0000-0000-000000000000') {
         return res.status(401).json({ error: 'Organization not found' });
@@ -333,7 +349,7 @@ router.post('/properties/submit', asyncHandler(async (req: Request, res: Respons
             $11, $12, $13, $14,
             $15, $16, $17, $18, $19,
             $20, $21, $22, $23, $24, $25,
-            'pending', $26, NOW(), $27,
+            'active', $26, NOW(), $27,
             true, NOW(),
             $28::decimal, $29::decimal, $30::varchar,
             CASE WHEN $28 IS NOT NULL AND $29 IS NOT NULL 
@@ -380,7 +396,7 @@ router.post('/properties/submit', asyncHandler(async (req: Request, res: Respons
 }));
 
 // PATCH /properties/:id — Update CRM property with re-geocoding
-router.patch('/properties/:id', asyncHandler(async (req: Request, res: Response) => {
+router.patch('/properties/:id', validate(updatePropertyBody), asyncHandler(async (req: Request, res: Response) => {
     const organizationId = await getOrganizationId(req);
     if (!organizationId || organizationId === '00000000-0000-0000-0000-000000000000') {
         return res.status(401).json({ error: 'Organization not found' });
@@ -451,7 +467,7 @@ router.patch('/properties/:id', asyncHandler(async (req: Request, res: Response)
         'features', 'amenities', 'owner_name', 'owner_phone', 'owner_email', 'owner_type',
         'status', 'priority', 'current_stage_id', 'pipeline_id',
         'latitude', 'longitude', 'location_accuracy',
-        'images'
+        'images', 'assigned_agent_id'
     ];
 
     const setClauses: string[] = [];
@@ -490,12 +506,15 @@ router.patch('/properties/:id', asyncHandler(async (req: Request, res: Response)
     paramIndex++;
 
     values.push(id);
+    const idParam = paramIndex;
+    paramIndex++;
     values.push(organizationId);
+    const orgParam = paramIndex;
 
     const query = `
         UPDATE crm_properties 
         SET ${setClauses.join(', ')}
-        WHERE id = $${paramIndex - 1} AND organization_id = $${paramIndex}
+        WHERE id = $${idParam} AND organization_id = $${orgParam}
         RETURNING *
     `;
 

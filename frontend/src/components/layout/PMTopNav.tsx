@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useSession } from 'next-auth/react'
 import { cn } from '@/lib/utils'
-import { canAccessServiceSubTab } from '@/lib/rbac'
+import { canAccessServiceSubTab, canCustomerAccessSubTab } from '@/lib/rbac'
 
 const navigation = [
     { name: 'OVERVIEW', href: '/dashboard/property-management', exact: true, key: '1', subTabKey: 'propmgmt-overview' },
@@ -19,6 +19,7 @@ const navigation = [
     { name: 'VENDORS', href: '/dashboard/property-management/vendors', key: '9', subTabKey: 'propmgmt-vendors' },
     { name: 'FINANCIALS', href: '/dashboard/property-management/financials', key: '10', subTabKey: 'propmgmt-financials' },
     { name: 'CALENDAR', href: '/dashboard/calendar?service=property-management', key: '0', subTabKey: 'propmgmt-calendar' },
+    { name: 'TEAM', href: '/dashboard/property-management/team', key: 'T', subTabKey: 'propmgmt-team' },
 ]
 
 export function PMTopNav() {
@@ -26,10 +27,16 @@ export function PMTopNav() {
     const { data: session } = useSession()
 
     const userRole = session?.user?.role || ''
+    const userType = (session?.user as any)?.userType || 'staff'
+    const customerServiceRole = (session?.user as any)?.customerServiceRoles?.property_management as string | undefined
 
     // Show all until session loads to avoid hydration mismatch
-    const visibleNavItems = userRole
-        ? navigation.filter(item => canAccessServiceSubTab(userRole, 'property-management', item.subTabKey))
+    const visibleNavItems = userRole || customerServiceRole
+        ? navigation.filter(item =>
+            userType === 'customer'
+              ? canCustomerAccessSubTab(customerServiceRole, 'property-management', item.subTabKey)
+              : canAccessServiceSubTab(userRole, 'property-management', item.subTabKey)
+          )
         : navigation
 
     return (

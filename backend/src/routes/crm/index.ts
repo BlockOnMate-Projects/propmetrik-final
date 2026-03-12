@@ -35,6 +35,39 @@ import notificationRoutes from './notifications';
 
 const router = Router();
 
+// ── Roles allowed for restricted CRM sub-routes ──
+const CRM_ADMIN_ROLES = ['super_admin', 'firm_principal', 'admin'];
+const CRM_MANAGER_ROLES = [...CRM_ADMIN_ROLES, 'manager'];
+const CRM_FINANCE_ROLES = [...CRM_ADMIN_ROLES, 'manager', 'finance_manager'];
+const CRM_ANALYTICS_ROLES = [...CRM_MANAGER_ROLES, 'analyst'];
+
+// ── Path → required roles map. Paths not listed are open to all CRM users. ──
+const RESTRICTED_CRM_PATHS: Array<{ prefix: string; roles: string[] }> = [
+    { prefix: '/agents',         roles: CRM_MANAGER_ROLES },
+    { prefix: '/pipelines',      roles: CRM_ADMIN_ROLES },
+    { prefix: '/commissions',    roles: CRM_FINANCE_ROLES },
+    { prefix: '/analytics',      roles: CRM_ANALYTICS_ROLES },
+    { prefix: '/payments',       roles: CRM_FINANCE_ROLES },
+    { prefix: '/drip-campaigns', roles: CRM_MANAGER_ROLES },
+];
+
+// Enforce role restrictions on sensitive CRM endpoints
+router.use((req: Request, res: Response, next: NextFunction) => {
+    const match = RESTRICTED_CRM_PATHS.find(r => req.path.startsWith(r.prefix));
+    if (!match) return next();
+
+    const userRoles = [
+        ...(req.user?.realmRoles || []),
+        ...(req.user?.clientRoles || []),
+    ];
+
+    if (match.roles.some(role => userRoles.includes(role))) {
+        return next();
+    }
+
+    res.status(403).json({ error: 'Insufficient permissions for this resource' });
+});
+
 // Mount sub-routers (all share the /api/v1/crm base path)
 router.use('/', contactRoutes);
 router.use('/', companyRoutes);

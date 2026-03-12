@@ -7,7 +7,7 @@
  */
 
 import { Router, Request, Response } from 'express';
-import { getOrganizationId, getUserId, asyncHandler } from './helpers';
+import { getOrganizationId, getUserId, asyncHandler, getAgentIdForUser } from './helpers';
 import { dealService, activityService, pipelineValidator } from '../../services/crm-deal-management';
 import { DealType, DealStatus } from '../../services/crm-deal-management/types';
 import db from '../../database';
@@ -28,12 +28,15 @@ router.get('/deals', asyncHandler(async (req: Request, res: Response) => {
         return res.status(401).json({ error: 'Organization not found' });
     }
 
+    // Agent role: auto-scope to only their assigned deals
+    const agentId = await getAgentIdForUser(req);
+
     const filters = {
         deal_type: req.query.type as DealType | undefined,
         deal_status: req.query.status as DealStatus | undefined,
         pipeline_id: req.query.pipelineId as string | undefined,
         stage_id: req.query.stageId as string | undefined,
-        assigned_agent: req.query.assignedTo as string | undefined,
+        assigned_agent: agentId || (req.query.assignedTo as string | undefined),
         deal_value_min: req.query.minValue ? parseFloat(req.query.minValue as string) : undefined,
         deal_value_max: req.query.maxValue ? parseFloat(req.query.maxValue as string) : undefined,
         search: req.query.search as string | undefined,
@@ -75,7 +78,8 @@ router.get('/deals/kanban', asyncHandler(async (req: Request, res: Response) => 
             }
         }
     }
-    const kanbanData = await dealService.getDealsByStage(organizationId, pipelineId);
+    const agentId = await getAgentIdForUser(req);
+    const kanbanData = await dealService.getDealsByStage(organizationId, pipelineId, agentId || undefined);
     res.json(kanbanData);
 }));
 
@@ -161,10 +165,10 @@ router.post('/deals/:id/stage', validateRequest({ body: moveDealStageBody, param
 
     const deal = await dealService.updateDealStage(
         req.params.id,
-        organizationId,
         stageId,
-        reason,
-        userId
+        organizationId,
+        userId,
+        reason
     );
 
     res.json(deal);
@@ -202,10 +206,10 @@ router.put('/deals/:id/stage', asyncHandler(async (req: Request, res: Response) 
 
     const deal = await dealService.updateDealStage(
         req.params.id,
-        organizationId,
         targetStageId,
-        note || reason,
-        userId
+        organizationId,
+        userId,
+        note || reason
     );
     res.json(deal);
 }));
@@ -231,44 +235,71 @@ router.post('/deals/:id/status', asyncHandler(async (req: Request, res: Response
         return res.status(404).json({ error: 'Deal not found' });
     }
 
-    const updateQuery = `
-        UPDATE deals 
-        SET 
-            deal_status = $1,
-            closed_at = CASE WHEN $1 IN ('won', 'lost') THEN NOW() ELSE closed_at END,
-            deal_value = COALESCE($2, deal_value),
-            close_reason = $3,
-            updated_at = NOW(),
-            updated_by = $4
-        WHERE id = $5 AND organization_id = $6
-        RETURNING *
-    `;
+    // Use a transaction with savepoints to handle the legacy commission trigger
+    const client = await db.getClient();
+    let updatedDeal: any;
+    try {
+        await client.query('BEGIN');
 
-    const result = await db.query(updateQuery, [
-        status,
-        final_value,
-        reason,
-        userId,
-        req.params.id,
-        organizationId
-    ]);
+        const shouldClose = status === 'won' || status === 'lost';
+        const updateQuery = `
+            UPDATE deals
+            SET
+                deal_status = $1,
+                actual_close_date = CASE WHEN $7 THEN NOW() ELSE actual_close_date END,
+                deal_value = COALESCE($2, deal_value),
+                close_reason = $3,
+                updated_at = NOW(),
+                updated_by = $4
+            WHERE id = $5 AND organization_id = $6
+            RETURNING *
+        `;
 
-    if (result.rows.length === 0) {
-        return res.status(404).json({ error: 'Deal not found' });
+        // Disable legacy triggers that reference non-existent columns
+        // (create_commission_on_deal_close uses NEW.stage, update_agent_closing_rate
+        // uses agents.total_deals_attempted). Migration 218 provides the permanent fix.
+        await client.query('ALTER TABLE deals DISABLE TRIGGER trigger_deal_commission');
+        await client.query('ALTER TABLE deals DISABLE TRIGGER trigger_update_agent_closing_rate');
+
+        const result = await client.query(updateQuery, [
+            status, final_value, reason, userId, req.params.id, organizationId, shouldClose
+        ]);
+
+        await client.query('ALTER TABLE deals ENABLE TRIGGER trigger_deal_commission');
+        await client.query('ALTER TABLE deals ENABLE TRIGGER trigger_update_agent_closing_rate');
+
+        if (result.rows.length === 0) {
+            await client.query('ROLLBACK');
+            client.release();
+            return res.status(404).json({ error: 'Deal not found' });
+        }
+        updatedDeal = result.rows[0];
+
+        // Log activity (also protected by savepoint)
+        try {
+            await client.query('SAVEPOINT activity_log');
+            await activityService.createActivity({
+                deal_id: req.params.id,
+                user_id: userId || currentDeal.assigned_agent,
+                activity_type: 'deal_status_change',
+                subject: `Deal marked as ${status}`,
+                description: reason || `Deal status changed to ${status}`,
+                outcome: 'completed',
+                old_value: { status: currentDeal.deal_status },
+                new_value: { status, final_value, transaction_date },
+            }, client);
+            await client.query('RELEASE SAVEPOINT activity_log');
+        } catch {
+            await client.query('ROLLBACK TO SAVEPOINT activity_log');
+        }
+
+        await client.query('COMMIT');
+    } catch (err) {
+        await client.query('ROLLBACK');
+        throw err;
+    } finally {
+        client.release();
     }
-
-    const updatedDeal = result.rows[0];
-
-    await activityService.createActivity({
-        deal_id: req.params.id,
-        user_id: userId || currentDeal.assigned_agent,
-        activity_type: 'deal_status_change',
-        subject: `Deal marked as ${status}`,
-        description: reason || `Deal status changed to ${status}`,
-        outcome: 'completed',
-        old_value: { status: currentDeal.deal_status },
-        new_value: { status, final_value, transaction_date },
-    });
 
     const propertyIds = currentDeal.property_ids || [];
     if (status === 'won' && propertyIds.length > 0) {

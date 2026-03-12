@@ -654,13 +654,15 @@ class CrmDocumentTemplateService {
   // Private Helpers
   // =============================================
 
-  private mapRow(row: any): DocumentTemplate {
+  private mapRow(row: any): DocumentTemplate & { template_name: string; template_description: string | null } {
     return {
       id: row.id,
       organization_id: row.organization_id,
       name: row.name,
+      template_name: row.name,
       category: row.category,
       description: row.description,
+      template_description: row.description,
       template_html: row.template_html,
       template_pdf_url: row.template_pdf_url,
       merge_fields: typeof row.merge_fields === 'string' 

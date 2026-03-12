@@ -60,7 +60,12 @@ const nextConfig = {
     if (!isServer) {
       // pdfjs-dist optional dependencies
       config.resolve.alias.canvas = false;
+      // pdfjs-dist fallbacks
+      config.resolve.fallback = { ...config.resolve.fallback, fs: false, http: false, https: false };
     }
+    // Stub out the porto connector (optional wagmi dependency)
+    config.resolve.alias['porto'] = false;
+    config.resolve.alias['porto/internal'] = false;
     return config;
   },
 };

@@ -14,50 +14,14 @@ import db from '../../database';
 
 const router = Router();
 
-const ensureTable = async () => {
-    await db.query(`
-        CREATE TABLE IF NOT EXISTS crm_notifications (
-            id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-            organization_id UUID NOT NULL,
-            user_id UUID NOT NULL,
-            type VARCHAR(50) NOT NULL,
-            title VARCHAR(300) NOT NULL,
-            message TEXT,
-            entity_type VARCHAR(30),
-            entity_id UUID,
-            is_read BOOLEAN DEFAULT false,
-            created_at TIMESTAMPTZ DEFAULT NOW()
-        )
-    `);
-    await db.query(`CREATE INDEX IF NOT EXISTS idx_crm_notif_user ON crm_notifications(user_id, is_read, created_at DESC)`);
-
-    await db.query(`
-        CREATE TABLE IF NOT EXISTS crm_notification_preferences (
-            id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-            organization_id UUID NOT NULL,
-            user_id UUID NOT NULL,
-            deal_stage_change BOOLEAN DEFAULT true,
-            deal_won BOOLEAN DEFAULT true,
-            deal_lost BOOLEAN DEFAULT true,
-            task_due_soon BOOLEAN DEFAULT true,
-            task_overdue BOOLEAN DEFAULT true,
-            new_contact_assigned BOOLEAN DEFAULT true,
-            new_deal_assigned BOOLEAN DEFAULT true,
-            email_notifications BOOLEAN DEFAULT false,
-            UNIQUE(organization_id, user_id)
-        )
-    `);
-};
-
-let ready = false;
-const ensureOnce = async () => { if (!ready) { await ensureTable(); ready = true; } };
+// Tables created by migration 219_crm_runtime_tables.sql
 
 // ── List notifications ─────────────────────────────
 router.get('/notifications', asyncHandler(async (req: Request, res: Response) => {
     const orgId = await getOrganizationId(req);
     const userId = await getUserId(req);
     if (!orgId || !userId) return res.status(401).json({ error: 'Unauthorized' });
-    await ensureOnce();
+
 
     const unreadOnly = req.query.unread === 'true';
     const limit = Math.min(parseInt(req.query.limit as string) || 50, 200);
@@ -83,7 +47,7 @@ router.get('/notifications/:id', asyncHandler(async (req: Request, res: Response
     const orgId = await getOrganizationId(req);
     const userId = await getUserId(req);
     if (!orgId || !userId) return res.status(401).json({ error: 'Unauthorized' });
-    await ensureOnce();
+
     const result = await db.query(
         `SELECT * FROM crm_notifications WHERE id = $1 AND organization_id = $2 AND user_id = $3`,
         [req.params.id, orgId, userId]
@@ -95,7 +59,7 @@ router.get('/notifications/:id', asyncHandler(async (req: Request, res: Response
 // ── Mark as read ───────────────────────────────────
 router.put('/notifications/:id/read', asyncHandler(async (req: Request, res: Response) => {
     const userId = await getUserId(req);
-    await ensureOnce();
+
     await db.query(`UPDATE crm_notifications SET is_read = true WHERE id = $1 AND user_id = $2`, [req.params.id, userId]);
     res.json({ ok: true });
 }));
@@ -104,7 +68,7 @@ router.put('/notifications/:id/read', asyncHandler(async (req: Request, res: Res
 router.put('/notifications/read-all', asyncHandler(async (req: Request, res: Response) => {
     const orgId = await getOrganizationId(req);
     const userId = await getUserId(req);
-    await ensureOnce();
+
     await db.query(
         `UPDATE crm_notifications SET is_read = true WHERE organization_id = $1 AND user_id = $2 AND is_read = false`,
         [orgId, userId]
@@ -116,7 +80,7 @@ router.put('/notifications/read-all', asyncHandler(async (req: Request, res: Res
 router.post('/notifications/mark-all-read', asyncHandler(async (req: Request, res: Response) => {
     const orgId = await getOrganizationId(req);
     const userId = await getUserId(req);
-    await ensureOnce();
+
     await db.query(
         `UPDATE crm_notifications SET is_read = true WHERE organization_id = $1 AND user_id = $2 AND is_read = false`,
         [orgId, userId]
@@ -128,7 +92,7 @@ router.post('/notifications/mark-all-read', asyncHandler(async (req: Request, re
 router.post('/notifications', asyncHandler(async (req: Request, res: Response) => {
     const orgId = await getOrganizationId(req);
     if (!orgId) return res.status(401).json({ error: 'Unauthorized' });
-    await ensureOnce();
+
 
     const { user_id, type, title, message, entity_type, entity_id } = req.body;
     if (!user_id || !type || !title) return res.status(400).json({ error: 'user_id, type, title required' });
@@ -146,7 +110,7 @@ router.get('/notification-preferences', asyncHandler(async (req: Request, res: R
     const orgId = await getOrganizationId(req);
     const userId = await getUserId(req);
     if (!orgId || !userId) return res.status(401).json({ error: 'Unauthorized' });
-    await ensureOnce();
+
 
     const result = await db.query(
         `SELECT * FROM crm_notification_preferences WHERE organization_id = $1 AND user_id = $2`,
@@ -169,7 +133,7 @@ router.put('/notification-preferences', asyncHandler(async (req: Request, res: R
     const orgId = await getOrganizationId(req);
     const userId = await getUserId(req);
     if (!orgId || !userId) return res.status(401).json({ error: 'Unauthorized' });
-    await ensureOnce();
+
 
     const fields = [
         'deal_stage_change', 'deal_won', 'deal_lost',

@@ -12,6 +12,13 @@ import { createCustomRateLimiter } from '../../middleware/rateLimiter';
 
 const bulkRateLimiter = createCustomRateLimiter('crm_bulk_commissions', { points: 5, duration: 60, blockDuration: 120 });
 import { commissionService } from '../../services/crm-deal-management/commissionService';
+import { validate } from '../../middleware/validation';
+import {
+    createCommissionPlanBody, updateCommissionPlanBody, createCommissionTierBody,
+    createCommissionSplitBody, assignCommissionPlanBody, commissionClawbackBody,
+    commissionBulkApproveBody, commissionPayBody, commissionCalculateBody,
+    commissionGenerateStatementBody, createCommissionAdjustmentBody
+} from '../../middleware/schemas/crm.schemas';
 
 const router = Router();
 
@@ -27,7 +34,7 @@ router.get('/commissions/plans', asyncHandler(async (req: Request, res: Response
     res.json({ plans });
 }));
 
-router.post('/commissions/plans', asyncHandler(async (req: Request, res: Response) => {
+router.post('/commissions/plans', validate(createCommissionPlanBody), asyncHandler(async (req: Request, res: Response) => {
     const organizationId = await getOrganizationId(req);
     const userId = await getUserId(req);
     
@@ -47,7 +54,7 @@ router.get('/commissions/plans/:id', asyncHandler(async (req: Request, res: Resp
     res.json({ plan });
 }));
 
-router.patch('/commissions/plans/:id', asyncHandler(async (req: Request, res: Response) => {
+router.patch('/commissions/plans/:id', validate(updateCommissionPlanBody), asyncHandler(async (req: Request, res: Response) => {
     const plan = await commissionService.updatePlan(req.params.id, req.body);
     if (!plan) {
         return res.status(404).json({ error: 'Plan not found' });
@@ -63,7 +70,7 @@ router.delete('/commissions/plans/:id', asyncHandler(async (req: Request, res: R
     res.json({ message: 'Plan deleted' });
 }));
 
-router.post('/commissions/plans/:id/tiers', asyncHandler(async (req: Request, res: Response) => {
+router.post('/commissions/plans/:id/tiers', validate(createCommissionTierBody), asyncHandler(async (req: Request, res: Response) => {
     const tier = await commissionService.addTier(req.params.id, req.body);
     res.status(201).json({ tier });
 }));
@@ -133,7 +140,7 @@ router.post('/commissions/records/:id/pay', asyncHandler(async (req: Request, re
     res.json({ record });
 }));
 
-router.post('/commissions/records/:id/clawback', asyncHandler(async (req: Request, res: Response) => {
+router.post('/commissions/records/:id/clawback', validate(commissionClawbackBody), asyncHandler(async (req: Request, res: Response) => {
     const userId = await getUserId(req);
     const { reason } = req.body;
     
@@ -144,7 +151,7 @@ router.post('/commissions/records/:id/clawback', asyncHandler(async (req: Reques
     res.status(201).json({ record });
 }));
 
-router.post('/commissions/records/approve-bulk', bulkRateLimiter, asyncHandler(async (req: Request, res: Response) => {
+router.post('/commissions/records/approve-bulk', bulkRateLimiter, validate(commissionBulkApproveBody), asyncHandler(async (req: Request, res: Response) => {
     const organizationId = await getOrganizationId(req);
     const userId = await getUserId(req);
     const { record_ids } = req.body;
@@ -161,7 +168,7 @@ router.get('/commissions/summary', asyncHandler(async (req: Request, res: Respon
     res.json({ summary });
 }));
 
-router.post('/commissions/calculate', asyncHandler(async (req: Request, res: Response) => {
+router.post('/commissions/calculate', validate(commissionCalculateBody), asyncHandler(async (req: Request, res: Response) => {
     const organizationId = await getOrganizationId(req);
     const { deal_id, agent_id, deal_value } = req.body;
     
@@ -188,7 +195,7 @@ router.get('/commissions/statements', asyncHandler(async (req: Request, res: Res
     res.json({ statements });
 }));
 
-router.post('/commissions/statements/generate', asyncHandler(async (req: Request, res: Response) => {
+router.post('/commissions/statements/generate', validate(commissionGenerateStatementBody), asyncHandler(async (req: Request, res: Response) => {
     const organizationId = await getOrganizationId(req);
     const { agent_id, period_start, period_end } = req.body;
     
@@ -230,7 +237,7 @@ router.post('/commissions/statements/:id/approve', asyncHandler(async (req: Requ
     res.json({ statement });
 }));
 
-router.post('/commissions/statements/:id/pay', asyncHandler(async (req: Request, res: Response) => {
+router.post('/commissions/statements/:id/pay', validate(commissionPayBody), asyncHandler(async (req: Request, res: Response) => {
     const { payment_method, payment_reference } = req.body;
     
     const statement = await commissionService.markStatementPaid(
@@ -249,7 +256,7 @@ router.get('/deals/:id/commission-splits', asyncHandler(async (req: Request, res
     res.json({ splits });
 }));
 
-router.post('/deals/:id/commission-splits', asyncHandler(async (req: Request, res: Response) => {
+router.post('/deals/:id/commission-splits', validate(createCommissionSplitBody), asyncHandler(async (req: Request, res: Response) => {
     const userId = await getUserId(req);
     const { agent_id, role, split_percentage, notes } = req.body;
     
@@ -272,7 +279,7 @@ router.delete('/deals/:id/commission-splits/:agentId', asyncHandler(async (req: 
     res.json({ message: 'Split removed' });
 }));
 
-router.post('/agents/:id/commission-assignment', asyncHandler(async (req: Request, res: Response) => {
+router.post('/agents/:id/commission-assignment', validate(assignCommissionPlanBody), asyncHandler(async (req: Request, res: Response) => {
     const userId = await getUserId(req);
     const { plan_id, custom_rate, effective_from } = req.body;
     
@@ -297,7 +304,7 @@ router.get('/agents/:id/commission-summary', asyncHandler(async (req: Request, r
     res.json({ summary });
 }));
 
-router.post('/commissions/adjustments', asyncHandler(async (req: Request, res: Response) => {
+router.post('/commissions/adjustments', validate(createCommissionAdjustmentBody), asyncHandler(async (req: Request, res: Response) => {
     const organizationId = await getOrganizationId(req);
     const userId = await getUserId(req);
     

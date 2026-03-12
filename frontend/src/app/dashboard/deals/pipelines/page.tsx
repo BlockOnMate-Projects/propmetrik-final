@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useState, lazy, Suspense } from 'react'
 import { cn } from '@/lib/utils'
 import {
     Loader2,
@@ -10,8 +10,11 @@ import {
     ArrowUp,
     ArrowDown,
     GripVertical,
-    Settings2
+    Settings2,
+    GitBranch,
 } from 'lucide-react'
+
+const PipelineDesigner = lazy(() => import('@/components/crm/PipelineDesigner').then(m => ({ default: m.PipelineDesigner })))
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -202,6 +205,7 @@ export default function PipelinesPage() {
     const [selectedPipeline, setSelectedPipeline] = useState<DealPipeline | null>(null)
     const [isLoading, setIsLoading] = useState(true)
     const [error, setError] = useState<string | null>(null)
+    const [designerOpen, setDesignerOpen] = useState(false)
     
     // Dialog states
     const [showPipelineDialog, setShowPipelineDialog] = useState(false)
@@ -393,13 +397,23 @@ export default function PipelinesPage() {
                     <h1 className="text-2xl font-semibold tracking-tight text-foreground">Pipelines</h1>
                     <p className="text-sm text-muted-foreground mt-1">Configure deal stages and workflows</p>
                 </div>
-                <Button
-                    onClick={() => openPipelineDialog()}
-                    className="bg-primary text-primary-foreground hover:bg-primary/90 font-medium text-sm h-9 px-4 rounded-md shadow-sm"
-                >
-                    <Plus className="h-4 w-4 mr-1.5" />
-                    New Pipeline
-                </Button>
+                <div className="flex items-center gap-2">
+                    <Button
+                        variant="outline"
+                        onClick={() => setDesignerOpen(true)}
+                        className="text-sm h-9 px-4"
+                    >
+                        <GitBranch className="h-4 w-4 mr-1.5" />
+                        Visual Designer
+                    </Button>
+                    <Button
+                        onClick={() => openPipelineDialog()}
+                        className="bg-primary text-primary-foreground hover:bg-primary/90 font-medium text-sm h-9 px-4 rounded-md shadow-sm"
+                    >
+                        <Plus className="h-4 w-4 mr-1.5" />
+                        New Pipeline
+                    </Button>
+                </div>
             </div>
 
             <div className="grid gap-4 lg:grid-cols-3">
@@ -493,6 +507,15 @@ export default function PipelinesPage() {
                     )}
                 </div>
             </div>
+
+            {/* Visual Pipeline Designer */}
+            <Suspense fallback={null}>
+                <PipelineDesigner
+                    open={designerOpen}
+                    onOpenChange={setDesignerOpen}
+                    onSave={() => loadPipelines()}
+                />
+            </Suspense>
 
             {/* Pipeline Dialog */}
             <Dialog open={showPipelineDialog} onOpenChange={setShowPipelineDialog}>

@@ -264,3 +264,208 @@ export const createPipelineBody = z.object({
         description: z.string().max(500).optional(),
     })).optional(),
 }).passthrough();
+
+// =============================================
+// 11. POST /properties/submit — Submit Property (body only)
+// =============================================
+
+export const submitPropertyBody = z.object({
+    property_name: z.string().min(1, 'Property name is required').max(200),
+    property_type: z.string().max(50).default('residential'),
+    listing_type: z.string().max(20).default('sale'),
+    address: z.string().max(300).optional(),
+    city: z.string().max(100).optional(),
+    region: z.string().max(100).default('greater_accra'),
+    digital_address: z.string().max(30).optional(),
+    landmark: z.string().max(300).optional(),
+    price: z.number().nonnegative().optional(),
+    currency: z.string().max(10).default('GHS'),
+    bedrooms: z.number().int().nonnegative().max(100).optional(),
+    bathrooms: z.number().int().nonnegative().max(100).optional(),
+    area_sqm: z.number().nonnegative().optional(),
+    land_size_sqm: z.number().nonnegative().optional(),
+    floors: z.number().int().nonnegative().max(200).optional(),
+    year_built: z.number().int().min(1800).max(2100).optional(),
+    description: z.string().max(5000).optional(),
+    features: z.array(z.string()).optional(),
+    amenities: z.array(z.string()).optional(),
+    owner_name: z.string().max(200).optional(),
+    owner_phone: z.string().max(20).optional(),
+    owner_email: z.string().email().optional().or(z.literal('')),
+    owner_type: z.string().max(50).optional(),
+}).passthrough();
+
+// =============================================
+// 12. PATCH /properties/:id — Update Property (body only)
+// =============================================
+
+export const updatePropertyBody = z.object({
+    title: z.string().min(1).max(200).optional(),
+    description: z.string().max(5000).optional(),
+    property_type: z.string().max(50).optional(),
+    transaction_type: z.string().max(20).optional(),
+    address_street: z.string().max(300).optional(),
+    address_city: z.string().max(100).optional(),
+    region: z.string().max(100).optional(),
+    digital_address: z.string().max(30).optional(),
+    landmark: z.string().max(300).optional(),
+    price: z.number().nonnegative().optional(),
+    price_currency: z.string().max(10).optional(),
+    bedrooms: z.number().int().nonnegative().max(100).optional(),
+    bathrooms: z.number().int().nonnegative().max(100).optional(),
+    total_area_sqm: z.number().nonnegative().optional(),
+    land_area_sqm: z.number().nonnegative().optional(),
+    floors: z.number().int().nonnegative().max(200).optional(),
+    year_built: z.number().int().min(1800).max(2100).optional(),
+    features: z.array(z.string()).optional(),
+    amenities: z.array(z.string()).optional(),
+    owner_name: z.string().max(200).optional(),
+    owner_phone: z.string().max(20).optional(),
+    owner_email: z.string().email().optional().or(z.literal('')),
+    owner_type: z.string().max(50).optional(),
+    status: z.string().max(30).optional(),
+    priority: z.string().max(20).optional(),
+    current_stage_id: z.string().uuid().optional(),
+    pipeline_id: z.string().uuid().optional(),
+    latitude: z.number().min(-90).max(90).optional(),
+    longitude: z.number().min(-180).max(180).optional(),
+    location_accuracy: z.string().max(20).optional(),
+    images: z.array(z.any()).optional(),
+    assigned_agent_id: z.string().uuid().optional(),
+}).passthrough();
+
+// =============================================
+// 13. Commission Plan Schemas
+// =============================================
+
+export const commissionPlanTypeEnum = z.enum(['standard', 'tiered', 'flat', 'graduated']);
+
+export const createCommissionPlanBody = z.object({
+    name: z.string().min(1, 'Plan name is required').max(200),
+    description: z.string().max(1000).optional(),
+    plan_type: commissionPlanTypeEnum,
+    base_rate: z.number().min(0).max(1, 'Base rate must be between 0 and 1 (e.g. 0.03 for 3%)'),
+    is_default: z.boolean().optional(),
+    is_active: z.boolean().optional(),
+    effective_from: z.string().optional(),
+    effective_to: z.string().optional(),
+}).passthrough();
+
+export const updateCommissionPlanBody = z.object({
+    name: z.string().min(1).max(200).optional(),
+    description: z.string().max(1000).optional(),
+    plan_type: commissionPlanTypeEnum.optional(),
+    base_rate: z.number().min(0).max(1).optional(),
+    is_default: z.boolean().optional(),
+    is_active: z.boolean().optional(),
+    effective_from: z.string().optional(),
+    effective_to: z.string().optional(),
+}).passthrough();
+
+export const createCommissionTierBody = z.object({
+    tier_name: z.string().min(1).max(100),
+    min_value: z.number().nonnegative().default(0),
+    max_value: z.number().nonnegative().optional(),
+    commission_rate: z.number().min(0).max(1),
+    tier_bonus: z.number().nonnegative().default(0),
+    tier_order: z.number().int().nonnegative().default(1),
+}).passthrough();
+
+export const commissionSplitRoleEnum = z.enum(['primary', 'co-agent', 'referral', 'manager']);
+
+export const createCommissionSplitBody = z.object({
+    agent_id: z.string().uuid('Invalid agent UUID'),
+    role: commissionSplitRoleEnum,
+    split_percentage: z.number().min(0).max(100),
+    notes: z.string().max(500).optional(),
+}).passthrough();
+
+export const assignCommissionPlanBody = z.object({
+    plan_id: z.string().uuid('Invalid plan UUID'),
+    custom_rate: z.number().min(0).max(1).optional(),
+    effective_from: z.string().optional(),
+}).passthrough();
+
+export const commissionClawbackBody = z.object({
+    reason: z.string().min(1, 'Clawback reason is required').max(1000),
+});
+
+export const commissionBulkApproveBody = z.object({
+    record_ids: z.array(z.string().uuid()).min(1, 'At least one record ID is required'),
+});
+
+export const commissionPayBody = z.object({
+    payment_method: z.string().min(1).max(50),
+    payment_reference: z.string().min(1).max(100),
+}).passthrough();
+
+export const commissionCalculateBody = z.object({
+    deal_id: z.string().uuid('Invalid deal UUID'),
+    agent_id: z.string().uuid('Invalid agent UUID'),
+    deal_value: z.number().positive('Deal value must be positive'),
+});
+
+export const commissionGenerateStatementBody = z.object({
+    agent_id: z.string().uuid().optional(),
+    period_start: z.string().min(1, 'Period start is required'),
+    period_end: z.string().min(1, 'Period end is required'),
+}).passthrough();
+
+export const commissionAdjustmentTypeEnum = z.enum(['bonus', 'deduction', 'correction', 'advance', 'repayment']);
+
+export const createCommissionAdjustmentBody = z.object({
+    agent_id: z.string().uuid('Invalid agent UUID'),
+    statement_id: z.string().uuid().optional(),
+    adjustment_type: commissionAdjustmentTypeEnum,
+    amount: z.number().positive('Amount must be positive'),
+    description: z.string().min(1).max(1000),
+    reference_number: z.string().max(100).optional(),
+    effective_date: z.string().optional(),
+}).passthrough();
+
+// =============================================
+// 14. Target & Gamification Schemas
+// =============================================
+
+export const targetTypeEnum = z.enum(['revenue', 'deal_count', 'activities', 'conversion_rate']);
+export const targetPeriodEnum = z.enum(['weekly', 'monthly', 'quarterly', 'yearly']);
+export const targetStatusEnum = z.enum(['active', 'achieved', 'missed', 'cancelled']);
+
+export const createTargetBody = z.object({
+    target_name: z.string().min(1, 'Target name is required').max(200),
+    target_type: targetTypeEnum,
+    target_period: targetPeriodEnum,
+    period_start: z.string().min(1, 'Period start is required'),
+    period_end: z.string().min(1, 'Period end is required'),
+    target_value: z.number().positive('Target value must be positive'),
+    stretch_target: z.number().nonnegative().optional(),
+    minimum_threshold: z.number().nonnegative().optional(),
+    agent_id: z.string().uuid().optional(),
+    team_id: z.string().uuid().optional(),
+    parent_target_id: z.string().uuid().optional(),
+    notes: z.string().max(2000).optional(),
+}).passthrough();
+
+export const updateTargetBody = z.object({
+    target_name: z.string().min(1).max(200).optional(),
+    target_value: z.number().positive().optional(),
+    stretch_target: z.number().nonnegative().optional(),
+    minimum_threshold: z.number().nonnegative().optional(),
+    status: targetStatusEnum.optional(),
+    notes: z.string().max(2000).optional(),
+}).passthrough();
+
+export const bulkCreateTargetBody = z.object({
+    target_type: targetTypeEnum,
+    target_period: targetPeriodEnum,
+    target_value: z.number().positive(),
+    period_start: z.string().min(1),
+    period_end: z.string().min(1),
+}).passthrough();
+
+export const createTargetCheckpointBody = z.object({
+    checkpoint_number: z.number().int().positive(),
+    expected_value: z.number().nonnegative(),
+    actual_value: z.number().nonnegative(),
+    notes: z.string().max(1000).optional(),
+}).passthrough();

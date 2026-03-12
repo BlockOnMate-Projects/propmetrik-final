@@ -52,11 +52,25 @@ export function useKanban(pipelineId?: string) {
   })
 }
 
-/** Fetch deal metrics */
+/** Fetch deal metrics — maps backend snake_case to frontend camelCase */
 export function useDealMetrics(filters?: { deal_type?: string; date_from?: string; date_to?: string }) {
-  return useQuery({
+  return useQuery<DealMetrics>({
     queryKey: dealKeys.metrics(filters as Record<string, string>),
-    queryFn: () => dealsApi.getMetrics(filters as any),
+    queryFn: async () => {
+      const raw = await dealsApi.getMetrics(filters as any) as any
+      return {
+        totalDeals: (raw.total_active || 0) + (raw.won_deals || 0) + (raw.lost_deals || 0),
+        activeDeals: raw.total_active || 0,
+        wonDeals: raw.won_deals || 0,
+        lostDeals: raw.lost_deals || 0,
+        totalValue: raw.total_value || 0,
+        wonValue: raw.total_weighted_value || 0,
+        avgDealValue: raw.total_active > 0 ? (raw.total_value || 0) / raw.total_active : 0,
+        conversionRate: (raw.total_active + raw.won_deals + raw.lost_deals) > 0
+          ? raw.won_deals / (raw.total_active + raw.won_deals + raw.lost_deals)
+          : 0,
+      }
+    },
   })
 }
 

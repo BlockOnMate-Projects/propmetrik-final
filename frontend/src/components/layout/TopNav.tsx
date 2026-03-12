@@ -6,7 +6,7 @@ import { cn } from '@/lib/utils'
 import { useTheme } from 'next-themes'
 import { useEffect, useState, useRef } from 'react'
 import { useSession, signOut } from 'next-auth/react'
-import { canAccessPlatformTab, isAdminRole, canAccessFeature } from '@/lib/rbac'
+import { canAccessPlatformTab, isAdminRole, canAccessFeature, buildCustomerNavigation } from '@/lib/rbac'
 import { useUpgradeGate } from '@/components/UpgradeGate'
 import { NotificationDropdown } from '@/components/layout/NotificationDropdown'
 import { authedFetch } from '@/lib/authed-fetch'
@@ -332,7 +332,6 @@ export function TopNav() {
   const router = useRouter()
   const { data: session, status } = useSession()
   const [mounted, setMounted] = useState(false)
-  const [mobileOpen, setMobileOpen] = useState(false)
   const [ticker, setTicker] = useState<{
     gh_property_index: { avg_price: number; total_properties: number; change_pct: number };
     accra_avg: number;
@@ -351,9 +350,6 @@ export function TopNav() {
   const effectiveSession = status === 'loading' ? lastGoodSession.current : session
 
   useEffect(() => { setMounted(true) }, [])
-
-  // Close mobile nav on route change
-  useEffect(() => { setMobileOpen(false) }, [pathname])
 
   // Fetch ticker data once on mount, refresh every 60s
   useEffect(() => {
@@ -379,11 +375,18 @@ export function TopNav() {
   // Access the upgrade gate for tier-gating navigation clicks
   const { navigateOrGate } = useUpgradeGate()
 
+  // Determine user type + subscribed services for customer navigation
+  const userType = (effectiveSession?.user as any)?.userType || 'staff'
+  const subscribedServices: string[] = (effectiveSession?.user as any)?.subscribedServices || []
+
   // Show all tabs the user's ROLE allows (based on RBAC).
   // Tier gating happens on click — locked tabs show a lock icon instead of hiding.
+  // Customer users see only their subscribed service tabs + shared services.
   const visibleNavigation = mounted
     ? (sessionReady
-      ? navigation.filter(item => canAccessPlatformTab(userRole, item.tabKey))
+      ? (userType === 'customer'
+        ? buildCustomerNavigation(navigation, subscribedServices)
+        : navigation.filter(item => canAccessPlatformTab(userRole, item.tabKey)))
       : navigation.filter(item => !item.adminOnly))
     : navigation.filter(item => !item.adminOnly)
 
@@ -426,19 +429,6 @@ export function TopNav() {
 
       {/* Main Navigation Bar */}
       <div className="flex items-center h-12 sm:h-10 px-3 sm:px-4">
-        {/* Mobile hamburger */}
-        <button
-          onClick={() => setMobileOpen(o => !o)}
-          className="lg:hidden mr-2 p-1.5 text-zinc-400 hover:text-white transition-colors"
-          aria-label="Toggle navigation"
-        >
-          {mobileOpen ? (
-            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
-          ) : (
-            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" /></svg>
-          )}
-        </button>
-
         {/* Logo */}
         <Link href="/dashboard" className="flex items-center gap-2 mr-4 sm:mr-6">
           <div className="flex items-center">
@@ -447,8 +437,8 @@ export function TopNav() {
           </div>
         </Link>
 
-        {/* Desktop Navigation */}
-        <nav className="hidden lg:flex items-center gap-0.5 flex-1">
+        {/* Service Navigation — always visible, scrollable on small screens */}
+        <nav className="flex items-center gap-0.5 flex-1 overflow-x-auto scrollbar-hide">
           {visibleNavigation.map((item) => {
             const active = isActive(item.href)
             const isAdminTab = item.adminOnly
@@ -467,7 +457,7 @@ export function TopNav() {
                 href={tierLocked ? '#' : item.href}
                 onClick={handleClick}
                 className={cn(
-                  'px-3 py-1.5 text-xs font-mono tracking-wider transition-colors flex items-center gap-1.5 relative',
+                  'px-2 sm:px-3 py-1.5 text-[10px] sm:text-xs font-mono tracking-wider transition-colors flex items-center gap-1 sm:gap-1.5 relative whitespace-nowrap',
                   tierLocked
                     ? 'text-zinc-600 hover:text-zinc-500 hover:bg-zinc-800/50 cursor-pointer'
                     : active
@@ -505,9 +495,6 @@ export function TopNav() {
           })}
         </nav>
 
-        {/* Spacer on mobile */}
-        <div className="flex-1 lg:hidden" />
-
         {/* Right Side — Notifications + User Menu */}
         <div className="flex items-center gap-2">
           <NotificationDropdown />
@@ -520,55 +507,6 @@ export function TopNav() {
           />
         </div>
       </div>
-
-      {/* Mobile Navigation Drawer */}
-      {mobileOpen && (
-        <div className="lg:hidden border-t border-zinc-800 bg-zinc-900">
-          <nav className="flex flex-col py-1">
-            {visibleNavigation.map((item) => {
-              const active = isActive(item.href)
-              const isAdminTab = item.adminOnly
-              const tierLocked = sessionReady && !canAccessFeature(userRole, userTier, item.tabKey)
-
-              const handleClick = (e: React.MouseEvent) => {
-                if (tierLocked) {
-                  e.preventDefault()
-                  navigateOrGate(item.href, item.tabKey)
-                }
-                setMobileOpen(false)
-              }
-
-              return (
-                <Link
-                  key={item.name}
-                  href={tierLocked ? '#' : item.href}
-                  onClick={handleClick}
-                  className={cn(
-                    'flex items-center gap-3 px-4 py-2.5 text-xs font-mono tracking-wider transition-colors',
-                    tierLocked
-                      ? 'text-zinc-600 hover:text-zinc-500 hover:bg-zinc-800/50'
-                      : active
-                        ? isAdminTab
-                          ? 'bg-red-600 text-white font-bold'
-                          : 'bg-amber-500 text-white font-bold'
-                        : isAdminTab
-                          ? 'text-red-400 hover:text-red-300 hover:bg-red-900/30'
-                          : 'text-zinc-400 hover:text-white hover:bg-zinc-800'
-                  )}
-                >
-                  <span className={cn('text-zinc-600 w-6', tierLocked && 'text-zinc-700', isAdminTab && 'text-red-600')}>{item.key}</span>
-                  {item.name}
-                  {tierLocked && (
-                    <svg className="w-3 h-3 text-amber-500/60 ml-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-                    </svg>
-                  )}
-                </Link>
-              )
-            })}
-          </nav>
-        </div>
-      )}
 
       {/* Ticker Bar — hidden on mobile */}
       <div className="hidden sm:flex items-center h-6 px-4 bg-zinc-900/50 border-t border-zinc-800 overflow-hidden">
