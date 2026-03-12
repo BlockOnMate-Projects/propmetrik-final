@@ -308,7 +308,7 @@ export default function SubjectPropertyPage() {
           <button
             onClick={handleSaveAndContinue}
             disabled={saving}
-            className="flex items-center gap-2 px-4 py-2 bg-amber-500 text-black font-mono text-xs font-bold hover:bg-amber-400 transition-colors disabled:opacity-50"
+            className="flex items-center gap-2 px-4 py-2 bg-amber-500 text-white font-mono text-xs font-bold hover:bg-amber-400 transition-colors disabled:opacity-50"
           >
             {saving ? (
               <>
@@ -353,7 +353,7 @@ export default function SubjectPropertyPage() {
         <button
           onClick={handleSaveAndContinue}
           disabled={saving}
-          className="flex items-center gap-2 px-6 py-3 bg-amber-500 text-black font-mono text-sm font-bold hover:bg-amber-400 transition-colors disabled:opacity-50"
+          className="flex items-center gap-2 px-6 py-3 bg-amber-500 text-white font-mono text-sm font-bold hover:bg-amber-400 transition-colors disabled:opacity-50"
         >
           {saving ? (
             <>

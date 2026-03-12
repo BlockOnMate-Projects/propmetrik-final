@@ -71,10 +71,13 @@ import {
 import { changeOrderSchema, validateForm } from '@/lib/schemas/pm.schemas';
 import { FieldError, FormErrorSummary } from '@/components/ui/form-errors';
 import { Pagination } from '@/components/ui/pagination-controls';
+import { createEnvelope } from '@/lib/esign-api';
+import { useRouter } from 'next/navigation';
 
 // Status configuration
 const statusConfig: Record<ChangeOrderStatus, { label: string; bg: string; text: string }> = {
   draft: { label: 'Draft', bg: 'bg-zinc-500/20', text: 'text-zinc-400' },
+  pending_review: { label: 'Pending Review', bg: 'bg-orange-500/20', text: 'text-orange-400' },
   pending_approval: { label: 'Pending Approval', bg: 'bg-yellow-500/20', text: 'text-yellow-400' },
   approved: { label: 'Approved', bg: 'bg-green-500/20', text: 'text-green-400' },
   rejected: { label: 'Rejected', bg: 'bg-red-500/20', text: 'text-red-400' },
@@ -85,6 +88,7 @@ const statusConfig: Record<ChangeOrderStatus, { label: string; bg: string; text:
 function ChangeOrdersContent() {
   const params = useParams();
   const searchParams = useSearchParams();
+  const router = useRouter();
   const projectId = params?.id as string | undefined;
   
   const [loading, setLoading] = useState(true);
@@ -101,6 +105,7 @@ function ChangeOrdersContent() {
   const [formErrors, setFormErrors] = useState<Record<string, string[]> | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [esigning, setEsigning] = useState(false);
   
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
@@ -223,6 +228,28 @@ function ChangeOrdersContent() {
       toast.error('Failed to execute change order');
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const handleRequestESign = async () => {
+    if (!selectedCO) return;
+    setEsigning(true);
+    try {
+      await createEnvelope({
+        title: `Change Order ${selectedCO.co_number}: ${selectedCO.title}`,
+        source_type: 'change_order',
+        source_id: selectedCO.id,
+        signers: [{ email: 'client@example.com', name: 'Client' }],
+        message: `Please review and sign Change Order ${selectedCO.co_number}.`,
+      });
+      toast.success('E-signature envelope created — redirecting to E-Sign dashboard');
+      setShowDetailSheet(false);
+      router.push('/dashboard/e-sign');
+    } catch (error) {
+      console.error('Failed to create e-sign envelope:', error);
+      toast.error('Failed to create e-signature request');
+    } finally {
+      setEsigning(false);
     }
   };
 
@@ -454,13 +481,15 @@ function ChangeOrdersContent() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="owner_request">Owner Request</SelectItem>
-                  <SelectItem value="scope_change">Scope Change</SelectItem>
                   <SelectItem value="design_error">Design Error</SelectItem>
-                  <SelectItem value="unforeseen_conditions">Unforeseen Conditions</SelectItem>
+                  <SelectItem value="design_change">Design Change</SelectItem>
+                  <SelectItem value="unforeseen_condition">Unforeseen Condition</SelectItem>
                   <SelectItem value="regulatory_requirement">Regulatory Requirement</SelectItem>
                   <SelectItem value="value_engineering">Value Engineering</SelectItem>
-                  <SelectItem value="schedule_acceleration">Schedule Acceleration</SelectItem>
+                  <SelectItem value="scope_addition">Scope Addition</SelectItem>
+                  <SelectItem value="scope_reduction">Scope Reduction</SelectItem>
                   <SelectItem value="material_substitution">Material Substitution</SelectItem>
+                  <SelectItem value="contractor_request">Contractor Request</SelectItem>
                   <SelectItem value="force_majeure">Force Majeure</SelectItem>
                   <SelectItem value="other">Other</SelectItem>
                 </SelectContent>
@@ -496,7 +525,7 @@ function ChangeOrdersContent() {
           <SheetHeader>
             <SheetTitle className="text-white flex items-center gap-2">
               <span className="font-mono text-purple-400">{selectedCO?.co_number}</span>
-              {selectedCO && (<Badge className={`${statusConfig[selectedCO.status].bg} ${statusConfig[selectedCO.status].text} border-0`}>{statusConfig[selectedCO.status].label}</Badge>)}
+              {selectedCO && (() => { const cfg = statusConfig[selectedCO.status] || statusConfig.draft; return <Badge className={`${cfg.bg} ${cfg.text} border-0`}>{cfg.label}</Badge>; })()}
             </SheetTitle>
           </SheetHeader>
           {selectedCO && (
@@ -543,13 +572,23 @@ function ChangeOrdersContent() {
               {/* Action Buttons */}
               <div className="pt-4 border-t border-zinc-800 space-y-3">
                 {selectedCO.status === 'draft' && (
-                  <Button 
-                    className="w-full bg-amber-600 hover:bg-amber-700 text-white" 
+                  <Button
+                    className="w-full bg-amber-600 hover:bg-amber-700 text-white"
                     onClick={handleSubmitForApproval}
                     disabled={submitting}
                   >
                     {submitting ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Send className="h-4 w-4 mr-2" />}
                     Submit for Client Approval
+                  </Button>
+                )}
+                {(selectedCO.status === 'pending_review' || selectedCO.status === 'pending_approval' || selectedCO.status === 'approved') && (
+                  <Button
+                    className="w-full bg-blue-600 hover:bg-blue-700 text-white"
+                    onClick={handleRequestESign}
+                    disabled={esigning}
+                  >
+                    {esigning ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <CheckCircle2 className="h-4 w-4 mr-2" />}
+                    Request E-Signature
                   </Button>
                 )}
                 {selectedCO.status === 'approved' && (
@@ -562,9 +601,9 @@ function ChangeOrdersContent() {
                     Execute Change Order
                   </Button>
                 )}
-                {(selectedCO.status === 'draft' || selectedCO.status === 'rejected') && (
-                  <Button 
-                    variant="outline" 
+                {(selectedCO.status === 'draft' || selectedCO.status === 'pending_review' || selectedCO.status === 'rejected') && (
+                  <Button
+                    variant="outline"
                     className="w-full border-red-600 text-red-400 hover:bg-red-900/30"
                     onClick={handleDelete}
                     disabled={deleting}

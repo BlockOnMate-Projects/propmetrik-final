@@ -1,9 +1,11 @@
 'use client'
 
-import React from 'react'
+import React, { useMemo } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
+import { useSession } from 'next-auth/react'
 import { cn } from '@/lib/utils'
+import { canAccessFeature, canAccessServiceSubTab } from '@/lib/rbac'
 import {
     FolderKanban,
     Users,
@@ -29,8 +31,8 @@ import {
     Plug,
     Send,
     LayoutDashboard,
-    ListOrdered,
     FileStack,
+    Lock,
 }  from 'lucide-react'
 
 /* ---------------------------------------------------------- */
@@ -48,22 +50,24 @@ type NavGroup = {
     label: string
     icon: React.ComponentType<{ className?: string }>
     items: NavItem[]
+    /** Feature gate key in rbac.ts featureGates — used for tier gating */
+    featureKey?: string
 }
 
 const projectsNavGroups: NavGroup[] = [
     {
         label: 'OVERVIEW',
         icon: LayoutDashboard,
+        featureKey: 'pm-overview',
         items: [
             { href: '/dashboard/projects', label: 'Summary', icon: LayoutDashboard, exact: true },
-            { href: '/dashboard/projects/schedule', label: 'Timeline', icon: ListOrdered },
-            { href: '/dashboard/calendar?service=projects', label: 'Calendar', icon: Calendar },
             { href: '/dashboard/projects/team', label: 'Team', icon: Users },
         ],
     },
     {
         label: 'CONSTRUCTION',
         icon: Hammer,
+        featureKey: 'pm-construction',
         items: [
             { href: '/dashboard/projects/drawings', label: 'Drawings', icon: Pencil },
             { href: '/dashboard/projects/issues', label: 'Issues', icon: AlertTriangle },
@@ -76,7 +80,9 @@ const projectsNavGroups: NavGroup[] = [
     {
         label: 'PROCUREMENT',
         icon: Gavel,
+        featureKey: 'pm-procurement',
         items: [
+            { href: '/dashboard/projects/bids', label: 'Bid Management', icon: Gavel },
             { href: '/dashboard/projects/bidding', label: 'Bidding', icon: Gavel },
             { href: '/dashboard/projects/procurement', label: 'Contracts', icon: FileStack },
             { href: '/dashboard/projects/contractors', label: 'Contractors', icon: Hammer },
@@ -85,6 +91,7 @@ const projectsNavGroups: NavGroup[] = [
     {
         label: 'FINANCIALS',
         icon: DollarSign,
+        featureKey: 'pm-financials',
         items: [
             { href: '/dashboard/projects/costs', label: 'Costs', icon: DollarSign },
             { href: '/dashboard/projects/financials', label: 'Budget', icon: CreditCard },
@@ -98,6 +105,7 @@ const projectsNavGroups: NavGroup[] = [
     {
         label: 'DOCUMENTS',
         icon: FileText,
+        featureKey: 'pm-documents',
         items: [
             { href: '/dashboard/projects/documents', label: 'Files', icon: FileText },
             { href: '/dashboard/projects/meetings', label: 'Meetings', icon: MessageSquare },
@@ -107,6 +115,7 @@ const projectsNavGroups: NavGroup[] = [
     {
         label: 'UNITS',
         icon: Layers,
+        featureKey: 'pm-units',
         items: [
             { href: '/dashboard/projects/units', label: 'Units', icon: Layers },
         ],
@@ -114,6 +123,7 @@ const projectsNavGroups: NavGroup[] = [
     {
         label: 'ANALYTICS',
         icon: BarChart3,
+        featureKey: 'pm-analytics',
         items: [
             { href: '/dashboard/projects/analytics', label: 'Analytics', icon: BarChart3 },
             { href: '/dashboard/projects/audit-log', label: 'Audit Log', icon: ScrollText },
@@ -123,6 +133,7 @@ const projectsNavGroups: NavGroup[] = [
     {
         label: 'SETTINGS',
         icon: Settings,
+        featureKey: 'pm-settings',
         items: [
             { href: '/dashboard/projects/settings', label: 'Settings', icon: Settings },
         ],
@@ -138,12 +149,12 @@ function isItemActive(item: NavItem, pathname: string) {
     return pathname.startsWith(item.href)
 }
 
-function findActiveGroup(pathname: string): NavGroup {
+function findActiveGroup(pathname: string, groups: NavGroup[]): NavGroup {
     // Find the group whose child matches the current path
-    const match = projectsNavGroups.find(g =>
+    const match = groups.find(g =>
         g.items.some(item => isItemActive(item, pathname))
     )
-    return match || projectsNavGroups[0]
+    return match || groups[0]
 }
 
 /* ---------------------------------------------------------- */
@@ -156,7 +167,25 @@ export default function ProjectsLayout({
     children: React.ReactNode
 }) {
     const pathname = usePathname()
-    const activeGroup = findActiveGroup(pathname)
+    const { data: session } = useSession()
+
+    const userRole = session?.user?.role || ''
+    const userTier = session?.user?.tier || 'starter'
+    const userType = session?.user?.userType || 'staff'
+
+    // Filter groups by role access + tier access (show all until session loads)
+    const visibleGroups = useMemo(() => {
+        return projectsNavGroups
+            .filter(group => !userRole || !group.featureKey || canAccessServiceSubTab(userRole, 'projects', group.featureKey))
+            .map(group => ({
+                ...group,
+                locked: group.featureKey
+                    ? !canAccessFeature(userRole, userTier, group.featureKey, userType)
+                    : false,
+            }))
+    }, [userRole, userTier, userType])
+
+    const activeGroup = findActiveGroup(pathname, visibleGroups)
 
     return (
         <div className="min-h-screen bg-black">
@@ -164,22 +193,27 @@ export default function ProjectsLayout({
             <div className="border-b border-zinc-800 bg-zinc-900/50">
                 <div className="px-2 sm:px-4">
                     <nav className="flex gap-0 -mb-px overflow-x-auto scrollbar-none">
-                        {projectsNavGroups.map((group) => {
+                        {visibleGroups.map((group) => {
                             const isActive = group.label === activeGroup.label
                             const Icon = group.icon
+                            const isLocked = 'locked' in group && group.locked
                             return (
                                 <Link
                                     key={group.label}
-                                    href={group.items[0].href}
+                                    href={isLocked ? '#' : group.items[0].href}
+                                    onClick={isLocked ? (e) => e.preventDefault() : undefined}
                                     className={cn(
                                         'flex items-center gap-1.5 px-3 sm:px-4 py-2.5 font-mono text-[9px] sm:text-[10px] tracking-wider border-b-2 transition-colors whitespace-nowrap',
-                                        isActive
+                                        isLocked
+                                            ? 'border-transparent text-zinc-700 cursor-not-allowed'
+                                            : isActive
                                             ? 'border-amber-500 text-amber-500'
                                             : 'border-transparent text-zinc-500 hover:text-zinc-300 hover:border-zinc-700'
                                     )}
                                 >
                                     <Icon className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
                                     <span>{group.label}</span>
+                                    {isLocked && <Lock className="h-2.5 w-2.5 ml-0.5 text-zinc-600" />}
                                 </Link>
                             )
                         })}

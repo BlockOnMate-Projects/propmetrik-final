@@ -171,7 +171,7 @@ export default function EditPropertyPage() {
                 <Button
                     onClick={handleSubmit}
                     disabled={isSaving}
-                    className="bg-amber-600 hover:bg-amber-500 text-black font-bold font-mono text-xs uppercase"
+                    className="bg-amber-600 hover:bg-amber-500 text-white font-bold font-mono text-xs uppercase"
                 >
                     {isSaving ? (
                         <>
@@ -464,7 +464,7 @@ export default function EditPropertyPage() {
                     <Button
                         type="submit"
                         disabled={isSaving}
-                        className="w-full bg-amber-600 hover:bg-amber-500 text-black font-bold font-mono uppercase"
+                        className="w-full bg-amber-600 hover:bg-amber-500 text-white font-bold font-mono uppercase"
                     >
                         {isSaving ? (
                             <>

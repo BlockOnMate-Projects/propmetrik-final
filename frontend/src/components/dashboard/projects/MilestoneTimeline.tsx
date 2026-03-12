@@ -183,7 +183,7 @@ export function MilestoneTimeline({ milestones, className, onMilestoneClick }: M
                 className="absolute top-0 bottom-0 w-0.5 bg-amber-500 z-10"
                 style={{ left: `${todayPosition}%` }}
               >
-                <div className="absolute -top-5 left-1/2 -translate-x-1/2 bg-amber-500 text-black text-[9px] font-bold px-1.5 py-0.5 rounded whitespace-nowrap">
+                <div className="absolute -top-5 left-1/2 -translate-x-1/2 bg-amber-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded whitespace-nowrap">
                   TODAY
                 </div>
               </div>

@@ -630,14 +630,14 @@ export default function AdminCryptoPage() {
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                         <StatCard
                             title="Total Volume (Crypto)"
-                            value={(s?.totalVolumeUSDT ?? 0) > 0 ? formatUSDT(s.totalVolumeUSDT) : formatGHS(s?.totalVolumeGHS ?? 0)}
+                            value={(s?.totalVolumeUSDT ?? 0) > 0 ? formatUSDT(s?.totalVolumeUSDT ?? 0) : formatGHS(s?.totalVolumeGHS ?? 0)}
                             subtitle={(s?.totalVolumeUSDT ?? 0) > 0 ? `${formatGHS(s?.totalVolumeGHS ?? 0)} equivalent` : `${s?.totalTransactions ?? 0} crypto payments`}
                             icon={DollarSign}
                             color="text-green-500"
                         />
                         <StatCard
                             title="Fees Earned (Crypto)"
-                            value={(s?.totalFeesUSDT ?? 0) > 0 ? formatUSDT(s.totalFeesUSDT) : formatGHS(s?.totalFeesGHS ?? 0)}
+                            value={(s?.totalFeesUSDT ?? 0) > 0 ? formatUSDT(s?.totalFeesUSDT ?? 0) : formatGHS(s?.totalFeesGHS ?? 0)}
                             subtitle={(s?.totalFeesUSDT ?? 0) > 0 ? `${formatGHS(s?.totalFeesGHS ?? 0)} equivalent` : 'platform fees collected'}
                             icon={TrendingUp}
                             color="text-amber-500"

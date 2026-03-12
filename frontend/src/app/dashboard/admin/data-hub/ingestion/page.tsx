@@ -87,10 +87,10 @@ export default function TierIngestionPage() {
       {/* View Switcher */}
       <Tabs value={viewMode} onValueChange={(v) => setViewMode(v as any)} className="mb-6">
         <TabsList className="bg-zinc-900 border-zinc-800">
-          <TabsTrigger value="upload" className="data-[state=active]:bg-amber-500 data-[state=active]:text-black">
+          <TabsTrigger value="upload" className="data-[state=active]:bg-amber-500 data-[state=active]:text-white">
             DATA UPLOADS (TIERS 1-4)
           </TabsTrigger>
-          <TabsTrigger value="pull" className="data-[state=active]:bg-amber-500 data-[state=active]:text-black">
+          <TabsTrigger value="pull" className="data-[state=active]:bg-amber-500 data-[state=active]:text-white">
             PARTNER API PULLS
           </TabsTrigger>
         </TabsList>

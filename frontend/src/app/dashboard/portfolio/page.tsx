@@ -158,7 +158,7 @@ export default function PortfolioDashboardPage() {
           </div>
           <div className="flex items-center gap-3">
             <Link href="/dashboard/projects/new">
-              <Button className="bg-amber-600 hover:bg-amber-700 text-black font-mono text-xs">
+              <Button className="bg-amber-600 hover:bg-amber-700 text-white font-mono text-xs">
                 <Plus className="h-4 w-4 mr-2" />
                 NEW PROJECT
               </Button>

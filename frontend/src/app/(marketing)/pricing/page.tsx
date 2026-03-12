@@ -327,7 +327,7 @@ export default function PricingPage() {
                             onClick={() => setBilling('monthly')}
                             className={`px-4 py-2 rounded-lg text-sm font-mono transition-colors ${
                                 billing === 'monthly'
-                                    ? 'bg-amber-500 text-black'
+                                    ? 'bg-amber-500 text-white'
                                     : 'bg-zinc-800 text-zinc-400 hover:text-white'
                             }`}
                         >
@@ -337,12 +337,12 @@ export default function PricingPage() {
                             onClick={() => setBilling('annual')}
                             className={`px-4 py-2 rounded-lg text-sm font-mono transition-colors relative ${
                                 billing === 'annual'
-                                    ? 'bg-amber-500 text-black'
+                                    ? 'bg-amber-500 text-white'
                                     : 'bg-zinc-800 text-zinc-400 hover:text-white'
                             }`}
                         >
                             Annual
-                            <span className="absolute -top-3 -right-3 bg-green-500 text-black text-[10px] font-bold px-1.5 py-0.5 rounded-full">
+                            <span className="absolute -top-3 -right-3 bg-green-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full">
                                 Save 17%
                             </span>
                         </button>
@@ -427,7 +427,7 @@ export default function PricingPage() {
                                     {/* Popular badge */}
                                     {isHighlighted && (
                                         <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-                                            <span className="bg-amber-500 text-black text-xs font-bold px-3 py-1 rounded-full font-mono">
+                                            <span className="bg-amber-500 text-white text-xs font-bold px-3 py-1 rounded-full font-mono">
                                                 MOST POPULAR
                                             </span>
                                         </div>
@@ -516,7 +516,7 @@ export default function PricingPage() {
                                         href={`/signup?plan=${plan.slug}&category=${plan.category}&billing=${billing}`}
                                         className={`block text-center py-3 px-6 rounded-xl font-mono text-sm font-bold transition-all ${
                                             isHighlighted
-                                                ? 'bg-amber-500 text-black hover:bg-amber-400'
+                                                ? 'bg-amber-500 text-white hover:bg-amber-400'
                                                 : 'bg-zinc-800 text-white hover:bg-zinc-700 border border-zinc-700'
                                         }`}
                                     >
@@ -662,7 +662,7 @@ export default function PricingPage() {
                         <span className="text-zinc-700">|</span>
                         <Link
                             href="/signup"
-                            className="bg-amber-500 text-black px-6 py-2.5 rounded-xl font-mono font-bold text-sm hover:bg-amber-400 transition-colors"
+                            className="bg-amber-500 text-white px-6 py-2.5 rounded-xl font-mono font-bold text-sm hover:bg-amber-400 transition-colors"
                         >
                             Start Free Trial
                         </Link>

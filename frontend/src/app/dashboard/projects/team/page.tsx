@@ -1,9 +1,10 @@
 'use client'
 
 import React, { useEffect, useState, useCallback } from 'react'
+import { useRouter } from 'next/navigation'
 import {
   Users, UserPlus, Search, MoreVertical, Loader2, Mail, Phone,
-  Shield, Star, Briefcase, Building2, Filter, UserX, UserCheck
+  Shield, Star, Briefcase, Building2, Filter, UserX, UserCheck,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -24,10 +25,8 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
-import {
-  Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle,
-} from '@/components/ui/sheet'
 import { authedFetch } from '@/lib/authed-fetch'
+import { useToast } from '@/hooks/use-toast'
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || '/api'
 
@@ -42,6 +41,9 @@ interface TeamMember {
   role: string
   role_category?: string
   is_active: boolean
+  status?: string
+  invited_at?: string | null
+  accepted_at?: string | null
   permissions?: Record<string, boolean>
   organization_id?: string
   notes?: string
@@ -80,6 +82,8 @@ const ROLE_CATEGORY_COLORS: Record<string, string> = {
 }
 
 export default function TeamManagementPage() {
+  const router = useRouter()
+  const { toast } = useToast()
   const [members, setMembers] = useState<TeamMember[]>([])
   const [vendors, setVendors] = useState<Vendor[]>([])
   const [isLoading, setIsLoading] = useState(true)
@@ -94,17 +98,19 @@ export default function TeamManagementPage() {
 
   // Add member dialog
   const [addOpen, setAddOpen] = useState(false)
-  const [newMember, setNewMember] = useState({ name: '', email: '', phone: '', role: 'project_manager', project_id: '' })
+  const [newMember, setNewMember] = useState({ name: '', email: '', phone: '', role: 'project_manager', project_ids: [] as string[] })
   const [adding, setAdding] = useState(false)
   const [projects, setProjects] = useState<{ id: string; name: string }[]>([])
+  const [resendingId, setResendingId] = useState<string | null>(null)
 
-  // Member detail
-  const [selectedMember, setSelectedMember] = useState<TeamMember | null>(null)
+
 
   useEffect(() => {
     const timer = setTimeout(() => { setDebouncedSearch(searchQuery); setPage(1) }, 400)
     return () => clearTimeout(timer)
   }, [searchQuery])
+
+
 
   useEffect(() => {
     authedFetch(`${API_BASE}/projects?limit=100`).then(async r => {
@@ -157,7 +163,7 @@ export default function TeamManagementPage() {
   }, [activeTab, loadMembers, loadVendors])
 
   const handleAddMember = async () => {
-    if (!newMember.name || !newMember.role) return
+    if (!newMember.name || !newMember.role || newMember.project_ids.length === 0) return
     setAdding(true)
     try {
       const res = await authedFetch(`${API_BASE}/team/members`, {
@@ -165,11 +171,14 @@ export default function TeamManagementPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(newMember),
       })
-      if (!res.ok) throw new Error('Failed to add member')
+      if (!res.ok) {
+        const data = await res.json().catch(() => null)
+        throw new Error(data?.error || 'Failed to add member')
+      }
       setAddOpen(false)
-      setNewMember({ name: '', email: '', phone: '', role: 'project_manager', project_id: '' })
+      setNewMember({ name: '', email: '', phone: '', role: 'project_manager', project_ids: [] })
       loadMembers()
-    } catch (err) { console.error('Add member failed:', err) }
+    } catch (err: any) { console.error('Add member failed:', err) }
     finally { setAdding(false) }
   }
 
@@ -196,6 +205,37 @@ export default function TeamManagementPage() {
     } catch (err) { console.error('Remove failed:', err) }
   }
 
+  const handleResendInvite = async (member: TeamMember) => {
+    if (!member.email) {
+      toast({ title: 'Missing email', description: 'This member needs an email address before an invite can be sent.', variant: 'destructive' })
+      return
+    }
+
+    setResendingId(member.id)
+    try {
+      const res = await authedFetch(`${API_BASE}/team/members/${member.id}/resend-invite`, { method: 'POST' })
+      const data = await res.json().catch(() => null)
+      if (!res.ok) throw new Error(data?.error || 'Failed to resend invitation')
+
+      const inviteUrl = data?.data?.invite_url as string | undefined
+      if (inviteUrl && typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(inviteUrl).catch(() => undefined)
+      }
+
+      toast({
+        title: data?.message || 'Invitation sent',
+        description: inviteUrl
+          ? 'The account setup link has been copied to your clipboard.'
+          : 'The account setup email has been sent.',
+      })
+      loadMembers()
+    } catch (err: any) {
+      toast({ title: 'Resend failed', description: err?.message || 'Failed to resend invitation', variant: 'destructive' })
+    } finally {
+      setResendingId(null)
+    }
+  }
+
   const totalPages = Math.max(1, Math.ceil(total / limit))
   const activeCount = members.filter(m => m.is_active).length
   const inactiveCount = members.length - activeCount
@@ -210,7 +250,7 @@ export default function TeamManagementPage() {
         </div>
         <Dialog open={addOpen} onOpenChange={setAddOpen}>
           <DialogTrigger asChild>
-            <Button className="bg-amber-600 hover:bg-amber-500 text-black font-bold font-mono text-xs uppercase">
+            <Button className="bg-amber-600 hover:bg-amber-500 text-white font-bold font-mono text-xs uppercase">
               <UserPlus className="mr-2 h-3 w-3" /> Add Member
             </Button>
           </DialogTrigger>
@@ -253,18 +293,33 @@ export default function TeamManagementPage() {
                 </Select>
               </div>
               <div className="space-y-2">
-                <Label className="font-mono text-xs text-zinc-400 uppercase">Project</Label>
-                <Select value={newMember.project_id} onValueChange={v => setNewMember(m => ({ ...m, project_id: v }))}>
-                  <SelectTrigger className="bg-black border-zinc-800 text-zinc-300 font-mono text-xs"><SelectValue placeholder="Select project..." /></SelectTrigger>
-                  <SelectContent className="bg-zinc-900 border-zinc-800">
-                    {projects.map(p => <SelectItem key={p.id} value={p.id} className="text-zinc-300 font-mono text-xs">{p.name}</SelectItem>)}
-                  </SelectContent>
-                </Select>
+                <Label className="font-mono text-xs text-zinc-400 uppercase">Projects *</Label>
+                <div className="max-h-[160px] overflow-y-auto border border-zinc-800 rounded-md bg-black p-2 space-y-1">
+                  {projects.map(p => {
+                    const checked = newMember.project_ids.includes(p.id)
+                    return (
+                      <label key={p.id} className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-zinc-800/50 cursor-pointer">
+                        <input type="checkbox" checked={checked}
+                          onChange={() => setNewMember(m => ({
+                            ...m,
+                            project_ids: checked
+                              ? m.project_ids.filter(id => id !== p.id)
+                              : [...m.project_ids, p.id]
+                          }))}
+                          className="rounded border-zinc-700 bg-zinc-900 text-amber-500 focus:ring-amber-500" />
+                        <span className="text-zinc-300 font-mono text-xs">{p.name}</span>
+                      </label>
+                    )
+                  })}
+                </div>
+                {newMember.project_ids.length > 0 && (
+                  <p className="text-amber-500 text-[10px] font-mono">{newMember.project_ids.length} project{newMember.project_ids.length > 1 ? 's' : ''} selected</p>
+                )}
               </div>
             </div>
             <DialogFooter>
               <Button variant="outline" onClick={() => setAddOpen(false)} className="font-mono text-xs border-zinc-700 text-zinc-400">Cancel</Button>
-              <Button onClick={handleAddMember} disabled={adding || !newMember.name} className="bg-amber-600 hover:bg-amber-500 text-black font-mono text-xs font-bold">
+              <Button onClick={handleAddMember} disabled={adding || !newMember.name || newMember.project_ids.length === 0} className="bg-amber-600 hover:bg-amber-500 text-white font-mono text-xs font-bold">
                 {adding ? <><Loader2 className="mr-2 h-3 w-3 animate-spin" /> Adding...</> : 'Add Member'}
               </Button>
             </DialogFooter>
@@ -347,9 +402,12 @@ export default function TeamManagementPage() {
               <p>No team members found</p>
             </div>
           ) : (
-            members.map(member => (
+            members.map(member => {
+              const isPending = member.status === 'pending' || (!member.accepted_at && !!member.invited_at)
+
+              return (
               <Card key={member.id} className="bg-black border border-zinc-800 hover:border-zinc-700 transition-colors cursor-pointer"
-                onClick={() => setSelectedMember(member)}>
+                onClick={() => router.push(`/dashboard/projects/team/${member.id}`)}>
                 <CardContent className="p-4">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
@@ -364,6 +422,9 @@ export default function TeamManagementPage() {
                           <Badge variant="outline" className={`text-[10px] font-mono uppercase ${ROLE_CATEGORY_COLORS[member.role_category || ''] || 'border-zinc-700 text-zinc-400 bg-zinc-800/50'}`}>
                             {member.role?.replace(/_/g, ' ')}
                           </Badge>
+                          {isPending && (
+                            <Badge variant="outline" className="text-[10px] font-mono uppercase border-yellow-900 text-yellow-400 bg-yellow-900/10">Pending Invite</Badge>
+                          )}
                           {!member.is_active && (
                             <Badge variant="outline" className="text-[10px] font-mono uppercase border-red-900 text-red-400 bg-red-900/10">Inactive</Badge>
                           )}
@@ -379,9 +440,14 @@ export default function TeamManagementPage() {
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end" className="bg-black border-zinc-800 text-zinc-300">
                           <DropdownMenuLabel className="text-xs font-mono uppercase text-zinc-500">Actions</DropdownMenuLabel>
-                          <DropdownMenuItem onClick={(e) => { e.stopPropagation(); setSelectedMember(member) }} className="hover:bg-zinc-900 cursor-pointer text-xs font-mono">
+                          <DropdownMenuItem onClick={(e) => { e.stopPropagation(); router.push(`/dashboard/projects/team/${member.id}`) }} className="hover:bg-zinc-900 cursor-pointer text-xs font-mono">
                             View Details
                           </DropdownMenuItem>
+                          {isPending && (
+                            <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleResendInvite(member) }} className="hover:bg-zinc-900 cursor-pointer text-xs font-mono text-amber-400" disabled={resendingId === member.id}>
+                              {resendingId === member.id ? 'Resending...' : 'Resend Invite'}
+                            </DropdownMenuItem>
+                          )}
                           {member.is_active ? (
                             <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleDeactivate(member.id) }} className="hover:bg-zinc-900 cursor-pointer text-xs font-mono text-amber-400">
                               Deactivate
@@ -401,7 +467,8 @@ export default function TeamManagementPage() {
                   </div>
                 </CardContent>
               </Card>
-            ))
+              )
+            })
           )}
 
           {totalPages > 1 && (
@@ -472,68 +539,6 @@ export default function TeamManagementPage() {
         </div>
       )}
 
-      {/* Member Detail Sheet */}
-      <Sheet open={!!selectedMember} onOpenChange={() => setSelectedMember(null)}>
-        <SheetContent className="bg-zinc-900 border-zinc-800 text-white w-[400px] sm:w-[500px]">
-          <SheetHeader>
-            <SheetTitle className="font-mono text-amber-500">{selectedMember?.name}</SheetTitle>
-            <SheetDescription className="text-zinc-400 font-mono text-xs">Team member details</SheetDescription>
-          </SheetHeader>
-          {selectedMember && (
-            <div className="space-y-6 mt-6">
-              <div className="flex items-center gap-4">
-                <Avatar className="h-16 w-16 border-2 border-zinc-800">
-                  <AvatarFallback className="bg-zinc-900 text-amber-500 font-mono text-lg">
-                    {selectedMember.name?.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2)}
-                  </AvatarFallback>
-                </Avatar>
-                <div>
-                  <div className="font-mono text-lg text-white">{selectedMember.name}</div>
-                  <Badge variant="outline" className={`text-[10px] font-mono uppercase ${ROLE_CATEGORY_COLORS[selectedMember.role_category || ''] || 'border-zinc-700 text-zinc-400'}`}>
-                    {selectedMember.role?.replace(/_/g, ' ')}
-                  </Badge>
-                </div>
-              </div>
-              <div className="space-y-3">
-                {selectedMember.email && (
-                  <div className="flex items-center gap-2 text-sm text-zinc-400 font-mono">
-                    <Mail className="h-4 w-4 text-zinc-600" /> {selectedMember.email}
-                  </div>
-                )}
-                {selectedMember.phone && (
-                  <div className="flex items-center gap-2 text-sm text-zinc-400 font-mono">
-                    <Phone className="h-4 w-4 text-zinc-600" /> {selectedMember.phone}
-                  </div>
-                )}
-                <div className="flex items-center gap-2 text-sm text-zinc-400 font-mono">
-                  <Shield className="h-4 w-4 text-zinc-600" /> Status: {selectedMember.is_active ? 'Active' : 'Inactive'}
-                </div>
-                {selectedMember.project_name && (
-                  <div className="flex items-center gap-2 text-sm text-zinc-400 font-mono">
-                    <Briefcase className="h-4 w-4 text-zinc-600" /> {selectedMember.project_name}
-                  </div>
-                )}
-              </div>
-              {selectedMember.permissions && Object.keys(selectedMember.permissions).length > 0 && (
-                <div>
-                  <Label className="font-mono text-xs text-zinc-500 uppercase mb-2 block">Permissions</Label>
-                  <div className="grid grid-cols-2 gap-2">
-                    {Object.entries(selectedMember.permissions).map(([key, value]) => (
-                      <div key={key} className="flex items-center gap-2 text-[10px] font-mono">
-                        <div className={`h-2 w-2 rounded-full ${value ? 'bg-emerald-500' : 'bg-zinc-700'}`} />
-                        <span className="text-zinc-400">{key.replace(/([A-Z])/g, ' $1').replace(/_/g, ' ')}</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-              <div className="text-[10px] text-zinc-600 font-mono">
-                Added: {new Date(selectedMember.created_at).toLocaleDateString()}
-              </div>
-            </div>
-          )}
-        </SheetContent>
-      </Sheet>
     </div>
   )
 }

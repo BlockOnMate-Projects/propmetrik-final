@@ -266,7 +266,7 @@ export default function SettingsPage() {
                     <button
                         onClick={handleSave}
                         disabled={saving}
-                        className="flex items-center gap-2 px-4 py-2 bg-amber-500 text-black font-mono text-xs font-bold hover:bg-amber-400 transition-colors disabled:opacity-50"
+                        className="flex items-center gap-2 px-4 py-2 bg-amber-500 text-white font-mono text-xs font-bold hover:bg-amber-400 transition-colors disabled:opacity-50"
                     >
                         {saving ? <Loader2 className="w-3 h-3 animate-spin" /> : <Save className="w-3 h-3" />}
                         {saving ? 'SAVING...' : 'SAVE CHANGES'}
@@ -455,7 +455,7 @@ export default function SettingsPage() {
                                         </div>
 
                                         <button onClick={saveBranding} disabled={saving}
-                                            className="mt-4 flex items-center gap-2 px-4 py-2 bg-amber-500 text-black font-mono text-xs font-bold hover:bg-amber-400 transition-colors disabled:opacity-50">
+                                            className="mt-4 flex items-center gap-2 px-4 py-2 bg-amber-500 text-white font-mono text-xs font-bold hover:bg-amber-400 transition-colors disabled:opacity-50">
                                             {saving ? <Loader2 className="w-3 h-3 animate-spin" /> : <Save className="w-3 h-3" />}
                                             {saving ? 'SAVING...' : 'SAVE BRANDING'}
                                         </button>
@@ -472,7 +472,7 @@ export default function SettingsPage() {
                             {orgBranding && (
                                 <div className="bg-zinc-900 border border-zinc-800 p-6">
                                     <div className="font-mono text-[10px] text-zinc-500 mb-3">REPORT HEADER PREVIEW</div>
-                                    <div className="border border-zinc-700 p-4 bg-white text-black">
+                                    <div className="border border-zinc-700 p-4 bg-white text-white">
                                         <div className="flex items-center justify-between">
                                             <div>
                                                 <div className="text-lg font-bold" style={{ color: orgBranding.primary_color }}>{orgBranding.name || 'Your Firm'}</div>
@@ -500,7 +500,7 @@ export default function SettingsPage() {
                                         APPROVAL CHAINS
                                     </div>
                                     <button onClick={() => setShowNewChain(true)}
-                                        className="flex items-center gap-1 px-3 py-1.5 bg-amber-500 text-black font-mono text-[10px] font-bold hover:bg-amber-400">
+                                        className="flex items-center gap-1 px-3 py-1.5 bg-amber-500 text-white font-mono text-[10px] font-bold hover:bg-amber-400">
                                         <Plus className="w-3 h-3" /> NEW CHAIN
                                     </button>
                                 </div>
@@ -584,7 +584,7 @@ export default function SettingsPage() {
                                         <button onClick={() => setNewChain({ ...newChain, steps: [...newChain.steps, { step_order: newChain.steps.length + 1, name: '', required_role: 'manager', min_approvers: 1 }] })}
                                             className="font-mono text-[10px] text-amber-500 hover:text-amber-400 flex items-center gap-1"><Plus className="w-3 h-3" /> ADD STEP</button>
                                         <div className="flex gap-2 mt-2">
-                                            <button onClick={createChain} className="px-3 py-1.5 bg-amber-500 text-black font-mono text-[10px] font-bold hover:bg-amber-400">CREATE</button>
+                                            <button onClick={createChain} className="px-3 py-1.5 bg-amber-500 text-white font-mono text-[10px] font-bold hover:bg-amber-400">CREATE</button>
                                             <button onClick={() => setShowNewChain(false)} className="px-3 py-1.5 bg-zinc-800 text-zinc-400 font-mono text-[10px] hover:text-white">CANCEL</button>
                                         </div>
                                     </div>
@@ -610,7 +610,7 @@ export default function SettingsPage() {
                                     <input value={newKeyName} onChange={(e) => setNewKeyName(e.target.value)} placeholder="Key name (e.g. Production API)"
                                         className="flex-1 px-3 py-2 bg-black border border-zinc-700 text-white font-mono text-xs focus:outline-none focus:border-amber-500/50" />
                                     <button onClick={createKey} disabled={!newKeyName.trim()}
-                                        className="flex items-center gap-1 px-4 py-2 bg-amber-500 text-black font-mono text-xs font-bold hover:bg-amber-400 disabled:opacity-50">
+                                        className="flex items-center gap-1 px-4 py-2 bg-amber-500 text-white font-mono text-xs font-bold hover:bg-amber-400 disabled:opacity-50">
                                         <Plus className="w-3 h-3" /> GENERATE
                                     </button>
                                 </div>

@@ -158,7 +158,7 @@ export default function CatalogPage() {
                                     key={category}
                                     onClick={() => setSelectedCategory(category)}
                                     className={`px-3 py-2 font-mono text-xs transition-colors ${selectedCategory === category
-                                        ? 'bg-amber-500 text-black'
+                                        ? 'bg-amber-500 text-white'
                                         : 'bg-zinc-800 text-zinc-400 hover:text-white'
                                         }`}
                                 >

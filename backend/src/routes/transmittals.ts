@@ -19,13 +19,21 @@
  */
 
 import { Router, Request, Response, NextFunction } from 'express';
+import multer from 'multer';
+import { v4 as uuidv4 } from 'uuid';
 import transmittalService from '../services/project-management/transmittalService';
 import { registerPMParamValidation, getAuthUserId, getAuthOrgId, requirePMWrite } from '../middleware/pmAuth';
 import { validate } from '../middleware/validation';
+import { uploadFile, getPresignedDownloadUrl, buckets } from '../database/minio';
 import { z } from 'zod';
 
 const router = Router();
 registerPMParamValidation(router);
+
+const transmittalUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 50 * 1024 * 1024 }, // 50MB max
+});
 
 // ── Validation Schemas ──────────────────────────────────────────────────────
 
@@ -38,7 +46,7 @@ const createTransmittalSchema = z.object({
   to_email: z.string().email().optional(),
   cc_emails: z.array(z.string().email()).max(20).optional(),
   due_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
-  purpose: z.enum(['for_review', 'for_approval', 'for_information', 'for_construction', 'for_record', 'as_requested']).optional(),
+  purpose: z.enum(['for_review', 'for_approval', 'for_information', 'for_construction', 'for_record', 'as_requested', 'resubmitted_for_approval']).optional(),
   priority: z.enum(['low', 'normal', 'high', 'urgent']).optional(),
   response_required: z.boolean().optional(),
   items: z.array(z.object({
@@ -66,7 +74,7 @@ const updateTransmittalSchema = z.object({
   to_email: z.string().email().optional(),
   cc_emails: z.array(z.string().email()).max(20).optional(),
   due_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
-  purpose: z.enum(['for_review', 'for_approval', 'for_information', 'for_construction', 'for_record', 'as_requested']).optional(),
+  purpose: z.enum(['for_review', 'for_approval', 'for_information', 'for_construction', 'for_record', 'as_requested', 'resubmitted_for_approval']).optional(),
   priority: z.enum(['low', 'normal', 'high', 'urgent']).optional(),
   response_required: z.boolean().optional(),
 });
@@ -212,6 +220,40 @@ router.post('/:id/items', requirePMWrite, validate(addItemSchema), async (req: R
   }
 });
 
+/** Add item with file upload to transmittal */
+router.post('/:id/items/upload', requirePMWrite, transmittalUpload.single('file'), async (req: Request, res: Response) => {
+  try {
+    const file = (req as any).file as Express.Multer.File | undefined;
+    if (!file) {
+      return res.status(400).json({ error: 'File is required' });
+    }
+
+    const transmittalId = req.params.id;
+    const ext = file.originalname.split('.').pop() || 'bin';
+    const key = `transmittals/${transmittalId}/${uuidv4()}.${ext}`;
+    const bucket = buckets.documents || 'propmetrik-documents';
+    await uploadFile(bucket, key, file.buffer, file.mimetype);
+    const fileUrl = await getPresignedDownloadUrl(bucket, key);
+
+    const item = await transmittalService.addItem(transmittalId, {
+      document_title: req.body.document_title || file.originalname,
+      document_ref: req.body.document_ref || undefined,
+      revision: req.body.revision || undefined,
+      copies: req.body.copies ? parseInt(req.body.copies) : 1,
+      format: req.body.format || 'digital',
+      file_url: fileUrl,
+      file_key: key,
+      file_name: file.originalname,
+      file_size: file.size,
+      notes: req.body.notes || undefined,
+    });
+
+    res.status(201).json({ data: item });
+  } catch (err: any) {
+    res.status(500).json({ error: 'Failed to upload item', message: err.message });
+  }
+});
+
 /** Remove item from transmittal */
 router.delete('/:id/items/:itemId', requirePMWrite, async (req: Request, res: Response) => {
   try {
@@ -226,7 +268,7 @@ router.delete('/:id/items/:itemId', requirePMWrite, async (req: Request, res: Re
 router.delete('/:id', requirePMWrite, async (req: Request, res: Response) => {
   try {
     const deleted = await transmittalService.delete(req.params.id);
-    if (!deleted) return res.status(404).json({ error: 'Transmittal not found or not in draft status' });
+    if (!deleted) return res.status(404).json({ error: 'Transmittal not found' });
     res.json({ success: true });
   } catch (err: any) {
     res.status(500).json({ error: 'Failed to delete transmittal', message: err.message });

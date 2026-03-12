@@ -25,6 +25,7 @@ import {
   Calendar,
   Target,
   Shield,
+  Plus,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
@@ -37,6 +38,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
 import {
   milestoneApi,
   frameworkApi,
@@ -67,24 +70,35 @@ interface MilestonesTabProps {
   organizationId?: string
   frameworkId?: string
   onRefresh?: () => void
+  canManage?: boolean
 }
 
 // =====================================================
 // MAIN COMPONENT
 // =====================================================
 
-export function MilestonesTab({ projectId, organizationId, frameworkId, onRefresh }: MilestonesTabProps) {
+export function MilestonesTab({ projectId, organizationId, frameworkId, onRefresh, canManage = false }: MilestonesTabProps) {
   const [milestones, setMilestones] = useState<Milestone[]>([])
   const [framework, setFramework] = useState<MilestoneFramework | null>(null)
   const [phases, setPhases] = useState<FrameworkPhase[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [expandedPhases, setExpandedPhases] = useState<Set<string>>(new Set())
-  
+
   // Approval dialog state
   const [showApprovalDialog, setShowApprovalDialog] = useState(false)
   const [selectedMilestone, setSelectedMilestone] = useState<Milestone | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
+
+  // Add milestone dialog state
+  const [showAddMilestoneDialog, setShowAddMilestoneDialog] = useState(false)
+  const [isAddingMilestone, setIsAddingMilestone] = useState(false)
+  const [milestoneForm, setMilestoneForm] = useState({
+    name: '',
+    description: '',
+    target_date: '',
+    phase_id: '',
+  })
   
   // Load milestones and framework
   const loadData = useCallback(async () => {
@@ -165,6 +179,28 @@ export function MilestonesTab({ projectId, organizationId, frameworkId, onRefres
     }
   }
   
+  // Add milestone (PM only)
+  const handleAddMilestone = async () => {
+    if (!milestoneForm.name.trim()) return
+    try {
+      setIsAddingMilestone(true)
+      await milestoneApi.create(projectId, {
+        name: milestoneForm.name.trim(),
+        description: milestoneForm.description || undefined,
+        target_date: milestoneForm.target_date ? new Date(milestoneForm.target_date) as any : undefined,
+        phase_id: milestoneForm.phase_id || undefined,
+      } as any)
+      setMilestoneForm({ name: '', description: '', target_date: '', phase_id: '' })
+      setShowAddMilestoneDialog(false)
+      loadData()
+    } catch (err: any) {
+      console.error('Failed to create milestone:', err)
+      setError(err.message || 'Failed to create milestone')
+    } finally {
+      setIsAddingMilestone(false)
+    }
+  }
+
   // Group milestones by phase
   const milestonesByPhase = React.useMemo(() => {
     const grouped: Record<string, Milestone[]> = {}
@@ -203,11 +239,22 @@ export function MilestonesTab({ projectId, organizationId, frameworkId, onRefres
   return (
     <div className="space-y-6">
       {/* Stats Bar */}
-      <div className="grid grid-cols-4 gap-4">
-        <StatCard label="Total Milestones" value={stats.total} />
-        <StatCard label="Completed" value={stats.completed} color="green" />
-        <StatCard label="In Progress" value={stats.inProgress} color="blue" />
-        <StatCard label="Awaiting Your Approval" value={stats.requiresApproval} color="amber" />
+      <div className="flex items-center justify-between gap-4">
+        <div className="grid grid-cols-4 gap-4 flex-1">
+          <StatCard label="Total Milestones" value={stats.total} />
+          <StatCard label="Completed" value={stats.completed} color="green" />
+          <StatCard label="In Progress" value={stats.inProgress} color="blue" />
+          <StatCard label="Awaiting Your Approval" value={stats.requiresApproval} color="amber" />
+        </div>
+        {canManage && (
+          <Button
+            onClick={() => setShowAddMilestoneDialog(true)}
+            className="h-10 font-mono text-xs bg-amber-600 hover:bg-amber-700 text-white shrink-0"
+          >
+            <Plus className="h-3 w-3 mr-1" />
+            Add Milestone
+          </Button>
+        )}
       </div>
       
       {/* Overall Progress */}
@@ -231,7 +278,7 @@ export function MilestonesTab({ projectId, organizationId, frameworkId, onRefres
               Framework: <span className="text-white">{framework.name}</span>
             </span>
             {framework.is_locked && (
-              <Badge className="font-mono text-[10px] bg-amber-900/50 text-amber-400">
+              <Badge variant="outline" className="font-mono text-[10px] bg-amber-900/50 text-amber-400 border-amber-800/50">
                 <Lock className="h-2 w-2 mr-1" />
                 Locked
               </Badge>
@@ -362,6 +409,70 @@ export function MilestonesTab({ projectId, organizationId, frameworkId, onRefres
         </div>
       )}
       
+      {/* Add Milestone Dialog (PM only) */}
+      {canManage && (
+        <Dialog open={showAddMilestoneDialog} onOpenChange={setShowAddMilestoneDialog}>
+          <DialogContent className="bg-zinc-900 border-zinc-700 max-w-lg">
+            <DialogHeader>
+              <DialogTitle className="font-mono text-white">Add Milestone</DialogTitle>
+              <DialogDescription className="font-mono text-zinc-400">
+                Create a new project milestone
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div>
+                <Label className="font-mono text-xs text-zinc-400">Name *</Label>
+                <Input
+                  value={milestoneForm.name}
+                  onChange={e => setMilestoneForm(f => ({ ...f, name: e.target.value }))}
+                  placeholder="Milestone name"
+                  className="mt-1 font-mono text-sm bg-zinc-800 border-zinc-700 text-white"
+                />
+              </div>
+              <div>
+                <Label className="font-mono text-xs text-zinc-400">Description</Label>
+                <Input
+                  value={milestoneForm.description}
+                  onChange={e => setMilestoneForm(f => ({ ...f, description: e.target.value }))}
+                  placeholder="Optional description"
+                  className="mt-1 font-mono text-sm bg-zinc-800 border-zinc-700 text-white"
+                />
+              </div>
+              <div>
+                <Label className="font-mono text-xs text-zinc-400">Target Date</Label>
+                <Input
+                  type="date"
+                  value={milestoneForm.target_date}
+                  onChange={e => setMilestoneForm(f => ({ ...f, target_date: e.target.value }))}
+                  className="mt-1 font-mono text-sm bg-zinc-800 border-zinc-700 text-white"
+                />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button
+                variant="outline"
+                onClick={() => setShowAddMilestoneDialog(false)}
+                disabled={isAddingMilestone}
+                className="font-mono text-xs"
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={handleAddMilestone}
+                disabled={isAddingMilestone || !milestoneForm.name.trim()}
+                className="font-mono text-xs bg-amber-600 hover:bg-amber-700 text-white"
+              >
+                {isAddingMilestone ? (
+                  <><Loader2 className="h-3 w-3 mr-2 animate-spin" />Creating...</>
+                ) : (
+                  <><Plus className="h-3 w-3 mr-2" />Create Milestone</>
+                )}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      )}
+
       {/* Approval Dialog */}
       <Dialog open={showApprovalDialog} onOpenChange={setShowApprovalDialog}>
         <DialogContent className="bg-zinc-900 border-zinc-700 max-w-lg">
@@ -469,16 +580,16 @@ function MilestoneRow({ milestone, projectId, onApprove }: MilestoneRowProps) {
           <h5 className="font-mono text-sm text-white line-clamp-1">
             {milestone.name}
           </h5>
-          <Badge className={cn("font-mono text-[10px]", status.bg, status.text)}>
+          <Badge variant="outline" className={cn("font-mono text-[10px] border-0", status.bg, status.text)}>
             {status.label}
           </Badge>
           {milestone.is_required && (
-            <Badge className="font-mono text-[10px] bg-red-900/30 text-red-400 border border-red-800/50">
+            <Badge variant="outline" className="font-mono text-[10px] bg-red-900/30 text-red-400 border border-red-800/50">
               Required
             </Badge>
           )}
           {milestone.requires_client_approval && (
-            <Badge className="font-mono text-[10px] bg-amber-900/30 text-amber-400 border border-amber-800/50">
+            <Badge variant="outline" className="font-mono text-[10px] bg-amber-900/30 text-amber-400 border border-amber-800/50">
               {milestone.approved_by_client ? (
                 <>
                   <CheckCircle2 className="h-2 w-2 mr-1" />

@@ -557,7 +557,7 @@ function InvoicePaymentInner() {
                                 className={`flex items-center gap-2 px-6 py-3 font-mono text-sm font-bold rounded-lg transition-all ${
                                     paymentMethod === 'crypto'
                                         ? 'bg-purple-600 text-white hover:bg-purple-500'
-                                        : 'bg-amber-500 text-black hover:bg-amber-400'
+                                        : 'bg-amber-500 text-white hover:bg-amber-400'
                                 } disabled:opacity-40 disabled:cursor-not-allowed`}
                             >
                                 {processing ? (

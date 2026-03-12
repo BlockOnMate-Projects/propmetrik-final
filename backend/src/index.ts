@@ -8,7 +8,7 @@ import { logger, logUnhandledException } from './utils/logger';
 import { pool, checkHealth as checkDbHealth, checkPostGIS } from './database';
 import { checkHealth as checkRedisHealth, closeAllConnections as closeRedis, connectAll as connectRedis } from './database/redis';
 import { checkHealth as checkOpenSearchHealth, initializeIndices } from './database/opensearch';
-import { checkHealth as checkMinioHealth, initializeBuckets } from './database/minio';
+import { checkHealth as checkMinioHealth, initializeBuckets, getPresignedDownloadUrl, buckets } from './database/minio';
 import { errorHandler } from './middleware/errorHandler';
 import { rateLimiter } from './middleware/rateLimiter';
 import { requestIdMiddleware } from './middleware/requestId';
@@ -89,11 +89,14 @@ import safetyRoutes from './routes/safety';
 import timesheetRoutes from './routes/timesheets';
 import equipmentRoutes from './routes/equipment';
 import biddingRoutes from './routes/bidding';
+import bidManagementRoutes, { vendorRouter as bidVendorRouter } from './routes/bid-management';
 import closeoutRoutes from './routes/closeout';
 import auditLogRoutes from './routes/audit-log';
 import customFieldRoutes from './routes/custom-fields';
 import appIntegrationRoutes from './routes/app-integrations';
+import xeroRoutes, { xeroPublicRouter } from './routes/xero';
 import transmittalRoutes from './routes/transmittals';
+import transmittalService from './services/project-management/transmittalService';
 import invitationRoutes from './routes/invitations';
 import rbacRoutes from './routes/rbac';
 import { workspaceWebSocketServer } from '../shared-services/workspace/WorkspaceWebSocketServer';
@@ -489,6 +492,22 @@ app.use('/api/integrations', authenticate, requireAdmin, integrationsRoutes);  /
 app.use('/api/v1/valuation-invoices', valuationInvoiceRoutes);
 app.use('/api/valuation-invoices', valuationInvoiceRoutes);  // Also mount for frontend compatibility
 
+// ── Shared / Universal services ──────────────────────────────────────────────
+// These MUST be mounted BEFORE any catch-all /api/v1 routers (construction,
+// governance, issues, drawings, etc.) whose middleware would otherwise block
+// requests from users without the relevant service subscription.
+app.use('/api/v1/notifications', authenticate, notificationRoutes);
+app.use('/api/notifications', authenticate, notificationRoutes);  // Also mount for frontend compatibility
+app.use('/api/v1/admin', authenticate, requireAdmin, adminRoutes);
+app.use('/api/admin', authenticate, requireAdmin, adminRoutes);  // Also mount for frontend compatibility
+app.use('/api/v1/user', authenticate, userProfileRoutes);
+app.use('/api/user', authenticate, userProfileRoutes);  // Also mount for frontend compatibility
+app.use('/api/v1/rbac', authenticate, rbacRoutes);
+app.use('/api/rbac', authenticate, rbacRoutes);  // Also mount for frontend compatibility
+app.use('/api/v1/workspace', authenticate, workspaceRoutes);
+app.use('/api/workspace', authenticate, workspaceRoutes);  // Also mount for frontend compatibility
+
+// ── Catch-all /api/v1 routers (construction, governance, etc.) ───────────────
 app.use('/api/v1', authenticate, requirePMAccess, requireServiceAccess('construction'), constructionRoutes); // Construction Ops (Site Diaries, Petty Cash, Market Prices)
 app.use('/api/v1/rfis', authenticate, requirePMAccess, requireServiceAccess('construction'), rfiRoutes);
 app.use('/api/rfis', authenticate, requirePMAccess, requireServiceAccess('construction'), rfiRoutes);  // Also mount for frontend compatibility
@@ -519,22 +538,6 @@ app.use('/api/v1/rics-compliance', authenticate, requireServiceAccess('valuation
 app.use('/api/rics-compliance', authenticate, requireServiceAccess('valuations'), ricsComplianceRoutes);  // Also mount for frontend compatibility
 app.use('/api/v1/flood-risk', authenticate, requireServiceAccess('valuations'), floodRiskRoutes);
 app.use('/api/flood-risk', authenticate, requireServiceAccess('valuations'), floodRiskRoutes);  // Also mount for frontend compatibility
-
-// In-Mail Notification System
-app.use('/api/v1/notifications', authenticate, notificationRoutes);
-app.use('/api/notifications', authenticate, notificationRoutes);  // Also mount for frontend compatibility
-
-// Admin Routes (fee config, crypto payments admin, platform settings)
-app.use('/api/v1/admin', authenticate, requireAdmin, adminRoutes);
-app.use('/api/admin', authenticate, requireAdmin, adminRoutes);  // Also mount for frontend compatibility
-
-// User Profile Routes (profile, password, notification prefs, stats)
-app.use('/api/v1/user', authenticate, userProfileRoutes);
-app.use('/api/user', authenticate, userProfileRoutes);  // Also mount for frontend compatibility
-
-// RBAC Configuration (frontend sync — returns policies, tabs, feature gates)
-app.use('/api/v1/rbac', authenticate, rbacRoutes);
-app.use('/api/rbac', authenticate, rbacRoutes);  // Also mount for frontend compatibility
 
 // Issues & Risks Routes
 app.use('/api/v1', authenticate, requirePMAccess, requireServiceAccess('projects'), issueRoutes);
@@ -572,6 +575,14 @@ app.use('/api', authenticate, requirePMAccess, requireServiceAccess('constructio
 app.use('/api/v1', authenticate, requirePMAccess, requireServiceAccess('construction'), biddingRoutes);
 app.use('/api', authenticate, requirePMAccess, requireServiceAccess('construction'), biddingRoutes);
 
+// Bid Management Routes (authenticated)
+app.use('/api/v1', authenticate, requirePMAccess, requireServiceAccess('construction'), bidManagementRoutes);
+app.use('/api', authenticate, requirePMAccess, requireServiceAccess('construction'), bidManagementRoutes);
+
+// Public Vendor Bid Portal (token-based, no auth)
+app.use('/api/v1', bidVendorRouter);
+app.use('/api', bidVendorRouter);
+
 // Closeout & Warranty Routes
 app.use('/api/v1', authenticate, requirePMAccess, requireServiceAccess('construction'), closeoutRoutes);
 app.use('/api', authenticate, requirePMAccess, requireServiceAccess('construction'), closeoutRoutes);
@@ -588,7 +599,64 @@ app.use('/api', authenticate, requirePMAccess, requireServiceAccess('projects'),
 app.use('/api/v1', authenticate, requirePMAccess, requireServiceAccess('projects'), appIntegrationRoutes);
 app.use('/api', authenticate, requirePMAccess, requireServiceAccess('projects'), appIntegrationRoutes);
 
+// Xero OAuth2 + Cost Sync Routes
+// Public callback — no auth (Xero redirects back without our Bearer token)
+app.use('/api/v1', xeroPublicRouter);
+app.use('/api', xeroPublicRouter);
+// Protected Xero routes (auth + status + sync)
+app.use('/api/v1', authenticate, requirePMAccess, xeroRoutes);
+app.use('/api', authenticate, requirePMAccess, xeroRoutes);
+
 // PM Transmittals Routes (document distribution & acknowledgement)
+// Public acknowledge endpoint (no auth — token-based from email link)
+app.get('/api/v1/transmittals/public/acknowledge/:token', async (req, res) => {
+  try {
+    const result = await transmittalService.acknowledgeByToken(req.params.token, req.query.notes as string);
+    if (!result.success) {
+      return res.status(404).send(buildTransmittalAckPage({ error: result.error || 'Invalid or expired link.' }));
+    }
+    if (result.already) {
+      return res.send(buildTransmittalAckPage({ title: 'Already Acknowledged', message: 'You have already acknowledged this transmittal. Thank you.' }));
+    }
+    return res.send(buildTransmittalAckPage({
+      title: 'Acknowledged',
+      message: `Transmittal ${result.transmittal_number} — "${result.subject}" has been acknowledged successfully.${result.recipient_name ? ` Thank you, ${result.recipient_name}.` : ''}`,
+      items: result.items,
+      token: result.token,
+    }));
+  } catch (err: any) {
+    res.status(500).send(buildTransmittalAckPage({ error: 'An unexpected error occurred. Please try again.' }));
+  }
+});
+// Public download endpoint — token-based file access from email link
+app.get('/api/v1/transmittals/public/download/:token/:itemId', async (req, res) => {
+  try {
+    const { token, itemId } = req.params;
+    // Validate token belongs to a real recipient
+    const recipientResult = await pool.query(
+      `SELECT r.transmittal_id FROM pm_transmittal_recipients r WHERE r.acknowledge_token = $1`,
+      [token],
+    );
+    if (recipientResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Invalid link' });
+    }
+    // Fetch the item and verify it belongs to the transmittal
+    const itemResult = await pool.query(
+      `SELECT * FROM pm_transmittal_items WHERE id = $1 AND transmittal_id = $2`,
+      [itemId, recipientResult.rows[0].transmittal_id],
+    );
+    if (itemResult.rows.length === 0 || !itemResult.rows[0].file_key) {
+      return res.status(404).json({ error: 'File not found' });
+    }
+    const item = itemResult.rows[0];
+    const bucket = buckets.documents || 'propmetrik-documents';
+    const downloadUrl = await getPresignedDownloadUrl(bucket, item.file_key, 3600);
+    res.redirect(downloadUrl);
+  } catch (err: any) {
+    res.status(500).json({ error: 'Failed to generate download link' });
+  }
+});
+// Authenticated transmittal routes
 app.use('/api/v1/transmittals', authenticate, requirePMAccess, requireServiceAccess('projects'), transmittalRoutes);
 app.use('/api/transmittals', authenticate, requirePMAccess, requireServiceAccess('projects'), transmittalRoutes);
 
@@ -639,10 +707,6 @@ app.use('/api/charts', authenticate, requireServiceAccess('valuations'), chartsR
 // Autopilot Pipeline Routes (autonomous publication scheduling & management)
 app.use('/api/v1/autopilot', authenticate, requireAdmin, autopilotRoutes);
 app.use('/api/autopilot', authenticate, requireAdmin, autopilotRoutes);  // Also mount for frontend compatibility
-
-// Workspace Collaboration Routes
-app.use('/api/v1/workspace', authenticate, workspaceRoutes);
-app.use('/api/workspace', authenticate, workspaceRoutes);  // Also mount for frontend compatibility
 
 // Kobby AI Routes (workspace AI assistant)
 app.use('/api/v1/ai/kobby', authenticate, kobbyAIRoutes);
@@ -869,3 +933,43 @@ server.on('error', (err: NodeJS.ErrnoException) => {
 });
 
 export { app, server };
+
+// ── Helper: Transmittal public acknowledge page ─────────────────────────────
+function buildTransmittalAckPage(opts: { title?: string; message?: string; error?: string; items?: any[]; token?: string }): string {
+  const isError = !!opts.error;
+  const heading = opts.title || (isError ? 'Error' : 'Success');
+  const body = opts.error || opts.message || '';
+  const color = isError ? '#ef4444' : '#10b981';
+  const icon = isError
+    ? '<svg width="48" height="48" fill="none" viewBox="0 0 24 24" stroke="#ef4444" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>'
+    : '<svg width="48" height="48" fill="none" viewBox="0 0 24 24" stroke="#10b981" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>';
+
+  const appUrl = (process.env.APP_URL || 'http://localhost:4000').replace(/\/$/, '');
+  const itemsWithFiles = (opts.items || []).filter(i => i.file_key);
+  const documentsHtml = itemsWithFiles.length > 0 && opts.token ? `
+    <div style="margin-top:24px;text-align:left;border-top:1px solid #3f3f46;padding-top:20px;">
+      <p style="color:#a1a1aa;font-size:11px;font-family:monospace;text-transform:uppercase;margin:0 0 12px;letter-spacing:1px;">Attached Documents</p>
+      ${itemsWithFiles.map(item => `
+        <a href="${appUrl}/api/v1/transmittals/public/download/${opts.token}/${item.id}" 
+           style="display:flex;align-items:center;gap:10px;padding:10px 14px;background:#3f3f46;border-radius:8px;text-decoration:none;margin-bottom:8px;">
+          <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="#f59e0b" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+          <div>
+            <p style="color:#e4e4e7;font-size:14px;margin:0;">${item.document_title}</p>
+            <p style="color:#71717a;font-size:11px;margin:2px 0 0;font-family:monospace;">${item.file_name || 'Download'}</p>
+          </div>
+          <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="#f59e0b" stroke-width="2" style="margin-left:auto;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        </a>
+      `).join('')}
+    </div>` : '';
+
+  return `<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"><title>${heading} | PROPMETRIK</title></head>
+<body style="margin:0;padding:0;background:#18181b;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;display:flex;justify-content:center;align-items:center;min-height:100vh;">
+  <div style="background:#27272a;border-radius:12px;padding:48px;max-width:480px;text-align:center;box-shadow:0 4px 24px rgba(0,0,0,0.3);">
+    <div style="margin-bottom:20px;">${icon}</div>
+    <h1 style="color:${color};font-size:24px;font-family:monospace;margin:0 0 12px;">${heading}</h1>
+    <p style="color:#d4d4d8;font-size:15px;line-height:1.6;margin:0 0 24px;">${body}</p>
+    ${documentsHtml}
+    <p style="color:#71717a;font-size:12px;font-family:monospace;margin:16px 0 0;">PROPMETRIK</p>
+  </div>
+</body></html>`;
+}

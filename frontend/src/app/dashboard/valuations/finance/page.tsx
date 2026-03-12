@@ -445,7 +445,7 @@ export default function FinancePage() {
                 <div className="flex items-center gap-3">
                     <button
                         onClick={() => setShowCalc(!showCalc)}
-                        className={`flex items-center gap-2 px-3 py-2 font-mono text-xs transition-colors ${showCalc ? 'bg-amber-500 text-black font-bold' : 'bg-zinc-800 text-zinc-400 hover:text-white'
+                        className={`flex items-center gap-2 px-3 py-2 font-mono text-xs transition-colors ${showCalc ? 'bg-amber-500 text-white font-bold' : 'bg-zinc-800 text-zinc-400 hover:text-white'
                             }`}
                     >
                         <Calculator className="w-3 h-3" />
@@ -460,7 +460,7 @@ export default function FinancePage() {
                     </button>
                     <button
                         onClick={() => setShowCreateModal(true)}
-                        className="flex items-center gap-2 px-4 py-2 bg-amber-500 text-black font-mono text-xs font-bold hover:bg-amber-400 transition-colors"
+                        className="flex items-center gap-2 px-4 py-2 bg-amber-500 text-white font-mono text-xs font-bold hover:bg-amber-400 transition-colors"
                     >
                         <Plus className="w-3 h-3" />
                         NEW INVOICE
@@ -675,7 +675,7 @@ export default function FinancePage() {
                             <button
                                 onClick={handleCalculate}
                                 disabled={calculating}
-                                className="flex items-center gap-2 px-4 py-2 bg-amber-500 text-black font-mono text-xs font-bold hover:bg-amber-400 transition-colors disabled:opacity-50"
+                                className="flex items-center gap-2 px-4 py-2 bg-amber-500 text-white font-mono text-xs font-bold hover:bg-amber-400 transition-colors disabled:opacity-50"
                             >
                                 {calculating ? <Loader2 className="w-3 h-3 animate-spin" /> : <Calculator className="w-3 h-3" />}
                                 CALCULATE
@@ -1226,7 +1226,7 @@ export default function FinancePage() {
                             </div>
                             <div className="flex items-center gap-3">
                                 <button onClick={() => setShowCreateModal(false)} className="px-4 py-2 bg-zinc-800 text-zinc-400 font-mono text-xs hover:text-white transition-colors">CANCEL</button>
-                                <button onClick={handleCreate} disabled={!newInvoice.clientName || !liveCalc || creating} className="flex items-center gap-2 px-5 py-2 bg-amber-500 text-black font-mono text-xs font-bold hover:bg-amber-400 transition-colors disabled:opacity-40 disabled:cursor-not-allowed">
+                                <button onClick={handleCreate} disabled={!newInvoice.clientName || !liveCalc || creating} className="flex items-center gap-2 px-5 py-2 bg-amber-500 text-white font-mono text-xs font-bold hover:bg-amber-400 transition-colors disabled:opacity-40 disabled:cursor-not-allowed">
                                     {creating ? <Loader2 className="w-3 h-3 animate-spin" /> : <Plus className="w-3 h-3" />}
                                     {creating ? 'CREATING...' : 'CREATE INVOICE'}
                                 </button>
@@ -1429,7 +1429,7 @@ export default function FinancePage() {
                                     <Download className="w-3 h-3" /> DOWNLOAD
                                 </button>
                                 {previewInvoice.status === 'draft' && (
-                                    <button onClick={() => { handleSend(previewInvoice.id); setShowPreview(false) }} className="flex items-center gap-2 px-4 py-2 bg-amber-500 text-black font-mono text-xs font-bold hover:bg-amber-400 transition-colors">
+                                    <button onClick={() => { handleSend(previewInvoice.id); setShowPreview(false) }} className="flex items-center gap-2 px-4 py-2 bg-amber-500 text-white font-mono text-xs font-bold hover:bg-amber-400 transition-colors">
                                         <Send className="w-3 h-3" /> SEND TO CLIENT
                                     </button>
                                 )}

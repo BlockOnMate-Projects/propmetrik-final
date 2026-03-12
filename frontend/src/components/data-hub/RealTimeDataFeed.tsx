@@ -97,7 +97,7 @@ export function RealTimeDataFeed({
                         className={cn(
                             'px-2 py-1 font-mono text-[10px] transition-colors',
                             isPaused
-                                ? 'bg-amber-500 text-black'
+                                ? 'bg-amber-500 text-white'
                                 : 'bg-zinc-800 text-zinc-400 hover:text-white'
                         )}
                     >

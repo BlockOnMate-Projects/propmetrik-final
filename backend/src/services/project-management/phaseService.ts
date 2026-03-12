@@ -161,6 +161,7 @@ export interface UpdatePhaseInput {
 
 export interface GanttData {
   phases: GanttPhase[];
+  milestones?: any[];
   start_date: string;
   end_date: string;
   total_duration_days: number;
@@ -319,7 +320,7 @@ class PhaseService extends BaseService {
     const ganttPhases: GanttPhase[] = phases.map(phase => {
       const phaseStart = phase.actual_start_date || phase.planned_start_date || startDate;
       const phaseEnd = phase.actual_end_date || phase.estimated_end_date || phase.planned_end_date || endDate;
-      
+
       return {
         id: phase.id,
         name: phase.name,
@@ -336,9 +337,52 @@ class PhaseService extends BaseService {
         }))
       };
     });
-    
+
+    // Build flat top-level milestones array from both sources:
+    // 1) Phase-embedded milestones (JSON array in project_phases)
+    // 2) Project-level milestones (project_milestones table)
+    const embeddedMilestones = phases.flatMap(phase =>
+      phase.milestones.map(m => ({
+        id: m.id,
+        phaseId: phase.id,
+        name: m.name,
+        date: m.target_date ? (m.target_date instanceof Date ? m.target_date.toISOString().split('T')[0] : String(m.target_date)) : null,
+        status: m.completed ? 'completed' : 'pending',
+        isGhanaSpecific: false,
+      }))
+    );
+
+    let projectMilestones: any[] = [];
+    try {
+      const result = await pool.query(
+        `SELECT id, phase_id, name, target_date, status, milestone_type
+         FROM project_milestones
+         WHERE project_id = $1 AND (status IS NULL OR status != 'deleted')
+         ORDER BY target_date ASC NULLS LAST`,
+        [projectId]
+      );
+      projectMilestones = result.rows.map(row => ({
+        id: row.id,
+        phaseId: row.phase_id || undefined,
+        name: row.name,
+        date: row.target_date ? new Date(row.target_date).toISOString().split('T')[0] : null,
+        status: row.status || 'pending',
+        isGhanaSpecific: row.milestone_type === 'ghana_specific',
+      }));
+    } catch {
+      // Non-fatal — use only embedded milestones
+    }
+
+    // Merge, deduplicating by id
+    const milestoneMap = new Map<string, any>();
+    for (const m of [...embeddedMilestones, ...projectMilestones]) {
+      if (m.id) milestoneMap.set(m.id, m);
+    }
+    const allMilestones = Array.from(milestoneMap.values());
+
     return {
       phases: ganttPhases,
+      milestones: allMilestones,
       start_date: startDate instanceof Date ? startDate.toISOString().split('T')[0] : String(startDate),
       end_date: endDate instanceof Date ? endDate.toISOString().split('T')[0] : String(endDate),
       total_duration_days: totalDays

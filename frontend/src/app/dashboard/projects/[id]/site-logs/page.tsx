@@ -157,7 +157,7 @@ export default function ProjectSiteLogsPage() {
   // Fetch project
   const fetchProject = useCallback(async () => {
     try {
-      const response = await fetch(`${API_BASE}/api/projects/${projectId}`);
+      const response = await fetch(`${API_BASE}/projects/${projectId}`);
       const result = await response.json();
       if (result.success) {
         setProject(result.data);
@@ -171,7 +171,7 @@ export default function ProjectSiteLogsPage() {
   const fetchDiaries = useCallback(async () => {
     try {
       setLoading(true);
-      const response = await fetch(`${API_BASE}/api/v1/site-diaries?projectId=${projectId}&pageSize=100`);
+      const response = await fetch(`${API_BASE}/site-diaries?projectId=${projectId}&pageSize=100`);
       const result = await response.json();
       
       if (result.success) {
@@ -217,7 +217,7 @@ export default function ProjectSiteLogsPage() {
   const handleCreate = async () => {
     try {
       setSubmitting(true);
-      const response = await fetch(`${API_BASE}/api/v1/site-diaries`, {
+      const response = await fetch(`${API_BASE}/site-diaries`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -254,7 +254,7 @@ export default function ProjectSiteLogsPage() {
 
     try {
       setSubmitting(true);
-      const response = await fetch(`${API_BASE}/api/v1/site-diaries/${selectedDiary.id}`, {
+      const response = await fetch(`${API_BASE}/site-diaries/${selectedDiary.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -289,7 +289,7 @@ export default function ProjectSiteLogsPage() {
 
     try {
       setSubmitting(true);
-      const response = await fetch(`${API_BASE}/api/v1/site-diaries/${selectedDiary.id}`, {
+      const response = await fetch(`${API_BASE}/site-diaries/${selectedDiary.id}`, {
         method: 'DELETE',
       });
 

@@ -82,10 +82,10 @@ export function WorkBreakdownStructure({
                                     )}
                                 </td>
                                 <td className="px-4 py-3 font-mono text-[11px] text-zinc-400">
-                                    {format(new Date(phase.startDate), 'MMM dd, yyyy')}
+                                    {phase.startDate ? format(new Date(phase.startDate), 'MMM dd, yyyy') : '—'}
                                 </td>
                                 <td className="px-4 py-3 font-mono text-[11px] text-zinc-400">
-                                    {format(new Date(phase.endDate), 'MMM dd, yyyy')}
+                                    {phase.endDate ? format(new Date(phase.endDate), 'MMM dd, yyyy') : '—'}
                                 </td>
                                 <td className="px-4 py-3">
                                     <div className="flex items-center gap-2">

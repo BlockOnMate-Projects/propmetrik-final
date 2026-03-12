@@ -126,7 +126,7 @@ export function WorkspaceContent({
     const handleMessageEdited = useCallback((messageId: string, content: string, editedAt: string) => {
         setMessages((prev) =>
             prev.map((m) =>
-                m.id === messageId ? { ...m, content, edited_at: new Date(editedAt) } : m
+                m.id === messageId ? { ...m, content, edited_at: editedAt } : m
             )
         );
     }, []);
@@ -142,6 +142,7 @@ export function WorkspaceContent({
                 {
                     id: responseId,
                     workspace_id: workspace?.id || '',
+                    conversation_id: activeConversationId || '',
                     sender_id: null,
                     sender_type: 'kobby_ai',
                     message_type: 'ai_response',
@@ -211,6 +212,7 @@ export function WorkspaceContent({
                         {
                             id: `kobby-query-${Date.now()}`,
                             workspace_id: workspace.id,
+                            conversation_id: activeConversationId || '',
                             sender_id: currentUserId || 'current-user',
                             sender_type: 'user',
                             message_type: 'text',

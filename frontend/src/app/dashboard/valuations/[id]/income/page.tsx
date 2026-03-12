@@ -925,7 +925,7 @@ export default function IncomeApproachPage() {
           onClick={() => setIncomeMethod('direct_cap')}
           className={`px-4 py-2 font-mono text-xs transition-colors ${
             incomeMethod === 'direct_cap'
-              ? 'bg-amber-500 text-black font-bold'
+              ? 'bg-amber-500 text-white font-bold'
               : 'bg-zinc-800 text-zinc-400 hover:text-white'
           }`}
         >
@@ -935,7 +935,7 @@ export default function IncomeApproachPage() {
           onClick={() => setIncomeMethod('dcf')}
           className={`px-4 py-2 font-mono text-xs transition-colors ${
             incomeMethod === 'dcf'
-              ? 'bg-amber-500 text-black font-bold'
+              ? 'bg-amber-500 text-white font-bold'
               : 'bg-zinc-800 text-zinc-400 hover:text-white'
           }`}
         >
@@ -1055,7 +1055,7 @@ export default function IncomeApproachPage() {
                 </p>
                 <Link
                   href={`/dashboard/valuations/${valuationId}/rental-market`}
-                  className="inline-flex items-center gap-2 px-4 py-2 bg-amber-500 text-black font-mono text-xs font-bold hover:bg-amber-400 transition-colors"
+                  className="inline-flex items-center gap-2 px-4 py-2 bg-amber-500 text-white font-mono text-xs font-bold hover:bg-amber-400 transition-colors"
                 >
                   GO TO RENTAL MARKET ANALYSIS
                 </Link>
@@ -2257,7 +2257,7 @@ export default function IncomeApproachPage() {
         <button
           onClick={handleSave}
           disabled={saving}
-          className="px-6 py-3 bg-amber-500 text-black font-mono text-sm font-bold hover:bg-amber-400 disabled:opacity-50 transition-colors flex items-center gap-2"
+          className="px-6 py-3 bg-amber-500 text-white font-mono text-sm font-bold hover:bg-amber-400 disabled:opacity-50 transition-colors flex items-center gap-2"
         >
           {saving && <Loader2 className="w-4 h-4 animate-spin" />}
           SAVE & CONTINUE TO RECONCILIATION →

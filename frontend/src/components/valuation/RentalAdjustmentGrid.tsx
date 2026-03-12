@@ -671,7 +671,7 @@ export function RentalAdjustmentGrid({
           <button
             onClick={handleAutoCalculateAll}
             disabled={readOnly}
-            className="px-3 py-1.5 bg-amber-500 text-black font-mono text-[10px] hover:bg-amber-400 disabled:opacity-50 flex items-center gap-1"
+            className="px-3 py-1.5 bg-amber-500 text-white font-mono text-[10px] hover:bg-amber-400 disabled:opacity-50 flex items-center gap-1"
           >
             <Calculator className="w-3 h-3" />
             AUTO-CALCULATE ALL

@@ -173,7 +173,7 @@ export default function AssetLogbookPage() {
                         <Filter className="h-3 w-3 mr-2" />
                         Filter Log
                     </Button>
-                    <Button size="sm" className="bg-amber-600 hover:bg-amber-500 text-black font-bold font-mono text-[10px] uppercase">
+                    <Button size="sm" className="bg-amber-600 hover:bg-amber-500 text-white font-bold font-mono text-[10px] uppercase">
                         <Plus className="h-3 w-3 mr-2" />
                         Manual Entry
                     </Button>

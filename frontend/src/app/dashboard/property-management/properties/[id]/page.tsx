@@ -1115,7 +1115,7 @@ export default function PropertyDetailPage() {
                                         <Button
                                             onClick={handleCreateFinancialEntry}
                                             disabled={isCreatingFinancial || !newFinancial.amount}
-                                            className="bg-amber-600 hover:bg-amber-500 text-black font-bold font-mono text-[10px] uppercase w-full"
+                                            className="bg-amber-600 hover:bg-amber-500 text-white font-bold font-mono text-[10px] uppercase w-full"
                                         >
                                             {isCreatingFinancial ? <Loader2 className="h-3 w-3 animate-spin mr-2" /> : <Plus className="h-3 w-3 mr-2" />}
                                             RECORD ENTRY
@@ -1223,7 +1223,7 @@ export default function PropertyDetailPage() {
                             <CardTitle className="text-sm font-mono text-amber-500 uppercase">Asset Integrity Status</CardTitle>
                             <Dialog open={isWorkOrderDialogOpen} onOpenChange={setIsWorkOrderDialogOpen}>
                                 <DialogTrigger asChild>
-                                    <Button size="sm" className="bg-amber-600 hover:bg-amber-500 text-black font-bold font-mono text-[10px] uppercase">
+                                    <Button size="sm" className="bg-amber-600 hover:bg-amber-500 text-white font-bold font-mono text-[10px] uppercase">
                                         <Plus className="h-3 w-3 mr-2" />
                                         New Work Order
                                     </Button>
@@ -1299,7 +1299,7 @@ export default function PropertyDetailPage() {
                                         <Button
                                             onClick={handleCreateWorkOrder}
                                             disabled={isCreatingWorkOrder || !newWorkOrder.title}
-                                            className="bg-amber-600 hover:bg-amber-500 text-black font-bold font-mono text-[10px] uppercase w-full"
+                                            className="bg-amber-600 hover:bg-amber-500 text-white font-bold font-mono text-[10px] uppercase w-full"
                                         >
                                             {isCreatingWorkOrder ? <Loader2 className="h-3 w-3 animate-spin mr-2" /> : <Plus className="h-3 w-3 mr-2" />}
                                             CREATE WORK ORDER
@@ -1386,7 +1386,7 @@ export default function PropertyDetailPage() {
                         </div>
                         <Dialog open={isUploadDialogOpen} onOpenChange={setIsUploadDialogOpen}>
                             <DialogTrigger asChild>
-                                <Button size="sm" className="bg-amber-600 hover:bg-amber-500 text-black font-bold font-mono text-[10px] uppercase">
+                                <Button size="sm" className="bg-amber-600 hover:bg-amber-500 text-white font-bold font-mono text-[10px] uppercase">
                                     <Plus className="h-3 w-3 mr-2" />
                                     ADD VISUAL ASSET
                                 </Button>
@@ -1421,7 +1421,7 @@ export default function PropertyDetailPage() {
                                     <Button
                                         onClick={handleUploadPhoto}
                                         disabled={isUploading || !newPhotoUrl}
-                                        className="bg-amber-600 hover:bg-amber-500 text-black font-bold font-mono text-[10px] uppercase w-full"
+                                        className="bg-amber-600 hover:bg-amber-500 text-white font-bold font-mono text-[10px] uppercase w-full"
                                     >
                                         {isUploading ? <Loader2 className="h-3 w-3 animate-spin mr-2" /> : <Plus className="h-3 w-3 mr-2" />}
                                         UPLOAD TO TERMINAL

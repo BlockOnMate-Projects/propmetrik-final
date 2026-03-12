@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
-import { getApplicationStatus, ApplicationStatus } from "@/lib/api";
+import { getApplicationStatus, ApplicationStatusResponse } from "@/lib/api";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Clock, CheckCircle2, XCircle, FileText, Loader2, ArrowRight } from "lucide-react";
@@ -12,7 +12,7 @@ import { cn } from "@/lib/utils";
 
 export default function ApplicationStatusPage() {
   const params = useParams();
-  const [status, setStatus] = useState<ApplicationStatus | null>(null);
+  const [status, setStatus] = useState<ApplicationStatusResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -107,7 +107,7 @@ export default function ApplicationStatusPage() {
             <div className="relative py-8">
               {/* Timeline */}
               <div className="space-y-8">
-                {status.timeline.length > 0 ? status.timeline.map((event, i) => (
+                {status.timeline.length > 0 ? status.timeline.map((event: { stage: string; date?: string; notes?: string }, i: number) => (
                   <div key={i} className="flex gap-4">
                     <div className="flex flex-col items-center">
                       <div className="h-4 w-4 rounded-full bg-primary" />

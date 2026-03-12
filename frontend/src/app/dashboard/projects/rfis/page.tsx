@@ -591,7 +591,7 @@ export default function RFIsPage() {
                 {selectedRfi.status === 'draft' && (
                   <Button
                     onClick={() => handleSubmitRfi(selectedRfi)}
-                    className="flex-1 bg-amber-600 hover:bg-amber-700 text-black font-mono"
+                    className="flex-1 bg-amber-600 hover:bg-amber-700 text-white font-mono"
                   >
                     <Send className="h-4 w-4 mr-2" />
                     Submit RFI

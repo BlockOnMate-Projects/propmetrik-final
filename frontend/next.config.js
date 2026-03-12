@@ -14,10 +14,6 @@ const nextConfig = {
       },
     ],
   },
-  typescript: {
-    // TODO: Fix type mismatches between API types and component types
-    ignoreBuildErrors: true,
-  },
   eslint: {
     ignoreDuringBuilds: true,
   },

@@ -1124,3 +1124,211 @@ export const systemHealthApi = {
     }>>('/data-hub/system/health'),
 };
 
+
+// =====================================================
+// TENANT PORTAL API
+// =====================================================
+
+const TENANT_BASE = '/tenant';
+
+// ── Types ──────────────────────────────────────────
+
+export interface TenantProfile {
+  id: string;
+  name: string;
+  fullName?: string;
+  email: string;
+  phone?: string;
+  unit_number?: string;
+  property_name?: string;
+  lease_start?: string;
+  lease_end?: string;
+  rent_amount?: number;
+  currency?: string;
+  tenancies?: Array<{
+    id: string;
+    status: string;
+    propertyId?: string;
+    unitId?: string;
+    propertyTitle?: string;
+    propertyAddress?: string;
+    startDate?: string;
+    endDate?: string;
+    rentAmount?: number;
+    rentCurrency?: string;
+    [key: string]: any;
+  }>;
+}
+
+export interface PaymentSummary {
+  balance_due: number;
+  next_due_date?: string;
+  last_payment_amount?: number;
+  last_payment_date?: string;
+  currency?: string;
+  totalOutstanding?: number;
+  overdueSchedules?: number;
+  nextPaymentDue?: { amount: number; dueDate: string };
+}
+
+export interface MaintenanceRequest {
+  id: string;
+  title: string;
+  description?: string;
+  status: string;
+  priority?: string;
+  category?: string;
+  location?: string;
+  created_at: string;
+  createdAt?: string;
+  updated_at?: string;
+  preferredContactMethod?: string;
+  preferredTimeSlot?: string;
+  images?: string[] | File[];
+  [key: string]: any;
+}
+
+export interface LeaseAgreement {
+  id: string;
+  lease_number?: string;
+  start_date: string;
+  end_date: string;
+  monthly_rent: number;
+  currency: string;
+  status: string;
+  document_url?: string;
+  signed_at?: string;
+  content?: string;
+  applicationId?: string;
+  terms?: {
+    startDate: string;
+    endDate: string;
+    rentAmount: number;
+    securityDeposit: number;
+  };
+}
+
+export interface ApplicationStatusResponse {
+  id: string;
+  status: string;
+  propertyName?: string;
+  propertyAddress?: string;
+  submittedAt?: string;
+  signerToken?: string;
+  timeline: Array<{ stage: string; date?: string; notes?: string }>;
+}
+
+export interface ApplicationLink {
+  id: string;
+  propertyId: string;
+  organizationId: string;
+  createdBy: string;
+  token: string;
+  applicationType: string;
+  maxUses: number;
+  currentUses: number;
+  expiresAt: string;
+  isActive: boolean;
+  url: string;
+  createdAt: string;
+}
+
+export type ApplicationStatus =
+  | 'pending'
+  | 'under_review'
+  | 'approved'
+  | 'rejected'
+  | 'lease_signed'
+  | 'cancelled';
+
+// ── Auth / Session ────────────────────────────────
+
+export async function getSessionToken(): Promise<{ token: string }> {
+  return fetchApi<{ token: string }>(`${TENANT_BASE}/session`);
+}
+
+export async function requestMagicLink(email: string): Promise<{ message: string; success?: boolean }> {
+  return fetchApi<{ message: string; success?: boolean }>(`${TENANT_BASE}/auth/magic-link`, {
+    method: 'POST',
+    body: JSON.stringify({ email }),
+  });
+}
+
+export async function requestOTP(phone: string, channel?: string): Promise<{ message: string; success?: boolean }> {
+  return fetchApi<{ message: string; success?: boolean }>(`${TENANT_BASE}/auth/otp/request`, {
+    method: 'POST',
+    body: JSON.stringify({ phone, channel }),
+  });
+}
+
+export async function verifyOTP(phone: string, code: string, channel?: string): Promise<{ token: string; success?: boolean; error?: string }> {
+  return fetchApi<{ token: string; success?: boolean; error?: string }>(`${TENANT_BASE}/auth/otp/verify`, {
+    method: 'POST',
+    body: JSON.stringify({ phone, code, channel }),
+  });
+}
+
+export async function verifyMagicLink(token: string): Promise<{ token: string; success?: boolean; error?: string }> {
+  return fetchApi<{ token: string; success?: boolean; error?: string }>(`${TENANT_BASE}/auth/magic-link/verify`, {
+    method: 'POST',
+    body: JSON.stringify({ token }),
+  });
+}
+
+// ── Profile / Dashboard ────────────────────────────
+
+export async function getTenantProfile(): Promise<TenantProfile> {
+  return fetchApi<TenantProfile>(`${TENANT_BASE}/profile`);
+}
+
+export async function getPaymentSummary(tenancyId?: string): Promise<PaymentSummary> {
+  const qs = tenancyId ? `?tenancyId=${tenancyId}` : '';
+  return fetchApi<PaymentSummary>(`${TENANT_BASE}/payments/summary${qs}`);
+}
+
+export async function getMaintenanceRequests(tenancyId?: string): Promise<MaintenanceRequest[]> {
+  const qs = tenancyId ? `?tenancyId=${tenancyId}` : '';
+  return fetchApi<MaintenanceRequest[]>(`${TENANT_BASE}/maintenance${qs}`);
+}
+
+export async function getMaintenanceStatus(id: string): Promise<MaintenanceRequest> {
+  return fetchApi<MaintenanceRequest>(`${TENANT_BASE}/maintenance/${id}`);
+}
+
+export async function createMaintenanceRequest(tenancyIdOrData: string | Partial<MaintenanceRequest>, data?: Partial<MaintenanceRequest>): Promise<MaintenanceRequest> {
+  const payload = typeof tenancyIdOrData === 'string'
+    ? { ...(data || {}), tenancyId: tenancyIdOrData }
+    : tenancyIdOrData;
+  return fetchApi<MaintenanceRequest>(`${TENANT_BASE}/maintenance`, {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+}
+
+// ── Application / Lease ───────────────────────────
+
+export async function validateApplicationToken(token: string): Promise<{ valid: boolean; propertyId?: string }> {
+  return fetchApi<{ valid: boolean; propertyId?: string }>(`${TENANT_BASE}/apply/${token}/validate`);
+}
+
+export async function getPropertyById(id: string): Promise<Record<string, any>> {
+  return fetchApi<Record<string, any>>(`/properties/${id}`);
+}
+
+export async function getApplicationStatus(applicationId: string): Promise<ApplicationStatusResponse> {
+  return fetchApi<ApplicationStatusResponse>(`${TENANT_BASE}/applications/${applicationId}/status`);
+}
+
+export async function getLeaseByApplicationId(applicationId: string): Promise<LeaseAgreement> {
+  return fetchApi<LeaseAgreement>(`${TENANT_BASE}/applications/${applicationId}/lease`);
+}
+
+export async function submitLeaseSignature(leaseId: string, signatureData: string | { signatureImage: string; consentGiven: boolean }): Promise<{ success: boolean }> {
+  const payload = typeof signatureData === 'string'
+    ? { signatureImage: signatureData, consentGiven: true }
+    : signatureData;
+  return fetchApi<{ success: boolean }>(`${TENANT_BASE}/leases/${leaseId}/sign`, {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+}

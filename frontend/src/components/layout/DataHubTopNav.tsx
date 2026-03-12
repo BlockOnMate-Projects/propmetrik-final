@@ -58,11 +58,11 @@ export function DataHubTopNav() {
                             className={cn(
                                 'flex items-center gap-2 px-3 py-1.5 text-[10px] font-mono font-medium transition-all min-w-max',
                                 isActive
-                                    ? 'bg-amber-500 text-black font-bold'
+                                    ? 'bg-amber-500 text-white font-bold'
                                     : 'text-amber-500/70 hover:text-amber-500 hover:bg-amber-950/30'
                             )}
                         >
-                            <item.icon className={cn("w-3 h-3", isActive ? "text-black" : "text-amber-600")} />
+                            <item.icon className={cn("w-3 h-3", isActive ? "text-white" : "text-amber-600")} />
                             {item.name}
                         </Link>
                     )

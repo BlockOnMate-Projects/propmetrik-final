@@ -263,8 +263,9 @@ export function SubmittalsTab({ projectId, organizationId, onRefresh }: Submitta
         <div className="space-y-3">
           {submittals.map((submittal) => {
             const isExpanded = expandedSubmittals.has(submittal.id)
-            const status = statusConfig[submittal.status]
-            const type = typeConfig[submittal.type]
+            const status = statusConfig[submittal.status] || statusConfig.draft
+            const rawType = (submittal as any).type || (submittal as any).submittal_type || 'other'
+            const type = typeConfig[rawType as SubmittalType] || typeConfig.other
             const StatusIcon = status.icon
             const canReview = submittal.status === 'pending_review' || submittal.status === 'under_review'
             
@@ -287,19 +288,19 @@ export function SubmittalsTab({ projectId, organizationId, onRefresh }: Submitta
                       <span className="font-mono text-xs text-amber-500">
                         {submittal.submittal_number}
                       </span>
-                      <Badge className={cn("font-mono text-[10px]", status.bg, status.text)}>
+                      <Badge variant="outline" className={cn("font-mono text-[10px] border-0", status.bg, status.text)}>
                         {status.label}
                       </Badge>
                       <span className={cn("font-mono text-[10px]", type.color)}>
                         {type.label}
                       </span>
                       {submittal.revision_number > 1 && (
-                        <Badge className="font-mono text-[10px] bg-zinc-700/50 text-zinc-400">
+                        <Badge variant="outline" className="font-mono text-[10px] border-0 bg-zinc-700/50 text-zinc-400">
                           Rev {submittal.revision_number}
                         </Badge>
                       )}
                       {submittal.is_overdue && (
-                        <Badge className="font-mono text-[10px] bg-red-900/50 text-red-400">
+                        <Badge variant="outline" className="font-mono text-[10px] border-0 bg-red-900/50 text-red-400">
                           Overdue
                         </Badge>
                       )}
@@ -318,7 +319,7 @@ export function SubmittalsTab({ projectId, organizationId, onRefresh }: Submitta
                     {canReview && (
                       <Button
                         size="sm"
-                        className="h-8 font-mono text-xs bg-amber-600 hover:bg-amber-700 text-black"
+                        className="h-8 font-mono text-xs bg-amber-600 hover:bg-amber-700 text-white"
                         onClick={(e) => {
                           e.stopPropagation()
                           openReviewDialog(submittal)

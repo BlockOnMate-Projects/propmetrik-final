@@ -26,21 +26,23 @@ import { CommandPalette } from '@/components/crm/CommandPalette'
 import { useKeyboardShortcuts, KeyboardShortcutsHelp } from '@/components/crm/KeyboardShortcuts'
 import { Button } from '@/components/ui/button'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
+import { useSession } from 'next-auth/react'
+import { canAccessServiceSubTab } from '@/lib/rbac'
 
 const crmNavItems = [
-    { href: '/dashboard/deals', label: 'Deals', icon: LayoutGrid, exact: true },
-    { href: '/dashboard/deals/properties', label: 'Properties', icon: Home },
-    { href: '/dashboard/deals/contacts', label: 'Contacts', icon: Users },
-    { href: '/dashboard/deals/agents', label: 'Agents', icon: UserCircle },
-    { href: '/dashboard/deals/companies', label: 'Companies', icon: Building2 },
-    { href: '/dashboard/deals/tasks', label: 'Tasks', icon: CheckSquare },
-    { href: '/dashboard/deals/documents', label: 'Documents', icon: FileText },
-    { href: '/dashboard/deals/financials', label: 'Financials', icon: DollarSign },
-    { href: '/dashboard/deals/messaging', label: 'Messaging', icon: MessageSquare },
-    { href: '/dashboard/calendar?service=deals', label: 'Calendar', icon: Calendar },
-    { href: '/dashboard/deals/analytics', label: 'Analytics', icon: BarChart3 },
-    { href: '/dashboard/deals/workflows', label: 'Workflows', icon: Workflow },
-    { href: '/dashboard/deals/pipelines', label: 'Pipelines', icon: Settings },
+    { href: '/dashboard/deals', label: 'Deals', icon: LayoutGrid, exact: true, subTabKey: 'crm-deals' },
+    { href: '/dashboard/deals/properties', label: 'Properties', icon: Home, subTabKey: 'crm-properties' },
+    { href: '/dashboard/deals/contacts', label: 'Contacts', icon: Users, subTabKey: 'crm-contacts' },
+    { href: '/dashboard/deals/agents', label: 'Agents', icon: UserCircle, subTabKey: 'crm-agents' },
+    { href: '/dashboard/deals/companies', label: 'Companies', icon: Building2, subTabKey: 'crm-companies' },
+    { href: '/dashboard/deals/tasks', label: 'Tasks', icon: CheckSquare, subTabKey: 'crm-tasks' },
+    { href: '/dashboard/deals/documents', label: 'Documents', icon: FileText, subTabKey: 'crm-documents' },
+    { href: '/dashboard/deals/financials', label: 'Financials', icon: DollarSign, subTabKey: 'crm-financials' },
+    { href: '/dashboard/deals/messaging', label: 'Messaging', icon: MessageSquare, subTabKey: 'crm-messaging' },
+    { href: '/dashboard/calendar?service=deals', label: 'Calendar', icon: Calendar, subTabKey: 'crm-calendar' },
+    { href: '/dashboard/deals/analytics', label: 'Analytics', icon: BarChart3, subTabKey: 'crm-analytics' },
+    { href: '/dashboard/deals/workflows', label: 'Workflows', icon: Workflow, subTabKey: 'crm-workflows' },
+    { href: '/dashboard/deals/pipelines', label: 'Pipelines', icon: Settings, subTabKey: 'crm-pipelines' },
 ]
 
 export default function DealsLayout({
@@ -51,6 +53,14 @@ export default function DealsLayout({
     const pathname = usePathname()
     const [shortcutsHelpOpen, setShortcutsHelpOpen] = useState(false)
     const [mobileNavOpen, setMobileNavOpen] = useState(false)
+    const { data: session } = useSession()
+
+    const userRole = session?.user?.role || ''
+
+    // Show all until session loads to avoid hydration mismatch
+    const visibleNavItems = userRole
+        ? crmNavItems.filter(item => canAccessServiceSubTab(userRole, 'deals', item.subTabKey))
+        : crmNavItems
 
     useKeyboardShortcuts({
         onShowHelp: () => setShortcutsHelpOpen(true),
@@ -78,7 +88,7 @@ export default function DealsLayout({
 
                     {/* Desktop tabs */}
                     <nav className="hidden md:flex gap-1 -mb-px overflow-x-auto flex-1">
-                        {crmNavItems.map((item) => {
+                        {visibleNavItems.map((item) => {
                             const Icon = item.icon
                             return (
                                 <Link
@@ -100,7 +110,7 @@ export default function DealsLayout({
 
                     {/* Mobile active tab label */}
                     <span className="md:hidden text-sm font-medium text-foreground flex-1 text-center truncate">
-                        {crmNavItems.find(i => isActive(i))?.label || 'CRM'}
+                        {visibleNavItems.find(i => isActive(i))?.label || 'CRM'}
                     </span>
 
                     <div className="flex items-center gap-2 pl-4 -mb-px py-2">
@@ -138,7 +148,7 @@ export default function DealsLayout({
                             </button>
                         </div>
                         <div className="py-2">
-                            {crmNavItems.map((item) => {
+                            {visibleNavItems.map((item) => {
                                 const Icon = item.icon
                                 return (
                                     <Link

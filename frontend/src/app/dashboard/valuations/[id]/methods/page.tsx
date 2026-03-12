@@ -473,7 +473,7 @@ export default function MethodSelectionPage() {
           <button
             onClick={handleSaveAndContinue}
             disabled={saving || selectedMethods.length === 0}
-            className="flex items-center gap-2 px-4 py-2 bg-amber-500 text-black font-mono text-xs font-bold hover:bg-amber-400 transition-colors disabled:opacity-50"
+            className="flex items-center gap-2 px-4 py-2 bg-amber-500 text-white font-mono text-xs font-bold hover:bg-amber-400 transition-colors disabled:opacity-50"
           >
             {saving ? (
               <>
@@ -558,7 +558,7 @@ export default function MethodSelectionPage() {
                       </span>
                     )}
                     {isPrimary && (
-                      <span className="font-mono text-[9px] px-1.5 py-0.5 bg-amber-500 text-black font-bold">
+                      <span className="font-mono text-[9px] px-1.5 py-0.5 bg-amber-500 text-white font-bold">
                         PRIMARY
                       </span>
                     )}
@@ -751,7 +751,7 @@ export default function MethodSelectionPage() {
         <button
           onClick={handleSaveAndContinue}
           disabled={saving || selectedMethods.length === 0}
-          className="flex items-center gap-2 px-6 py-3 bg-amber-500 text-black font-mono text-sm font-bold hover:bg-amber-400 transition-colors disabled:opacity-50"
+          className="flex items-center gap-2 px-6 py-3 bg-amber-500 text-white font-mono text-sm font-bold hover:bg-amber-400 transition-colors disabled:opacity-50"
         >
           {saving ? (
             <>

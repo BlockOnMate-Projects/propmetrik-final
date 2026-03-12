@@ -115,11 +115,31 @@ export function requireServiceAccess(serviceKey: string) {
       return next();
     }
 
+    // Internal org roles bypass subscription checks — they access services on behalf of the org
+    const INTERNAL_ROLES = ['admin', 'manager', 'project_manager', 'firm_principal', 'finance_manager', 'agent'];
+    if (INTERNAL_ROLES.some(r => roles.includes(r))) {
+      return next();
+    }
+
     const userType = await resolveUserType(req);
 
     // Staff always have access to all services
     if (userType === 'staff') {
       return next();
+    }
+
+    // Shared services (e-sign, messaging, notifications) don't require subscription
+    try {
+      const { pool } = await import('../database');
+      const svcResult = await pool.query(
+        'SELECT category FROM platform_services WHERE service_key = $1',
+        [serviceKey],
+      );
+      if (svcResult.rows.length > 0 && svcResult.rows[0].category === 'shared') {
+        return next();
+      }
+    } catch {
+      // Non-fatal — fall through to subscription check
     }
 
     // Customer: check subscription

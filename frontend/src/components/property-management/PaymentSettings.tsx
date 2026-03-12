@@ -552,7 +552,7 @@ export default function PaymentSettings({ paymentApi, serviceLabel }: PaymentSet
                                     (settlementMethod === 'bank' && (!bankCode || accountNumber.length < 10)) ||
                                     (settlementMethod === 'mobile_money' && (!momoProvider || momoNumber.length < 10))
                                 }
-                                className="w-full bg-amber-600 hover:bg-amber-500 disabled:bg-zinc-800 disabled:text-zinc-500 text-black font-mono text-xs uppercase font-bold"
+                                className="w-full bg-amber-600 hover:bg-amber-500 disabled:bg-zinc-800 disabled:text-zinc-500 text-white font-mono text-xs uppercase font-bold"
                             >
                                 {resolving ? (
                                     <><Loader2 className="h-3 w-3 animate-spin mr-2" /> Verifying...</>
@@ -646,7 +646,7 @@ export default function PaymentSettings({ paymentApi, serviceLabel }: PaymentSet
                                 <Button
                                     onClick={handleRegister}
                                     disabled={registering || !businessName.trim()}
-                                    className="bg-amber-600 hover:bg-amber-500 disabled:bg-zinc-800 disabled:text-zinc-500 text-black font-mono text-xs uppercase font-bold flex-1 h-10"
+                                    className="bg-amber-600 hover:bg-amber-500 disabled:bg-zinc-800 disabled:text-zinc-500 text-white font-mono text-xs uppercase font-bold flex-1 h-10"
                                 >
                                     {registering ? (
                                         <><Loader2 className="h-3 w-3 animate-spin mr-2" /> Saving...</>

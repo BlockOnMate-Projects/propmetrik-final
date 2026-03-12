@@ -209,7 +209,7 @@ export default function MaintenanceDetailPage() {
               <div>
                 <dt className="text-sm text-gray-500">Priority</dt>
                 <dd>
-                  <span className={`px-2 py-1 rounded text-sm font-medium ${getPriorityColor(request.priority)}`}>
+                  <span className={`px-2 py-1 rounded text-sm font-medium ${getPriorityColor(request.priority || '')}`}>
                     {request.priority}
                   </span>
                 </dd>
@@ -221,7 +221,7 @@ export default function MaintenanceDetailPage() {
               <div>
                 <dt className="text-sm text-gray-500">Submitted</dt>
                 <dd className="font-medium">
-                  {new Date(request.createdAt).toLocaleString()}
+                  {request.createdAt ? new Date(request.createdAt).toLocaleString() : new Date(request.created_at).toLocaleString()}
                 </dd>
               </div>
               {request.scheduledDate && (

@@ -304,7 +304,7 @@ export default function ValuationDetailPage() {
           <button 
             onClick={handleSaveProgress}
             disabled={loading || saving || !valuation}
-            className="flex items-center gap-2 px-4 py-2 bg-amber-500 text-black font-mono text-xs font-bold hover:bg-amber-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            className="flex items-center gap-2 px-4 py-2 bg-amber-500 text-white font-mono text-xs font-bold hover:bg-amber-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {saving ? (
               <Loader2 className="w-3 h-3 animate-spin" />
@@ -586,7 +586,7 @@ export default function ValuationDetailPage() {
           return (
             <button
               onClick={() => router.push(`/dashboard/valuations/${valuationId}/${resumePath}`)}
-              className="flex items-center gap-2 px-6 py-3 bg-amber-500 text-black font-mono text-sm font-bold hover:bg-amber-400 transition-colors"
+              className="flex items-center gap-2 px-6 py-3 bg-amber-500 text-white font-mono text-sm font-bold hover:bg-amber-400 transition-colors"
             >
               CONTINUE: {resumeLabel}
               <ChevronRight className="w-4 h-4" />

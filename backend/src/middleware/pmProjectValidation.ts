@@ -127,16 +127,25 @@ export const createRfiSchema = z.object({
   project_id: uuidSchema,
   subject: z.string().min(1, 'Subject is required').max(500),
   question: z.string().min(1, 'Question is required').max(10000),
-  priority: z.enum(['low', 'medium', 'high', 'urgent']).default('medium'),
+  category: z.enum([
+    'design_clarification', 'specification_query', 'drawing_discrepancy',
+    'site_condition', 'material_substitution', 'regulatory_compliance',
+    'contractor_coordination', 'schedule_impact', 'cost_inquiry',
+    'safety_concern', 'other',
+  ]).optional(),
+  priority: z.enum(['low', 'medium', 'normal', 'high', 'urgent', 'critical']).default('medium'),
   due_date: z.string().optional(),
   assigned_to: uuidSchema.optional(),
-  spec_section: z.string().max(100).optional(),
-  drawing_reference: z.string().max(255).optional(),
-  location: z.string().max(255).optional(),
-  cost_impact: z.boolean().default(false),
-  schedule_impact: z.boolean().default(false),
-  estimated_cost_impact: z.number().optional(),
-  estimated_schedule_impact_days: z.number().int().optional(),
+  phase_id: uuidSchema.optional(),
+  drawing_references: z.array(z.any()).optional(),
+  spec_references: z.array(z.any()).optional(),
+  location_reference: z.string().max(255).optional(),
+  cost_impact: z.number().optional(),
+  cost_impact_currency: z.enum(['GHS', 'USD', 'EUR', 'GBP']).default('GHS'),
+  schedule_impact_days: z.number().int().optional(),
+  attachments: z.array(z.any()).optional(),
+  related_rfis: z.array(uuidSchema).optional(),
+  submit_immediately: z.boolean().optional(),
   tags: z.array(z.string()).optional(),
 });
 
@@ -152,10 +161,9 @@ export const rfiQuerySchema = paginationSchema.extend({
 
 export const respondRfiSchema = z.object({
   response: z.string().min(1, 'Response is required').max(10000),
-  cost_impact: z.boolean().optional(),
-  schedule_impact: z.boolean().optional(),
-  estimated_cost_impact: z.number().optional(),
-  estimated_schedule_impact_days: z.number().int().optional(),
+  cost_impact: z.number().optional(),
+  schedule_impact_days: z.number().int().optional(),
+  response_attachments: z.array(z.any()).optional(),
 });
 
 // ============================================================================
@@ -167,10 +175,12 @@ export const createChangeOrderSchema = z.object({
   title: z.string().min(1, 'Title is required').max(500),
   description: z.string().min(1).max(10000),
   reason: z.enum([
-    'owner_request', 'design_change', 'field_condition',
-    'code_requirement', 'value_engineering', 'error_omission', 'other',
+    'owner_request', 'design_error', 'design_change', 'unforeseen_condition',
+    'regulatory_requirement', 'value_engineering', 'scope_addition',
+    'scope_reduction', 'material_substitution', 'contractor_request',
+    'force_majeure', 'other',
   ]).optional(),
-  co_type: z.enum(['addition', 'deduction', 'no_cost']).default('addition'),
+  co_type: z.enum(['additive', 'deductive', 'no_cost', 'time_extension', 'addition', 'deduction']).default('additive'),
   estimated_amount: z.number().optional(),
   currency: z.enum(['GHS', 'USD', 'EUR', 'GBP']).default('GHS'),
   schedule_impact_days: z.number().int().optional(),
@@ -188,7 +198,7 @@ export const changeOrderQuerySchema = paginationSchema.extend({
     'rejected', 'executed', 'voided',
   ]).optional(),
   reason: z.string().optional(),
-  co_type: z.enum(['addition', 'deduction', 'no_cost']).optional(),
+  co_type: z.enum(['additive', 'deductive', 'no_cost', 'time_extension', 'addition', 'deduction']).optional(),
   search: z.string().max(255).optional(),
 });
 
@@ -312,6 +322,7 @@ export const photoQuerySchema = paginationSchema.extend({
 
 export const addTeamMemberSchema = z.object({
   project_id: uuidSchema.optional(),
+  project_ids: z.array(uuidSchema).optional(),
   user_id: uuidSchema.optional(),
   name: z.string().min(1).max(255),
   email: z.string().email().optional(),

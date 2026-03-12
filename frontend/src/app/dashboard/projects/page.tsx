@@ -135,10 +135,10 @@ function ProjectCard({ project }: { project: DevelopmentProject }) {
       <div className="bg-zinc-950/50 border border-zinc-800/50 rounded-xl hover:border-blue-500/50 hover:shadow-2xl transition-all duration-300 cursor-pointer group h-full overflow-hidden flex flex-col">
         {/* Hero Image or Placeholder */}
         <div className="h-40 bg-zinc-900 relative overflow-hidden shrink-0">
-          {project.hero_image_url ? (
+          {(project.cover_image_url || project.hero_image_url) ? (
             <img
-              src={project.hero_image_url}
-              alt={project.project_name}
+              src={project.cover_image_url || project.hero_image_url}
+              alt={project.project_name || project.name}
               className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
             />
           ) : (
@@ -158,7 +158,7 @@ function ProjectCard({ project }: { project: DevelopmentProject }) {
           {/* Title & Type */}
           <div className="flex items-start justify-between gap-2 mb-2">
             <h3 className="font-sans font-semibold text-base text-white group-hover:text-blue-400 transition-colors line-clamp-1">
-              {project.project_name}
+              {project.project_name || project.name}
             </h3>
             <TypeIcon className="h-4 w-4 text-zinc-500 flex-shrink-0" />
           </div>
@@ -380,13 +380,14 @@ export default function ProjectsPage() {
           />
           <StatCard
             label="Total Budget"
-            value={formatCurrency(stats.total_budget, 'GHS')}
+            value={formatCurrency(stats.total_budget, stats.display_currency || 'GHS')}
+            subValue={stats.fx_rates?.USD ? `FX: 1 USD = ${stats.fx_rates.USD.toFixed(2)} GHS` : undefined}
             icon={TrendingUp}
           />
           <StatCard
             label="Total Spent"
-            value={formatCurrency(stats.total_spent, 'GHS')}
-            subValue={`${Math.round((stats.total_spent / stats.total_budget) * 100)}% utilized`}
+            value={formatCurrency(stats.total_spent, stats.display_currency || 'GHS')}
+            subValue={stats.total_budget > 0 ? `${Math.round((stats.total_spent / stats.total_budget) * 100)}% utilized` : '0% utilized'}
             icon={TrendingUp}
             trend="neutral"
           />

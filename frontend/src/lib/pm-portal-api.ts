@@ -152,7 +152,7 @@ export interface SubmittalStats {
 }
 
 // Change Order Types
-export type ChangeOrderStatus = 'draft' | 'pending_approval' | 'approved' | 'rejected' | 'executed' | 'void';
+export type ChangeOrderStatus = 'draft' | 'pending_review' | 'pending_approval' | 'approved' | 'rejected' | 'executed' | 'void';
 export type ChangeOrderType = 'addition' | 'deduction' | 'no_cost' | 'time_extension';
 
 export interface ChangeOrder {
@@ -511,9 +511,10 @@ export interface UpdateMilestoneData {
 }
 
 export const milestonesApi = {
-  getAll: async (projectId: string, options?: { includeCompleted?: boolean }): Promise<Milestone[]> => {
+  getAll: async (projectId: string, options?: { includeCompleted?: boolean; phaseId?: string }): Promise<Milestone[]> => {
     const params = new URLSearchParams();
     if (options?.includeCompleted) params.set('includeCompleted', 'true');
+    if (options?.phaseId) params.set('phaseId', options.phaseId);
     const query = params.toString();
     const response = await apiRequest<any>(`/projects/${projectId}/milestones${query ? `?${query}` : ''}`);
     return response?.data || response || [];

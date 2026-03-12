@@ -139,12 +139,12 @@ function PropertyPipeline({ deals, stages }: { deals: PropertyDeal[], stages: Pi
                             >
                                 <span className={cn(
                                     "font-mono text-[9px] font-bold text-center",
-                                    hasDeals ? 'text-black' : 'text-muted-foreground'
+                                    hasDeals ? 'text-white' : 'text-muted-foreground'
                                 )}>
                                     {stage.stage_name}
                                 </span>
                                 {hasDeals && (
-                                    <span className="font-mono text-xs font-bold text-black mt-1">
+                                    <span className="font-mono text-xs font-bold text-white mt-1">
                                         {stageDeals.length} deal{stageDeals.length !== 1 ? 's' : ''}
                                     </span>
                                 )}
@@ -475,9 +475,9 @@ export default function PropertyDetailPage() {
                     {/* Image Gallery */}
                     <div className="space-y-2">
                         <div className="aspect-[4/3] bg-muted rounded overflow-hidden relative group">
-                            {property.images?.[0]?.url ? (
-                                <img 
-                                    src={property.images[0].url} 
+                            {property.images?.[0] && typeof property.images[0] !== 'string' && property.images[0].url ? (
+                                <img
+                                    src={(property.images[0] as { url: string }).url}
                                     alt={property.property_name}
                                     className="w-full h-full object-cover"
                                 />
@@ -541,7 +541,7 @@ export default function PropertyDetailPage() {
                                             }
                                         }}
                                     />
-                                    <div className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-2 px-3 py-2 bg-white/90 rounded text-sm font-medium text-black">
+                                    <div className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-2 px-3 py-2 bg-white/90 rounded text-sm font-medium text-white">
                                         <Camera className="h-4 w-4" />
                                         Add More Photos
                                     </div>

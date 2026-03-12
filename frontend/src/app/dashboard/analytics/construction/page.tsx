@@ -264,7 +264,7 @@ export default function ConstructionAnalyticsPage() {
           </p>
         </div>
         <button
-          onClick={loadData}
+          onClick={() => loadData()}
           className="flex items-center gap-1.5 px-3 py-1.5 font-mono text-[10px] text-zinc-400 border border-zinc-700 hover:border-amber-500/50 hover:text-amber-500 transition-colors"
         >
           <RefreshCw className="w-3 h-3" />

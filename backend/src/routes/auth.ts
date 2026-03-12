@@ -18,6 +18,35 @@ const router = Router();
 
 const JWT_SECRET = config.jwt.secret;
 const JWT_EXPIRES_IN = config.jwt.expiresIn;
+
+/**
+ * Query the active service subscriptions for a user.
+ * Returns an array of service_key strings (e.g. ['projects', 'valuations']).
+ * Staff users get all active services by default.
+ */
+async function getUserSubscribedServices(userId: string, userType?: string): Promise<string[]> {
+  // Staff bypass — they get access to everything
+  if (!userType || userType === 'staff') {
+    const allServices = await pool.query(
+      `SELECT service_key FROM platform_services WHERE is_active = true ORDER BY service_key`
+    );
+    return allServices.rows.map((r: any) => r.service_key);
+  }
+  // Customer users — only services they're subscribed to + shared services
+  const result = await pool.query(
+    `SELECT ps.service_key
+     FROM user_service_subscriptions uss
+     JOIN platform_services ps ON ps.id = uss.service_id
+     WHERE uss.user_id = $1 AND uss.status = 'active' AND ps.is_active = true
+     UNION
+     SELECT ps.service_key
+     FROM platform_services ps
+     WHERE ps.category = 'shared' AND ps.is_active = true
+     ORDER BY service_key`,
+    [userId]
+  );
+  return result.rows.map((r: any) => r.service_key);
+}
 // Cast JWT_EXPIRES_IN for jsonwebtoken compatibility
 const jwtExpiresIn = JWT_EXPIRES_IN as jwt.SignOptions['expiresIn'];
 
@@ -93,7 +122,7 @@ router.post('/signup', async (req: Request, res: Response) => {
         role, organization_id, subscription_tier,
         is_active, email_verified,
         created_at, updated_at
-       ) VALUES ($1, $2, $3, $4, $5, $6, $7, 'free', true, false, NOW(), NOW())`,
+       ) VALUES ($1, $2, $3, $4, $5, $6, $7, 'starter', true, false, NOW(), NOW())`,
       [userId, normalizedEmail, passwordHash, firstName.trim(), lastName.trim(), defaultRole, organizationId]
     );
 
@@ -131,7 +160,7 @@ router.post('/signup', async (req: Request, res: Response) => {
         email: normalizedEmail,
         role: defaultRole,
         organizationId,
-        tier: 'free',
+        tier: 'starter',
       },
       JWT_SECRET,
       { expiresIn: jwtExpiresIn }
@@ -153,7 +182,7 @@ router.post('/signup', async (req: Request, res: Response) => {
         firstName: firstName.trim(),
         lastName: lastName.trim(),
         role: defaultRole,
-        tier: 'free',
+        tier: 'starter',
         emailVerified: false,
         organization: organizationId ? { id: organizationId, name: companyName?.trim() } : null,
       },
@@ -199,12 +228,15 @@ router.post('/login', async (req: Request, res: Response) => {
 
     const normalizedEmail = email.toLowerCase().trim();
 
-    // Find user in local DB
+    // Find user in local DB (join org for canonical subscription tier)
     const userResult = await pool.query(
       `SELECT 
-        id, email, password_hash, first_name, last_name, role,
-        organization_id, subscription_tier, is_active, email_verified, keycloak_id
-      FROM users WHERE email = $1`,
+        u.id, u.email, u.password_hash, u.first_name, u.last_name, u.role,
+        u.organization_id, COALESCE(o.subscription_tier, u.subscription_tier, 'starter') AS subscription_tier,
+        u.is_active, u.email_verified, u.keycloak_id, u.user_type
+      FROM users u
+      LEFT JOIN organizations o ON o.id = u.organization_id
+      WHERE u.email = $1`,
       [normalizedEmail]
     );
 
@@ -287,6 +319,9 @@ router.post('/login', async (req: Request, res: Response) => {
       organization = orgResult.rows[0] || null;
     }
 
+    // Fetch user's subscribed services
+    const subscribedServices = await getUserSubscribedServices(user.id, user.user_type);
+
     // Generate JWT token (always a local JWT for consistency)
     const token = jwt.sign(
       {
@@ -296,6 +331,8 @@ router.post('/login', async (req: Request, res: Response) => {
         role: user.role,
         organizationId: user.organization_id,
         tier: user.subscription_tier,
+        userType: user.user_type || 'staff',
+        subscribedServices,
       },
       JWT_SECRET,
       { expiresIn: jwtExpiresIn }
@@ -324,6 +361,8 @@ router.post('/login', async (req: Request, res: Response) => {
         lastName: user.last_name,
         role: user.role,
         tier: user.subscription_tier,
+        userType: user.user_type || 'staff',
+        subscribedServices,
         emailVerified: user.email_verified,
         organization,
       },
@@ -385,21 +424,23 @@ router.get('/me', async (req: Request, res: Response) => {
         tier: string;
       };
 
-      // Get fresh user data
+      // Get fresh user data (join org for canonical tier)
       const userResult = await pool.query(
         `SELECT 
-          id, 
-          email, 
-          first_name, 
-          last_name, 
-          role, 
-          organization_id,
-          subscription_tier,
-          is_active,
-          email_verified,
-          avatar_url
-        FROM users 
-        WHERE id = $1`,
+          u.id, 
+          u.email, 
+          u.first_name, 
+          u.last_name, 
+          u.role, 
+          u.organization_id,
+          COALESCE(o.subscription_tier, u.subscription_tier, 'starter') AS subscription_tier,
+          u.is_active,
+          u.email_verified,
+          u.avatar_url,
+          u.user_type
+        FROM users u
+        LEFT JOIN organizations o ON o.id = u.organization_id
+        WHERE u.id = $1`,
         [decoded.userId]
       );
 
@@ -422,6 +463,9 @@ router.get('/me', async (req: Request, res: Response) => {
         organization = orgResult.rows[0] || null;
       }
 
+      // Fetch subscribed services
+      const subscribedServices = await getUserSubscribedServices(user.id, user.user_type);
+
       res.json({
         success: true,
         user: {
@@ -431,6 +475,8 @@ router.get('/me', async (req: Request, res: Response) => {
           lastName: user.last_name,
           role: user.role,
           tier: user.subscription_tier,
+          userType: user.user_type || 'staff',
+          subscribedServices,
           emailVerified: user.email_verified,
           avatarUrl: user.avatar_url,
           organization,
@@ -494,14 +540,19 @@ router.post('/refresh', async (req: Request, res: Response) => {
           // Look up local user by keycloak_id to issue a synced local JWT
           if (keycloakSub) {
             const userResult = await pool.query(
-              `SELECT id, email, first_name, last_name, role, organization_id, subscription_tier, is_active
-               FROM users WHERE keycloak_id = $1`,
+              `SELECT u.id, u.email, u.first_name, u.last_name, u.role, u.organization_id,
+                      COALESCE(o.subscription_tier, u.subscription_tier, 'starter') AS subscription_tier,
+                      u.is_active, u.user_type
+               FROM users u
+               LEFT JOIN organizations o ON o.id = u.organization_id
+               WHERE u.keycloak_id = $1`,
               [keycloakSub]
             );
             if (userResult.rows.length > 0 && userResult.rows[0].is_active) {
               const u = userResult.rows[0];
+              const kcSubscribedServices = await getUserSubscribedServices(u.id, u.user_type);
               const newToken = jwt.sign(
-                { userId: u.id, email: u.email, name: `${u.first_name || ''} ${u.last_name || ''}`.trim(), role: u.role, organizationId: u.organization_id, tier: u.subscription_tier },
+                { userId: u.id, email: u.email, name: `${u.first_name || ''} ${u.last_name || ''}`.trim(), role: u.role, organizationId: u.organization_id, tier: u.subscription_tier, userType: u.user_type || 'staff', subscribedServices: kcSubscribedServices },
                 JWT_SECRET,
                 { expiresIn: jwtExpiresIn }
               );
@@ -565,7 +616,12 @@ router.post('/refresh', async (req: Request, res: Response) => {
 
       // Verify user still exists and is active
       const userResult = await pool.query(
-        'SELECT id, email, first_name, last_name, role, organization_id, subscription_tier, is_active FROM users WHERE id = $1',
+        `SELECT u.id, u.email, u.first_name, u.last_name, u.role, u.organization_id,
+                COALESCE(o.subscription_tier, u.subscription_tier, 'starter') AS subscription_tier,
+                u.is_active, u.user_type
+         FROM users u
+         LEFT JOIN organizations o ON o.id = u.organization_id
+         WHERE u.id = $1`,
         [decoded.userId]
       );
 
@@ -573,6 +629,8 @@ router.post('/refresh', async (req: Request, res: Response) => {
       if (!user || !user.is_active) {
         return res.status(401).json({ success: false, message: 'User not found or inactive' });
       }
+
+      const localSubscribedServices = await getUserSubscribedServices(user.id, user.user_type);
 
       const newToken = jwt.sign(
         {
@@ -582,6 +640,8 @@ router.post('/refresh', async (req: Request, res: Response) => {
           role: user.role,
           organizationId: user.organization_id,
           tier: user.subscription_tier,
+          userType: user.user_type || 'staff',
+          subscribedServices: localSubscribedServices,
         },
         JWT_SECRET,
         { expiresIn: jwtExpiresIn }

@@ -267,7 +267,7 @@ export default function PropertiesPage() {
                         </div>
                         <div className="pt-4 flex gap-2">
                             <Button variant="outline" className="flex-1 border-zinc-700 text-zinc-400 hover:text-white font-mono text-xs" onClick={() => { clearFilters(); setShowFilterSheet(false) }}>Clear Filters</Button>
-                            <Button className="flex-1 bg-amber-600 hover:bg-amber-500 text-black font-bold font-mono text-xs" onClick={() => setShowFilterSheet(false)}>Apply Filters</Button>
+                            <Button className="flex-1 bg-amber-600 hover:bg-amber-500 text-white font-bold font-mono text-xs" onClick={() => setShowFilterSheet(false)}>Apply Filters</Button>
                         </div>
                     </div>
                 </SheetContent>

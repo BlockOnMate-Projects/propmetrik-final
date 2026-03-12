@@ -12,7 +12,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Plus, Search, Pencil, Download, Loader2, Eye, GitCompare, FileText, CheckCircle } from 'lucide-react';
+import { Plus, Search, Pencil, Download, Loader2, Eye, GitCompare, FileText, CheckCircle, Upload, Trash2 } from 'lucide-react';
 
 const API = process.env.NEXT_PUBLIC_API_URL || '';
 
@@ -21,6 +21,7 @@ interface Drawing {
   current_revision: string; status: string; description: string | null;
   sheet_size: string; scale: string | null; created_at: string;
   revision_count: number; recent_revisions: any[] | null;
+  project_name: string | null; submitted_at: string | null; reviewed_at: string | null;
 }
 
 interface Revision {
@@ -63,11 +64,13 @@ export default function DrawingsPage() {
   const [compareRevs, setCompareRevs] = useState<{ a: string; b: string }>({ a: '', b: '' });
   const [showAddRevision, setShowAddRevision] = useState(false);
   const [form, setForm] = useState<any>({});
+  const [drawingFile, setDrawingFile] = useState<File | null>(null);
+  const [revisionFile, setRevisionFile] = useState<File | null>(null);
 
   useEffect(() => {
     (async () => {
       try {
-        const res = await authedFetch(`${API}/api/v1/projects?limit=100`);
+        const res = await authedFetch(`${API}/projects?limit=100`);
         const json = await res.json();
         const list = json.data?.projects || json.data || json.projects || [];
         setProjects(list);
@@ -80,7 +83,7 @@ export default function DrawingsPage() {
     if (!selectedProject) return;
     setLoading(true);
     try {
-      const res = await authedFetch(`${API}/api/v1/projects/${selectedProject}/drawings?search=${search}`);
+      const res = await authedFetch(`${API}/projects/${selectedProject}/drawings?search=${search}`);
       const json = await res.json();
       setDrawings(json.data || []);
     } catch (e) { console.error('Failed to load drawings', e); }
@@ -90,7 +93,7 @@ export default function DrawingsPage() {
   useEffect(() => { fetchDrawings(); }, [fetchDrawings]);
 
   const viewDrawing = async (id: string) => {
-    const res = await authedFetch(`${API}/api/v1/projects/${selectedProject}/drawings/${id}`);
+    const res = await authedFetch(`${API}/projects/${selectedProject}/drawings/${id}`);
     const json = await res.json();
     setSelectedDrawing(json.data);
     setShowDetail(true);
@@ -98,12 +101,21 @@ export default function DrawingsPage() {
 
   const createDrawing = async () => {
     try {
-      const res = await authedFetch(`${API}/api/v1/projects/${selectedProject}/drawings`, {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(form),
+      const fd = new FormData();
+      fd.append('drawing_number', form.drawing_number || '');
+      fd.append('title', form.title || '');
+      fd.append('discipline', form.discipline || 'architectural');
+      fd.append('description', form.description || '');
+      fd.append('sheet_size', form.sheet_size || 'A1');
+      fd.append('scale', form.scale || '');
+      if (drawingFile) fd.append('file', drawingFile);
+
+      const res = await authedFetch(`${API}/projects/${selectedProject}/drawings`, {
+        method: 'POST',
+        body: fd,
       });
       if (res.ok) {
-        toast({ title: 'Drawing created' }); setShowCreate(false); setForm({}); fetchDrawings();
+        toast({ title: 'Drawing created' }); setShowCreate(false); setForm({}); setDrawingFile(null); fetchDrawings();
       }
     } catch (e) { toast({ title: 'Failed to create drawing', variant: 'destructive' }); }
   };
@@ -111,12 +123,17 @@ export default function DrawingsPage() {
   const addRevision = async () => {
     if (!selectedDrawing) return;
     try {
-      const res = await authedFetch(`${API}/api/v1/projects/${selectedProject}/drawings/${selectedDrawing.id}/revisions`, {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(form),
+      const fd = new FormData();
+      fd.append('revision_number', form.revision_number || '');
+      fd.append('change_description', form.change_description || '');
+      if (revisionFile) fd.append('file', revisionFile);
+
+      const res = await authedFetch(`${API}/projects/${selectedProject}/drawings/${selectedDrawing.id}/revisions`, {
+        method: 'POST',
+        body: fd,
       });
       if (res.ok) {
-        toast({ title: 'Revision added' }); setShowAddRevision(false); setForm({});
+        toast({ title: 'Revision added' }); setShowAddRevision(false); setForm({}); setRevisionFile(null);
         viewDrawing(selectedDrawing.id);
       }
     } catch (e) { toast({ title: 'Failed to add revision', variant: 'destructive' }); }
@@ -124,7 +141,7 @@ export default function DrawingsPage() {
 
   const reviewRevision = async (revisionId: string, action: 'review' | 'approve') => {
     if (!selectedDrawing) return;
-    await authedFetch(`${API}/api/v1/projects/${selectedProject}/drawings/${selectedDrawing.id}/revisions/${revisionId}/review`, {
+    await authedFetch(`${API}/projects/${selectedProject}/drawings/${selectedDrawing.id}/revisions/${revisionId}/review`, {
       method: 'PUT', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ action }),
     });
@@ -132,8 +149,27 @@ export default function DrawingsPage() {
     viewDrawing(selectedDrawing.id);
   };
 
+  const deleteDrawing = async (id: string) => {
+    if (!confirm('Delete this drawing and all its revisions?')) return;
+    try {
+      const res = await authedFetch(`${API}/projects/${selectedProject}/drawings/${id}`, { method: 'DELETE' });
+      if (res.ok) {
+        toast({ title: 'Drawing deleted' }); setShowDetail(false); setSelectedDrawing(null); fetchDrawings();
+      } else { toast({ title: 'Failed to delete drawing', variant: 'destructive' }); }
+    } catch (e) { toast({ title: 'Failed to delete drawing', variant: 'destructive' }); }
+  };
+
+  const previewFile = async (drawingId: string) => {
+    try {
+      const r = await authedFetch(`${API}/projects/${selectedProject}/drawings/${drawingId}/download`);
+      const data = await r.json();
+      if (data.url) window.open(data.url, '_blank');
+      else toast({ title: data.error || 'No file available', variant: 'destructive' });
+    } catch { toast({ title: 'Failed to download file', variant: 'destructive' }); }
+  };
+
   const exportDrawings = () => {
-    window.open(`${API}/api/v1/projects/${selectedProject}/export/drawings?format=csv`, '_blank');
+    window.open(`${API}/projects/${selectedProject}/export/drawings?format=csv`, '_blank');
   };
 
   const stats = {
@@ -182,7 +218,7 @@ export default function DrawingsPage() {
         </div>
         <div className="flex items-center gap-2">
           <Button variant="outline" size="sm" className="border-zinc-700" onClick={exportDrawings}><Download className="h-3.5 w-3.5 mr-1.5" />Export</Button>
-          <Button size="sm" className="bg-amber-600 hover:bg-amber-700" onClick={() => { setForm({}); setShowCreate(true); }}><Plus className="h-3.5 w-3.5 mr-1.5" />New Drawing</Button>
+          <Button size="sm" className="bg-amber-600 hover:bg-amber-700" onClick={() => { setForm({}); setDrawingFile(null); setShowCreate(true); }}><Plus className="h-3.5 w-3.5 mr-1.5" />New Drawing</Button>
         </div>
       </div>
 
@@ -194,24 +230,34 @@ export default function DrawingsPage() {
               <TableHead className="text-zinc-500 font-mono text-[10px]">TITLE</TableHead>
               <TableHead className="text-zinc-500 font-mono text-[10px]">DISCIPLINE</TableHead>
               <TableHead className="text-zinc-500 font-mono text-[10px]">REV</TableHead>
+              <TableHead className="text-zinc-500 font-mono text-[10px]">PROJECT</TableHead>
               <TableHead className="text-zinc-500 font-mono text-[10px]">STATUS</TableHead>
-              <TableHead className="text-zinc-500 font-mono text-[10px]">SHEET</TableHead>
+              <TableHead className="text-zinc-500 font-mono text-[10px]">SUBMITTED</TableHead>
+              <TableHead className="text-zinc-500 font-mono text-[10px]">REVIEWED</TableHead>
               <TableHead className="text-zinc-500 font-mono text-[10px]">REVISIONS</TableHead>
               <TableHead className="text-zinc-500 font-mono text-[10px]">ACTIONS</TableHead>
             </TableRow></TableHeader>
             <TableBody>
               {drawings.length === 0 ? (
-                <TableRow><TableCell colSpan={8} className="text-center text-zinc-500 py-8">No drawings found. Create one to get started.</TableCell></TableRow>
+                <TableRow><TableCell colSpan={10} className="text-center text-zinc-500 py-8">No drawings found. Create one to get started.</TableCell></TableRow>
               ) : drawings.map(d => (
                 <TableRow key={d.id} className="border-zinc-800 hover:bg-zinc-800/50 cursor-pointer" onClick={() => viewDrawing(d.id)}>
                   <TableCell className="font-mono text-xs text-amber-500">{d.drawing_number}</TableCell>
                   <TableCell className="text-sm text-white max-w-[200px] truncate">{d.title}</TableCell>
                   <TableCell><Badge variant="outline" className={disciplineColors[d.discipline] || 'border-zinc-700'}>{d.discipline}</Badge></TableCell>
                   <TableCell className="font-mono text-xs text-white">{d.current_revision}</TableCell>
+                  <TableCell className="text-xs text-zinc-400 max-w-[140px] truncate">{d.project_name || '—'}</TableCell>
                   <TableCell><Badge variant="outline" className={statusColors[d.status] || 'border-zinc-700'}>{d.status.replace('_', ' ')}</Badge></TableCell>
-                  <TableCell className="text-xs text-zinc-400">{d.sheet_size}</TableCell>
+                  <TableCell className="text-xs text-zinc-400">{d.submitted_at ? new Date(d.submitted_at).toLocaleDateString() : '—'}</TableCell>
+                  <TableCell className="text-xs text-zinc-400">{d.reviewed_at ? new Date(d.reviewed_at).toLocaleDateString() : '—'}</TableCell>
                   <TableCell className="text-xs text-zinc-400">{d.revision_count || 0}</TableCell>
-                  <TableCell><Button size="sm" variant="ghost" className="h-7 text-xs" onClick={(e) => { e.stopPropagation(); viewDrawing(d.id); }}><Eye className="h-3.5 w-3.5" /></Button></TableCell>
+                  <TableCell>
+                    <div className="flex items-center gap-1">
+                      <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-zinc-400 hover:text-white" title="View" onClick={(e) => { e.stopPropagation(); viewDrawing(d.id); }}><Eye className="h-3.5 w-3.5" /></Button>
+                      <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-zinc-400 hover:text-white" title="Download" onClick={(e) => { e.stopPropagation(); previewFile(d.id); }}><Download className="h-3.5 w-3.5" /></Button>
+                      <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-red-400 hover:text-red-300" title="Delete" onClick={(e) => { e.stopPropagation(); deleteDrawing(d.id); }}><Trash2 className="h-3.5 w-3.5" /></Button>
+                    </div>
+                  </TableCell>
                 </TableRow>
               ))}
             </TableBody>
@@ -224,6 +270,13 @@ export default function DrawingsPage() {
         <DialogContent className="bg-zinc-900 border-zinc-800 text-white max-w-lg">
           <DialogHeader><DialogTitle>Create Drawing</DialogTitle></DialogHeader>
           <div className="space-y-4">
+            <div>
+              <Label className="text-zinc-400 text-xs">Assign to Project *</Label>
+              <Select value={selectedProject} onValueChange={setSelectedProject}>
+                <SelectTrigger className="bg-zinc-800 border-zinc-700"><SelectValue placeholder="Select project" /></SelectTrigger>
+                <SelectContent>{projects.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}</SelectContent>
+              </Select>
+            </div>
             <div className="grid grid-cols-2 gap-3">
               <div><Label className="text-zinc-400 text-xs">Drawing Number *</Label><Input value={form.drawing_number || ''} onChange={(e) => setForm({ ...form, drawing_number: e.target.value })} className="bg-zinc-800 border-zinc-700" placeholder="A-101" /></div>
               <div><Label className="text-zinc-400 text-xs">Discipline</Label>
@@ -242,10 +295,19 @@ export default function DrawingsPage() {
                 </Select></div>
               <div><Label className="text-zinc-400 text-xs">Scale</Label><Input value={form.scale || ''} onChange={(e) => setForm({ ...form, scale: e.target.value })} className="bg-zinc-800 border-zinc-700" placeholder="1:100" /></div>
             </div>
+            <div>
+              <Label className="text-zinc-400 text-xs">Drawing File</Label>
+              <label className="flex items-center gap-2 mt-1 p-3 rounded-lg border border-dashed border-zinc-700 bg-zinc-800/50 cursor-pointer hover:border-amber-600/50 transition-colors">
+                <Upload className="h-4 w-4 text-zinc-500" />
+                <span className="text-sm text-zinc-400 truncate">{drawingFile ? drawingFile.name : 'Click to upload drawing file (PDF, DWG, DXF...)'}</span>
+                <input type="file" className="hidden" accept=".pdf,.dwg,.dxf,.dwf,.rvt,.ifc,.png,.jpg,.jpeg,.tif,.tiff" onChange={(e) => setDrawingFile(e.target.files?.[0] || null)} />
+              </label>
+              {drawingFile && <p className="text-[10px] text-zinc-500 mt-1">{(drawingFile.size / 1024 / 1024).toFixed(1)} MB — will be uploaded as Rev A</p>}
+            </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowCreate(false)} className="border-zinc-700">Cancel</Button>
-            <Button onClick={createDrawing} className="bg-amber-600 hover:bg-amber-700" disabled={!form.title || !form.drawing_number}>Create</Button>
+            <Button onClick={createDrawing} className="bg-amber-600 hover:bg-amber-700" disabled={!form.title || !form.drawing_number || !selectedProject}>Create</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -270,6 +332,10 @@ export default function DrawingsPage() {
               </div>
               {selectedDrawing.description && <p className="text-sm text-zinc-400">{selectedDrawing.description}</p>}
 
+              <div className="flex justify-end">
+                <Button size="sm" variant="ghost" className="h-7 text-xs text-red-400 hover:text-red-300 hover:bg-red-500/10" onClick={() => deleteDrawing(selectedDrawing.id)}><Trash2 className="h-3 w-3 mr-1" />Delete Drawing</Button>
+              </div>
+
               {/* Revisions */}
               <div className="flex items-center justify-between">
                 <h3 className="text-sm font-semibold text-white">Revisions ({selectedDrawing.revisions?.length || 0})</h3>
@@ -279,7 +345,7 @@ export default function DrawingsPage() {
                       <GitCompare className="h-3 w-3 mr-1" />Compare
                     </Button>
                   )}
-                  <Button size="sm" className="bg-amber-600 hover:bg-amber-700 h-7 text-xs" onClick={() => { setForm({ revision_number: '' }); setShowAddRevision(true); }}>
+                  <Button size="sm" className="bg-amber-600 hover:bg-amber-700 h-7 text-xs" onClick={() => { setForm({ revision_number: '' }); setRevisionFile(null); setShowAddRevision(true); }}>
                     <Plus className="h-3 w-3 mr-1" />Add Revision
                   </Button>
                 </div>
@@ -293,7 +359,18 @@ export default function DrawingsPage() {
                       <Badge variant="outline" className={statusColors[rev.status] || 'border-zinc-700'} >{rev.status}</Badge>
                     </div>
                     <div className="flex items-center gap-1">
-                      {rev.file_url && <Button size="sm" variant="ghost" className="h-7 text-xs"><FileText className="h-3 w-3" /></Button>}
+                      {rev.file_url && (
+                        <Button size="sm" variant="ghost" className="h-7 text-xs text-zinc-400" onClick={() => previewFile(selectedDrawing.id)} title="Preview file">
+                          <Eye className="h-3 w-3 mr-1" />Preview
+                        </Button>
+                      )}
+                      {rev.file_url && (
+                        <a href={rev.file_url} download={rev.file_name || 'drawing'} onClick={(e) => e.stopPropagation()}>
+                          <Button size="sm" variant="ghost" className="h-7 text-xs text-zinc-400" title="Download file">
+                            <Download className="h-3 w-3" />
+                          </Button>
+                        </a>
+                      )}
                       {rev.status === 'draft' && <Button size="sm" variant="ghost" className="h-7 text-xs text-blue-400" onClick={() => reviewRevision(rev.id, 'review')}>Review</Button>}
                       {rev.status === 'reviewed' && <Button size="sm" variant="ghost" className="h-7 text-xs text-green-400" onClick={() => reviewRevision(rev.id, 'approve')}><CheckCircle className="h-3 w-3 mr-1" />Approve</Button>}
                       <span className="text-[10px] text-zinc-500">{new Date(rev.created_at).toLocaleDateString()}</span>
@@ -313,8 +390,15 @@ export default function DrawingsPage() {
           <DialogHeader><DialogTitle>Add Revision</DialogTitle></DialogHeader>
           <div className="space-y-4">
             <div><Label className="text-zinc-400 text-xs">Revision Number *</Label><Input value={form.revision_number || ''} onChange={(e) => setForm({ ...form, revision_number: e.target.value })} className="bg-zinc-800 border-zinc-700" placeholder="B" /></div>
-            <div><Label className="text-zinc-400 text-xs">File Name</Label><Input value={form.file_name || ''} onChange={(e) => setForm({ ...form, file_name: e.target.value })} className="bg-zinc-800 border-zinc-700" /></div>
-            <div><Label className="text-zinc-400 text-xs">File URL</Label><Input value={form.file_url || ''} onChange={(e) => setForm({ ...form, file_url: e.target.value })} className="bg-zinc-800 border-zinc-700" /></div>
+            <div>
+              <Label className="text-zinc-400 text-xs">Drawing File</Label>
+              <label className="flex items-center gap-2 mt-1 p-3 rounded-lg border border-dashed border-zinc-700 bg-zinc-800/50 cursor-pointer hover:border-amber-600/50 transition-colors">
+                <Upload className="h-4 w-4 text-zinc-500" />
+                <span className="text-sm text-zinc-400 truncate">{revisionFile ? revisionFile.name : 'Click to upload revised drawing file'}</span>
+                <input type="file" className="hidden" accept=".pdf,.dwg,.dxf,.dwf,.rvt,.ifc,.png,.jpg,.jpeg,.tif,.tiff" onChange={(e) => setRevisionFile(e.target.files?.[0] || null)} />
+              </label>
+              {revisionFile && <p className="text-[10px] text-zinc-500 mt-1">{(revisionFile.size / 1024 / 1024).toFixed(1)} MB</p>}
+            </div>
             <div><Label className="text-zinc-400 text-xs">Change Description</Label><Textarea value={form.change_description || ''} onChange={(e) => setForm({ ...form, change_description: e.target.value })} className="bg-zinc-800 border-zinc-700" rows={3} /></div>
           </div>
           <DialogFooter>

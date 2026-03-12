@@ -262,7 +262,7 @@ export default function FloorPlanPage() {
           </div>
           <button
             onClick={handleDoneFloorPlan}
-            className="px-4 py-2 bg-amber-500 text-black font-mono text-xs font-bold hover:bg-amber-400 transition-colors"
+            className="px-4 py-2 bg-amber-500 text-white font-mono text-xs font-bold hover:bg-amber-400 transition-colors"
           >
             DONE
           </button>
@@ -306,7 +306,7 @@ export default function FloorPlanPage() {
           <button
             onClick={handleSaveAndContinue}
             disabled={saving}
-            className="flex items-center gap-2 px-4 py-2 bg-amber-500 text-black font-mono text-xs font-bold hover:bg-amber-400 transition-colors disabled:opacity-50"
+            className="flex items-center gap-2 px-4 py-2 bg-amber-500 text-white font-mono text-xs font-bold hover:bg-amber-400 transition-colors disabled:opacity-50"
           >
             {saving ? (
               <>
@@ -378,7 +378,7 @@ export default function FloorPlanPage() {
               key={floor.floorNumber}
               onClick={() => setActiveFloor(floor.floorNumber)}
               className={`flex items-center gap-2 px-3 py-2 font-mono text-xs transition-colors ${activeFloor === floor.floorNumber
-                ? 'bg-amber-500 text-black font-bold'
+                ? 'bg-amber-500 text-white font-bold'
                 : 'bg-zinc-800 text-zinc-400 hover:text-white'
                 }`}
             >
@@ -421,7 +421,7 @@ export default function FloorPlanPage() {
                   )}
                   <button
                     onClick={() => setShowFloorPlanBuilder(true)}
-                    className="flex items-center gap-2 px-4 py-2 bg-amber-500 text-black font-mono text-xs font-bold hover:bg-amber-400 transition-colors"
+                    className="flex items-center gap-2 px-4 py-2 bg-amber-500 text-white font-mono text-xs font-bold hover:bg-amber-400 transition-colors"
                   >
                     <Pencil className="w-3 h-3" />
                     {floor.isComplete ? 'EDIT FLOOR PLAN' : 'DRAW FLOOR PLAN'}
@@ -464,7 +464,7 @@ export default function FloorPlanPage() {
                   </div>
                   <button
                     onClick={() => setShowFloorPlanBuilder(true)}
-                    className="flex items-center gap-2 px-4 py-2 bg-amber-500 text-black font-mono text-xs font-bold hover:bg-amber-400 transition-colors mx-auto"
+                    className="flex items-center gap-2 px-4 py-2 bg-amber-500 text-white font-mono text-xs font-bold hover:bg-amber-400 transition-colors mx-auto"
                   >
                     <Pencil className="w-3 h-3" />
                     DRAW FLOOR PLAN
@@ -487,7 +487,7 @@ export default function FloorPlanPage() {
         <button
           onClick={handleSaveAndContinue}
           disabled={saving}
-          className="flex items-center gap-2 px-6 py-3 bg-amber-500 text-black font-mono text-sm font-bold hover:bg-amber-400 transition-colors disabled:opacity-50"
+          className="flex items-center gap-2 px-6 py-3 bg-amber-500 text-white font-mono text-sm font-bold hover:bg-amber-400 transition-colors disabled:opacity-50"
         >
           {saving ? (
             <>

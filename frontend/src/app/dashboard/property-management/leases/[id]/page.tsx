@@ -325,7 +325,7 @@ export default function LeaseDetailsPage({ params }: { params: Promise<{ id: str
                         Terminate
                     </Button>
                     <Button 
-                        className="bg-amber-600 hover:bg-amber-500 text-black font-bold font-mono text-xs"
+                        className="bg-amber-600 hover:bg-amber-500 text-white font-bold font-mono text-xs"
                         onClick={() => setIsRenewDialogOpen(true)}
                     >
                         <RefreshCw className="h-3 w-3 mr-2" />
@@ -576,7 +576,7 @@ export default function LeaseDetailsPage({ params }: { params: Promise<{ id: str
                             Cancel
                         </Button>
                         <Button
-                            className="bg-amber-600 hover:bg-amber-500 text-black font-mono text-xs"
+                            className="bg-amber-600 hover:bg-amber-500 text-white font-mono text-xs"
                             onClick={handleEdit}
                             disabled={isSavingEdit}
                         >
@@ -719,7 +719,7 @@ export default function LeaseDetailsPage({ params }: { params: Promise<{ id: str
                             Cancel
                         </Button>
                         <Button
-                            className="bg-amber-600 hover:bg-amber-500 text-black font-mono text-xs"
+                            className="bg-amber-600 hover:bg-amber-500 text-white font-mono text-xs"
                             onClick={handleRenew}
                             disabled={isRenewing}
                         >

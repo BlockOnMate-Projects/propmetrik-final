@@ -191,7 +191,7 @@ export default function PortfoliosPage() {
                 </div>
                 <div className="flex items-center gap-3">
                     <Link href="/dashboard/property-management/properties/new">
-                        <Button className="bg-amber-600 hover:bg-amber-500 text-black font-bold font-mono text-xs uppercase">
+                        <Button className="bg-amber-600 hover:bg-amber-500 text-white font-bold font-mono text-xs uppercase">
                             <Plus className="mr-2 h-3 w-3" />
                             New Asset
                         </Button>
@@ -725,7 +725,7 @@ export default function PortfoliosPage() {
                                                 </div>
                                                 {!searchTerm && (
                                                     <Link href="/dashboard/property-management/properties/new">
-                                                        <Button size="sm" className="mt-2 bg-amber-600 hover:bg-amber-500 text-black font-mono text-[10px]">
+                                                        <Button size="sm" className="mt-2 bg-amber-600 hover:bg-amber-500 text-white font-mono text-[10px]">
                                                             <Plus className="h-3 w-3 mr-1" />
                                                             Add First Property
                                                         </Button>

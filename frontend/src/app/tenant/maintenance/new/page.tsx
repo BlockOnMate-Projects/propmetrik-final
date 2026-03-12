@@ -85,7 +85,7 @@ export default function NewMaintenanceRequest() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    const activeTenancy = profile?.tenancies.find(t => t.status === 'active');
+    const activeTenancy = profile?.tenancies?.find(t => t.status === 'active');
     if (!activeTenancy) {
       setError('No active tenancy found');
       return;
@@ -122,7 +122,7 @@ export default function NewMaintenanceRequest() {
     );
   }
 
-  const activeTenancy = profile?.tenancies.find(t => t.status === 'active');
+  const activeTenancy = profile?.tenancies?.find(t => t.status === 'active');
 
   return (
     <div className="min-h-screen bg-gray-50">

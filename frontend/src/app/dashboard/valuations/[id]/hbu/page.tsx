@@ -408,7 +408,7 @@ export default function HBUAnalysisPage() {
           <button
             onClick={handleSaveAndContinue}
             disabled={saving}
-            className="flex items-center gap-2 px-4 py-2 bg-amber-500 text-black font-mono text-xs font-bold hover:bg-amber-400 transition-colors disabled:opacity-50"
+            className="flex items-center gap-2 px-4 py-2 bg-amber-500 text-white font-mono text-xs font-bold hover:bg-amber-400 transition-colors disabled:opacity-50"
           >
             {saving ? (
               <>
@@ -505,7 +505,7 @@ export default function HBUAnalysisPage() {
                     onClick={() => updateFactorValue(activeTest, idx, true)}
                     className={`px-3 py-1.5 font-mono text-xs transition-colors ${
                       factor.value === true 
-                        ? 'bg-green-500 text-black font-bold' 
+                        ? 'bg-green-500 text-white font-bold' 
                         : 'bg-zinc-700 text-zinc-400 hover:text-white'
                     }`}
                   >
@@ -684,7 +684,7 @@ export default function HBUAnalysisPage() {
                           : 'border-zinc-700 hover:border-zinc-500'
                       }`}
                     >
-                      {scenario.selected && <CheckCircle2 className="w-4 h-4 text-black mx-auto" />}
+                      {scenario.selected && <CheckCircle2 className="w-4 h-4 text-white mx-auto" />}
                     </button>
                   </td>
                   <td className="py-2 text-right">
@@ -791,7 +791,7 @@ export default function HBUAnalysisPage() {
           <button
             onClick={handleSaveAndContinue}
             disabled={saving}
-            className="flex items-center gap-2 px-6 py-3 bg-amber-500 text-black font-mono text-sm font-bold hover:bg-amber-400 transition-colors disabled:opacity-50"
+            className="flex items-center gap-2 px-6 py-3 bg-amber-500 text-white font-mono text-sm font-bold hover:bg-amber-400 transition-colors disabled:opacity-50"
           >
             {saving ? (
               <>

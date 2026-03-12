@@ -2,7 +2,9 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
+import { useSession } from 'next-auth/react'
 import { cn } from '@/lib/utils'
+import { canAccessServiceSubTab } from '@/lib/rbac'
 import {
     BarChart3,
     Map,
@@ -19,18 +21,18 @@ import {
 } from 'lucide-react'
 
 const analyticsNavItems = [
-    { href: '/dashboard/analytics', label: 'MARKET', icon: BarChart3, exact: true },
-    { href: '/dashboard/analytics/construction', label: 'CONSTRUCTION', icon: Hammer },
-    { href: '/dashboard/analytics/affordability', label: 'AFFORDABILITY', icon: Home },
-    { href: '/dashboard/analytics/valuations', label: 'VALUATIONS', icon: FileSearch },
-    { href: '/dashboard/analytics/ml', label: 'ML MODELS', icon: Brain },
-    { href: '/dashboard/analytics/risk', label: 'RISK', icon: ShieldAlert },
-    { href: '/dashboard/analytics/short-stay', label: 'SHORT-STAY', icon: Building2 },
-    { href: '/dashboard/analytics/forecasting', label: 'FORECASTING', icon: LineChart },
-    { href: '/dashboard/analytics/crm', label: 'CRM', icon: Users },
-    { href: '/dashboard/analytics/geographic', label: 'GEOGRAPHIC', icon: Map },
-    { href: '/dashboard/analytics/management', label: 'MANAGEMENT', icon: Landmark },
-    { href: '/dashboard/analytics/settings', label: 'SETTINGS', icon: Settings },
+    { href: '/dashboard/analytics', label: 'MARKET', icon: BarChart3, exact: true, subTabKey: 'analytics-market' },
+    { href: '/dashboard/analytics/construction', label: 'CONSTRUCTION', icon: Hammer, subTabKey: 'analytics-construction' },
+    { href: '/dashboard/analytics/affordability', label: 'AFFORDABILITY', icon: Home, subTabKey: 'analytics-affordability' },
+    { href: '/dashboard/analytics/valuations', label: 'VALUATIONS', icon: FileSearch, subTabKey: 'analytics-valuations' },
+    { href: '/dashboard/analytics/ml', label: 'ML MODELS', icon: Brain, subTabKey: 'analytics-ml' },
+    { href: '/dashboard/analytics/risk', label: 'RISK', icon: ShieldAlert, subTabKey: 'analytics-risk' },
+    { href: '/dashboard/analytics/short-stay', label: 'SHORT-STAY', icon: Building2, subTabKey: 'analytics-short-stay' },
+    { href: '/dashboard/analytics/forecasting', label: 'FORECASTING', icon: LineChart, subTabKey: 'analytics-forecasting' },
+    { href: '/dashboard/analytics/crm', label: 'CRM', icon: Users, subTabKey: 'analytics-crm' },
+    { href: '/dashboard/analytics/geographic', label: 'GEOGRAPHIC', icon: Map, subTabKey: 'analytics-geographic' },
+    { href: '/dashboard/analytics/management', label: 'MANAGEMENT', icon: Landmark, subTabKey: 'analytics-management' },
+    { href: '/dashboard/analytics/settings', label: 'SETTINGS', icon: Settings, subTabKey: 'analytics-settings' },
 ]
 
 export default function AnalyticsLayout({
@@ -39,6 +41,14 @@ export default function AnalyticsLayout({
     children: React.ReactNode
 }) {
     const pathname = usePathname()
+    const { data: session } = useSession()
+
+    const userRole = session?.user?.role || ''
+
+    // Show all until session loads to avoid hydration mismatch
+    const visibleNavItems = userRole
+        ? analyticsNavItems.filter(item => canAccessServiceSubTab(userRole, 'analytics', item.subTabKey))
+        : analyticsNavItems
 
     const isActive = (href: string, exact?: boolean) => {
         if (exact) {
@@ -53,7 +63,7 @@ export default function AnalyticsLayout({
             <div className="border-b border-zinc-800 bg-zinc-900/30">
                 <div className="px-4">
                     <nav className="flex items-center gap-1 py-1 overflow-x-auto no-scrollbar">
-                        {analyticsNavItems.map((item) => {
+                        {visibleNavItems.map((item) => {
                             const Icon = item.icon
                             const active = isActive(item.href, item.exact)
                             return (

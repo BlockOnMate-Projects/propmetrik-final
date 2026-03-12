@@ -31,7 +31,7 @@ export default function MaintenanceListPage() {
         const profileData = await getTenantProfile();
         setProfile(profileData);
 
-        const activeTenancy = profileData.tenancies.find(t => t.status === 'active');
+        const activeTenancy = profileData.tenancies?.find(t => t.status === 'active');
         if (activeTenancy) {
           const maintenanceData = await getMaintenanceRequests(activeTenancy.id);
           setRequests(maintenanceData);
@@ -206,11 +206,11 @@ export default function MaintenanceListPage() {
                             <span className="text-sm text-gray-500">
                               {request.category}
                             </span>
-                            <span className={`text-sm font-medium ${getPriorityColor(request.priority)}`}>
+                            <span className={`text-sm font-medium ${getPriorityColor(request.priority || '')}`}>
                               {request.priority} priority
                             </span>
                             <span className="text-sm text-gray-400">
-                              {new Date(request.createdAt).toLocaleDateString()}
+                              {new Date(request.createdAt || request.created_at).toLocaleDateString()}
                             </span>
                           </div>
                           {request.description && (

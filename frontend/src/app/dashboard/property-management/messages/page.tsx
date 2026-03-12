@@ -260,7 +260,7 @@ export default function LandlordMessagesPage() {
                     <p className="text-xs text-zinc-500 truncate mt-0.5">{pane.lastMessage || 'No messages yet'}</p>
                   </div>
                   {pane.unreadCount > 0 && (
-                    <Badge variant="default" className="bg-amber-500 text-black text-[10px] font-bold px-1.5 py-0.5 min-w-[20px] justify-center">
+                    <Badge variant="default" className="bg-amber-500 text-white text-[10px] font-bold px-1.5 py-0.5 min-w-[20px] justify-center">
                       {pane.unreadCount}
                     </Badge>
                   )}
@@ -330,7 +330,7 @@ export default function LandlordMessagesPage() {
                             )}
                             <div className={`px-4 py-2.5 rounded-2xl ${
                               isLandlord
-                                ? 'bg-amber-500 text-black rounded-br-md'
+                                ? 'bg-amber-500 text-white rounded-br-md'
                                 : 'bg-zinc-800 text-zinc-200 rounded-bl-md'
                             }`}>
                               <p className="text-sm leading-relaxed whitespace-pre-wrap">{msg.content}</p>
@@ -367,7 +367,7 @@ export default function LandlordMessagesPage() {
                     <Button
                       onClick={handleSend}
                       disabled={!newMessage.trim() || sending}
-                      className="bg-amber-500 hover:bg-amber-600 text-black h-[42px]"
+                      className="bg-amber-500 hover:bg-amber-600 text-white h-[42px]"
                     >
                       {sending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
                     </Button>

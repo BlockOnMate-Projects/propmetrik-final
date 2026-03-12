@@ -725,8 +725,15 @@ export const submittalApi = {
       offset: filters?.offset || 0,
     });
     
+    // Normalize backend field names: submittal_type → type
+    const rawData = response.submittals || response.data || [];
+    const data = rawData.map((s: any) => ({
+      ...s,
+      type: s.type || s.submittal_type || 'other',
+    }));
+
     return {
-      data: response.submittals || response.data || [],
+      data,
       total: response.total || 0,
       page: filters?.offset ? Math.floor(filters.offset / (filters?.limit || 50)) + 1 : 1,
       limit: filters?.limit || 50,
@@ -735,7 +742,8 @@ export const submittalApi = {
   },
 
   getById: async (id: string): Promise<Submittal> => {
-    return apiRequest(`/submittals/${id}`);
+    const s = await apiRequest<any>(`/submittals/${id}`);
+    return { ...s, type: s.type || s.submittal_type || 'other' };
   },
 
   getStats: async (projectId: string): Promise<SubmittalStats> => {

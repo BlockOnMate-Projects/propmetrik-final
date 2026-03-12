@@ -444,7 +444,7 @@ function SubphaseDialog({
           <Button
             onClick={handleSubmit}
             disabled={isSubmitting || !formData.name.trim()}
-            className="bg-amber-600 hover:bg-amber-700 text-black text-xs"
+            className="bg-amber-600 hover:bg-amber-700 text-white text-xs"
           >
             {isSubmitting && <Loader2 className="h-3 w-3 mr-2 animate-spin" />}
             {subphase ? 'Save Changes' : 'Add Sub-phase'}

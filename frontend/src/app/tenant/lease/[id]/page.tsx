@@ -137,7 +137,7 @@ export default function LeaseSigningPage() {
               <CardTitle>Lease Document</CardTitle>
             </CardHeader>
             <CardContent className="prose max-w-none text-slate-800 bg-white p-6 rounded-md border text-sm max-h-[600px] overflow-y-auto">
-              <div dangerouslySetInnerHTML={{ __html: lease.content }} />
+              <div dangerouslySetInnerHTML={{ __html: lease.content || '' }} />
             </CardContent>
           </Card>
 
@@ -150,15 +150,15 @@ export default function LeaseSigningPage() {
               <CardContent className="space-y-2 text-sm">
                 <div className="flex justify-between">
                   <span className="text-slate-500">Duration</span>
-                  <span className="font-medium">{lease.terms.startDate} - {lease.terms.endDate}</span>
+                  <span className="font-medium">{lease.terms?.startDate} - {lease.terms?.endDate}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-slate-500">Monthly Rent</span>
-                  <span className="font-medium">₵{lease.terms.rentAmount.toLocaleString()}</span>
+                  <span className="font-medium">₵{(lease.terms?.rentAmount || 0).toLocaleString()}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-slate-500">Deposit</span>
-                  <span className="font-medium">₵{lease.terms.securityDeposit.toLocaleString()}</span>
+                  <span className="font-medium">₵{(lease.terms?.securityDeposit || 0).toLocaleString()}</span>
                 </div>
               </CardContent>
             </Card>

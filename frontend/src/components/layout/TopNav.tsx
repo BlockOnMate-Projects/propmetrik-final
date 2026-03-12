@@ -110,7 +110,7 @@ function UserMenu({
         {/* Avatar circle */}
         <span className={cn(
           'flex items-center justify-center w-5 h-5 rounded-full text-[9px] font-bold',
-          admin ? 'bg-red-600 text-white' : 'bg-amber-500 text-black'
+          admin ? 'bg-red-600 text-white' : 'bg-amber-500 text-white'
         )}>
           {mounted ? initials : '?'}
         </span>
@@ -148,7 +148,7 @@ function UserMenu({
             <div className="flex items-center gap-3">
               <span className={cn(
                 'flex items-center justify-center w-9 h-9 rounded-full text-sm font-bold shrink-0',
-                admin ? 'bg-red-600 text-white' : 'bg-amber-500 text-black',
+                admin ? 'bg-red-600 text-white' : 'bg-amber-500 text-white',
               )}>
                 {initials}
               </span>
@@ -471,9 +471,9 @@ export function TopNav() {
                   tierLocked
                     ? 'text-zinc-600 hover:text-zinc-500 hover:bg-zinc-800/50 cursor-pointer'
                     : active
-                      ? isAdminTab 
+                      ? isAdminTab
                         ? 'bg-red-600 text-white font-bold'
-                        : 'bg-amber-500 text-black font-bold'
+                        : 'bg-amber-500 text-white font-bold'
                       : isAdminTab
                         ? 'text-red-400 hover:text-red-300 hover:bg-red-900/30 border border-red-900/50'
                         : 'text-zinc-400 hover:text-white hover:bg-zinc-800'
@@ -492,7 +492,7 @@ export function TopNav() {
                     active 
                       ? isAdminTab 
                         ? 'bg-black/20 text-white' 
-                        : 'bg-black/20 text-black' 
+                        : 'bg-black/20 text-white'
                       : isAdminTab
                         ? 'bg-red-500/20 text-red-400'
                         : 'bg-yellow-500/20 text-yellow-500'
@@ -550,7 +550,7 @@ export function TopNav() {
                       : active
                         ? isAdminTab
                           ? 'bg-red-600 text-white font-bold'
-                          : 'bg-amber-500 text-black font-bold'
+                          : 'bg-amber-500 text-white font-bold'
                         : isAdminTab
                           ? 'text-red-400 hover:text-red-300 hover:bg-red-900/30'
                           : 'text-zinc-400 hover:text-white hover:bg-zinc-800'

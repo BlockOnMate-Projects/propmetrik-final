@@ -919,7 +919,7 @@ export default function GenerateLeasePage() {
                             Preview how the lease document will look
                         </DialogDescription>
                     </DialogHeader>
-                    <div className="bg-white rounded-lg p-6 text-black">
+                    <div className="bg-white rounded-lg p-6 text-white">
                         <div dangerouslySetInnerHTML={{ __html: previewHtml || '' }} />
                     </div>
                     <DialogFooter>

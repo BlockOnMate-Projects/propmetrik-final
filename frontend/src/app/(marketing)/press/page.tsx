@@ -36,7 +36,7 @@ export default function PressPage() {
     setGeneratedQuote('');
     try {
       const result = await aiContentApi.generateQuote({ topic: quoteTopic });
-      setGeneratedQuote(result.data?.text || result.text || '');
+      setGeneratedQuote(result.data?.text || '');
     } catch {
       setGeneratedQuote(
         'Unable to generate quote at this time. Please try again.'

@@ -436,7 +436,7 @@ export default function BulkOperationsPage() {
                                 <Button
                                     onClick={handleRentIncrease}
                                     disabled={isLoading || !selectedProperties.length}
-                                    className="w-full bg-amber-600 hover:bg-amber-500 text-black font-bold font-mono text-xs uppercase"
+                                    className="w-full bg-amber-600 hover:bg-amber-500 text-white font-bold font-mono text-xs uppercase"
                                 >
                                     {isLoading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <ArrowUpRight className="h-4 w-4 mr-2" />}
                                     Apply to {selectedProperties.length} Properties
@@ -564,7 +564,7 @@ export default function BulkOperationsPage() {
                                 <Button
                                     onClick={handleBulkWorkOrders}
                                     disabled={isLoading || !selectedProperties.length || !workOrderTitle.trim()}
-                                    className="w-full bg-amber-600 hover:bg-amber-500 text-black font-bold font-mono text-xs uppercase"
+                                    className="w-full bg-amber-600 hover:bg-amber-500 text-white font-bold font-mono text-xs uppercase"
                                 >
                                     {isLoading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Plus className="h-4 w-4 mr-2" />}
                                     Create {selectedProperties.length} Work Orders
@@ -683,7 +683,7 @@ export default function BulkOperationsPage() {
                                     <Button
                                         onClick={handleExport}
                                         disabled={isLoading}
-                                        className="w-full bg-amber-600 hover:bg-amber-500 text-black font-bold font-mono text-xs uppercase"
+                                        className="w-full bg-amber-600 hover:bg-amber-500 text-white font-bold font-mono text-xs uppercase"
                                     >
                                         {isLoading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Download className="h-4 w-4 mr-2" />}
                                         Export {exportResource}
@@ -741,7 +741,7 @@ export default function BulkOperationsPage() {
                             <Button
                                 onClick={handleImport}
                                 disabled={isLoading || !importData.trim()}
-                                className="bg-amber-600 hover:bg-amber-500 text-black font-bold font-mono text-xs uppercase"
+                                className="bg-amber-600 hover:bg-amber-500 text-white font-bold font-mono text-xs uppercase"
                             >
                                 {isLoading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Upload className="h-4 w-4 mr-2" />}
                                 Import Data

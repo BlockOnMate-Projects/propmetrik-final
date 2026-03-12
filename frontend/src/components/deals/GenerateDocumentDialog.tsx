@@ -176,14 +176,14 @@ export function GenerateDocumentDialog({
                     <TabsList className="bg-zinc-800 border border-zinc-700">
                         <TabsTrigger 
                             value="select" 
-                            className="font-mono text-xs data-[state=active]:bg-amber-500 data-[state=active]:text-black"
+                            className="font-mono text-xs data-[state=active]:bg-amber-500 data-[state=active]:text-white"
                         >
                             SELECT TEMPLATE
                         </TabsTrigger>
                         <TabsTrigger 
                             value="preview" 
                             disabled={!selectedTemplate}
-                            className="font-mono text-xs data-[state=active]:bg-amber-500 data-[state=active]:text-black"
+                            className="font-mono text-xs data-[state=active]:bg-amber-500 data-[state=active]:text-white"
                         >
                             PREVIEW
                         </TabsTrigger>
@@ -347,7 +347,7 @@ export function GenerateDocumentDialog({
                         <Button 
                             onClick={handleGenerate}
                             disabled={!selectedTemplate || isGenerating}
-                            className="bg-amber-600 hover:bg-amber-700 text-black"
+                            className="bg-amber-600 hover:bg-amber-700 text-white"
                         >
                             {isGenerating ? (
                                 <Loader2 className="h-4 w-4 mr-2 animate-spin" />

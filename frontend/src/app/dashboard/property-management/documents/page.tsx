@@ -148,7 +148,7 @@ export default function DocumentVaultPage() {
                     <h1 className="text-2xl font-bold tracking-tight text-white font-mono">DOCUMENT VAULT</h1>
                     <p className="text-sm text-zinc-500 font-mono">Centralized documents from all tenancies, leases, and uploads</p>
                 </div>
-                <Button className="bg-amber-600 hover:bg-amber-500 text-black font-bold font-mono text-xs uppercase">
+                <Button className="bg-amber-600 hover:bg-amber-500 text-white font-bold font-mono text-xs uppercase">
                     <Upload className="mr-2 h-3 w-3" />
                     Upload Document
                 </Button>

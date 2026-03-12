@@ -322,12 +322,24 @@ class InviteService {
       // 4) Hash password locally
       const passwordHash = await bcrypt.hash(password, 12);
 
-      // 5) Create or update user
+      // 5) Create or update user — inherit org's subscription tier
       let userId: string;
       const existingUser = await client.query(
         `SELECT id FROM users WHERE email = $1`,
         [inv.email],
       );
+
+      // Get the organization's subscription tier for the new user
+      let orgTier = 'starter';
+      if (inv.organization_id) {
+        const orgResult = await client.query(
+          `SELECT subscription_tier FROM organizations WHERE id = $1`,
+          [inv.organization_id],
+        );
+        if (orgResult.rows.length > 0 && orgResult.rows[0].subscription_tier) {
+          orgTier = orgResult.rows[0].subscription_tier;
+        }
+      }
 
       const effectiveFirstName = firstName || inv.first_name || inv.email.split('@')[0];
       const effectiveLastName = lastName || inv.last_name || '';
@@ -343,13 +355,14 @@ class InviteService {
                first_name = COALESCE($6, first_name),
                last_name = COALESCE($7, last_name),
                display_name = COALESCE($8, display_name),
+               subscription_tier = $10,
                status = 'active', updated_at = NOW()
            WHERE id = $9`,
           [
             inv.organization_id, inv.role,
             keycloakUserId, passwordHash, inv.user_type,
             effectiveFirstName, effectiveLastName, displayName,
-            userId,
+            userId, orgTier,
           ],
         );
       } else {
@@ -358,13 +371,13 @@ class InviteService {
           `INSERT INTO users (
             id, email, password_hash, first_name, last_name,
             display_name, role, organization_id, keycloak_id,
-            user_type, status, created_at, updated_at
-           ) VALUES ($1, $2, $3, $4, $5, $6, $7::user_role_enum, $8, $9, $10, 'active', NOW(), NOW())`,
+            user_type, subscription_tier, status, created_at, updated_at
+           ) VALUES ($1, $2, $3, $4, $5, $6, $7::user_role_enum, $8, $9, $10, $11, 'active', NOW(), NOW())`,
           [
             userId, inv.email, passwordHash,
             effectiveFirstName, effectiveLastName, displayName,
             inv.role, inv.organization_id, keycloakUserId,
-            inv.user_type,
+            inv.user_type, orgTier,
           ],
         );
       }

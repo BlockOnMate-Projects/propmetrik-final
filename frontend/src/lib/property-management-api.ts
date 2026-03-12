@@ -716,17 +716,7 @@ export const propertyManagementApi = {
         maxUses?: number;
         expiresInDays?: number;
     }) =>
-        fetchApi<{
-            id: string;
-            propertyId: string;
-            token: string;
-            applicationType: string;
-            maxUses: number;
-            currentUses: number;
-            expiresAt: string;
-            isActive: boolean;
-            url: string;
-        }>(`${PM_BASE}/application-links`, {
+        fetchApi<ApplicationLink & { url: string }>(`${PM_BASE}/application-links`, {
             method: 'POST',
             body: JSON.stringify(data)
         }),
@@ -844,6 +834,7 @@ export enum ApplicationStatus {
     REJECTED = 'rejected',
     WITHDRAWN = 'withdrawn',
     LEASE_GENERATED = 'lease_generated',
+    LEASE_SIGNED = 'lease_signed',
     EXPIRED = 'expired'
 }
 

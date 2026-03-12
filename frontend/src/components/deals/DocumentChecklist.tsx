@@ -212,7 +212,7 @@ export function DocumentChecklist({ dealId, onGenerateDocument }: DocumentCheckl
                                     <Button
                                         size="sm"
                                         onClick={() => onGenerateDocument?.(item.template_id)}
-                                        className="h-7 px-3 bg-amber-600 hover:bg-amber-700 text-black text-[10px]"
+                                        className="h-7 px-3 bg-amber-600 hover:bg-amber-700 text-white text-[10px]"
                                     >
                                         Generate
                                     </Button>

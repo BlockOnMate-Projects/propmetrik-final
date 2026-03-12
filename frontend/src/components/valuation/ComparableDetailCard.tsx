@@ -376,7 +376,7 @@ export function ComparableDetailCard({
                 isSelected ? 'border-amber-500 bg-amber-500' : 'border-zinc-600'
               )}
             >
-              {isSelected && <Check className="w-3 h-3 text-black" />}
+              {isSelected && <Check className="w-3 h-3 text-white" />}
             </div>
           )}
           

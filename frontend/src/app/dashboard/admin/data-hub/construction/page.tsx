@@ -178,7 +178,7 @@ export default function ConstructionCostsPage() {
             <button
               onClick={() => seedMutation.mutate()}
               disabled={seedMutation.isPending}
-              className="px-4 py-2 bg-amber-500 text-black font-mono text-xs hover:bg-amber-400 transition-colors disabled:opacity-50"
+              className="px-4 py-2 bg-amber-500 text-white font-mono text-xs hover:bg-amber-400 transition-colors disabled:opacity-50"
             >
               <RefreshCw className={cn(
                 'w-4 h-4 inline mr-2',
@@ -200,7 +200,7 @@ export default function ConstructionCostsPage() {
               className={cn(
                 'px-4 py-2 font-mono text-xs transition-colors',
                 activeTab === tab
-                  ? 'bg-amber-500 text-black'
+                  ? 'bg-amber-500 text-white'
                   : 'bg-zinc-800 text-zinc-400 hover:text-white'
               )}
             >

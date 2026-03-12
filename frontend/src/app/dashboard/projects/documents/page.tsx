@@ -181,7 +181,7 @@ export default function PMDocumentsPage() {
         </div>
         <Dialog open={uploadOpen} onOpenChange={setUploadOpen}>
           <DialogTrigger asChild>
-            <Button className="bg-amber-600 hover:bg-amber-500 text-black font-bold font-mono text-xs uppercase">
+            <Button className="bg-amber-600 hover:bg-amber-500 text-white font-bold font-mono text-xs uppercase">
               <Upload className="mr-2 h-3 w-3" /> Upload Document
             </Button>
           </DialogTrigger>
@@ -228,7 +228,7 @@ export default function PMDocumentsPage() {
             </div>
             <DialogFooter>
               <Button variant="outline" onClick={() => setUploadOpen(false)} className="font-mono text-xs border-zinc-700 text-zinc-400">Cancel</Button>
-              <Button onClick={handleUpload} disabled={uploading || !uploadFile || !uploadProjectId} className="bg-amber-600 hover:bg-amber-500 text-black font-mono text-xs font-bold">
+              <Button onClick={handleUpload} disabled={uploading || !uploadFile || !uploadProjectId} className="bg-amber-600 hover:bg-amber-500 text-white font-mono text-xs font-bold">
                 {uploading ? <><Loader2 className="mr-2 h-3 w-3 animate-spin" /> Uploading...</> : 'Upload'}
               </Button>
             </DialogFooter>
