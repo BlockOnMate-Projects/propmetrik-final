@@ -168,15 +168,20 @@ export default function ApplicationsPage() {
                 icon: <X className="h-3 w-3" />, 
                 label: 'Withdrawn' 
             },
-            [ApplicationStatus.LEASE_GENERATED]: { 
-                color: 'border-emerald-900 text-emerald-400 bg-emerald-900/20', 
-                icon: <FileText className="h-3 w-3" />, 
-                label: 'Lease Generated' 
+            [ApplicationStatus.LEASE_GENERATED]: {
+                color: 'border-emerald-900 text-emerald-400 bg-emerald-900/20',
+                icon: <FileText className="h-3 w-3" />,
+                label: 'Lease Generated'
             },
-            [ApplicationStatus.EXPIRED]: { 
-                color: 'border-zinc-700 text-zinc-500 bg-zinc-800/20', 
-                icon: <Clock className="h-3 w-3" />, 
-                label: 'Expired' 
+            [ApplicationStatus.LEASE_SIGNED]: {
+                color: 'border-teal-900 text-teal-400 bg-teal-900/20',
+                icon: <CheckCircle2 className="h-3 w-3" />,
+                label: 'Lease Signed'
+            },
+            [ApplicationStatus.EXPIRED]: {
+                color: 'border-zinc-700 text-zinc-500 bg-zinc-800/20',
+                icon: <Clock className="h-3 w-3" />,
+                label: 'Expired'
             }
         }
         const { color, icon, label } = config[status] || config[ApplicationStatus.DRAFT]

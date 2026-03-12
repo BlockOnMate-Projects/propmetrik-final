@@ -488,7 +488,7 @@ export default function ContractorPortalPage() {
         <div className="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
           <div className="flex items-center gap-4">
             <div className="w-10 h-10 bg-amber-500 rounded-lg flex items-center justify-center">
-              <HardHat className="w-6 h-6 text-black" />
+              <HardHat className="w-6 h-6 text-white" />
             </div>
             <div>
               <h1 className="text-white font-bold">Contractor Portal</h1>

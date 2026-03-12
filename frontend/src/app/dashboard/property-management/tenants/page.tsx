@@ -737,7 +737,7 @@ export default function TenantsPage() {
                             Cancel
                         </Button>
                         <Button
-                            className="bg-amber-600 hover:bg-amber-500 text-black font-mono text-xs"
+                            className="bg-amber-600 hover:bg-amber-500 text-white font-mono text-xs"
                             disabled={isSendingMessage || !messageContent.trim()}
                             onClick={handleSendMessage}
                         >

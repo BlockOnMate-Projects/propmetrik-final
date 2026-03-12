@@ -499,7 +499,7 @@ function ComparablesPageContent() {
             <button
               onClick={saveAndProceed}
               disabled={!canProceed || saving}
-              className="flex items-center gap-2 px-4 py-2 bg-amber-500 text-black font-mono text-sm font-bold hover:bg-amber-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="flex items-center gap-2 px-4 py-2 bg-amber-500 text-white font-mono text-sm font-bold hover:bg-amber-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {saving ? (
                 <>
@@ -940,7 +940,7 @@ function ComparablesPageContent() {
                       <div className={cn(
                         'flex items-center justify-center w-8 h-8 border-2 rounded-full ml-4',
                         selectedComparables.includes(result.id)
-                          ? 'bg-amber-500 border-amber-500 text-black'
+                          ? 'bg-amber-500 border-amber-500 text-white'
                           : 'border-zinc-600 text-transparent'
                       )}>
                         <Check className="w-4 h-4" />

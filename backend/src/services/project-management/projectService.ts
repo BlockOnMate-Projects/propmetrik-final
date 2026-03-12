@@ -35,6 +35,7 @@ import {
   emitProjectStatusChanged,
   emitDashboardRefresh,
 } from './projectRealtimeEvents';
+import projectCostCurrencyService from './projectCostCurrencyService';
 
 // ============================================================================
 // TYPES
@@ -288,6 +289,8 @@ export interface ProjectFilters {
   max_progress?: number;
   date_from?: Date;
   date_to?: Date;
+  /** When set, only return projects assigned to this user (via project_manager_id or project_team_members) */
+  assigned_user_id?: string;
 }
 
 export interface ProjectStats {
@@ -583,6 +586,16 @@ class ProjectService {
       paramIndex++;
     }
     
+    // Assignment-based scoping: only show projects assigned to this user
+    if (filters.assigned_user_id) {
+      conditions.push(`(
+        project_manager_id = $${paramIndex} OR
+        id IN (SELECT project_id FROM project_team_members WHERE user_id = $${paramIndex} AND is_active = true)
+      )`);
+      params.push(filters.assigned_user_id);
+      paramIndex++;
+    }
+    
     // Search
     if (filters.search) {
       conditions.push(`(
@@ -659,16 +672,23 @@ class ProjectService {
     };
   }
 
-  async getSummaries(organizationId: string): Promise<ProjectSummary[]> {
-    const result = await pool.query(
-      `SELECT * FROM v_project_summary WHERE organization_id = $1 ORDER BY created_at DESC`,
-      [organizationId]
-    );
+  async getSummaries(organizationId: string, assignedUserId?: string): Promise<ProjectSummary[]> {
+    let query = `SELECT * FROM v_project_summary WHERE organization_id = $1`;
+    const params: any[] = [organizationId];
+
+    if (assignedUserId) {
+      query += ` AND (id IN (SELECT id FROM development_projects WHERE project_manager_id = $2) OR id IN (SELECT project_id FROM project_team_members WHERE user_id = $2 AND is_active = true))`;
+      params.push(assignedUserId);
+    }
+
+    query += ` ORDER BY created_at DESC`;
+    const result = await pool.query(query, params);
     
     return result.rows.map(row => ({
       id: row.id,
       project_number: row.project_number,
       name: row.name,
+      project_name: row.name,
       project_type: row.project_type,
       status: row.status,
       city: row.city,
@@ -857,7 +877,14 @@ class ProjectService {
   // STATS
   // --------------------------------------------------------------------------
 
-  async getStats(organizationId: string): Promise<ProjectStats> {
+  async getStats(organizationId: string, assignedUserId?: string): Promise<ProjectStats> {
+    // Build assignment filter
+    const assignmentClause = assignedUserId
+      ? ` AND (project_manager_id = $2 OR id IN (SELECT project_id FROM project_team_members WHERE user_id = $2 AND is_active = true))`
+      : '';
+    const params: any[] = [organizationId];
+    if (assignedUserId) params.push(assignedUserId);
+
     // Get project counts by status and type
     const projectResult = await pool.query(
       `SELECT 
@@ -878,16 +905,48 @@ class ProjectService {
         COUNT(*) FILTER (WHERE project_type = 'industrial') as type_industrial,
         COUNT(*) FILTER (WHERE project_type = 'land_development') as type_land_development,
         COUNT(*) FILTER (WHERE project_type = 'renovation') as type_renovation,
-        COALESCE(SUM(total_budget), 0) as total_budget,
-        COALESCE(SUM(total_spent), 0) as total_spent,
-        COALESCE(SUM(actual_revenue), 0) as total_revenue,
         COALESCE(AVG(overall_progress), 0) as avg_progress
        FROM development_projects 
-       WHERE organization_id = $1 AND deleted_at IS NULL`,
-      [organizationId]
+       WHERE organization_id = $1 AND deleted_at IS NULL${assignmentClause}`,
+      params
     );
+
+    // Get per-project financial data with currency for FX normalization
+    const finResult = await pool.query(
+      `SELECT COALESCE(display_currency, 'GHS') as display_currency,
+              COALESCE(total_budget, 0) as total_budget,
+              COALESCE(total_spent, 0) as total_spent,
+              COALESCE(actual_revenue, 0) as actual_revenue
+       FROM development_projects
+       WHERE organization_id = $1 AND deleted_at IS NULL${assignmentClause}`,
+      params
+    );
+
+    // Fetch live FX rates for normalization to GHS
+    let fxRates: Record<string, number> = { GHS: 1 };
+    try {
+      const ratesData = await projectCostCurrencyService.getAllExchangeRates();
+      // ratesData.rates is currency→GHS (e.g. USD→GHS = 16)
+      for (const [cur, rate] of Object.entries(ratesData.rates)) {
+        fxRates[cur] = rate as number;
+      }
+    } catch { /* fallback: treat everything as GHS */ }
+
+    let totalBudgetGHS = 0;
+    let totalSpentGHS = 0;
+    let totalRevenueGHS = 0;
+    for (const row of finResult.rows) {
+      const cur = row.display_currency || 'GHS';
+      const rate = fxRates[cur] || 1;
+      totalBudgetGHS += parseFloat(row.total_budget) * rate;
+      totalSpentGHS += parseFloat(row.total_spent) * rate;
+      totalRevenueGHS += parseFloat(row.actual_revenue) * rate;
+    }
     
     // Get unit counts
+    const unitAssignmentClause = assignedUserId
+      ? ` AND (p.project_manager_id = $2 OR p.id IN (SELECT project_id FROM project_team_members WHERE user_id = $2 AND is_active = true))`
+      : '';
     const unitResult = await pool.query(
       `SELECT 
         COUNT(*) as total_units,
@@ -895,12 +954,15 @@ class ProjectService {
         COUNT(*) FILTER (WHERE u.status = 'available') as units_available
        FROM project_units u
        JOIN development_projects p ON p.id = u.project_id
-       WHERE p.organization_id = $1 AND p.deleted_at IS NULL`,
-      [organizationId]
+       WHERE p.organization_id = $1 AND p.deleted_at IS NULL${unitAssignmentClause}`,
+      params
     );
     
     const p = projectResult.rows[0];
     const u = unitResult.rows[0];
+
+    // Include FX rate info for frontend display
+    const usdRate = fxRates['USD'] || null;
     
     return {
       total_projects: parseInt(p.total, 10),
@@ -927,11 +989,13 @@ class ProjectService {
       total_units: parseInt(u.total_units, 10),
       units_sold: parseInt(u.units_sold, 10),
       units_available: parseInt(u.units_available, 10),
-      total_budget: parseFloat(p.total_budget),
-      total_spent: parseFloat(p.total_spent),
-      total_revenue: parseFloat(p.total_revenue),
-      avg_progress: parseFloat(p.avg_progress)
-    };
+      total_budget: Math.round(totalBudgetGHS * 100) / 100,
+      total_spent: Math.round(totalSpentGHS * 100) / 100,
+      total_revenue: Math.round(totalRevenueGHS * 100) / 100,
+      avg_progress: parseFloat(p.avg_progress),
+      display_currency: 'GHS',
+      fx_rates: usdRate ? { USD: usdRate } : undefined,
+    } as any;
   }
 
   // --------------------------------------------------------------------------
@@ -988,10 +1052,11 @@ class ProjectService {
       organization_id: row.organization_id,
       project_number: row.project_number,
       name: row.name,
+      project_name: row.name,
       description: row.description,
       project_type: row.project_type,
       status: row.status,
-      
+
       address_line1: row.address_line1,
       address_line2: row.address_line2,
       city: row.city,

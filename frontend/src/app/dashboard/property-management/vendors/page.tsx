@@ -279,10 +279,10 @@ export default function VendorsPage() {
                     >
                         <Filter className="mr-2 h-3 w-3" />
                         Filter
-                        {hasActiveFilters && <Badge className="ml-2 bg-amber-600 text-black text-[9px] h-4 px-1">Active</Badge>}
+                        {hasActiveFilters && <Badge className="ml-2 bg-amber-600 text-white text-[9px] h-4 px-1">Active</Badge>}
                     </Button>
                     <Button 
-                        className="bg-amber-600 hover:bg-amber-500 text-black font-bold font-mono text-xs uppercase"
+                        className="bg-amber-600 hover:bg-amber-500 text-white font-bold font-mono text-xs uppercase"
                         onClick={() => setShowAddDialog(true)}
                     >
                         <Plus className="mr-2 h-3 w-3" />
@@ -593,7 +593,7 @@ export default function VendorsPage() {
                                         variant="outline"
                                         className={`cursor-pointer text-[10px] font-mono transition-colors ${
                                             newVendor.serviceCategories.includes(cat)
-                                                ? 'bg-amber-600 border-amber-600 text-black'
+                                                ? 'bg-amber-600 border-amber-600 text-white'
                                                 : 'border-zinc-700 text-zinc-400 hover:border-amber-600'
                                         }`}
                                         onClick={() => {
@@ -629,7 +629,7 @@ export default function VendorsPage() {
                             Cancel
                         </Button>
                         <Button
-                            className="bg-amber-600 hover:bg-amber-500 text-black font-bold font-mono text-xs"
+                            className="bg-amber-600 hover:bg-amber-500 text-white font-bold font-mono text-xs"
                             onClick={handleAddVendor}
                             disabled={isSubmitting}
                         >
@@ -751,7 +751,7 @@ export default function VendorsPage() {
                                 Clear Filters
                             </Button>
                             <Button
-                                className="flex-1 bg-amber-600 hover:bg-amber-500 text-black font-bold font-mono text-xs"
+                                className="flex-1 bg-amber-600 hover:bg-amber-500 text-white font-bold font-mono text-xs"
                                 onClick={() => setShowFilterSheet(false)}
                             >
                                 Apply Filters

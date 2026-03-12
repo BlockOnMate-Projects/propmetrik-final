@@ -84,6 +84,7 @@ async function buildConfig(): Promise<RbacConfigPayload> {
     valuations: ['valuation', 'report', 'valuation_org', 'valuation_invoice', 'valuation_client'],
     deals: ['crm_contact', 'crm_deal', 'crm_pipeline', 'crm_activity', 'crm_lead'],
     projects: ['project', 'milestone', 'governance', 'workflow', 'workspace'],
+    calendar: ['project', 'milestone', 'valuation'],   // Calendar: anyone who can read projects or milestones
     analytics: ['analytics', 'market_intelligence', 'portfolio'],
     'property-management': ['pm_property', 'pm_tenancy', 'pm_payment', 'pm_work_order', 'pm_document'],
     'e-sign': ['esign'],
@@ -131,7 +132,7 @@ async function buildConfig(): Promise<RbacConfigPayload> {
     projects:            { minTier: 'professional', label: 'Project Management',     description: 'Construction and development project tracking' },
     analytics:           { minTier: 'professional', label: 'Market Analytics',       description: 'Advanced market intelligence and trend analysis' },
     'property-management': { minTier: 'professional', label: 'Property Management', description: 'Tenant, lease, and facility management' },
-    'e-sign':            { minTier: 'professional', label: 'E-Sign',                description: 'Digital document signing and verification' },
+    'e-sign':            { minTier: 'starter',      label: 'E-Sign',                description: 'Digital document signing and verification (shared service)' },
     admin:               { minTier: 'starter',      label: 'Admin Panel',            description: 'Platform administration and settings' },
     'analytics-forecasting':   { minTier: 'enterprise',    label: 'AI Forecasting',         description: 'ML-powered property price predictions' },
     'analytics-risk':          { minTier: 'professional',  label: 'Risk Assessment',        description: 'Property and portfolio risk analysis' },

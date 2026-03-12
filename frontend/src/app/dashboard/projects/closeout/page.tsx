@@ -72,7 +72,7 @@ export default function CloseoutPage() {
         </div>
         <Dialog open={showWarranty} onOpenChange={setShowWarranty}>
           <DialogTrigger asChild>
-            <Button size="sm" className="bg-amber-500 hover:bg-amber-600 text-black text-xs">+ WARRANTY</Button>
+            <Button size="sm" className="bg-amber-500 hover:bg-amber-600 text-white text-xs">+ WARRANTY</Button>
           </DialogTrigger>
           <DialogContent className="bg-zinc-900 border-zinc-800 max-w-lg">
             <DialogHeader><DialogTitle className="text-white">Add Warranty</DialogTitle></DialogHeader>
@@ -88,7 +88,7 @@ export default function CloseoutPage() {
                 <div><Label className="text-[10px] font-mono text-zinc-500">END DATE</Label><Input type="date" className="bg-zinc-800 border-zinc-700 text-white" value={form.end_date || ''} onChange={e => setForm({ ...form, end_date: e.target.value })} /></div>
               </div>
               <div><Label className="text-[10px] font-mono text-zinc-500">TERMS</Label><Textarea className="bg-zinc-800 border-zinc-700 text-white" rows={2} value={form.terms || ''} onChange={e => setForm({ ...form, terms: e.target.value })} /></div>
-              <Button className="w-full bg-amber-500 hover:bg-amber-600 text-black" onClick={() => createWarranty.mutate(form)}>Add Warranty</Button>
+              <Button className="w-full bg-amber-500 hover:bg-amber-600 text-white" onClick={() => createWarranty.mutate(form)}>Add Warranty</Button>
             </div>
           </DialogContent>
         </Dialog>

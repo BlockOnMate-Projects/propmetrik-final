@@ -415,7 +415,7 @@ export function RentalMarketPanel({
             <button
               onClick={searchRentalComparables}
               disabled={loading}
-              className="px-3 py-2 bg-amber-500 text-black font-mono text-xs hover:bg-amber-400 disabled:opacity-50 flex items-center gap-2"
+              className="px-3 py-2 bg-amber-500 text-white font-mono text-xs hover:bg-amber-400 disabled:opacity-50 flex items-center gap-2"
             >
               {loading ? (
                 <Loader2 className="w-3 h-3 animate-spin" />
@@ -782,7 +782,7 @@ export function RentalMarketPanel({
                   <button
                     onClick={handleUseRent}
                     disabled={getSuggestedRent() === 0}
-                    className="px-4 py-2 bg-amber-500 text-black font-mono text-xs font-bold hover:bg-amber-400 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                    className="px-4 py-2 bg-amber-500 text-white font-mono text-xs font-bold hover:bg-amber-400 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
                   >
                     <CheckCircle2 className="w-4 h-4" />
                     USE THIS RENT

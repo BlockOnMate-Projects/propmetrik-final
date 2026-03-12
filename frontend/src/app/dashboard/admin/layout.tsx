@@ -2,6 +2,10 @@
 
 import { AdminTopNav } from '@/components/layout/AdminTopNav'
 import { useState, useEffect } from 'react'
+import { useSession } from 'next-auth/react'
+import { useRouter } from 'next/navigation'
+
+const ADMIN_ROLES = ['super_admin', 'admin', 'firm_principal']
 
 export default function AdminLayout({
   children,
@@ -9,7 +13,23 @@ export default function AdminLayout({
   children: React.ReactNode
 }) {
   const [mounted, setMounted] = useState(false)
+  const { data: session, status } = useSession()
+  const router = useRouter()
+
   useEffect(() => { setMounted(true) }, [])
+
+  useEffect(() => {
+    if (status === 'loading') return
+    const role = (session?.user as any)?.role
+    if (!role || !ADMIN_ROLES.includes(role)) {
+      router.replace('/dashboard')
+    }
+  }, [session, status, router])
+
+  if (status === 'loading') return null
+
+  const role = (session?.user as any)?.role
+  if (!role || !ADMIN_ROLES.includes(role)) return null
 
   return (
     <div className="min-h-screen bg-black">

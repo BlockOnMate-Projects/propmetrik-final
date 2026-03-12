@@ -131,10 +131,10 @@ function CustomTooltip({ task, fontSize, fontFamily }: {
       <p className="font-mono text-xs font-medium text-zinc-100 mb-1">{task.name}</p>
       {task.type !== 'milestone' && (
         <>
-          <p className="font-mono text-[10px] text-zinc-400">
+          <p className="font-mono text-[10px] text-zinc-200">
             {format(task.start, 'MMM d')} – {format(task.end, 'MMM d, yyyy')}
           </p>
-          <p className="font-mono text-[10px] text-zinc-400">
+          <p className="font-mono text-[10px] text-zinc-200">
             Duration: {differenceInDays(task.end, task.start) + 1} days
           </p>
           <div className="flex items-center gap-2 mt-1">
@@ -144,10 +144,10 @@ function CustomTooltip({ task, fontSize, fontFamily }: {
                 style={{ width: `${task.progress}%` }}
               />
             </div>
-            <span className="font-mono text-[10px] text-zinc-400">{task.progress}%</span>
+            <span className="font-mono text-[10px] text-zinc-200">{task.progress}%</span>
           </div>
           {phase?.isCriticalPath && (
-            <Badge className="mt-1 bg-red-500/20 text-red-400 text-[9px] border-0">
+            <Badge variant="outline" className="mt-1 bg-red-500/20 text-red-400 text-[9px] border-0">
               Critical Path
             </Badge>
           )}
@@ -159,12 +159,12 @@ function CustomTooltip({ task, fontSize, fontFamily }: {
         </>
       )}
       {task.type === 'milestone' && (
-        <p className="font-mono text-[10px] text-zinc-400">
+        <p className="font-mono text-[10px] text-zinc-200">
           {format(task.start, 'MMM d, yyyy')}
         </p>
       )}
       {milestone?.isGhanaSpecific && (
-        <Badge className="mt-1 bg-amber-500/20 text-amber-400 text-[9px] border-0">
+        <Badge variant="outline" className="mt-1 bg-amber-500/20 text-amber-400 text-[9px] border-0">
           Ghana Specific
         </Badge>
       )}
@@ -385,7 +385,7 @@ export function GanttChart({
             </Badge>
           )}
           {data.criticalPath.length > 0 && (
-            <Badge variant="secondary" className="bg-red-900/30 text-red-400 text-[10px]">
+            <Badge variant="outline" className="bg-red-900/30 text-red-400 text-[10px] border-0">
               Critical Path: {data.criticalPath.length} phases
             </Badge>
           )}
@@ -395,7 +395,7 @@ export function GanttChart({
           <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleZoom('out')}>
             <ZoomOut className="h-3.5 w-3.5" />
           </Button>
-          <span className="font-mono text-[10px] text-zinc-400 w-12 text-center capitalize">
+          <span className="font-mono text-[10px] text-zinc-200 w-12 text-center capitalize">
             {zoomLevel}
           </span>
           <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleZoom('in')}>
@@ -445,44 +445,41 @@ export function GanttChart({
       <div className="flex items-center gap-4 px-4 py-2 border-t border-zinc-800 bg-zinc-900">
         <div className="flex items-center gap-1.5">
           <div className="w-3 h-3 bg-red-500 rounded" />
-          <span className="font-mono text-[10px] text-zinc-400">Critical Path</span>
+          <span className="font-mono text-[10px] text-zinc-200">Critical Path</span>
         </div>
         {showMilestones && (
           <>
             <div className="flex items-center gap-1.5">
               <div className="w-3 h-3 bg-amber-500 rotate-45" />
-              <span className="font-mono text-[10px] text-zinc-400">Ghana Milestone</span>
+              <span className="font-mono text-[10px] text-zinc-200">Ghana Milestone</span>
             </div>
             <div className="flex items-center gap-1.5">
               <div className="w-3 h-3 bg-blue-500 rotate-45" />
-              <span className="font-mono text-[10px] text-zinc-400">Milestone</span>
+              <span className="font-mono text-[10px] text-zinc-200">Milestone</span>
             </div>
           </>
         )}
         <div className="flex items-center gap-1.5">
           <div className="w-0.5 h-3 bg-amber-500" />
-          <span className="font-mono text-[10px] text-zinc-400">Today</span>
+          <span className="font-mono text-[10px] text-zinc-200">Today</span>
         </div>
         {showBaseline && (
           <div className="flex items-center gap-1.5">
             <div className="w-3 h-1 bg-zinc-500 rounded" />
-            <span className="font-mono text-[10px] text-zinc-400">Baseline</span>
+            <span className="font-mono text-[10px] text-zinc-200">Baseline</span>
           </div>
         )}
       </div>
 
-      {/* Dark theme overrides for gantt-task-react */}
+      {/* Light chart area — keep text BLACK for readability */}
       <style jsx global>{`
-        .gantt-dark-theme ._9w8d5 { background: #18181b; }
-        .gantt-dark-theme ._1nBOt { stroke: #27272a; }
-        .gantt-dark-theme ._2dZTy { fill: #a1a1aa; font-size: 10px; }
-        .gantt-dark-theme ._3ZbQT { fill: #71717a; font-size: 10px; }
-        .gantt-dark-theme ._35nLX { fill: #27272a20; }
-        .gantt-dark-theme ._RuwuK { fill: #f59e0b20; }
-        .gantt-dark-theme rect[fill="#fff"] { fill: #18181b; }
-        .gantt-dark-theme text { fill: #a1a1aa; }
-        .gantt-dark-theme ._WuQ0f { fill: #27272a; }
-        .gantt-dark-theme line { stroke: #27272a; }
+        .gantt-dark-theme svg text {
+          fill: #1a1a1a !important;
+          font-weight: 500 !important;
+        }
+        .gantt-dark-theme svg line {
+          stroke: #e4e4e7 !important;
+        }
       `}</style>
     </div>
   )

@@ -160,6 +160,9 @@ export interface ProjectTeamMember {
   rateCurrency: string;
   
   avatarUrl: string | null;
+  invitedBy: string | null;
+  invitedAt: Date | null;
+  acceptedAt: Date | null;
   
   createdAt: Date;
   updatedAt: Date;
@@ -480,6 +483,18 @@ class TeamService {
     const client = await pool.connect();
     try {
       await client.query('BEGIN');
+
+      // Auto-link to users table by email when user_id not explicitly provided
+      let resolvedUserId = input.userId || null;
+      if (!resolvedUserId && input.email) {
+        const userRow = await client.query(
+          `SELECT id FROM users WHERE email = $1 LIMIT 1`,
+          [input.email]
+        );
+        if (userRow.rows.length > 0) {
+          resolvedUserId = userRow.rows[0].id;
+        }
+      }
       
       const id = uuidv4();
       const result = await client.query(
@@ -504,7 +519,7 @@ class TeamService {
           id,
           input.projectId,
           input.organizationId,
-          input.userId || null,
+          resolvedUserId,
           input.vendorId || null,
           input.fullName,
           input.email || null,
@@ -537,6 +552,14 @@ class TeamService {
           input.invitedBy || null,
         ]
       );
+
+      // Sync project_manager_id on development_projects when a PM is assigned
+      if (input.role === 'project_manager' && resolvedUserId) {
+        await client.query(
+          `UPDATE development_projects SET project_manager_id = $1 WHERE id = $2`,
+          [resolvedUserId, input.projectId]
+        );
+      }
       
       await client.query('COMMIT');
       
@@ -702,6 +725,21 @@ class TeamService {
       if (!result.rows[0]) {
         throw new Error(`Team member not found: ${memberId}`);
       }
+
+      // Sync project_manager_id when role changes to/from project_manager
+      const row = result.rows[0];
+      if (role === 'project_manager' && row.user_id) {
+        await pool.query(
+          `UPDATE development_projects SET project_manager_id = $1 WHERE id = $2`,
+          [row.user_id, row.project_id]
+        );
+      } else if (role !== 'project_manager' && row.user_id) {
+        // Changed away from PM — clear if it was this user
+        await pool.query(
+          `UPDATE development_projects SET project_manager_id = NULL WHERE id = $1 AND project_manager_id = $2`,
+          [row.project_id, row.user_id]
+        );
+      }
       
       logger.info('Team member role updated', { memberId, role });
       return this.mapTeamMember(result.rows[0]);
@@ -776,7 +814,7 @@ class TeamService {
     try {
       // Check current status
       const check = await pool.query(
-        `SELECT is_active, status FROM project_team_members WHERE id = $1`,
+        `SELECT is_active, status, role, user_id, project_id FROM project_team_members WHERE id = $1`,
         [memberId]
       );
 
@@ -785,7 +823,15 @@ class TeamService {
         return;
       }
 
-      const { is_active, status } = check.rows[0];
+      const { is_active, status, role, user_id, project_id } = check.rows[0];
+
+      // Clear project_manager_id when removing a PM team member
+      if (role === 'project_manager' && user_id) {
+        await pool.query(
+          `UPDATE development_projects SET project_manager_id = NULL WHERE id = $1 AND project_manager_id = $2`,
+          [project_id, user_id]
+        );
+      }
 
       if (!is_active || status === 'terminated') {
         // Already inactive — hard delete
@@ -1314,6 +1360,9 @@ class TeamService {
       monthlyRate: row.monthly_rate ? parseFloat(row.monthly_rate) : null,
       rateCurrency: row.rate_currency,
       avatarUrl: row.avatar_url,
+      invitedBy: row.invited_by,
+      invitedAt: row.invited_at,
+      acceptedAt: row.accepted_at,
       createdAt: row.created_at,
       updatedAt: row.updated_at,
     };

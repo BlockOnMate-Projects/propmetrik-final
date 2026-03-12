@@ -464,7 +464,7 @@ export function FrameworkSelector({
                   onSelect(previewFramework.id)
                   setShowPreview(false)
                 }}
-                className="font-mono text-xs bg-amber-600 hover:bg-amber-700 text-black"
+                className="font-mono text-xs bg-amber-600 hover:bg-amber-700 text-white"
               >
                 <CheckCircle2 className="h-3 w-3 mr-2" />
                 Select This Framework

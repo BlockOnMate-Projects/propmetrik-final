@@ -219,7 +219,7 @@ export default function MemberProfilePage() {
               </p>
             </div>
             <Button onClick={handleResendInvite} disabled={resendingInvite}
-              className="bg-amber-600 hover:bg-amber-500 text-black font-bold font-mono text-[10px] uppercase">
+              className="bg-amber-600 hover:bg-amber-500 text-white font-bold font-mono text-[10px] uppercase">
               {resendingInvite ? <><Loader2 className="mr-2 h-3 w-3 animate-spin" /> Resending...</> : 'Resend Invite'}
             </Button>
           </div>

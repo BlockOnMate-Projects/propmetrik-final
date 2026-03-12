@@ -99,7 +99,7 @@ export default function PortfolioBrochurePage() {
     }
 
     return (
-        <div className="min-h-screen bg-zinc-950 text-zinc-300 font-sans print:bg-white print:text-black">
+        <div className="min-h-screen bg-zinc-950 text-zinc-300 font-sans print:bg-white print:text-white">
             {/* Action Bar - Hidden on Print */}
             <div className="sticky top-0 z-50 bg-black/90 backdrop-blur-md border-b border-zinc-800 p-4 print:hidden">
                 <div className="max-w-6xl mx-auto space-y-4">
@@ -120,7 +120,7 @@ export default function PortfolioBrochurePage() {
                             </Button>
                             <Button
                                 onClick={handlePrint}
-                                className="bg-amber-600 hover:bg-amber-500 text-black font-bold font-mono text-xs uppercase"
+                                className="bg-amber-600 hover:bg-amber-500 text-white font-bold font-mono text-xs uppercase"
                             >
                                 <Printer className="mr-2 h-4 w-4" />
                                 Print / Export PDF
@@ -158,7 +158,7 @@ export default function PortfolioBrochurePage() {
                         <div className="flex justify-between items-start">
                             <div className="flex items-center gap-3">
                                 <div className="w-12 h-12 bg-amber-500 rounded-lg flex items-center justify-center">
-                                    <Building2 className="h-7 w-7 text-black" />
+                                    <Building2 className="h-7 w-7 text-white" />
                                 </div>
                                 <div>
                                     <h2 className="text-xl font-black text-white tracking-tight">PROPMETRIK</h2>
@@ -226,7 +226,7 @@ export default function PortfolioBrochurePage() {
                     <div className="flex justify-between items-center border-b-2 border-zinc-900 pb-4 mb-10">
                         <div className="flex items-center gap-2">
                             <div className="w-8 h-8 bg-amber-500 rounded flex items-center justify-center">
-                                <Target className="h-4 w-4 text-black" />
+                                <Target className="h-4 w-4 text-white" />
                             </div>
                             <h2 className="text-lg font-black uppercase tracking-tight">Portfolio Overview</h2>
                         </div>
@@ -341,7 +341,7 @@ export default function PortfolioBrochurePage() {
                     <div className="flex justify-between items-center border-b-2 border-zinc-900 pb-4 mb-10">
                         <div className="flex items-center gap-2">
                             <div className="w-8 h-8 bg-amber-500 rounded flex items-center justify-center">
-                                <MapPin className="h-4 w-4 text-black" />
+                                <MapPin className="h-4 w-4 text-white" />
                             </div>
                             <h2 className="text-lg font-black uppercase tracking-tight">Geographic Distribution</h2>
                         </div>
@@ -467,7 +467,7 @@ export default function PortfolioBrochurePage() {
                     <div className="flex justify-between items-center border-b-2 border-zinc-900 pb-4 mb-10">
                         <div className="flex items-center gap-2">
                             <div className="w-8 h-8 bg-amber-500 rounded flex items-center justify-center">
-                                <Home className="h-4 w-4 text-black" />
+                                <Home className="h-4 w-4 text-white" />
                             </div>
                             <h2 className="text-lg font-black uppercase tracking-tight">Asset Schedule</h2>
                         </div>
@@ -571,7 +571,7 @@ export default function PortfolioBrochurePage() {
                     <div className="flex justify-between items-center border-b-2 border-zinc-900 pb-4 mb-10">
                         <div className="flex items-center gap-2">
                             <div className="w-8 h-8 bg-amber-500 rounded flex items-center justify-center">
-                                <Shield className="h-4 w-4 text-black" />
+                                <Shield className="h-4 w-4 text-white" />
                             </div>
                             <h2 className="text-lg font-black uppercase tracking-tight">Notes & Information</h2>
                         </div>

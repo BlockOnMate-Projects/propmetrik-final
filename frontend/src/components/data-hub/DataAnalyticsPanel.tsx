@@ -57,7 +57,7 @@ export function DataAnalyticsPanel({
                                     key={range.value}
                                     onClick={() => onTimeRangeChange(range.value)}
                                     className={`px-2 py-1 font-mono text-[10px] transition-colors ${timeRange === range.value
-                                            ? 'bg-amber-500 text-black'
+                                            ? 'bg-amber-500 text-white'
                                             : 'bg-zinc-800 text-zinc-400 hover:text-white'
                                         }`}
                                 >
@@ -72,7 +72,7 @@ export function DataAnalyticsPanel({
                         <button
                             onClick={() => setShowFilters(!showFilters)}
                             className={`p-1.5 transition-colors ${showFilters
-                                    ? 'bg-amber-500 text-black'
+                                    ? 'bg-amber-500 text-white'
                                     : 'bg-zinc-800 text-zinc-400 hover:text-white'
                                 }`}
                         >

@@ -1,13 +1,14 @@
 'use client'
 
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import { authedFetch } from '@/lib/authed-fetch'
 import { useToast } from '@/hooks/use-toast'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { useSearchParams } from 'next/navigation'
+import { createEnvelope } from '@/lib/esign-api'
 import {
   Send, Plus, FileText, CheckCircle2, Clock, AlertTriangle,
-  Search, Filter, MoreVertical, Mail, Eye, Loader2, X, Trash2,
+  Search, Filter, MoreVertical, Mail, Eye, Loader2, X, Trash2, Upload, Paperclip,
 } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -22,6 +23,8 @@ import {
 } from '@/components/ui/dropdown-menu'
 
 const API = process.env.NEXT_PUBLIC_API_URL || ''
+
+interface Project { id: string; name: string; }
 
 const STATUS_BADGE: Record<string, { label: string; cls: string }> = {
   draft: { label: 'Draft', cls: 'border-zinc-600 text-zinc-400' },
@@ -39,18 +42,33 @@ const PURPOSE_LABELS: Record<string, string> = {
   for_construction: 'For Construction',
   for_record: 'For Record',
   as_requested: 'As Requested',
+  resubmitted_for_approval: 'Resubmitted for Approval',
 }
 
 export default function TransmittalsPage() {
   const { toast } = useToast()
   const queryClient = useQueryClient()
-  const searchParams = useSearchParams()
-  const projectId = searchParams.get('projectId') || ''
+  const router = useRouter()
 
+  const [projects, setProjects] = useState<Project[]>([])
+  const [projectId, setProjectId] = useState('')
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState('all')
   const [showCreate, setShowCreate] = useState(false)
   const [selectedId, setSelectedId] = useState<string | null>(null)
+  const [esigning, setEsigning] = useState(false)
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await authedFetch(`${API}/projects?limit=100`)
+        const json = await res.json()
+        const list = json.data?.projects || json.data || json.projects || []
+        setProjects(list)
+        if (list.length > 0 && !projectId) setProjectId(list[0].id)
+      } catch (e) { console.error('Failed to load projects', e) }
+    })()
+  }, [])
 
   // ── Queries ───────────────────────────────────────────────────────────────
 
@@ -62,7 +80,7 @@ export default function TransmittalsPage() {
       if (search) params.set('search', search)
       if (statusFilter && statusFilter !== 'all') params.set('status', statusFilter)
       params.set('limit', '50')
-      const res = await authedFetch(`${API}/api/v1/transmittals?${params}`)
+      const res = await authedFetch(`${API}/transmittals?${params}`)
       if (!res.ok) throw new Error('Failed to load transmittals')
       return res.json()
     },
@@ -72,7 +90,7 @@ export default function TransmittalsPage() {
   const { data: stats } = useQuery({
     queryKey: ['transmittal-stats', projectId],
     queryFn: async () => {
-      const res = await authedFetch(`${API}/api/v1/transmittals/stats?project_id=${projectId}`)
+      const res = await authedFetch(`${API}/transmittals/stats?project_id=${projectId}`)
       if (!res.ok) return null
       return res.json().then(r => r.data)
     },
@@ -82,28 +100,64 @@ export default function TransmittalsPage() {
   const { data: detail } = useQuery({
     queryKey: ['transmittal', selectedId],
     queryFn: async () => {
-      const res = await authedFetch(`${API}/api/v1/transmittals/${selectedId}`)
-      if (!res.ok) throw new Error('Failed to load transmittal')
+      const res = await authedFetch(`${API}/transmittals/${selectedId}`)
+      if (!res.ok) {
+        setSelectedId(null)
+        return null
+      }
       return res.json().then(r => r.data)
     },
     enabled: !!selectedId,
+    retry: false,
   })
 
   // ── Mutations ─────────────────────────────────────────────────────────────
 
   const issueMutation = useMutation({
     mutationFn: (id: string) =>
-      authedFetch(`${API}/api/v1/transmittals/${id}/issue`, { method: 'POST' }).then(r => r.json()),
+      authedFetch(`${API}/transmittals/${id}/issue`, { method: 'POST' }).then(r => r.json()),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['transmittals'] })
       queryClient.invalidateQueries({ queryKey: ['transmittal-stats'] })
-      toast({ title: 'Transmittal issued' })
+      queryClient.invalidateQueries({ queryKey: ['transmittal', selectedId] })
+      toast({ title: 'Transmittal issued — emails sent to recipients' })
     },
   })
 
+  const handleIssueWithESign = async (transmittal: any) => {
+    setEsigning(true)
+    try {
+      // Issue the transmittal first
+      await authedFetch(`${API}/transmittals/${transmittal.id}/issue`, { method: 'POST' })
+      queryClient.invalidateQueries({ queryKey: ['transmittals'] })
+      queryClient.invalidateQueries({ queryKey: ['transmittal-stats'] })
+      queryClient.invalidateQueries({ queryKey: ['transmittal', transmittal.id] })
+
+      // Then create e-sign envelope for recipient
+      if (transmittal.to_email) {
+        await createEnvelope({
+          title: `Transmittal ${transmittal.transmittal_number}: ${transmittal.subject}`,
+          source_type: 'transmittal',
+          source_id: transmittal.id,
+          signers: [{ email: transmittal.to_email, name: transmittal.to_contact || transmittal.to_email }],
+          message: `Please review and acknowledge Transmittal ${transmittal.transmittal_number}.`,
+        })
+        toast({ title: 'Transmittal issued & e-signature request sent' })
+        router.push('/dashboard/e-sign')
+      } else {
+        toast({ title: 'Transmittal issued — emails sent to recipients' })
+      }
+    } catch (error) {
+      console.error('Issue + E-Sign failed:', error)
+      toast({ title: 'Failed to issue transmittal', variant: 'destructive' })
+    } finally {
+      setEsigning(false)
+    }
+  }
+
   const closeMutation = useMutation({
     mutationFn: (id: string) =>
-      authedFetch(`${API}/api/v1/transmittals/${id}/close`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' }).then(r => r.json()),
+      authedFetch(`${API}/transmittals/${id}/close`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' }).then(r => r.json()),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['transmittals'] })
       queryClient.invalidateQueries({ queryKey: ['transmittal-stats'] })
@@ -113,7 +167,7 @@ export default function TransmittalsPage() {
 
   const voidMutation = useMutation({
     mutationFn: (id: string) =>
-      authedFetch(`${API}/api/v1/transmittals/${id}/void`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' }).then(r => r.json()),
+      authedFetch(`${API}/transmittals/${id}/void`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' }).then(r => r.json()),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['transmittals'] })
       toast({ title: 'Transmittal voided' })
@@ -121,12 +175,14 @@ export default function TransmittalsPage() {
   })
 
   const deleteMutation = useMutation({
-    mutationFn: (id: string) =>
-      authedFetch(`${API}/api/v1/transmittals/${id}`, { method: 'DELETE' }).then(r => r.json()),
+    mutationFn: async (id: string) => {
+      if (selectedId === id) setSelectedId(null)
+      const r = await authedFetch(`${API}/transmittals/${id}`, { method: 'DELETE' })
+      return r.json()
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['transmittals'] })
       queryClient.invalidateQueries({ queryKey: ['transmittal-stats'] })
-      setSelectedId(null)
       toast({ title: 'Transmittal deleted' })
     },
   })
@@ -142,8 +198,8 @@ export default function TransmittalsPage() {
 
   if (!projectId) {
     return (
-      <div className="flex items-center justify-center py-20 text-zinc-500 font-mono text-sm">
-        Select a project to manage transmittals
+      <div className="flex items-center justify-center py-20">
+        <div className="animate-spin h-6 w-6 border-2 border-amber-500 border-t-transparent rounded-full" />
       </div>
     )
   }
@@ -156,21 +212,28 @@ export default function TransmittalsPage() {
           <h1 className="text-2xl font-mono font-bold text-white tracking-tight">TRANSMITTALS</h1>
           <p className="text-zinc-500 font-mono text-xs mt-1">Formal document distribution &amp; acknowledgement tracking</p>
         </div>
-        <Dialog open={showCreate} onOpenChange={setShowCreate}>
-          <DialogTrigger asChild>
-            <Button className="bg-amber-500 hover:bg-amber-600 text-black font-mono text-xs">
-              <Plus className="h-3.5 w-3.5 mr-1" />NEW TRANSMITTAL
-            </Button>
-          </DialogTrigger>
+        <div className="flex items-center gap-2">
+          <Select value={projectId} onValueChange={setProjectId}>
+            <SelectTrigger className="w-[200px] bg-zinc-900 border-zinc-800 text-sm text-white"><SelectValue placeholder="Select project" /></SelectTrigger>
+            <SelectContent>{projects.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}</SelectContent>
+          </Select>
+          <Dialog open={showCreate} onOpenChange={setShowCreate}>
+            <DialogTrigger asChild>
+              <Button className="bg-amber-500 hover:bg-amber-600 text-white font-mono text-xs">
+                <Plus className="h-3.5 w-3.5 mr-1" />NEW TRANSMITTAL
+              </Button>
+            </DialogTrigger>
           <CreateTransmittalDialog
             projectId={projectId}
-            onCreated={() => {
+            onCreated={(newId) => {
               setShowCreate(false)
               queryClient.invalidateQueries({ queryKey: ['transmittals'] })
               queryClient.invalidateQueries({ queryKey: ['transmittal-stats'] })
+              if (newId) setSelectedId(newId)
             }}
           />
         </Dialog>
+        </div>
       </div>
 
       {/* Stats */}
@@ -225,7 +288,7 @@ export default function TransmittalsPage() {
               <CardContent className="p-8 text-center">
                 <FileText className="h-8 w-8 text-zinc-600 mx-auto mb-3" />
                 <p className="text-sm text-zinc-500">No transmittals found</p>
-                <Button onClick={() => setShowCreate(true)} size="sm" className="mt-3 bg-amber-500 text-black text-xs">
+                <Button onClick={() => setShowCreate(true)} size="sm" className="mt-3 bg-amber-500 text-white text-xs">
                   Create First Transmittal
                 </Button>
               </CardContent>
@@ -261,21 +324,16 @@ export default function TransmittalsPage() {
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent className="bg-zinc-900 border-zinc-800">
-                          <DropdownMenuItem onClick={() => setSelectedId(t.id)}>
+                          <DropdownMenuItem onClick={() => setSelectedId(t.id)} className="text-zinc-200">
                             <Eye className="h-3 w-3 mr-2" />View Detail
                           </DropdownMenuItem>
                           {t.status === 'draft' && (
-                            <>
-                              <DropdownMenuItem onClick={() => issueMutation.mutate(t.id)}>
-                                <Send className="h-3 w-3 mr-2" />Issue
-                              </DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => deleteMutation.mutate(t.id)} className="text-red-400">
-                                <Trash2 className="h-3 w-3 mr-2" />Delete
-                              </DropdownMenuItem>
-                            </>
+                            <DropdownMenuItem onClick={() => issueMutation.mutate(t.id)} className="text-zinc-200">
+                              <Send className="h-3 w-3 mr-2" />Issue
+                            </DropdownMenuItem>
                           )}
                           {['issued', 'partially_acknowledged', 'fully_acknowledged'].includes(t.status) && (
-                            <DropdownMenuItem onClick={() => closeMutation.mutate(t.id)}>
+                            <DropdownMenuItem onClick={() => closeMutation.mutate(t.id)} className="text-zinc-200">
                               <CheckCircle2 className="h-3 w-3 mr-2" />Close
                             </DropdownMenuItem>
                           )}
@@ -284,6 +342,9 @@ export default function TransmittalsPage() {
                               <X className="h-3 w-3 mr-2" />Void
                             </DropdownMenuItem>
                           )}
+                          <DropdownMenuItem onClick={() => deleteMutation.mutate(t.id)} className="text-red-400">
+                            <Trash2 className="h-3 w-3 mr-2" />Delete
+                          </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
                     </div>
@@ -316,8 +377,55 @@ export default function TransmittalsPage() {
                   <div><p className="text-[10px] font-mono text-zinc-500">TO</p><p className="text-sm text-white">{detail.to_company || detail.to_contact || '—'}</p></div>
                   <div><p className="text-[10px] font-mono text-zinc-500">DUE DATE</p><p className="text-sm text-white">{detail.due_date ? new Date(detail.due_date).toLocaleDateString() : '—'}</p></div>
                 </div>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                  {detail.to_email && <div><p className="text-[10px] font-mono text-zinc-500">TO EMAIL</p><p className="text-sm text-white">{detail.to_email}</p></div>}
+                  <div><p className="text-[10px] font-mono text-zinc-500">RESPONSE</p><p className="text-sm text-white">{detail.response_required ? 'Required' : 'Not required'}</p></div>
+                  <div><p className="text-[10px] font-mono text-zinc-500">PRIORITY</p><Badge variant="outline" className={`text-[10px] ${detail.priority === 'urgent' ? 'border-red-600 text-red-400' : detail.priority === 'high' ? 'border-amber-600 text-amber-400' : 'border-zinc-600 text-zinc-400'}`}>{detail.priority?.toUpperCase()}</Badge></div>
+                </div>
+                {detail.cc_emails?.length > 0 && (
+                  <div>
+                    <p className="text-[10px] font-mono text-zinc-500 mb-1">CC RECIPIENTS</p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {detail.cc_emails.map((email: string, i: number) => (
+                        <Badge key={i} variant="outline" className="border-zinc-600 text-zinc-400 text-[10px]">{email}</Badge>
+                      ))}
+                    </div>
+                  </div>
+                )}
                 {detail.description && (
                   <div><p className="text-[10px] font-mono text-zinc-500">DESCRIPTION</p><p className="text-sm text-zinc-300">{detail.description}</p></div>
+                )}
+                {detail.status === 'draft' && (
+                  <div className="flex flex-col gap-2 pt-2 border-t border-zinc-800">
+                    <div className="flex items-center gap-2">
+                      <Button
+                        onClick={() => issueMutation.mutate(detail.id)}
+                        disabled={issueMutation.isPending || esigning}
+                        className="bg-amber-500 hover:bg-amber-600 text-white font-mono text-xs flex-1"
+                      >
+                        <Send className="h-3.5 w-3.5 mr-1" />
+                        {issueMutation.isPending ? 'ISSUING...' : 'ISSUE TRANSMITTAL'}
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => { if (confirm('Delete this draft transmittal?')) deleteMutation.mutate(detail.id) }}
+                        className="border-red-800 text-red-400 hover:bg-red-500/10 text-xs"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </Button>
+                    </div>
+                    {detail.to_email && (
+                      <Button
+                        onClick={() => handleIssueWithESign(detail)}
+                        disabled={issueMutation.isPending || esigning}
+                        className="w-full bg-blue-600 hover:bg-blue-700 text-white font-mono text-xs"
+                      >
+                        {esigning ? <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" /> : <CheckCircle2 className="h-3.5 w-3.5 mr-1" />}
+                        {esigning ? 'SENDING...' : 'E-SIGN & ISSUE'}
+                      </Button>
+                    )}
+                  </div>
                 )}
               </CardContent>
             </Card>
@@ -424,7 +532,7 @@ function CreateTransmittalDialog({
   onCreated,
 }: {
   projectId: string
-  onCreated: () => void
+  onCreated: (id?: string) => void
 }) {
   const { toast } = useToast()
   const [saving, setSaving] = useState(false)
@@ -439,15 +547,17 @@ function CreateTransmittalDialog({
     priority: 'normal',
     response_required: true,
   })
-  const [items, setItems] = useState<{ document_title: string; document_ref: string; revision: string }[]>([])
+  const [items, setItems] = useState<{ document_title: string; document_ref: string; revision: string; file?: File | null }[]>([])
   const [recipientEmail, setRecipientEmail] = useState('')
   const [recipients, setRecipients] = useState<{ email: string; name?: string }[]>([])
+  const [ccEmail, setCcEmail] = useState('')
+  const [ccEmails, setCcEmails] = useState<string[]>([])
 
   const addItem = () => {
-    setItems([...items, { document_title: '', document_ref: '', revision: '' }])
+    setItems([...items, { document_title: '', document_ref: '', revision: '', file: null }])
   }
 
-  const updateItem = (idx: number, field: string, value: string) => {
+  const updateItem = (idx: number, field: string, value: any) => {
     setItems(items.map((item, i) => (i === idx ? { ...item, [field]: value } : item)))
   }
 
@@ -461,6 +571,12 @@ function CreateTransmittalDialog({
     setRecipientEmail('')
   }
 
+  const addCcEmail = () => {
+    if (!ccEmail || !ccEmail.includes('@') || ccEmails.includes(ccEmail)) return
+    setCcEmails([...ccEmails, ccEmail])
+    setCcEmail('')
+  }
+
   const create = async () => {
     if (!form.subject) {
       toast({ title: 'Subject is required', variant: 'destructive' })
@@ -468,19 +584,76 @@ function CreateTransmittalDialog({
     }
     setSaving(true)
     try {
-      const res = await authedFetch(`${API}/api/v1/transmittals`, {
+      // Auto-add TO EMAIL as a recipient if not already present
+      const finalRecipients = [...recipients]
+      if (form.to_email && form.to_email.includes('@') && !finalRecipients.some(r => r.email === form.to_email)) {
+        finalRecipients.push({ email: form.to_email, name: form.to_contact || undefined })
+      }
+      // Auto-add any typed-but-not-added recipient email
+      if (recipientEmail && recipientEmail.includes('@') && !finalRecipients.some(r => r.email === recipientEmail)) {
+        finalRecipients.push({ email: recipientEmail })
+      }
+      const finalCcEmails = [...ccEmails]
+      if (ccEmail && ccEmail.includes('@') && !finalCcEmails.includes(ccEmail)) {
+        finalCcEmails.push(ccEmail)
+      }
+      // Separate items with files from items without files
+      // Use filename as fallback title if document_title is empty
+      const preparedItems = items.map(item => ({
+        ...item,
+        document_title: item.document_title || item.file?.name || '',
+      }))
+      const itemsWithFiles = preparedItems.filter(i => i.document_title && i.file)
+      const itemsWithoutFiles = preparedItems.filter(i => i.document_title && !i.file)
+
+      // Strip empty strings so Zod optional validators don't reject them
+      const cleanForm: Record<string, any> = { subject: form.subject }
+      if (form.description) cleanForm.description = form.description
+      if (form.to_company) cleanForm.to_company = form.to_company
+      if (form.to_contact) cleanForm.to_contact = form.to_contact
+      if (form.to_email) cleanForm.to_email = form.to_email
+      if (form.due_date) cleanForm.due_date = form.due_date
+      cleanForm.purpose = form.purpose
+      cleanForm.priority = form.priority
+      cleanForm.response_required = form.response_required
+
+      const res = await authedFetch(`${API}/transmittals`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           project_id: projectId,
-          ...form,
-          items: items.filter(i => i.document_title),
-          recipients,
+          ...cleanForm,
+          cc_emails: finalCcEmails.length ? finalCcEmails : undefined,
+          items: itemsWithoutFiles.map(({ file, ...rest }) => rest),
+          recipients: finalRecipients,
         }),
       })
       if (res.ok) {
-        toast({ title: 'Transmittal created' })
-        onCreated()
+        const created = await res.json()
+        const transmittalId = created.data?.id
+
+        // Upload items with files
+        if (transmittalId && itemsWithFiles.length) {
+          for (const item of itemsWithFiles) {
+            if (!item.file) continue
+            const fd = new FormData()
+            fd.append('file', item.file)
+            fd.append('document_title', item.document_title)
+            if (item.document_ref) fd.append('document_ref', item.document_ref)
+            if (item.revision) fd.append('revision', item.revision)
+            try {
+              await authedFetch(`${API}/transmittals/${transmittalId}/items/upload`, {
+                method: 'POST',
+                body: fd,
+              })
+            } catch (e) {
+              console.error('Failed to upload item file', e)
+            }
+          }
+        }
+
+        toast({ title: 'Transmittal created — click ISSUE to send it' })
+        onCreated(transmittalId)
       } else {
         const err = await res.json().catch(() => ({}))
         toast({ title: err.message || 'Failed to create', variant: 'destructive' })
@@ -515,6 +688,10 @@ function CreateTransmittalDialog({
             <Input value={form.to_contact} onChange={e => setForm({ ...form, to_contact: e.target.value })} className="bg-zinc-800 border-zinc-700 text-white" />
           </div>
         </div>
+        <div>
+          <Label className="text-[10px] font-mono text-zinc-500">TO EMAIL <span className="text-zinc-600">(primary addressee — auto-added as recipient)</span></Label>
+          <Input type="email" value={form.to_email} onChange={e => setForm({ ...form, to_email: e.target.value })} placeholder="contact@company.com" className="bg-zinc-800 border-zinc-700 text-white text-xs" />
+        </div>
         <div className="grid grid-cols-3 gap-3">
           <div>
             <Label className="text-[10px] font-mono text-zinc-500">PURPOSE</Label>
@@ -542,6 +719,17 @@ function CreateTransmittalDialog({
             <Input type="date" value={form.due_date} onChange={e => setForm({ ...form, due_date: e.target.value })} className="bg-zinc-800 border-zinc-700 text-white text-xs" />
           </div>
         </div>
+        <div className="flex items-center gap-3">
+          <label className="flex items-center gap-2 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={form.response_required}
+              onChange={e => setForm({ ...form, response_required: e.target.checked })}
+              className="h-4 w-4 rounded border-zinc-600 bg-zinc-800 text-amber-500 focus:ring-amber-500"
+            />
+            <span className="text-xs font-mono text-zinc-400">Response Required</span>
+          </label>
+        </div>
 
         {/* Items */}
         <div>
@@ -552,20 +740,40 @@ function CreateTransmittalDialog({
             </Button>
           </div>
           {items.map((item, idx) => (
-            <div key={idx} className="flex items-center gap-2 mb-2">
-              <Input placeholder="Document title" value={item.document_title} onChange={e => updateItem(idx, 'document_title', e.target.value)} className="bg-zinc-800 border-zinc-700 text-white text-xs flex-1" />
-              <Input placeholder="Ref" value={item.document_ref} onChange={e => updateItem(idx, 'document_ref', e.target.value)} className="bg-zinc-800 border-zinc-700 text-white text-xs w-24" />
-              <Input placeholder="Rev" value={item.revision} onChange={e => updateItem(idx, 'revision', e.target.value)} className="bg-zinc-800 border-zinc-700 text-white text-xs w-16" />
-              <Button type="button" size="sm" variant="ghost" onClick={() => removeItem(idx)} className="h-8 w-8 p-0">
-                <X className="h-3 w-3 text-zinc-500" />
-              </Button>
+            <div key={idx} className="p-3 bg-zinc-800/50 border border-zinc-700/50 rounded-lg mb-2 space-y-2">
+              <div className="flex items-center gap-2">
+                <Input placeholder="Document title" value={item.document_title} onChange={e => updateItem(idx, 'document_title', e.target.value)} className="bg-zinc-800 border-zinc-700 text-white text-xs flex-1" />
+                <Input placeholder="Ref" value={item.document_ref} onChange={e => updateItem(idx, 'document_ref', e.target.value)} className="bg-zinc-800 border-zinc-700 text-white text-xs w-24" />
+                <Input placeholder="Rev" value={item.revision} onChange={e => updateItem(idx, 'revision', e.target.value)} className="bg-zinc-800 border-zinc-700 text-white text-xs w-16" />
+                <Button type="button" size="sm" variant="ghost" onClick={() => removeItem(idx)} className="h-8 w-8 p-0">
+                  <X className="h-3 w-3 text-zinc-500" />
+                </Button>
+              </div>
+              <div className="flex items-center gap-2">
+                <label className="flex items-center gap-2 px-3 py-1.5 border border-dashed border-zinc-600 rounded-md cursor-pointer hover:border-amber-500/50 transition-colors flex-1">
+                  <Upload className="h-3.5 w-3.5 text-zinc-500" />
+                  <span className="text-[11px] font-mono text-zinc-400">
+                    {item.file ? item.file.name : 'Attach file...'}
+                  </span>
+                  <input
+                    type="file"
+                    className="hidden"
+                    onChange={e => updateItem(idx, 'file', e.target.files?.[0] || null)}
+                  />
+                </label>
+                {item.file && (
+                  <Button type="button" size="sm" variant="ghost" onClick={() => updateItem(idx, 'file', null)} className="h-7 px-2">
+                    <X className="h-3 w-3 text-zinc-500" />
+                  </Button>
+                )}
+              </div>
             </div>
           ))}
         </div>
 
         {/* Recipients */}
         <div>
-          <Label className="text-[10px] font-mono text-zinc-500">RECIPIENTS</Label>
+          <Label className="text-[10px] font-mono text-zinc-500">ADDITIONAL RECIPIENTS <span className="text-zinc-600">(extra people who must acknowledge)</span></Label>
           <div className="flex items-center gap-2 mb-2">
             <Input placeholder="email@example.com" value={recipientEmail} onChange={e => setRecipientEmail(e.target.value)} className="bg-zinc-800 border-zinc-700 text-white text-xs flex-1" onKeyDown={e => e.key === 'Enter' && addRecipient()} />
             <Button type="button" size="sm" variant="outline" onClick={addRecipient} className="text-xs border-zinc-700 text-zinc-400">Add</Button>
@@ -582,7 +790,26 @@ function CreateTransmittalDialog({
           </div>
         </div>
 
-        <Button onClick={create} disabled={saving || !form.subject} className="w-full bg-amber-500 hover:bg-amber-600 text-black font-mono text-xs">
+        {/* CC Recipients */}
+        <div>
+          <Label className="text-[10px] font-mono text-zinc-500">CC RECIPIENTS</Label>
+          <div className="flex items-center gap-2 mb-2">
+            <Input placeholder="cc@example.com" value={ccEmail} onChange={e => setCcEmail(e.target.value)} className="bg-zinc-800 border-zinc-700 text-white text-xs flex-1" onKeyDown={e => e.key === 'Enter' && (e.preventDefault(), addCcEmail())} />
+            <Button type="button" size="sm" variant="outline" onClick={addCcEmail} className="text-xs border-zinc-700 text-zinc-400">Add</Button>
+          </div>
+          <div className="flex flex-wrap gap-1.5">
+            {ccEmails.map((email, i) => (
+              <Badge key={i} variant="outline" className="border-zinc-600 text-zinc-400 text-[10px] pr-1">
+                CC: {email}
+                <button onClick={() => setCcEmails(ccEmails.filter((_, j) => j !== i))} className="ml-1 hover:text-red-400">
+                  <X className="h-3 w-3" />
+                </button>
+              </Badge>
+            ))}
+          </div>
+        </div>
+
+        <Button onClick={create} disabled={saving || !form.subject} className="w-full bg-amber-500 hover:bg-amber-600 text-white font-mono text-xs">
           {saving ? <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" /> : <Send className="h-3.5 w-3.5 mr-1" />}
           CREATE TRANSMITTAL
         </Button>

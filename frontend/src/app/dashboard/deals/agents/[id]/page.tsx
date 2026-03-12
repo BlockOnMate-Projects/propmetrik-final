@@ -187,7 +187,7 @@ export default function AgentProfilePage() {
                     </Button>
                     <div className="flex items-center gap-4">
                         {/* Avatar */}
-                        <div className="w-16 h-16 rounded-full bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center text-black font-mono text-xl font-bold">
+                        <div className="w-16 h-16 rounded-full bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center text-white font-mono text-xl font-bold">
                             {agent.first_name?.[0]}{agent.last_name?.[0]}
                         </div>
                         <div>

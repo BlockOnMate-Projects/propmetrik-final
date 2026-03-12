@@ -1336,7 +1336,7 @@ export default function ProfessionalFloorPlanBuilder({
               </button>
               <button
                 onClick={handleConfirmRoom}
-                className="flex-1 px-3 py-2 text-sm bg-amber-500 hover:bg-amber-600 text-black font-bold rounded"
+                className="flex-1 px-3 py-2 text-sm bg-amber-500 hover:bg-amber-600 text-white font-bold rounded"
               >
                 {selectedRoomId ? 'Update' : 'Create'}
               </button>
@@ -1507,7 +1507,7 @@ export default function ProfessionalFloorPlanBuilder({
                   onClick={() => { setSelectedRoomTemplate(template); setTool('select'); }}
                   className={`w-full text-left p-2 rounded text-xs transition-colors ${
                     selectedRoomTemplate?.id === template.id
-                      ? 'bg-amber-500 text-black'
+                      ? 'bg-amber-500 text-white'
                       : 'bg-zinc-700 hover:bg-zinc-600 text-white'
                   }`}
                 >
@@ -1944,7 +1944,7 @@ function ToolButton({ active, onClick, title, disabled, children }: ToolButtonPr
       disabled={disabled}
       className={`p-1.5 rounded transition-colors ${
         active
-          ? 'bg-amber-500 text-black'
+          ? 'bg-amber-500 text-white'
           : disabled
           ? 'bg-zinc-700 text-zinc-500 cursor-not-allowed'
           : 'bg-zinc-700 text-zinc-300 hover:bg-zinc-600'

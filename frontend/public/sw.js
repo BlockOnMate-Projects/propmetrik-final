@@ -11,10 +11,10 @@
 // Service Worker globals
 const selfSW = self;
 
-const CACHE_NAME = 'propmetrik-v1';
-const STATIC_CACHE = 'propmetrik-static-v1';
-const DYNAMIC_CACHE = 'propmetrik-dynamic-v1';
-const API_CACHE = 'propmetrik-api-v1';
+const CACHE_NAME = 'propmetrik-v2';
+const STATIC_CACHE = 'propmetrik-static-v2';
+const DYNAMIC_CACHE = 'propmetrik-dynamic-v2';
+const API_CACHE = 'propmetrik-api-v2';
 
 // Static assets to cache on install
 const STATIC_ASSETS = [
@@ -26,6 +26,19 @@ const STATIC_ASSETS = [
   '/dashboard/analytics',
   '/offline',
   '/manifest.json',
+  // PM module routes
+  '/dashboard/projects',
+  '/dashboard/projects/issues',
+  '/dashboard/projects/transmittals',
+  '/dashboard/projects/drawings',
+  '/dashboard/projects/timesheets',
+  '/dashboard/projects/bids',
+  '/dashboard/projects/team',
+  '/dashboard/projects/safety',
+  '/dashboard/projects/punch-lists',
+  '/dashboard/projects/meetings',
+  '/dashboard/projects/change-orders',
+  '/dashboard/e-sign',
 ];
 
 // API routes to cache (with network-first strategy)
@@ -34,6 +47,17 @@ const CACHEABLE_API_ROUTES = [
   '/api/crm/contacts',
   '/api/valuations',
   '/api/analytics/dashboard',
+  // PM API routes
+  '/api/projects',
+  '/api/bid-requests',
+  '/api/team/members',
+  '/api/drawings',
+  '/api/transmittals',
+  '/api/esign/envelopes',
+  '/api/v1/projects',
+  '/api/v1/transmittals',
+  '/api/v1/drawings',
+  '/api/v1/esign/envelopes',
 ];
 
 // Install event - cache static assets
@@ -69,7 +93,8 @@ selfSW.addEventListener('activate', (event) => {
           .filter((name) => {
             return name !== STATIC_CACHE &&
               name !== DYNAMIC_CACHE &&
-              name !== API_CACHE;
+              name !== API_CACHE &&
+              name !== CACHE_NAME;
           })
           .map((name) => {
             console.log('[SW] Deleting old cache:', name);

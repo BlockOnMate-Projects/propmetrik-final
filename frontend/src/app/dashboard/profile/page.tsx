@@ -262,7 +262,7 @@ export default function ProfilePage() {
             className={cn(
               'px-4 py-2 font-mono text-xs transition-colors',
               activeTab === tab.id
-                ? 'bg-amber-500 text-black font-bold'
+                ? 'bg-amber-500 text-white font-bold'
                 : 'bg-zinc-800 text-zinc-400 hover:text-white'
             )}
           >
@@ -345,7 +345,7 @@ export default function ProfilePage() {
                   <button
                     onClick={saveProfile}
                     disabled={saving}
-                    className="px-4 py-2 bg-amber-500 text-black font-mono text-xs font-bold hover:bg-amber-400 transition-colors disabled:opacity-50"
+                    className="px-4 py-2 bg-amber-500 text-white font-mono text-xs font-bold hover:bg-amber-400 transition-colors disabled:opacity-50"
                   >
                     {saving ? 'SAVING...' : 'SAVE CHANGES'}
                   </button>
@@ -392,7 +392,7 @@ export default function ProfilePage() {
                   <button
                     onClick={changePassword}
                     disabled={pwSaving}
-                    className="px-4 py-2 bg-amber-500 text-black font-mono text-xs font-bold hover:bg-amber-400 transition-colors disabled:opacity-50"
+                    className="px-4 py-2 bg-amber-500 text-white font-mono text-xs font-bold hover:bg-amber-400 transition-colors disabled:opacity-50"
                   >
                     {pwSaving ? 'UPDATING...' : 'UPDATE PASSWORD'}
                   </button>

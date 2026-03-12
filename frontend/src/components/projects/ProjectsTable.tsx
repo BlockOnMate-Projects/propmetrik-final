@@ -167,7 +167,7 @@ function FilterPanel({
           <SlidersHorizontal className="h-3.5 w-3.5" />
           Filters
           {hasActiveFilters && (
-            <Badge className="ml-1 h-4 w-4 p-0 flex items-center justify-center bg-amber-500 text-black text-[10px]">
+            <Badge className="ml-1 h-4 w-4 p-0 flex items-center justify-center bg-amber-500 text-white text-[10px]">
               {(filters.status?.length || 0) + (filters.propertyType?.length || 0) + (filters.region?.length || 0)}
             </Badge>
           )}

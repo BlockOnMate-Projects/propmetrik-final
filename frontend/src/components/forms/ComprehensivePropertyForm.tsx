@@ -713,7 +713,7 @@ export default function ComprehensivePropertyForm({
                 <div className={cn(
                   'flex items-center justify-center w-8 h-8 border-2 rounded transition-colors',
                   data[amenity.key as keyof ComprehensivePropertyData]
-                    ? 'bg-amber-500 border-amber-500 text-black'
+                    ? 'bg-amber-500 border-amber-500 text-white'
                     : 'border-zinc-600 text-zinc-600 group-hover:border-amber-500/50'
                 )}>
                   <IconComponent className="w-4 h-4" />

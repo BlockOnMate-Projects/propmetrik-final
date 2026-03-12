@@ -155,7 +155,7 @@ export default function ProjectProcurementPage() {
   // Fetch project
   const fetchProject = useCallback(async () => {
     try {
-      const response = await fetch(`${API_BASE}/api/projects/${projectId}`);
+      const response = await fetch(`${API_BASE}/projects/${projectId}`);
       const result = await response.json();
       if (result.success) {
         setProject(result.data);
@@ -176,7 +176,7 @@ export default function ProjectProcurementPage() {
       }
       params.append('pageSize', '100');
 
-      const response = await fetch(`${API_BASE}/api/v1/procurement?${params}`);
+      const response = await fetch(`${API_BASE}/procurement?${params}`);
       const result = await response.json();
       
       if (result.success) {
@@ -251,7 +251,7 @@ export default function ProjectProcurementPage() {
 
     try {
       setSubmitting(true);
-      const response = await fetch(`${API_BASE}/api/v1/procurement`, {
+      const response = await fetch(`${API_BASE}/procurement`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -287,7 +287,7 @@ export default function ProjectProcurementPage() {
 
     try {
       setSubmitting(true);
-      const response = await fetch(`${API_BASE}/api/v1/procurement/${selectedOrder.id}`, {
+      const response = await fetch(`${API_BASE}/procurement/${selectedOrder.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -322,7 +322,7 @@ export default function ProjectProcurementPage() {
 
     try {
       setSubmitting(true);
-      const response = await fetch(`${API_BASE}/api/v1/procurement/${selectedOrder.id}`, {
+      const response = await fetch(`${API_BASE}/procurement/${selectedOrder.id}`, {
         method: 'DELETE',
       });
 
@@ -347,7 +347,7 @@ export default function ProjectProcurementPage() {
   const handleStatusChange = async (order: PurchaseOrder, action: string) => {
     try {
       setSubmitting(true);
-      const response = await fetch(`${API_BASE}/api/procurement/purchase-orders/${order.id}/${action}`, {
+      const response = await fetch(`${API_BASE}/procurement/purchase-orders/${order.id}/${action}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
       });

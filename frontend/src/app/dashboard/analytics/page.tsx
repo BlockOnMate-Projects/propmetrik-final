@@ -267,7 +267,7 @@ export default function MarketAnalyticsPage() {
         </div>
         <div className="flex items-center gap-4">
           <button
-            onClick={loadData}
+            onClick={() => loadData()}
             className="flex items-center gap-1.5 px-3 py-1.5 font-mono text-[10px] text-zinc-400 hover:text-amber-500 border border-zinc-800 hover:border-zinc-700 transition-colors"
           >
             <RefreshCw className="w-3 h-3" /> REFRESH

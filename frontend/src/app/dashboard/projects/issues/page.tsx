@@ -63,7 +63,7 @@ export default function IssuesPage() {
   useEffect(() => {
     (async () => {
       try {
-        const res = await authedFetch(`${API}/api/v1/projects?limit=100`);
+        const res = await authedFetch(`${API}/projects?limit=100`);
         const json = await res.json();
         const list = json.data?.projects || json.data || json.projects || [];
         setProjects(list);
@@ -77,8 +77,8 @@ export default function IssuesPage() {
     setLoading(true);
     try {
       const [issuesRes, risksRes] = await Promise.all([
-        authedFetch(`${API}/api/v1/projects/${selectedProject}/issues?search=${search}`).then(r => r.json()),
-        authedFetch(`${API}/api/v1/projects/${selectedProject}/risks?search=${search}`).then(r => r.json()),
+        authedFetch(`${API}/projects/${selectedProject}/issues?search=${search}`).then(r => r.json()),
+        authedFetch(`${API}/projects/${selectedProject}/risks?search=${search}`).then(r => r.json()),
       ]);
       setIssues(issuesRes.data || []);
       setRisks(risksRes.data || []);
@@ -90,7 +90,7 @@ export default function IssuesPage() {
 
   const createIssue = async () => {
     try {
-      const res = await authedFetch(`${API}/api/v1/projects/${selectedProject}/issues`, {
+      const res = await authedFetch(`${API}/projects/${selectedProject}/issues`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(form),
       });
@@ -103,7 +103,7 @@ export default function IssuesPage() {
 
   const createRisk = async () => {
     try {
-      const res = await authedFetch(`${API}/api/v1/projects/${selectedProject}/risks`, {
+      const res = await authedFetch(`${API}/projects/${selectedProject}/risks`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(form),
       });
@@ -115,7 +115,7 @@ export default function IssuesPage() {
   };
 
   const updateIssueStatus = async (id: string, status: string) => {
-    await authedFetch(`${API}/api/v1/projects/${selectedProject}/issues/${id}`, {
+    await authedFetch(`${API}/projects/${selectedProject}/issues/${id}`, {
       method: 'PUT', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ status }),
     });
@@ -123,7 +123,7 @@ export default function IssuesPage() {
   };
 
   const exportData = (type: 'issues' | 'risks') => {
-    window.open(`${API}/api/v1/projects/${selectedProject}/export/${type}?format=csv`, '_blank');
+    window.open(`${API}/projects/${selectedProject}/export/${type}?format=csv`, '_blank');
   };
 
   const issueStats = {

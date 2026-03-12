@@ -233,6 +233,7 @@ function tryDecodeLocalJwt(token: string): AuthenticatedUser | null {
       role: string;
       organizationId?: string;
       tier?: string;
+      userType?: string;
     };
     if (!payload.userId) return null;
     return {
@@ -248,6 +249,8 @@ function tryDecodeLocalJwt(token: string): AuthenticatedUser | null {
       clientRoles: [payload.role],
       organizationId: payload.organizationId,
       region: undefined,
+      tier: payload.tier,
+      userType: payload.userType || 'staff',
     };
   } catch {
     return null;

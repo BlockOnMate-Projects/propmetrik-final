@@ -351,7 +351,7 @@ export default function NewPropertyPage() {
                                     CANCEL
                                 </Button>
                             </Link>
-                            <Button type="submit" disabled={isLoading} className="bg-amber-600 hover:bg-amber-500 text-black font-bold font-mono">
+                            <Button type="submit" disabled={isLoading} className="bg-amber-600 hover:bg-amber-500 text-white font-bold font-mono">
                                 {isLoading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Save className="h-4 w-4 mr-2" />}
                                 SAVE PROPERTY
                             </Button>

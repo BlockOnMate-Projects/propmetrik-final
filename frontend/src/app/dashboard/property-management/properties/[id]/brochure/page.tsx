@@ -120,7 +120,7 @@ export default function PropertyBrochurePage() {
     const formattedLocation = `${formatRegion(property.region)}, Ghana`
 
     return (
-        <div className="min-h-screen bg-white text-black print:bg-white print:text-black">
+        <div className="min-h-screen bg-white text-white print:bg-white print:text-white">
             <style jsx global>{`
                 @media print {
                     body {
@@ -152,7 +152,7 @@ export default function PropertyBrochurePage() {
                 <Button
                     variant="ghost"
                     size="sm"
-                    className="text-zinc-500 hover:text-black"
+                    className="text-zinc-500 hover:text-white"
                     onClick={() => router.back()}
                 >
                     <ArrowLeft className="h-4 w-4 mr-2" />
@@ -273,7 +273,7 @@ export default function PropertyBrochurePage() {
                 </div>
 
                 {/* Highlights Table */}
-                <div className="grid md:grid-cols-3 gap-12 bg-neutral-900 text-white p-12 rounded-sm shadow-2xl relative overflow-hidden print:bg-neutral-100 print:text-black print:shadow-none print:border print:border-neutral-200">
+                <div className="grid md:grid-cols-3 gap-12 bg-neutral-900 text-white p-12 rounded-sm shadow-2xl relative overflow-hidden print:bg-neutral-100 print:text-white print:shadow-none print:border print:border-neutral-200">
                     <div className="absolute top-0 right-0 p-4 opacity-10 print:hidden">
                         <Building2 className="h-48 w-48 text-white rotate-12" />
                     </div>

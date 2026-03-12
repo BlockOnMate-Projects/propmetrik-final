@@ -355,9 +355,28 @@ export interface InvoiceFilters {
 export const invoiceApi = {
   // Create invoice
   create: (data: Partial<Invoice>): Promise<Invoice> => {
+    // Map camelCase frontend fields to snake_case backend fields
+    const payload: Record<string, unknown> = {
+      project_id: data.projectId,
+      organization_id: data.organizationId,
+      invoice_number: data.invoiceNumber,
+      vendor_id: data.vendorId,
+      vendor_name: data.vendorName,
+      description: data.description,
+      amount: data.amount,
+      currency: data.currency,
+      tax_amount: data.taxAmount,
+      issue_date: data.invoiceDate ? new Date(data.invoiceDate).toISOString().split('T')[0] : undefined,
+      due_date: data.dueDate ? new Date(data.dueDate).toISOString().split('T')[0] : undefined,
+      line_items: data.lineItems,
+      notes: data.notes,
+      milestone_id: data.milestoneId,
+    };
+    // Remove undefined and empty string values
+    Object.keys(payload).forEach(k => (payload[k] === undefined || payload[k] === '') && delete payload[k]);
     return fetchApi(`${BUDGET_BASE}/invoices`, {
       method: 'POST',
-      body: JSON.stringify(data),
+      body: JSON.stringify(payload),
     });
   },
 

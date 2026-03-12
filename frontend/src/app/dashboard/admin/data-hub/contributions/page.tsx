@@ -231,7 +231,7 @@ export default function ContributionsPage() {
                 className={cn(
                   'px-4 py-2 font-mono text-[10px] tracking-wider transition-colors border whitespace-nowrap',
                   selectedContext === option.id
-                    ? 'bg-amber-500 text-black border-amber-500 font-bold'
+                    ? 'bg-amber-500 text-white border-amber-500 font-bold'
                     : 'bg-zinc-900 text-zinc-500 border-zinc-800 hover:border-zinc-700 hover:text-zinc-300'
                 )}
               >

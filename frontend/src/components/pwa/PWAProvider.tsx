@@ -238,7 +238,7 @@ export function OfflineIndicator() {
   return (
     <div className="fixed bottom-4 left-4 z-50">
       {!isOnline && (
-        <div className="flex items-center gap-2 px-3 py-2 bg-amber-500 text-black font-mono text-xs rounded">
+        <div className="flex items-center gap-2 px-3 py-2 bg-amber-500 text-white font-mono text-xs rounded">
           <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <path d="M1 1l22 22M16.72 11.06A10.94 10.94 0 0 1 19 12.55" />
             <path d="M5 12.55a10.94 10.94 0 0 1 5.17-2.39" />
@@ -272,7 +272,7 @@ export function InstallPrompt() {
       <div className="bg-zinc-900 border border-zinc-700 rounded-lg shadow-xl p-4">
         <div className="flex items-start gap-3">
           <div className="w-10 h-10 bg-amber-500 rounded-lg flex items-center justify-center flex-shrink-0">
-            <svg className="w-6 h-6 text-black" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <svg className="w-6 h-6 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
               <polyline points="9 22 9 12 15 12 15 22" />
             </svg>
@@ -285,7 +285,7 @@ export function InstallPrompt() {
             <div className="flex items-center gap-2 mt-3">
               <button
                 onClick={promptInstall}
-                className="px-3 py-1.5 bg-amber-500 text-black font-mono text-xs rounded hover:bg-amber-400 transition-colors"
+                className="px-3 py-1.5 bg-amber-500 text-white font-mono text-xs rounded hover:bg-amber-400 transition-colors"
               >
                 Install
               </button>

@@ -797,7 +797,7 @@ export default function DRCMethodPage() {
                   }}
                   className={`flex-1 py-2 px-3 font-mono text-[10px] transition-all ${
                     landValueMode === 'system'
-                      ? 'bg-amber-500 text-black'
+                      ? 'bg-amber-500 text-white'
                       : 'text-zinc-500 hover:text-white'
                   }`}
                 >
@@ -811,7 +811,7 @@ export default function DRCMethodPage() {
                   }}
                   className={`flex-1 py-2 px-3 font-mono text-[10px] transition-all ${
                     landValueMode === 'user'
-                      ? 'bg-amber-500 text-black'
+                      ? 'bg-amber-500 text-white'
                       : 'text-zinc-500 hover:text-white'
                   }`}
                 >
@@ -1019,7 +1019,7 @@ export default function DRCMethodPage() {
         <button
           onClick={handleSave}
           disabled={saving || totalValue <= 0}
-          className="px-6 py-3 bg-amber-500 text-black font-mono text-sm font-bold hover:bg-amber-400 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-2"
+          className="px-6 py-3 bg-amber-500 text-white font-mono text-sm font-bold hover:bg-amber-400 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-2"
         >
           {saving && <Loader2 className="w-4 h-4 animate-spin" />}
           SAVE & CONTINUE TO RECONCILIATION →

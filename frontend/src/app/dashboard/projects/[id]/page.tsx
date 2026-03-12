@@ -86,6 +86,7 @@ import type {
 } from '@/types/projects'
 import { formatCurrency } from '@/lib/utils'
 import { authedFetch } from '@/lib/authed-fetch'
+import { PhaseHierarchy } from '@/components/projects/PhaseHierarchy'
 
 // =====================================================
 // STATUS CONFIGURATIONS
@@ -417,7 +418,7 @@ function BudgetOverview({ budget, projectId, projectBudget, currency = 'GHS', on
           <div className="font-mono text-[10px] text-zinc-500">COST ITEMS</div>
           <Button
             size="sm"
-            className="h-6 font-mono text-[10px] bg-amber-600 hover:bg-amber-700 text-black"
+            className="h-6 font-mono text-[10px] bg-amber-600 hover:bg-amber-700 text-white"
             onClick={() => setShowAddCostDialog(true)}
           >
             <Plus className="h-3 w-3 mr-1" />
@@ -482,7 +483,7 @@ function BudgetOverview({ budget, projectId, projectBudget, currency = 'GHS', on
             </p>
             <Button
               size="sm"
-              className="font-mono text-xs bg-amber-600 hover:bg-amber-700 text-black"
+              className="font-mono text-xs bg-amber-600 hover:bg-amber-700 text-white"
               onClick={() => setShowAddCostDialog(true)}
             >
               <Plus className="h-3 w-3 mr-1" />
@@ -611,7 +612,7 @@ function BudgetOverview({ budget, projectId, projectBudget, currency = 'GHS', on
             <Button
               onClick={handleAddCost}
               disabled={isAdding || !costForm.description || !costForm.original_budget}
-              className="bg-amber-600 hover:bg-amber-700 text-black font-mono text-xs"
+              className="bg-amber-600 hover:bg-amber-700 text-white font-mono text-xs"
             >
               {isAdding ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
               Add Cost Item
@@ -619,48 +620,6 @@ function BudgetOverview({ budget, projectId, projectBudget, currency = 'GHS', on
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </div>
-  )
-}
-
-// =====================================================
-// PHASE LIST
-// =====================================================
-function PhaseList({ phases }: { phases: ProjectPhase[] }) {
-  return (
-    <div className="space-y-2">
-      {phases
-        .sort((a, b) => a.phase_number - b.phase_number)
-        .map((phase) => {
-          const config = phaseStatusColors[phase.status]
-          return (
-            <div
-              key={phase.id}
-              className="flex items-center gap-3 p-2 bg-zinc-800/30 border border-zinc-800 hover:border-zinc-700 cursor-pointer"
-            >
-              <div className="w-6 h-6 flex items-center justify-center bg-zinc-800 font-mono text-[10px] text-amber-500">
-                {phase.phase_number}
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="font-mono text-xs text-white line-clamp-1">{phase.phase_name}</div>
-                <div className="font-mono text-[10px] text-zinc-500">
-                  {phase.milestones?.length || 0} milestones
-                </div>
-              </div>
-              <div className="flex items-center gap-2">
-                <div className="w-16 h-1.5 bg-zinc-800 rounded-full overflow-hidden">
-                  <div
-                    className="h-full bg-amber-500"
-                    style={{ width: `${phase.progress_percentage}%` }}
-                  />
-                </div>
-                <span className={cn("font-mono text-[10px] px-1.5 py-0.5", config.bg, config.text)}>
-                  {phase.status.replace('_', ' ').toUpperCase()}
-                </span>
-              </div>
-            </div>
-          )
-        })}
     </div>
   )
 }
@@ -900,6 +859,38 @@ export default function ProjectDetailPage() {
       url.searchParams.set('tab', tab)
     }
     window.history.replaceState({}, '', url.toString())
+  }
+
+  // Phase dialog state
+  const [showAddPhaseDialog, setShowAddPhaseDialog] = useState(false)
+  const [isAddingPhase, setIsAddingPhase] = useState(false)
+  const [phaseForm, setPhaseForm] = useState({
+    name: '',
+    description: '',
+    planned_start_date: '',
+    planned_end_date: '',
+  })
+
+  const handleAddPhase = async () => {
+    if (!project || !phaseForm.name) return
+    try {
+      setIsAddingPhase(true)
+      await phasesApi.create(project.id, {
+        name: phaseForm.name,
+        description: phaseForm.description || undefined,
+        planned_start_date: phaseForm.planned_start_date || undefined,
+        planned_end_date: phaseForm.planned_end_date || undefined,
+        status: 'not_started',
+      })
+      const updatedPhases = await phasesApi.getByProject(project.id)
+      setPhases(Array.isArray(updatedPhases) ? updatedPhases : [])
+      setPhaseForm({ name: '', description: '', planned_start_date: '', planned_end_date: '' })
+      setShowAddPhaseDialog(false)
+    } catch (err) {
+      console.error('Failed to create phase:', err)
+    } finally {
+      setIsAddingPhase(false)
+    }
   }
 
   // Dialog states
@@ -1351,14 +1342,25 @@ export default function ProjectDetailPage() {
             <Panel
               title="PHASE DETAILS"
               action={
-                <Button size="sm" className="h-6 font-mono text-[10px] bg-amber-600 hover:bg-amber-700 text-black">
+                <Button size="sm" onClick={() => setShowAddPhaseDialog(true)} className="h-6 font-mono text-[10px] bg-amber-600 hover:bg-amber-700 text-white">
                   <Plus className="h-3 w-3 mr-1" />
                   Add Phase
                 </Button>
               }
             >
               {phases.length > 0 ? (
-                <PhaseList phases={phases} />
+                <PhaseHierarchy
+                  projectId={project.id}
+                  phases={phases}
+                  onPhasesRefresh={async () => {
+                    try {
+                      const res = await phasesApi.getByProject(project.id)
+                      setPhases(Array.isArray(res) ? res : [])
+                    } catch (e) {
+                      console.error('Failed to refresh phases:', e)
+                    }
+                  }}
+                />
               ) : (
                 <div className="text-center py-12">
                   <Layers className="h-12 w-12 text-zinc-700 mx-auto mb-4" />
@@ -1366,7 +1368,7 @@ export default function ProjectDetailPage() {
                   <p className="font-mono text-[10px] text-zinc-500 mb-4">
                     Add phases to track construction progress and milestones
                   </p>
-                  <Button className="bg-amber-600 hover:bg-amber-700 text-black font-mono text-xs">
+                  <Button onClick={() => setShowAddPhaseDialog(true)} className="bg-amber-600 hover:bg-amber-700 text-white font-mono text-xs">
                     <Plus className="h-4 w-4 mr-2" />
                     Add First Phase
                   </Button>
@@ -1407,13 +1409,14 @@ export default function ProjectDetailPage() {
           </Panel>
         </TabsContent>
 
-        {/* Milestones Tab - Client views and approves milestones */}
+        {/* Milestones Tab - PM creates, client approves */}
         <TabsContent value="milestones" className="mt-0">
           <Panel title="PROJECT MILESTONES">
             <MilestonesTab
               projectId={projectId}
               organizationId={project.organization_id}
               frameworkId={project.milestone_framework_id}
+              canManage={true}
             />
           </Panel>
         </TabsContent>
@@ -1458,7 +1461,7 @@ export default function ProjectDetailPage() {
                 <p className="font-mono text-[10px] text-zinc-500 mb-4">
                   Set up cost codes to track project budget
                 </p>
-                <Button className="bg-amber-600 hover:bg-amber-700 text-black font-mono text-xs">
+                <Button className="bg-amber-600 hover:bg-amber-700 text-white font-mono text-xs">
                   <Plus className="h-4 w-4 mr-2" />
                   Setup Budget
                 </Button>
@@ -1472,7 +1475,7 @@ export default function ProjectDetailPage() {
           <Panel
             title="CONTRACTORS"
             action={
-              <Button size="sm" className="h-6 font-mono text-[10px] bg-amber-600 hover:bg-amber-700 text-black">
+              <Button size="sm" className="h-6 font-mono text-[10px] bg-amber-600 hover:bg-amber-700 text-white">
                 <Plus className="h-3 w-3 mr-1" />
                 Assign Contractor
               </Button>
@@ -1488,7 +1491,7 @@ export default function ProjectDetailPage() {
             title="PROJECT TEAM"
             action={
               <Link href={`/dashboard/projects/${projectId}/team`}>
-                <Button size="sm" className="h-6 font-mono text-[10px] bg-amber-600 hover:bg-amber-700 text-black">
+                <Button size="sm" className="h-6 font-mono text-[10px] bg-amber-600 hover:bg-amber-700 text-white">
                   Manage Team
                 </Button>
               </Link>
@@ -1499,7 +1502,7 @@ export default function ProjectDetailPage() {
               {projectManager ? (
                 <div className="flex items-center gap-3 p-3 bg-zinc-800/50 border border-zinc-700 rounded">
                   <div className="h-10 w-10 bg-amber-600 rounded-full flex items-center justify-center">
-                    <span className="font-mono text-sm text-black font-bold">
+                    <span className="font-mono text-sm text-white font-bold">
                       {(projectManager.fullName || projectManager.userName || 'PM')
                         .split(' ')
                         .map(n => n[0])
@@ -1519,7 +1522,7 @@ export default function ProjectDetailPage() {
                   <Users className="h-10 w-10 text-zinc-700 mx-auto mb-3" />
                   <p className="font-mono text-xs text-zinc-400 mb-2">No project manager assigned</p>
                   <Link href={`/dashboard/projects/${projectId}/team`}>
-                    <Button size="sm" className="font-mono text-xs bg-amber-600 hover:bg-amber-700 text-black">
+                    <Button size="sm" className="font-mono text-xs bg-amber-600 hover:bg-amber-700 text-white">
                       <Plus className="h-3 w-3 mr-1" />
                       Assign PM
                     </Button>
@@ -1547,7 +1550,7 @@ export default function ProjectDetailPage() {
             action={
               <Button
                 size="sm"
-                className="h-6 font-mono text-[10px] bg-amber-600 hover:bg-amber-700 text-black"
+                className="h-6 font-mono text-[10px] bg-amber-600 hover:bg-amber-700 text-white"
                 onClick={() => setShowUploadDialog(true)}
               >
                 <Plus className="h-3 w-3 mr-1" />
@@ -1563,7 +1566,7 @@ export default function ProjectDetailPage() {
                   Upload project documents, contracts, and permits
                 </p>
                 <Button
-                  className="bg-amber-600 hover:bg-amber-700 text-black font-mono text-xs"
+                  className="bg-amber-600 hover:bg-amber-700 text-white font-mono text-xs"
                   onClick={() => setShowUploadDialog(true)}
                 >
                   <Plus className="h-4 w-4 mr-2" />
@@ -1739,10 +1742,75 @@ export default function ProjectDetailPage() {
             <Button
               onClick={handleUploadDocument}
               disabled={isUploading || !documentForm.name || !documentForm.file}
-              className="bg-amber-600 hover:bg-amber-700 text-black font-mono text-xs"
+              className="bg-amber-600 hover:bg-amber-700 text-white font-mono text-xs"
             >
               {isUploading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Upload className="h-4 w-4 mr-2" />}
               Upload
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Add Phase Dialog */}
+      <Dialog open={showAddPhaseDialog} onOpenChange={setShowAddPhaseDialog}>
+        <DialogContent className="bg-zinc-900 border-zinc-800 max-w-md">
+          <DialogHeader>
+            <DialogTitle className="font-mono">Add Phase</DialogTitle>
+            <DialogDescription className="font-mono text-xs text-zinc-400">
+              Create a new construction phase for this project
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="space-y-2">
+              <Label className="font-mono text-xs text-zinc-300">Phase Name *</Label>
+              <Input
+                value={phaseForm.name}
+                onChange={(e) => setPhaseForm({ ...phaseForm, name: e.target.value })}
+                placeholder="e.g., Foundation, Structure, Finishing"
+                className="bg-zinc-800 border-zinc-700 font-mono text-sm text-white placeholder:text-zinc-500"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label className="font-mono text-xs text-zinc-300">Description</Label>
+              <Input
+                value={phaseForm.description}
+                onChange={(e) => setPhaseForm({ ...phaseForm, description: e.target.value })}
+                placeholder="Optional description"
+                className="bg-zinc-800 border-zinc-700 font-mono text-sm text-white placeholder:text-zinc-500"
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-2">
+                <Label className="font-mono text-xs text-zinc-300">Start Date</Label>
+                <Input
+                  type="date"
+                  value={phaseForm.planned_start_date}
+                  onChange={(e) => setPhaseForm({ ...phaseForm, planned_start_date: e.target.value })}
+                  className="bg-zinc-800 border-zinc-700 font-mono text-sm text-white"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label className="font-mono text-xs text-zinc-300">End Date</Label>
+                <Input
+                  type="date"
+                  value={phaseForm.planned_end_date}
+                  onChange={(e) => setPhaseForm({ ...phaseForm, planned_end_date: e.target.value })}
+                  className="bg-zinc-800 border-zinc-700 font-mono text-sm text-white"
+                />
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowAddPhaseDialog(false)} className="font-mono text-xs">
+              Cancel
+            </Button>
+            <Button
+              onClick={handleAddPhase}
+              disabled={isAddingPhase || !phaseForm.name}
+              className="bg-amber-600 hover:bg-amber-700 text-white font-mono text-xs"
+            >
+              {isAddingPhase ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Plus className="h-4 w-4 mr-2" />}
+              Create Phase
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -1753,7 +1821,7 @@ export default function ProjectDetailPage() {
         <WorkspaceWidget
           entityType="project"
           entityId={project.id}
-          entityName={project.project_name}
+          entityName={project.project_name || project.name}
           currentUserId={null /* TODO: inject from auth context */}
           token={null}
         />

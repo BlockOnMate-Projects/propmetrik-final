@@ -296,7 +296,7 @@ function CreateDrawModal({
     setIsSubmitting(true);
     
     try {
-      const response = await fetch(`/api/v1/projects/${projectId}/draws`, {
+      const response = await fetch(`/api/projects/${projectId}/draws`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -463,7 +463,7 @@ function CreateDrawModal({
             <button
               type="submit"
               disabled={isSubmitting || totalAmount === 0}
-              className="px-4 py-2 bg-amber-500 text-black rounded-lg hover:bg-amber-400 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              className="px-4 py-2 bg-amber-500 text-white rounded-lg hover:bg-amber-400 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
               {isSubmitting ? 'Creating...' : 'Create Draw Request'}
             </button>
@@ -751,17 +751,17 @@ export default function ProjectDrawsPage() {
     try {
       // Fetch draws
       const statusParam = statusFilter !== 'all' ? `?status=${statusFilter}` : '';
-      const drawsRes = await fetch(`/api/v1/projects/${projectId}/draws${statusParam}`);
+      const drawsRes = await fetch(`/api/projects/${projectId}/draws${statusParam}`);
       const drawsData = await drawsRes.json();
       setDraws(drawsData.data || []);
       
       // Fetch summary
-      const summaryRes = await fetch(`/api/v1/projects/${projectId}/draws/summary`);
+      const summaryRes = await fetch(`/api/projects/${projectId}/draws/summary`);
       const summaryData = await summaryRes.json();
       setSummary(summaryData);
       
       // Fetch project name
-      const projectRes = await fetch(`/api/v1/projects/${projectId}`);
+      const projectRes = await fetch(`/api/projects/${projectId}`);
       const projectData = await projectRes.json();
       setProjectName(projectData.project_name || 'Project');
     } catch (error) {
@@ -777,7 +777,7 @@ export default function ProjectDrawsPage() {
   
   const handleViewDraw = async (id: string) => {
     try {
-      const res = await fetch(`/api/v1/projects/draws/${id}`);
+      const res = await fetch(`/api/projects/draws/${id}`);
       const data = await res.json();
       setSelectedDraw(data);
     } catch (error) {
@@ -789,7 +789,7 @@ export default function ProjectDrawsPage() {
     if (!selectedDraw) return;
     
     try {
-      let endpoint = `/api/v1/projects/draws/${selectedDraw.id}/${action}`;
+      let endpoint = `/api/projects/draws/${selectedDraw.id}/${action}`;
       const res = await fetch(endpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -802,7 +802,7 @@ export default function ProjectDrawsPage() {
       await fetchData();
       
       // Refresh selected draw
-      const updatedRes = await fetch(`/api/v1/projects/draws/${selectedDraw.id}`);
+      const updatedRes = await fetch(`/api/projects/draws/${selectedDraw.id}`);
       const updatedData = await updatedRes.json();
       setSelectedDraw(updatedData);
     } catch (error) {
@@ -829,7 +829,7 @@ export default function ProjectDrawsPage() {
         
         <button
           onClick={() => setIsCreateModalOpen(true)}
-          className="px-4 py-2 bg-amber-500 text-black rounded-lg hover:bg-amber-400 flex items-center gap-2 font-medium"
+          className="px-4 py-2 bg-amber-500 text-white rounded-lg hover:bg-amber-400 flex items-center gap-2 font-medium"
         >
           <Plus className="w-4 h-4" />
           New Draw
@@ -849,7 +849,7 @@ export default function ProjectDrawsPage() {
               onClick={() => setStatusFilter(status)}
               className={`px-3 py-1 rounded-full text-sm ${
                 statusFilter === status
-                  ? 'bg-amber-500 text-black'
+                  ? 'bg-amber-500 text-white'
                   : 'bg-zinc-800 text-zinc-400 hover:bg-zinc-700'
               }`}
             >
@@ -873,7 +873,7 @@ export default function ProjectDrawsPage() {
           </p>
           <button
             onClick={() => setIsCreateModalOpen(true)}
-            className="px-4 py-2 bg-amber-500 text-black rounded-lg hover:bg-amber-400 inline-flex items-center gap-2"
+            className="px-4 py-2 bg-amber-500 text-white rounded-lg hover:bg-amber-400 inline-flex items-center gap-2"
           >
             <Plus className="w-4 h-4" />
             Create Draw Request

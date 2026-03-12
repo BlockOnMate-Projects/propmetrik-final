@@ -227,7 +227,7 @@ export function RFIsTab({ projectId, organizationId, onRefresh }: RFIsTabProps) 
       {stats.actionRequired > 0 && (
         <div className="flex items-center gap-3 p-4 bg-amber-900/20 border border-amber-700/50 rounded-lg">
           <div className="flex-shrink-0 h-10 w-10 bg-amber-600 rounded-full flex items-center justify-center">
-            <MessageSquare className="h-5 w-5 text-black" />
+            <MessageSquare className="h-5 w-5 text-white" />
           </div>
           <div className="flex-1">
             <h4 className="font-mono text-sm text-amber-400 font-medium">
@@ -239,7 +239,7 @@ export function RFIsTab({ projectId, organizationId, onRefresh }: RFIsTabProps) 
           </div>
           <Button
             size="sm"
-            className="bg-amber-600 hover:bg-amber-700 text-black font-mono text-xs"
+            className="bg-amber-600 hover:bg-amber-700 text-white font-mono text-xs"
             onClick={() => setStatusFilter('open')}
           >
             View Open RFIs
@@ -330,14 +330,14 @@ export function RFIsTab({ projectId, organizationId, onRefresh }: RFIsTabProps) 
                       <span className="font-mono text-xs text-amber-500">
                         {rfi.rfi_number}
                       </span>
-                      <Badge className={cn("font-mono text-[10px]", status.bg, status.text)}>
+                      <Badge variant="outline" className={cn("font-mono text-[10px] border-0", status.bg, status.text)}>
                         {status.label}
                       </Badge>
-                      <Badge className={cn("font-mono text-[10px]", priority.bg, priority.text)}>
+                      <Badge variant="outline" className={cn("font-mono text-[10px] border-0", priority.bg, priority.text)}>
                         {priority.label}
                       </Badge>
                       {rfi.is_overdue && (
-                        <Badge className="font-mono text-[10px] bg-red-900/50 text-red-400">
+                        <Badge variant="outline" className="font-mono text-[10px] border-0 bg-red-900/50 text-red-400">
                           {rfi.days_overdue} days overdue
                         </Badge>
                       )}
@@ -353,14 +353,14 @@ export function RFIsTab({ projectId, organizationId, onRefresh }: RFIsTabProps) 
                   
                   <div className="flex items-center gap-2">
                     {rfi.status === 'draft' && (
-                      <Badge className="font-mono text-[10px] bg-zinc-700/50 text-zinc-400">
+                      <Badge variant="outline" className="font-mono text-[10px] border-0 bg-zinc-700/50 text-zinc-400">
                         Pending Submission
                       </Badge>
                     )}
                     {(rfi.status === 'open' || rfi.status === 'pending_response') && (
                       <Button
                         size="sm"
-                        className="h-8 font-mono text-xs bg-amber-600 hover:bg-amber-700 text-black"
+                        className="h-8 font-mono text-xs bg-amber-600 hover:bg-amber-700 text-white"
                         onClick={(e) => {
                           e.stopPropagation()
                           openResponseDialog(rfi)
@@ -371,7 +371,7 @@ export function RFIsTab({ projectId, organizationId, onRefresh }: RFIsTabProps) 
                       </Button>
                     )}
                     {rfi.status === 'answered' && (
-                      <Badge className="font-mono text-[10px] bg-green-900/50 text-green-400">
+                      <Badge variant="outline" className="font-mono text-[10px] border-0 bg-green-900/50 text-green-400">
                         Response Submitted
                       </Badge>
                     )}
@@ -594,7 +594,7 @@ export function RFIsTab({ projectId, organizationId, onRefresh }: RFIsTabProps) 
             <Button
               onClick={submitResponse}
               disabled={!responseText.trim() || isSubmitting}
-              className="font-mono text-xs bg-amber-600 hover:bg-amber-700 text-black"
+              className="font-mono text-xs bg-amber-600 hover:bg-amber-700 text-white"
             >
               {isSubmitting ? (
                 <>

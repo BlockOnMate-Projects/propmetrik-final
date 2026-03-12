@@ -90,7 +90,7 @@ export default function MaintenancePage() {
                         Filter
                     </Button>
                     <Link href="/dashboard/property-management/maintenance/new">
-                        <Button className="bg-amber-600 hover:bg-amber-500 text-black font-bold font-mono text-xs uppercase">
+                        <Button className="bg-amber-600 hover:bg-amber-500 text-white font-bold font-mono text-xs uppercase">
                             <Plus className="mr-2 h-3 w-3" />
                             New Work Order
                         </Button>

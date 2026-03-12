@@ -102,6 +102,8 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
             accessToken: data.token,
             role: data.user.role,
             tier: data.user.tier,
+            userType: data.user.userType,
+            subscribedServices: data.user.subscribedServices || [],
             organizationId: data.user.organization?.id,
             organizationName: data.user.organization?.name,
           };
@@ -131,9 +133,13 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         token.accessToken = user.accessToken as string;
         token.role = user.role as string;
         token.tier = user.tier as string;
+        token.userType = user.userType as string;
+        token.subscribedServices = (user as any).subscribedServices as string[] || [];
         token.organizationId = user.organizationId as string;
         token.organizationName = user.organizationName as string;
         token.roles = [user.role as string];
+        token.name = user.name as string;
+        token.email = user.email as string;
 
         // Extract exp from backend JWT so we know when to refresh
         const payload = decodeJwtPayload(token.accessToken as string);
@@ -185,6 +191,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
               token.accessToken = refreshed.token;
               const payload = decodeJwtPayload(refreshed.token);
               if (payload?.exp) token.backendTokenExp = payload.exp;
+              if (payload?.subscribedServices) token.subscribedServices = payload.subscribedServices;
             }
             console.log('[Auth JWT] Keycloak token refreshed');
           } else {
@@ -202,6 +209,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
             token.accessToken = refreshed.token;
             const payload = decodeJwtPayload(refreshed.token);
             if (payload?.exp) token.backendTokenExp = payload.exp;
+            if (payload?.subscribedServices) token.subscribedServices = payload.subscribedServices;
             console.log('[Auth JWT] Backend token refreshed');
           } else {
             console.error('[Auth JWT] Backend token refresh failed');
@@ -219,8 +227,12 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       session.user.roles = (token.roles as string[]) || [];
       session.user.role = token.role as string;
       session.user.tier = token.tier as string;
+      session.user.userType = token.userType as string;
+      session.user.subscribedServices = (token.subscribedServices as string[]) || [];
       session.user.organizationId = token.organizationId as string | undefined;
       session.user.organizationName = token.organizationName as string | undefined;
+      session.user.name = token.name as string | undefined;
+      session.user.email = (token.email as string | undefined) ?? '';
 
       // Surface refresh errors so the client can redirect to login
       if (token.error) {
@@ -257,6 +269,8 @@ declare module "next-auth" {
       roles: string[];
       role?: string;
       tier?: string;
+      userType?: string;
+      subscribedServices?: string[];
       organizationId?: string;
       organizationName?: string;
     };
@@ -271,6 +285,8 @@ declare module "next-auth" {
     roles?: string[];
     role?: string;
     tier?: string;
+    userType?: string;
+    subscribedServices?: string[];
     organizationId?: string;
     organizationName?: string;
     error?: string;
@@ -280,6 +296,8 @@ declare module "next-auth" {
     accessToken?: string;
     role?: string;
     tier?: string;
+    userType?: string;
+    subscribedServices?: string[];
     organizationId?: string;
     organizationName?: string;
   }

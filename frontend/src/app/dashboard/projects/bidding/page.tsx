@@ -85,12 +85,12 @@ export default function BiddingPage() {
                     <Select value={vf.trade_category || 'general'} onValueChange={v => setVf({ ...vf, trade_category: v })}><SelectTrigger className="bg-zinc-800 border-zinc-700 text-white"><SelectValue /></SelectTrigger><SelectContent className="bg-zinc-800 border-zinc-700"><SelectItem value="general">General</SelectItem><SelectItem value="electrical">Electrical</SelectItem><SelectItem value="plumbing">Plumbing</SelectItem><SelectItem value="hvac">HVAC</SelectItem><SelectItem value="concrete">Concrete</SelectItem><SelectItem value="steel">Steel</SelectItem><SelectItem value="roofing">Roofing</SelectItem><SelectItem value="painting">Painting</SelectItem></SelectContent></Select></div>
                   <div><Label className="text-[10px] font-mono text-zinc-500">LICENSE #</Label><Input className="bg-zinc-800 border-zinc-700 text-white" value={vf.license_number || ''} onChange={e => setVf({ ...vf, license_number: e.target.value })} /></div>
                 </div>
-                <Button className="w-full bg-amber-500 hover:bg-amber-600 text-black" onClick={() => createVendor.mutate(vf)}>Register Vendor</Button>
+                <Button className="w-full bg-amber-500 hover:bg-amber-600 text-white" onClick={() => createVendor.mutate(vf)}>Register Vendor</Button>
               </div>
             </DialogContent>
           </Dialog>
           <Dialog open={showCreate} onOpenChange={setShowCreate}>
-            <DialogTrigger asChild><Button size="sm" className="bg-amber-500 hover:bg-amber-600 text-black text-xs">+ BID PACKAGE</Button></DialogTrigger>
+            <DialogTrigger asChild><Button size="sm" className="bg-amber-500 hover:bg-amber-600 text-white text-xs">+ BID PACKAGE</Button></DialogTrigger>
             <DialogContent className="bg-zinc-900 border-zinc-800 max-w-lg">
               <DialogHeader><DialogTitle className="text-white">Create Bid Package</DialogTitle></DialogHeader>
               <div className="space-y-3">
@@ -105,7 +105,7 @@ export default function BiddingPage() {
                   <div><Label className="text-[10px] font-mono text-zinc-500">PRE-BID MEETING</Label><Input type="datetime-local" className="bg-zinc-800 border-zinc-700 text-white" value={form.pre_bid_meeting_date || ''} onChange={e => setForm({ ...form, pre_bid_meeting_date: e.target.value })} /></div>
                 </div>
                 <div><Label className="text-[10px] font-mono text-zinc-500">SCOPE OF WORK</Label><Textarea className="bg-zinc-800 border-zinc-700 text-white" rows={3} value={form.scope_of_work || ''} onChange={e => setForm({ ...form, scope_of_work: e.target.value })} /></div>
-                <Button className="w-full bg-amber-500 hover:bg-amber-600 text-black" onClick={() => createPkg.mutate(form)}>Create Package</Button>
+                <Button className="w-full bg-amber-500 hover:bg-amber-600 text-white" onClick={() => createPkg.mutate(form)}>Create Package</Button>
               </div>
             </DialogContent>
           </Dialog>

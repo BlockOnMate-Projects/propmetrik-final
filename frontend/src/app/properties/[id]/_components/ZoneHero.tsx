@@ -96,13 +96,13 @@ export function ZoneHero({ property }: ZoneHeroProps) {
             <div className="bg-white/10 backdrop-blur-md rounded-lg p-1 flex">
               <button 
                 onClick={() => setCurrency('GHS')}
-                className={`px-3 py-1 rounded-md text-sm font-medium transition-colors ${currency === 'GHS' ? 'bg-white text-black' : 'text-white hover:bg-white/20'}`}
+                className={`px-3 py-1 rounded-md text-sm font-medium transition-colors ${currency === 'GHS' ? 'bg-white text-white' : 'text-white hover:bg-white/20'}`}
               >
                 GHS
               </button>
               <button 
                 onClick={() => setCurrency('USD')}
-                className={`px-3 py-1 rounded-md text-sm font-medium transition-colors ${currency === 'USD' ? 'bg-white text-black' : 'text-white hover:bg-white/20'}`}
+                className={`px-3 py-1 rounded-md text-sm font-medium transition-colors ${currency === 'USD' ? 'bg-white text-white' : 'text-white hover:bg-white/20'}`}
               >
                 USD
               </button>

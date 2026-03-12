@@ -652,19 +652,19 @@ export default function TenantDetailsPage() {
                 <div className="md:col-span-8 md:order-1">
                     <Tabs defaultValue="tenancies" className="w-full">
                         <TabsList className="grid grid-cols-5 bg-zinc-900 border border-zinc-800 w-full h-auto p-1">
-                            <TabsTrigger value="tenancies" className="w-full data-[state=active]:bg-amber-600 data-[state=active]:text-black text-zinc-400 font-mono text-xs">
+                            <TabsTrigger value="tenancies" className="w-full data-[state=active]:bg-amber-600 data-[state=active]:text-white text-zinc-400 font-mono text-xs">
                                 Tenancies
                             </TabsTrigger>
-                            <TabsTrigger value="utilities" className="w-full data-[state=active]:bg-amber-600 data-[state=active]:text-black text-zinc-400 font-mono text-xs">
+                            <TabsTrigger value="utilities" className="w-full data-[state=active]:bg-amber-600 data-[state=active]:text-white text-zinc-400 font-mono text-xs">
                                 Utilities
                             </TabsTrigger>
-                            <TabsTrigger value="payments" className="w-full data-[state=active]:bg-amber-600 data-[state=active]:text-black text-zinc-400 font-mono text-xs">
+                            <TabsTrigger value="payments" className="w-full data-[state=active]:bg-amber-600 data-[state=active]:text-white text-zinc-400 font-mono text-xs">
                                 Payments
                             </TabsTrigger>
-                            <TabsTrigger value="maintenance" className="w-full data-[state=active]:bg-amber-600 data-[state=active]:text-black text-zinc-400 font-mono text-xs">
+                            <TabsTrigger value="maintenance" className="w-full data-[state=active]:bg-amber-600 data-[state=active]:text-white text-zinc-400 font-mono text-xs">
                                 Maintenance
                             </TabsTrigger>
-                            <TabsTrigger value="documents" className="w-full data-[state=active]:bg-amber-600 data-[state=active]:text-black text-zinc-400 font-mono text-xs">
+                            <TabsTrigger value="documents" className="w-full data-[state=active]:bg-amber-600 data-[state=active]:text-white text-zinc-400 font-mono text-xs">
                                 Documents
                             </TabsTrigger>
                         </TabsList>
@@ -775,7 +775,7 @@ export default function TenantDetailsPage() {
                                             <CardContent className="py-12 text-center">
                                                 <Building2 className="h-12 w-12 text-zinc-800 mx-auto mb-4" />
                                                 <p className="text-zinc-500 font-mono text-sm">No tenancies found</p>
-                                                <Button className="mt-4 bg-amber-600 hover:bg-amber-500 text-black font-mono text-xs">
+                                                <Button className="mt-4 bg-amber-600 hover:bg-amber-500 text-white font-mono text-xs">
                                                     Create Tenancy
                                                 </Button>
                                             </CardContent>
@@ -795,7 +795,7 @@ export default function TenantDetailsPage() {
                                         </div>
                                         <Button
                                             size="sm"
-                                            className="bg-amber-600 hover:bg-amber-500 text-black font-mono text-xs"
+                                            className="bg-amber-600 hover:bg-amber-500 text-white font-mono text-xs"
                                             onClick={() => setIsAddChargeOpen(true)}
                                             disabled={!activeTenancy}
                                         >
@@ -1161,7 +1161,7 @@ export default function TenantDetailsPage() {
                                     <div className="space-y-2 pt-1">
                                         {leaseSigningState.status === 'none' && (
                                             <Button
-                                                className="w-full bg-amber-600 hover:bg-amber-700 text-black font-mono text-xs"
+                                                className="w-full bg-amber-600 hover:bg-amber-700 text-white font-mono text-xs"
                                                 onClick={() => handleGenerateLease()}
                                             >
                                                 <FileText className="h-3 w-3 mr-2" />
@@ -1172,7 +1172,7 @@ export default function TenantDetailsPage() {
                                         {leaseSigningState.status === 'draft' && (
                                             <>
                                                 <Button
-                                                    className="w-full bg-amber-600 hover:bg-amber-700 text-black font-mono text-xs"
+                                                    className="w-full bg-amber-600 hover:bg-amber-700 text-white font-mono text-xs"
                                                     onClick={() => handleGenerateLease()}
                                                 >
                                                     <Send className="h-3 w-3 mr-2" />
@@ -1244,7 +1244,7 @@ export default function TenantDetailsPage() {
 
                                         {(leaseSigningState.status === 'expired' || leaseSigningState.status === 'voided') && (
                                             <Button
-                                                className="w-full bg-amber-600 hover:bg-amber-700 text-black font-mono text-xs"
+                                                className="w-full bg-amber-600 hover:bg-amber-700 text-white font-mono text-xs"
                                                 onClick={() => {
                                                     setLeaseSigningState({
                                                         status: 'none',
@@ -1371,7 +1371,7 @@ export default function TenantDetailsPage() {
                     </div>
                     <DialogFooter>
                         <Button variant="outline" className="border-zinc-800 text-zinc-400 font-mono text-xs" onClick={() => setIsEditDialogOpen(false)}>Cancel</Button>
-                        <Button className="bg-amber-600 hover:bg-amber-500 text-black font-mono text-xs" onClick={handleSaveEdit} disabled={isSavingEdit}>
+                        <Button className="bg-amber-600 hover:bg-amber-500 text-white font-mono text-xs" onClick={handleSaveEdit} disabled={isSavingEdit}>
                             {isSavingEdit ? <Loader2 className="h-3 w-3 mr-2 animate-spin" /> : null}
                             Save Changes
                         </Button>
@@ -1462,7 +1462,7 @@ export default function TenantDetailsPage() {
                     </div>
                     <DialogFooter>
                         <Button variant="outline" className="border-zinc-800 text-zinc-400 font-mono text-xs" onClick={() => setIsRenewDialogOpen(false)}>Cancel</Button>
-                        <Button className="bg-amber-600 hover:bg-amber-500 text-black font-mono text-xs" onClick={handleRenew} disabled={isRenewing}>
+                        <Button className="bg-amber-600 hover:bg-amber-500 text-white font-mono text-xs" onClick={handleRenew} disabled={isRenewing}>
                             {isRenewing ? <Loader2 className="h-3 w-3 mr-2 animate-spin" /> : <RefreshCw className="h-3 w-3 mr-2" />}
                             Renew Lease
                         </Button>
@@ -1572,7 +1572,7 @@ export default function TenantDetailsPage() {
                     <DialogFooter>
                         <Button variant="ghost" onClick={() => setIsAddChargeOpen(false)} className="text-zinc-400 font-mono text-xs">Cancel</Button>
                         <Button
-                            className="bg-amber-600 hover:bg-amber-500 text-black font-mono text-xs"
+                            className="bg-amber-600 hover:bg-amber-500 text-white font-mono text-xs"
                             disabled={!chargeForm.billingPeriodStart || !chargeForm.billingPeriodEnd || !chargeForm.amount || isSubmittingCharge}
                             onClick={async () => {
                                 if (!activeTenancy) return

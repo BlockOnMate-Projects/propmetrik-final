@@ -357,7 +357,7 @@ export default function EditProjectPage() {
             <Button 
               onClick={handleSave}
               disabled={isSaving}
-              className="bg-amber-600 hover:bg-amber-700 text-black font-mono text-xs"
+              className="bg-amber-600 hover:bg-amber-700 text-white font-mono text-xs"
             >
               {isSaving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Save className="h-4 w-4 mr-2" />}
               Save Changes

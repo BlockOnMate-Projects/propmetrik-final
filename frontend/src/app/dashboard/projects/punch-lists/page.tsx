@@ -175,7 +175,7 @@ export default function PunchListsPage() {
       params.append('limit', '20');
       params.append('page', String(page));
 
-      const response = await fetch(`${API_BASE}/api/projects/punch-lists?${params}`);
+      const response = await fetch(`${API_BASE}/projects/punch-lists?${params}`);
       const result = await response.json();
       
       if (result.success !== false) {
@@ -202,7 +202,7 @@ export default function PunchListsPage() {
   // Fetch projects
   const fetchProjects = useCallback(async () => {
     try {
-      const response = await fetch(`${API_BASE}/api/projects?pageSize=100`);
+      const response = await fetch(`${API_BASE}/projects?pageSize=100`);
       const result = await response.json();
       
       if (result.success) {
@@ -244,8 +244,8 @@ export default function PunchListsPage() {
 
       const isEdit = showEditDialog && selectedItem;
       const url = isEdit 
-        ? `${API_BASE}/api/projects/punch-lists/${selectedItem.id}`
-        : `${API_BASE}/api/projects/punch-lists`;
+        ? `${API_BASE}/projects/punch-lists/${selectedItem.id}`
+        : `${API_BASE}/projects/punch-lists`;
       
       const response = await fetch(url, {
         method: isEdit ? 'PUT' : 'POST',
@@ -284,7 +284,7 @@ export default function PunchListsPage() {
   const handleStatusAction = async (item: PunchItem, action: string) => {
     try {
       setSubmitting(true);
-      let url = `${API_BASE}/api/projects/punch-lists/${item.id}/${action}`;
+      let url = `${API_BASE}/projects/punch-lists/${item.id}/${action}`;
       
       const response = await fetch(url, {
         method: 'POST',
@@ -320,7 +320,7 @@ export default function PunchListsPage() {
 
     try {
       setSubmitting(true);
-      const response = await fetch(`${API_BASE}/api/projects/punch-lists/${selectedItem.id}`, {
+      const response = await fetch(`${API_BASE}/projects/punch-lists/${selectedItem.id}`, {
         method: 'DELETE',
       });
 

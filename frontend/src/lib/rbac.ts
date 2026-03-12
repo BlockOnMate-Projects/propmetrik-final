@@ -50,6 +50,8 @@ const TIER_LEVEL: Record<string, number> = {
   enterprise: 3,
 };
 
+
+
 // ---------------------------------------------------------------------------
 // Remote RBAC config (fetched from backend)
 // ---------------------------------------------------------------------------
@@ -166,6 +168,13 @@ const FALLBACK_platformTabAccess: Record<string, UserRole[]> = {
     'super_admin', 'admin', 'manager', 'project_manager', 'firm_principal',
   ],
 
+  // Calendar — all roles that use projects or valuations
+  calendar: [
+    'super_admin', 'firm_principal', 'admin', 'senior_valuer', 'manager',
+    'project_manager', 'valuer', 'finance_manager', 'agent',
+    'probationer', 'inspector', 'analyst',
+  ],
+
   // Platform analytics — senior roles + project managers
   analytics: [
     'super_admin', 'admin', 'firm_principal', 'manager', 'project_manager', 'analyst',
@@ -212,7 +221,7 @@ export const featureGates: Record<string, FeatureGate> = {
   projects:             { minTier: 'professional',  label: 'Project Management',    description: 'Construction and development project tracking' },
   analytics:            { minTier: 'professional',  label: 'Market Analytics',       description: 'Advanced market intelligence and trend analysis' },
   'property-management':{ minTier: 'professional',  label: 'Property Management',   description: 'Tenant, lease, and facility management' },
-  'e-sign':             { minTier: 'professional',  label: 'E-Sign',                description: 'Digital document signing and verification' },
+  'e-sign':             { minTier: 'starter',       label: 'E-Sign',                description: 'Digital document signing and verification (shared service)' },
   admin:                { minTier: 'starter',      label: 'Admin Panel',            description: 'Platform administration and settings' },
 
   // --- Sub-features (gated at higher tiers) ---
@@ -225,6 +234,16 @@ export const featureGates: Record<string, FeatureGate> = {
   'data-hub':                 { minTier: 'professional',  label: 'Data Hub',                description: 'Connect external data sources and feeds' },
   'portfolio-analysis':       { minTier: 'enterprise',    label: 'Portfolio Analysis',      description: 'Multi-property portfolio performance tracking' },
   'blockchain-verification':  { minTier: 'enterprise',    label: 'Blockchain Verification', description: 'On-chain property record verification' },
+
+  // --- PM sub-groups (project management section tabs) ---
+  'pm-overview':       { minTier: 'starter',       label: 'PM Overview',         description: 'Project dashboard, calendar, and team' },
+  'pm-construction':   { minTier: 'professional',  label: 'Construction Mgmt',   description: 'Drawings, issues, punch lists, safety, equipment' },
+  'pm-procurement':    { minTier: 'professional',  label: 'Procurement',         description: 'Bid management, contracts, contractors' },
+  'pm-financials':     { minTier: 'professional',  label: 'Project Financials',  description: 'Costs, budget, invoicing, timesheets, reports' },
+  'pm-documents':      { minTier: 'starter',       label: 'Project Documents',   description: 'Files, meetings, and closeout' },
+  'pm-units':          { minTier: 'professional',  label: 'Units Management',    description: 'Unit tracking and sales management' },
+  'pm-analytics':      { minTier: 'enterprise',    label: 'Project Analytics',   description: 'Analytics, audit log, and integrations' },
+  'pm-settings':       { minTier: 'professional',  label: 'Project Settings',    description: 'Project configuration and settings' },
 };
 
 // ---------------------------------------------------------------------------
@@ -278,6 +297,76 @@ const FALLBACK_valuationTabAccess: Record<string, UserRole[]> = {
 };
 
 // ---------------------------------------------------------------------------
+// Per-service sub-tab role scoping (see rbac.md §7.3)
+// ---------------------------------------------------------------------------
+
+/**
+ * Per-service sub-tab access: serviceKey → subTabKey → allowedRoles[]
+ * Valuations use their own `FALLBACK_valuationTabAccess` above.
+ */
+const FALLBACK_serviceSubTabAccess: Record<string, Record<string, UserRole[]>> = {
+  // ── Project Management ──────────────────────────────────────
+  projects: {
+    'pm-overview':      ['super_admin', 'firm_principal', 'admin', 'manager', 'project_manager', 'finance_manager', 'analyst', 'inspector', 'viewer'],
+    'pm-construction':  ['super_admin', 'firm_principal', 'admin', 'manager', 'project_manager', 'inspector'],
+    'pm-procurement':   ['super_admin', 'firm_principal', 'admin', 'manager', 'project_manager', 'finance_manager'],
+    'pm-financials':    ['super_admin', 'firm_principal', 'admin', 'manager', 'project_manager', 'finance_manager'],
+    'pm-documents':     ['super_admin', 'firm_principal', 'admin', 'manager', 'project_manager', 'finance_manager', 'inspector', 'viewer'],
+    'pm-units':         ['super_admin', 'firm_principal', 'admin', 'manager', 'project_manager', 'agent'],
+    'pm-analytics':     ['super_admin', 'firm_principal', 'admin', 'manager', 'analyst'],
+    'pm-settings':      ['super_admin', 'firm_principal', 'admin'],
+  },
+
+  // ── Deal Management (CRM) ──────────────────────────────────
+  deals: {
+    'crm-deals':        ['super_admin', 'firm_principal', 'admin', 'manager', 'agent'],
+    'crm-properties':   ['super_admin', 'firm_principal', 'admin', 'manager', 'agent'],
+    'crm-contacts':     ['super_admin', 'firm_principal', 'admin', 'manager', 'agent'],
+    'crm-agents':       ['super_admin', 'firm_principal', 'admin', 'manager'],
+    'crm-companies':    ['super_admin', 'firm_principal', 'admin', 'manager', 'agent'],
+    'crm-tasks':        ['super_admin', 'firm_principal', 'admin', 'manager', 'agent'],
+    'crm-documents':    ['super_admin', 'firm_principal', 'admin', 'manager', 'agent'],
+    'crm-financials':   ['super_admin', 'firm_principal', 'admin', 'manager', 'finance_manager'],
+    'crm-messaging':    ['super_admin', 'firm_principal', 'admin', 'manager', 'agent'],
+    'crm-calendar':     ['super_admin', 'firm_principal', 'admin', 'manager', 'agent'],
+    'crm-analytics':    ['super_admin', 'firm_principal', 'admin', 'manager', 'analyst'],
+    'crm-workflows':    ['super_admin', 'firm_principal', 'admin', 'manager'],
+    'crm-pipelines':    ['super_admin', 'firm_principal', 'admin'],
+  },
+
+  // ── Property Management ────────────────────────────────────
+  'property-management': {
+    'propmgmt-overview':      ['super_admin', 'firm_principal', 'admin', 'manager', 'project_manager'],
+    'propmgmt-properties':    ['super_admin', 'firm_principal', 'admin', 'manager', 'project_manager'],
+    'propmgmt-messages':      ['super_admin', 'firm_principal', 'admin', 'manager', 'project_manager'],
+    'propmgmt-portfolios':    ['super_admin', 'firm_principal', 'admin', 'manager'],
+    'propmgmt-applications':  ['super_admin', 'firm_principal', 'admin', 'manager', 'project_manager'],
+    'propmgmt-tenants':       ['super_admin', 'firm_principal', 'admin', 'manager', 'project_manager'],
+    'propmgmt-maintenance':   ['super_admin', 'firm_principal', 'admin', 'manager', 'project_manager'],
+    'propmgmt-documents':     ['super_admin', 'firm_principal', 'admin', 'manager', 'project_manager'],
+    'propmgmt-vendors':       ['super_admin', 'firm_principal', 'admin', 'manager'],
+    'propmgmt-financials':    ['super_admin', 'firm_principal', 'admin', 'manager', 'finance_manager'],
+    'propmgmt-calendar':      ['super_admin', 'firm_principal', 'admin', 'manager', 'project_manager'],
+  },
+
+  // ── Analytics ──────────────────────────────────────────────
+  analytics: {
+    'analytics-market':        ['super_admin', 'firm_principal', 'admin', 'manager', 'project_manager', 'analyst'],
+    'analytics-construction':  ['super_admin', 'firm_principal', 'admin', 'manager', 'project_manager', 'analyst'],
+    'analytics-affordability': ['super_admin', 'firm_principal', 'admin', 'manager', 'analyst'],
+    'analytics-valuations':    ['super_admin', 'firm_principal', 'admin', 'senior_valuer', 'manager', 'valuer', 'analyst'],
+    'analytics-ml':            ['super_admin', 'firm_principal', 'admin', 'analyst'],
+    'analytics-risk':          ['super_admin', 'firm_principal', 'admin', 'manager', 'analyst', 'compliance_officer'],
+    'analytics-short-stay':    ['super_admin', 'firm_principal', 'admin', 'manager', 'analyst'],
+    'analytics-forecasting':   ['super_admin', 'firm_principal', 'admin', 'analyst'],
+    'analytics-crm':           ['super_admin', 'firm_principal', 'admin', 'manager', 'agent', 'analyst'],
+    'analytics-geographic':    ['super_admin', 'firm_principal', 'admin', 'manager', 'analyst'],
+    'analytics-management':    ['super_admin', 'firm_principal', 'admin', 'manager'],
+    'analytics-settings':      ['super_admin', 'firm_principal', 'admin'],
+  },
+};
+
+// ---------------------------------------------------------------------------
 // Helper functions (dynamic config → hardcoded fallback)
 // ---------------------------------------------------------------------------
 
@@ -293,6 +382,32 @@ function getPlatformTabAccess(): Record<string, string[]> {
  */
 function getValuationTabAccess(): Record<string, string[]> {
   return _rbacConfig?.valuationTabs || FALLBACK_valuationTabAccess;
+}
+
+/**
+ * Get sub-tab access for a specific service (fallback only for now).
+ */
+function getServiceSubTabAccess(serviceKey: string): Record<string, string[]> | null {
+  return FALLBACK_serviceSubTabAccess[serviceKey] || null;
+}
+
+/**
+ * Check if a role can access a specific sub-tab within a service.
+ * Returns true if no sub-tab scoping is defined for the service (fail-open for unconfigured services).
+ */
+export function canAccessServiceSubTab(
+  role: string | undefined | null,
+  serviceKey: string,
+  subTabKey: string,
+): boolean {
+  if (!role) return false;
+  if (role === 'super_admin') return true;
+
+  const tabAccess = getServiceSubTabAccess(serviceKey);
+  if (!tabAccess) return true; // no scoping defined → allow all
+  const allowed = tabAccess[subTabKey];
+  if (!allowed) return true; // sub-tab not in map → allow
+  return allowed.includes(role);
 }
 
 /**
@@ -327,14 +442,19 @@ export function canAccessValuationTab(role: string | undefined | null, tabKey: s
 /**
  * Check if a subscription tier meets the minimum requirement for a feature.
  * super_admin always gets full access regardless of tier.
+ * Staff users (userType='staff') bypass ALL tier restrictions per RBAC spec.
  */
 export function canAccessFeature(
   role: string | undefined | null,
   tier: string | undefined | null,
-  featureKey: string
+  featureKey: string,
+  userType?: string | null,
 ): boolean {
   // super_admin bypasses all tier restrictions
   if (role === 'super_admin') return true;
+
+  // Staff users bypass all tier restrictions — tiers only apply to customers
+  if (!userType || userType === 'staff') return true;
   
   const gates = getFeatureGates();
   const gate = gates[featureKey];
@@ -352,9 +472,10 @@ export function canAccessFeature(
 export function getUpgradeInfo(
   role: string | undefined | null,
   tier: string | undefined | null,
-  featureKey: string
+  featureKey: string,
+  userType?: string | null,
 ): FeatureGate | null {
-  if (canAccessFeature(role, tier, featureKey)) return null;
+  if (canAccessFeature(role, tier, featureKey, userType)) return null;
   const gates = getFeatureGates();
   const gate = gates[featureKey];
   return gate ? { minTier: gate.minTier as SubscriptionTier, label: gate.label, description: gate.description } : null;
@@ -366,10 +487,11 @@ export function getUpgradeInfo(
 export function canFullyAccessTab(
   role: string | undefined | null,
   tier: string | undefined | null,
-  tabKey: string
+  tabKey: string,
+  userType?: string | null,
 ): { hasRoleAccess: boolean; hasTierAccess: boolean; gate: FeatureGate | null } {
   const hasRoleAccess = canAccessPlatformTab(role, tabKey);
-  const hasTierAccess = canAccessFeature(role, tier, tabKey);
+  const hasTierAccess = canAccessFeature(role, tier, tabKey, userType);
   const gates = getFeatureGates();
   const rawGate = !hasTierAccess ? (gates[tabKey] || null) : null;
   const gate = rawGate ? { minTier: rawGate.minTier as SubscriptionTier, label: rawGate.label, description: rawGate.description } : null;

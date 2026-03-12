@@ -41,6 +41,7 @@ interface Plan {
     features: string[];
     cta_text: string;
     is_featured: boolean;
+    is_active?: boolean;
 }
 
 interface Addon {
@@ -275,7 +276,7 @@ export default function BillingPage() {
                     {!subscription && (
                         <Link
                             href="/pricing"
-                            className="bg-amber-500 text-black px-5 py-2.5 rounded-xl font-mono font-bold text-sm hover:bg-amber-400 transition-colors"
+                            className="bg-amber-500 text-white px-5 py-2.5 rounded-xl font-mono font-bold text-sm hover:bg-amber-400 transition-colors"
                         >
                             Choose a Plan
                         </Link>

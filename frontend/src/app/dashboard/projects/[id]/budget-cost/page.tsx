@@ -50,23 +50,23 @@ import { formatCurrency as formatCurrencyUtil } from '@/lib/utils';
 
 const categoryLabels: Record<string, string> = {
   land_acquisition: 'Land Acquisition',
+  permits_approvals: 'Permits & Approvals',
+  design_engineering: 'Design & Engineering',
   site_preparation: 'Site Preparation',
   foundation: 'Foundation',
-  structure: 'Structure',
-  exterior: 'Exterior',
+  structural: 'Structural',
   roofing: 'Roofing',
-  plumbing: 'Plumbing',
-  electrical: 'Electrical',
-  hvac: 'HVAC',
-  interior_finishes: 'Interior Finishes',
+  mep: 'MEP (Mechanical/Electrical/Plumbing)',
+  exterior_finishing: 'Exterior Finishing',
+  interior_finishing: 'Interior Finishing',
   landscaping: 'Landscaping',
-  permits_fees: 'Permits & Fees',
-  professional_services: 'Professional Services',
-  equipment: 'Equipment',
-  labor: 'Labor',
-  materials: 'Materials',
+  amenities: 'Amenities',
   contingency: 'Contingency',
-  financing: 'Financing',
+  professional_fees: 'Professional Fees',
+  insurance: 'Insurance',
+  marketing_sales: 'Marketing & Sales',
+  legal: 'Legal',
+  financing_costs: 'Financing Costs',
   other: 'Other'
 };
 
@@ -93,6 +93,32 @@ export default function ProjectBudgetCostPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [currency, setCurrency] = useState('GHS');
+  const [newCost, setNewCost] = useState({ description: '', category: '', original_budget: '', notes: '' });
+  const [addingCost, setAddingCost] = useState(false);
+
+  const handleAddCost = async () => {
+    if (!newCost.description || !newCost.category || !newCost.original_budget) {
+      toast({ title: 'Missing fields', description: 'Description, category and budget are required.', variant: 'destructive' });
+      return;
+    }
+    setAddingCost(true);
+    try {
+      await costsApi.create(projectId, {
+        description: newCost.description,
+        category: newCost.category as CostCategory,
+        original_budget: parseFloat(newCost.original_budget),
+        notes: newCost.notes || undefined,
+      });
+      toast({ title: 'Cost added', description: newCost.description });
+      setShowAddDialog(false);
+      setNewCost({ description: '', category: '', original_budget: '', notes: '' });
+      fetchData();
+    } catch (err: any) {
+      toast({ title: 'Error', description: err.message, variant: 'destructive' });
+    } finally {
+      setAddingCost(false);
+    }
+  };
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -251,7 +277,10 @@ export default function ProjectBudgetCostPage() {
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-4">
-                    {budgetSummary?.by_category?.map((cat) => {
+                    {budgetSummary?.by_category && (Array.isArray(budgetSummary.by_category)
+                      ? budgetSummary.by_category
+                      : Object.entries(budgetSummary.by_category).map(([key, val]) => ({ category: key, ...(val as Record<string, unknown>) }))
+                    ).map((cat: any) => {
                       const catBudget = cat.revised_budget || cat.original_budget || 0;
                       const catSpent = cat.actual || 0;
                       const percentage = catBudget > 0 ? Math.round((catSpent / catBudget) * 100) : 0;
@@ -267,7 +296,7 @@ export default function ProjectBudgetCostPage() {
                         </div>
                       );
                     })}
-                    {(!budgetSummary?.by_category || budgetSummary.by_category.length === 0) && (
+                    {(!budgetSummary?.by_category || (Array.isArray(budgetSummary.by_category) ? budgetSummary.by_category.length === 0 : Object.keys(budgetSummary.by_category).length === 0)) && (
                       <div className="text-center py-8 text-zinc-500">No budget categories configured yet.</div>
                     )}
                   </div>
@@ -345,29 +374,47 @@ export default function ProjectBudgetCostPage() {
           <div className="space-y-4 py-4">
             <div className="space-y-2">
               <Label className="text-zinc-300">Description</Label>
-              <Input placeholder="Enter cost description" className="bg-zinc-800 border-zinc-700" />
+              <Input
+                placeholder="Enter cost description"
+                className="bg-zinc-800 border-zinc-700"
+                value={newCost.description}
+                onChange={(e) => setNewCost(prev => ({ ...prev, description: e.target.value }))}
+              />
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label className="text-zinc-300">Category</Label>
-                <Select>
+                <Select value={newCost.category} onValueChange={(val) => setNewCost(prev => ({ ...prev, category: val }))}>
                   <SelectTrigger className="bg-zinc-800 border-zinc-700"><SelectValue placeholder="Select category" /></SelectTrigger>
                   <SelectContent>{Object.entries(categoryLabels).map(([value, label]) => (<SelectItem key={value} value={value}>{label}</SelectItem>))}</SelectContent>
                 </Select>
               </div>
               <div className="space-y-2">
                 <Label className="text-zinc-300">Budgeted Amount</Label>
-                <Input type="number" placeholder="0.00" className="bg-zinc-800 border-zinc-700" />
+                <Input
+                  type="number"
+                  placeholder="0.00"
+                  className="bg-zinc-800 border-zinc-700"
+                  value={newCost.original_budget}
+                  onChange={(e) => setNewCost(prev => ({ ...prev, original_budget: e.target.value }))}
+                />
               </div>
             </div>
             <div className="space-y-2">
               <Label className="text-zinc-300">Notes</Label>
-              <Textarea placeholder="Additional notes..." className="bg-zinc-800 border-zinc-700" />
+              <Textarea
+                placeholder="Additional notes..."
+                className="bg-zinc-800 border-zinc-700"
+                value={newCost.notes}
+                onChange={(e) => setNewCost(prev => ({ ...prev, notes: e.target.value }))}
+              />
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setShowAddDialog(false)}>Cancel</Button>
-            <Button className="bg-amber-600 hover:bg-amber-700">Add Cost</Button>
+            <Button variant="outline" onClick={() => setShowAddDialog(false)} disabled={addingCost}>Cancel</Button>
+            <Button className="bg-amber-600 hover:bg-amber-700" onClick={handleAddCost} disabled={addingCost}>
+              {addingCost ? 'Adding...' : 'Add Cost'}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

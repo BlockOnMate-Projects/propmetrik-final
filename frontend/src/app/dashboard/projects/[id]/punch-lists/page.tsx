@@ -159,7 +159,7 @@ export default function ProjectPunchListsPage() {
   // Fetch project
   const fetchProject = useCallback(async () => {
     try {
-      const response = await fetch(`${API_BASE}/api/projects/${projectId}`);
+      const response = await fetch(`${API_BASE}/projects/${projectId}`);
       const result = await response.json();
       if (result.success) {
         setProject(result.data);
@@ -183,7 +183,7 @@ export default function ProjectPunchListsPage() {
       }
       params.append('pageSize', '100');
 
-      const response = await fetch(`${API_BASE}/api/projects/punch-lists?${params}`);
+      const response = await fetch(`${API_BASE}/projects/punch-lists?${params}`);
       const result = await response.json();
       
       if (result.success) {
@@ -232,7 +232,7 @@ export default function ProjectPunchListsPage() {
 
     try {
       setSubmitting(true);
-      const response = await fetch(`${API_BASE}/api/projects/punch-lists`, {
+      const response = await fetch(`${API_BASE}/projects/punch-lists`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -265,7 +265,7 @@ export default function ProjectPunchListsPage() {
 
     try {
       setSubmitting(true);
-      const response = await fetch(`${API_BASE}/api/projects/punch-lists/${selectedItem.id}`, {
+      const response = await fetch(`${API_BASE}/projects/punch-lists/${selectedItem.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -297,7 +297,7 @@ export default function ProjectPunchListsPage() {
 
     try {
       setSubmitting(true);
-      const response = await fetch(`${API_BASE}/api/projects/punch-lists/${selectedItem.id}`, {
+      const response = await fetch(`${API_BASE}/projects/punch-lists/${selectedItem.id}`, {
         method: 'DELETE',
       });
 
@@ -322,7 +322,7 @@ export default function ProjectPunchListsPage() {
   const handleStatusChange = async (item: PunchListItem, newStatus: PunchListStatus) => {
     try {
       setSubmitting(true);
-      const response = await fetch(`${API_BASE}/api/projects/punch-lists/${item.id}`, {
+      const response = await fetch(`${API_BASE}/projects/punch-lists/${item.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status: newStatus }),

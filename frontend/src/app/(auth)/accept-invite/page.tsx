@@ -50,6 +50,15 @@ function AcceptInviteForm() {
     const [showPassword, setShowPassword] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
 
+    const normalizeInvite = (payload: any): InviteDetails => ({
+        email: payload.email,
+        role: payload.role,
+        organizationName: payload.organizationName || payload.organization_name,
+        inviterName: payload.inviterName || payload.inviter_name,
+        expiresAt: payload.expiresAt || payload.expires_at,
+        status: payload.status,
+    });
+
     /* --- fetch invite details --- */
     useEffect(() => {
         if (!token) {
@@ -60,21 +69,31 @@ function AcceptInviteForm() {
 
         (async () => {
             try {
-                const res = await fetch(`/api/valuation-org/invitations/details?token=${encodeURIComponent(token)}`);
-                const data = await res.json();
+                let details: InviteDetails | null = null;
 
-                if (!res.ok || !data.success) {
-                    const err = data.error;
-                    setError(typeof err === 'string' ? err : err?.message || 'Invitation not found.');
-                    setLoading(false);
-                    return;
+                const unifiedRes = await fetch(`/api/invitations/token/${encodeURIComponent(token)}`);
+                if (unifiedRes.ok) {
+                    const unifiedData = await unifiedRes.json();
+                    details = normalizeInvite(unifiedData.invitation);
+                } else {
+                    const res = await fetch(`/api/valuation-org/invitations/details?token=${encodeURIComponent(token)}`);
+                    const data = await res.json();
+
+                    if (!res.ok || !data.success) {
+                        const err = data.error;
+                        setError(typeof err === 'string' ? err : err?.message || 'Invitation not found.');
+                        setLoading(false);
+                        return;
+                    }
+
+                    details = normalizeInvite(data.data);
                 }
 
-                if (data.data.status !== 'pending') {
+                if (details.status !== 'pending') {
                     setError(
-                        data.data.status === 'accepted'
+                        details.status === 'accepted'
                             ? 'This invitation has already been accepted.'
-                            : data.data.status === 'expired'
+                            : details.status === 'expired'
                               ? 'This invitation has expired. Ask your admin to resend it.'
                               : 'This invitation is no longer valid.'
                     );
@@ -82,13 +101,13 @@ function AcceptInviteForm() {
                     return;
                 }
 
-                if (new Date(data.data.expiresAt) < new Date()) {
+                if (new Date(details.expiresAt) < new Date()) {
                     setError('This invitation has expired. Ask your admin to resend it.');
                     setLoading(false);
                     return;
                 }
 
-                setInvite(data.data);
+                setInvite(details);
             } catch {
                 setError('Failed to load invitation details.');
             } finally {
@@ -123,19 +142,39 @@ function AcceptInviteForm() {
         setError(null);
 
         try {
-            const res = await fetch('/api/valuation-org/invitations/accept-and-setup', {
+            let accepted = false;
+
+            const unifiedRes = await fetch(`/api/invitations/token/${encodeURIComponent(token)}/accept`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ token, password, firstName, lastName }),
+                body: JSON.stringify({ password, firstName, lastName }),
             });
 
-            const data = await res.json();
-
-            if (!res.ok || !data.success) {
-                const err = data.error;
+            if (unifiedRes.ok) {
+                accepted = true;
+            } else if (unifiedRes.status !== 404) {
+                const unifiedData = await unifiedRes.json().catch(() => null);
+                const err = unifiedData?.error;
                 setError(typeof err === 'string' ? err : err?.message || 'Failed to set up your account.');
                 setIsSubmitting(false);
                 return;
+            }
+
+            if (!accepted) {
+                const res = await fetch('/api/valuation-org/invitations/accept-and-setup', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ token, password, firstName, lastName }),
+                });
+
+                const data = await res.json();
+
+                if (!res.ok || !data.success) {
+                    const err = data.error;
+                    setError(typeof err === 'string' ? err : err?.message || 'Failed to set up your account.');
+                    setIsSubmitting(false);
+                    return;
+                }
             }
 
             setSuccess(true);

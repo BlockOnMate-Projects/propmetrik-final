@@ -34,7 +34,7 @@ export default function TenantDashboard() {
         setProfile(profileData);
 
         // Load data for first active tenancy
-        const activeTenancy = profileData.tenancies.find(t => t.status === 'active');
+        const activeTenancy = profileData.tenancies?.find(t => t.status === 'active');
         if (activeTenancy) {
           const [summary, requests] = await Promise.all([
             getPaymentSummary(activeTenancy.id),
@@ -80,7 +80,7 @@ export default function TenantDashboard() {
     );
   }
 
-  const activeTenancy = profile?.tenancies.find(t => t.status === 'active');
+  const activeTenancy = profile?.tenancies?.find(t => t.status === 'active');
   const openRequests = maintenanceRequests.filter(r => r.status !== 'completed' && r.status !== 'cancelled');
 
   return (
@@ -281,15 +281,15 @@ export default function TenantDashboard() {
               </div>
               <div>
                 <p className="text-sm text-gray-500">Monthly Rent</p>
-                <p className="font-medium">{activeTenancy.rentCurrency} {activeTenancy.rentAmount.toLocaleString()}</p>
+                <p className="font-medium">{activeTenancy.rentCurrency} {(activeTenancy.rentAmount || 0).toLocaleString()}</p>
               </div>
               <div>
                 <p className="text-sm text-gray-500">Lease Start</p>
-                <p className="font-medium">{new Date(activeTenancy.startDate).toLocaleDateString()}</p>
+                <p className="font-medium">{activeTenancy.startDate ? new Date(activeTenancy.startDate).toLocaleDateString() : '—'}</p>
               </div>
               <div>
                 <p className="text-sm text-gray-500">Lease End</p>
-                <p className="font-medium">{new Date(activeTenancy.endDate).toLocaleDateString()}</p>
+                <p className="font-medium">{activeTenancy.endDate ? new Date(activeTenancy.endDate).toLocaleDateString() : '—'}</p>
               </div>
             </div>
           </div>

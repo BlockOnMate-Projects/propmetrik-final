@@ -184,7 +184,7 @@ export default function ContractorsPage() {
                 <Dialog open={showCreate} onOpenChange={setShowCreate}>
                     <DialogTrigger asChild>
                         <Button
-                            className="bg-amber-500 hover:bg-amber-600 text-black font-mono text-xs"
+                            className="bg-amber-500 hover:bg-amber-600 text-white font-mono text-xs"
                         >
                             <Plus className="h-3.5 w-3.5 mr-1.5" />
                             Add Contractor
@@ -265,7 +265,7 @@ export default function ContractorsPage() {
                                 <Label className="text-[10px] font-mono text-zinc-500">NOTES</Label>
                                 <Textarea value={form.notes} onChange={e => setForm({ ...form, notes: e.target.value })} rows={2} className="bg-zinc-800 border-zinc-700 text-white" />
                             </div>
-                            <Button onClick={createContractor} disabled={saving || !form.company_name.trim()} className="w-full bg-amber-500 hover:bg-amber-600 text-black font-mono text-xs">
+                            <Button onClick={createContractor} disabled={saving || !form.company_name.trim()} className="w-full bg-amber-500 hover:bg-amber-600 text-white font-mono text-xs">
                                 {saving ? <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" /> : <Plus className="h-3.5 w-3.5 mr-1" />}
                                 CREATE CONTRACTOR
                             </Button>

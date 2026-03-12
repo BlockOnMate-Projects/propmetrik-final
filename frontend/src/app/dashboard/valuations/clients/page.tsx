@@ -330,7 +330,7 @@ export default function ClientsPage() {
                 </div>
                 <button
                     onClick={openAddModal}
-                    className="flex items-center gap-2 px-4 py-2 bg-amber-500 text-black font-mono text-xs font-bold hover:bg-amber-400 transition-colors"
+                    className="flex items-center gap-2 px-4 py-2 bg-amber-500 text-white font-mono text-xs font-bold hover:bg-amber-400 transition-colors"
                 >
                     <Plus className="w-3 h-3" />
                     ADD CLIENT
@@ -819,7 +819,7 @@ export default function ClientsPage() {
                             <button
                                 onClick={handleSave}
                                 disabled={saving}
-                                className="flex items-center gap-2 px-4 py-2 bg-amber-500 text-black font-mono text-xs font-bold hover:bg-amber-400 transition-colors disabled:opacity-50"
+                                className="flex items-center gap-2 px-4 py-2 bg-amber-500 text-white font-mono text-xs font-bold hover:bg-amber-400 transition-colors disabled:opacity-50"
                             >
                                 {saving && <Loader2 className="w-3 h-3 animate-spin" />}
                                 {editingClient ? 'SAVE CHANGES' : 'ADD CLIENT'}
@@ -880,7 +880,7 @@ export default function ClientsPage() {
                             </div>
                             <div className="flex items-center gap-3">
                                 <button onClick={() => setShowEmailModal(false)} className="px-4 py-2 bg-zinc-800 text-zinc-400 font-mono text-xs hover:text-white transition-colors">CANCEL</button>
-                                <button onClick={handleSendEmail} disabled={!emailData.to || sendingEmail} className="flex items-center gap-2 px-4 py-2 bg-amber-500 text-black font-mono text-xs font-bold hover:bg-amber-400 transition-colors disabled:opacity-50">
+                                <button onClick={handleSendEmail} disabled={!emailData.to || sendingEmail} className="flex items-center gap-2 px-4 py-2 bg-amber-500 text-white font-mono text-xs font-bold hover:bg-amber-400 transition-colors disabled:opacity-50">
                                     {sendingEmail ? <><Loader2 className="w-3 h-3 animate-spin" /> SENDING...</> : <><Send className="w-3 h-3" /> SEND EMAIL</>}
                                 </button>
                             </div>

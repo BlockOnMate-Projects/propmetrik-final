@@ -65,23 +65,23 @@ export type UnitType =
 
 export type CostCategory =
   | 'land_acquisition'
+  | 'permits_approvals'
+  | 'design_engineering'
   | 'site_preparation'
   | 'foundation'
-  | 'structure'
-  | 'exterior'
+  | 'structural'
   | 'roofing'
-  | 'plumbing'
-  | 'electrical'
-  | 'hvac'
-  | 'interior_finishes'
+  | 'mep'
+  | 'exterior_finishing'
+  | 'interior_finishing'
   | 'landscaping'
-  | 'permits_fees'
-  | 'professional_services'
-  | 'equipment'
-  | 'labor'
-  | 'materials'
+  | 'amenities'
   | 'contingency'
-  | 'financing'
+  | 'professional_fees'
+  | 'insurance'
+  | 'marketing_sales'
+  | 'legal'
+  | 'financing_costs'
   | 'other';
 
 export type CostStatus =
@@ -228,6 +228,8 @@ export interface ProjectStats {
   total_units: number;
   units_sold: number;
   avg_progress: number;
+  display_currency?: string;
+  fx_rates?: Record<string, number>;
 }
 
 // =====================================================
@@ -255,18 +257,20 @@ export interface ProjectPhase {
   project_id: string;
   organization_id: string;
   phase_name: string;
+  name?: string;           // API alias for phase_name
   phase_number: number;
   status: PhaseStatus;
   description?: string;
-  
+
   // Timeline
   planned_start_date?: string;
   planned_end_date?: string;
   actual_start_date?: string;
   actual_end_date?: string;
-  
+
   // Progress
   progress_percentage: number;
+  progress?: number;       // API alias for progress_percentage
   
   // Budget
   budget_amount?: number;
@@ -434,10 +438,13 @@ export interface ProjectCost {
   approved_by?: string;
   approved_at?: string;
   
+  // Notes
+  notes?: string;
+
   // Relationships
   phase_id?: string;
   contractor_id?: string;
-  
+
   // Audit
   created_at: string;
   updated_at: string;

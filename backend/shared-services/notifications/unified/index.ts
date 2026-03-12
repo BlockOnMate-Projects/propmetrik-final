@@ -348,7 +348,8 @@ export class MicrosoftGraphEmailService {
         this.clientSecret = config?.clientSecret || process.env.MS_CLIENT_SECRET || '';
         this.scope = config?.scope || process.env.MS_GRAPH_SCOPE || 'https://graph.microsoft.com/.default';
         this.grantType = config?.grantType || process.env.MS_GRANT_TYPE || 'client_credentials';
-        this.authUrl = config?.authUrl || process.env.MS_AUTH_URL || `https://login.microsoftonline.com/${this.tenantId}/oauth2/v2.0/token`;
+        // Always build authUrl from tenantId — MS_AUTH_URL in .env often contains un-interpolated ${MS_TENANT_ID}
+        this.authUrl = config?.authUrl || `https://login.microsoftonline.com/${this.tenantId}/oauth2/v2.0/token`;
         this.defaultFrom = config?.defaultFrom || process.env.MS_SMTP_FROM || '';
         this.defaultFromName = config?.defaultFromName || process.env.MS_SMTP_FROM_NAME || 'PROPMETRIK';
 
@@ -581,7 +582,7 @@ export class PrioritySMTPEmailService {
     private microsoftService: MicrosoftGraphEmailService;
     private googleService: GoogleSMTPEmailService;
     private awsSesService: AwsSESEmailService;
-    private priority: EmailProvider[] = ['microsoft', 'google', 'aws_ses'];
+    private priority: EmailProvider[] = ['microsoft', 'aws_ses', 'google'];
 
     constructor() {
         this.microsoftService = new MicrosoftGraphEmailService();
@@ -598,7 +599,9 @@ export class PrioritySMTPEmailService {
                 logger.info('Email sent with provider', { provider, to: message.to, subject: message.subject });
                 return result;
             }
-            errors.push(`${provider}: ${result.error || 'unknown error'}`);
+            const reason = result.error || 'unknown error';
+            errors.push(`${provider}: ${reason}`);
+            logger.warn('Email provider failed, trying next', { provider, error: reason, to: message.to });
         }
 
         return {

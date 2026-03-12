@@ -30,6 +30,9 @@ interface FloodRiskScore {
   nearest_incident_distance_m: number | null
   neighborhood_risk: number
   risk_factors: string[]
+  zone_type?: string
+  avg_severity?: number
+  recommendation?: string
 }
 
 interface FloodIncident {
@@ -586,7 +589,7 @@ export default function RiskAnalyticsPage() {
                   floodScore.zone_type === 'prone' ? 'text-orange-400' :
                   'text-green-400'
                 )}>
-                  {floodScore.zone_type.toUpperCase()}
+                  {floodScore.zone_type?.toUpperCase()}
                 </div>
               </div>
               <div className="space-y-1.5">

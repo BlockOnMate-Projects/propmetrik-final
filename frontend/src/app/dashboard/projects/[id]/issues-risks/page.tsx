@@ -128,8 +128,8 @@ export default function ProjectIssuesRisksPage() {
     setLoading(true);
     try {
       const [issuesRes, risksRes] = await Promise.all([
-        fetch(`${API_BASE}/api/v1/projects/${projectId}/issues`).then(r => r.json()).catch(() => ({ data: [] })),
-        fetch(`${API_BASE}/api/v1/projects/${projectId}/risks`).then(r => r.json()).catch(() => ({ data: [] }))
+        fetch(`${API_BASE}/projects/${projectId}/issues`).then(r => r.json()).catch(() => ({ data: [] })),
+        fetch(`${API_BASE}/projects/${projectId}/risks`).then(r => r.json()).catch(() => ({ data: [] }))
       ]);
       
       setIssues(issuesRes.data || issuesRes.issues || []);

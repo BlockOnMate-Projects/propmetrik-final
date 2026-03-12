@@ -71,8 +71,8 @@ export default function ProjectSettingsPage() {
         const load = async () => {
             try {
                 const [profileRes, notifRes] = await Promise.all([
-                    authedFetch(`${API}/api/v1/profile`),
-                    authedFetch(`${API}/api/v1/notification-preferences`),
+                    authedFetch(`${API}/user/profile`),
+                    authedFetch(`${API}/user/notification-preferences`),
                 ])
                 if (profileRes.ok) {
                     const p = await profileRes.json()
@@ -110,7 +110,7 @@ export default function ProjectSettingsPage() {
     const saveProfile = async () => {
         setSaving(true)
         try {
-            const res = await authedFetch(`${API}/api/v1/user/profile`, {
+            const res = await authedFetch(`${API}/user/profile`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -138,7 +138,7 @@ export default function ProjectSettingsPage() {
     const saveNotifications = async () => {
         setSaving(true)
         try {
-            const res = await authedFetch(`${API}/api/v1/notification-preferences`, {
+            const res = await authedFetch(`${API}/user/notification-preferences`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(notifications),
@@ -165,7 +165,7 @@ export default function ProjectSettingsPage() {
         }
         setSaving(true)
         try {
-            const res = await authedFetch(`${API}/api/v1/password`, {
+            const res = await authedFetch(`${API}/user/password`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -229,7 +229,7 @@ export default function ProjectSettingsPage() {
                                         </div>
                                     </div>
                                     {profileDirty && (
-                                        <Button onClick={saveProfile} disabled={saving} size="sm" className="bg-amber-500 hover:bg-amber-600 text-black font-mono text-xs">
+                                        <Button onClick={saveProfile} disabled={saving} size="sm" className="bg-amber-500 hover:bg-amber-600 text-white font-mono text-xs">
                                             {saving ? <Loader2 className="h-3 w-3 mr-1 animate-spin" /> : <Save className="h-3 w-3 mr-1" />}Save
                                         </Button>
                                     )}
@@ -321,7 +321,7 @@ export default function ProjectSettingsPage() {
                                         <CardDescription className="text-[10px] font-mono text-zinc-500">Configure alerts and notification delivery</CardDescription>
                                     </div>
                                 </div>
-                                <Button onClick={saveNotifications} disabled={saving} className="bg-amber-500 hover:bg-amber-600 text-black font-mono text-xs">
+                                <Button onClick={saveNotifications} disabled={saving} className="bg-amber-500 hover:bg-amber-600 text-white font-mono text-xs">
                                     {saving ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : <Save className="h-3.5 w-3.5 mr-1.5" />}Save
                                 </Button>
                             </div>
@@ -371,7 +371,7 @@ export default function ProjectSettingsPage() {
                                 <Label className="text-zinc-400 text-xs font-mono">Confirm New Password</Label>
                                 <Input type="password" value={passwordForm.confirm} onChange={(e) => setPasswordForm({ ...passwordForm, confirm: e.target.value })} className="bg-zinc-800 border-zinc-700" />
                             </div>
-                            <Button onClick={changePassword} disabled={saving || !passwordForm.current || !passwordForm.newPass} className="bg-amber-500 hover:bg-amber-600 text-black font-mono text-xs">
+                            <Button onClick={changePassword} disabled={saving || !passwordForm.current || !passwordForm.newPass} className="bg-amber-500 hover:bg-amber-600 text-white font-mono text-xs">
                                 {saving ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : <Shield className="h-3.5 w-3.5 mr-1.5" />}Update Password
                             </Button>
                         </CardContent>
@@ -467,7 +467,7 @@ function CustomFieldsManager() {
                         </SelectContent>
                     </Select>
                     <Dialog open={showCreate} onOpenChange={setShowCreate}>
-                        <DialogTrigger asChild><Button size="sm" className="bg-amber-500 hover:bg-amber-600 text-black text-xs">+ ADD FIELD</Button></DialogTrigger>
+                        <DialogTrigger asChild><Button size="sm" className="bg-amber-500 hover:bg-amber-600 text-white text-xs">+ ADD FIELD</Button></DialogTrigger>
                         <DialogContent className="bg-zinc-900 border-zinc-800 max-w-md">
                             <DialogHeader><DialogTitle className="text-white">Add Custom Field</DialogTitle></DialogHeader>
                             <div className="space-y-3">
@@ -483,7 +483,7 @@ function CustomFieldsManager() {
                                     <div><Label className="text-[10px] font-mono text-zinc-500">OPTIONS (ONE PER LINE)</Label><Textarea className="bg-zinc-800 border-zinc-700 text-white" rows={3} value={form.options_text || ''} onChange={e => setForm({ ...form, options_text: e.target.value })} /></div>
                                 )}
                                 <div className="flex items-center gap-2"><input type="checkbox" checked={form.is_required || false} onChange={e => setForm({ ...form, is_required: e.target.checked })} /><span className="text-xs text-zinc-400">Required field</span></div>
-                                <Button className="w-full bg-amber-500 hover:bg-amber-600 text-black" onClick={() => {
+                                <Button className="w-full bg-amber-500 hover:bg-amber-600 text-white" onClick={() => {
                                     const payload = { ...form };
                                     if (payload.options_text) { payload.options = payload.options_text.split('\n').filter(Boolean); delete payload.options_text; }
                                     createField.mutate(payload);

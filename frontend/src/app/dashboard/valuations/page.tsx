@@ -299,7 +299,7 @@ export default function ValuationsPage() {
           </button>
           <Link
             href="/dashboard/valuations/new"
-            className="flex items-center gap-2 px-4 py-2 bg-amber-500 text-black font-mono text-xs font-bold hover:bg-amber-400 transition-colors"
+            className="flex items-center gap-2 px-4 py-2 bg-amber-500 text-white font-mono text-xs font-bold hover:bg-amber-400 transition-colors"
           >
             <Plus className="w-3 h-3" />
             NEW VALUATION

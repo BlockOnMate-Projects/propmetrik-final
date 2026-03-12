@@ -63,7 +63,7 @@ import {
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import ProjectSubnav from '@/components/dashboard/projects/ProjectSubnav';
-import { MilestoneTimeline } from '@/components/dashboard/projects/MilestoneTimeline';
+import { MilestoneGantt } from '@/components/dashboard/projects/MilestoneGantt';
 import { MilestoneSubphases } from '@/components/dashboard/projects/MilestoneSubphases';
 import { 
   milestonesApi, 
@@ -137,7 +137,7 @@ function MilestoneCard({
               </div>
               
               <div className="flex items-center gap-2 shrink-0">
-                <Badge className={cn("text-[9px] border-0", config.bg, config.color)}>
+                <Badge variant="outline" className={cn("text-[9px] border-0", config.bg, config.color)}>
                   {config.label}
                 </Badge>
                 
@@ -331,7 +331,7 @@ function MilestoneDialog({
           <Button 
             onClick={handleSubmit}
             disabled={isSubmitting || !formData.name.trim()}
-            className="bg-amber-600 hover:bg-amber-700 text-black text-xs"
+            className="bg-amber-600 hover:bg-amber-700 text-white text-xs"
           >
             {isSubmitting && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
             {milestone ? 'Update' : 'Create'} Milestone
@@ -583,25 +583,22 @@ export default function ProjectMilestonesPage() {
         
         <Button 
           onClick={handleCreate}
-          className="bg-amber-600 hover:bg-amber-700 text-black text-xs w-full sm:w-auto"
+          className="bg-amber-600 hover:bg-amber-700 text-white text-xs w-full sm:w-auto"
         >
           <Plus className="h-4 w-4 mr-2" />
           New Milestone
         </Button>
       </div>
       
-      {/* Timeline View */}
+      {/* Timeline / Gantt View */}
       {viewMode === 'timeline' && (
-        <Card className="bg-zinc-900 border-zinc-800">
-          <CardContent className="p-6">
-            <MilestoneTimeline 
-              milestones={filteredMilestones} 
-              onMilestoneClick={(milestone) => {
-                setEditingMilestone(milestone);
-              }}
-            />
-          </CardContent>
-        </Card>
+        <MilestoneGantt
+          milestones={filteredMilestones}
+          onMilestoneClick={(milestone) => {
+            setEditingMilestone(milestone);
+            setDialogOpen(true);
+          }}
+        />
       )}
       
       {/* List View */}
@@ -628,7 +625,7 @@ export default function ProjectMilestonesPage() {
                 {milestones.length === 0 && (
                   <Button 
                     onClick={handleCreate}
-                    className="bg-amber-600 hover:bg-amber-700 text-black text-xs"
+                    className="bg-amber-600 hover:bg-amber-700 text-white text-xs"
                   >
                     <Plus className="h-4 w-4 mr-2" />
                     Create Milestone

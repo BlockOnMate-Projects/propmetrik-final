@@ -800,7 +800,7 @@ export default function RentalMarketPage() {
           <button
             onClick={handleSave}
             disabled={saving || selectedComparables.length === 0}
-            className="flex items-center gap-2 px-4 py-2 bg-amber-500 text-black font-mono text-xs font-bold hover:bg-amber-400 transition-colors disabled:opacity-50"
+            className="flex items-center gap-2 px-4 py-2 bg-amber-500 text-white font-mono text-xs font-bold hover:bg-amber-400 transition-colors disabled:opacity-50"
           >
             {saving ? (
               <>
@@ -1274,7 +1274,7 @@ export default function RentalMarketPage() {
               className={cn(
                 'flex items-center gap-2 px-6 py-2 font-mono text-sm transition-colors',
                 comparablesCount > 0
-                  ? 'bg-amber-600 hover:bg-amber-700 text-black'
+                  ? 'bg-amber-600 hover:bg-amber-700 text-white'
                   : 'bg-zinc-800 text-zinc-500 cursor-not-allowed'
               )}
             >

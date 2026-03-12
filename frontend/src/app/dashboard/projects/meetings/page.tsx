@@ -74,7 +74,7 @@ export default function MeetingsPage() {
   useEffect(() => {
     (async () => {
       try {
-        const res = await authedFetch(`${API}/api/v1/projects?limit=100`);
+        const res = await authedFetch(`${API}/projects?limit=100`);
         const json = await res.json();
         const list = json.data?.projects || json.data || json.projects || [];
         setProjects(list);
@@ -87,7 +87,7 @@ export default function MeetingsPage() {
     if (!selectedProject) return;
     setLoading(true);
     try {
-      const res = await authedFetch(`${API}/api/v1/projects/${selectedProject}/meetings?search=${search}`);
+      const res = await authedFetch(`${API}/projects/${selectedProject}/meetings?search=${search}`);
       const json = await res.json();
       setMeetings(json.data || []);
     } catch (e) { console.error('Failed to load meetings', e); }
@@ -97,7 +97,7 @@ export default function MeetingsPage() {
   useEffect(() => { fetchMeetings(); }, [fetchMeetings]);
 
   const viewMeeting = async (id: string) => {
-    const res = await authedFetch(`${API}/api/v1/projects/${selectedProject}/meetings/${id}`);
+    const res = await authedFetch(`${API}/projects/${selectedProject}/meetings/${id}`);
     const json = await res.json();
     setSelectedMeeting(json.data);
     setShowDetail(true);
@@ -106,7 +106,7 @@ export default function MeetingsPage() {
   const createMeeting = async () => {
     try {
       const payload = { ...form, attendees, action_items: actionItems };
-      const res = await authedFetch(`${API}/api/v1/projects/${selectedProject}/meetings`, {
+      const res = await authedFetch(`${API}/projects/${selectedProject}/meetings`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
       });
@@ -118,7 +118,7 @@ export default function MeetingsPage() {
 
   const updateActionStatus = async (actionId: string, status: string) => {
     if (!selectedMeeting) return;
-    await authedFetch(`${API}/api/v1/projects/${selectedProject}/meetings/${selectedMeeting.id}/actions/${actionId}`, {
+    await authedFetch(`${API}/projects/${selectedProject}/meetings/${selectedMeeting.id}/actions/${actionId}`, {
       method: 'PUT', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ status }),
     });
@@ -128,7 +128,7 @@ export default function MeetingsPage() {
 
   const addAttendeeToMeeting = async () => {
     if (!selectedMeeting) return;
-    await authedFetch(`${API}/api/v1/projects/${selectedProject}/meetings/${selectedMeeting.id}/attendees`, {
+    await authedFetch(`${API}/projects/${selectedProject}/meetings/${selectedMeeting.id}/attendees`, {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(newAttendee),
     });
@@ -138,7 +138,7 @@ export default function MeetingsPage() {
 
   const addActionToMeeting = async () => {
     if (!selectedMeeting) return;
-    await authedFetch(`${API}/api/v1/projects/${selectedProject}/meetings/${selectedMeeting.id}/actions`, {
+    await authedFetch(`${API}/projects/${selectedProject}/meetings/${selectedMeeting.id}/actions`, {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(newAction),
     });
@@ -147,7 +147,7 @@ export default function MeetingsPage() {
   };
 
   const exportMeetings = () => {
-    window.open(`${API}/api/v1/projects/${selectedProject}/export/meetings?format=csv`, '_blank');
+    window.open(`${API}/projects/${selectedProject}/export/meetings?format=csv`, '_blank');
   };
 
   const stats = {

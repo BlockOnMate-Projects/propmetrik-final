@@ -90,7 +90,7 @@ export function getFieldDef(type: string) {
 
 // ─── Envelope Types ──────────────────────────────────────
 
-export type EnvelopeStatus = 'draft' | 'pending' | 'in_progress' | 'completed' | 'voided' | 'declined';
+export type EnvelopeStatus = 'draft' | 'pending' | 'in_progress' | 'sent' | 'delivered' | 'completed' | 'voided' | 'declined';
 
 export interface Envelope {
   id: string;

@@ -296,7 +296,7 @@ export function ChangeOrdersTab({ projectId, organizationId, currency = 'GHS', o
                       <span className="font-mono text-xs text-amber-500">
                         {order.co_number}
                       </span>
-                      <Badge className={cn("font-mono text-[10px]", status.bg, status.text)}>
+                      <Badge variant="outline" className={cn("font-mono text-[10px] border-0", status.bg, status.text)}>
                         {status.label}
                       </Badge>
                       <span className={cn("font-mono text-[10px]", type.color)}>

@@ -546,7 +546,7 @@ export default function SubmitPropertyPage() {
                     <Button 
                         type="submit" 
                         disabled={isSubmitting}
-                        className="bg-primary hover:bg-primary/90 text-black font-mono text-xs"
+                        className="bg-primary hover:bg-primary/90 text-white font-mono text-xs"
                     >
                         {isSubmitting ? (
                             <>

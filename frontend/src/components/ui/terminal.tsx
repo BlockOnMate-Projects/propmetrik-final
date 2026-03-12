@@ -652,7 +652,7 @@ export function FilterTabs({ options, value, onChange }: FilterTabsProps) {
           className={cn(
             'px-3 py-1.5 font-mono text-xs transition-colors',
             value === option.value
-              ? 'bg-amber-500 text-black font-bold'
+              ? 'bg-amber-500 text-white font-bold'
               : 'bg-zinc-800 text-zinc-400 hover:text-white'
           )}
         >
@@ -660,7 +660,7 @@ export function FilterTabs({ options, value, onChange }: FilterTabsProps) {
           {option.count !== undefined && (
             <span className={cn(
               'ml-1.5',
-              value === option.value ? 'text-black/60' : 'text-zinc-500'
+              value === option.value ? 'text-white/60' : 'text-zinc-500'
             )}>
               {option.count}
             </span>

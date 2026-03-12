@@ -489,7 +489,7 @@ export default function BidManagementPage() {
           <TabsContent value="invitations" className="space-y-4">
             {['draft', 'published'].includes(detail.status) && (
               <div className="flex justify-end">
-                <Button size="sm" className="bg-amber-500 hover:bg-amber-600 text-black text-xs" onClick={() => setShowInvDialog(true)}>
+                <Button size="sm" className="bg-amber-500 hover:bg-amber-600 text-white text-xs" onClick={() => setShowInvDialog(true)}>
                   <MailPlus className="h-3 w-3 mr-1" /> Invite Vendor
                 </Button>
               </div>
@@ -748,7 +748,7 @@ export default function BidManagementPage() {
                           {answeringId === thread.id ? (
                             <div className="flex gap-2">
                               <Input value={answerText} onChange={e => setAnswerText(e.target.value)} placeholder="Type your answer..." className="bg-zinc-800 border-zinc-700 text-white text-sm flex-1" />
-                              <Button size="sm" className="bg-amber-500 hover:bg-amber-600 text-black text-xs" onClick={() => answerMut.mutate({ brId: detail.id, threadId: thread.id, answer: answerText })} disabled={answerMut.isPending || !answerText.trim()}>
+                              <Button size="sm" className="bg-amber-500 hover:bg-amber-600 text-white text-xs" onClick={() => answerMut.mutate({ brId: detail.id, threadId: thread.id, answer: answerText })} disabled={answerMut.isPending || !answerText.trim()}>
                                 {answerMut.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : 'Post'}
                               </Button>
                               <Button size="sm" variant="ghost" className="text-zinc-500 text-xs" onClick={() => { setAnsweringId(null); setAnswerText('') }}>Cancel</Button>
@@ -774,7 +774,7 @@ export default function BidManagementPage() {
                 <input ref={fileRef} type="file" multiple className="hidden" onChange={e => {
                   if (e.target.files?.length) uploadMut.mutate({ id: detail.id, files: Array.from(e.target.files) })
                 }} />
-                <Button size="sm" className="bg-amber-500 hover:bg-amber-600 text-black text-xs" onClick={() => fileRef.current?.click()} disabled={uploadMut.isPending}>
+                <Button size="sm" className="bg-amber-500 hover:bg-amber-600 text-white text-xs" onClick={() => fileRef.current?.click()} disabled={uploadMut.isPending}>
                   {uploadMut.isPending ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <Upload className="h-3 w-3 mr-1" />}
                   Upload Files
                 </Button>
@@ -828,7 +828,7 @@ export default function BidManagementPage() {
               <div><Label className="text-[10px] font-mono text-zinc-500">VENDOR NAME *</Label><Input className="bg-zinc-800 border-zinc-700 text-white" value={invForm.vendor_name} onChange={e => setInvForm({ ...invForm, vendor_name: e.target.value })} /></div>
               <div><Label className="text-[10px] font-mono text-zinc-500">EMAIL *</Label><Input type="email" className="bg-zinc-800 border-zinc-700 text-white" value={invForm.vendor_email} onChange={e => setInvForm({ ...invForm, vendor_email: e.target.value })} /></div>
               <div><Label className="text-[10px] font-mono text-zinc-500">COMPANY</Label><Input className="bg-zinc-800 border-zinc-700 text-white" value={invForm.vendor_company} onChange={e => setInvForm({ ...invForm, vendor_company: e.target.value })} /></div>
-              <Button className="w-full bg-amber-500 hover:bg-amber-600 text-black" disabled={addInvMut.isPending || !invForm.vendor_name || !invForm.vendor_email}
+              <Button className="w-full bg-amber-500 hover:bg-amber-600 text-white" disabled={addInvMut.isPending || !invForm.vendor_name || !invForm.vendor_email}
                 onClick={() => addInvMut.mutate({ id: detail.id, vendors: [invForm] })}>
                 {addInvMut.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <MailPlus className="h-4 w-4 mr-2" />}
                 Send Invitation
@@ -880,7 +880,7 @@ export default function BidManagementPage() {
           <h1 className="text-lg font-bold text-white">BID MANAGEMENT</h1>
           <p className="text-[10px] font-mono text-zinc-500">CREATE • PUBLISH • EVALUATE • AWARD</p>
         </div>
-        <Button size="sm" className="bg-amber-500 hover:bg-amber-600 text-black text-xs" onClick={() => openCreate()}>
+        <Button size="sm" className="bg-amber-500 hover:bg-amber-600 text-white text-xs" onClick={() => openCreate()}>
           <Plus className="h-3 w-3 mr-1" /> New Bid Request
         </Button>
       </div>
@@ -941,7 +941,7 @@ export default function BidManagementPage() {
         <div className="text-center py-20">
           <Gavel className="h-10 w-10 text-zinc-700 mx-auto mb-3" />
           <p className="text-zinc-500 text-sm">No bid requests found</p>
-          <Button size="sm" className="bg-amber-500 hover:bg-amber-600 text-black text-xs mt-3" onClick={() => openCreate()}>Create First Bid</Button>
+          <Button size="sm" className="bg-amber-500 hover:bg-amber-600 text-white text-xs mt-3" onClick={() => openCreate()}>Create First Bid</Button>
         </div>
       ) : (
         <div className="overflow-x-auto">
@@ -1051,7 +1051,7 @@ export default function BidManagementPage() {
               <input type="checkbox" id="disclose-budget" checked={form.disclose_budget} onChange={e => setForm({ ...form, disclose_budget: e.target.checked })} className="rounded border-zinc-700" />
               <label htmlFor="disclose-budget" className="text-zinc-400 text-xs">Disclose estimated budget to vendors</label>
             </div>
-            <Button className="w-full bg-amber-500 hover:bg-amber-600 text-black" onClick={handleSubmitForm} disabled={createMut.isPending}>
+            <Button className="w-full bg-amber-500 hover:bg-amber-600 text-white" onClick={handleSubmitForm} disabled={createMut.isPending}>
               {createMut.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
               {editingId ? 'Update Bid Request' : 'Create Bid Request'}
             </Button>

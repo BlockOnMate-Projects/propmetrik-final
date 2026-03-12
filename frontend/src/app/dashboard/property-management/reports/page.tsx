@@ -192,7 +192,7 @@ export default function ReportsPage() {
                         <RefreshCw className="mr-2 h-3 w-3" />
                         Refresh
                     </Button>
-                    <Button className="bg-amber-600 hover:bg-amber-500 text-black font-bold font-mono text-xs uppercase">
+                    <Button className="bg-amber-600 hover:bg-amber-500 text-white font-bold font-mono text-xs uppercase">
                         <Download className="mr-2 h-3 w-3" />
                         Export
                     </Button>

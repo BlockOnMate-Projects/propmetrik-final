@@ -371,8 +371,8 @@ function AgentLeaderboard({ data }: { data: AgentPerformance[] }) {
         >
           <div className={cn(
             'w-6 h-6 rounded flex items-center justify-center font-mono text-xs',
-            index === 0 ? 'bg-amber-500 text-black' :
-            index === 1 ? 'bg-zinc-400 text-black' :
+            index === 0 ? 'bg-amber-500 text-white' :
+            index === 1 ? 'bg-zinc-400 text-white' :
             index === 2 ? 'bg-amber-700 text-white' :
             'bg-zinc-700 text-zinc-400'
           )}>
@@ -535,7 +535,7 @@ export default function CRMAnalyticsPage() {
                 onClick={() => setPeriod(p)}
                 className={cn(
                   'px-3 py-1.5 font-mono text-[10px] transition-colors',
-                  period === p ? 'bg-amber-500 text-black' : 'bg-zinc-800 text-zinc-400 hover:bg-zinc-700'
+                  period === p ? 'bg-amber-500 text-white' : 'bg-zinc-800 text-zinc-400 hover:bg-zinc-700'
                 )}
               >
                 {p.toUpperCase()}
@@ -727,7 +727,7 @@ export default function CRMAnalyticsPage() {
                         className={cn(
                           'px-2 py-0.5 font-mono text-[9px] transition-colors rounded',
                           cohortGroupBy === g 
-                            ? 'bg-amber-500 text-black' 
+                            ? 'bg-amber-500 text-white' 
                             : 'bg-zinc-700 text-zinc-400 hover:bg-zinc-600'
                         )}
                       >

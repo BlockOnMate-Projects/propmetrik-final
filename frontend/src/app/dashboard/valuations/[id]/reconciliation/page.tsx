@@ -779,7 +779,7 @@ export default function ReconciliationPage() {
         <div className="flex items-center gap-3">
           <button
             onClick={() => setShowSensitivity(!showSensitivity)}
-            className={`flex items-center gap-2 px-3 py-2 font-mono text-xs transition-colors ${showSensitivity ? 'bg-amber-500 text-black' : 'bg-zinc-800 text-zinc-400 hover:text-white'
+            className={`flex items-center gap-2 px-3 py-2 font-mono text-xs transition-colors ${showSensitivity ? 'bg-amber-500 text-white' : 'bg-zinc-800 text-zinc-400 hover:text-white'
               }`}
           >
             <Sliders className="w-3 h-3" />
@@ -791,7 +791,7 @@ export default function ReconciliationPage() {
                 <button
                   onClick={handleSaveAndContinue}
                   disabled={saving || !canFinalize}
-                  className="flex items-center gap-2 px-4 py-2 bg-amber-500 text-black font-mono text-xs font-bold hover:bg-amber-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="flex items-center gap-2 px-4 py-2 bg-amber-500 text-white font-mono text-xs font-bold hover:bg-amber-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {saving ? (
                     <>
@@ -1536,7 +1536,7 @@ export default function ReconciliationPage() {
         <button
           onClick={handleSaveAndContinue}
           disabled={saving || !canFinalize}
-          className="flex items-center gap-2 px-6 py-3 bg-amber-500 text-black font-mono text-sm font-bold hover:bg-amber-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          className="flex items-center gap-2 px-6 py-3 bg-amber-500 text-white font-mono text-sm font-bold hover:bg-amber-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {saving ? (
             <>

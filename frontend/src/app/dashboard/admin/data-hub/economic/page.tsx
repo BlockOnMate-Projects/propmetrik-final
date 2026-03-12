@@ -169,7 +169,7 @@ export default function EconomicDataPage() {
                 <button
                   onClick={() => seedMutation.mutate()}
                   disabled={seedMutation.isPending}
-                  className="px-4 py-2 bg-amber-500 text-black font-mono text-xs hover:bg-amber-400 transition-colors disabled:opacity-50"
+                  className="px-4 py-2 bg-amber-500 text-white font-mono text-xs hover:bg-amber-400 transition-colors disabled:opacity-50"
                 >
                   SEED DATA
                 </button>

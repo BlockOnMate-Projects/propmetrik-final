@@ -16,7 +16,7 @@
  */
 
 import { Router, Request, Response, NextFunction } from 'express';
-import { registerPMParamValidation, getAuthUserId, getAuthOrgId, requirePMWrite } from '../middleware/pmAuth';
+import { registerPMParamValidation, getAuthUserId, getAuthOrgId, getAuthContext, requirePMWrite } from '../middleware/pmAuth';
 import { validate } from '../middleware/validation';
 import { createProjectSchema, updateProjectSchema, createPhaseSchema, updatePhaseSchema, createMilestoneSchema, updateMilestoneSchema, createDailyLogSchema, createPunchItemSchema, updatePunchItemSchema } from '../middleware/pmProjectValidation';
 import projectService from '../services/project-management/projectService';
@@ -27,7 +27,7 @@ import contractorService from '../services/project-management/contractorService'
 import drawService from '../services/project-management/drawService';
 import dailyLogService from '../services/project-management/dailyLogService';
 import paymentPlanService from '../services/project-management/paymentPlanService';
-import punchListService from '../services/project-management/punchListService';
+import punchListService, { PunchListService } from '../services/project-management/punchListService';
 import projectIntegrationService from '../services/project-management/projectIntegrationService';
 // Phase 1: Ghana Enhancement Services
 import projectLocationService from '../services/project-management/projectLocationService';
@@ -79,12 +79,21 @@ const getUserId = (req: Request): string => getAuthUserId(req);
 // PROJECTS
 // ============================================================================
 
+// Roles that see ALL org projects (admins / firm leadership)
+const FULL_ACCESS_ROLES = ['admin', 'super_admin', 'firm_principal', 'manager', 'pm'];
+
 // Get all projects
 router.get('/', async (req: Request, res: Response, next: NextFunction) => {
   try {
     const orgId = getOrgId(req);
+    const userId = getUserId(req);
+    const { roles } = getAuthContext(req);
+    const hasFullAccess = roles.some(r => FULL_ACCESS_ROLES.includes(r));
     const { status, type, city, region, manager, search, page, limit, sort, order } = req.query;
     
+    // Non-admin roles only see projects they're assigned to
+    const assignedUserId = hasFullAccess ? undefined : userId;
+
     const result = await projectService.getAll(
       {
         organization_id: orgId,
@@ -93,7 +102,8 @@ router.get('/', async (req: Request, res: Response, next: NextFunction) => {
         city: city as string,
         region: region as string,
         project_manager_id: manager as string,
-        search: search as string
+        search: search as string,
+        assigned_user_id: assignedUserId,
       },
       parseInt(page as string) || 1,
       parseInt(limit as string) || 20,
@@ -111,7 +121,11 @@ router.get('/', async (req: Request, res: Response, next: NextFunction) => {
 router.get('/summaries', async (req: Request, res: Response, next: NextFunction) => {
   try {
     const orgId = getOrgId(req);
-    const summaries = await projectService.getSummaries(orgId);
+    const userId = getUserId(req);
+    const { roles } = getAuthContext(req);
+    const hasFullAccess = roles.some(r => FULL_ACCESS_ROLES.includes(r));
+    const assignedUserId = hasFullAccess ? undefined : userId;
+    const summaries = await projectService.getSummaries(orgId, assignedUserId);
     res.json(summaries);
   } catch (error) {
     next(error);
@@ -122,7 +136,11 @@ router.get('/summaries', async (req: Request, res: Response, next: NextFunction)
 router.get('/stats', async (req: Request, res: Response, next: NextFunction) => {
   try {
     const orgId = getOrgId(req);
-    const stats = await projectService.getStats(orgId);
+    const userId = getUserId(req);
+    const { roles } = getAuthContext(req);
+    const hasFullAccess = roles.some(r => FULL_ACCESS_ROLES.includes(r));
+    const assignedUserId = hasFullAccess ? undefined : userId;
+    const stats = await projectService.getStats(orgId, assignedUserId);
     res.json(stats);
   } catch (error) {
     next(error);
@@ -1928,8 +1946,8 @@ router.get('/:id/punch-items/stats', async (req: Request, res: Response, next: N
 router.get('/punch-lists', async (req: Request, res: Response, next: NextFunction) => {
   try {
     const orgId = getOrgId(req);
-    const { unitId, projectId, status, priority, category, contractorId, isOverdue, page, limit } = req.query;
-    
+    const { unitId, projectId, status, priority, category, contractorId, isOverdue, page, limit, pageSize } = req.query;
+
     const result = await punchListService.getAll(
       orgId,
       {
@@ -1938,14 +1956,21 @@ router.get('/punch-lists', async (req: Request, res: Response, next: NextFunctio
         status: status as any,
         priority: priority as any,
         category: category as any,
-        assigned_contractor_id: contractorId as string,
+        assigned_to: contractorId as string,
         is_overdue: isOverdue === 'true'
       },
       parseInt(page as string) || 1,
-      parseInt(limit as string) || 50
+      parseInt(limit as string) || parseInt(pageSize as string) || 50
     );
-    
-    res.json(result);
+
+    res.json({
+      success: true,
+      data: result.data.map(item => PunchListService.toCamelCase(item)),
+      total: result.total,
+      page: result.page,
+      limit: result.limit,
+      totalPages: result.totalPages
+    });
   } catch (error) {
     next(error);
   }
@@ -1993,31 +2018,66 @@ router.get('/units/:unitId/handover-ready', async (req: Request, res: Response, 
 router.get('/punch-lists/:itemId', async (req: Request, res: Response, next: NextFunction) => {
   try {
     const item = await punchListService.getById(req.params.itemId);
-    
+
     if (!item) {
-      return res.status(404).json({ error: 'Punch list item not found' });
+      return res.status(404).json({ success: false, error: 'Punch list item not found' });
     }
-    
-    res.json(item);
+
+    res.json({ success: true, data: PunchListService.toCamelCase(item) });
   } catch (error) {
     next(error);
   }
 });
 
-// Create punch list item
+// Create punch list item (project-level — no unit required)
+router.post('/punch-lists', requirePMWrite, async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const orgId = getOrgId(req);
+    const userId = getUserId(req);
+    const { projectId, title, description, priority, category, location, dueDate, unitId, assignedTo, assignedContractorName } = req.body;
+
+    if (!projectId) {
+      return res.status(400).json({ success: false, error: 'projectId is required' });
+    }
+    if (!title) {
+      return res.status(400).json({ success: false, error: 'title is required' });
+    }
+
+    const item = await punchListService.create({
+      project_id: projectId,
+      unit_id: unitId,
+      organization_id: orgId,
+      title,
+      description,
+      priority: priority || 'medium',
+      category: category || 'other',
+      location,
+      due_date: dueDate,
+      assigned_to: assignedTo,
+      assigned_contractor_name: assignedContractorName,
+      created_by: userId
+    });
+
+    res.status(201).json({ success: true, data: PunchListService.toCamelCase(item) });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Create punch list item (unit-level)
 router.post('/units/:unitId/punch-list', requirePMWrite, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const orgId = getOrgId(req);
     const userId = getUserId(req);
-    
+
     const item = await punchListService.create({
       ...req.body,
       unit_id: req.params.unitId,
       organization_id: orgId,
       created_by: userId
     });
-    
-    res.status(201).json(item);
+
+    res.status(201).json({ success: true, data: PunchListService.toCamelCase(item) });
   } catch (error) {
     next(error);
   }
@@ -2029,7 +2089,7 @@ router.post('/units/:unitId/punch-list/bulk', requirePMWrite, async (req: Reques
     const orgId = getOrgId(req);
     const userId = getUserId(req);
     const { items } = req.body;
-    
+
     const created = await punchListService.createBulk(
       items.map((item: any) => ({
         ...item,
@@ -2038,8 +2098,8 @@ router.post('/units/:unitId/punch-list/bulk', requirePMWrite, async (req: Reques
         created_by: userId
       }))
     );
-    
-    res.status(201).json(created);
+
+    res.status(201).json({ success: true, data: created.map(i => PunchListService.toCamelCase(i)) });
   } catch (error) {
     next(error);
   }
@@ -2049,12 +2109,12 @@ router.post('/units/:unitId/punch-list/bulk', requirePMWrite, async (req: Reques
 router.put('/punch-lists/:itemId', requirePMWrite, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const item = await punchListService.update(req.params.itemId, req.body);
-    
+
     if (!item) {
-      return res.status(404).json({ error: 'Punch list item not found' });
+      return res.status(404).json({ success: false, error: 'Punch list item not found' });
     }
-    
-    res.json(item);
+
+    res.json({ success: true, data: PunchListService.toCamelCase(item) });
   } catch (error) {
     next(error);
   }
@@ -2064,12 +2124,12 @@ router.put('/punch-lists/:itemId', requirePMWrite, async (req: Request, res: Res
 router.delete('/punch-lists/:itemId', requirePMWrite, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const success = await punchListService.delete(req.params.itemId);
-    
+
     if (!success) {
-      return res.status(404).json({ error: 'Punch list item not found' });
+      return res.status(404).json({ success: false, error: 'Punch list item not found' });
     }
-    
-    res.status(204).send();
+
+    res.json({ success: true });
   } catch (error) {
     next(error);
   }
@@ -2176,40 +2236,8 @@ router.post('/punch-lists/:itemId/defer', requirePMWrite, async (req: Request, r
   }
 });
 
-// Add photo to punch list item
-router.post('/punch-lists/:itemId/photos', requirePMWrite, async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const userId = getUserId(req);
-    const { photoUrl, photoType, caption } = req.body;
-    
-    const photo = await punchListService.addPhoto(
-      req.params.itemId,
-      photoUrl,
-      photoType,
-      caption,
-      userId
-    );
-    
-    res.status(201).json(photo);
-  } catch (error) {
-    next(error);
-  }
-});
-
-// Remove photo from punch list item
-router.delete('/punch-lists/:itemId/photos/:photoId', requirePMWrite, async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const success = await punchListService.removePhoto(req.params.photoId);
-    
-    if (!success) {
-      return res.status(404).json({ error: 'Photo not found' });
-    }
-    
-    res.status(204).send();
-  } catch (error) {
-    next(error);
-  }
-});
+// Photo management — photos stored as JSONB in punch_list_items table
+// TODO: Implement JSONB photo add/remove if needed
 
 // Complete all punch list items for a unit
 router.post('/units/:unitId/punch-list/complete-all', requirePMWrite, async (req: Request, res: Response, next: NextFunction) => {

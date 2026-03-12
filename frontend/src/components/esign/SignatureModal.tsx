@@ -292,7 +292,7 @@ export default function SignatureModal({ signerName, signerIdentity, onApply, on
                 value={typedSignature}
                 onChange={(e) => setTypedSignature(e.target.value)}
                 placeholder="Type your name"
-                className="text-lg bg-white text-black border-primary/40"
+                className="text-lg bg-white text-white border-primary/40"
               />
               <div className="grid grid-cols-2 gap-2">
                 {SIGNATURE_FONTS.map((font) => (

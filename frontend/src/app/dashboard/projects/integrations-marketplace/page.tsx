@@ -1,8 +1,10 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { authedFetch } from '@/lib/authed-fetch';
 import { useToast } from '@/hooks/use-toast';
+import { getXeroStatus, disconnectXero, syncXeroCosts, startXeroOAuth, XeroStatus } from '@/lib/xero-api';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -17,23 +19,24 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 const STATUS_COLORS: Record<string, string> = { active: 'bg-green-500/20 text-green-400', inactive: 'bg-zinc-500/20 text-zinc-400', error: 'bg-red-500/20 text-red-400', pending: 'bg-yellow-500/20 text-yellow-400' };
 
 const CATALOG = [
-  { type: 'quickbooks', name: 'QuickBooks', desc: 'Accounting & financial management', cat: 'accounting' },
-  { type: 'xero', name: 'Xero', desc: 'Cloud accounting platform', cat: 'accounting' },
-  { type: 'sage', name: 'Sage 300 CRE', desc: 'Construction accounting', cat: 'accounting' },
-  { type: 'procore', name: 'Procore', desc: 'Construction management platform', cat: 'project_management' },
-  { type: 'autodesk', name: 'Autodesk BIM 360', desc: 'BIM & document management', cat: 'document_management' },
-  { type: 'docusign', name: 'DocuSign', desc: 'Electronic signature', cat: 'document_management' },
-  { type: 'zapier', name: 'Zapier', desc: 'Workflow automation', cat: 'automation' },
-  { type: 'webhook', name: 'Webhook', desc: 'Custom webhook integration', cat: 'custom' },
-  { type: 'custom_api', name: 'Custom API', desc: 'Custom REST API integration', cat: 'custom' },
-  { type: 'slack', name: 'Slack', desc: 'Team messaging', cat: 'communication' },
-  { type: 'ms_teams', name: 'Microsoft Teams', desc: 'Team collaboration', cat: 'communication' },
-  { type: 'google_drive', name: 'Google Drive', desc: 'Cloud file storage', cat: 'storage' },
+  { type: 'quickbooks', name: 'QuickBooks', desc: 'Accounting & financial management', cat: 'accounting', ready: false },
+  { type: 'xero', name: 'Xero', desc: 'Cloud accounting platform', cat: 'accounting', ready: true },
+  { type: 'sage', name: 'Sage 300 CRE', desc: 'Construction accounting', cat: 'accounting', ready: false },
+  { type: 'procore', name: 'Procore', desc: 'Construction management platform', cat: 'project_management', ready: false },
+  { type: 'autodesk', name: 'Autodesk BIM 360', desc: 'BIM & document management', cat: 'document_management', ready: false },
+  { type: 'docusign', name: 'DocuSign', desc: 'Electronic signature', cat: 'document_management', ready: false },
+  { type: 'zapier', name: 'Zapier', desc: 'Workflow automation', cat: 'automation', ready: false },
+  { type: 'webhook', name: 'Webhook', desc: 'Custom webhook integration', cat: 'custom', ready: true },
+  { type: 'custom_api', name: 'Custom API', desc: 'Custom REST API integration', cat: 'custom', ready: true },
+  { type: 'slack', name: 'Slack', desc: 'Team messaging', cat: 'communication', ready: false },
+  { type: 'ms_teams', name: 'Microsoft Teams', desc: 'Team collaboration', cat: 'communication', ready: false },
+  { type: 'google_drive', name: 'Google Drive', desc: 'Cloud file storage', cat: 'storage', ready: false },
 ];
 
 export default function IntegrationsPage() {
   const { toast } = useToast();
   const qc = useQueryClient();
+  const searchParams = useSearchParams();
   const [tab, setTab] = useState('marketplace');
   const [showConnect, setShowConnect] = useState(false);
   const [showApiKey, setShowApiKey] = useState(false);
@@ -41,6 +44,55 @@ export default function IntegrationsPage() {
   const [form, setForm] = useState<any>({});
   const [akf, setAkf] = useState<any>({});
   const [newKey, setNewKey] = useState('');
+  const [xeroStatus, setXeroStatus] = useState<XeroStatus | null>(null);
+  const [xeroSyncing, setXeroSyncing] = useState(false);
+  const [xeroDisconnecting, setXeroDisconnecting] = useState(false);
+
+  // Load Xero status on mount and handle OAuth callback query params
+  useEffect(() => {
+    getXeroStatus().then(setXeroStatus).catch(() => setXeroStatus({ connected: false }));
+
+    const xeroResult = searchParams.get('xero');
+    if (xeroResult === 'connected') {
+      toast({ title: 'Xero connected successfully', description: 'Your Xero account has been linked.' });
+      // Refresh status after successful connect
+      getXeroStatus().then(setXeroStatus).catch(() => {});
+    } else if (xeroResult === 'error') {
+      const reason = searchParams.get('reason') || 'unknown';
+      toast({ title: 'Xero connection failed', description: `Error: ${reason}`, variant: 'destructive' });
+    }
+  }, [searchParams, toast]);
+
+  const handleXeroConnect = () => startXeroOAuth();
+
+  const handleXeroDisconnect = async () => {
+    setXeroDisconnecting(true);
+    try {
+      await disconnectXero();
+      setXeroStatus({ connected: false });
+      toast({ title: 'Xero disconnected' });
+    } catch {
+      toast({ title: 'Failed to disconnect Xero', variant: 'destructive' });
+    } finally {
+      setXeroDisconnecting(false);
+    }
+  };
+
+  const handleXeroSync = async () => {
+    setXeroSyncing(true);
+    try {
+      const result = await syncXeroCosts();
+      const desc = result.errors.length > 0
+        ? `${result.synced} synced, ${result.errors.length} failed`
+        : `${result.synced} cost(s) synced to Xero`;
+      toast({ title: 'Xero sync complete', description: desc });
+      getXeroStatus().then(setXeroStatus).catch(() => {});
+    } catch {
+      toast({ title: 'Xero sync failed', variant: 'destructive' });
+    } finally {
+      setXeroSyncing(false);
+    }
+  };
 
   const { data: integrations } = useQuery({
     queryKey: ['app-integrations'],
@@ -94,7 +146,7 @@ export default function IntegrationsPage() {
               <div><Label className="text-[10px] font-mono text-zinc-500">PERMISSIONS</Label>
                 <Select value={akf.permissions || 'read'} onValueChange={v => setAkf({ ...akf, permissions: v })}><SelectTrigger className="bg-zinc-800 border-zinc-700 text-white"><SelectValue /></SelectTrigger><SelectContent className="bg-zinc-800 border-zinc-700"><SelectItem value="read">Read Only</SelectItem><SelectItem value="read_write">Read & Write</SelectItem><SelectItem value="full">Full Access</SelectItem></SelectContent></Select></div>
               <div><Label className="text-[10px] font-mono text-zinc-500">EXPIRES (OPTIONAL)</Label><Input type="date" className="bg-zinc-800 border-zinc-700 text-white" value={akf.expires_at || ''} onChange={e => setAkf({ ...akf, expires_at: e.target.value })} /></div>
-              <Button className="w-full bg-amber-500 hover:bg-amber-600 text-black" onClick={() => createApiKey.mutate(akf)}>Create Key</Button>
+              <Button className="w-full bg-amber-500 hover:bg-amber-600 text-white" onClick={() => createApiKey.mutate(akf)}>Create Key</Button>
             </div>
           </DialogContent>
         </Dialog>
@@ -124,19 +176,46 @@ export default function IntegrationsPage() {
         <TabsContent value="marketplace" className="mt-4">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
             {CATALOG.map(app => {
-              const connected = connectedTypes.has(app.type);
+              const connected = app.type === 'xero' ? (xeroStatus?.connected ?? false) : connectedTypes.has(app.type);
+              const isXero = app.type === 'xero';
               return (
                 <Card key={app.type} className="bg-zinc-900/80 border-zinc-800">
                   <CardContent className="p-4">
                     <div className="flex items-center justify-between mb-2">
                       <h3 className="text-sm font-medium text-white">{app.name}</h3>
-                      {connected ? <Badge className="bg-green-500/20 text-green-400">Connected</Badge> : <Badge variant="outline" className="border-zinc-700 text-zinc-400">{app.cat}</Badge>}
+                      {connected ? (
+                        <Badge className="bg-green-500/20 text-green-400">Connected</Badge>
+                      ) : !app.ready ? (
+                        <Badge variant="outline" className="border-amber-800 text-amber-500">Coming Soon</Badge>
+                      ) : (
+                        <Badge variant="outline" className="border-zinc-700 text-zinc-400">{app.cat}</Badge>
+                      )}
                     </div>
                     <p className="text-xs text-zinc-500 mb-3">{app.desc}</p>
-                    {!connected ? (
-                      <Button size="sm" className="w-full bg-amber-500 hover:bg-amber-600 text-black text-xs" onClick={() => { setSelectedType(app); setForm({ name: app.name, integration_type: app.type }); setShowConnect(true); }}>Connect</Button>
-                    ) : (
+                    {isXero && xeroStatus?.tenantName && (
+                      <p className="text-xs text-zinc-400 mb-2">Org: {xeroStatus.tenantName}</p>
+                    )}
+                    {isXero ? (
+                      connected ? (
+                        <div className="flex gap-2">
+                          <Button size="sm" className="flex-1 bg-amber-500 hover:bg-amber-600 text-white text-xs" onClick={handleXeroSync} disabled={xeroSyncing}>
+                            {xeroSyncing ? 'Syncing…' : 'Sync Costs'}
+                          </Button>
+                          <Button size="sm" variant="outline" className="flex-1 border-red-500/50 text-red-400 text-xs" onClick={handleXeroDisconnect} disabled={xeroDisconnecting}>
+                            {xeroDisconnecting ? '…' : 'Disconnect'}
+                          </Button>
+                        </div>
+                      ) : (
+                        <Button size="sm" className="w-full bg-amber-500 hover:bg-amber-600 text-white text-xs" onClick={handleXeroConnect}>
+                          Connect with Xero
+                        </Button>
+                      )
+                    ) : connected ? (
                       <Button size="sm" variant="outline" className="w-full border-zinc-700 text-zinc-300 text-xs">Manage</Button>
+                    ) : app.ready ? (
+                      <Button size="sm" className="w-full bg-amber-500 hover:bg-amber-600 text-white text-xs" onClick={() => { setSelectedType(app); setForm({ name: app.name, integration_type: app.type }); setShowConnect(true); }}>Connect</Button>
+                    ) : (
+                      <Button size="sm" variant="outline" className="w-full border-zinc-700 text-zinc-500 text-xs cursor-not-allowed" disabled>Coming Soon</Button>
                     )}
                   </CardContent>
                 </Card>
@@ -201,7 +280,7 @@ export default function IntegrationsPage() {
             <div><Label className="text-[10px] font-mono text-zinc-500">SYNC FREQUENCY</Label>
               <Select value={form.sync_frequency || 'manual'} onValueChange={v => setForm({ ...form, sync_frequency: v })}><SelectTrigger className="bg-zinc-800 border-zinc-700 text-white"><SelectValue /></SelectTrigger><SelectContent className="bg-zinc-800 border-zinc-700"><SelectItem value="manual">Manual</SelectItem><SelectItem value="hourly">Hourly</SelectItem><SelectItem value="daily">Daily</SelectItem><SelectItem value="weekly">Weekly</SelectItem></SelectContent></Select></div>
             <div><Label className="text-[10px] font-mono text-zinc-500">NOTES</Label><Textarea className="bg-zinc-800 border-zinc-700 text-white" rows={2} value={form.notes || ''} onChange={e => setForm({ ...form, notes: e.target.value })} /></div>
-            <Button className="w-full bg-amber-500 hover:bg-amber-600 text-black" onClick={() => createIntegration.mutate(form)}>Connect Integration</Button>
+            <Button className="w-full bg-amber-500 hover:bg-amber-600 text-white" onClick={() => createIntegration.mutate(form)}>Connect Integration</Button>
           </div>
         </DialogContent>
       </Dialog>

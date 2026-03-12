@@ -20,7 +20,7 @@ import {
 interface UpgradeGateContextType {
   /** Show the upgrade modal for a specific feature */
   showUpgradeFor: (featureKey: string) => void
-  /** Check if user has access to a feature (role + tier) */
+  /** Check if user has access to a feature (role + tier + userType) */
   hasAccess: (featureKey: string) => boolean
   /** Check role-only access to a platform tab */
   hasRoleAccess: (tabKey: string) => boolean
@@ -30,6 +30,8 @@ interface UpgradeGateContextType {
   tier: string
   /** Current user role */
   role: string
+  /** Current user type (staff/customer) */
+  userType: string
 }
 
 const UpgradeGateContext = createContext<UpgradeGateContextType>({
@@ -39,6 +41,7 @@ const UpgradeGateContext = createContext<UpgradeGateContextType>({
   navigateOrGate: () => {},
   tier: 'starter',
   role: 'viewer',
+  userType: 'staff',
 })
 
 export function useUpgradeGate() {
@@ -57,18 +60,19 @@ export function UpgradeGateProvider({ children }: { children: React.ReactNode })
 
   const role = session?.user?.role || 'viewer'
   const tier = session?.user?.tier || 'starter'
+  const userType = session?.user?.userType || 'staff'
 
   const showUpgradeFor = useCallback((featureKey: string) => {
-    const info = getUpgradeInfo(role, tier, featureKey)
+    const info = getUpgradeInfo(role, tier, featureKey, userType)
     if (info) {
       setActiveGate(info)
       setActiveFeatureKey(featureKey)
     }
-  }, [role, tier])
+  }, [role, tier, userType])
 
   const hasAccess = useCallback((featureKey: string) => {
-    return canAccessFeature(role, tier, featureKey)
-  }, [role, tier])
+    return canAccessFeature(role, tier, featureKey, userType)
+  }, [role, tier, userType])
 
   const hasRoleAccess = useCallback((tabKey: string) => {
     return canAccessPlatformTab(role, tabKey)
@@ -87,13 +91,13 @@ export function UpgradeGateProvider({ children }: { children: React.ReactNode })
       setActiveFeatureKey(featureKey)
       return
     }
-    // Check tier access
-    if (!canAccessFeature(role, tier, featureKey)) {
+    // Check tier access (staff bypass this)
+    if (!canAccessFeature(role, tier, featureKey, userType)) {
       showUpgradeFor(featureKey)
       return
     }
     router.push(href)
-  }, [role, tier, router, showUpgradeFor])
+  }, [role, tier, userType, router, showUpgradeFor])
 
   const closeModal = useCallback(() => {
     setActiveGate(null)
@@ -101,7 +105,7 @@ export function UpgradeGateProvider({ children }: { children: React.ReactNode })
   }, [])
 
   return (
-    <UpgradeGateContext.Provider value={{ showUpgradeFor, hasAccess, hasRoleAccess, navigateOrGate, tier, role }}>
+    <UpgradeGateContext.Provider value={{ showUpgradeFor, hasAccess, hasRoleAccess, navigateOrGate, tier, role, userType }}>
       {children}
       {activeGate && (
         <UpgradeModal
@@ -222,7 +226,7 @@ function UpgradeModal({
           {!isRoleRestricted && (
             <button
               onClick={onUpgrade}
-              className="flex-1 py-2 font-mono text-xs text-black bg-amber-500 hover:bg-amber-400 transition-colors font-bold"
+              className="flex-1 py-2 font-mono text-xs text-white bg-amber-500 hover:bg-amber-400 transition-colors font-bold"
             >
               UPGRADE NOW
             </button>

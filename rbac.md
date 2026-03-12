@@ -1405,6 +1405,110 @@ However, for **audit logging purposes**, define these actions:
 
 ---
 
+### 7.3 Per-Service Sub-Tab Role Scoping
+
+Each service exposes sub-tabs (sections / modules) in the frontend. Not every role should see every sub-tab within a service. This section defines **which roles can access which sub-tabs** inside each service.
+
+**How it works:**
+1. Service-level access is gated by `FALLBACK_platformTabAccess` (§7) + service subscription (for customers).
+2. Within a service, sub-tabs are further scoped by the user's **role**.
+3. `super_admin` and `firm_principal` always see **all** sub-tabs.
+4. Tier gating (§4) still applies on top — a role may have access to a sub-tab but their tier may lock advanced features within it.
+
+> **Implementation:** `frontend/src/lib/rbac.ts` exports a `serviceSubTabAccess` map and a `canAccessServiceSubTab(role, serviceKey, subTabKey)` function. Each service layout filters its navigation items through this function.
+
+---
+
+#### 7.3.1 Valuations Sub-Tabs
+
+Already implemented via `FALLBACK_valuationTabAccess` and `canAccessValuationTab()`.
+
+| Sub-Tab | Key | Allowed Roles |
+|---------|-----|---------------|
+| Valuations | `valuations` | super_admin, firm_principal, admin, senior_valuer, manager, valuer, finance_manager, compliance_officer, agent, probationer, inspector, analyst |
+| Team | `team` | super_admin, firm_principal, admin, senior_valuer, manager, valuer, finance_manager, compliance_officer, agent, probationer, inspector, analyst |
+| Finance | `finance` | super_admin, firm_principal, admin, finance_manager, compliance_officer, manager |
+| Clients | `clients` | super_admin, firm_principal, admin, senior_valuer, manager, valuer, finance_manager, agent |
+| Calendar | `calendar` | super_admin, firm_principal, admin, senior_valuer, manager, valuer, agent, probationer, inspector |
+| Analytics | `analytics` | super_admin, firm_principal, admin, senior_valuer, finance_manager, compliance_officer, manager, analyst |
+| Settings | `settings` | super_admin, firm_principal, admin |
+
+---
+
+#### 7.3.2 Project Management Sub-Tabs
+
+Project management uses grouped navigation (8 groups). Role scoping is per-group.
+
+| Sub-Tab Group | Key | Allowed Roles | Rationale |
+|---------------|-----|---------------|-----------|
+| Overview | `pm-overview` | super_admin, firm_principal, admin, manager, project_manager, finance_manager, analyst, inspector, viewer | Universal project dashboard |
+| Construction | `pm-construction` | super_admin, firm_principal, admin, manager, project_manager, inspector | Site-level construction management |
+| Procurement | `pm-procurement` | super_admin, firm_principal, admin, manager, project_manager, finance_manager | Bidding, contracts, contractors |
+| Financials | `pm-financials` | super_admin, firm_principal, admin, manager, finance_manager | Costs, budget, invoicing, reports |
+| Documents | `pm-documents` | super_admin, firm_principal, admin, manager, project_manager, finance_manager, inspector, viewer | Files, meetings, closeout docs |
+| Units | `pm-units` | super_admin, firm_principal, admin, manager, project_manager, agent | Unit tracking & sales |
+| Analytics | `pm-analytics` | super_admin, firm_principal, admin, manager, analyst | Project analytics & audit log |
+| Settings | `pm-settings` | super_admin, firm_principal, admin | Project configuration |
+
+---
+
+#### 7.3.3 Deal Management (CRM) Sub-Tabs
+
+| Sub-Tab | Key | Allowed Roles | Rationale |
+|---------|-----|---------------|-----------|
+| Deals | `crm-deals` | super_admin, firm_principal, admin, manager, agent | Core deal pipeline |
+| Properties | `crm-properties` | super_admin, firm_principal, admin, manager, agent | Property listings tied to deals |
+| Contacts | `crm-contacts` | super_admin, firm_principal, admin, manager, agent | CRM contacts |
+| Agents | `crm-agents` | super_admin, firm_principal, admin, manager | Agent management |
+| Companies | `crm-companies` | super_admin, firm_principal, admin, manager, agent | Company profiles |
+| Tasks | `crm-tasks` | super_admin, firm_principal, admin, manager, agent | Deal tasks & follow-ups |
+| Documents | `crm-documents` | super_admin, firm_principal, admin, manager, agent | Deal documents |
+| Financials | `crm-financials` | super_admin, firm_principal, admin, manager, finance_manager | Deal financials & commissions |
+| Messaging | `crm-messaging` | super_admin, firm_principal, admin, manager, agent | Internal messaging |
+| Calendar | `crm-calendar` | super_admin, firm_principal, admin, manager, agent | Appointments & showings |
+| Analytics | `crm-analytics` | super_admin, firm_principal, admin, manager, analyst | CRM analytics & reports |
+| Workflows | `crm-workflows` | super_admin, firm_principal, admin, manager | Automation workflows |
+| Pipelines | `crm-pipelines` | super_admin, firm_principal, admin | Pipeline configuration |
+
+---
+
+#### 7.3.4 Property Management Sub-Tabs
+
+| Sub-Tab | Key | Allowed Roles | Rationale |
+|---------|-----|---------------|-----------|
+| Overview | `propmgmt-overview` | super_admin, firm_principal, admin, manager, project_manager | Portfolio dashboard |
+| Properties | `propmgmt-properties` | super_admin, firm_principal, admin, manager, project_manager | Property CRUD |
+| Messages | `propmgmt-messages` | super_admin, firm_principal, admin, manager, project_manager | Tenant communications |
+| Portfolios | `propmgmt-portfolios` | super_admin, firm_principal, admin, manager | Portfolio grouping |
+| Applications | `propmgmt-applications` | super_admin, firm_principal, admin, manager, project_manager | Rental applications |
+| Tenants | `propmgmt-tenants` | super_admin, firm_principal, admin, manager, project_manager | Tenant management |
+| Maintenance | `propmgmt-maintenance` | super_admin, firm_principal, admin, manager, project_manager | Work orders & repairs |
+| Documents | `propmgmt-documents` | super_admin, firm_principal, admin, manager, project_manager | Leases, contracts |
+| Vendors | `propmgmt-vendors` | super_admin, firm_principal, admin, manager | Vendor directory |
+| Financials | `propmgmt-financials` | super_admin, firm_principal, admin, manager, finance_manager | Rent collection, NOI, reports |
+| Calendar | `propmgmt-calendar` | super_admin, firm_principal, admin, manager, project_manager | Inspections, renewals |
+
+---
+
+#### 7.3.5 Analytics Sub-Tabs
+
+| Sub-Tab | Key | Allowed Roles | Rationale |
+|---------|-----|---------------|-----------|
+| Market | `analytics-market` | super_admin, firm_principal, admin, manager, project_manager, analyst | General market intelligence |
+| Construction | `analytics-construction` | super_admin, firm_principal, admin, manager, project_manager, analyst | Construction cost analytics |
+| Affordability | `analytics-affordability` | super_admin, firm_principal, admin, manager, analyst | Housing affordability analysis |
+| Valuations | `analytics-valuations` | super_admin, firm_principal, admin, senior_valuer, manager, valuer, analyst | Valuation analytics |
+| ML Models | `analytics-ml` | super_admin, firm_principal, admin, analyst | Machine learning models |
+| Risk | `analytics-risk` | super_admin, firm_principal, admin, manager, analyst, compliance_officer | Risk assessment |
+| Short-Stay | `analytics-short-stay` | super_admin, firm_principal, admin, manager, analyst | Short-stay/Airbnb analytics |
+| Forecasting | `analytics-forecasting` | super_admin, firm_principal, admin, analyst | AI price forecasting |
+| CRM | `analytics-crm` | super_admin, firm_principal, admin, manager, agent, analyst | CRM performance analytics |
+| Geographic | `analytics-geographic` | super_admin, firm_principal, admin, manager, analyst | Spatial/map analytics |
+| Management | `analytics-management` | super_admin, firm_principal, admin, manager | Management dashboards |
+| Settings | `analytics-settings` | super_admin, firm_principal, admin | Analytics configuration |
+
+---
+
 export class KeycloakService {
   private static instance: KeycloakService;
   private adminToken: { token: string; expiresAt: number } | null = null;

@@ -341,6 +341,7 @@ export default function DashboardPage() {
   const userName = session?.user?.name?.split(' ')[0] || 'there'
   const userRole = session?.user?.role || overview?.role || 'viewer'
   const userTier = session?.user?.tier || overview?.tier || 'starter'
+  const userType = session?.user?.userType || 'staff'
 
   // Fetch all data in parallel
   const fetchAll = useCallback(async () => {
@@ -395,8 +396,13 @@ export default function DashboardPage() {
             </h1>
             <p className="text-sm text-zinc-500 mt-0.5 font-mono">
               {session?.user?.organizationName || 'Your Organization'} &middot;{' '}
-              <span className="text-zinc-600">{userRole.replace(/_/g, ' ').toUpperCase()}</span> &middot;{' '}
-              <span className="text-amber-500/70">{userTier.toUpperCase()} PLAN</span>
+              <span className="text-zinc-600">{userRole.replace(/_/g, ' ').toUpperCase()}</span>
+              {userType !== 'staff' && (
+                <>
+                  {' '}&middot;{' '}
+                  <span className="text-amber-500/70">{userTier.toUpperCase()} PLAN</span>
+                </>
+              )}
             </p>
           </div>
           <div className="text-right">
@@ -817,7 +823,7 @@ export default function DashboardPage() {
                 <div className="font-mono text-xs text-zinc-400 mb-3">No valuations yet</div>
                 <button
                   onClick={() => navigateOrGate('/dashboard/valuations/new', 'valuations')}
-                  className="font-mono text-[11px] px-4 py-2 bg-amber-500 text-black rounded hover:bg-amber-400 transition-colors font-medium"
+                  className="font-mono text-[11px] px-4 py-2 bg-amber-500 text-white rounded hover:bg-amber-400 transition-colors font-medium"
                 >
                   + START FIRST VALUATION
                 </button>
@@ -908,8 +914,12 @@ export default function DashboardPage() {
             </span>
             <span className="text-zinc-800">|</span>
             <span className="text-zinc-500">{userRole.replace(/_/g, ' ').toUpperCase()}</span>
-            <span className="text-zinc-800">|</span>
-            <span className="text-amber-500/70">{userTier.toUpperCase()} PLAN</span>
+            {userType !== 'staff' && (
+              <>
+                <span className="text-zinc-800">|</span>
+                <span className="text-amber-500/70">{userTier.toUpperCase()} PLAN</span>
+              </>
+            )}
           </div>
           <div className="font-mono text-[10px] text-zinc-700">
             PROPMETRIK v2.1 &middot; © {new Date().getFullYear()} PROPMETRIK

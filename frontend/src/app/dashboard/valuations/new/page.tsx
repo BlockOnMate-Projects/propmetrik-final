@@ -284,7 +284,7 @@ export default function NewValuationPage() {
       <div className="flex items-center gap-4 mb-6">
         <button
           onClick={() => setStep(1)}
-          className={`flex items-center gap-2 px-4 py-2 font-mono text-xs transition-colors ${step === 1 ? 'bg-amber-500 text-black font-bold' :
+          className={`flex items-center gap-2 px-4 py-2 font-mono text-xs transition-colors ${step === 1 ? 'bg-amber-500 text-white font-bold' :
             step > 1 ? 'bg-zinc-800 text-emerald-400 hover:text-white' : 'bg-zinc-800 text-zinc-400 hover:text-white'
             }`}
         >
@@ -295,7 +295,7 @@ export default function NewValuationPage() {
         <button
           onClick={() => (selectedProperty || createNewProperty) && valuationPurpose ? setStep(2) : null}
           disabled={(!selectedProperty && !createNewProperty) || !valuationPurpose}
-          className={`flex items-center gap-2 px-4 py-2 font-mono text-xs transition-colors ${step === 2 ? 'bg-amber-500 text-black font-bold' :
+          className={`flex items-center gap-2 px-4 py-2 font-mono text-xs transition-colors ${step === 2 ? 'bg-amber-500 text-white font-bold' :
             (selectedProperty || createNewProperty) && valuationPurpose ? 'bg-zinc-800 text-zinc-400 hover:text-white' :
               'bg-zinc-900 text-zinc-600 cursor-not-allowed'
             }`}
@@ -413,7 +413,7 @@ export default function NewValuationPage() {
                     }
                   }}
                   disabled={!newProperty.address || !newProperty.city || (!newProperty.valuation_purpose && !valuationPurpose)}
-                  className="w-full py-3 bg-amber-500 text-black font-mono text-sm font-bold hover:bg-amber-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="w-full py-3 bg-amber-500 text-white font-mono text-sm font-bold hover:bg-amber-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   REVIEW WORKFLOW
                 </button>
@@ -448,7 +448,7 @@ export default function NewValuationPage() {
               <button
                 onClick={() => valuationPurpose ? setStep(2) : null}
                 disabled={!valuationPurpose}
-                className="w-full mt-4 py-3 bg-amber-500 text-black font-mono text-sm font-bold hover:bg-amber-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                className="w-full mt-4 py-3 bg-amber-500 text-white font-mono text-sm font-bold hover:bg-amber-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
               >
                 REVIEW WORKFLOW
                 <ChevronRight className="w-4 h-4" />
@@ -525,7 +525,7 @@ export default function NewValuationPage() {
             <button
               onClick={handleCreateValuation}
               disabled={creating}
-              className="flex-1 py-3 bg-amber-500 text-black font-mono text-sm font-bold hover:bg-amber-400 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+              className="flex-1 py-3 bg-amber-500 text-white font-mono text-sm font-bold hover:bg-amber-400 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
             >
               {creating ? (
                 <>

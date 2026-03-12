@@ -165,7 +165,7 @@ export function SiteDiaryLog({ projectId }: SiteDiaryLogProps) {
 
           <Button 
             type="submit" 
-            className="w-full bg-amber-600 hover:bg-amber-700 text-black font-semibold font-mono"
+            className="w-full bg-amber-600 hover:bg-amber-700 text-white font-semibold font-mono"
             disabled={loading}
           >
             {loading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Check className="h-4 w-4 mr-2" />}

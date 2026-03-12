@@ -126,7 +126,7 @@ function StepIndicator({ currentStep, onStepClick }: { currentStep: number; onSt
               <div className={cn(
                 "w-8 h-8 rounded-full flex items-center justify-center font-mono text-xs transition-colors",
                 isCompleted && "bg-green-600 text-white",
-                isCurrent && "bg-amber-600 text-black",
+                isCurrent && "bg-amber-600 text-white",
                 !isCompleted && !isCurrent && "bg-zinc-800 text-zinc-500"
               )}>
                 {isCompleted ? <Check className="h-4 w-4" /> : step.id}
@@ -505,7 +505,7 @@ export default function EnhancedProjectWizard() {
         description: `${formData.projectName} has been created successfully.`,
       })
 
-      router.push(`/dashboard/projects/${project.id}`)
+      router.push(`/dashboard/projects/${(project as any).projectId || project.id}`)
     } catch (err: any) {
       console.error('Failed to create project:', err)
       setError(err.message || 'Failed to create project')
@@ -1027,7 +1027,7 @@ export default function EnhancedProjectWizard() {
           {currentStep < 5 ? (
             <Button
               onClick={goNext}
-              className="bg-amber-600 hover:bg-amber-700 text-black font-mono text-xs"
+              className="bg-amber-600 hover:bg-amber-700 text-white font-mono text-xs"
             >
               Continue
               <ArrowRight className="h-4 w-4 ml-2" />

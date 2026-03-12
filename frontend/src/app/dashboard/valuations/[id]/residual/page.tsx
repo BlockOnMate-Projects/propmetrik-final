@@ -1166,7 +1166,7 @@ export default function ResidualMethodPage() {
         <button
           onClick={handleSave}
           disabled={saving || residualLandValue <= 0}
-          className="px-6 py-3 bg-amber-500 text-black font-mono text-sm font-bold hover:bg-amber-400 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-2"
+          className="px-6 py-3 bg-amber-500 text-white font-mono text-sm font-bold hover:bg-amber-400 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-2"
         >
           {saving && <Loader2 className="w-4 h-4 animate-spin" />}
           SAVE & CONTINUE TO RECONCILIATION →
