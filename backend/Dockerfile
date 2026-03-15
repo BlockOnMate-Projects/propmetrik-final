@@ -14,8 +14,11 @@ RUN apk add --no-cache python3 make g++
 # Copy package files
 COPY package*.json ./
 
-# Install all dependencies (including devDependencies for build)
+# Force NODE_ENV=development during install to include devDependencies
+# (Coolify injects ARG NODE_ENV=production which would skip them)
+ENV NODE_ENV=development
 RUN npm ci
+ENV NODE_ENV=production
 
 # ============================================
 # Stage 2: Builder
@@ -90,7 +93,8 @@ RUN apk add --no-cache python3 make g++
 # Copy package files
 COPY package*.json ./
 
-# Install all dependencies
+# Force NODE_ENV=development during install to include devDependencies
+ENV NODE_ENV=development
 RUN npm ci
 
 # Copy source code
