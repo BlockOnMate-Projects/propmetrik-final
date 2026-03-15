@@ -32,8 +32,8 @@ WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
-# Build TypeScript
-RUN npm run build
+# Build TypeScript — capture full error output for Coolify logs
+RUN npm run build 2>&1 || { echo "=== TSC BUILD FAILED — full output above ==="; exit 1; }
 
 # Prune devDependencies
 RUN npm prune --production
