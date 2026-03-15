@@ -1,9 +1,11 @@
-# PROPMETRIK Docker Compose
-# Single configuration for both development and production
+# PROPMETRIK Docker Compose — PRODUCTION BASE
+#
+# Dev source-mounts and overrides live in docker-compose.override.yml
+# (automatically loaded by `docker compose up` locally).
 #
 # Usage:
-#   Development: docker-compose up -d
-#   Production:  docker-compose --profile production up -d
+#   Development: docker-compose up -d           (auto-loads override)
+#   Production:  Coolify deploys this file only
 #   With local DBs: docker-compose --profile local-db up -d
 
 services:
@@ -14,16 +16,12 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-      target: ${BUILD_TARGET:-development}
+      target: production
     container_name: propmetrik-api
     ports:
       - "${API_PORT:-3000}:3000"
-    volumes:
-      # Mount source code only in development
-      - .:/app
-      - /app/node_modules
     environment:
-      - NODE_ENV=${NODE_ENV:-development}
+      - NODE_ENV=${NODE_ENV:-production}
       - PORT=3000
       - ML_SERVING_URL=http://ml-serving:8000
       - ONLYOFFICE_INTERNAL_URL=http://onlyoffice:80
@@ -63,7 +61,6 @@ services:
     ports:
       - "${ML_PORT:-8000}:8000"
     volumes:
-      - ./shared-services/ml-serving:/app
       - ml-models:/app/models
     environment:
       - MODEL_STORAGE_PATH=/app/models
@@ -100,7 +97,6 @@ services:
       dockerfile: Dockerfile
     container_name: propmetrik-scrapy-worker
     volumes:
-      - ./src/services/data-hub/pipelines/scrapy:/app
       - scrapy-items:/app/items
       - scrapy-logs:/var/log/cron
     environment:
