@@ -115,7 +115,7 @@ export class RentReminderJob {
         for (const row of result.rows) {
             try {
                 // Generate payment link
-                const paymentLink = `${process.env.TENANT_PORTAL_URL || 'http://localhost:3001'}/payments?tenancy=${row.tenancy_id}`;
+                const paymentLink = `${process.env.TENANT_PORTAL_URL || 'http://localhost:3000/tenant'}/payments?tenancy=${row.tenancy_id}`;
 
                 await notificationService.sendRentReminder(
                     this.config.channel,
@@ -176,7 +176,7 @@ export class RentReminderJob {
 
         for (const row of result.rows) {
             try {
-                const paymentLink = `${process.env.TENANT_PORTAL_URL || 'http://localhost:3001'}/payments?tenancy=${row.tenancy_id}`;
+                const paymentLink = `${process.env.TENANT_PORTAL_URL || 'http://localhost:3000/tenant'}/payments?tenancy=${row.tenancy_id}`;
 
                 await notificationService.sendRentOverdueNotice(
                     this.config.channel,

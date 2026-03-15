@@ -268,9 +268,9 @@ export default function ApplicationsPage() {
 
     const copyLink = () => {
         if (generatedLink) {
-            // Point to the Tenant Portal (port 3001 in dev, tenants.propmetrik.com in prod)
-            const tenantPortalUrl = process.env.NEXT_PUBLIC_TENANT_PORTAL_URL || 'http://localhost:3001'
-            const url = `${tenantPortalUrl}/apply/${generatedLink.token}`
+            // Tenant portal is now integrated into the main app at /tenant/*
+            const tenantPortalUrl = process.env.NEXT_PUBLIC_TENANT_PORTAL_URL || window.location.origin
+            const url = `${tenantPortalUrl}/tenant/apply/${generatedLink.token}`
             navigator.clipboard.writeText(url)
         }
     }
@@ -726,7 +726,7 @@ export default function ApplicationsPage() {
                                     <div className="flex items-center gap-2">
                                         <Input
                                             readOnly
-                                            value={`${process.env.NEXT_PUBLIC_TENANT_PORTAL_URL || 'http://localhost:3001'}/apply/${generatedLink.token}`}
+                                            value={`${process.env.NEXT_PUBLIC_TENANT_PORTAL_URL || window.location.origin}/tenant/apply/${generatedLink.token}`}
                                             className="bg-zinc-900 border-zinc-700 text-white font-mono text-sm"
                                         />
                                         <Button onClick={copyLink} variant="outline" className="shrink-0">

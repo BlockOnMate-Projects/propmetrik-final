@@ -47,9 +47,9 @@ export class ScrapyScheduler {
         'housemaster',
         'gpc',
         'realtor',
-        'jiji',
-        'daily_graphic_legal',  // Critical data: Litigation risk
         'airbnb_ghana',         // Critical data: Short-stay metrics
+        'daily_graphic_legal',  // Critical data: Litigation risk
+        'tonaton',              // Classifieds listings
       ],
       concurrentSpiders: config.scrapy?.concurrentSpiders ?? 2,
       retryFailed: config.scrapy?.retryFailed ?? true,

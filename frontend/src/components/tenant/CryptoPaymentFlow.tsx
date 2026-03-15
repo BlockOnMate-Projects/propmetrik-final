@@ -19,7 +19,7 @@ import {
   useReadContract,
   useSwitchChain,
 } from 'wagmi';
-import { polygon, polygonAmoy } from 'wagmi/chains';
+import { polygon, polygonAmoy } from 'viem/chains';
 import { formatUnits } from 'viem';
 import {
   USDT_ADDRESS,

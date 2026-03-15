@@ -281,14 +281,14 @@ export default function ValuationsPage() {
   return (
     <div className="min-h-screen bg-black text-white p-4 pb-10">
       {/* Header */}
-      <div className="flex items-center justify-between mb-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
         <div>
-          <h1 className="font-mono text-xl text-white">VALUATION TERMINAL</h1>
+          <h1 className="font-mono text-lg sm:text-xl text-white">VALUATION TERMINAL</h1>
           <p className="font-mono text-[10px] text-zinc-500">
             Property Assessment & Pricing Engine • <span className="text-amber-500">{timestamp}</span>
           </p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 sm:gap-3">
           <button
             onClick={() => fetchData(true)}
             disabled={refreshing}
@@ -325,7 +325,7 @@ export default function ValuationsPage() {
       )}
 
       {/* Stats Row */}
-      <div className="grid grid-cols-6 gap-3 mb-4">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 mb-4">
         <TerminalPanel title="TOTAL" status={loading ? 'loading' : 'live'}>
           <Metric
             label="ALL TIME"
@@ -371,30 +371,30 @@ export default function ValuationsPage() {
       </div>
 
       {/* Search and Filter Row */}
-      <div className="flex items-center justify-between mb-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
         <FilterTabs
           options={filterOptions}
           value={filter}
           onChange={setFilter}
         />
-        <div className="flex items-center gap-3">
-          <div className="relative">
+        <div className="flex items-center gap-2 sm:gap-3">
+          <div className="relative flex-1 sm:flex-none">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3 h-3 text-zinc-500" />
             <input
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Search valuations..."
-              className="w-64 pl-9 pr-3 py-2 bg-zinc-900 border border-zinc-800 text-white font-mono text-xs placeholder-zinc-600 focus:outline-none focus:border-amber-500/50"
+              className="w-full sm:w-64 pl-9 pr-3 py-2 bg-zinc-900 border border-zinc-800 text-white font-mono text-xs placeholder-zinc-600 focus:outline-none focus:border-amber-500/50"
             />
           </div>
           <button className="flex items-center gap-2 px-3 py-2 bg-zinc-800 text-zinc-400 font-mono text-xs hover:text-white transition-colors">
             <Filter className="w-3 h-3" />
-            FILTERS
+            <span className="hidden sm:inline">FILTERS</span>
           </button>
           <button className="flex items-center gap-2 px-3 py-2 bg-zinc-800 text-zinc-400 font-mono text-xs hover:text-white transition-colors">
             <Download className="w-3 h-3" />
-            EXPORT
+            <span className="hidden sm:inline">EXPORT</span>
           </button>
         </div>
       </div>
@@ -421,127 +421,192 @@ export default function ValuationsPage() {
             </Link>
           </div>
         ) : (
-          <table className="w-full">
-            <thead>
-              <tr className="text-[10px] font-mono text-zinc-500 border-b border-zinc-800">
-                <th className="text-left pb-2 w-28">ID</th>
-                <th className="text-left pb-2 w-40">ASSIGN</th>
-                <th className="text-left pb-2">PROPERTY</th>
-                <th className="text-left pb-2 w-28">DIGITAL ADDR</th>
-                <th className="text-left pb-2 w-28">LOCATION</th>
-                <th className="text-left pb-2 w-24">TYPE</th>
-                <th className="text-right pb-2 w-28">VALUE</th>
-                <th className="text-center pb-2 w-24">CONFIDENCE</th>
-                <th className="text-left pb-2 w-28">STATUS</th>
-                <th className="text-left pb-2 w-16">STEP</th>
-                <th className="text-right pb-2 w-24">UPDATED</th>
-                <th className="text-center pb-2 w-28">ACTIONS</th>
-              </tr>
-            </thead>
-            <tbody className="font-mono text-xs">
+          <>
+            {/* Mobile Card View */}
+            <div className="md:hidden space-y-3">
               {valuations.map((item) => (
-                <tr
+                <div
                   key={item.id}
                   onClick={() => handleRowClick(item)}
-                  className="border-b border-zinc-800/50 hover:bg-zinc-800/30 cursor-pointer group"
+                  className="border border-zinc-800 rounded-lg p-3 hover:bg-zinc-800/30 cursor-pointer active:bg-zinc-800/50 transition-colors"
                 >
-                  <td className="py-2 text-amber-500 group-hover:text-amber-400">
-                    VAL-{item.id.slice(0, 8).toUpperCase()}
-                  </td>
-                  <td className="py-2" onClick={(e) => e.stopPropagation()}>
-                    {assigning === item.id ? (
-                      <Loader2 className="w-3 h-3 text-amber-500 animate-spin" />
-                    ) : canAssign ? (
-                      <select
-                        value={assignMap[item.id]?.userId || ''}
-                        onChange={(e) => handleAssign(item.id, e.target.value)}
-                        className="w-full px-1.5 py-1 bg-zinc-900 border border-zinc-700 text-xs font-mono text-white focus:outline-none focus:border-amber-500/50 cursor-pointer hover:border-zinc-500 transition-colors"
-                      >
-                        <option value="">— Unassigned —</option>
-                        {orgMembers.map((m) => (
-                          <option key={m.id} value={m.id}>
-                            {m.displayName || `${m.firstName} ${m.lastName}`}
-                          </option>
-                        ))}
-                      </select>
-                    ) : (
-                      <span className="text-xs font-mono text-zinc-300">
-                        {assignMap[item.id]?.userName || <span className="text-zinc-600">— Unassigned —</span>}
-                      </span>
-                    )}
-                  </td>
-                  <td className="py-2 text-white">
-                    {item.property?.title || item.property?.address || 'Unnamed Property'}
-                  </td>
-                  <td className="py-2 text-cyan-400 font-mono text-[10px]">
-                    {item.property?.digital_address || <span className="text-zinc-600">—</span>}
-                  </td>
-                  <td className="py-2 text-zinc-400">
-                    {item.property?.city || item.property?.region || '—'}
-                  </td>
-                  <td className="py-2">
-                    <PropertyTypeBadge type={item.property?.property_type || 'residential'} />
-                  </td>
-                  <td className="py-2 text-right">
-                    {item.final_value_ghs ? (
-                      <Currency value={item.final_value_ghs} compact />
-                    ) : (
-                      <span className="text-zinc-600">—</span>
-                    )}
-                  </td>
-                  <td className="py-2 px-2">
-                    {item.confidence_score ? (
-                      <ConfidenceBar score={item.confidence_score} size="sm" />
-                    ) : (
-                      <span className="text-zinc-600 text-[10px]">N/A</span>
-                    )}
-                  </td>
-                  <td className="py-2">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="font-mono text-xs text-amber-500">VAL-{item.id.slice(0, 8).toUpperCase()}</span>
                     <StatusBadge status={item.status} />
-                  </td>
-                  <td className="py-2 text-zinc-500">
-                    {item.current_step || 1}/8
-                  </td>
-                  <td className="py-2 text-right text-zinc-500">
-                    {formatRelativeTime(item.updated_at || '', mounted)}
-                  </td>
-                  <td className="py-2 text-center">
-                    <div className="flex items-center justify-center gap-1">
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleRowClick(item);
-                        }}
-                        className="p-1 text-zinc-500 hover:text-amber-400 transition-colors"
-                        title="Edit Valuation"
-                      >
-                        <Edit2 className="w-3 h-3" />
-                      </button>
-                      <button
-                        onClick={(e) => handleDownload(e, item)}
-                        className="p-1 text-zinc-500 hover:text-green-400 transition-colors"
-                        title="Download Report"
-                      >
-                        <Download className="w-3 h-3" />
-                      </button>
-                      <button
-                        onClick={(e) => handleDelete(e, item.id)}
-                        className="p-1 text-zinc-500 hover:text-red-400 transition-colors"
-                        title="Delete Valuation"
-                      >
-                        <Trash2 className="w-3 h-3" />
-                      </button>
+                  </div>
+                  <p className="text-white text-sm font-medium mb-1 truncate">
+                    {item.property?.title || item.property?.address || 'Unnamed Property'}
+                  </p>
+                  <p className="text-zinc-400 text-xs mb-2">
+                    {item.property?.city || item.property?.region || '—'}
+                    {item.property?.digital_address && (
+                      <span className="text-cyan-400 ml-2">{item.property.digital_address}</span>
+                    )}
+                  </p>
+                  <div className="flex items-center justify-between text-xs">
+                    <div className="flex items-center gap-3">
+                      <PropertyTypeBadge type={item.property?.property_type || 'residential'} />
+                      <span className="text-zinc-500">Step {item.current_step || 1}/8</span>
                     </div>
-                  </td>
-                </tr>
+                    <div className="flex items-center gap-3">
+                      {item.final_value_ghs ? (
+                        <span className="text-green-400 font-mono"><Currency value={item.final_value_ghs} compact /></span>
+                      ) : (
+                        <span className="text-zinc-600">—</span>
+                      )}
+                      <span className="text-zinc-500">{formatRelativeTime(item.updated_at || '', mounted)}</span>
+                    </div>
+                  </div>
+                  <div className="flex items-center justify-end gap-2 mt-2 pt-2 border-t border-zinc-800/50">
+                    <button
+                      onClick={(e) => { e.stopPropagation(); handleRowClick(item); }}
+                      className="p-1.5 text-zinc-500 hover:text-amber-400 transition-colors"
+                      title="Edit"
+                    >
+                      <Edit2 className="w-3.5 h-3.5" />
+                    </button>
+                    <button
+                      onClick={(e) => handleDownload(e, item)}
+                      className="p-1.5 text-zinc-500 hover:text-green-400 transition-colors"
+                      title="Download"
+                    >
+                      <Download className="w-3.5 h-3.5" />
+                    </button>
+                    <button
+                      onClick={(e) => handleDelete(e, item.id)}
+                      className="p-1.5 text-zinc-500 hover:text-red-400 transition-colors"
+                      title="Delete"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                </div>
               ))}
-            </tbody>
-          </table>
+            </div>
+
+            {/* Desktop Table View */}
+            <table className="w-full hidden md:table">
+              <thead>
+                <tr className="text-[10px] font-mono text-zinc-500 border-b border-zinc-800">
+                  <th className="text-left pb-2 w-28">ID</th>
+                  <th className="text-left pb-2 w-40">ASSIGN</th>
+                  <th className="text-left pb-2">PROPERTY</th>
+                  <th className="text-left pb-2 w-28">DIGITAL ADDR</th>
+                  <th className="text-left pb-2 w-28">LOCATION</th>
+                  <th className="text-left pb-2 w-24">TYPE</th>
+                  <th className="text-right pb-2 w-28">VALUE</th>
+                  <th className="text-center pb-2 w-24">CONFIDENCE</th>
+                  <th className="text-left pb-2 w-28">STATUS</th>
+                  <th className="text-left pb-2 w-16">STEP</th>
+                  <th className="text-right pb-2 w-24">UPDATED</th>
+                  <th className="text-center pb-2 w-28">ACTIONS</th>
+                </tr>
+              </thead>
+              <tbody className="font-mono text-xs">
+                {valuations.map((item) => (
+                  <tr
+                    key={item.id}
+                    onClick={() => handleRowClick(item)}
+                    className="border-b border-zinc-800/50 hover:bg-zinc-800/30 cursor-pointer group"
+                  >
+                    <td className="py-2 text-amber-500 group-hover:text-amber-400">
+                      VAL-{item.id.slice(0, 8).toUpperCase()}
+                    </td>
+                    <td className="py-2" onClick={(e) => e.stopPropagation()}>
+                      {assigning === item.id ? (
+                        <Loader2 className="w-3 h-3 text-amber-500 animate-spin" />
+                      ) : canAssign ? (
+                        <select
+                          value={assignMap[item.id]?.userId || ''}
+                          onChange={(e) => handleAssign(item.id, e.target.value)}
+                          className="w-full px-1.5 py-1 bg-zinc-900 border border-zinc-700 text-xs font-mono text-white focus:outline-none focus:border-amber-500/50 cursor-pointer hover:border-zinc-500 transition-colors"
+                        >
+                          <option value="">— Unassigned —</option>
+                          {orgMembers.map((m) => (
+                            <option key={m.id} value={m.id}>
+                              {m.displayName || `${m.firstName} ${m.lastName}`}
+                            </option>
+                          ))}
+                        </select>
+                      ) : (
+                        <span className="text-xs font-mono text-zinc-300">
+                          {assignMap[item.id]?.userName || <span className="text-zinc-600">— Unassigned —</span>}
+                        </span>
+                      )}
+                    </td>
+                    <td className="py-2 text-white">
+                      {item.property?.title || item.property?.address || 'Unnamed Property'}
+                    </td>
+                    <td className="py-2 text-cyan-400 font-mono text-[10px]">
+                      {item.property?.digital_address || <span className="text-zinc-600">—</span>}
+                    </td>
+                    <td className="py-2 text-zinc-400">
+                      {item.property?.city || item.property?.region || '—'}
+                    </td>
+                    <td className="py-2">
+                      <PropertyTypeBadge type={item.property?.property_type || 'residential'} />
+                    </td>
+                    <td className="py-2 text-right">
+                      {item.final_value_ghs ? (
+                        <Currency value={item.final_value_ghs} compact />
+                      ) : (
+                        <span className="text-zinc-600">—</span>
+                      )}
+                    </td>
+                    <td className="py-2 px-2">
+                      {item.confidence_score ? (
+                        <ConfidenceBar score={item.confidence_score} size="sm" />
+                      ) : (
+                        <span className="text-zinc-600 text-[10px]">N/A</span>
+                      )}
+                    </td>
+                    <td className="py-2">
+                      <StatusBadge status={item.status} />
+                    </td>
+                    <td className="py-2 text-zinc-500">
+                      {item.current_step || 1}/8
+                    </td>
+                    <td className="py-2 text-right text-zinc-500">
+                      {formatRelativeTime(item.updated_at || '', mounted)}
+                    </td>
+                    <td className="py-2 text-center">
+                      <div className="flex items-center justify-center gap-1">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleRowClick(item);
+                          }}
+                          className="p-1 text-zinc-500 hover:text-amber-400 transition-colors"
+                          title="Edit Valuation"
+                        >
+                          <Edit2 className="w-3 h-3" />
+                        </button>
+                        <button
+                          onClick={(e) => handleDownload(e, item)}
+                          className="p-1 text-zinc-500 hover:text-green-400 transition-colors"
+                          title="Download Report"
+                        >
+                          <Download className="w-3 h-3" />
+                        </button>
+                        <button
+                          onClick={(e) => handleDelete(e, item.id)}
+                          className="p-1 text-zinc-500 hover:text-red-400 transition-colors"
+                          title="Delete Valuation"
+                        >
+                          <Trash2 className="w-3 h-3" />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </>
         )}
       </TerminalPanel>
 
       {/* Keyboard Shortcuts Footer */}
-      <div className="mt-4 flex items-center justify-center gap-6">
+      <div className="mt-4 hidden sm:flex items-center justify-center gap-6">
         <div className="flex items-center gap-2">
           <KeyboardShortcut keys={['⌘', 'N']} />
           <span className="font-mono text-[10px] text-zinc-500">New Valuation</span>

@@ -274,9 +274,9 @@ export default function SettingsPage() {
                 </div>
             </div>
 
-            <div className="flex gap-6">
+            <div className="flex flex-col lg:flex-row gap-6">
                 {/* Sidebar */}
-                <div className="w-48 shrink-0">
+                <div className="w-full lg:w-48 lg:shrink-0">
                     <div className="space-y-1">
                         {sections.map((s) => {
                             const Icon = s.icon
@@ -306,12 +306,12 @@ export default function SettingsPage() {
                                 COMPANY INFORMATION
                             </div>
                             <InputField label="COMPANY NAME" value={settings.companyName} onChange={(v) => setSettings({ ...settings, companyName: v })} />
-                            <div className="grid grid-cols-2 gap-4">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                 <InputField label="GhIS REGISTRATION" value={settings.ghisRegistration} onChange={(v) => setSettings({ ...settings, ghisRegistration: v })} />
                                 <InputField label="TIN NUMBER" value={settings.tinNumber} onChange={(v) => setSettings({ ...settings, tinNumber: v })} />
                             </div>
                             <InputField label="ADDRESS" value={settings.companyAddress} onChange={(v) => setSettings({ ...settings, companyAddress: v })} />
-                            <div className="grid grid-cols-2 gap-4">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                 <InputField label="PHONE" value={settings.companyPhone} onChange={(v) => setSettings({ ...settings, companyPhone: v })} />
                                 <InputField label="EMAIL" value={settings.companyEmail} onChange={(v) => setSettings({ ...settings, companyEmail: v })} />
                             </div>

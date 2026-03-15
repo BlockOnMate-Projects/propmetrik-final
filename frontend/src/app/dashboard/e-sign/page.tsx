@@ -225,9 +225,9 @@ export default function ESignDashboard() {
         <div className="lg:col-span-2">
           <Card>
             <CardHeader className="pb-3">
-              <div className="flex items-center justify-between">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                 <CardTitle className="text-lg">Envelopes</CardTitle>
-                <div className="relative w-56">
+                <div className="relative w-full sm:w-56">
                   <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                   <Input placeholder="Search..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-8 h-8 text-sm" />
                 </div>
@@ -235,7 +235,7 @@ export default function ESignDashboard() {
             </CardHeader>
             <CardContent>
               <Tabs value={activeTab} onValueChange={setActiveTab}>
-                <TabsList className="mb-4">
+                <TabsList className="mb-4 w-full sm:w-auto overflow-x-auto">
                   <TabsTrigger value="all">All ({stats.total})</TabsTrigger>
                   <TabsTrigger value="pending">Pending ({stats.pending})</TabsTrigger>
                   <TabsTrigger value="completed">Completed ({stats.completed})</TabsTrigger>

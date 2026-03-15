@@ -332,6 +332,7 @@ export function TopNav() {
   const router = useRouter()
   const { data: session, status } = useSession()
   const [mounted, setMounted] = useState(false)
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [ticker, setTicker] = useState<{
     gh_property_index: { avg_price: number; total_properties: number; change_pct: number };
     accra_avg: number;
@@ -413,6 +414,21 @@ export function TopNav() {
     return pathname.startsWith(href)
   }
 
+  // Close mobile menu on route change
+  useEffect(() => {
+    setMobileMenuOpen(false)
+  }, [pathname])
+
+  // Prevent body scroll when mobile menu is open
+  useEffect(() => {
+    if (mobileMenuOpen) {
+      document.body.style.overflow = 'hidden'
+    } else {
+      document.body.style.overflow = ''
+    }
+    return () => { document.body.style.overflow = '' }
+  }, [mobileMenuOpen])
+
   return (
     <header className="sticky top-0 z-50 w-full bg-black border-b border-zinc-800" suppressHydrationWarning>
       {/* Top Bar — hidden on small screens */}
@@ -429,6 +445,19 @@ export function TopNav() {
 
       {/* Main Navigation Bar */}
       <div className="flex items-center h-12 sm:h-10 px-3 sm:px-4">
+        {/* Hamburger button — mobile only */}
+        <button
+          onClick={() => setMobileMenuOpen(o => !o)}
+          className="md:hidden p-1.5 mr-2 text-zinc-400 hover:text-white transition-colors"
+          aria-label="Toggle navigation menu"
+        >
+          {mobileMenuOpen ? (
+            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+          ) : (
+            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" /></svg>
+          )}
+        </button>
+
         {/* Logo */}
         <Link href="/dashboard" className="flex items-center gap-2 mr-4 sm:mr-6">
           <div className="flex items-center">
@@ -437,13 +466,13 @@ export function TopNav() {
           </div>
         </Link>
 
-        {/* Service Navigation — always visible, scrollable on small screens */}
-        <nav className="flex items-center gap-0.5 flex-1 overflow-x-auto scrollbar-hide">
+        {/* Service Navigation — hidden on mobile, visible on md+ */}
+        <nav className="hidden md:flex items-center gap-0.5 flex-1 overflow-x-auto scrollbar-hide">
           {visibleNavigation.map((item) => {
             const active = isActive(item.href)
             const isAdminTab = item.adminOnly
             const tierLocked = sessionReady && !canAccessFeature(userRole, userTier, item.tabKey)
-            
+
             const handleClick = (e: React.MouseEvent) => {
               if (tierLocked) {
                 e.preventDefault()
@@ -479,9 +508,9 @@ export function TopNav() {
                 {item.badge && !tierLocked && (
                   <span className={cn(
                     'px-1 py-0.5 text-[8px] rounded',
-                    active 
-                      ? isAdminTab 
-                        ? 'bg-black/20 text-white' 
+                    active
+                      ? isAdminTab
+                        ? 'bg-black/20 text-white'
                         : 'bg-black/20 text-white'
                       : isAdminTab
                         ? 'bg-red-500/20 text-red-400'
@@ -495,6 +524,9 @@ export function TopNav() {
           })}
         </nav>
 
+        {/* Spacer on mobile to push right items */}
+        <div className="flex-1 md:hidden" />
+
         {/* Right Side — Notifications + User Menu */}
         <div className="flex items-center gap-2">
           <NotificationDropdown />
@@ -507,6 +539,108 @@ export function TopNav() {
           />
         </div>
       </div>
+
+      {/* Mobile Navigation Drawer */}
+      {mobileMenuOpen && (
+        <>
+          {/* Backdrop */}
+          <div
+            className="md:hidden fixed inset-0 top-12 bg-black/60 z-40"
+            onClick={() => setMobileMenuOpen(false)}
+          />
+          {/* Drawer */}
+          <div className="md:hidden fixed inset-x-0 top-12 bottom-0 z-50 bg-zinc-950 border-t border-zinc-800 overflow-y-auto">
+            <nav className="flex flex-col py-2">
+              {visibleNavigation.map((item) => {
+                const active = isActive(item.href)
+                const isAdminTab = item.adminOnly
+                const tierLocked = sessionReady && !canAccessFeature(userRole, userTier, item.tabKey)
+
+                const handleClick = (e: React.MouseEvent) => {
+                  if (tierLocked) {
+                    e.preventDefault()
+                    navigateOrGate(item.href, item.tabKey)
+                  }
+                  setMobileMenuOpen(false)
+                }
+
+                return (
+                  <Link
+                    key={item.name}
+                    href={tierLocked ? '#' : item.href}
+                    onClick={handleClick}
+                    className={cn(
+                      'flex items-center gap-3 px-5 py-3.5 font-mono text-sm tracking-wider transition-colors border-b border-zinc-800/50',
+                      tierLocked
+                        ? 'text-zinc-600'
+                        : active
+                          ? isAdminTab
+                            ? 'bg-red-600/10 text-red-400 border-l-2 border-l-red-500'
+                            : 'bg-amber-500/10 text-amber-500 border-l-2 border-l-amber-500'
+                          : isAdminTab
+                            ? 'text-red-400 hover:bg-red-900/20'
+                            : 'text-zinc-300 hover:bg-zinc-800/70 hover:text-white'
+                    )}
+                  >
+                    <span className={cn(
+                      'text-[10px] w-6 text-center',
+                      tierLocked ? 'text-zinc-700' : isAdminTab ? 'text-red-600' : 'text-zinc-600'
+                    )}>
+                      {item.key}
+                    </span>
+                    <span className="flex-1">{item.name}</span>
+                    {tierLocked && (
+                      <svg className="w-4 h-4 text-amber-500/60" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                      </svg>
+                    )}
+                    {item.badge && !tierLocked && (
+                      <span className={cn(
+                        'px-1.5 py-0.5 text-[9px] rounded',
+                        isAdminTab ? 'bg-red-500/20 text-red-400' : 'bg-yellow-500/20 text-yellow-500'
+                      )}>
+                        {item.badge}
+                      </span>
+                    )}
+                    {active && !tierLocked && (
+                      <svg className="w-4 h-4 text-current opacity-60" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                      </svg>
+                    )}
+                  </Link>
+                )
+              })}
+            </nav>
+
+            {/* Mobile market summary */}
+            {ticker && (
+              <div className="px-5 py-4 border-t border-zinc-800 space-y-2">
+                <p className="text-[10px] text-zinc-500 font-mono tracking-wider">MARKET DATA</p>
+                <div className="grid grid-cols-2 gap-2 font-mono text-[11px]">
+                  <div>
+                    <span className="text-zinc-500">GH PROPERTY IDX</span>{' '}
+                    <span className={ticker.cap_rate >= 0 ? 'text-green-400' : 'text-red-400'}>
+                      {ticker.cap_rate >= 0 ? '+' : ''}{ticker.cap_rate.toFixed(2)}%
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-zinc-500">ACCRA AVG</span>{' '}
+                    <span className="text-white">&#x20B5;{ticker.accra_avg.toLocaleString()}</span>
+                  </div>
+                  <div>
+                    <span className="text-zinc-500">ACTIVE DEALS</span>{' '}
+                    <span className="text-amber-500">{ticker.active_deals}</span>
+                  </div>
+                  <div>
+                    <span className="text-zinc-500">PENDING VAL</span>{' '}
+                    <span className="text-amber-500">{ticker.pending_valuations}</span>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        </>
+      )}
 
       {/* Ticker Bar — hidden on mobile */}
       <div className="hidden sm:flex items-center h-6 px-4 bg-zinc-900/50 border-t border-zinc-800 overflow-hidden">

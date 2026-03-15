@@ -346,7 +346,7 @@ class PhaseService extends BaseService {
         id: m.id,
         phaseId: phase.id,
         name: m.name,
-        date: m.target_date ? (m.target_date instanceof Date ? m.target_date.toISOString().split('T')[0] : String(m.target_date)) : null,
+        date: m.target_date ? String(m.target_date).split('T')[0] : null,
         status: m.completed ? 'completed' : 'pending',
         isGhanaSpecific: false,
       }))

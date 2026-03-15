@@ -655,7 +655,7 @@ export default function ApplicationDetailPage() {
                                 </CardTitle>
                             </CardHeader>
                             <CardContent>
-                                <div className="grid grid-cols-3 gap-4">
+                                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                                     <div>
                                         <p className="text-sm text-zinc-500">Name</p>
                                         <p className="text-white">{application.emergencyContactName}</p>
@@ -683,7 +683,7 @@ export default function ApplicationDetailPage() {
                                 <div className="space-y-4">
                                     {application.characterReferences.map((ref, idx) => (
                                         <div key={idx} className="p-3 bg-zinc-800/50 rounded-lg">
-                                            <div className="grid grid-cols-3 gap-4">
+                                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                                                 <div>
                                                     <p className="text-sm text-zinc-500">Name</p>
                                                     <p className="text-white">{ref.name}</p>

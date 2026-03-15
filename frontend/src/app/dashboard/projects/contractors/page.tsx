@@ -205,7 +205,7 @@ export default function ContractorsPage() {
                                     <Input value={form.trade} onChange={e => setForm({ ...form, trade: e.target.value })} className="bg-zinc-800 border-zinc-700 text-white" placeholder="e.g. Electrical, Plumbing" />
                                 </div>
                             </div>
-                            <div className="grid grid-cols-3 gap-3">
+                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                                 <div>
                                     <Label className="text-[10px] font-mono text-zinc-500">CONTACT PERSON</Label>
                                     <Input value={form.contact_name} onChange={e => setForm({ ...form, contact_name: e.target.value })} className="bg-zinc-800 border-zinc-700 text-white" placeholder="Full name" />

@@ -38,6 +38,7 @@
     "@opensearch-project/opensearch": "^2.5.0",
     "@sentry/node": "^10.42.0",
     "@types/bcrypt": "^6.0.0",
+    "@types/markdown-it": "^14.1.2",
     "@types/ws": "^8.18.1",
     "axios": "^1.13.2",
     "axios-retry": "^4.5.0",
@@ -66,6 +67,7 @@
     "jsonwebtoken": "^9.0.3",
     "jwks-rsa": "^3.2.0",
     "keycloak-connect": "^23.0.4",
+    "markdown-it": "^14.1.1",
     "morgan": "^1.10.0",
     "multer": "^1.4.5-lts.1",
     "node-cron": "^4.2.1",
@@ -135,5 +137,11 @@
   "repository": {
     "type": "git",
     "url": "git@github.com:CedynGroup/propmetrik.git"
+  },
+  "overrides": {
+    "xmldom": "npm:@xmldom/xmldom@^0.8.10",
+    "docxtemplater-image-module-free": {
+      "xmldom": "npm:@xmldom/xmldom@^0.8.10"
+    }
   }
 }

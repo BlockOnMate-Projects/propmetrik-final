@@ -325,7 +325,7 @@ export default function PropertyDetailPage() {
             setApplicationLinks(Array.isArray(linksRes) ? linksRes : [])
             setNewApplicationLink({ applicationType: 'rental', maxUses: 10, expiresInDays: 30 })
             // Auto-copy the new link
-            const tenantPortalUrl = `${window.location.origin.replace(':3000', ':3001')}/apply/${link.token}`
+            const tenantPortalUrl = `${window.location.origin}/tenant/apply/${link.token}`
             await navigator.clipboard.writeText(tenantPortalUrl)
             setCopiedLinkId(link.id)
             setTimeout(() => setCopiedLinkId(null), 3000)
@@ -337,7 +337,7 @@ export default function PropertyDetailPage() {
     }
 
     const handleCopyApplicationLink = async (token: string, id: string) => {
-        const tenantPortalUrl = `${window.location.origin.replace(':3000', ':3001')}/apply/${token}`
+        const tenantPortalUrl = `${window.location.origin}/tenant/apply/${token}`
         await navigator.clipboard.writeText(tenantPortalUrl)
         setCopiedLinkId(id)
         setTimeout(() => setCopiedLinkId(null), 3000)

@@ -1,5 +1,209 @@
-      ✔ isReferenceProcessed returns false for new reference
+
+  PROPMETRIKPayments — Swap / Auto-Conversion
+    1 — Swap Configuration
+      ✔ sets swap router correctly
+      ✔ only owner can set swap router
+      ✔ emits SwapRouterUpdated event
+      ✔ can disable swap router by setting to zero
+      ✔ defaults swap fee tier to 3000
+      ✔ sets default swap fee tier
+      ✔ emits DefaultSwapFeeTierUpdated event
+      ✔ rejects invalid fee tier
+      ✔ sets pair-specific fee tier
+      ✔ falls back to default tier when no pair tier set
+      ✔ sets max swap slippage
+      ✔ rejects slippage out of range
+      ✔ only owner can set swap config
+    2 — Recipient Preferred Token
+      ✔ sets recipient preferred token via registrar
+      ✔ sets recipient preferred token via owner
+      ✔ emits RecipientPreferredTokenSet event
+      ✔ clears preference by setting to zero address
+      ✔ rejects non-registrar setting preference
+      ✔ rejects preference for unregistered entity
+      ✔ rejects non-accepted token as preference
+    3 — processPaymentWithSwap — Direct (no swap)
+      ✔ behaves like processPayment when no preferred token set
+      ✔ behaves like processPayment when preferred token == payment token
+      ✔ falls back to direct when swap router is zero
+      ✔ emits PaymentProcessed on direct fallback
+    4 — processPaymentWithSwap — With Swap
+      ✔ swaps USDT → USDC successfully (1:1 stablecoin)
+      ✔ emits PaymentProcessedWithSwap event
+      ✔ swaps WETH → USDC (cross-decimal, 18 → 6)
+      ✔ handles DEAL payment type (0.25% fee) with swap
+      ✔ contract does not retain any tokens after swap
+      ✔ rejects when slippage protection is violated
+      ✔ rejects when preferred token is disabled
+      ✔ updates recipient stats with swapped amount
+    5 — processPaymentWithSwap — Validation
+      ✔ rejects zero amount
+      ✔ rejects unaccepted token
+      ✔ rejects disabled payment type
+      ✔ rejects unregistered recipient
+      ✔ rejects duplicate payment reference
+      ✔ rejects when paused
+      ✔ shares reference namespace with processPayment
+    6 — Token Rescue
+      ✔ owner can rescue stuck tokens
+      ✔ rejects non-owner rescue
+      ✔ rejects rescue to zero address
+    7 — Platform Fee Auto-Conversion
+      ✔ setPlatformPreferredToken works
+      ✔ emits PlatformPreferredTokenSet event
+      ✔ only owner can set platform preferred token
+      ✔ rejects unaccepted token
+      ✔ can clear preference by setting to zero
+      ✔ processPayment: fee stays in payer token when no preference set
+      ✔ processPayment: fee auto-converts to platform preferred token
+      ✔ processPayment: no swap when paying in same token as preference
+      ✔ processPaymentWithSwap (direct path): fee auto-converts
+      ✔ processPaymentWithSwap (swap path): fee auto-converts
+      ✔ falls back to direct fee when swap router is zero
+      ✔ contract does not retain any tokens after platform fee swap
+      ✔ DEAL fee (0.25%) auto-converts correctly
+
+  PROPMETRIKPayments — Multi-Token
+    1 — Deployment
+      ✔ sets propmetrikWallet correctly
+      ✔ sets owner correctly
+      ✔ rejects zero address for platform wallet
+      ✔ initialises default fee configs
+    2 — Token Management
+      ✔ reports 4 tokens added
+      ✔ returns correct token config via isTokenAccepted
+      ✔ returns correct WETH config (18 decimals)
+      ✔ rejects duplicate token addition
+      ✔ rejects zero address token
+      ✔ only owner can add token
+      ✔ can disable then re-enable a token
+      ✔ rejects setTokenEnabled for unregistered token
+      ✔ can remove a token and re-add it
+      ✔ emits TokenAdded event
+      ✔ emits TokenToggled event
+      ✔ emits TokenRemoved event
+    3 — Fee Calculation
+      ✔ RENT — small amount triggers minimum fee ($1.67 USDT)
+      ✔ RENT — large amount uses percentage (1%)
+      ✔ RENT — WETH uses percentage when minimum is not configured
+      ✔ RENT — WETH large amount uses percentage
+      ✔ DEAL — 0.25% fee with USDT (6 decimals)
+      ✔ DEAL — 0.25% fee with USDC (6 decimals)
+      ✔ DEAL — 0.25% fee with WETH (18 decimals)
+      ✔ PROJECT — 0.25% fee
+      ✔ VALUATION — 2.5% fee with USDT (6 decimals)
+      ✔ VALUATION — 2.5% fee with USDC (6 decimals)
+      ✔ VALUATION — 2.5% fee with WETH (18 decimals)
+      ✔ VALUATION — 2.5% fee with WBTC (8 decimals)
+      ✔ RENT — WBTC uses percentage when minimum is not configured
+      ✔ owner can enable WETH minimum fee with pricing
+      ✔ RENT — WBTC large amount uses percentage
+      ✔ DEAL — 0.25% fee with WBTC (8 decimals)
+      ✔ rejects fee calc for disabled token
+      ✔ rejects fee calc for disabled payment type
+    4 — Payments with USDT
+      ✔ RENT — deducts principal + fee correctly
+      ✔ DEAL — 0.25% fee split
+      ✔ VALUATION — 2.5% fee split with USDT
+      ✔ emits PaymentProcessed with token address
+    5 — Payments with USDC
+      ✔ RENT — works identically to USDT (same decimals)
+      ✔ PROJECT — 0.25% fee
+    6 — Payments with WETH
+      ✔ RENT — uses percentage for small amounts by default
+      ✔ RENT — large amount uses 1% percentage
+      ✔ DEAL — 0.25% with 18 decimals
+    7 — Payments with WBTC
+      ✔ RENT — uses percentage for small BTC amounts by default
+      ✔ RENT — large BTC amount uses 1% percentage
+      ✔ DEAL — 0.25% with 8 decimals
+      ✔ PROJECT — 0.25% with 8 decimals
+    7b — VALUATION Payments (2.5% fee)
+      ✔ VALUATION — USDC 2.5% fee and correct split
+      ✔ VALUATION — WETH 2.5% with 18 decimals
+      ✔ VALUATION — WBTC 2.5% with 8 decimals
+      ✔ VALUATION — emits PaymentProcessed with type 3
+      ✔ VALUATION — disabled type reverts
+      ✔ VALUATION — owner can update fee config
+      ✔ VALUATION — gas usage within budget
+    8 — Cross-Token Mixed Payments
+      ✔ processes payments in 4 different tokens sequentially
+      ✔ recipient stats accumulate across 3 different tokens
+    9 — Payment Validations
+      ✔ rejects zero amount
+      ✔ rejects unregistered token
+      ✔ rejects disabled token
+      ✔ rejects disabled payment type
+      ✔ rejects unregistered recipient
+      ✔ rejects deactivated recipient
+      ✔ rejects duplicate reference
+      ✔ rejects when paused
+      ✔ works again after unpause
+      ✔ gas usage within budget
+    10 — Recipient Management
+      ✔ registers recipient correctly
+      ✔ rejects duplicate entity registration
+      ✔ rejects zero entity id
+      ✔ rejects wallet already assigned to another entity
+      ✔ rejects zero address wallet
+      ✔ only owner or registrar can register
+      ✔ deactivates and reactivates recipient
+      ✔ updates recipient wallet and preserves history
+      ✔ rejects same wallet update
+      ✔ rejects updating to wallet assigned to another entity
+      ✔ emits RecipientRegistered event
+      ✔ authorized registrar can register a recipient
+      ✔ authorized registrar can deactivate a recipient
+      ✔ revoked registrar cannot register
+      ✔ only owner can authorize a registrar
+      ✔ only owner can revoke a registrar
+      ✔ emits RegistrarAuthorized and RegistrarRevoked events
+    11 — Fee Configuration
+      ✔ updates fee config
+      ✔ rejects basis points > 10000
+      ✔ only owner can update fee config
+      ✔ emits FeeConfigUpdated event
+      ✔ can disable/enable payment types
+    12 — Platform Wallet
+      ✔ updates platform wallet
+      ✔ rejects zero address
+      ✔ rejects same address
+      ✔ only owner can update
+      ✔ emits PROPMETRIKWalletUpdated event
+    13 — Ownable2Step
+      ✔ initiates ownership transfer
+      ✔ completes ownership transfer
+      ✔ non-pending cannot accept
+    14 — View Functions
+      ✔ isReferenceProcessed returns false then true
+      ✔ getRecipientProfile returns correct stats
+      ✔ tokenList returns ordered addresses
+    15 — Edge Cases
+      ✔ payment with zero fee (custom config)
+      ✔ handles very small amounts (1 unit)
+      ✔ rejects using platform wallet as recipient
+      ✔ adding a 5th token after deployment works
+      ✔ removed token cannot be used for payment
+    16 — Off-Chain Payment Attestation
+      ✔ registrar can record off-chain payment
+      ✔ emits OffChainPaymentAttested event
+      ✔ owner can also record off-chain payment
+      ✔ rejects non-registrar calling recordOffChainPayment
+      ✔ rejects duplicate payment reference
+      ✔ shares reference namespace with on-chain payments
+      ✔ rejects zero amount
+      ✔ rejects empty pay currency
+      ✔ rejects empty external payment ID
+      ✔ rejects zero attestation hash
+      ✔ rejects when contract is paused
+      ✔ increments offChainPaymentCount
+      ✔ stores attestation hash and marks reference as processed
+      ✔ verifyAttestation returns true for matching hash
+      ✔ verifyAttestation returns false for wrong hash
+      ✔ verifyAttestation returns false for non-existent reference
+      ✔ supports all payment types (RENT, DEAL, PROJECT, VALUATION)
+      ✔ gas usage within budget
 
 
-  62 passing (750ms)
+  177 passing (9s)
 

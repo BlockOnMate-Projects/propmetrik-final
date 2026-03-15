@@ -376,6 +376,30 @@ router.post('/', async (req: Request, res: Response) => {
       });
     }
 
+    // Validate required fields for active valuers (Recommendation 3)
+    // Prevent users from reaching the approval step only to be blocked by missing data
+    const validationErrors: string[] = [];
+
+    if (!license_number) {
+      validationErrors.push('license_number is required for active valuers');
+    }
+    if (!license_valid_until) {
+      validationErrors.push('license_valid_until is required for active valuers');
+    } else if (new Date(license_valid_until) < new Date()) {
+      validationErrors.push('license_valid_until must be a future date (license has expired)');
+    }
+    if (!contact_email) {
+      validationErrors.push('contact_email is required for e-sign workflows');
+    }
+
+    if (validationErrors.length > 0) {
+      return res.status(400).json({
+        error: 'Validation Error',
+        message: 'Valuer record is missing required fields',
+        details: validationErrors,
+      });
+    }
+
     const valuerId = uuidv4();
 
     const result = await query(
@@ -467,6 +491,35 @@ router.put('/:id', validateUUID('id'), async (req: Request, res: Response) => {
         error: 'Bad Request',
         message: 'No valid fields to update',
       });
+    }
+
+    // Validate when activating a valuer (Recommendation 3)
+    const willBeActive = req.body.is_active !== undefined ? req.body.is_active : valuer.is_active;
+    if (willBeActive) {
+      const mergedLicense = req.body.license_number ?? valuer.license_number;
+      const mergedLicenseUntil = req.body.license_valid_until ?? valuer.license_valid_until;
+      const mergedEmail = req.body.contact_email ?? valuer.contact_email;
+      const activationErrors: string[] = [];
+
+      if (!mergedLicense) {
+        activationErrors.push('license_number is required for active valuers');
+      }
+      if (!mergedLicenseUntil) {
+        activationErrors.push('license_valid_until is required for active valuers');
+      } else if (new Date(mergedLicenseUntil) < new Date()) {
+        activationErrors.push('license_valid_until must be a future date (license has expired)');
+      }
+      if (!mergedEmail) {
+        activationErrors.push('contact_email is required for e-sign workflows');
+      }
+
+      if (activationErrors.length > 0) {
+        return res.status(400).json({
+          error: 'Validation Error',
+          message: 'Cannot activate valuer with missing required fields',
+          details: activationErrors,
+        });
+      }
     }
 
     updateFields.push(`updated_at = NOW()`);

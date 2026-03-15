@@ -265,7 +265,7 @@ export default function MeetingsPage() {
             </TabsContent>
 
             <TabsContent value="attendees" className="space-y-4 mt-4">
-              <div className="grid grid-cols-4 gap-2">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                 <Input placeholder="Name *" value={newAttendee.name || ''} onChange={(e) => setNewAttendee({ ...newAttendee, name: e.target.value })} className="bg-zinc-800 border-zinc-700 text-xs" />
                 <Input placeholder="Email" value={newAttendee.email || ''} onChange={(e) => setNewAttendee({ ...newAttendee, email: e.target.value })} className="bg-zinc-800 border-zinc-700 text-xs" />
                 <Input placeholder="Role" value={newAttendee.role || ''} onChange={(e) => setNewAttendee({ ...newAttendee, role: e.target.value })} className="bg-zinc-800 border-zinc-700 text-xs" />
@@ -283,7 +283,7 @@ export default function MeetingsPage() {
             <TabsContent value="actions" className="space-y-4 mt-4">
               <div className="space-y-2">
                 <Input placeholder="Description *" value={newAction.description || ''} onChange={(e) => setNewAction({ ...newAction, description: e.target.value })} className="bg-zinc-800 border-zinc-700 text-xs" />
-                <div className="grid grid-cols-3 gap-2">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                   <Input placeholder="Assigned to" value={newAction.assigned_to || ''} onChange={(e) => setNewAction({ ...newAction, assigned_to: e.target.value })} className="bg-zinc-800 border-zinc-700 text-xs" />
                   <Input type="date" placeholder="Due date" value={newAction.due_date || ''} onChange={(e) => setNewAction({ ...newAction, due_date: e.target.value })} className="bg-zinc-800 border-zinc-700 text-xs" />
                   <Button size="sm" className="bg-amber-600 hover:bg-amber-700" disabled={!newAction.description} onClick={() => { setActionItems([...actionItems, { ...newAction, priority: 'medium' }]); setNewAction({}); }}>Add</Button>

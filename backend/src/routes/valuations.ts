@@ -1061,13 +1061,32 @@ router.put('/:id', validateUUID('id'), async (req: Request, res: Response) => {
       'income_approach_confidence',
     ];
 
+    // Intermediate/non-valuation method keys that should not be stored in method_results (Recommendation 4)
+    // These are intermediate calculation data, not standalone valuation methods
+    const INTERMEDIATE_METHOD_KEYS = ['rental_market', 'rental_market_analysis', 'land_value'];
+
     for (const field of allowedFields) {
       if (updateData[field] !== undefined) {
         // Handle JSONB fields - merge with existing
         const jsonbFields = ['method_results', 'hbu_results', 'hbu_analysis', 'method_weights', 'methods_used', 'rental_market_analysis'];
         if (jsonbFields.includes(field)) {
+          let fieldData = updateData[field];
+
+          // Filter intermediate method data from method_results at storage time
+          if (field === 'method_results' && typeof fieldData === 'object' && fieldData !== null) {
+            const filtered: Record<string, any> = {};
+            for (const [key, val] of Object.entries(fieldData)) {
+              if (!INTERMEDIATE_METHOD_KEYS.includes(key)) {
+                filtered[key] = val;
+              } else {
+                logger.debug('Filtered intermediate method from method_results', { valuationId: id, method: key });
+              }
+            }
+            fieldData = filtered;
+          }
+
           updates.push(`${field} = COALESCE(${field}, '{}'::jsonb) || $${paramIndex}::jsonb`);
-          values.push(JSON.stringify(updateData[field]));
+          values.push(JSON.stringify(fieldData));
         } else if (field === 'methods_applied' || field === 'selected_methods') {
           // Handle array fields
           updates.push(`${field} = $${paramIndex}::text[]`);
@@ -1105,6 +1124,29 @@ router.put('/:id', validateUUID('id'), async (req: Request, res: Response) => {
     });
 
     const result = await query(updateQuery, values);
+
+    // Auto-transition valuation status based on current_step (Recommendation 2)
+    // When all 7 workflow steps are complete (step 7 = report generation),
+    // mark the valuation as completed. The pending_review status applies only to reports.
+    if (updateData.current_step) {
+      const updatedRow = result.rows[0];
+      const step = parseInt(updatedRow.current_step);
+      const currentStatus = updatedRow.status;
+
+      if (step >= 7 && (currentStatus === 'in_progress' || currentStatus === 'draft')) {
+        await query(
+          `UPDATE valuations SET status = 'completed', updated_at = NOW() WHERE id = $1`,
+          [id]
+        );
+        logger.info('Auto-transitioned valuation status to completed', { valuationId: id, step });
+      } else if (step > 1 && currentStatus === 'draft') {
+        await query(
+          `UPDATE valuations SET status = 'in_progress', updated_at = NOW() WHERE id = $1`,
+          [id]
+        );
+        logger.info('Auto-transitioned valuation status to in_progress', { valuationId: id, step });
+      }
+    }
 
     // If method_results was updated, recalculate estimated_value from method values
     if (updateData.method_results) {
@@ -4133,6 +4175,15 @@ router.post('/:id/reconciliation', validateUUID('id'), async (req: Request, res:
       return res.status(400).json({ error: 'method_results is required' });
     }
 
+    // Filter intermediate method data before reconciliation (Recommendation 4)
+    const INTERMEDIATE_METHODS = ['rental_market', 'rental_market_analysis', 'land_value'];
+    const filteredResults: Record<string, any> = {};
+    for (const [key, val] of Object.entries(method_results)) {
+      if (!INTERMEDIATE_METHODS.includes(key)) {
+        filteredResults[key] = val;
+      }
+    }
+
     // Calculate weighted average from method_results directly (don't rely on Python service)
     let weightedSum = 0;
     let totalWeight = 0;
@@ -4140,7 +4191,7 @@ router.post('/:id/reconciliation', validateUUID('id'), async (req: Request, res:
     const methodWeights: Record<string, number> = {};
     const values: number[] = [];
 
-    Object.entries(method_results).forEach(([method, data]: [string, any]) => {
+    Object.entries(filteredResults).forEach(([method, data]: [string, any]) => {
       const value = data.value || data.value_ghs || data.estimated_value || 0;
       const weight = data.weight || 0;
       const confidence = data.confidence_score || data.confidence || 0.5;
@@ -4175,7 +4226,7 @@ router.post('/:id/reconciliation', validateUUID('id'), async (req: Request, res:
       RETURNING *`,
       [
         req.params.id,
-        JSON.stringify(method_results),
+        JSON.stringify(filteredResults),
         weighting_method || 'manual',
         reconciledValue,
         valueLow,

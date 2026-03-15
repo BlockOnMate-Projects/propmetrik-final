@@ -1,7 +1,7 @@
 // PropertyCard Component - Display property in marketplace
 'use client';
 
-import { Heart, MapPin, Bed, Bath, Square } from 'lucide-react';
+import { Heart, MapPin, Bed, Bath, Square, Car, Navigation, ImageIcon } from 'lucide-react';
 import { useState } from 'react';
 import { authedFetch } from '@/lib/authed-fetch';
 
@@ -72,6 +72,14 @@ export function PropertyCard({ property, onClick, showDistance }: PropertyCardPr
           <Heart className={`h-4 w-4 ${isFavorite ? 'fill-red-500 text-red-500' : 'text-slate-700'}`} />
         </button>
 
+        {/* Image Count Badge */}
+        {property.images && property.images.length > 1 && (
+          <div className="absolute bottom-3 left-3 px-2 py-1 bg-black/70 text-white text-xs font-medium rounded-md backdrop-blur-sm flex items-center gap-1">
+            <ImageIcon className="h-3 w-3" />
+            {property.images.length}
+          </div>
+        )}
+
         {/* Distance Badge */}
         {showDistance && property.distance_km !== undefined && (
           <div className="absolute bottom-3 right-3 px-3 py-1.5 bg-black/80 text-white text-xs font-medium rounded-lg backdrop-blur-sm">
@@ -91,6 +99,11 @@ export function PropertyCard({ property, onClick, showDistance }: PropertyCardPr
           {property.transaction_type === 'rental' && (
             <span className="text-gray-600 text-sm font-medium">/month</span>
           )}
+          {property.transaction_type === 'sale' && property.total_area_sqm && (
+            <span className="text-xs text-gray-500 ml-1">
+              ({property.currency} {Math.round(property.price / property.total_area_sqm).toLocaleString()}/m²)
+            </span>
+          )}
         </div>
 
         {/* Title */}
@@ -105,6 +118,12 @@ export function PropertyCard({ property, onClick, showDistance }: PropertyCardPr
             {property.neighborhood ? `${property.neighborhood}, ` : ''}{property.city}
           </span>
         </div>
+        {property.digital_address && (
+          <div className="flex items-center gap-1.5 text-indigo-600 text-xs font-medium">
+            <Navigation className="h-3 w-3" />
+            <span>{property.digital_address}</span>
+          </div>
+        )}
         
         {/* Property Specs */}
         <div className="flex items-center gap-5 text-gray-700 text-sm border-t border-gray-200 pt-4">
@@ -126,6 +145,12 @@ export function PropertyCard({ property, onClick, showDistance }: PropertyCardPr
               <span className="font-medium">{property.total_area_sqm} m²</span>
             </div>
           )}
+          {property.parking_spaces && (
+            <div className="flex items-center gap-1.5">
+              <Car className="h-4 w-4 text-gray-500" />
+              <span className="font-medium">{property.parking_spaces}</span>
+            </div>
+          )}
         </div>
 
         {/* Amenities (show first 3) */}
@@ -133,7 +158,7 @@ export function PropertyCard({ property, onClick, showDistance }: PropertyCardPr
           <div className="flex flex-wrap gap-1.5 mt-3">
             {property.amenities.slice(0, 3).map((amenity: string) => (
               <span key={amenity} className="text-xs px-2.5 py-1 bg-gray-100 text-gray-700 rounded-md border border-gray-200 capitalize">
-                {amenity}
+                {amenity.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())}
               </span>
             ))}
             {property.amenities.length > 3 && (

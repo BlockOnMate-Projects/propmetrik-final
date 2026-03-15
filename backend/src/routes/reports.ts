@@ -748,6 +748,8 @@ router.post('/:id/generate', validateUUID('id'), async (req: Request, res: Respo
     res.status(500).json({
       error: 'Internal Server Error',
       message: 'Failed to generate report',
+      detail: error.message,
+      stack: process.env.NODE_ENV !== 'production' ? error.stack : undefined,
     });
   }
 });
@@ -1633,8 +1635,15 @@ router.post('/:id/prepare-esign', validateUUID('id'), async (req: Request, res: 
       return res.status(404).json({ error: 'Not Found', message: 'Report not found' });
     }
 
-    // Get valuer credentials
-    const credentials = await approvalService.getValuerCredentials(valuer_id);
+    // Get valuer credentials - try by valuer ID first, then by user ID
+    let credentials = await approvalService.getValuerCredentials(valuer_id);
+    if (!credentials) {
+      // valuer_id might be a user ID — look up the valuer by user_id
+      const valuerByUser = await approvalService.getValuerByUserId(valuer_id);
+      if (valuerByUser) {
+        credentials = await approvalService.getValuerCredentials(valuerByUser.id);
+      }
+    }
     if (!credentials) {
       return res.status(404).json({ error: 'Not Found', message: 'Valuer not found' });
     }

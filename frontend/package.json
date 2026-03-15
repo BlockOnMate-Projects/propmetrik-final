@@ -59,6 +59,7 @@
     "@types/papaparse": "^5.5.2",
     "@types/react-signature-canvas": "^1.0.7",
     "@walletconnect/modal": "^2.7.0",
+    "caniuse-lite": "^1.0.30001778",
     "class-variance-authority": "^0.7.0",
     "clsx": "^2.1.1",
     "cmdk": "^1.1.1",
@@ -107,7 +108,7 @@
     "eslint": "^8.56.0",
     "eslint-config-next": "^15.5.9",
     "postcss": "^8.4.33",
-    "tailwindcss": "^3.4.1",
+    "tailwindcss": "^3.4.19",
     "typescript": "^5.3.3"
   }
 }

@@ -9,6 +9,9 @@ from .meqasa import MeqasaSpider
 from .gpc import GhanaPropertyCentreSpider
 from .housemaster import HouseMasterSpider
 from .realtor_international import RealtorInternationalSpider
+from .airbnb_ghana import AirbnbGhanaSpider
+from .daily_graphic_legal import DailyGraphicLegalSpider
+from .tonaton import TonatonSpider
 
 __all__ = [
     'BasePropertySpider',
@@ -16,4 +19,7 @@ __all__ = [
     'GhanaPropertyCentreSpider',
     'HouseMasterSpider',
     'RealtorInternationalSpider',
+    'AirbnbGhanaSpider',
+    'DailyGraphicLegalSpider',
+    'TonatonSpider',
 ]

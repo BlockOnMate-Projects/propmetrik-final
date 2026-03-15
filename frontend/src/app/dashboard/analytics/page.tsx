@@ -239,16 +239,16 @@ export default function MarketAnalyticsPage() {
       <div className="min-h-screen bg-black text-white p-4">
         <div className="animate-pulse space-y-4">
           <div className="h-8 bg-zinc-800 rounded w-72" />
-          <div className="grid grid-cols-6 gap-3">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
             {[...Array(6)].map((_, i) => (
               <div key={i} className="h-24 bg-zinc-800/50 rounded border border-zinc-800" />
             ))}
           </div>
-          <div className="grid grid-cols-12 gap-3">
-            <div className="col-span-8 h-64 bg-zinc-800/50 rounded border border-zinc-800" />
-            <div className="col-span-4 h-64 bg-zinc-800/50 rounded border border-zinc-800" />
-            <div className="col-span-6 h-48 bg-zinc-800/50 rounded border border-zinc-800" />
-            <div className="col-span-6 h-48 bg-zinc-800/50 rounded border border-zinc-800" />
+          <div className="grid grid-cols-1 md:grid-cols-12 gap-3">
+            <div className="md:col-span-8 h-64 bg-zinc-800/50 rounded border border-zinc-800" />
+            <div className="md:col-span-4 h-64 bg-zinc-800/50 rounded border border-zinc-800" />
+            <div className="md:col-span-6 h-48 bg-zinc-800/50 rounded border border-zinc-800" />
+            <div className="md:col-span-6 h-48 bg-zinc-800/50 rounded border border-zinc-800" />
           </div>
         </div>
       </div>
@@ -258,14 +258,14 @@ export default function MarketAnalyticsPage() {
   return (
     <div className="min-h-screen bg-black text-white p-4 pb-10">
       {/* Header */}
-      <div className="flex items-center justify-between mb-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
         <div>
-          <h1 className="font-mono text-xl text-white">MARKET ANALYTICS</h1>
+          <h1 className="font-mono text-lg sm:text-xl text-white">MARKET ANALYTICS</h1>
           <p className="font-mono text-[10px] text-zinc-500">
             Real Estate Market Intelligence & Price Indices
           </p>
         </div>
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-2 sm:gap-4">
           <button
             onClick={() => loadData()}
             className="flex items-center gap-1.5 px-3 py-1.5 font-mono text-[10px] text-zinc-400 hover:text-amber-500 border border-zinc-800 hover:border-zinc-700 transition-colors"
@@ -282,7 +282,7 @@ export default function MarketAnalyticsPage() {
       </div>
 
       {/* Market Summary KPIs */}
-      <div className="grid grid-cols-6 gap-3 mb-4">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 mb-4">
         <Panel title="AVG PRICE">
           <div className="text-center">
             <DollarSign className="w-4 h-4 mx-auto mb-1 text-amber-500" />
@@ -348,11 +348,12 @@ export default function MarketAnalyticsPage() {
       </div>
 
       {/* Main Content */}
-      <div className="grid grid-cols-12 gap-3">
+      <div className="grid grid-cols-1 md:grid-cols-12 gap-3">
         {/* Price Index Table */}
-        <Panel title="AREA PRICE INDEX" className="col-span-8">
+        <Panel title="AREA PRICE INDEX" className="md:col-span-8">
           {priceIndex.length > 0 ? (
-            <table className="w-full">
+            <div className="overflow-x-auto">
+            <table className="w-full min-w-[500px]">
               <thead>
                 <tr className="text-[10px] font-mono text-zinc-500 border-b border-zinc-800">
                   <th className="text-left pb-2">REGION</th>
@@ -378,6 +379,7 @@ export default function MarketAnalyticsPage() {
                 ))}
               </tbody>
             </table>
+            </div>
           ) : (
             <div className="text-center py-8">
               <Activity className="w-5 h-5 mx-auto mb-2 text-zinc-600" />
@@ -390,7 +392,7 @@ export default function MarketAnalyticsPage() {
         </Panel>
 
         {/* Recent Transactions */}
-        <Panel title="RECENT TRANSACTIONS" className="col-span-4">
+        <Panel title="RECENT TRANSACTIONS" className="md:col-span-4">
           {transactions.length > 0 ? (
             <div className="space-y-3">
               {transactions.map((txn) => (
@@ -428,9 +430,10 @@ export default function MarketAnalyticsPage() {
         </Panel>
 
         {/* Supply / Demand by Region */}
-        <Panel title="SUPPLY & DEMAND BY REGION" className="col-span-6">
+        <Panel title="SUPPLY & DEMAND BY REGION" className="md:col-span-6">
           {supplyDemand.length > 0 ? (
-            <table className="w-full">
+            <div className="overflow-x-auto">
+            <table className="w-full min-w-[400px]">
               <thead>
                 <tr className="text-[10px] font-mono text-zinc-500 border-b border-zinc-800">
                   <th className="text-left pb-2">REGION</th>
@@ -456,6 +459,7 @@ export default function MarketAnalyticsPage() {
                 ))}
               </tbody>
             </table>
+            </div>
           ) : (
             <div className="text-center py-8">
               <Activity className="w-5 h-5 mx-auto mb-2 text-zinc-600" />
@@ -465,7 +469,7 @@ export default function MarketAnalyticsPage() {
         </Panel>
 
         {/* Price Distribution */}
-        <Panel title="PRICE DISTRIBUTION" className="col-span-6">
+        <Panel title="PRICE DISTRIBUTION" className="md:col-span-6">
           {distribution.length > 0 ? (
             <div className="space-y-2">
               {distribution.map((b) => (
@@ -493,8 +497,8 @@ export default function MarketAnalyticsPage() {
 
         {/* Price Index History (sparkline) */}
         {priceHistory.length > 0 && (
-          <Panel title="PRICE INDEX TREND (12 MO)" className="col-span-12">
-            <div className="grid grid-cols-12 gap-2">
+          <Panel title="PRICE INDEX TREND (12 MO)" className="md:col-span-12">
+            <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-12 gap-2">
               {priceHistory.map((h, i) => (
                 <div key={i} className="text-center">
                   <div className="font-mono text-[9px] text-zinc-600 mb-1">
@@ -535,7 +539,7 @@ export default function MarketAnalyticsPage() {
 
         {/* Market Activity Table */}
         {activity.length > 0 && (
-          <Panel title="MARKET ACTIVITY BY REGION" className="col-span-12">
+          <Panel title="MARKET ACTIVITY BY REGION" className="md:col-span-12">
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead>

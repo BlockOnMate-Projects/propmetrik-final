@@ -373,7 +373,7 @@ export default function ClientsPage() {
                         </button>
                     ))}
                 </div>
-                <div className="relative w-64">
+                <div className="relative w-full sm:w-64">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3 h-3 text-zinc-500" />
                     <input
                         type="text"
@@ -500,7 +500,7 @@ export default function ClientsPage() {
 
                 {/* Client Detail Panel (slide-out) */}
                 {showDetail && selectedClient && (
-                    <div className="w-[480px] bg-zinc-900 border border-zinc-800 flex flex-col max-h-[calc(100vh-280px)] shrink-0">
+                    <div className="w-full sm:w-[480px] bg-zinc-900 border border-zinc-800 flex flex-col max-h-[calc(100vh-280px)] shrink-0">
                         {/* Panel Header */}
                         <div className="px-4 py-3 border-b border-zinc-800 flex items-center justify-between">
                             <div className="flex items-center gap-3">

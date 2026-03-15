@@ -4,7 +4,7 @@
  */
 
 import { http, createConfig } from 'wagmi';
-import { polygon, polygonAmoy } from 'wagmi/chains';
+import { polygon, polygonAmoy } from 'viem/chains';
 import { injected, walletConnect } from 'wagmi/connectors';
 
 const walletConnectProjectId = process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID || '';

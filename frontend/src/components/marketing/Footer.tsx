@@ -80,7 +80,7 @@ export default function Footer() {
                 {/* Bottom Bar */}
                 <div className="pt-8 border-t border-zinc-800 flex flex-col md:flex-row justify-between items-center gap-4 text-sm text-zinc-500">
                     <p>&copy; {new Date().getFullYear()} PROPMETRIK Ghana. All Rights Reserved.</p>
-                    <div className="flex gap-8">
+                    <div className="flex flex-wrap justify-center gap-x-6 gap-y-2 sm:gap-8">
                         <Link href="/privacy" className="hover:text-white transition-colors">Privacy Policy</Link>
                         <Link href="/terms" className="hover:text-white transition-colors">Terms of Service</Link>
                         <Link href="/cookies" className="hover:text-white transition-colors">Cookie Policy</Link>

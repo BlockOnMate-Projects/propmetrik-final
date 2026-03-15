@@ -28,7 +28,9 @@ export function FilterPanel({ filters, onFilterChange, aggregations }: FilterPan
     (filters.bedrooms ? 1 : 0) +
     (filters.bathrooms ? 1 : 0) +
     (filters.amenities?.length || 0) +
-    (filters.region ? 1 : 0);
+    (filters.region ? 1 : 0) +
+    (filters.parking_spaces ? 1 : 0) +
+    (filters.listed_within_days ? 1 : 0);
 
   return (
     <div className="bg-white rounded-xl p-6 border border-gray-200 shadow-sm">
@@ -210,6 +212,30 @@ export function FilterPanel({ filters, onFilterChange, aggregations }: FilterPan
         </div>
       </div>
 
+      {/* Parking */}
+      <div className="mb-6">
+        <label className="block text-sm font-semibold mb-3 text-gray-700">Parking</label>
+        <div className="grid grid-cols-4 gap-2">
+          {['Any', '1+', '2+', '3+'].map((label, index) => {
+            const value = index === 0 ? undefined : index;
+
+            return (
+              <button
+                key={label}
+                onClick={() => onFilterChange({ ...filters, parking_spaces: value })}
+                className={`px-2 py-2.5 rounded-lg text-sm font-medium transition-all ${
+                  filters.parking_spaces === value
+                    ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/50'
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200 border border-gray-200'
+                }`}
+              >
+                {label}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
       {/* Amenities */}
       <div className="mb-2">
         <label className="block text-sm font-semibold mb-3 text-gray-700">Amenities</label>
@@ -235,6 +261,22 @@ export function FilterPanel({ filters, onFilterChange, aggregations }: FilterPan
             );
           })}
         </div>
+      </div>
+
+      {/* Listed Within */}
+      <div className="mb-6">
+        <label className="block text-sm font-semibold mb-3 text-gray-700">Listed Within</label>
+        <select
+          value={filters.listed_within_days || ''}
+          onChange={(e) => onFilterChange({ ...filters, listed_within_days: parseInt(e.target.value) || undefined })}
+          className="w-full border border-gray-300 rounded-lg px-3 py-2.5 bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm"
+        >
+          <option value="">Any time</option>
+          <option value="1">Last 24 hours</option>
+          <option value="7">Last 7 days</option>
+          <option value="30">Last 30 days</option>
+          <option value="90">Last 90 days</option>
+        </select>
       </div>
     </div>
   );

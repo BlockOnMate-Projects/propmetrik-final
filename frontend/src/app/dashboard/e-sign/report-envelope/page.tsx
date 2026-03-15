@@ -2,22 +2,27 @@
 
 /**
  * Report E-Sign Envelope Page
- * 
- * Mirrors the lease-envelope flow: embeds the e-sign-ui as an iframe,
- * passes the valuation report DOCX for field placement and self-signing.
- * On completion, calls the approve endpoint to finalise the report.
- * 
- * Now includes a mode selection screen allowing the user to choose between:
- * 1. Self-sign: User signs the report themselves
- * 2. Send to qualified valuer: Forward to another professional for signing
+ *
+ * Inline signing flow for valuation report approval.
+ * Uses the built-in SignatureModal instead of an external iframe.
+ *
+ * Flow:
+ * 1. Load report data from sessionStorage
+ * 2. Mode selection: Self-sign or Send to qualified valuer
+ * 3. Self-sign: Show document summary + signature capture
+ * 4. On sign: Call approve endpoint to finalise the report
+ *
+ * Includes retry button on error (Recommendation 5).
  */
 
-import React, { useEffect, useState, useRef, useCallback } from 'react'
+import React, { useEffect, useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { authedFetch } from '@/lib/authed-fetch'
 import { Button } from '@/components/ui/button'
-import { ArrowLeft, Loader2, ExternalLink, CheckCircle, PenTool, Send, User } from 'lucide-react'
+import { ArrowLeft, Loader2, CheckCircle, PenTool, Send, User, FileText, RefreshCw, Shield } from 'lucide-react'
 import Link from 'next/link'
+import SignatureModal from '@/components/esign/SignatureModal'
+import { SignatureData } from '@/lib/esign-types'
 
 // =====================================================
 // TYPES
@@ -49,12 +54,10 @@ interface ReportEsignData {
 // CONSTANTS
 // =====================================================
 
-const E_SIGN_UI_URL = process.env.NEXT_PUBLIC_ESIGN_UI_URL || 'http://localhost:3001'
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || '/api'
 
 export default function ReportEnvelopePage() {
   const router = useRouter()
-  const iframeRef = useRef<HTMLIFrameElement>(null)
 
   // State
   const [isLoading, setIsLoading] = useState(true)
@@ -70,13 +73,9 @@ export default function ReportEnvelopePage() {
   const [qualifiedValuerEmail, setQualifiedValuerEmail] = useState('')
   const [valuerConfirmed, setValuerConfirmed] = useState(false)
 
-  // Auth token
-  const getAuthToken = (): string | null => {
-    if (typeof window !== 'undefined') {
-      return localStorage.getItem('pm_access_token') || localStorage.getItem('token') || localStorage.getItem('auth_token') || null
-    }
-    return null
-  }
+  // Inline signing state
+  const [showSignatureModal, setShowSignatureModal] = useState(false)
+  const [signatureData, setSignatureData] = useState<SignatureData | null>(null)
 
   // =====================================================
   // LOAD ESIGN DATA FROM sessionStorage
@@ -93,7 +92,6 @@ export default function ReportEnvelopePage() {
       }
 
       const data: ReportEsignData = JSON.parse(storedData)
-      console.log('📋 Report-Envelope: Loaded data from sessionStorage:', data)
       setEsignData(data)
       setIsLoading(false)
     } catch (err: any) {
@@ -104,52 +102,16 @@ export default function ReportEnvelopePage() {
   }, [])
 
   // =====================================================
-  // COMMUNICATE WITH E-SIGN IFRAME
+  // HANDLE APPROVAL AFTER SIGNING
   // =====================================================
 
-  const sendDocumentDataToIframe = useCallback(() => {
-    if (!iframeRef.current?.contentWindow || !esignData) return
-
-    console.log('📤 Sending report document data to e-sign iframe, mode:', signingMode)
-
-    // Build signers list based on mode
-    let signers = esignData.signers
-    let contextType = 'self_signed'
-
-    if (signingMode === 'send_to_valuer') {
-      // Replace signers with the qualified valuer
-      signers = [
-        { name: qualifiedValuerName, email: qualifiedValuerEmail, role: 'signer', order: 1 }
-      ]
-      contextType = 'send_to_signer'
-    }
-
-    iframeRef.current.contentWindow.postMessage({
-      type: 'LOAD_DOCUMENT',
-      data: {
-        documentUrl: esignData.documentUrl,
-        documentKey: esignData.documentKey,
-        filename: esignData.filename,
-        subject: esignData.subject,
-        message: esignData.message,
-        signers,
-        contextType,
-        contextEntityId: esignData.reportId,
-        contextEntityName: `Valuation Report - ${esignData.propertyAddress}`,
-      }
-    }, '*')
-  }, [esignData, signingMode, qualifiedValuerName, qualifiedValuerEmail])
-
-  // Handle approval after signing
-  const handleApproveAfterSign = useCallback(async () => {
+  const handleApproveAfterSign = useCallback(async (signature?: SignatureData) => {
     if (!esignData || isApproving) return
 
     setIsApproving(true)
     setError(null)
 
     try {
-      console.log('✅ E-sign complete, approving report...')
-
       const response = await authedFetch(`${API_BASE}/reports/${esignData.reportId}/approve`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -157,11 +119,11 @@ export default function ReportEnvelopePage() {
           valuer_id: esignData.valuer.id,
           comments: 'Approved via e-sign workflow',
           generate_pdf: true,
+          signature_data: signature?.data || signatureData?.data,
         }),
       })
 
       const result = await response.json()
-      console.log('✅ Approval result:', result)
 
       if (!response.ok) {
         throw new Error(result.message || result.error || 'Approval failed')
@@ -178,48 +140,27 @@ export default function ReportEnvelopePage() {
     } finally {
       setIsApproving(false)
     }
-  }, [esignData, isApproving])
+  }, [esignData, isApproving, signatureData])
 
-  useEffect(() => {
-    const handleMessage = (event: MessageEvent) => {
-      if (event.data?.type === 'ESIGN_READY') {
-        sendDocumentDataToIframe()
-      } else if (event.data?.type === 'ESIGN_COMPLETE') {
-        // Signing completed — now approve the report
-        handleApproveAfterSign()
-      } else if (event.data?.type === 'ESIGN_CANCEL') {
-        // User cancelled — go back to report page
-        if (esignData) {
-          router.push(`/dashboard/valuations/${esignData.valuationId}/report`)
-        } else {
-          router.push('/dashboard/valuations')
-        }
-      } else if (event.data?.type === 'REQUEST_AUTH_TOKEN') {
-        const token = getAuthToken()
-        if (token && iframeRef.current?.contentWindow) {
-          iframeRef.current.contentWindow.postMessage({
-            type: 'AUTH_TOKEN',
-            token: token
-          }, '*')
-        }
-      }
+  // Handle signature applied from modal
+  const handleSignatureApplied = useCallback((sig: SignatureData) => {
+    setSignatureData(sig)
+    setShowSignatureModal(false)
+    // Immediately approve after signing
+    handleApproveAfterSign(sig)
+  }, [handleApproveAfterSign])
+
+  // Retry approval (Recommendation 5)
+  const handleRetry = useCallback(() => {
+    setError(null)
+    if (signatureData) {
+      // Already signed — retry the approval call
+      handleApproveAfterSign(signatureData)
+    } else {
+      // No signature yet — re-show the signing UI
+      setShowSignatureModal(true)
     }
-
-    window.addEventListener('message', handleMessage)
-    return () => window.removeEventListener('message', handleMessage)
-  }, [esignData, router, sendDocumentDataToIframe, handleApproveAfterSign])
-
-  // Build iframe URL
-  const getIframeUrl = () => {
-    const token = getAuthToken()
-    const url = new URL(E_SIGN_UI_URL)
-    if (token) {
-      url.searchParams.set('token', token)
-    }
-    url.searchParams.set('mode', 'embedded')
-    url.searchParams.set('source', 'report-approval')
-    return url.toString()
-  }
+  }, [signatureData, handleApproveAfterSign])
 
   // Back URL
   const getBackUrl = () => {
@@ -296,20 +237,47 @@ export default function ReportEnvelopePage() {
   }
 
   // =====================================================
-  // RENDER — ERROR
+  // RENDER — ERROR (with retry button — Recommendation 5)
   // =====================================================
 
-  if (error || !esignData) {
+  if (error && esignData) {
     return (
       <div className="min-h-screen bg-zinc-950 flex items-center justify-center">
         <div className="max-w-md text-center">
           <div className="bg-red-900/20 border border-red-700 rounded-lg p-6 mb-4">
-            <p className="text-red-400">{error || 'No report e-sign data found'}</p>
+            <p className="text-red-400">{error}</p>
           </div>
-          <Link href={getBackUrl()}>
+          <div className="flex gap-3 justify-center">
+            <Button
+              onClick={handleRetry}
+              className="bg-emerald-600 hover:bg-emerald-700"
+            >
+              <RefreshCw className="mr-2 h-4 w-4" />
+              {signatureData ? 'Retry Approval' : 'Try Again'}
+            </Button>
+            <Link href={getBackUrl()}>
+              <Button variant="outline" className="border-zinc-700">
+                <ArrowLeft className="mr-2 h-4 w-4" />
+                Back to Report
+              </Button>
+            </Link>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  if (!esignData) {
+    return (
+      <div className="min-h-screen bg-zinc-950 flex items-center justify-center">
+        <div className="max-w-md text-center">
+          <div className="bg-red-900/20 border border-red-700 rounded-lg p-6 mb-4">
+            <p className="text-red-400">No report e-sign data found</p>
+          </div>
+          <Link href="/dashboard/valuations">
             <Button variant="outline" className="border-zinc-700">
               <ArrowLeft className="mr-2 h-4 w-4" />
-              Back to Report
+              Back to Valuations
             </Button>
           </Link>
         </div>
@@ -321,7 +289,7 @@ export default function ReportEnvelopePage() {
   // RENDER — MODE SELECTION
   // =====================================================
 
-  if (signingMode === 'select' && !isApproved && !isApproving) {
+  if (signingMode === 'select') {
     return (
       <div className="min-h-screen bg-zinc-950 flex flex-col">
         {/* Header */}
@@ -335,7 +303,7 @@ export default function ReportEnvelopePage() {
             <div>
               <h1 className="text-xl font-bold text-white">E-Sign: Valuation Report Approval</h1>
               <p className="text-sm text-zinc-400">
-                {esignData?.propertyAddress} &mdash; {esignData?.valuer.name}
+                {esignData.propertyAddress} &mdash; {esignData.valuer.name}
               </p>
             </div>
           </div>
@@ -374,30 +342,28 @@ export default function ReportEnvelopePage() {
             </button>
 
             {/* Option 2: Send to Qualified Valuer */}
-            <div className="w-full">
-              <button
-                onClick={() => setSigningMode('send_to_valuer')}
-                className="w-full bg-zinc-900 border-2 border-zinc-700 hover:border-blue-500 rounded-xl p-6 text-left transition-all group"
-              >
-                <div className="flex items-start gap-4">
-                  <div className="bg-blue-600/20 rounded-lg p-3 group-hover:bg-blue-600/30 transition-colors">
-                    <Send className="h-6 w-6 text-blue-400" />
-                  </div>
-                  <div className="flex-1">
-                    <h3 className="text-lg font-semibold text-white mb-1">Send to a qualified valuer</h3>
-                    <p className="text-sm text-zinc-400">
-                      Forward this report to another qualified valuer for review and signing.
-                      They will receive an email with a link to sign the document.
-                    </p>
-                  </div>
-                  <div className="mt-1">
-                    <div className="w-5 h-5 rounded-full border-2 border-zinc-600 group-hover:border-blue-500 flex items-center justify-center transition-colors">
-                      <div className="w-2.5 h-2.5 rounded-full bg-transparent group-hover:bg-blue-500 transition-colors" />
-                    </div>
+            <button
+              onClick={() => setSigningMode('send_to_valuer')}
+              className="w-full bg-zinc-900 border-2 border-zinc-700 hover:border-blue-500 rounded-xl p-6 text-left transition-all group"
+            >
+              <div className="flex items-start gap-4">
+                <div className="bg-blue-600/20 rounded-lg p-3 group-hover:bg-blue-600/30 transition-colors">
+                  <Send className="h-6 w-6 text-blue-400" />
+                </div>
+                <div className="flex-1">
+                  <h3 className="text-lg font-semibold text-white mb-1">Send to a qualified valuer</h3>
+                  <p className="text-sm text-zinc-400">
+                    Forward this report to another qualified valuer for review and signing.
+                    They will receive an email with a link to sign the document.
+                  </p>
+                </div>
+                <div className="mt-1">
+                  <div className="w-5 h-5 rounded-full border-2 border-zinc-600 group-hover:border-blue-500 flex items-center justify-center transition-colors">
+                    <div className="w-2.5 h-2.5 rounded-full bg-transparent group-hover:bg-blue-500 transition-colors" />
                   </div>
                 </div>
-              </button>
-            </div>
+              </div>
+            </button>
           </div>
         </div>
       </div>
@@ -405,10 +371,10 @@ export default function ReportEnvelopePage() {
   }
 
   // =====================================================
-  // RENDER — QUALIFIED VALUER INPUT (after choosing "send to valuer")
+  // RENDER — QUALIFIED VALUER INPUT
   // =====================================================
 
-  if (signingMode === 'send_to_valuer' && !valuerConfirmed && !isApproved && !isApproving) {
+  if (signingMode === 'send_to_valuer' && !valuerConfirmed) {
     return (
       <div className="min-h-screen bg-zinc-950 flex flex-col">
         {/* Header */}
@@ -425,7 +391,7 @@ export default function ReportEnvelopePage() {
             <div>
               <h1 className="text-xl font-bold text-white">Send to Qualified Valuer</h1>
               <p className="text-sm text-zinc-400">
-                {esignData?.propertyAddress}
+                {esignData.propertyAddress}
               </p>
             </div>
           </div>
@@ -495,68 +461,156 @@ export default function ReportEnvelopePage() {
   }
 
   // =====================================================
-  // RENDER — E-SIGN IFRAME
+  // RENDER — INLINE SIGNING (replaces iframe)
   // =====================================================
+
+  const signerName = signingMode === 'send_to_valuer'
+    ? qualifiedValuerName
+    : esignData.valuer.name
 
   return (
     <div className="min-h-screen bg-zinc-950 flex flex-col">
       {/* Header */}
       <div className="bg-zinc-900 border-b border-zinc-800 px-6 py-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <Link href={getBackUrl()}>
-              <Button variant="ghost" size="icon" className="text-zinc-400 hover:text-white">
-                <ArrowLeft className="h-5 w-5" />
-              </Button>
-            </Link>
-            <div>
-              <h1 className="text-xl font-bold text-white">E-Sign: Valuation Report Approval</h1>
-              <p className="text-sm text-zinc-400">
-                {esignData.propertyAddress} &mdash; {esignData.valuer.name}
-              </p>
-            </div>
-          </div>
-
-          <a
-            href={getIframeUrl()}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-zinc-400 hover:text-white flex items-center gap-2 text-sm"
+        <div className="flex items-center gap-4">
+          <Button
+            variant="ghost"
+            size="icon"
+            className="text-zinc-400 hover:text-white"
+            onClick={() => {
+              setSignatureData(null)
+              if (signingMode === 'send_to_valuer') {
+                setValuerConfirmed(false)
+              } else {
+                setSigningMode('select')
+              }
+            }}
           >
-            Open in new tab
-            <ExternalLink className="h-4 w-4" />
-          </a>
+            <ArrowLeft className="h-5 w-5" />
+          </Button>
+          <div>
+            <h1 className="text-xl font-bold text-white">E-Sign: Valuation Report Approval</h1>
+            <p className="text-sm text-zinc-400">
+              {esignData.propertyAddress} &mdash; {signerName}
+            </p>
+          </div>
         </div>
       </div>
 
-      {/* E-Sign UI Iframe */}
-      <div className="flex-1 relative">
-        <iframe
-          ref={iframeRef}
-          src={getIframeUrl()}
-          className="w-full h-full border-0"
-          style={{ minHeight: 'calc(100vh - 80px)' }}
-          title="PROPMETRIK E-Sign - Report Approval"
-          onLoad={() => {
-            console.log('📋 E-sign iframe loaded, sending auth + document data')
-            const token = getAuthToken()
-            if (iframeRef.current?.contentWindow) {
-              // Send auth token first
-              if (token) {
-                iframeRef.current.contentWindow.postMessage({
-                  type: 'AUTH_TOKEN',
-                  token: token
-                }, '*')
-              }
+      {/* Document Summary & Signing Area */}
+      <div className="flex-1 flex items-center justify-center px-6 py-10">
+        <div className="w-full max-w-2xl space-y-8">
+          {/* Document Info Card */}
+          <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-6">
+            <div className="flex items-start gap-4 mb-6">
+              <div className="bg-emerald-600/20 rounded-lg p-3">
+                <FileText className="h-6 w-6 text-emerald-400" />
+              </div>
+              <div className="flex-1">
+                <h2 className="text-lg font-semibold text-white mb-1">Valuation Report</h2>
+                <p className="text-sm text-zinc-400">{esignData.filename}</p>
+              </div>
+            </div>
 
-              // Send document data after a short delay to let iframe initialize
-              setTimeout(() => {
-                sendDocumentDataToIframe()
-              }, 800)
-            }
-          }}
-        />
+            <div className="grid grid-cols-2 gap-4 text-sm">
+              <div>
+                <span className="text-zinc-500">Property</span>
+                <p className="text-white mt-0.5">{esignData.propertyAddress}</p>
+              </div>
+              <div>
+                <span className="text-zinc-500">Valuer</span>
+                <p className="text-white mt-0.5">{esignData.valuer.name}</p>
+                {esignData.valuer.qualifications && (
+                  <p className="text-zinc-400 text-xs">{esignData.valuer.qualifications}</p>
+                )}
+              </div>
+              {esignData.valuer.license_number && (
+                <div>
+                  <span className="text-zinc-500">License</span>
+                  <p className="text-white mt-0.5">{esignData.valuer.license_number}</p>
+                </div>
+              )}
+              {esignData.valuer.title && (
+                <div>
+                  <span className="text-zinc-500">Title</span>
+                  <p className="text-white mt-0.5">{esignData.valuer.title}</p>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Signature Status / Action */}
+          {signatureData ? (
+            <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-6">
+              <div className="flex items-center gap-3 mb-4">
+                <Shield className="h-5 w-5 text-emerald-400" />
+                <h3 className="text-white font-medium">Signature Applied</h3>
+              </div>
+              <div className="bg-white rounded-lg p-4 flex justify-center mb-4">
+                <img src={signatureData.data} alt="Your signature" className="max-h-16 object-contain" />
+              </div>
+              <div className="flex gap-3">
+                <Button
+                  variant="outline"
+                  className="border-zinc-700 text-zinc-300"
+                  onClick={() => {
+                    setSignatureData(null)
+                    setShowSignatureModal(true)
+                  }}
+                >
+                  Change Signature
+                </Button>
+                <Button
+                  className="flex-1 bg-emerald-600 hover:bg-emerald-700"
+                  onClick={() => handleApproveAfterSign(signatureData)}
+                >
+                  <CheckCircle className="mr-2 h-4 w-4" />
+                  Approve & Seal Report
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-6">
+              <div className="text-center space-y-4">
+                <div className="bg-emerald-600/20 rounded-full p-4 w-16 h-16 mx-auto flex items-center justify-center">
+                  <PenTool className="h-8 w-8 text-emerald-400" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-semibold text-white mb-1">
+                    {signingMode === 'send_to_valuer' ? 'Sign on behalf' : 'Add Your Signature'}
+                  </h3>
+                  <p className="text-zinc-400 text-sm">
+                    By signing, you certify that this valuation report is accurate and complete per RICS standards.
+                  </p>
+                </div>
+                <Button
+                  className="bg-emerald-600 hover:bg-emerald-700"
+                  onClick={() => setShowSignatureModal(true)}
+                >
+                  <PenTool className="mr-2 h-4 w-4" />
+                  Sign Report
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {/* Legal notice */}
+          <p className="text-[10px] text-zinc-500 text-center max-w-lg mx-auto">
+            By signing, I agree that this electronic signature is the legal equivalent of my handwritten signature
+            and that this valuation report has been prepared in accordance with applicable professional standards.
+          </p>
+        </div>
       </div>
+
+      {/* Signature Modal */}
+      {showSignatureModal && (
+        <SignatureModal
+          signerName={signerName}
+          signerIdentity={esignData.valuer.email}
+          onApply={handleSignatureApplied}
+          onCancel={() => setShowSignatureModal(false)}
+        />
+      )}
     </div>
   )
 }
