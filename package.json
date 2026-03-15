@@ -40,7 +40,10 @@
   "author": "PROPMETRIK",
   "license": "UNLICENSED",
   "dependencies": {
+    "@tanstack/react-query": "^5.90.21",
     "pdfjs-dist": "^3.11.174",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
     "viem": "^2.47.2"
   },
   "overrides": {
