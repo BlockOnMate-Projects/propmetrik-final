@@ -37,8 +37,8 @@ services:
     deploy:
       resources:
         limits:
-          cpus: '2'
-          memory: 2G
+          cpus: '${API_CPU_LIMIT:-1.0}'
+          memory: ${API_MEMORY_LIMIT:-2G}
     healthcheck:
       test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/health/live"]
       interval: 30s
@@ -76,8 +76,8 @@ services:
     deploy:
       resources:
         limits:
-          cpus: '4'
-          memory: 8G
+          cpus: '${ML_SERVING_CPU_LIMIT:-1.5}'
+          memory: ${ML_SERVING_MEMORY_LIMIT:-4G}
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
       interval: 30s
@@ -119,8 +119,8 @@ services:
     deploy:
       resources:
         limits:
-          cpus: '1'
-          memory: 1G
+          cpus: '${SCRAPY_CPU_LIMIT:-0.5}'
+          memory: ${SCRAPY_MEMORY_LIMIT:-1G}
     healthcheck:
       test: ["CMD", "python", "-c", "import scrapy; print('OK')"]
       interval: 60s
@@ -156,8 +156,8 @@ services:
     deploy:
       resources:
         limits:
-          cpus: '2'
-          memory: 4G
+          cpus: '${ONLYOFFICE_CPU_LIMIT:-1.0}'
+          memory: ${ONLYOFFICE_MEMORY_LIMIT:-2G}
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost/healthcheck"]
       interval: 30s
@@ -190,8 +190,8 @@ services:
     deploy:
       resources:
         limits:
-          cpus: '1'
-          memory: 2G
+          cpus: '${LIBREOFFICE_CPU_LIMIT:-0.5}'
+          memory: ${LIBREOFFICE_MEMORY_LIMIT:-1G}
     logging:
       driver: "json-file"
       options:
