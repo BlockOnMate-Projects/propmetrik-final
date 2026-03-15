@@ -17,7 +17,8 @@ COPY package*.json ./
 # Force NODE_ENV=development during install to include devDependencies
 # (Coolify injects ARG NODE_ENV=production which would skip them)
 ENV NODE_ENV=development
-RUN npm ci
+# Use npm install (not npm ci) since package-lock.json is at monorepo root
+RUN npm install --legacy-peer-deps
 ENV NODE_ENV=production
 
 # ============================================
@@ -95,7 +96,8 @@ COPY package*.json ./
 
 # Force NODE_ENV=development during install to include devDependencies
 ENV NODE_ENV=development
-RUN npm ci
+# Use npm install (not npm ci) since package-lock.json is at monorepo root
+RUN npm install --legacy-peer-deps
 
 # Copy source code
 COPY . .
