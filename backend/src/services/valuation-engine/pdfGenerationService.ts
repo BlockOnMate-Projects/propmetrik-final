@@ -54,6 +54,8 @@ export interface VerificationData {
 // PDF GENERATION SERVICE CLASS
 // =====================================================
 
+const isProd = process.env.NODE_ENV === 'production';
+
 export class PdfGenerationService {
   private readonly tempDir: string;
   private readonly libreOfficePath: string;
@@ -61,7 +63,9 @@ export class PdfGenerationService {
 
   constructor() {
     this.tempDir = process.env.TEMP_DIR || '/tmp/propmetrik-pdf';
-    this.libreOfficePath = process.env.LIBREOFFICE_PATH || 'libreoffice';
+    this.libreOfficePath = isProd 
+      ? (process.env.PROD_LIBREOFFICE_PATH || '/usr/bin/soffice')
+      : (process.env.DEV_LIBREOFFICE_PATH || 'libreoffice');
     this.verificationBaseUrl = process.env.VERIFICATION_BASE_URL || 'https://verify.propmetrik.com';
   }
 

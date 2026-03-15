@@ -11,6 +11,7 @@
 
 import { pool } from '../../database';
 import { logger } from '../../utils/logger';
+import { config } from '../../config';
 import { fxFeedService } from '../data-hub/scrapers/fxFeedService';
 import { v4 as uuidv4 } from 'uuid';
 import { feeEngine } from '../../../shared-services/payments/feeEngine';
@@ -729,7 +730,7 @@ class InvoiceService {
         } else {
           // No subaccount — basic Paystack initialization
           logger.info('PM invoice: No subaccount found, using basic Paystack', { orgId: invoice.organizationId });
-          const paystackKey = process.env.PAYSTACK_SECRET_KEY;
+          const paystackKey = config.paystack.secretKey;
           if (paystackKey) {
             const axios = (await import('axios')).default;
 
@@ -742,7 +743,7 @@ class InvoiceService {
                 currency: 'GHS',
                 channels: ['mobile_money', 'card', 'bank_transfer', 'bank', 'ussd', 'qr'],
                 send_notification: false,
-                callback_url: `${process.env.FRONTEND_URL || 'https://app.propmetrik.com'}/payment/invoice?id=${invoice.id}&status=success`,
+                callback_url: `${config.app.frontendUrl}/payment/invoice?id=${invoice.id}&status=success`,
                 metadata: {
                   invoiceId: invoice.id,
                   invoiceNumber: invoice.invoiceNumber,
@@ -773,7 +774,7 @@ class InvoiceService {
               accessCode = response.data.data.access_code;
             }
           } else {
-            logger.warn('PM invoice: No PAYSTACK_SECRET_KEY set, cannot generate payment link');
+            logger.warn('PM invoice: Paystack not configured, cannot generate payment link (FINANCE_MODE=' + config.app.financeMode + ')');
           }
         }
       }

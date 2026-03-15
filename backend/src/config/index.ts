@@ -1,8 +1,17 @@
 import dotenv from 'dotenv';
 import path from 'path';
 
-// Load environment variables
+// Load environment variables from single .env file
 dotenv.config({ path: path.resolve(__dirname, '../../.env') });
+
+// Helper: select dev or prod value based on NODE_ENV
+const isProd = process.env.NODE_ENV === 'production';
+const envSelect = <T>(dev: T, prod: T): T => isProd ? prod : dev;
+
+// Helper: select test or live value based on FINANCE_MODE
+// FINANCE_MODE is independent of NODE_ENV — allows test payments in production
+const isLiveFinance = process.env.FINANCE_MODE === 'live';
+const financeSelect = <T>(test: T, live: T): T => isLiveFinance ? live : test;
 
 // Environment validation
 const requiredEnvVars = [
@@ -23,10 +32,21 @@ export const config = {
   app: {
     name: process.env.APP_NAME || 'propmetrik',
     env: process.env.NODE_ENV || 'development',
+    financeMode: process.env.FINANCE_MODE || 'test',
     port: parseInt(process.env.PORT || '4000', 10),
     apiVersion: process.env.API_VERSION || 'v1',
-    url: process.env.APP_URL || 'http://localhost:4000',
-    frontendUrl: process.env.FRONTEND_URL || 'http://localhost:3000',
+    url: envSelect(
+      process.env.DEV_APP_URL || 'http://localhost:4000',
+      process.env.PROD_APP_URL || 'https://api.propmetrik.com'
+    ),
+    frontendUrl: envSelect(
+      process.env.DEV_FRONTEND_URL || 'http://localhost:3000',
+      process.env.PROD_FRONTEND_URL || 'https://app.propmetrik.com'
+    ),
+    tenantPortalUrl: envSelect(
+      process.env.DEV_TENANT_PORTAL_URL || 'http://localhost:3001',
+      process.env.PROD_TENANT_PORTAL_URL || 'https://tenant.propmetrik.com'
+    ),
   },
 
   // Database - PostgreSQL with PostGIS
@@ -148,13 +168,22 @@ export const config = {
 
   // Logging
   logging: {
-    level: process.env.LOG_LEVEL || 'debug',
-    format: process.env.LOG_FORMAT || 'pretty',
+    level: envSelect(
+      process.env.DEV_LOG_LEVEL || 'debug',
+      process.env.PROD_LOG_LEVEL || 'info'
+    ),
+    format: envSelect(
+      process.env.DEV_LOG_FORMAT || 'pretty',
+      process.env.PROD_LOG_FORMAT || 'json'
+    ),
   },
 
   // CORS
   cors: {
-    origins: (process.env.CORS_ORIGINS || 'http://localhost:3000,http://localhost:3001,http://localhost:3002').split(','),
+    origins: envSelect(
+      (process.env.DEV_CORS_ORIGINS || 'http://localhost:3000,http://localhost:3001,http://localhost:3002').split(','),
+      (process.env.PROD_CORS_ORIGINS || 'https://app.propmetrik.com,https://propmetrik.com').split(',')
+    ),
     credentials: true,
   },
 
@@ -222,12 +251,38 @@ export const config = {
     maxRetries: parseInt(process.env.SCRAPY_MAX_RETRIES || '3', 10),
   },
 
-  // Paystack Payments
+  // Paystack Payments (controlled by FINANCE_MODE)
   paystack: {
-    enabled: !!process.env.PAYSTACK_SECRET_KEY,
-    secretKey: process.env.PAYSTACK_SECRET_KEY || '',
-    publicKey: process.env.PAYSTACK_PUBLIC_KEY || '',
+    enabled: !!(process.env.PAYSTACK_TEST_SECRET_KEY || process.env.PAYSTACK_LIVE_SECRET_KEY),
+    isTestMode: !isLiveFinance,
+    secretKey: financeSelect(
+      process.env.PAYSTACK_TEST_SECRET_KEY || '',
+      process.env.PAYSTACK_LIVE_SECRET_KEY || ''
+    ),
+    publicKey: financeSelect(
+      process.env.PAYSTACK_TEST_PUBLIC_KEY || '',
+      process.env.PAYSTACK_LIVE_PUBLIC_KEY || ''
+    ),
     apiBaseUrl: 'https://api.paystack.co',
+  },
+
+  // NOWPayments Crypto (controlled by FINANCE_MODE)
+  nowpayments: {
+    enabled: !!(process.env.NOWPAYMENTS_TEST_API_KEY || process.env.NOWPAYMENTS_LIVE_API_KEY),
+    isTestMode: !isLiveFinance,
+    apiKey: financeSelect(
+      process.env.NOWPAYMENTS_TEST_API_KEY || '',
+      process.env.NOWPAYMENTS_LIVE_API_KEY || ''
+    ),
+    ipnSecret: financeSelect(
+      process.env.NOWPAYMENTS_TEST_IPN_SECRET || '',
+      process.env.NOWPAYMENTS_LIVE_IPN_SECRET || ''
+    ),
+    apiBaseUrl: financeSelect(
+      'https://api-sandbox.nowpayments.io/v1',
+      'https://api.nowpayments.io/v1'
+    ),
+    callbackUrl: process.env.NOWPAYMENTS_CALLBACK_URL || '',
   },
 
   // Ghana Regional Configuration

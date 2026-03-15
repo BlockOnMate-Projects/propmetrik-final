@@ -15,6 +15,7 @@
 import crypto from 'crypto';
 import { pool } from '../../../src/database';
 import { logger } from '../../../src/utils/logger';
+import { config } from '../../../src/config';
 
 // =====================================================
 // TYPES
@@ -209,22 +210,23 @@ class NowPaymentsService {
   // ─── Configuration ──────────────────────────────
 
   /**
-   * Load config from environment variables.
+   * Load config from centralized config.
+   * Uses FINANCE_MODE to select test/live keys (independent of NODE_ENV).
    */
   loadConfig(): NowPaymentsConfig | null {
-    const apiKey = process.env.NOWPAYMENTS_API_KEY;
-    if (!apiKey) return null;
+    // Uses config.nowpayments which already selects based on FINANCE_MODE
+    if (!config.nowpayments.apiKey) return null;
 
-    const sandbox = process.env.NOWPAYMENTS_SANDBOX === 'true';
     this.config = {
-      apiKey,
-      ipnSecretKey: process.env.NOWPAYMENTS_IPN_SECRET || '',
-      apiBaseUrl: sandbox
-        ? 'https://api-sandbox.nowpayments.io/v1'
-        : 'https://api.nowpayments.io/v1',
-      callbackBaseUrl: process.env.NOWPAYMENTS_CALLBACK_URL || process.env.API_BASE_URL || '',
-      sandbox,
+      apiKey: config.nowpayments.apiKey,
+      ipnSecretKey: config.nowpayments.ipnSecret,
+      apiBaseUrl: config.nowpayments.apiBaseUrl,
+      callbackBaseUrl: config.nowpayments.callbackUrl || config.app.url,
+      sandbox: config.nowpayments.isTestMode,
     };
+    
+    logger.info(`NOWPaymentsService initialized in ${this.config.sandbox ? 'SANDBOX' : 'LIVE'} mode (FINANCE_MODE=${config.app.financeMode})`);
+    
     return this.config;
   }
 

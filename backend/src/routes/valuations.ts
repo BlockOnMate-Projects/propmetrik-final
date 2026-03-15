@@ -759,9 +759,10 @@ router.post('/:id/run-python', validateUUID('id'), async (req: Request, res: Res
     });
 
     // Use RICS endpoint if we have comparables, otherwise fall back to standard
+    const pythonBase = process.env.PYTHON_VALUATION_URL || 'http://ml-serving:8001';
     const pythonEndpoint = comparables.length > 0
-      ? 'http://localhost:8001/api/v1/methods/sales-comparison-rics'
-      : 'http://localhost:8001/api/v1/methods/sales-comparison';
+      ? `${pythonBase}/api/v1/methods/sales-comparison-rics`
+      : `${pythonBase}/api/v1/methods/sales-comparison`;
 
     const requestBody = comparables.length > 0
       ? {
@@ -924,7 +925,8 @@ router.post('/:id/run-python', validateUUID('id'), async (req: Request, res: Res
  */
 router.get('/test/python-health', async (req: Request, res: Response) => {
   try {
-    const pythonResponse = await fetch('http://localhost:8001/health', {
+    const pythonBase = process.env.PYTHON_VALUATION_URL || 'http://ml-serving:8001';
+    const pythonResponse = await fetch(`${pythonBase}/health`, {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',

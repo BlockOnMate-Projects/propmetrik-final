@@ -245,7 +245,7 @@ app.get('/api/v1/pm-invoices/public/:id', async (req, res) => {
         dueDate: invoice.dueDate,
         paymentLink: (invoice as any).paymentLink || null,
         paystackAccessCode: (invoice as any).paystackAccessCode || null,
-        paystackPublicKey: process.env.PAYSTACK_PUBLIC_KEY || null,
+        paystackPublicKey: config.paystack.publicKey || null,
         paidAt: invoice.paidDate || null,
         notes: invoice.notes,
       },
@@ -259,7 +259,7 @@ app.get('/api/v1/pm-invoices/public/:id', async (req, res) => {
 app.get('/api/v1/pm-invoices/public/:id/verify-payment/:reference', async (req, res) => {
   try {
     const { id: invoiceId, reference } = req.params;
-    const secret = process.env.PAYSTACK_SECRET_KEY;
+    const secret = config.paystack.secretKey;
     if (!secret) {
       return res.status(500).json({ success: false, error: 'Payment verification unavailable' });
     }

@@ -22,6 +22,7 @@ import { valuationInvoiceService, MWH_MAN_DAY_RATES, type FeeModel } from '../se
 import { authenticate } from '../middleware/auth';
 import { requireServiceAccess } from '../middleware/serviceAccess';
 import { logger } from '../utils/logger';
+import { config } from '../config';
 import crypto from 'crypto';
 
 const router = Router();
@@ -319,7 +320,7 @@ router.get('/public/invoice/:id', async (req: Request, res: Response) => {
                 dueDate: invoice.dueDate,
                 paymentLink: invoice.paymentLink,
                 paystackAccessCode: invoice.paystackAccessCode,
-                paystackPublicKey: process.env.PAYSTACK_PUBLIC_KEY || null,
+                paystackPublicKey: config.paystack.publicKey || null,
                 paidAt: invoice.paidAt,
                 notes: invoice.notes,
             },
@@ -678,7 +679,7 @@ router.get('/public/crypto/nowpayments-status/:paymentId', async (req: Request, 
 router.get('/public/invoice/:id/verify-payment/:reference', async (req: Request, res: Response) => {
     try {
         const { id: invoiceId, reference } = req.params;
-        const secret = process.env.PAYSTACK_SECRET_KEY;
+        const secret = config.paystack.secretKey;
         if (!secret) {
             return res.status(500).json({ success: false, error: 'Payment verification unavailable' });
         }
@@ -725,7 +726,7 @@ router.get('/public/invoice/:id/verify-payment/:reference', async (req: Request,
 router.post('/webhook/paystack', async (req: Request, res: Response) => {
     try {
         // Verify Paystack signature
-        const secret = process.env.PAYSTACK_SECRET_KEY;
+        const secret = config.paystack.secretKey;
         if (secret) {
             const hash = crypto
                 .createHmac('sha512', secret)

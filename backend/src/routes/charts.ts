@@ -234,7 +234,7 @@ router.get('/preview', async (req: Request, res: Response) => {
     }
 
     // Fetch from the internal analytics API
-    const apiBase = `http://localhost:${process.env.PORT || 4000}`;
+    const apiBase = process.env.APP_URL || `http://localhost:${process.env.PORT || 4000}`;
     const apiUrl = `${apiBase}${endpoint}`;
 
     const response = await fetch(apiUrl, {

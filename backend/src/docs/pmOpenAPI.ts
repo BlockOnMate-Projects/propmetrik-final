@@ -771,8 +771,8 @@ All endpoints require:
   },
   servers: [
     {
-      url: 'http://localhost:4000',
-      description: 'Development server',
+      url: process.env.APP_URL || 'http://localhost:4000',
+      description: process.env.NODE_ENV === 'production' ? 'Production server' : 'Development server',
     },
     {
       url: 'https://api.propmetrik.com',
