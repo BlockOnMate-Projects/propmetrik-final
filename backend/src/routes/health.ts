@@ -4,6 +4,7 @@ import { checkHealth as checkRedisHealth } from '../database/redis';
 import { checkHealth as checkOpenSearchHealth } from '../database/opensearch';
 import { checkHealth as checkMinioHealth } from '../database/minio';
 import { asyncHandler } from '../middleware/errorHandler';
+import { getStartupReport } from '../utils/startupReport';
 
 const router = Router();
 
@@ -42,12 +43,12 @@ router.get('/ready', asyncHandler(async (req: Request, res: Response) => {
     checkRedisHealth(),
   ]);
   
-  const isReady = dbHealth && redisHealth.connected;
+  const isReady = dbHealth.connected && redisHealth.connected;
   
   res.status(isReady ? 200 : 503).json({
     ready: isReady,
     checks: {
-      database: dbHealth ? 'pass' : 'fail',
+      database: dbHealth.connected ? 'pass' : 'fail',
       redis: redisHealth.connected ? 'pass' : 'fail',
     },
     latency: Date.now() - startTime,
@@ -189,5 +190,15 @@ router.get('/db', asyncHandler(async (req: Request, res: Response) => {
     pool: poolStats,
   });
 }));
+
+/**
+ * Bootstrap startup report — shows every step, timing, and errors.
+ * GET /health/startup
+ */
+router.get('/startup', (req: Request, res: Response) => {
+  const report = getStartupReport();
+  const httpStatus = report.overallStatus === 'failed' ? 503 : 200;
+  res.status(httpStatus).json(report);
+});
 
 export default router;

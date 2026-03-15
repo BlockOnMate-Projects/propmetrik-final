@@ -5,6 +5,7 @@ import compression from 'compression';
 import pinoHttp from 'pino-http';
 import { config } from './config';
 import { logger, logUnhandledException } from './utils/logger';
+import { recordStep, finalizeReport, getStartupReport, printStartupSummary } from './utils/startupReport';
 import { pool, checkHealth as checkDbHealth, checkPostGIS } from './database';
 import { checkHealth as checkRedisHealth, closeAllConnections as closeRedis, connectAll as connectRedis } from './database/redis';
 import { checkHealth as checkOpenSearchHealth, initializeIndices } from './database/opensearch';
@@ -783,122 +784,99 @@ async function bootstrap(): Promise<void> {
   try {
     logger.info('Starting Propmetrik API server...');
 
-    // Connect Redis clients first (they use lazyConnect)
-    logger.info('Connecting to Redis...');
-    await connectRedis();
-
-    // Check database connections
-    logger.info('Checking database connections...');
-
-    const [dbHealth, postgis, redisHealth, osHealth, minioHealth] = await Promise.all([
-      checkDbHealth(),
-      checkPostGIS(),
-      checkRedisHealth(),
-      checkOpenSearchHealth(),
-      checkMinioHealth(),
-    ]);
-
-    if (!dbHealth) {
-      throw new Error('PostgreSQL connection failed');
-    }
-    logger.info('PostgreSQL connected');
-
-    if (!postgis) {
-      logger.warn('PostGIS extension not available - spatial queries will fail');
-    } else {
-      logger.info('PostGIS extension available');
-    }
-
-    if (!redisHealth.connected) {
-      logger.warn('Redis connection failed - rate limiting, caching, and real-time features will be degraded');
-    } else {
-      logger.info('Redis connected', { clients: redisHealth.clients });
-    }
-
-    if (!osHealth) {
-      logger.warn('OpenSearch connection failed - search will be unavailable');
-    } else {
-      logger.info('OpenSearch connected');
-    }
-
-    if (!minioHealth.connected) {
-      logger.warn('MinIO connection failed - file storage will be unavailable');
-    } else {
-      logger.info('MinIO connected', { buckets: Object.keys(minioHealth.buckets) });
-    }
-
-    // Initialize OpenSearch indices if connected
-    if (osHealth) {
+    // ── 1. Redis ────────────────────────────────────────
+    await recordStep('Redis connect', async () => {
       try {
+        await connectRedis();
+        const h = await checkRedisHealth();
+        return h.connected
+          ? { status: 'ok', detail: `clients: ${h.clients}` }
+          : { status: 'warn', detail: 'connected but health check reports disconnected' };
+      } catch (e) {
+        return { status: 'warn', detail: (e as Error).message };
+      }
+    });
+
+    // ── 2. PostgreSQL ──────────────────────────────────
+    await recordStep('PostgreSQL', async () => {
+      const h = await checkDbHealth();
+      return h.connected
+        ? { status: 'ok', detail: `pool=${h.poolSize} latency=${h.latency}ms` }
+        : { status: 'fail', detail: `latency=${h.latency}ms pool=${h.poolSize}` };
+    });
+
+    // ── 3. PostGIS ─────────────────────────────────────
+    await recordStep('PostGIS', async () => {
+      const h = await checkPostGIS();
+      return h.available
+        ? { status: 'ok', detail: `v${h.version}` }
+        : { status: 'warn', detail: 'extension not available' };
+    });
+
+    // ── 4. OpenSearch ──────────────────────────────────
+    const osOk = (await recordStep('OpenSearch', async () => {
+      const h = await checkOpenSearchHealth();
+      return h ? { status: 'ok' } : { status: 'warn', detail: 'unreachable' };
+    })).status === 'ok';
+
+    // ── 5. MinIO ──────────────────────────────────────
+    const minioOk = (await recordStep('MinIO', async () => {
+      const h = await checkMinioHealth();
+      return h.connected
+        ? { status: 'ok', detail: `buckets: ${Object.keys(h.buckets).join(', ')}` }
+        : { status: 'warn', detail: 'unreachable' };
+    })).status === 'ok';
+
+    // ── 6. OpenSearch indices ──────────────────────────
+    if (osOk) {
+      await recordStep('OpenSearch indices', async () => {
         await initializeIndices();
-        logger.info('OpenSearch indices initialized');
-      } catch (indexError) {
-        logger.warn('Failed to initialize OpenSearch indices', { error: indexError });
-      }
+        return { status: 'ok' };
+      });
     }
 
-    // Initialize MinIO buckets if connected
-    if (minioHealth.connected) {
-      try {
+    // ── 7. MinIO buckets ──────────────────────────────
+    if (minioOk) {
+      await recordStep('MinIO buckets', async () => {
         await initializeBuckets();
-        logger.info('MinIO buckets initialized');
-      } catch (bucketError) {
-        logger.warn('Failed to initialize MinIO buckets', { error: bucketError });
-      }
+        return { status: 'ok' };
+      });
     }
 
-    // Initialize Data Hub job queues
-    try {
+    // ── 8. Data Hub queues ─────────────────────────────
+    await recordStep('Data Hub queues', async () => {
       await dataHubQueueManager.initialize();
-      logger.info('Data Hub job queues initialized');
-    } catch (queueError) {
-      logger.warn('Failed to initialize Data Hub queues', { error: queueError });
-    }
+      return { status: 'ok' };
+    });
 
-    // Start Scrapy scheduler for automated property data scraping
-    try {
+    // ── 9. Scrapy scheduler ───────────────────────────
+    await recordStep('Scrapy scheduler', async () => {
       await scrapyScheduler.start();
-      logger.info('Scrapy scheduler initialized', {
-        enabledSpiders: scrapyScheduler.getStatus().config.enabledSpiders
-      });
-    } catch (scrapyError) {
-      logger.warn('Failed to start Scrapy scheduler', { error: scrapyError });
-    }
+      return { status: 'ok', detail: `spiders: ${scrapyScheduler.getStatus().config.enabledSpiders}` };
+    });
 
-    // Start Economic Data scheduler for FX, BOG, WDI, construction costs
-    try {
+    // ── 10. Economic data scheduler ───────────────────
+    await recordStep('Economic data scheduler', async () => {
       economicDataScheduler.start();
-      logger.info('Economic data scheduler initialized', {
-        jobs: Object.keys(economicDataScheduler.getStatus())
-      });
-    } catch (economicError) {
-      logger.warn('Failed to start Economic data scheduler', { error: economicError });
-    }
+      return { status: 'ok', detail: `jobs: ${Object.keys(economicDataScheduler.getStatus()).join(', ')}` };
+    });
 
-    // Start autopilot scheduler (non-blocking)
-    try {
+    // ── 11. Autopilot scheduler ───────────────────────
+    await recordStep('Autopilot scheduler', async () => {
       await autopilotScheduler.start();
-      logger.info('Autopilot scheduler initialized');
-    } catch (autopilotError) {
-      logger.warn('Failed to start autopilot scheduler', { error: autopilotError });
-    }
-
-    logger.info('All services initialized');
+      return { status: 'ok' };
+    });
 
   } catch (error) {
-    // Log full error details for debugging
     const err = error as Error;
-    console.error('=== FATAL ERROR DETAILS ===');
-    console.error('Message:', err.message);
-    console.error('Name:', err.name);
-    console.error('Stack:', err.stack);
-    console.error('Full error:', error);
-    logger.fatal('Failed to initialize services', {
+    logger.error('Unexpected error in bootstrap — server stays alive for diagnostics', {
       error: err.message,
       stack: err.stack,
-      name: err.name
     });
-    process.exit(1);
+  } finally {
+    // Always print the full report so `docker logs` has everything in one place
+    finalizeReport();
+    printStartupSummary();
   }
 }
 
