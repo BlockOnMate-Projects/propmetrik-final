@@ -34,18 +34,23 @@ import redis
 import joblib
 import sys
 
-# Make training pipeline classes available for joblib unpickling.
-# When train_pipeline.py runs as __main__, pickle stores classes as __main__.ClassName.
-# We import the module and expose its classes in this module's namespace so joblib can find them.
-import training.train_pipeline as _tp
-for _name in dir(_tp):
-    _obj = getattr(_tp, _name)
-    if isinstance(_obj, type):
-        globals()[_name] = _obj
-
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+
+def register_training_pipeline_classes() -> None:
+    """Expose training classes for joblib unpickling without hard-failing app startup."""
+    try:
+        import training.train_pipeline as training_pipeline
+    except Exception as error:
+        logger.warning("Training pipeline import unavailable during startup", exc_info=error)
+        return
+
+    for name in dir(training_pipeline):
+        obj = getattr(training_pipeline, name)
+        if isinstance(obj, type):
+            globals()[name] = obj
 
 # =====================================================
 # CONFIGURATION
@@ -173,6 +178,8 @@ class ModelRegistry:
         """Load a model from storage."""
         if version in self.models:
             return self.models[version]
+
+        register_training_pipeline_classes()
         
         # Find model path
         if version == "latest":
@@ -621,6 +628,8 @@ async def startup():
         logger.info("Loaded latest model on startup")
     except FileNotFoundError:
         logger.warning("No models found on startup, predictions will fail until a model is loaded")
+    except Exception as e:
+        logger.warning(f"Model warm-up skipped during startup: {e}")
 
 
 @app.on_event("shutdown")
