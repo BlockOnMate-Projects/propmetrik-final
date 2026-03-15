@@ -32,7 +32,8 @@ WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
-# Build TypeScript — capture full error output for Coolify logs
+# Build TypeScript — increase heap for large project
+ENV NODE_OPTIONS="--max-old-space-size=4096"
 RUN npm run build 2>&1 || { echo "=== TSC BUILD FAILED — full output above ==="; exit 1; }
 
 # Prune devDependencies
@@ -58,8 +59,7 @@ COPY --from=builder --chown=propmetrik:nodejs /app/node_modules ./node_modules
 COPY --from=builder --chown=propmetrik:nodejs /app/package.json ./
 
 # Copy migration files (needed at runtime)
-COPY --from=builder --chown=propmetrik:nodejs /app/src/database/migrations ./dist/database/migrations
-COPY --from=builder --chown=propmetrik:nodejs /app/src/database/seeds ./dist/database/seeds
+COPY --from=builder --chown=propmetrik:nodejs /app/database/migrations ./database/migrations
 
 # Set environment variables
 ENV NODE_ENV=production
