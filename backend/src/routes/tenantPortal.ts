@@ -92,7 +92,7 @@ function asyncHandler(fn: (req: Request, res: Response, next: NextFunction) => P
  * Returns authorization URL for tenant Keycloak login
  */
 router.get('/auth/keycloak/config', asyncHandler(async (req: Request, res: Response) => {
-    const redirectUri = (req.query.redirectUri as string) || `${process.env.TENANT_PORTAL_URL || 'http://localhost:3001'}/login`;
+    const redirectUri = (req.query.redirectUri as string) || `${process.env.TENANT_PORTAL_URL || 'http://localhost:3000/tenant'}/login`;
     const loginHint = req.query.loginHint as string | undefined;
     const codeChallenge = req.query.codeChallenge as string | undefined;
     const codeChallengeMethod = (req.query.codeChallengeMethod as 'S256' | 'plain' | undefined) || 'S256';
@@ -208,7 +208,7 @@ router.post('/auth/keycloak/password-login', asyncHandler(async (req: Request, r
  * Returns Keycloak reset password URL for invited tenants
  */
 router.get('/auth/keycloak/reset-password-url', asyncHandler(async (req: Request, res: Response) => {
-    const redirectUri = (req.query.redirectUri as string) || `${process.env.TENANT_PORTAL_URL || 'http://localhost:3001'}/login`;
+    const redirectUri = (req.query.redirectUri as string) || `${process.env.TENANT_PORTAL_URL || 'http://localhost:3000/tenant'}/login`;
     const loginHint = req.query.loginHint as string | undefined;
 
     const url = keycloakTenantOnboardingService.getResetPasswordUrl(redirectUri, loginHint);
@@ -796,7 +796,7 @@ router.post('/payments/initiate', requireTenantAuth, asyncHandler(async (req: Re
     }
 
     const organizationId = tenancyResult.rows[0].organization_id;
-    const callbackUrl = `${process.env.TENANT_PORTAL_URL || 'http://localhost:3001'}/payments/callback`;
+    const callbackUrl = `${process.env.TENANT_PORTAL_URL || 'http://localhost:3000/tenant'}/payments/callback`;
 
     try {
         const result = await paymentProcessor.initializeRentPayment({

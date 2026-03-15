@@ -53,7 +53,7 @@ Tenant (Bitcoin Wallet)
 - Mirrors backend `FeeEngine` logic exactly (RENT: max(1%, $1.65), DEAL: 0.25%, PROJECT: 0.25%, VALUATION: 2.5%)
 - OpenZeppelin v5: ReentrancyGuard, Pausable, Ownable2Step, SafeERC20
 - Slither security scan: **0 findings** (101 detectors)
-- [x] Test suite: **165/165 passing** (multi-token, DEX swap, platform fee auto-conversion, attestation, native BTC, hardening, registrar role)
+- [x] Test suite: **177/177 passing** (multi-token, DEX swap, platform fee auto-conversion, attestation, native BTC, hardening, registrar role)
 
 ---
 

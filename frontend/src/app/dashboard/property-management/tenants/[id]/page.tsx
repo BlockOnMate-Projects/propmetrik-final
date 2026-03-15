@@ -402,7 +402,7 @@ export default function TenantDetailsPage() {
             setIsInvitingPortal(true)
             setPortalInviteMessage(null)
 
-            const tenantPortalLoginUrl = `${process.env.NEXT_PUBLIC_TENANT_PORTAL_URL || 'http://localhost:3001'}/login`
+            const tenantPortalLoginUrl = `${process.env.NEXT_PUBLIC_TENANT_PORTAL_URL || window.location.origin}/tenant/login`
             await propertyManagementApi.inviteTenantPortal(tenantId, tenantPortalLoginUrl)
 
             setPortalInviteMessage('Access invite email sent. Tenant must use the email link to verify and create a password before first login.')
@@ -651,7 +651,7 @@ export default function TenantDetailsPage() {
                 {/* Main Content Tabs */}
                 <div className="md:col-span-8 md:order-1">
                     <Tabs defaultValue="tenancies" className="w-full">
-                        <TabsList className="grid grid-cols-5 bg-zinc-900 border border-zinc-800 w-full h-auto p-1">
+                        <TabsList className="grid grid-cols-3 sm:grid-cols-5 bg-zinc-900 border border-zinc-800 w-full h-auto p-1">
                             <TabsTrigger value="tenancies" className="w-full data-[state=active]:bg-amber-600 data-[state=active]:text-white text-zinc-400 font-mono text-xs">
                                 Tenancies
                             </TabsTrigger>

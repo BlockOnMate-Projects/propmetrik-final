@@ -40,7 +40,20 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 # Available spiders
-AVAILABLE_SPIDERS = ['meqasa', 'gpc', 'housemaster', 'realtor_international']
+AVAILABLE_SPIDERS = [
+    'meqasa',
+    'gpc',
+    'housemaster',
+    'realtor_international',
+    'airbnb_ghana',
+    'daily_graphic_legal',
+    'tonaton',
+]
+
+# Aliases for spider names (for .env compatibility)
+SPIDER_ALIASES = {
+    'realtor': 'realtor_international',
+}
 
 
 def get_spider_class(spider_name: str):
@@ -50,13 +63,22 @@ def get_spider_class(spider_name: str):
         GhanaPropertyCentreSpider,
         HouseMasterSpider,
         RealtorInternationalSpider,
+        AirbnbGhanaSpider,
+        DailyGraphicLegalSpider,
+        TonatonSpider,
     )
+    
+    # Resolve alias if present
+    spider_name = SPIDER_ALIASES.get(spider_name, spider_name)
     
     spider_map = {
         'meqasa': MeqasaSpider,
         'gpc': GhanaPropertyCentreSpider,
         'housemaster': HouseMasterSpider,
         'realtor_international': RealtorInternationalSpider,
+        'airbnb_ghana': AirbnbGhanaSpider,
+        'daily_graphic_legal': DailyGraphicLegalSpider,
+        'tonaton': TonatonSpider,
     }
     
     return spider_map.get(spider_name)

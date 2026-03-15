@@ -1,10 +1,10 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { PropertyCard } from '@/components/marketplace/PropertyCard';
 import { FilterPanel } from '@/components/marketplace/FilterPanel';
 import { LocationSearch } from '@/components/marketplace/LocationSearch';
-import { Loader2, Map as MapIcon, List as ListIcon } from 'lucide-react';
+import { Loader2, Map as MapIcon, List as ListIcon, SlidersHorizontal, X } from 'lucide-react';
 import { useRouter, useSearchParams } from 'next/navigation';
 
 interface SearchFilters {
@@ -53,6 +53,20 @@ export default function MarketplacePage() {
     total: 0
   });
   const [aggregations, setAggregations] = useState<any>(null);
+  const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
+  const [sortDropdownOpen, setSortDropdownOpen] = useState(false);
+  const sortRef = useRef<HTMLDivElement>(null);
+
+  // Close sort dropdown on outside click
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (sortRef.current && !sortRef.current.contains(e.target as Node)) {
+        setSortDropdownOpen(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   // Load properties when filters change
   useEffect(() => {
@@ -128,12 +142,12 @@ export default function MarketplacePage() {
     <div className="min-h-screen bg-white">
       {/* Hero Search Section */}
       <div className="bg-gradient-to-br from-indigo-600 via-indigo-700 to-purple-700 border-b border-indigo-800">
-        <div className="max-w-[1600px] mx-auto px-6 pt-24 pb-12">
-          <div className="max-w-4xl mx-auto text-center mb-8">
-            <h1 className="text-4xl md:text-5xl font-bold text-white mb-4">
+        <div className="max-w-[1600px] mx-auto px-4 sm:px-6 pt-20 sm:pt-24 pb-8 sm:pb-12">
+          <div className="max-w-4xl mx-auto text-center mb-6 sm:mb-8">
+            <h1 className="text-2xl sm:text-4xl md:text-5xl font-bold text-white mb-3 sm:mb-4">
               Discover Your Dream Property
             </h1>
-            <p className="text-lg text-indigo-100">
+            <p className="text-sm sm:text-lg text-indigo-100">
               Browse {pagination.total.toLocaleString()}+ verified properties across Ghana
             </p>
           </div>
@@ -168,36 +182,58 @@ export default function MarketplacePage() {
         </div>
       </div>
 
+      {/* Mobile Filter Drawer */}
+      {mobileFiltersOpen && (
+        <>
+          <div className="lg:hidden fixed inset-0 bg-black/50 z-40" onClick={() => setMobileFiltersOpen(false)} />
+          <div className="lg:hidden fixed inset-y-0 left-0 w-[85vw] max-w-sm z-50 bg-white overflow-y-auto shadow-2xl">
+            <div className="sticky top-0 bg-white border-b border-gray-200 p-4 flex items-center justify-between z-10">
+              <h3 className="font-bold text-lg text-gray-900">Filters</h3>
+              <button onClick={() => setMobileFiltersOpen(false)} className="p-2 text-gray-500 hover:text-gray-700">
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            <div className="p-4 [&>div]:border-0 [&>div]:shadow-none [&>div]:p-0 [&>div]:rounded-none [&>div>.flex.items-center.justify-between]:hidden">
+              <FilterPanel
+                filters={filters}
+                onFilterChange={setFilters}
+                aggregations={aggregations}
+              />
+            </div>
+          </div>
+        </>
+      )}
+
       {/* Main Content */}
-      <div className="max-w-[1600px] mx-auto px-6 py-8">
+      <div className="max-w-[1600px] mx-auto px-4 sm:px-6 py-6 sm:py-8">
         <div className="flex flex-col lg:flex-row gap-6">
-          {/* Filter Sidebar - Hide on mobile, show as drawer */}
-          <aside className="lg:w-80 flex-shrink-0">
+          {/* Filter Sidebar - Hidden on mobile, visible on desktop */}
+          <aside className="hidden lg:block lg:w-80 flex-shrink-0">
             <div className="lg:sticky lg:top-24">
-              <FilterPanel 
+              <FilterPanel
                 filters={filters}
                 onFilterChange={setFilters}
                 aggregations={aggregations}
               />
             </div>
           </aside>
-          
+
           {/* Property List */}
           <main className="flex-1 min-w-0">
             {/* Results Header */}
-            <div className="bg-white rounded-xl p-4 mb-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border border-gray-200 shadow-sm">
-              <div>
-                <p className="text-gray-900 font-medium">
+            <div className="bg-white rounded-xl p-3 sm:p-4 mb-4 sm:mb-6 border border-gray-200 shadow-sm flex items-center justify-between gap-3">
+              <div className="min-w-0 flex-1">
+                <p className="text-gray-900 font-medium text-sm sm:text-base">
                   {loading ? (
                     <span className="flex items-center gap-2">
                       <Loader2 className="h-4 w-4 animate-spin" />
                       Searching...
                     </span>
                   ) : (
-                    <span>{pagination.total.toLocaleString()} properties available</span>
+                    <span>{pagination.total.toLocaleString()} properties</span>
                   )}
                 </p>
-                <p className="text-xs text-gray-600 mt-1">
+                <p className="text-xs text-gray-600 mt-0.5">
                   {filters.transaction_type !== 'all' && (
                     <span className="capitalize">{filters.transaction_type} only • </span>
                   )}
@@ -208,24 +244,69 @@ export default function MarketplacePage() {
                   )}
                 </p>
               </div>
-              
-              {/* Sort Dropdown */}
-              <div className="flex items-center gap-2">
-                <label className="text-sm text-gray-600">Sort:</label>
-                <select
-                  value={`${filters.sort_by}_${filters.sort_order}`}
-                  onChange={(e) => {
-                    const [sort_by, sort_order] = e.target.value.split('_');
-                    setFilters(prev => ({ ...prev, sort_by: sort_by as any, sort_order: sort_order as any }));
-                  }}
-                  className="border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+
+              {/* Filter toggle + Sort */}
+              <div className="flex items-center gap-2 flex-shrink-0">
+                <button
+                  onClick={() => setMobileFiltersOpen(true)}
+                  className="lg:hidden flex items-center gap-1.5 px-2.5 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
                 >
-                  <option value="created_at_desc">Newest First</option>
-                  <option value="price_asc">Price: Low to High</option>
-                  <option value="price_desc">Price: High to Low</option>
-                  {filters.geo_radius && <option value="distance_asc">Nearest First</option>}
-                  <option value="views_desc">Most Popular</option>
-                </select>
+                  <SlidersHorizontal className="h-4 w-4" />
+                  <span className="hidden sm:inline">Filters</span>
+                </button>
+                <div className="relative" ref={sortRef}>
+                  <button
+                    onClick={() => setSortDropdownOpen(o => !o)}
+                    className="flex items-center gap-1.5 border border-gray-300 rounded-lg px-2.5 py-2 text-sm bg-white text-gray-900 hover:bg-gray-50 transition-colors cursor-pointer"
+                  >
+                    <span>
+                      {(() => {
+                        const key = `${filters.sort_by}_${filters.sort_order}`;
+                        const labels: Record<string, string> = {
+                          created_at_desc: 'Newest',
+                          price_asc: 'Price ↑',
+                          price_desc: 'Price ↓',
+                          distance_asc: 'Nearest',
+                          views_desc: 'Popular',
+                        };
+                        return labels[key] || 'Sort';
+                      })()}
+                    </span>
+                    <svg className={`h-3.5 w-3.5 text-gray-500 transition-transform ${sortDropdownOpen ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </button>
+                  {sortDropdownOpen && (
+                    <div className="absolute right-0 top-full mt-1 w-44 bg-white border border-gray-200 rounded-lg shadow-xl z-30 py-1 overflow-hidden">
+                      {[
+                        { value: 'created_at_desc', label: 'Newest First' },
+                        { value: 'price_asc', label: 'Price: Low to High' },
+                        { value: 'price_desc', label: 'Price: High to Low' },
+                        ...(filters.geo_radius ? [{ value: 'distance_asc', label: 'Nearest First' }] : []),
+                        { value: 'views_desc', label: 'Most Popular' },
+                      ].map(opt => {
+                        const isActive = `${filters.sort_by}_${filters.sort_order}` === opt.value;
+                        return (
+                          <button
+                            key={opt.value}
+                            onClick={() => {
+                              const [sort_by, sort_order] = opt.value.split('_');
+                              setFilters(prev => ({ ...prev, sort_by: sort_by as any, sort_order: sort_order as any }));
+                              setSortDropdownOpen(false);
+                            }}
+                            className={`w-full text-left px-3 py-2.5 text-sm transition-colors ${
+                              isActive
+                                ? 'bg-indigo-50 text-indigo-700 font-medium'
+                                : 'text-gray-700 hover:bg-gray-50'
+                            }`}
+                          >
+                            {opt.label}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
 
@@ -271,26 +352,27 @@ export default function MarketplacePage() {
                 
                 {/* Pagination */}
                 {pagination.total > pagination.size && (
-                  <div className="mt-10 flex items-center justify-center gap-2">
+                  <div className="mt-8 sm:mt-10 flex items-center justify-center gap-1 sm:gap-2">
                     <button
                       onClick={() => setPagination(prev => ({ ...prev, from: Math.max(0, prev.from - prev.size) }))}
                       disabled={pagination.from === 0}
-                      className="px-5 py-2.5 border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed bg-white text-gray-900 transition-colors font-medium"
+                      className="px-3 sm:px-5 py-2 sm:py-2.5 border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed bg-white text-gray-900 transition-colors font-medium text-sm"
                     >
-                      ← Previous
+                      <span className="hidden sm:inline">← </span>Prev
                     </button>
-                    <div className="flex items-center gap-2 px-4">
-                      <span className="text-gray-600 text-sm">
-                        Page <strong className="text-gray-900">{Math.floor(pagination.from / pagination.size) + 1}</strong> of{' '}
+                    <div className="flex items-center gap-2 px-2 sm:px-4">
+                      <span className="text-gray-600 text-xs sm:text-sm">
+                        <strong className="text-gray-900">{Math.floor(pagination.from / pagination.size) + 1}</strong>
+                        <span className="mx-1">/</span>
                         <strong className="text-gray-900">{Math.ceil(pagination.total / pagination.size)}</strong>
                       </span>
                     </div>
                     <button
                       onClick={() => setPagination(prev => ({ ...prev, from: prev.from + prev.size }))}
                       disabled={pagination.from + pagination.size >= pagination.total}
-                      className="px-5 py-2.5 border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed bg-white text-gray-900 transition-colors font-medium"
+                      className="px-3 sm:px-5 py-2 sm:py-2.5 border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed bg-white text-gray-900 transition-colors font-medium text-sm"
                     >
-                      Next →
+                      Next<span className="hidden sm:inline"> →</span>
                     </button>
                   </div>
                 )}

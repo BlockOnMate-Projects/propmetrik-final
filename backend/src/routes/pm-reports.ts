@@ -219,7 +219,7 @@ router.get('/projects/:projectId/reports/meeting/:meetingId', async (req: Reques
     // Agenda
     if (meeting.agenda) {
       pdfSection(doc, 'Agenda');
-      doc.font('Helvetica').fontSize(10).fill(C.text)
+      doc.font('Helvetica').fontSize(10).fill(C.body)
         .text(meeting.agenda, PAGE.margin, doc.y, { width: PAGE.contentWidth });
       doc.moveDown();
     }
@@ -236,7 +236,7 @@ router.get('/projects/:projectId/reports/meeting/:meetingId', async (req: Reques
     if (meeting.notes) {
       ensureSpace(doc, 60);
       pdfSection(doc, 'Notes');
-      doc.font('Helvetica').fontSize(10).fill(C.text)
+      doc.font('Helvetica').fontSize(10).fill(C.body)
         .text(meeting.notes, PAGE.margin, doc.y, { width: PAGE.contentWidth });
       doc.moveDown();
     }

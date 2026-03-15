@@ -43,6 +43,13 @@ router.post('/search', marketplaceController.searchProperties.bind(marketplaceCo
 router.get('/properties/:token', marketplaceController.getPropertyByToken.bind(marketplaceController));
 
 /**
+ * @route   GET /api/v1/marketplace/properties/:token/similar
+ * @desc    Get similar properties based on type, price, location
+ * @access  Public
+ */
+router.get('/properties/:token/similar', marketplaceController.getSimilarProperties.bind(marketplaceController));
+
+/**
  * @route   GET /api/v1/marketplace/properties/:token/application-link
  * @desc    Get or create application link for property (redirects to tenant portal)
  * @access  Public

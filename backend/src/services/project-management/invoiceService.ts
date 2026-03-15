@@ -99,6 +99,20 @@ export interface ProjectInvoice {
   createdBy: string | null;
   createdAt: Date;
   updatedAt: Date;
+
+  // Payment fields (migration 205)
+  paystackReference: string | null;
+  paystackAccessCode: string | null;
+  paymentLink: string | null;
+  sentAt: Date | null;
+  clientName: string | null;
+  clientEmail: string | null;
+  clientCompany: string | null;
+  vendorName: string | null;
+  vendorEmail: string | null;
+  vendorCompany: string | null;
+  platformFee: number;
+  totalDue: number | null;
 }
 
 export interface CreateInvoiceInput {

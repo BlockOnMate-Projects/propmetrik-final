@@ -6,7 +6,6 @@
   "workspaces": [
     "backend",
     "frontend",
-    "tenant-portal",
     "packages/*"
   ],
   "scripts": {
@@ -14,7 +13,6 @@
     "dev:reset": "bash scripts/dev-reset.sh",
     "dev:backend": "turbo run dev --filter=@propmetrik/backend",
     "dev:frontend": "turbo run dev --filter=@propmetrik/frontend",
-    "dev:tenant": "turbo run dev --filter=@propmetrik/tenant-portal",
     "dev:esign-ui": "turbo run dev --filter=@propmetrik/e-sign-ui",
     "dev:app": "turbo run dev --parallel --filter=@propmetrik/backend --filter=@propmetrik/frontend --filter=@propmetrik/e-sign-ui",
     "build": "turbo run build",
@@ -43,5 +41,8 @@
   "license": "UNLICENSED",
   "dependencies": {
     "pdfjs-dist": "^3.11.174"
+  },
+  "overrides": {
+    "xmldom": "npm:@xmldom/xmldom@^0.8.10"
   }
 }

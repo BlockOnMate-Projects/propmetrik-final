@@ -351,14 +351,18 @@ class ValuationReportService {
     if (Array.isArray(results)) {
       resultsArray = results;
     } else if (results && typeof results === 'object') {
+      // Filter out intermediate/non-valuation methods
+      const nonValuationMethods = ['rental_market', 'rental_market_analysis', 'land_value'];
       // Convert object format {method_name: {value, confidence, ...}} to array
-      resultsArray = Object.entries(results).map(([method, data]: [string, any]) => ({
-        method,
-        value: data.value,
-        confidence: data.confidence,
-        weight: data.weight,
-        details: data.details,
-      }));
+      resultsArray = Object.entries(results)
+        .filter(([method]) => !nonValuationMethods.includes(method))
+        .map(([method, data]: [string, any]) => ({
+          method,
+          value: data.value,
+          confidence: data.confidence,
+          weight: data.weight,
+          details: data.details,
+        }));
     }
     
     if (resultsArray.length === 0) {
@@ -653,6 +657,7 @@ class ValuationReportService {
   }
 
   private formatCurrency(amount: number, currency: string = 'GHS', exchangeRate?: number): string {
+    if (amount == null || isNaN(amount)) return currency === 'USD' ? '$0' : 'GHS 0';
     if (currency === 'USD') {
       const rate = exchangeRate || 10.99; // should always be passed from valuation data
       return `$${(amount / rate).toLocaleString('en-US', { maximumFractionDigits: 0 })}`;

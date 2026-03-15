@@ -1052,7 +1052,6 @@ class ProjectService {
       organization_id: row.organization_id,
       project_number: row.project_number,
       name: row.name,
-      project_name: row.name,
       description: row.description,
       project_type: row.project_type,
       status: row.status,

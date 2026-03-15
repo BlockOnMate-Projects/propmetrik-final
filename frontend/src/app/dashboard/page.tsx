@@ -389,9 +389,9 @@ export default function DashboardPage() {
       <div className="max-w-[1600px] mx-auto p-4 sm:p-5 pb-16 space-y-5">
 
         {/* ── WELCOME HEADER ─────────────────────────────────── */}
-        <div className="flex items-end justify-between">
+        <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-3">
           <div>
-            <h1 className="text-2xl font-semibold tracking-tight">
+            <h1 className="text-lg sm:text-2xl font-semibold tracking-tight">
               {timeOfDay()}, <span className="text-amber-400">{userName}</span>
             </h1>
             <p className="text-sm text-zinc-500 mt-0.5 font-mono">
@@ -405,11 +405,11 @@ export default function DashboardPage() {
               )}
             </p>
           </div>
-          <div className="text-right">
+          <div className="text-left sm:text-right">
             <div className="font-mono text-[10px] text-zinc-600">
               {new Date().toLocaleDateString('en-GB', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
             </div>
-            <div className="flex items-center gap-2 justify-end mt-0.5">
+            <div className="flex items-center gap-2 sm:justify-end mt-0.5">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
               <span className="font-mono text-[10px] text-emerald-400">ALL SYSTEMS OPERATIONAL</span>
             </div>
@@ -680,7 +680,7 @@ export default function DashboardPage() {
                     <div className="absolute inset-0 bg-gradient-to-r from-red-500 via-yellow-500 to-emerald-500 opacity-20" />
                     <div className="absolute top-0 bottom-0 w-1 bg-white rounded-full shadow-lg shadow-white/50" style={{ left: `${accraHAI.ghai_composite}%` }} />
                   </div>
-                  <div className="grid grid-cols-3 gap-2 text-center">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-center">
                     <div className="p-2 bg-zinc-800/30 rounded">
                       <div className="font-mono text-[9px] text-zinc-500">MEDIAN PRICE</div>
                       <div className="font-mono text-xs text-white font-medium">{fmt(accraHAI.median_property_price)}</div>

@@ -1,251 +1,401 @@
 'use client'
 
-import React, { useEffect, useState, useRef } from 'react'
-import { useRouter, useSearchParams } from 'next/navigation'
+/**
+ * Lease E-Sign Envelope Page
+ *
+ * Inline signing flow for lease agreements.
+ * Uses the built-in SignatureModal instead of an external iframe.
+ *
+ * Flow:
+ * 1. Load lease data from sessionStorage
+ * 2. Show document summary + signer list
+ * 3. Capture signature via inline SignatureModal
+ * 4. Submit signed lease to backend
+ */
+
+import React, { useEffect, useState, useCallback } from 'react'
+import { useRouter } from 'next/navigation'
+import { authedFetch } from '@/lib/authed-fetch'
 import { Button } from '@/components/ui/button'
-import { ArrowLeft, Loader2, ExternalLink } from 'lucide-react'
+import { ArrowLeft, Loader2, CheckCircle, PenTool, FileText, RefreshCw, Users } from 'lucide-react'
 import Link from 'next/link'
+import SignatureModal from '@/components/esign/SignatureModal'
+import { SignatureData } from '@/lib/esign-types'
 
 // =====================================================
 // TYPES
 // =====================================================
 
 interface LeaseDocumentData {
-    documentUrl: string
-    documentKey: string
-    filename: string
-    tenancyId: string
-    applicationId: string
-    propertyName: string
-    signers: Array<{ name: string; email: string; role: string }>
-    subject: string
-    message: string
+  documentUrl: string
+  documentKey: string
+  filename: string
+  tenancyId: string
+  applicationId: string
+  propertyName: string
+  signers: Array<{ name: string; email: string; role: string }>
+  subject: string
+  message: string
 }
 
 // =====================================================
-// E-SIGN UI INTEGRATION
-// =====================================================
-// This page embeds the standalone e-sign-ui application which
-// handles all PDF rendering, field placement, and sending.
-// 
-// The e-sign-ui runs on port 3001 and expects:
-// 1. Auth token via URL param or postMessage
-// 2. Document data via postMessage
+// CONSTANTS
 // =====================================================
 
-const E_SIGN_UI_URL = process.env.NEXT_PUBLIC_ESIGN_UI_URL || 'http://localhost:3001'
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || '/api'
 
 export default function LeaseEnvelopePage() {
-    const router = useRouter()
-    const searchParams = useSearchParams()
-    const iframeRef = useRef<HTMLIFrameElement>(null)
-    
-    // State
-    const [isLoading, setIsLoading] = useState(true)
-    const [error, setError] = useState<string | null>(null)
-    const [leaseData, setLeaseData] = useState<LeaseDocumentData | null>(null)
-    const [iframeReady, setIframeReady] = useState(false)
+  const router = useRouter()
 
-    // Get auth token from cookies/localStorage for e-sign-ui
-    const getAuthToken = (): string | null => {
-        // Try localStorage first
-        if (typeof window !== 'undefined') {
-            return localStorage.getItem('token') || localStorage.getItem('auth_token') || null
-        }
-        return null
+  // State
+  const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [leaseData, setLeaseData] = useState<LeaseDocumentData | null>(null)
+  const [isSending, setIsSending] = useState(false)
+  const [isSent, setIsSent] = useState(false)
+
+  // Inline signing state
+  const [showSignatureModal, setShowSignatureModal] = useState(false)
+  const [signatureData, setSignatureData] = useState<SignatureData | null>(null)
+
+  // =====================================================
+  // LOAD LEASE DATA
+  // =====================================================
+
+  useEffect(() => {
+    try {
+      setIsLoading(true)
+      setError(null)
+
+      const storedData = sessionStorage.getItem('esign_lease_document')
+      if (!storedData) {
+        throw new Error('No lease document data found. Please generate a lease first.')
+      }
+
+      const data: LeaseDocumentData = JSON.parse(storedData)
+      setLeaseData(data)
+      setIsLoading(false)
+    } catch (err: any) {
+      console.error('Failed to load lease data:', err)
+      setError(err.message || 'Failed to load lease document')
+      setIsLoading(false)
     }
+  }, [])
 
-    // =====================================================
-    // LOAD LEASE DATA
-    // =====================================================
+  // =====================================================
+  // SEND LEASE FOR SIGNING
+  // =====================================================
 
-    useEffect(() => {
-        const loadLeaseData = async () => {
-            try {
-                setIsLoading(true)
-                setError(null)
+  const handleSendForSigning = useCallback(async (signature?: SignatureData) => {
+    if (!leaseData || isSending) return
 
-                // Get lease document data from sessionStorage
-                const storedData = sessionStorage.getItem('esign_lease_document')
-                if (!storedData) {
-                    throw new Error('No lease document data found. Please generate a lease first.')
-                }
+    setIsSending(true)
+    setError(null)
 
-                const data: LeaseDocumentData = JSON.parse(storedData)
-                console.log('📋 Lease-Envelope: Loaded data from sessionStorage:', data)
-                console.log('📋 Lease-Envelope: Signers in data:', data.signers)
-                setLeaseData(data)
-                setIsLoading(false)
+    try {
+      const response = await authedFetch(`${API_BASE}/esign/envelopes`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          document_url: leaseData.documentUrl,
+          document_key: leaseData.documentKey,
+          filename: leaseData.filename,
+          subject: leaseData.subject,
+          message: leaseData.message,
+          signers: leaseData.signers,
+          context_type: 'lease',
+          context_entity_id: leaseData.tenancyId,
+          context_entity_name: leaseData.propertyName,
+          signature_data: signature?.data || signatureData?.data,
+        }),
+      })
 
-            } catch (err: any) {
-                console.error('Failed to load lease data:', err)
-                setError(err.message || 'Failed to load lease document')
-                setIsLoading(false)
-            }
-        }
+      const result = await response.json()
 
-        loadLeaseData()
-    }, [])
+      if (!response.ok) {
+        throw new Error(result.message || result.error || 'Failed to send lease for signing')
+      }
 
-    // =====================================================
-    // COMMUNICATE WITH E-SIGN IFRAME
-    // =====================================================
-
-    useEffect(() => {
-        const handleMessage = (event: MessageEvent) => {
-            // Handle messages from e-sign-ui iframe
-            if (event.data?.type === 'ESIGN_READY') {
-                setIframeReady(true)
-                // Send document data to iframe
-                sendDocumentDataToIframe()
-            } else if (event.data?.type === 'ESIGN_COMPLETE') {
-                // Envelope sent successfully
-                router.push(`/dashboard/property-management/applications/${leaseData?.applicationId}?esign=success`)
-            } else if (event.data?.type === 'ESIGN_CANCEL') {
-                // User cancelled
-                router.push(`/dashboard/property-management/applications/${leaseData?.applicationId}`)
-            } else if (event.data?.type === 'REQUEST_AUTH_TOKEN') {
-                // E-sign UI is requesting auth token
-                const token = getAuthToken()
-                if (token && iframeRef.current?.contentWindow) {
-                    iframeRef.current.contentWindow.postMessage({
-                        type: 'AUTH_TOKEN',
-                        token: token
-                    }, '*')
-                }
-            }
-        }
-
-        window.addEventListener('message', handleMessage)
-        return () => window.removeEventListener('message', handleMessage)
-    }, [leaseData, router])
-
-    const sendDocumentDataToIframe = () => {
-        if (!iframeRef.current?.contentWindow || !leaseData) return
-
-        console.log('📤 Sending document data to e-sign iframe:', leaseData)
-        console.log('📤 Signers being sent:', leaseData.signers)
-
-        // Send document data to e-sign-ui
-        iframeRef.current.contentWindow.postMessage({
-            type: 'LOAD_DOCUMENT',
-            data: {
-                documentUrl: leaseData.documentUrl,
-                documentKey: leaseData.documentKey,
-                filename: leaseData.filename,
-                subject: leaseData.subject,
-                message: leaseData.message,
-                signers: leaseData.signers,
-                tenancyId: leaseData.tenancyId,
-                applicationId: leaseData.applicationId,
-                propertyName: leaseData.propertyName,
-            }
-        }, '*')
+      setIsSent(true)
+      sessionStorage.removeItem('esign_lease_document')
+    } catch (err: any) {
+      console.error('Failed to send lease:', err)
+      setError(err.message || 'Failed to send lease for signing')
+    } finally {
+      setIsSending(false)
     }
+  }, [leaseData, isSending, signatureData])
 
-    // Build iframe URL with auth token
-    const getIframeUrl = () => {
-        const token = getAuthToken()
-        const url = new URL(E_SIGN_UI_URL)
-        if (token) {
-            url.searchParams.set('token', token)
-        }
-        // Pass flag to indicate this is an embedded mode for lease
-        url.searchParams.set('mode', 'embedded')
-        url.searchParams.set('source', 'lease-generator')
-        return url.toString()
+  // Handle signature applied from modal
+  const handleSignatureApplied = useCallback((sig: SignatureData) => {
+    setSignatureData(sig)
+    setShowSignatureModal(false)
+    handleSendForSigning(sig)
+  }, [handleSendForSigning])
+
+  // Retry
+  const handleRetry = useCallback(() => {
+    setError(null)
+    if (signatureData) {
+      handleSendForSigning(signatureData)
+    } else {
+      setShowSignatureModal(true)
     }
+  }, [signatureData, handleSendForSigning])
 
-    // =====================================================
-    // RENDER
-    // =====================================================
-
-    // Loading state
-    if (isLoading) {
-        return (
-            <div className="min-h-screen bg-zinc-950 flex items-center justify-center">
-                <div className="text-center">
-                    <Loader2 className="h-12 w-12 animate-spin text-emerald-500 mx-auto mb-4" />
-                    <p className="text-white text-lg">Loading E-Sign...</p>
-                </div>
-            </div>
-        )
+  const getBackUrl = () => {
+    if (leaseData?.applicationId) {
+      return `/dashboard/property-management/applications/${leaseData.applicationId}`
     }
+    return '/dashboard/property-management/applications'
+  }
 
-    // Error state
-    if (error || !leaseData) {
-        return (
-            <div className="min-h-screen bg-zinc-950 flex items-center justify-center">
-                <div className="max-w-md text-center">
-                    <div className="bg-red-900/20 border border-red-700 rounded-lg p-6 mb-4">
-                        <p className="text-red-400">{error || 'No lease document found'}</p>
-                    </div>
-                    <Link href="/dashboard/property-management/applications">
-                        <Button variant="outline" className="border-zinc-700">
-                            <ArrowLeft className="mr-2 h-4 w-4" />
-                            Back to Applications
-                        </Button>
-                    </Link>
-                </div>
-            </div>
-        )
-    }
+  // =====================================================
+  // RENDER — LOADING
+  // =====================================================
 
+  if (isLoading) {
     return (
-        <div className="min-h-screen bg-zinc-950 flex flex-col">
-            {/* Header */}
-            <div className="bg-zinc-900 border-b border-zinc-800 px-6 py-4">
-                <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-4">
-                        <Link href={`/dashboard/property-management/applications/${leaseData.applicationId}`}>
-                            <Button variant="ghost" size="icon" className="text-zinc-400 hover:text-white">
-                                <ArrowLeft className="h-5 w-5" />
-                            </Button>
-                        </Link>
-                        <div>
-                            <h1 className="text-xl font-bold text-white">E-Sign: Lease Agreement</h1>
-                            <p className="text-sm text-zinc-400">{leaseData.propertyName}</p>
-                        </div>
-                    </div>
-                    
-                    {/* Open in new tab option */}
-                    <a 
-                        href={getIframeUrl()} 
-                        target="_blank" 
-                        rel="noopener noreferrer"
-                        className="text-zinc-400 hover:text-white flex items-center gap-2 text-sm"
-                    >
-                        Open in new tab
-                        <ExternalLink className="h-4 w-4" />
-                    </a>
-                </div>
+      <div className="min-h-screen bg-zinc-950 flex items-center justify-center">
+        <div className="text-center">
+          <Loader2 className="h-12 w-12 animate-spin text-emerald-500 mx-auto mb-4" />
+          <p className="text-white text-lg">Loading E-Sign...</p>
+        </div>
+      </div>
+    )
+  }
+
+  // =====================================================
+  // RENDER — SENT SUCCESS
+  // =====================================================
+
+  if (isSent) {
+    return (
+      <div className="min-h-screen bg-zinc-950 flex items-center justify-center">
+        <div className="max-w-md text-center">
+          <CheckCircle className="h-16 w-16 text-emerald-500 mx-auto mb-4" />
+          <h2 className="text-2xl font-bold text-white mb-2">Lease Sent for Signing</h2>
+          <p className="text-zinc-400 mb-6">
+            The lease agreement for <strong className="text-white">{leaseData?.propertyName}</strong> has been sent to all signers.
+          </p>
+          <div className="flex gap-3 justify-center">
+            <Link href={getBackUrl()}>
+              <Button className="bg-emerald-600 hover:bg-emerald-700">
+                Back to Application
+              </Button>
+            </Link>
+            <Link href="/dashboard/property-management/applications">
+              <Button variant="outline" className="border-zinc-700 text-zinc-300">
+                All Applications
+              </Button>
+            </Link>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  // =====================================================
+  // RENDER — SENDING
+  // =====================================================
+
+  if (isSending) {
+    return (
+      <div className="min-h-screen bg-zinc-950 flex items-center justify-center">
+        <div className="text-center">
+          <Loader2 className="h-12 w-12 animate-spin text-emerald-500 mx-auto mb-4" />
+          <p className="text-white text-lg">Sending lease for signing...</p>
+          <p className="text-zinc-400 text-sm mt-2">This may take a moment</p>
+        </div>
+      </div>
+    )
+  }
+
+  // =====================================================
+  // RENDER — ERROR (with retry)
+  // =====================================================
+
+  if (error && leaseData) {
+    return (
+      <div className="min-h-screen bg-zinc-950 flex items-center justify-center">
+        <div className="max-w-md text-center">
+          <div className="bg-red-900/20 border border-red-700 rounded-lg p-6 mb-4">
+            <p className="text-red-400">{error}</p>
+          </div>
+          <div className="flex gap-3 justify-center">
+            <Button onClick={handleRetry} className="bg-emerald-600 hover:bg-emerald-700">
+              <RefreshCw className="mr-2 h-4 w-4" />
+              {signatureData ? 'Retry Sending' : 'Try Again'}
+            </Button>
+            <Link href={getBackUrl()}>
+              <Button variant="outline" className="border-zinc-700">
+                <ArrowLeft className="mr-2 h-4 w-4" />
+                Back
+              </Button>
+            </Link>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  if (!leaseData) {
+    return (
+      <div className="min-h-screen bg-zinc-950 flex items-center justify-center">
+        <div className="max-w-md text-center">
+          <div className="bg-red-900/20 border border-red-700 rounded-lg p-6 mb-4">
+            <p className="text-red-400">No lease document found</p>
+          </div>
+          <Link href="/dashboard/property-management/applications">
+            <Button variant="outline" className="border-zinc-700">
+              <ArrowLeft className="mr-2 h-4 w-4" />
+              Back to Applications
+            </Button>
+          </Link>
+        </div>
+      </div>
+    )
+  }
+
+  // =====================================================
+  // RENDER — SIGNING FLOW
+  // =====================================================
+
+  return (
+    <div className="min-h-screen bg-zinc-950 flex flex-col">
+      {/* Header */}
+      <div className="bg-zinc-900 border-b border-zinc-800 px-6 py-4">
+        <div className="flex items-center gap-4">
+          <Link href={getBackUrl()}>
+            <Button variant="ghost" size="icon" className="text-zinc-400 hover:text-white">
+              <ArrowLeft className="h-5 w-5" />
+            </Button>
+          </Link>
+          <div>
+            <h1 className="text-xl font-bold text-white">E-Sign: Lease Agreement</h1>
+            <p className="text-sm text-zinc-400">{leaseData.propertyName}</p>
+          </div>
+        </div>
+      </div>
+
+      {/* Document Summary & Signing Area */}
+      <div className="flex-1 flex items-center justify-center px-6 py-10">
+        <div className="w-full max-w-2xl space-y-8">
+          {/* Document Info Card */}
+          <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-6">
+            <div className="flex items-start gap-4 mb-6">
+              <div className="bg-blue-600/20 rounded-lg p-3">
+                <FileText className="h-6 w-6 text-blue-400" />
+              </div>
+              <div className="flex-1">
+                <h2 className="text-lg font-semibold text-white mb-1">Lease Agreement</h2>
+                <p className="text-sm text-zinc-400">{leaseData.filename}</p>
+              </div>
             </div>
 
-            {/* E-Sign UI Iframe */}
-            <div className="flex-1 relative">
-                <iframe
-                    ref={iframeRef}
-                    src={getIframeUrl()}
-                    className="w-full h-full border-0"
-                    style={{ minHeight: 'calc(100vh - 80px)' }}
-                    title="PROPMETRIK E-Sign"
-                    onLoad={() => {
-                        // Send auth token when iframe loads
-                        const token = getAuthToken()
-                        if (token && iframeRef.current?.contentWindow) {
-                            setTimeout(() => {
-                                iframeRef.current?.contentWindow?.postMessage({
-                                    type: 'AUTH_TOKEN',
-                                    token: token
-                                }, '*')
-                                
-                                // Also send document data after a short delay
-                                setTimeout(sendDocumentDataToIframe, 500)
-                            }, 100)
-                        }
-                    }}
-                />
+            <div className="grid grid-cols-2 gap-4 text-sm">
+              <div>
+                <span className="text-zinc-500">Property</span>
+                <p className="text-white mt-0.5">{leaseData.propertyName}</p>
+              </div>
+              <div>
+                <span className="text-zinc-500">Subject</span>
+                <p className="text-white mt-0.5">{leaseData.subject}</p>
+              </div>
             </div>
+          </div>
+
+          {/* Signers */}
+          <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-6">
+            <div className="flex items-center gap-3 mb-4">
+              <Users className="h-5 w-5 text-zinc-400" />
+              <h3 className="text-white font-medium">Signers ({leaseData.signers.length})</h3>
+            </div>
+            <div className="space-y-3">
+              {leaseData.signers.map((signer, i) => (
+                <div key={i} className="flex items-center gap-3 bg-zinc-800/50 rounded-lg p-3">
+                  <div className="w-8 h-8 rounded-full bg-blue-600/20 flex items-center justify-center text-blue-400 text-sm font-medium">
+                    {i + 1}
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-white text-sm">{signer.name}</p>
+                    <p className="text-zinc-500 text-xs">{signer.email}</p>
+                  </div>
+                  <span className="text-xs text-zinc-400 capitalize">{signer.role}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Signature & Send */}
+          {signatureData ? (
+            <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-6">
+              <div className="flex items-center gap-3 mb-4">
+                <PenTool className="h-5 w-5 text-emerald-400" />
+                <h3 className="text-white font-medium">Your Signature</h3>
+              </div>
+              <div className="bg-white rounded-lg p-4 flex justify-center mb-4">
+                <img src={signatureData.data} alt="Your signature" className="max-h-16 object-contain" />
+              </div>
+              <div className="flex gap-3">
+                <Button
+                  variant="outline"
+                  className="border-zinc-700 text-zinc-300"
+                  onClick={() => {
+                    setSignatureData(null)
+                    setShowSignatureModal(true)
+                  }}
+                >
+                  Change Signature
+                </Button>
+                <Button
+                  className="flex-1 bg-emerald-600 hover:bg-emerald-700"
+                  onClick={() => handleSendForSigning(signatureData)}
+                >
+                  <CheckCircle className="mr-2 h-4 w-4" />
+                  Send for Signing
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-6">
+              <div className="text-center space-y-4">
+                <div className="bg-emerald-600/20 rounded-full p-4 w-16 h-16 mx-auto flex items-center justify-center">
+                  <PenTool className="h-8 w-8 text-emerald-400" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-semibold text-white mb-1">Sign & Send</h3>
+                  <p className="text-zinc-400 text-sm">
+                    Add your signature to authorise this lease agreement, then send to all signers.
+                  </p>
+                </div>
+                <Button
+                  className="bg-emerald-600 hover:bg-emerald-700"
+                  onClick={() => setShowSignatureModal(true)}
+                >
+                  <PenTool className="mr-2 h-4 w-4" />
+                  Sign Lease
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {/* Legal notice */}
+          <p className="text-[10px] text-zinc-500 text-center max-w-lg mx-auto">
+            By signing, I agree that this electronic signature is the legal equivalent of my handwritten signature
+            for the purposes of this lease agreement.
+          </p>
         </div>
-    )
+      </div>
+
+      {/* Signature Modal */}
+      {showSignatureModal && (
+        <SignatureModal
+          signerName={leaseData.signers[0]?.name || ''}
+          onApply={handleSignatureApplied}
+          onCancel={() => setShowSignatureModal(false)}
+        />
+      )}
+    </div>
+  )
 }

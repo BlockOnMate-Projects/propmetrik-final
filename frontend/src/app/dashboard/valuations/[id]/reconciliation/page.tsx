@@ -122,12 +122,18 @@ export default function ReconciliationPage() {
             }
           })
         } else if (typeof rawResults === 'object') {
+          // Methods that are intermediate steps, not standalone valuation methods
+          const nonValuationMethods = ['rental_market', 'rental_market_analysis', 'land_value']
+
           Object.entries(rawResults).forEach(([method, result]: [string, any]) => {
+            // Skip intermediate/non-valuation methods
+            if (nonValuationMethods.includes(method)) return
+
             // Map method keys to display names
-            const methodKey = method === 'cost' ? 'cost_approach' : 
+            const methodKey = method === 'cost' ? 'cost_approach' :
                              method === 'market' || method === 'sales' ? 'sales_comparison' :
                              method === 'income' ? 'income_approach' : method
-            
+
             normalizedResults[methodKey] = {
               method: methodKey as any,
               value_ghs: Number(result.value_ghs || result.value || result.indicatedValue || 0),

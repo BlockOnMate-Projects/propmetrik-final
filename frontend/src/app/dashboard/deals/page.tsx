@@ -74,7 +74,7 @@ function DealsTable({
 
   return (
     <div className="overflow-x-auto">
-      <table className="w-full">
+      <table className="w-full min-w-[600px]">
         <thead>
           <tr className="text-xs font-medium text-muted-foreground border-b border-border">
             <th className="text-left pb-3 pl-4 w-10">
@@ -392,21 +392,21 @@ export default function DealsPage() {
   return (
     <div className="space-y-4">
       {/* Header */}
-      <div className="flex items-center justify-between pb-4 border-b border-border">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-border">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight text-foreground">Deals</h1>
+          <h1 className="text-lg sm:text-xl md:text-2xl font-semibold tracking-tight text-foreground">Deals</h1>
           <p className="text-sm text-muted-foreground mt-1">Manage your sales pipeline and track opportunities.</p>
         </div>
         <Link href="/dashboard/deals/new">
           <Button className="bg-primary text-primary-foreground hover:bg-primary/90 font-medium text-sm h-9 px-4 rounded-md shadow-sm">
-            <Plus className="h-4 w-4 mr-2" />
-            Create Deal
+            <Plus className="h-4 w-4 sm:mr-2" />
+            <span className="hidden sm:inline">Create Deal</span>
           </Button>
         </Link>
       </div>
 
       {/* Metrics Cards */}
-      <div className="grid gap-4 md:grid-cols-5">
+      <div className="grid gap-4 grid-cols-2 sm:grid-cols-3 lg:grid-cols-5">
         <Card className="bg-card border-border shadow-sm">
           <CardContent className="p-4">
             <div className="text-xs font-medium text-muted-foreground mb-1 uppercase tracking-wider">Active Deals</div>
@@ -454,7 +454,7 @@ export default function DealsPage() {
         <div className="p-3 space-y-2">
           <div className="flex items-center gap-3 flex-wrap">
             <Select value={selectedPipeline} onValueChange={setSelectedPipeline}>
-              <SelectTrigger className="w-[200px] h-9">
+              <SelectTrigger className="w-full sm:w-[200px] h-9">
                 <SelectValue placeholder="Select pipeline" />
               </SelectTrigger>
               <SelectContent>
@@ -466,7 +466,7 @@ export default function DealsPage() {
               </SelectContent>
             </Select>
 
-            <div className="relative flex-1 max-w-sm">
+            <div className="relative w-full sm:flex-1 sm:max-w-sm">
               <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
                 ref={searchRef}
@@ -477,7 +477,7 @@ export default function DealsPage() {
               />
             </div>
 
-            <div className="flex-1" />
+            <div className="hidden sm:block flex-1" />
 
             <div className="flex items-center border border-border rounded-md bg-muted/50 p-0.5">
               <button

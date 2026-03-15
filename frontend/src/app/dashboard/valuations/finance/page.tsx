@@ -506,7 +506,7 @@ export default function FinancePage() {
             {activeTab === 'invoices' && (<>
 
             {/* Summary Cards */}
-            <div className="grid grid-cols-5 gap-3 mb-6">
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3 mb-6">
                 <div className="bg-zinc-900 border border-zinc-800 p-4">
                     <div className="font-mono text-[10px] text-zinc-500 mb-1">TOTAL INVOICED</div>
                     <div className="font-mono text-xl text-white">{formatCurrency(summary?.totalInvoiced || 0)}</div>
@@ -544,7 +544,7 @@ export default function FinancePage() {
                         <h2 className="font-mono text-sm text-white">GHANA VALUATION FEE CALCULATOR</h2>
                     </div>
 
-                    <div className="grid grid-cols-2 gap-6">
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                         {/* Left: input */}
                         <div className="space-y-4">
                             <div>
@@ -744,7 +744,7 @@ export default function FinancePage() {
                         </button>
                     ))}
                 </div>
-                <div className="relative w-64">
+                <div className="relative w-full sm:w-64">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3 h-3 text-zinc-500" />
                     <input
                         type="text"
@@ -1342,7 +1342,7 @@ export default function FinancePage() {
                         {/* Totals Section */}
                         <div className="px-8 pb-5">
                             <div className="flex justify-end">
-                                <div className="w-72 space-y-1.5">
+                                <div className="w-full sm:w-72 space-y-1.5">
                                     <div className="flex justify-between font-mono text-xs border-b border-zinc-100 pb-1.5">
                                         <span className="text-zinc-500">Subtotal</span>
                                         <span className="text-zinc-800">{formatCurrency(previewInvoice.subtotal)}</span>

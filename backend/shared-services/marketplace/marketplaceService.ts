@@ -34,7 +34,12 @@ export interface MarketplaceProperty {
   bathrooms: number;
   total_area_sqm: number | null;
   parking_spaces: number | null;
-  
+
+  // Additional details
+  year_built: number | null;
+  land_area_sqm: number | null;
+  property_condition: string | null;
+
   // Features & Amenities
   amenities: string[];
   features: string[];
@@ -63,6 +68,8 @@ export interface SearchFilters {
   max_price?: number;
   bedrooms?: number;
   bathrooms?: number;
+  parking_spaces?: number;
+  listed_within_days?: number;
   amenities?: string[];
   region?: string;
   city?: string;
@@ -163,6 +170,18 @@ export class MarketplaceService {
         paramCounter++;
       }
 
+      // Parking spaces filter
+      if (filters.parking_spaces) {
+        conditions.push(`parking_spaces >= $${paramCounter}`);
+        params.push(filters.parking_spaces);
+        paramCounter++;
+      }
+
+      // Listed within days filter
+      if (filters.listed_within_days) {
+        conditions.push(`listed_at >= NOW() - INTERVAL '${parseInt(String(filters.listed_within_days))} days'`);
+      }
+
       // Location filters (normalize spaces/underscores/case for PM enums vs CRM text)
       if (region) {
         conditions.push(`LOWER(REPLACE(region, ' ', '_')) = LOWER(REPLACE($${paramCounter}, ' ', '_'))`);
@@ -184,10 +203,11 @@ export class MarketplaceService {
       let searchCondition = '';
       if (query) {
         searchCondition = `AND (
-          title ILIKE $${paramCounter} OR 
-          description ILIKE $${paramCounter} OR 
+          title ILIKE $${paramCounter} OR
+          description ILIKE $${paramCounter} OR
           address ILIKE $${paramCounter} OR
-          city ILIKE $${paramCounter}
+          city ILIKE $${paramCounter} OR
+          digital_address ILIKE $${paramCounter}
         )`;
         params.push(`%${query}%`);
         paramCounter++;
@@ -267,10 +287,14 @@ export class MarketplaceService {
             bedrooms,
             bathrooms,
             total_area_sqm,
-            CASE WHEN amenities IS NOT NULL AND jsonb_typeof(amenities) = 'array' 
+            NULL::integer AS parking_spaces,
+            year_built,
+            land_area_sqm,
+            condition::text AS property_condition,
+            CASE WHEN amenities IS NOT NULL AND jsonb_typeof(amenities) = 'array'
                  THEN (SELECT array_agg(value::text) FROM jsonb_array_elements_text(properties.amenities))
                  ELSE ARRAY[]::text[] END AS amenities,
-            CASE WHEN features IS NOT NULL AND jsonb_typeof(features) = 'array' 
+            CASE WHEN features IS NOT NULL AND jsonb_typeof(features) = 'array'
                  THEN (SELECT array_agg(value::text) FROM jsonb_array_elements_text(properties.features))
                  ELSE ARRAY[]::text[] END AS features,
             marketplace_listed_at AS listed_at,
@@ -309,10 +333,14 @@ export class MarketplaceService {
             bedrooms,
             bathrooms,
             total_area_sqm,
-            CASE WHEN amenities IS NOT NULL AND jsonb_typeof(amenities) = 'array' 
+            NULL::integer AS parking_spaces,
+            year_built,
+            land_area_sqm,
+            NULL::text AS property_condition,
+            CASE WHEN amenities IS NOT NULL AND jsonb_typeof(amenities) = 'array'
                  THEN (SELECT array_agg(value::text) FROM jsonb_array_elements_text(crm_properties.amenities))
                  ELSE ARRAY[]::text[] END AS amenities,
-            CASE WHEN features IS NOT NULL AND jsonb_typeof(features) = 'array' 
+            CASE WHEN features IS NOT NULL AND jsonb_typeof(features) = 'array'
                  THEN (SELECT array_agg(value::text) FROM jsonb_array_elements_text(crm_properties.features))
                  ELSE ARRAY[]::text[] END AS features,
             marketplace_listed_at AS listed_at,
@@ -375,7 +403,10 @@ export class MarketplaceService {
         bedrooms: row.bedrooms,
         bathrooms: row.bathrooms,
         total_area_sqm: row.total_area_sqm,
-        parking_spaces: row.parking_spaces,
+        parking_spaces: row.parking_spaces || null,
+        year_built: row.year_built || null,
+        land_area_sqm: row.land_area_sqm ? parseFloat(row.land_area_sqm) : null,
+        property_condition: row.property_condition || null,
         amenities: row.amenities || [],
         features: row.features || [],
         images: (row.images || []).map((img: any) => {
@@ -419,6 +450,8 @@ export class MarketplaceService {
           address_city AS city, region, neighborhood, digital_address,
           latitude, longitude, price, price_currency AS currency,
           FALSE AS price_negotiable, bedrooms, bathrooms, total_area_sqm,
+          NULL::integer AS parking_spaces, year_built, land_area_sqm,
+          condition::text AS property_condition,
           marketplace_listed_at AS listed_at, marketplace_views AS views,
           marketplace_clicks AS clicks,
           image_urls AS images
@@ -438,6 +471,8 @@ export class MarketplaceService {
           NULL AS digital_address, latitude, longitude, price,
           price_currency AS currency, price_negotiable, bedrooms, bathrooms,
           total_area_sqm,
+          NULL::integer AS parking_spaces, year_built, land_area_sqm,
+          NULL::text AS property_condition,
           marketplace_listed_at AS listed_at, marketplace_views AS views,
           marketplace_clicks AS clicks,
           images
@@ -559,7 +594,10 @@ export class MarketplaceService {
       bedrooms: row.bedrooms,
       bathrooms: row.bathrooms,
       total_area_sqm: row.total_area_sqm,
-      parking_spaces: row.parking_spaces,
+      parking_spaces: row.parking_spaces || null,
+      year_built: row.year_built || null,
+      land_area_sqm: row.land_area_sqm ? parseFloat(row.land_area_sqm) : null,
+      property_condition: row.property_condition || null,
       amenities: [],
       features: [],
       images: (row.images || []).map((img: any) => {

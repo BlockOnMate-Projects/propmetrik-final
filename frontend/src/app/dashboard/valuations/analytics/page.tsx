@@ -198,9 +198,9 @@ export default function AnalyticsPage() {
 
     return (
         <div className="min-h-screen bg-black text-white p-4 pb-10">
-            <div className="flex items-center justify-between mb-6">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
                 <div>
-                    <h1 className="font-mono text-xl text-white flex items-center gap-2">
+                    <h1 className="font-mono text-lg sm:text-xl text-white flex items-center gap-2">
                         <BarChart3 className="w-5 h-5 text-amber-500" />
                         VALUATION ANALYTICS
                     </h1>
@@ -241,7 +241,7 @@ export default function AnalyticsPage() {
             <>
 
             {/* KPI Row */}
-            <div className="grid grid-cols-5 gap-3 mb-6">
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3 mb-6">
                 <div className="bg-zinc-900 border border-zinc-800 p-4">
                     <div className="font-mono text-[10px] text-zinc-500 mb-1">TOTAL VALUATIONS</div>
                     <div className="font-mono text-2xl text-white">{totalValuations}</div>
@@ -274,7 +274,7 @@ export default function AnalyticsPage() {
             </div>
 
             {/* Revenue Breakdown */}
-            <div className="grid grid-cols-4 gap-3 mb-6">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
                 <div className="bg-zinc-900 border border-zinc-800 p-4">
                     <div className="font-mono text-[10px] text-zinc-500 mb-1">TOTAL PAID</div>
                     <div className="font-mono text-xl text-green-400">{formatCurrency(summary?.totalPaid || 0)}</div>
@@ -295,7 +295,7 @@ export default function AnalyticsPage() {
                 </div>
             </div>
 
-            <div className="grid grid-cols-3 gap-4 mb-6">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
                 {/* Top Clients */}
                 <div className="bg-zinc-900 border border-zinc-800 p-4 col-span-2">
                     <div className="font-mono text-[10px] text-zinc-500 mb-4 flex items-center gap-2">
@@ -361,7 +361,7 @@ export default function AnalyticsPage() {
                 </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {/* Regional Breakdown */}
                 <div className="bg-zinc-900 border border-zinc-800 p-4">
                     <div className="font-mono text-[10px] text-zinc-500 mb-4 flex items-center gap-2">
@@ -454,7 +454,7 @@ export default function AnalyticsPage() {
             </div>
 
             {/* Revenue KPI Row */}
-            <div className="grid grid-cols-6 gap-3 mb-6">
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 mb-6">
                 <div className="bg-zinc-900 border border-zinc-800 p-4">
                     <div className="font-mono text-[10px] text-zinc-500 mb-1">REVENUE</div>
                     <div className="font-mono text-2xl text-green-400">{formatCurrency(firmData.revenue.total)}</div>
@@ -495,7 +495,7 @@ export default function AnalyticsPage() {
             </div>
 
             {/* Throughput Breakdown */}
-            <div className="grid grid-cols-4 gap-3 mb-6">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
                 <div className="bg-zinc-900 border border-zinc-800 p-4 flex items-center gap-3">
                     <div className="w-10 h-10 rounded-full bg-green-500/10 flex items-center justify-center">
                         <CheckCircle2 className="w-5 h-5 text-green-400" />
@@ -534,7 +534,7 @@ export default function AnalyticsPage() {
                 </div>
             </div>
 
-            <div className="grid grid-cols-3 gap-4 mb-6">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
                 {/* Valuer Productivity */}
                 <div className="bg-zinc-900 border border-zinc-800 p-4 col-span-2">
                     <div className="font-mono text-[10px] text-zinc-500 mb-4 flex items-center gap-2">
@@ -629,7 +629,7 @@ export default function AnalyticsPage() {
                         <MapPin className="w-3 h-3" />
                         PROPERTY TYPE DISTRIBUTION ({firmPeriod.toUpperCase()})
                     </div>
-                    <div className="grid grid-cols-5 gap-3">
+                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3">
                         {firmData.property_types.map((pt, idx) => {
                             const maxCount = Math.max(...firmData.property_types.map(p => p.count)) || 1
                             const colors = ['bg-green-500', 'bg-blue-500', 'bg-purple-500', 'bg-amber-500', 'bg-emerald-500', 'bg-teal-500', 'bg-rose-500', 'bg-indigo-500', 'bg-cyan-500', 'bg-orange-500']

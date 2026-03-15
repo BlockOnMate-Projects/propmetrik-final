@@ -111,8 +111,10 @@ import { notificationRoutes } from '../shared-services/notifications/in-mail';
 // Import autopilot scheduler
 import { autopilotScheduler } from '../shared-services/publications/autopilot';
 
-// Import Data Hub queue manager
+// Import Data Hub queue manager and scrapy scheduler
 import { dataHubQueueManager } from './services/data-hub';
+import { scrapyScheduler } from './services/data-hub/scrapyScheduler';
+import { economicDataScheduler } from './services/data-hub/schedulers';
 
 // Create Express application
 const app: Application = express();
@@ -851,6 +853,26 @@ async function bootstrap(): Promise<void> {
       logger.info('Data Hub job queues initialized');
     } catch (queueError) {
       logger.warn('Failed to initialize Data Hub queues', { error: queueError });
+    }
+
+    // Start Scrapy scheduler for automated property data scraping
+    try {
+      await scrapyScheduler.start();
+      logger.info('Scrapy scheduler initialized', {
+        enabledSpiders: scrapyScheduler.getStatus().config.enabledSpiders
+      });
+    } catch (scrapyError) {
+      logger.warn('Failed to start Scrapy scheduler', { error: scrapyError });
+    }
+
+    // Start Economic Data scheduler for FX, BOG, WDI, construction costs
+    try {
+      economicDataScheduler.start();
+      logger.info('Economic data scheduler initialized', {
+        jobs: Object.keys(economicDataScheduler.getStatus())
+      });
+    } catch (economicError) {
+      logger.warn('Failed to start Economic data scheduler', { error: economicError });
     }
 
     // Start autopilot scheduler (non-blocking)

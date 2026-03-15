@@ -1,6 +1,8 @@
 // Marketplace Controller - Handles marketplace API requests
+// Uses OpenSearch as primary search engine with PostgreSQL fallback
 import { Request, Response } from 'express';
 import { marketplaceService } from '../../../shared-services/marketplace/marketplaceService';
+import { opensearchMarketplaceService } from '../../../shared-services/marketplace/opensearchMarketplaceService';
 import { geocodingService } from '../../../shared-services/marketplace/geocodingService';
 import { applicationService } from '../../services/property-management/applications/applicationService';
 import db from '../../database';
@@ -10,19 +12,36 @@ export class MarketplaceController {
   /**
    * Search properties - Main marketplace search endpoint
    * POST /api/v1/marketplace/search
+   *
+   * Uses OpenSearch as primary search engine for better full-text search,
+   * geospatial queries, and aggregations. Falls back to PostgreSQL on error.
    */
   async searchProperties(req: Request, res: Response) {
     try {
       const filters = req.body;
-      
-      const result = await marketplaceService.searchProperties(filters);
-      
+      let result: { total: number; properties: any[]; aggregations?: any };
+      let searchEngine = 'opensearch';
+
+      try {
+        // Primary: OpenSearch
+        result = await opensearchMarketplaceService.search(filters);
+      } catch (osError: any) {
+        // Fallback: PostgreSQL
+        logger.warn('OpenSearch search failed, falling back to PostgreSQL:', {
+          error: osError.message
+        });
+        searchEngine = 'postgresql';
+        result = await marketplaceService.searchProperties(filters);
+      }
+
       return res.json({
         total: result.total,
         properties: result.properties,
+        aggregations: result.aggregations || null,
         search_metadata: {
           from: filters.from || 0,
-          size: filters.size || 20
+          size: filters.size || 20,
+          engine: searchEngine
         }
       });
     } catch (error: any) {
@@ -40,19 +59,35 @@ export class MarketplaceController {
   /**
    * Get property by permanent token
    * GET /api/v1/marketplace/properties/:token
+   *
+   * Tries OpenSearch first, falls back to PostgreSQL.
    */
   async getPropertyByToken(req: Request, res: Response) {
     try {
       const { token } = req.params;
-      
-      const property = await marketplaceService.getPropertyByToken(token);
-      
+      let property;
+
+      try {
+        // Primary: OpenSearch
+        property = await opensearchMarketplaceService.getPropertyByToken(token);
+      } catch (osError: any) {
+        logger.warn('OpenSearch getPropertyByToken failed, falling back to PostgreSQL:', {
+          error: osError.message
+        });
+        property = null;
+      }
+
+      // Fallback: PostgreSQL (also used if OpenSearch returns null)
+      if (!property) {
+        property = await marketplaceService.getPropertyByToken(token);
+      }
+
       if (!property) {
         return res.status(404).json({
           error: 'Property not found'
         });
       }
-      
+
       // Track view event
       const session_id = req.headers['x-session-id'] as string || 'anonymous';
       await marketplaceService.trackEvent({
@@ -63,7 +98,7 @@ export class MarketplaceController {
         ip_address: req.ip,
         user_agent: req.headers['user-agent']
       });
-      
+
       return res.json(property);
     } catch (error: any) {
       logger.error('Get property by token error:', {
@@ -72,6 +107,78 @@ export class MarketplaceController {
       });
       return res.status(500).json({
         error: 'Failed to fetch property',
+        message: error.message
+      });
+    }
+  }
+
+  /**
+   * Get similar properties
+   * GET /api/v1/marketplace/properties/:token/similar
+   *
+   * Returns properties similar to the given one based on type, price range,
+   * location, and bedrooms. Uses OpenSearch with PostgreSQL fallback.
+   */
+  async getSimilarProperties(req: Request, res: Response) {
+    try {
+      const { token } = req.params;
+      const limit = parseInt(req.query.limit as string) || 6;
+
+      // First get the reference property
+      let property;
+      try {
+        property = await opensearchMarketplaceService.getPropertyByToken(token);
+      } catch {
+        property = await marketplaceService.getPropertyByToken(token);
+      }
+
+      if (!property) {
+        return res.status(404).json({ error: 'Property not found' });
+      }
+
+      // Search for similar properties
+      const priceVariance = property.price * 0.3; // ±30% price range
+      const similarFilters = {
+        transaction_type: property.transaction_type as 'rental' | 'sale',
+        property_types: [property.property_type],
+        min_price: Math.max(0, property.price - priceVariance),
+        max_price: property.price + priceVariance,
+        bedrooms: property.bedrooms > 0 ? Math.max(1, property.bedrooms - 1) : undefined,
+        region: property.region || undefined,
+        geo_radius: property.location ? {
+          latitude: property.location.lat,
+          longitude: property.location.lon,
+          radius_km: 15
+        } : undefined,
+        sort_by: property.location ? 'distance' as const : 'created_at' as const,
+        sort_order: property.location ? 'asc' as const : 'desc' as const,
+        from: 0,
+        size: limit + 1 // Fetch one extra to filter out the current property
+      };
+
+      let result;
+      try {
+        result = await opensearchMarketplaceService.search(similarFilters);
+      } catch {
+        result = await marketplaceService.searchProperties(similarFilters);
+      }
+
+      // Filter out the current property and limit
+      const similar = result.properties
+        .filter(p => p.permanent_link_token !== token)
+        .slice(0, limit);
+
+      return res.json({
+        total: similar.length,
+        properties: similar
+      });
+    } catch (error: any) {
+      logger.error('Get similar properties error:', {
+        error: error.message,
+        token: req.params.token
+      });
+      return res.status(500).json({
+        error: 'Failed to fetch similar properties',
         message: error.message
       });
     }
@@ -336,7 +443,7 @@ export class MarketplaceController {
       return res.json({
         success: true,
         application_token: applicationToken,
-        tenant_portal_url: `${process.env.TENANT_PORTAL_URL || 'http://localhost:3001'}/apply/${applicationToken}`
+        tenant_portal_url: `${process.env.TENANT_PORTAL_URL || 'http://localhost:3000/tenant'}/apply/${applicationToken}`
       });
     } catch (error: any) {
       logger.error('Get application link error:', {
