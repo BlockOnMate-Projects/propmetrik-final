@@ -40,7 +40,8 @@
   "author": "PROPMETRIK",
   "license": "UNLICENSED",
   "dependencies": {
-    "pdfjs-dist": "^3.11.174"
+    "pdfjs-dist": "^3.11.174",
+    "viem": "^2.47.2"
   },
   "overrides": {
     "xmldom": "npm:@xmldom/xmldom@^0.8.10"
