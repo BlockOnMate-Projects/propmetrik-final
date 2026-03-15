@@ -142,7 +142,7 @@ interface IntegrationConfig {
   };
 }
 
-const config: IntegrationConfig = {
+const integrationConfig: IntegrationConfig = {
   mtn: {
     apiUrl: process.env.MTN_MOMO_API_URL || 'https://sandbox.momodeveloper.mtn.com',
     subscriptionKey: process.env.MTN_MOMO_SUBSCRIPTION_KEY || '',
@@ -169,7 +169,7 @@ const config: IntegrationConfig = {
     apiUrl: process.env.SSNIT_API_URL || 'https://api.ssnit.gov.gh',
     apiKey: process.env.SSNIT_API_KEY || '',
   },
-  paystack: config.paystack.enabled ? {
+  paystack: config.paystack?.enabled ? {
     secretKey: config.paystack.secretKey,
     publicKey: config.paystack.publicKey,
   } : undefined,
@@ -204,20 +204,20 @@ const GHANA_BANKS: GhanaBank[] = [
 
 function createMTNClient(): AxiosInstance {
   return axios.create({
-    baseURL: config.mtn.apiUrl,
+    baseURL: integrationConfig.mtn.apiUrl,
     headers: {
-      'Ocp-Apim-Subscription-Key': config.mtn.subscriptionKey,
-      'X-Target-Environment': config.mtn.environment,
+      'Ocp-Apim-Subscription-Key': integrationConfig.mtn.subscriptionKey,
+      'X-Target-Environment': integrationConfig.mtn.environment,
     },
   });
 }
 
 function createPaystackClient(): AxiosInstance | null {
-  if (!config.paystack) return null;
+  if (!integrationConfig.paystack) return null;
   return axios.create({
     baseURL: 'https://api.paystack.co',
     headers: {
-      Authorization: `Bearer ${config.paystack.secretKey}`,
+      Authorization: `Bearer ${integrationConfig.paystack.secretKey}`,
     },
   });
 }
@@ -298,8 +298,8 @@ class MobileMoneyService {
       // Get access token
       const tokenResponse = await this.mtnClient.post('/collection/token/', {}, {
         auth: {
-          username: config.mtn.apiUser,
-          password: config.mtn.apiKey,
+          username: integrationConfig.mtn.apiUser,
+          password: integrationConfig.mtn.apiKey,
         },
       });
 
