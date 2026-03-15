@@ -14,6 +14,7 @@ import axios, { AxiosInstance } from 'axios';
 import crypto from 'crypto';
 import { logger } from '../../../utils/logger';
 import { pool } from '../../../database';
+import { config } from '../../../config';
 
 export interface PaystackInitializeParams {
     email: string;
@@ -113,18 +114,19 @@ export class PaystackService {
     private isTestMode: boolean;
 
     constructor() {
-        this.secretKey = process.env.PAYSTACK_SECRET_KEY || '';
-        this.publicKey = process.env.PAYSTACK_PUBLIC_KEY || '';
-        this.isTestMode = this.secretKey.startsWith('sk_test_');
+        // Uses FINANCE_MODE to select test/live keys (independent of NODE_ENV)
+        this.secretKey = config.paystack.secretKey;
+        this.publicKey = config.paystack.publicKey;
+        this.isTestMode = config.paystack.isTestMode;
 
         if (!this.secretKey) {
-            logger.warn('PAYSTACK_SECRET_KEY is not set. Payment operations will fail.');
+            logger.warn('Paystack keys not configured. Payment operations will fail. Check FINANCE_MODE and PAYSTACK_TEST/LIVE keys.');
         }
 
-        logger.info(`PaystackService initialized in ${this.isTestMode ? 'TEST' : 'LIVE'} mode`);
+        logger.info(`PaystackService initialized in ${this.isTestMode ? 'TEST' : 'LIVE'} mode (FINANCE_MODE=${config.app.financeMode})`);
 
         this.client = axios.create({
-            baseURL: 'https://api.paystack.co',
+            baseURL: config.paystack.apiBaseUrl,
             headers: {
                 Authorization: `Bearer ${this.secretKey}`,
                 'Content-Type': 'application/json'

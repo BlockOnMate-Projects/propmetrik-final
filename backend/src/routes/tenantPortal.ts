@@ -22,6 +22,7 @@ import { WorkOrderService } from '../services/property-management/maintenance/wo
 import { notificationService } from '../../shared-services/notifications/unified';
 import { uploadFile } from '../database/minio';
 import { logger } from '../utils/logger';
+import { config } from '../config';
 import db from '../database';
 
 const router = Router();
@@ -92,7 +93,7 @@ function asyncHandler(fn: (req: Request, res: Response, next: NextFunction) => P
  * Returns authorization URL for tenant Keycloak login
  */
 router.get('/auth/keycloak/config', asyncHandler(async (req: Request, res: Response) => {
-    const redirectUri = (req.query.redirectUri as string) || `${process.env.TENANT_PORTAL_URL || 'http://localhost:3000/tenant'}/login`;
+    const redirectUri = (req.query.redirectUri as string) || `${config.app.tenantPortalUrl}/login`;
     const loginHint = req.query.loginHint as string | undefined;
     const codeChallenge = req.query.codeChallenge as string | undefined;
     const codeChallengeMethod = (req.query.codeChallengeMethod as 'S256' | 'plain' | undefined) || 'S256';
@@ -208,7 +209,7 @@ router.post('/auth/keycloak/password-login', asyncHandler(async (req: Request, r
  * Returns Keycloak reset password URL for invited tenants
  */
 router.get('/auth/keycloak/reset-password-url', asyncHandler(async (req: Request, res: Response) => {
-    const redirectUri = (req.query.redirectUri as string) || `${process.env.TENANT_PORTAL_URL || 'http://localhost:3000/tenant'}/login`;
+    const redirectUri = (req.query.redirectUri as string) || `${config.app.tenantPortalUrl}/login`;
     const loginHint = req.query.loginHint as string | undefined;
 
     const url = keycloakTenantOnboardingService.getResetPasswordUrl(redirectUri, loginHint);
@@ -231,7 +232,7 @@ router.post('/auth/magic-link', asyncHandler(async (req: Request, res: Response)
     }
 
     // Get base URL for magic link
-    const baseUrl = process.env.TENANT_PORTAL_URL || 'http://localhost:3001';
+    const baseUrl = config.app.tenantPortalUrl;
 
     const result = await tenantAuthService.generateMagicLink(identifier, baseUrl);
 
@@ -796,7 +797,7 @@ router.post('/payments/initiate', requireTenantAuth, asyncHandler(async (req: Re
     }
 
     const organizationId = tenancyResult.rows[0].organization_id;
-    const callbackUrl = `${process.env.TENANT_PORTAL_URL || 'http://localhost:3000/tenant'}/payments/callback`;
+    const callbackUrl = `${config.app.tenantPortalUrl}/payments/callback`;
 
     try {
         const result = await paymentProcessor.initializeRentPayment({
@@ -1510,8 +1511,8 @@ router.post('/change-password', requireTenantAuth, asyncHandler(async (req: Requ
         }
 
         const axios = require('axios');
-        const keycloakUrl = process.env.KEYCLOAK_AUTH_SERVER_URL || 'http://localhost:8080';
-        const realm = process.env.KEYCLOAK_TENANT_REALM || process.env.KEYCLOAK_REALM || 'propmetrik';
+        const keycloakUrl = config.keycloak.url;
+        const realm = config.keycloak.realm;
         
         await axios.put(
             `${keycloakUrl}/admin/realms/${realm}/users/${keycloakUser.id}/reset-password`,

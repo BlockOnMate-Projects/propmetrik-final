@@ -15,6 +15,7 @@
 import { v4 as uuidv4 } from 'uuid';
 import { pool } from '../../database';
 import { logger } from '../../utils/logger';
+import { config } from '../../config';
 import { feeEngine } from '../../../shared-services/payments/feeEngine';
 import { notificationService } from '../../../shared-services/notifications/unified';
 
@@ -489,7 +490,7 @@ class ValuationInvoiceService {
                     });
                 } else {
                     // No subaccount — all funds go to main Paystack account
-                    const paystackKey = process.env.PAYSTACK_SECRET_KEY;
+                    const paystackKey = config.paystack.secretKey;
                     if (paystackKey) {
                         const axios = (await import('axios')).default;
                         const response = await axios.post(
@@ -501,7 +502,7 @@ class ValuationInvoiceService {
                                 currency: 'GHS',
                                 channels: ['mobile_money', 'card', 'bank_transfer', 'bank', 'ussd', 'qr'],
                                 send_notification: false,
-                                callback_url: `${process.env.FRONTEND_URL || 'https://app.propmetrik.com'}/payment/invoice?id=${invoice.id}&status=success`,
+                                callback_url: `${config.app.frontendUrl}/payment/invoice?id=${invoice.id}&status=success`,
                                 metadata: {
                                     invoiceId: invoice.id,
                                     invoiceNumber: invoice.invoiceNumber,

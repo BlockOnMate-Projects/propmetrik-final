@@ -7,6 +7,7 @@ import { geocodingService } from '../../../shared-services/marketplace/geocoding
 import { applicationService } from '../../services/property-management/applications/applicationService';
 import db from '../../database';
 import { logger } from '../../utils/logger';
+import { config } from '../../config';
 
 export class MarketplaceController {
   /**
@@ -443,7 +444,7 @@ export class MarketplaceController {
       return res.json({
         success: true,
         application_token: applicationToken,
-        tenant_portal_url: `${process.env.TENANT_PORTAL_URL || 'http://localhost:3000/tenant'}/apply/${applicationToken}`
+        tenant_portal_url: `${config.app.tenantPortalUrl}/apply/${applicationToken}`
       });
     } catch (error: any) {
       logger.error('Get application link error:', {

@@ -8,10 +8,10 @@ const nextConfig = {
         protocol: 'https',
         hostname: 's3.cedynhq.com',
       },
-      {
+      ...(process.env.NODE_ENV === 'development' ? [{
         protocol: 'http',
         hostname: 'localhost',
-      },
+      }] : []),
     ],
   },
   eslint: {
@@ -26,7 +26,7 @@ const nextConfig = {
       },
       {
         source: '/api/:path*',
-        destination: 'http://localhost:4000/api/v1/:path*',
+        destination: `${process.env.INTERNAL_API_URL || 'http://localhost:4000'}/api/v1/:path*`,
       },
     ];
   },

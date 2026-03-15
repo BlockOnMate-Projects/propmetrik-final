@@ -250,7 +250,7 @@ export class AutopilotPipeline {
     region: string | null,
   ): Promise<Record<string, unknown>> {
     const payload: Record<string, unknown> = {};
-    const baseUrl = `http://localhost:${config.port || 4000}`;
+    const baseUrl = config.app?.url || process.env.APP_URL || `http://localhost:${config.port || 4000}`;
 
     for (const endpoint of endpoints) {
       if (endpoint === '*') continue;
@@ -296,7 +296,7 @@ export class AutopilotPipeline {
    * Fetch macroeconomic context from Data Hub endpoints.
    */
   private async fetchMacroContext(): Promise<Record<string, unknown>> {
-    const baseUrl = `http://localhost:${config.port || 4000}`;
+    const baseUrl = config.app?.url || process.env.APP_URL || `http://localhost:${config.port || 4000}`;
     const macroEndpoints = [
       '/api/v1/data-hub/economic/latest',
       '/api/v1/data-hub/fx/latest',

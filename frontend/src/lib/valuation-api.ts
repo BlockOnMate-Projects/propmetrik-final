@@ -3368,7 +3368,8 @@ export const healthApi = {
   async checkPythonService(): Promise<{ status: string; service: string; timestamp: string }> {
     try {
       // Use the root health endpoint, not /api/v1/health
-      return await fetch('http://localhost:8001/health').then(res => res.json());
+      const baseUrl = (process.env.NEXT_PUBLIC_PYTHON_API_URL || 'http://localhost:8001').replace(/\/api\/v1$/, '');
+      return await fetch(`${baseUrl}/health`).then(res => res.json());
     } catch (error) {
       return {
         status: 'unhealthy',

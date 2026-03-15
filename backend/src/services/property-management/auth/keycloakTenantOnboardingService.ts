@@ -31,7 +31,7 @@ const keycloakUrl = (config.keycloak.url || '').replace(/\/$/, '');
 const keycloakRealm = config.keycloak.realm || '';
 const tenantClientId = process.env.KEYCLOAK_TENANT_CLIENT_ID || 'propmetrik-tenant-portal';
 const tenantClientSecret = process.env.KEYCLOAK_TENANT_CLIENT_SECRET || '';
-const tenantPortalUrl = (process.env.TENANT_PORTAL_URL || 'http://localhost:3000/tenant').replace(/\/$/, '');
+const tenantPortalUrl = config.app.tenantPortalUrl.replace(/\/$/, '');
 const defaultRedirectUri = `${tenantPortalUrl}/login`;
 
 const jwks = createRemoteJWKSet(

@@ -12,6 +12,7 @@
 import { pool as db } from '../../database';
 import { redisCache as redis } from '../../database/redis';
 import { logger } from '../../utils/logger';
+import { config } from '../../config';
 import axios, { AxiosInstance } from 'axios';
 
 // =====================================================
@@ -168,9 +169,9 @@ const config: IntegrationConfig = {
     apiUrl: process.env.SSNIT_API_URL || 'https://api.ssnit.gov.gh',
     apiKey: process.env.SSNIT_API_KEY || '',
   },
-  paystack: process.env.PAYSTACK_SECRET_KEY ? {
-    secretKey: process.env.PAYSTACK_SECRET_KEY,
-    publicKey: process.env.PAYSTACK_PUBLIC_KEY || '',
+  paystack: config.paystack.enabled ? {
+    secretKey: config.paystack.secretKey,
+    publicKey: config.paystack.publicKey,
   } : undefined,
 };
 
