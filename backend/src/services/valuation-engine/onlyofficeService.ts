@@ -17,7 +17,14 @@ import { getPresignedDownloadUrl, uploadFile } from '../../database/minio';
 // CONFIGURATION
 // =====================================================
 
-const ONLYOFFICE_URL = process.env.ONLYOFFICE_URL || 'http://localhost:8080';
+const ONLYOFFICE_INTERNAL_URL =
+  process.env.ONLYOFFICE_INTERNAL_URL ||
+  process.env.ONLYOFFICE_URL ||
+  'http://localhost:8080';
+const ONLYOFFICE_PUBLIC_URL =
+  process.env.ONLYOFFICE_PUBLIC_URL ||
+  process.env.ONLYOFFICE_URL ||
+  ONLYOFFICE_INTERNAL_URL;
 const ONLYOFFICE_JWT_SECRET = process.env.ONLYOFFICE_JWT_SECRET || 'propmetrik_onlyoffice_secret';
 const ONLYOFFICE_JWT_ENABLED = process.env.ONLYOFFICE_JWT_ENABLED !== 'false'; // Default to true
 const BACKEND_URL = process.env.BACKEND_URL || 'http://localhost:4000';
@@ -415,7 +422,7 @@ class OnlyOfficeService {
    * Get OnlyOffice server URL for frontend
    */
   getServerUrl(): string {
-    return ONLYOFFICE_URL;
+    return ONLYOFFICE_PUBLIC_URL;
   }
 
   /**
@@ -423,7 +430,7 @@ class OnlyOfficeService {
    */
   async isAvailable(): Promise<boolean> {
     try {
-      const response = await fetch(`${ONLYOFFICE_URL}/healthcheck`, {
+      const response = await fetch(`${ONLYOFFICE_INTERNAL_URL}/healthcheck`, {
         method: 'GET',
         signal: AbortSignal.timeout(5000),
       });
