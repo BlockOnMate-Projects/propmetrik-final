@@ -78,8 +78,8 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=5 \
 # Use dumb-init as entrypoint
 ENTRYPOINT ["dumb-init", "--"]
 
-# Start the application
-CMD ["node", "dist/index.js"]
+# Start the application (rootDir is "." so tsc outputs to dist/src/)
+CMD ["node", "dist/src/index.js"]
 
 # ============================================
 # Stage: Development
