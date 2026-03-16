@@ -30,6 +30,11 @@ const nextConfig = {
         destination: `${process.env.PYTHON_API_URL || 'http://localhost:8001'}/api/v1/:path*`,
       },
       {
+        // Public endpoints (not under /api/v1)
+        source: '/api/public/:path*',
+        destination: `${process.env.INTERNAL_API_URL || 'http://localhost:4000'}/api/public/:path*`,
+      },
+      {
         source: '/api/:path*',
         destination: `${process.env.INTERNAL_API_URL || 'http://localhost:4000'}/api/v1/:path*`,
       },

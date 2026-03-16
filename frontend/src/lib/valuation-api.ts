@@ -1660,7 +1660,7 @@ export const propertiesApi = {
   async create(propertyData: any): Promise<{ data: any; error?: string }> {
     try {
       // Create property via TypeScript backend's public properties endpoint
-      const response = await fetch(`${TYPESCRIPT_API}/api/public/properties`, {
+      const response = await fetch(`${TS_API_BASE}/public/properties`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -1693,7 +1693,7 @@ export const propertiesApi = {
    * Get property by ID
    */
   async getById(id: string): Promise<ApiResponse<PropertyData>> {
-    const response = await fetch(`${TYPESCRIPT_API}/api/public/properties/${id}/enriched`);
+    const response = await fetch(`${TS_API_BASE}/public/properties/${id}/enriched`);
     return response.json();
   },
 
@@ -1719,7 +1719,7 @@ export const propertiesApi = {
     if (params?.limit) searchParams.set('limit', params.limit.toString());
 
     const queryString = searchParams.toString();
-    const response = await fetch(`${TYPESCRIPT_API}/api/public/properties${queryString ? `?${queryString}` : ''}`);
+    const response = await fetch(`${TS_API_BASE}/public/properties${queryString ? `?${queryString}` : ''}`);
     return response.json();
   },
 
@@ -1729,7 +1729,7 @@ export const propertiesApi = {
   async update(id: string, propertyData: any): Promise<{ data: any; error?: string }> {
     try {
       // Update property via TypeScript backend's public properties endpoint
-      const response = await fetch(`${TYPESCRIPT_API}/api/public/properties/${id}`, {
+      const response = await fetch(`${TS_API_BASE}/public/properties/${id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(propertyData),
