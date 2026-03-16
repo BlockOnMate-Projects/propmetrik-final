@@ -988,11 +988,11 @@ router.put('/:id/content', validateUUID('id'), async (req: Request, res: Respons
       });
     }
 
-    // Block editing only for expired reports
-    if (report.status === 'expired') {
+    // Block editing superseded reports
+    if (report.status === 'superseded') {
       return res.status(400).json({
         error: 'Bad Request',
-        message: 'Cannot edit expired reports',
+        message: 'Cannot edit superseded reports',
       });
     }
 
