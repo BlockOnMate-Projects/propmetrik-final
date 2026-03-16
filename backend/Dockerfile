@@ -61,6 +61,12 @@ COPY --from=builder --chown=propmetrik:nodejs /app/package.json ./
 # Copy migration files (needed at runtime)
 COPY --from=builder --chown=propmetrik:nodejs /app/database/migrations ./database/migrations
 
+# Copy report templates (JSON loaded via fs.readFileSync, not compiled by tsc)
+COPY --from=builder --chown=propmetrik:nodejs /app/src/services/valuation-engine/report-templates ./dist/src/services/valuation-engine/report-templates
+
+# Copy DOCX templates (used by docGenerationService — __dirname/../../../templates)
+COPY --from=builder --chown=propmetrik:nodejs /app/templates ./dist/templates
+
 # Set environment variables
 ENV NODE_ENV=production
 ENV PORT=3000
