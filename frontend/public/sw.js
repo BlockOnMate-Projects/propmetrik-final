@@ -17,28 +17,13 @@ const DYNAMIC_CACHE = 'propmetrik-dynamic-v2';
 const API_CACHE = 'propmetrik-api-v2';
 
 // Static assets to cache on install
+// NOTE: Do NOT cache auth-protected routes (e.g. /dashboard/*) here.
+// They return redirects when unauthenticated, and cached redirects cause
+// ERR_FAILED ("redirect mode is not follow") on subsequent navigation.
 const STATIC_ASSETS = [
   '/',
-  '/dashboard',
-  '/dashboard/valuations',
-  '/dashboard/deals',
-  '/dashboard/calendar',
-  '/dashboard/analytics',
   '/offline',
   '/manifest.json',
-  // PM module routes
-  '/dashboard/projects',
-  '/dashboard/projects/issues',
-  '/dashboard/projects/transmittals',
-  '/dashboard/projects/drawings',
-  '/dashboard/projects/timesheets',
-  '/dashboard/projects/bids',
-  '/dashboard/projects/team',
-  '/dashboard/projects/safety',
-  '/dashboard/projects/punch-lists',
-  '/dashboard/projects/meetings',
-  '/dashboard/projects/change-orders',
-  '/dashboard/e-sign',
 ];
 
 // API routes to cache (with network-first strategy)
@@ -129,7 +114,13 @@ selfSW.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Static assets and pages - Cache first, then network
+  // Navigation requests (page loads) - Network first to avoid cached redirects
+  if (request.mode === 'navigate') {
+    event.respondWith(networkFirstStrategy(request));
+    return;
+  }
+
+  // Static assets (JS, CSS, images) - Cache first, then network
   event.respondWith(cacheFirstStrategy(request));
 });
 
