@@ -344,13 +344,13 @@ export default function ReportPage() {
           </button>
 
           {/* Approve & Sign */}
-          {report.status === 'draft' && (
+          {(report.status === 'draft' || report.status === 'approved' || report.status === 'pending_review') && (
             <button
               onClick={handleOpenApproval}
               className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white font-mono text-xs font-bold hover:bg-green-500 transition-colors"
             >
               <PenTool className="w-3 h-3" />
-              Approve & Sign
+              {report.status === 'approved' ? 'Sign Report' : 'Approve & Sign'}
             </button>
           )}
         </div>

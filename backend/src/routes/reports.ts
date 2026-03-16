@@ -988,13 +988,16 @@ router.put('/:id/content', validateUUID('id'), async (req: Request, res: Respons
       });
     }
 
-    // Only allow editing draft reports
-    if (report.status !== 'draft' && report.status !== 'pending_review') {
+    // Block editing only for expired reports
+    if (report.status === 'expired') {
       return res.status(400).json({
         error: 'Bad Request',
-        message: 'Cannot edit approved or expired reports',
+        message: 'Cannot edit expired reports',
       });
     }
+
+    // If editing an approved report, revert to draft since content has changed
+    const shouldRevertToDraft = report.status === 'approved';
 
     // Update content with sections directly using SQL
     const existingContent = (report.content as any) || {};
@@ -1007,7 +1010,7 @@ router.put('/:id/content', validateUUID('id'), async (req: Request, res: Respons
     // Direct update to preserve array structure
     await pool.query(
       `UPDATE valuation_reports 
-       SET content = $1, updated_at = NOW()
+       SET content = $1, updated_at = NOW()${shouldRevertToDraft ? ", status = 'draft'" : ''}
        WHERE id = $2`,
       [JSON.stringify(updatedContent), req.params.id]
     );
