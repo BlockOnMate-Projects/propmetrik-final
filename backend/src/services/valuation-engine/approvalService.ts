@@ -247,9 +247,9 @@ export class ApprovalService {
 
     const report = reportResult.rows[0];
 
-    // Check report status
-    if (report.status !== 'draft' && report.status !== 'pending_review') {
-      reasons.push(`Report is already ${report.status}`);
+    // Check report status — allow draft, pending_review, and approved (re-signing)
+    if (report.status === 'superseded') {
+      reasons.push(`Report is superseded and cannot be approved`);
     }
 
     // Check if DOCX has been generated
@@ -262,7 +262,7 @@ export class ApprovalService {
     }
 
     // Check valuation status
-    if (!['completed', 'approved', 'reviewed'].includes(report.valuation_status)) {
+    if (!['completed', 'approved', 'reviewed', 'pending_review'].includes(report.valuation_status)) {
       reasons.push(`Valuation must be completed first (current: ${report.valuation_status})`);
     }
 
