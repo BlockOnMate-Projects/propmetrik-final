@@ -1,5 +1,6 @@
 import NextAuth from "next-auth";
 import KeycloakProvider from "next-auth/providers/keycloak";
+import GoogleProvider from "next-auth/providers/google";
 import CredentialsProvider from "next-auth/providers/credentials";
 
 // Backend API URL for server-side calls (NextAuth runs server-side).
@@ -154,8 +155,51 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       clientSecret: process.env.KEYCLOAK_CLIENT_SECRET || "",
       issuer: `${process.env.KEYCLOAK_URL}/realms/${process.env.KEYCLOAK_REALM}`,
     }),
+    // Google OAuth (Social Sign-In / Sign-Up)
+    GoogleProvider({
+      clientId: process.env.AUTH_GOOGLE_ID!,
+      clientSecret: process.env.AUTH_GOOGLE_SECRET!,
+    }),
   ],
   callbacks: {
+    async signIn({ user, account, profile }) {
+      // For Google OAuth: create/find user in backend, store backend JWT on user
+      if (account?.provider === 'google' && profile?.email) {
+        try {
+          const res = await fetch(`${API_BASE}/api/v1/auth/google`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              email: profile.email,
+              firstName: (profile as any).given_name || user.name?.split(' ')[0] || '',
+              lastName: (profile as any).family_name || user.name?.split(' ').slice(1).join(' ') || '',
+              googleId: account.providerAccountId,
+              image: user.image,
+            }),
+          });
+          const data = await res.json();
+          if (!res.ok || !data.success) {
+            console.error('[Auth] Google backend call failed:', data.message);
+            return false;
+          }
+          // Attach backend data to the user object for the jwt callback
+          (user as any).accessToken = data.token;
+          (user as any).role = data.user.role;
+          (user as any).tier = data.user.tier;
+          (user as any).userType = data.user.userType;
+          (user as any).subscribedServices = data.user.subscribedServices || [];
+          (user as any).organizationId = data.user.organization?.id;
+          (user as any).organizationName = data.user.organization?.name;
+          (user as any).onboardingCompleted = data.user.onboardingCompleted;
+          (user as any).isNewUser = data.isNewUser;
+          user.id = data.user.id;
+        } catch (err) {
+          console.error('[Auth] Google backend error:', err);
+          return false;
+        }
+      }
+      return true;
+    },
     async jwt({ token, account, profile, user }) {
       // Only log when there's actual new data (not on every session check)
       if (user || account) {
@@ -164,7 +208,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       
       // Handle credentials login — store backend JWT + compute expiry
       if (user && 'accessToken' in user) {
-        console.log('[Auth JWT] Setting credentials token data');
+        console.log('[Auth JWT] Setting credentials/google token data');
         token.accessToken = user.accessToken as string;
         token.role = user.role as string;
         token.tier = user.tier as string;
@@ -175,6 +219,8 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         token.roles = [user.role as string];
         token.name = user.name as string;
         token.email = user.email as string;
+        token.onboardingCompleted = (user as any).onboardingCompleted as boolean;
+        token.isNewUser = (user as any).isNewUser as boolean;
 
         // Extract exp from backend JWT so we know when to refresh
         const payload = decodeJwtPayload(token.accessToken as string);
@@ -268,6 +314,8 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       session.user.organizationName = token.organizationName as string | undefined;
       session.user.name = token.name as string | undefined;
       session.user.email = (token.email as string | undefined) ?? '';
+      session.user.onboardingCompleted = token.onboardingCompleted as boolean | undefined;
+      session.user.isNewUser = token.isNewUser as boolean | undefined;
 
       // Surface refresh errors so the client can redirect to login
       if (token.error) {
@@ -308,6 +356,8 @@ declare module "next-auth" {
       subscribedServices?: string[];
       organizationId?: string;
       organizationName?: string;
+      onboardingCompleted?: boolean;
+      isNewUser?: boolean;
     };
   }
   
@@ -324,6 +374,8 @@ declare module "next-auth" {
     subscribedServices?: string[];
     organizationId?: string;
     organizationName?: string;
+    onboardingCompleted?: boolean;
+    isNewUser?: boolean;
     error?: string;
   }
 
@@ -335,5 +387,7 @@ declare module "next-auth" {
     subscribedServices?: string[];
     organizationId?: string;
     organizationName?: string;
+    onboardingCompleted?: boolean;
+    isNewUser?: boolean;
   }
 }

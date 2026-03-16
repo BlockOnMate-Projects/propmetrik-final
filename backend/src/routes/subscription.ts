@@ -135,6 +135,17 @@ router.post('/subscription', authenticate, async (req: Request, res: Response) =
       actor_id: userId,
     });
 
+    // Mark onboarding as completed now that user has selected a plan
+    try {
+      const { pool: dbPool } = await import('../database');
+      await dbPool.query(
+        'UPDATE users SET onboarding_completed = true WHERE id = $1',
+        [userId]
+      );
+    } catch (e) {
+      logger.warn('Failed to mark onboarding_completed', e);
+    }
+
     res.status(201).json(subscription);
   } catch (err: any) {
     logger.error('Failed to create subscription', err);
