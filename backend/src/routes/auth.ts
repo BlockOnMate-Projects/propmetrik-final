@@ -381,6 +381,158 @@ router.post('/login', async (req: Request, res: Response) => {
 // ============================================================================
 
 /**
+ * POST /api/v1/auth/google
+ * Handle Google OAuth sign-in/sign-up (called from NextAuth signIn callback).
+ * Creates user if not exists, returns JWT + user for session.
+ */
+router.post('/google', async (req: Request, res: Response) => {
+  const client = await pool.connect();
+  try {
+    const { email, firstName, lastName, googleId, image } = req.body;
+
+    if (!email || !googleId) {
+      return res.status(400).json({
+        success: false,
+        message: 'Email and Google ID are required',
+      });
+    }
+
+    const normalizedEmail = email.toLowerCase().trim();
+
+    // Check if user already exists
+    const existing = await client.query(
+      `SELECT 
+        u.id, u.email, u.first_name, u.last_name, u.role,
+        u.organization_id, COALESCE(o.subscription_tier, u.subscription_tier, 'starter') AS subscription_tier,
+        u.is_active, u.email_verified, u.user_type, u.google_id,
+        u.onboarding_completed
+      FROM users u
+      LEFT JOIN organizations o ON o.id = u.organization_id
+      WHERE u.email = $1`,
+      [normalizedEmail]
+    );
+
+    let user = existing.rows[0];
+    let isNewUser = false;
+
+    if (user) {
+      // Existing user — update Google ID if not set, update last login
+      if (!user.is_active) {
+        return res.status(401).json({
+          success: false,
+          message: 'Account is disabled. Please contact support.',
+        });
+      }
+
+      if (!user.google_id) {
+        await client.query(
+          'UPDATE users SET google_id = $1, email_verified = true, updated_at = NOW() WHERE id = $2',
+          [googleId, user.id]
+        );
+      }
+
+      await client.query(
+        'UPDATE users SET last_login_at = NOW() WHERE id = $1',
+        [user.id]
+      );
+    } else {
+      // New user — create account
+      isNewUser = true;
+      const userId = uuidv4();
+
+      await client.query('BEGIN');
+      await client.query(
+        `INSERT INTO users (
+          id, email, first_name, last_name, role,
+          subscription_tier, is_active, email_verified,
+          google_id, onboarding_completed,
+          created_at, updated_at, last_login_at
+        ) VALUES ($1, $2, $3, $4, 'viewer', 'starter', true, true, $5, false, NOW(), NOW(), NOW())`,
+        [userId, normalizedEmail, (firstName || '').trim(), (lastName || '').trim(), googleId]
+      );
+      await client.query('COMMIT');
+
+      // Re-fetch to get canonical fields
+      const refetch = await client.query(
+        `SELECT 
+          u.id, u.email, u.first_name, u.last_name, u.role,
+          u.organization_id, COALESCE(o.subscription_tier, u.subscription_tier, 'starter') AS subscription_tier,
+          u.is_active, u.email_verified, u.user_type, u.google_id,
+          u.onboarding_completed
+        FROM users u
+        LEFT JOIN organizations o ON o.id = u.organization_id
+        WHERE u.id = $1`,
+        [userId]
+      );
+      user = refetch.rows[0];
+
+      logger.info('Google OAuth user registered', {
+        userId,
+        email: normalizedEmail,
+        isNewUser: true,
+      });
+    }
+
+    // Get organization info
+    let organization = null;
+    if (user.organization_id) {
+      const orgResult = await client.query(
+        'SELECT id, name, type, slug FROM organizations WHERE id = $1',
+        [user.organization_id]
+      );
+      organization = orgResult.rows[0] || null;
+    }
+
+    // Fetch subscribed services
+    const subscribedServices = await getUserSubscribedServices(user.id, user.user_type);
+
+    // Generate JWT
+    const token = jwt.sign(
+      {
+        userId: user.id,
+        email: user.email,
+        name: `${user.first_name || ''} ${user.last_name || ''}`.trim(),
+        role: user.role,
+        organizationId: user.organization_id,
+        tier: user.subscription_tier,
+        userType: user.user_type || 'customer',
+        subscribedServices,
+      },
+      JWT_SECRET,
+      { expiresIn: jwtExpiresIn }
+    );
+
+    res.json({
+      success: true,
+      isNewUser,
+      token,
+      user: {
+        id: user.id,
+        email: user.email,
+        firstName: user.first_name,
+        lastName: user.last_name,
+        role: user.role,
+        tier: user.subscription_tier,
+        userType: user.user_type || 'customer',
+        subscribedServices,
+        emailVerified: true,
+        onboardingCompleted: user.onboarding_completed ?? !isNewUser,
+        organization,
+      },
+    });
+  } catch (error: any) {
+    await client.query('ROLLBACK').catch(() => {});
+    logger.error('Google OAuth error', { error: error?.message });
+    res.status(500).json({
+      success: false,
+      message: 'Google authentication failed. Please try again.',
+    });
+  } finally {
+    client.release();
+  }
+});
+
+/**
  * POST /api/v1/auth/logout
  * Invalidate user session
  */

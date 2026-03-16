@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
 // Routes that require authentication (redirect to /login if no session)
-const PROTECTED_PREFIXES = ['/dashboard'];
+const PROTECTED_PREFIXES = ['/dashboard', '/onboarding'];
 // Routes that should redirect to /dashboard if already authenticated
 const AUTH_PAGES = ['/login', '/tenant-login'];
 
@@ -54,6 +54,7 @@ export function middleware(request: NextRequest) {
   }
 
   // Already logged in: redirect auth pages to appropriate dashboard
+  // (but don't redirect /onboarding — that's a valid post-auth page)
   const isAuthPage = AUTH_PAGES.some(page => pathname === page);
   if (isAuthPage && hasSessionCookie(request)) {
     // /tenant-login → /dashboard/tenant, /login → /dashboard

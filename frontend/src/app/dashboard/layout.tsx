@@ -30,6 +30,13 @@ export default function DashboardLayout({
     }
   }, [session?.accessToken])
 
+  // Redirect users who haven't completed onboarding (e.g. new Google OAuth signups)
+  useEffect(() => {
+    if (session?.user?.onboardingCompleted === false) {
+      router.replace('/onboarding');
+    }
+  }, [session?.user?.onboardingCompleted, router])
+
   // Role-based route guard: redirect users away from pages they can't access
   useEffect(() => {
     const role = session?.user?.role;
