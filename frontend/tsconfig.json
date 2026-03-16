@@ -37,6 +37,7 @@
   ],
   "exclude": [
     "node_modules",
-    "src/components/marketing/mobile/__tests__"
+    "src/components/marketing/mobile/__tests__",
+    "e2e"
   ]
 }
