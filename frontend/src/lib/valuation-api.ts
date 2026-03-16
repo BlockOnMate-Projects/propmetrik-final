@@ -17,11 +17,18 @@ import type { ValuationType, ValuationPurpose } from '@/types/valuation';
 // ============================================================================
 
 // TypeScript backend for valuation CRUD and workflow services
-const TYPESCRIPT_API = process.env.NEXT_PUBLIC_TS_API_URL || 'http://localhost:4000';
-const TS_VALUATIONS_BASE = `${TYPESCRIPT_API}/api/v1/valuations`;
+// In production, use the /api proxy path (NEXT_PUBLIC_API_URL = '/api')
+// which Next.js rewrites to INTERNAL_API_URL/api/v1/...
+const TS_API_BASE = typeof window !== 'undefined'
+  ? (process.env.NEXT_PUBLIC_API_URL || '/api')
+  : `${(process.env.INTERNAL_API_URL || 'http://localhost:4000').replace(/\/api\/v1$/, '')}/api/v1`;
+const TS_VALUATIONS_BASE = `${TS_API_BASE}/valuations`;
 
 // Python backend for valuation method calculations only
-const PYTHON_VALUATION_API = process.env.NEXT_PUBLIC_PYTHON_API_URL || 'http://localhost:8001/api/v1';
+// In production, use /ml-api proxy path; falls back to localhost for dev
+const PYTHON_VALUATION_API = typeof window !== 'undefined'
+  ? (process.env.NEXT_PUBLIC_PYTHON_API_URL || '/ml-api')
+  : (process.env.NEXT_PUBLIC_PYTHON_API_URL || 'http://localhost:8001/api/v1');
 
 // ============================================================================
 // TYPES & INTERFACES
@@ -3367,9 +3374,10 @@ export const analyticsApi = {
 export const healthApi = {
   async checkPythonService(): Promise<{ status: string; service: string; timestamp: string }> {
     try {
-      // Use the root health endpoint, not /api/v1/health
-      const baseUrl = (process.env.NEXT_PUBLIC_PYTHON_API_URL || 'http://localhost:8001').replace(/\/api\/v1$/, '');
-      return await fetch(`${baseUrl}/health`).then(res => res.json());
+      const healthUrl = typeof window !== 'undefined'
+        ? '/ml-api/health'
+        : `${(process.env.NEXT_PUBLIC_PYTHON_API_URL || 'http://localhost:8001').replace(/\/api\/v1$/, '')}/health`;
+      return await fetch(healthUrl).then(res => res.json());
     } catch (error) {
       return {
         status: 'unhealthy',
