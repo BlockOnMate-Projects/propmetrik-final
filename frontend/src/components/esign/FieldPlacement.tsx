@@ -558,14 +558,21 @@ function HiddenPdfLoader({
 }) {
   useEffect(() => {
     const load = async () => {
-      if (!doc?.file) {
+      if (!doc?.file && !doc?.previewUrl) {
         onPagesLoaded([]);
         return;
       }
       try {
         const pdfjsLib = await import("pdfjs-dist");
         pdfjsLib.GlobalWorkerOptions.workerSrc = "/pdf.worker.min.js";
-        const arrayBuffer = await doc.file.arrayBuffer();
+        let arrayBuffer: ArrayBuffer;
+        if (doc.file) {
+          arrayBuffer = await doc.file.arrayBuffer();
+        } else {
+          const resp = await fetch(doc.previewUrl!);
+          if (!resp.ok) throw new Error(`Failed to fetch PDF: ${resp.status}`);
+          arrayBuffer = await resp.arrayBuffer();
+        }
         const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
         const pages: PageData[] = [];
         for (let i = 1; i <= pdf.numPages; i++) {
