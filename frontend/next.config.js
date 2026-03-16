@@ -25,6 +25,11 @@ const nextConfig = {
         destination: '/api/auth/:path*',
       },
       {
+        // Python ML-serving proxy (valuation calculations)
+        source: '/ml-api/:path*',
+        destination: `${process.env.PYTHON_API_URL || 'http://localhost:8001'}/api/v1/:path*`,
+      },
+      {
         source: '/api/:path*',
         destination: `${process.env.INTERNAL_API_URL || 'http://localhost:4000'}/api/v1/:path*`,
       },

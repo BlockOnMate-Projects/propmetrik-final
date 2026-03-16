@@ -348,8 +348,8 @@ export default function IncomeApproachPage() {
 
         // Fetch economic data for discount rate calculation
         try {
-          const API_URL = process.env.NEXT_PUBLIC_TS_API_URL || 'http://localhost:4000'
-          const economicRes = await fetch(`${API_URL}/api/v1/data-hub/economic/snapshot`)
+          const API_URL = process.env.NEXT_PUBLIC_API_URL || '/api'
+          const economicRes = await fetch(`${API_URL}/data-hub/economic/snapshot`)
           if (economicRes.ok) {
             const economicJson = await economicRes.json()
             if (economicJson.success && economicJson.data) {
@@ -533,8 +533,8 @@ export default function IncomeApproachPage() {
       
       setCapRateLoading(true)
       try {
-        const API_URL = process.env.NEXT_PUBLIC_TS_API_URL || 'http://localhost:4000'
-        const response = await fetch(`${API_URL}/api/v1/valuations/cap-rate/${region}/${propertyType}`)
+        const API_URL = process.env.NEXT_PUBLIC_API_URL || '/api'
+        const response = await fetch(`${API_URL}/valuations/cap-rate/${region}/${propertyType}`)
         
         if (response.ok) {
           const result = await response.json()
