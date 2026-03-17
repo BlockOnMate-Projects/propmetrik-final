@@ -273,7 +273,7 @@ export class GREDAScraper {
    * GREDA and BRRI typically publish rates in HTML tables or
    * definition lists with building type + cost per sqm
    */
-  private extractRatesFromPage($: cheerio.CheerioAPI, sourceUrl: string): GREDARateRaw[] {
+  private extractRatesFromPage($: ReturnType<typeof cheerio.load>, sourceUrl: string): GREDARateRaw[] {
     const rates: GREDARateRaw[] = [];
     const seen = new Set<string>();
 
