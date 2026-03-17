@@ -21,6 +21,7 @@ import {
   ConfidenceBar,
 } from '@/components/ui/terminal'
 import { valuationsApi, pythonMethodsApi, landValueApi, PythonMethodResponse } from '@/lib/valuation-api'
+import { valuationConfigApi, mapShortRegionToDataHub } from '@/lib/api'
 import type { Valuation } from '@/types/valuation'
 import {
   ArrowLeft,
@@ -34,55 +35,58 @@ import {
   AlertTriangle,
 } from 'lucide-react'
 
-// Specialized property types for DRC
-const SPECIALIZED_TYPES = [
-  { id: 'institutional', label: 'Institutional', costPerSqm: 5500 },
-  { id: 'government', label: 'Government', costPerSqm: 6000 },
-  { id: 'religious', label: 'Religious', costPerSqm: 4500 },
-  { id: 'church', label: 'Church', costPerSqm: 5000 },
-  { id: 'mosque', label: 'Mosque', costPerSqm: 5500 },
-  { id: 'community_center', label: 'Community Center', costPerSqm: 4000 },
+// Fallback specialized types (used only if API fetch fails)
+const FALLBACK_SPECIALIZED_TYPES = [
+  { id: 'institutional_other', label: 'Institutional (Other)', costPerSqm: 5500 },
+  { id: 'government', label: 'Government Office', costPerSqm: 6000 },
+  { id: 'religious', label: 'Religious (Church, Mosque)', costPerSqm: 4500 },
+  { id: 'educational', label: 'Educational (Schools, Universities)', costPerSqm: 4500 },
+  { id: 'health_clinic', label: 'Health Clinic', costPerSqm: 7000 },
+  { id: 'health_hospital', label: 'Health Hospital', costPerSqm: 9000 },
   { id: 'library', label: 'Library', costPerSqm: 5500 },
   { id: 'museum', label: 'Museum', costPerSqm: 7000 },
-  { id: 'heritage', label: 'Heritage Building', costPerSqm: 8000 },
-  { id: 'hospital', label: 'Hospital', costPerSqm: 9000 },
-  { id: 'school', label: 'School', costPerSqm: 4500 },
-  { id: 'utility', label: 'Utility', costPerSqm: 3500 },
-  { id: 'stadium', label: 'Stadium', costPerSqm: 7000 },
+  { id: 'heritage', label: 'Heritage / Conservation', costPerSqm: 8000 },
+  { id: 'recreation', label: 'Recreation Facility', costPerSqm: 6000 },
+  { id: 'stadium', label: 'Stadium / Sports', costPerSqm: 7000 },
+  { id: 'industrial_warehouse', label: 'Industrial Warehouse', costPerSqm: 4500 },
+  { id: 'industrial_factory', label: 'Industrial Factory', costPerSqm: 5500 },
+  { id: 'mixed_use', label: 'Mixed Use', costPerSqm: 7000 },
 ]
 
-// Useful lives for specialized properties (years)
+// Useful lives for specialized properties (years) — keyed by building_function_enum
 const USEFUL_LIVES: Record<string, number> = {
-  institutional: 60,
+  institutional_other: 60,
   government: 60,
   religious: 80,
-  church: 80,
-  mosque: 80,
-  community_center: 45,
+  educational: 50,
+  health_clinic: 50,
+  health_hospital: 50,
   library: 55,
   museum: 70,
   heritage: 100,
-  hospital: 50,
-  school: 50,
-  utility: 50,
+  recreation: 45,
   stadium: 45,
+  industrial_warehouse: 50,
+  industrial_factory: 50,
+  mixed_use: 60,
 }
 
-// MEA (Modern Equivalent Asset) factors
+// MEA (Modern Equivalent Asset) factors — keyed by building_function_enum
 const MEA_FACTORS: Record<string, number> = {
-  institutional: 0.95,
+  institutional_other: 0.95,
   government: 0.90,
   religious: 1.00,
-  church: 1.00,
-  mosque: 1.00,
-  community_center: 0.85,
+  educational: 0.85,
+  health_clinic: 0.90,
+  health_hospital: 0.90,
   library: 0.80,
   museum: 0.95,
   heritage: 1.00,
-  hospital: 0.90,
-  school: 0.85,
-  utility: 0.90,
+  recreation: 0.85,
   stadium: 0.85,
+  industrial_warehouse: 0.90,
+  industrial_factory: 0.90,
+  mixed_use: 0.90,
 }
 
 export default function DRCMethodPage() {
@@ -96,10 +100,16 @@ export default function DRCMethodPage() {
   const [error, setError] = useState<string | null>(null)
 
   // Asset details
-  const [assetType, setAssetType] = useState('institutional')
+  const [assetType, setAssetType] = useState('institutional_other')
   const [gfa, setGfa] = useState(0)
   const [gfaSource, setGfaSource] = useState<'property' | 'estimated' | 'user'>('property')
   const [effectiveAge, setEffectiveAge] = useState(0)
+  
+  // Specialized costs grouped by building function → quality level → cost
+  const [costsByFunction, setCostsByFunction] = useState<Record<string, Record<string, number>>>({})
+  const [assetTypeLabels, setAssetTypeLabels] = useState<Record<string, string>>({})
+  const [qualityLevel, setQualityLevel] = useState<'basic' | 'standard' | 'premium' | 'luxury'>('standard')
+  const [costsLoading, setCostsLoading] = useState(true)
   
   // Land Value - follows system-wide Land Value Calculation (not from Cost Approach)
   const [landValue, setLandValue] = useState(0)
@@ -191,6 +201,45 @@ export default function DRCMethodPage() {
             condition: prop.condition,
             region: prop.region
           })
+
+          // Fetch specialized construction costs from Data Hub API
+          try {
+            const region = prop.region ? mapShortRegionToDataHub(prop.region) : 'greater_accra'
+            const [costsRes, functionsRes] = await Promise.all([
+              valuationConfigApi.getSpecializedCosts({ region }),
+              valuationConfigApi.getBuildingFunctions(),
+            ])
+            
+            // Build label map from building functions API
+            const labelMap: Record<string, string> = {}
+            if (functionsRes.success && functionsRes.data) {
+              functionsRes.data.forEach((f: any) => { labelMap[f.value] = f.label })
+            }
+            setAssetTypeLabels(labelMap)
+            
+            if (costsRes.success && costsRes.data && costsRes.data.length > 0) {
+              // Group costs by building_function → quality_level → cost
+              const grouped: Record<string, Record<string, number>> = {}
+              costsRes.data.forEach((c: any) => {
+                if (!grouped[c.building_function]) grouped[c.building_function] = {}
+                grouped[c.building_function][c.quality_level] = Math.round(c.base_cost_sqm)
+              })
+              setCostsByFunction(grouped)
+              console.log('✅ Specialized costs from API:', Object.keys(grouped).length, 'types for', region)
+            }
+          } catch (costErr) {
+            console.warn('Specialized costs API unavailable, using fallback:', costErr)
+          } finally {
+            setCostsLoading(false)
+          }
+        }
+
+        // Pull replacement cost from Cost Approach if already calculated
+        const costResult = (res.data as any)?.method_results?.cost_approach?.details
+        if (costResult?.cost_per_sqm && costResult.cost_per_sqm > 0) {
+          setReplacementCostPerSqm(costResult.cost_per_sqm)
+          setUseCustomCost(true) // Prevent asset type from overwriting
+          console.log('✅ Replacement cost from Cost Approach:', costResult.cost_per_sqm)
         }
         
         // Fetch land value from system-wide Land Value Calculation
@@ -215,9 +264,33 @@ export default function DRCMethodPage() {
               
               console.log('✅ Land value loaded from Land Value System:', fetchedLandValue)
             } else {
-              // No land value exists - auto-calculate it
+              // No land value exists - try to auto-calculate (may fail for specialized/DRC properties)
               console.log('🔄 No land value found, auto-calculating...')
               setLandValueCalculating(true)
+              try {
+                const calcRes = await landValueApi.calculate(valuationId)
+                if (calcRes.success && calcRes.data) {
+                  const value = calcRes.data.final_land_value || 0
+                  setSystemLandValue(value)
+                  setLandValue(value)
+                  setLandValueConfidence(calcRes.data.confidence_score || 0)
+                  const methods: string[] = []
+                  if (calcRes.data.methods?.comparable) methods.push('Comparable')
+                  if (calcRes.data.methods?.residual) methods.push('Residual')
+                  setLandValueMethods(methods)
+                  console.log('✅ Land value auto-calculated:', value)
+                }
+              } catch {
+                // Expected for specialized DRC properties without market comparables
+                console.log('ℹ️ Auto land value not available for this property — use User-Entered')
+              }
+              setLandValueCalculating(false)
+            }
+          } else {
+            // No land value record - try to auto-calculate (may fail for specialized/DRC properties)
+            console.log('🔄 No land value record, auto-calculating...')
+            setLandValueCalculating(true)
+            try {
               const calcRes = await landValueApi.calculate(valuationId)
               if (calcRes.success && calcRes.data) {
                 const value = calcRes.data.final_land_value || 0
@@ -230,23 +303,8 @@ export default function DRCMethodPage() {
                 setLandValueMethods(methods)
                 console.log('✅ Land value auto-calculated:', value)
               }
-              setLandValueCalculating(false)
-            }
-          } else {
-            // No land value record - auto-calculate it
-            console.log('🔄 No land value record, auto-calculating...')
-            setLandValueCalculating(true)
-            const calcRes = await landValueApi.calculate(valuationId)
-            if (calcRes.success && calcRes.data) {
-              const value = calcRes.data.final_land_value || 0
-              setSystemLandValue(value)
-              setLandValue(value)
-              setLandValueConfidence(calcRes.data.confidence_score || 0)
-              const methods: string[] = []
-              if (calcRes.data.methods?.comparable) methods.push('Comparable')
-              if (calcRes.data.methods?.residual) methods.push('Residual')
-              setLandValueMethods(methods)
-              console.log('✅ Land value auto-calculated:', value)
+            } catch {
+              console.log('ℹ️ Auto land value not available for this property — use User-Entered')
             }
             setLandValueCalculating(false)
           }
@@ -264,21 +322,25 @@ export default function DRCMethodPage() {
     fetchData()
   }, [valuationId])
 
-  // Update cost when asset type changes
+  // Update cost when asset type or quality level changes
   useEffect(() => {
     if (!useCustomCost) {
-      const typeInfo = SPECIALIZED_TYPES.find(t => t.id === assetType)
-      if (typeInfo) {
-        setReplacementCostPerSqm(typeInfo.costPerSqm)
+      const costForFunction = costsByFunction[assetType]
+      if (costForFunction && costForFunction[qualityLevel]) {
+        setReplacementCostPerSqm(costForFunction[qualityLevel])
+      } else {
+        // Fallback to static defaults
+        const fallback = FALLBACK_SPECIALIZED_TYPES.find(t => t.id === assetType)
+        if (fallback) setReplacementCostPerSqm(fallback.costPerSqm)
       }
       setMeaFactor(MEA_FACTORS[assetType] || 0.95)
     }
-  }, [assetType, useCustomCost])
+  }, [assetType, qualityLevel, useCustomCost, costsByFunction])
 
   // Call Python service for DRC calculation
   useEffect(() => {
     const calculateDRC = async () => {
-      if (!valuation?.property || gfa <= 0) return
+      if (!valuation?.property || gfa <= 0 || landValue <= 0) return
       
       setCalculating(true)
       try {
@@ -462,23 +524,68 @@ export default function DRCMethodPage() {
         <div className="lg:col-span-2 space-y-4">
           {/* Asset Type Selection */}
           <TerminalPanel title="SPECIALIZED ASSET TYPE">
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-2 p-4">
-              {SPECIALIZED_TYPES.map(type => (
-                <button
-                  key={type.id}
-                  onClick={() => setAssetType(type.id)}
-                  className={`p-3 border text-left transition-colors ${
-                    assetType === type.id
-                      ? 'bg-amber-500/20 border-amber-500 text-amber-400'
-                      : 'bg-zinc-900 border-zinc-700 text-zinc-400 hover:border-zinc-500'
-                  }`}
+            <div className="p-4 space-y-4">
+              {/* Asset Type Dropdown */}
+              <div>
+                <label className="font-mono text-[10px] text-zinc-500 block mb-1">BUILDING FUNCTION</label>
+                <select
+                  value={assetType}
+                  onChange={(e) => { setAssetType(e.target.value); setUseCustomCost(false) }}
+                  className="w-full bg-black border border-zinc-700 p-2.5 font-mono text-sm text-white appearance-none cursor-pointer hover:border-zinc-500 focus:border-amber-500 focus:outline-none"
                 >
-                  <div className="font-mono text-xs font-bold">{type.label}</div>
-                  <div className="font-mono text-[10px] text-zinc-500">
-                    GH₵ {type.costPerSqm.toLocaleString()}/sqm
-                  </div>
-                </button>
-              ))}
+                  {(() => {
+                    const functionIds = Object.keys(costsByFunction).length > 0
+                      ? Object.keys(costsByFunction)
+                      : FALLBACK_SPECIALIZED_TYPES.map(t => t.id)
+                    return functionIds.map(id => (
+                      <option key={id} value={id}>
+                        {assetTypeLabels[id] || FALLBACK_SPECIALIZED_TYPES.find(t => t.id === id)?.label || id.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                      </option>
+                    ))
+                  })()}
+                </select>
+              </div>
+
+              {/* Quality Level Selector */}
+              <div>
+                <label className="font-mono text-[10px] text-zinc-500 block mb-1">QUALITY LEVEL</label>
+                <div className="grid grid-cols-4 gap-2">
+                  {(['basic', 'standard', 'premium', 'luxury'] as const).map(level => {
+                    const cost = costsByFunction[assetType]?.[level]
+                    return (
+                      <button
+                        key={level}
+                        onClick={() => { setQualityLevel(level); setUseCustomCost(false) }}
+                        disabled={!cost && Object.keys(costsByFunction).length > 0}
+                        className={`p-3 border text-center transition-colors ${
+                          qualityLevel === level
+                            ? 'bg-amber-500/20 border-amber-500 text-amber-400'
+                            : cost || Object.keys(costsByFunction).length === 0
+                              ? 'bg-zinc-900 border-zinc-700 text-zinc-400 hover:border-zinc-500'
+                              : 'bg-zinc-900/50 border-zinc-800 text-zinc-600 cursor-not-allowed'
+                        }`}
+                      >
+                        <div className="font-mono text-[10px] font-bold uppercase">{level === 'basic' ? 'Basic' : level}</div>
+                        {cost ? (
+                          <div className="font-mono text-[10px] text-zinc-500 mt-1">
+                            GH₵ {cost.toLocaleString()}/sqm
+                          </div>
+                        ) : Object.keys(costsByFunction).length > 0 ? (
+                          <div className="font-mono text-[10px] text-zinc-600 mt-1">N/A</div>
+                        ) : null}
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
+
+              {/* Selected cost summary */}
+              <div className="flex items-center justify-between p-2 bg-zinc-900/50 border border-zinc-800">
+                <span className="font-mono text-[10px] text-zinc-500">Selected Rate</span>
+                <span className="font-mono text-sm text-amber-400 font-bold">
+                  GH₵ {replacementCostPerSqm.toLocaleString()}/sqm
+                </span>
+              </div>
             </div>
           </TerminalPanel>
 
@@ -501,11 +608,8 @@ export default function DRCMethodPage() {
                   <input
                     type="number"
                     value={gfa}
-                    onChange={(e) => {
-                      setGfa(Number(e.target.value))
-                      setGfaSource('user')
-                    }}
-                    className={`w-full bg-black border p-2 font-mono text-sm text-white ${
+                    readOnly
+                    className={`w-full bg-black border p-2 font-mono text-sm text-white cursor-not-allowed opacity-80 ${
                       gfaSource === 'estimated' ? 'border-amber-500/50' : 'border-zinc-700'
                     }`}
                   />
@@ -1022,7 +1126,12 @@ export default function DRCMethodPage() {
           className="px-6 py-3 bg-amber-500 text-white font-mono text-sm font-bold hover:bg-amber-400 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-2"
         >
           {saving && <Loader2 className="w-4 h-4 animate-spin" />}
-          SAVE & CONTINUE TO RECONCILIATION →
+          {(() => {
+            const methods = valuation?.methods_applied || []
+            if (methods.includes('profits_method')) return 'SAVE & CONTINUE TO PROFITS →'
+            if (methods.includes('residual_method')) return 'SAVE & CONTINUE TO RESIDUAL →'
+            return 'SAVE & CONTINUE TO RECONCILIATION →'
+          })()}
         </button>
       </div>
     </div>

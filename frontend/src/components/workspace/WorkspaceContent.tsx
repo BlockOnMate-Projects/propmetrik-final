@@ -10,7 +10,7 @@ import { WorkspaceMemberList } from './WorkspaceMemberList';
 import { KobbySuggestionChips } from './KobbyAIBubble';
 import { useKobbyAI } from './hooks/useKobbyAI';
 import { Button } from '@/components/ui/button';
-import { Users, MessageSquare, Bot, Wifi, WifiOff, Search, ExternalLink } from 'lucide-react';
+import { Users, MessageSquare, Bot, Wifi, WifiOff, Search, ExternalLink, X, UserPlus, UserMinus } from 'lucide-react';
 import { useSession } from 'next-auth/react';
 
 type ActiveTab = 'chat' | 'members' | 'kobby';
@@ -47,6 +47,11 @@ export function WorkspaceContent({
     const [replyingTo, setReplyingTo] = useState<{ id: string; senderName: string; content: string } | null>(null);
     const [prefillText, setPrefillText] = useState('');
     const [prefillNonce, setPrefillNonce] = useState(0);
+
+    // Group member management modals
+    const [showAddMemberPicker, setShowAddMemberPicker] = useState(false);
+    const [showRemoveMemberPicker, setShowRemoveMemberPicker] = useState(false);
+    const [conversationMembers, setConversationMembers] = useState<WorkspaceMember[]>([]);
 
     const activeConversation = conversations.find((c) => c.id === activeConversationId) || null;
 
@@ -86,19 +91,20 @@ export function WorkspaceContent({
             });
     }, [entityType, entityId]);
 
-    // Load conversations
+    // Load conversations (only when workspace changes, not on activeConversationId change)
     useEffect(() => {
         if (!workspace) return;
         workspaceApi.getConversations(workspace.id)
             .then(({ conversations: list }) => {
                 setConversations(list);
-                if (!activeConversationId) {
+                setActiveConversationId((prev) => {
+                    if (prev) return prev; // keep existing selection
                     const fallback = list.find((c) => c.conversation_type === 'channel' && c.name === 'General') || list[0] || null;
-                    setActiveConversationId(fallback?.id || null);
-                }
+                    return fallback?.id || null;
+                });
             })
             .catch(() => { });
-    }, [workspace, activeConversationId]);
+    }, [workspace]);
 
     useEffect(() => {
         if (!workspace) return;
@@ -129,6 +135,10 @@ export function WorkspaceContent({
                 m.id === messageId ? { ...m, content, edited_at: editedAt } : m
             )
         );
+    }, []);
+
+    const handleMessageDeleted = useCallback((messageId: string) => {
+        setMessages((prev) => prev.filter((m) => m.id !== messageId));
     }, []);
 
     const handleKobbyResponse = useCallback((query: string, response: any, conversationId?: string) => {
@@ -177,12 +187,14 @@ export function WorkspaceContent({
         isKobbyThinking,
         kobbyPendingQuery,
         onlineUsers,
-        sendKobbyQuery
+        sendKobbyQuery,
+        deleteMessage: wsDeleteMessage,
     } = useWorkspaceSocket({
         workspaceId: workspace?.id || '',
         token: resolvedToken,
         onMessage: handleNewMessage,
         onMessageEdited: handleMessageEdited,
+        onMessageDeleted: handleMessageDeleted,
         onKobbyResponse: handleKobbyResponse,
         onKobbyError: handleKobbyError,
     });
@@ -213,7 +225,7 @@ export function WorkspaceContent({
                             id: `kobby-query-${Date.now()}`,
                             workspace_id: workspace.id,
                             conversation_id: activeConversationId || '',
-                            sender_id: currentUserId || 'current-user',
+                            sender_id: resolvedUserId || 'current-user',
                             sender_type: 'user',
                             message_type: 'text',
                             content: query,
@@ -233,7 +245,7 @@ export function WorkspaceContent({
                 sendMessage(content, activeConversationId || undefined, threadId, metadata);
             }
         },
-        [workspace, sendMessage, sendKobbyQuery, entityType, entityId, activeTab, currentUserId, activeConversationId]
+        [workspace, sendMessage, sendKobbyQuery, entityType, entityId, activeTab, resolvedUserId, activeConversationId]
     );
 
     const handleKobbyFollowUp = useCallback((suggestion: string) => {
@@ -243,6 +255,12 @@ export function WorkspaceContent({
     }, [workspace, sendKobbyQuery, entityType, entityId, activeConversationId]);
 
     const handleRead = useCallback((messageId: string) => markRead(messageId), [markRead]);
+
+    const handleDeleteMessage = useCallback((messageId: string) => {
+        wsDeleteMessage(messageId);
+        // Optimistic removal
+        setMessages((prev) => prev.filter((m) => m.id !== messageId));
+    }, [wsDeleteMessage]);
 
     const handleMemberClick = useCallback((member: WorkspaceMember) => {
         if (!workspace) return;
@@ -312,25 +330,45 @@ export function WorkspaceContent({
         }
     }, [workspace, activeConversationId, activeConversation]);
 
-    const handleAddGroupMember = useCallback(async () => {
+    // Open add member picker — shows workspace members NOT in the group
+    const handleOpenAddMemberPicker = useCallback(async () => {
         if (!workspace || !activeConversationId) return;
-        const targetUserId = window.prompt('Enter user ID to add to this group');
-        if (!targetUserId?.trim()) return;
         try {
-            await workspaceApi.addConversationMember(workspace.id, activeConversationId, targetUserId.trim());
+            const { members: groupMembers } = await workspaceApi.getConversationMembers(workspace.id, activeConversationId);
+            setConversationMembers(groupMembers);
+            setShowAddMemberPicker(true);
+        } catch (err: any) {
+            setError(err.message || 'Failed to load group members');
+        }
+    }, [workspace, activeConversationId]);
+
+    // Open remove member picker — shows current group members
+    const handleOpenRemoveMemberPicker = useCallback(async () => {
+        if (!workspace || !activeConversationId) return;
+        try {
+            const { members: groupMembers } = await workspaceApi.getConversationMembers(workspace.id, activeConversationId);
+            setConversationMembers(groupMembers);
+            setShowRemoveMemberPicker(true);
+        } catch (err: any) {
+            setError(err.message || 'Failed to load group members');
+        }
+    }, [workspace, activeConversationId]);
+
+    const handleAddGroupMember = useCallback(async (userId: string) => {
+        if (!workspace || !activeConversationId) return;
+        try {
+            await workspaceApi.addConversationMember(workspace.id, activeConversationId, userId);
+            setShowAddMemberPicker(false);
         } catch (err: any) {
             setError(err.message || 'Failed to add member');
         }
     }, [workspace, activeConversationId]);
 
-    const handleRemoveGroupMember = useCallback(async () => {
+    const handleRemoveGroupMember = useCallback(async (userId: string) => {
         if (!workspace || !activeConversationId) return;
         try {
-            const { members: groupMembers } = await workspaceApi.getConversationMembers(workspace.id, activeConversationId);
-            const membersList = groupMembers.map((m) => `${m.user_id} (${m.display_name || m.email || 'Unknown'})`).join('\n');
-            const targetUserId = window.prompt(`Enter user ID to remove:\n${membersList}`);
-            if (!targetUserId?.trim()) return;
-            await workspaceApi.removeConversationMember(workspace.id, activeConversationId, targetUserId.trim());
+            await workspaceApi.removeConversationMember(workspace.id, activeConversationId, userId);
+            setConversationMembers((prev) => prev.filter((m) => m.user_id !== userId));
         } catch (err: any) {
             setError(err.message || 'Failed to remove member');
         }
@@ -346,9 +384,22 @@ export function WorkspaceContent({
 
     const panelTitle = entityName || (entityType === 'platform' ? 'Workspace' : `${entityType.charAt(0).toUpperCase() + entityType.slice(1)} Workspace`);
 
+    // Build a lookup map for thread parent messages
+    const messageMap = new Map(messages.map((m) => [m.id, m]));
+
     return (
         <div className="flex flex-col h-full bg-zinc-950">
-            {/* Header (Integrated inside content for modularity) */}
+            {/* Error banner */}
+            {error && (
+                <div className="flex-shrink-0 px-4 py-2 bg-red-950/60 border-b border-red-800/40 text-xs text-red-300 flex items-center justify-between">
+                    <span>{error}</span>
+                    <button onClick={() => setError(null)} className="text-red-400 hover:text-red-200 ml-2">
+                        <X className="w-3 h-3" />
+                    </button>
+                </div>
+            )}
+
+            {/* Header */}
             <div className="flex-shrink-0 px-5 py-4 border-b border-zinc-800/60 flex items-center justify-between">
                 <div className="flex items-center gap-3">
                     <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-violet-500 to-fuchsia-600 flex items-center justify-center shadow-lg">
@@ -414,7 +465,7 @@ export function WorkspaceContent({
                 ) : activeTab === 'chat' || activeTab === 'kobby' ? (
                     <div className="flex-1 flex min-h-0">
                         {/* Left Sidebar — conversation history (chat) / Kobby query history (kobby) */}
-                        {entityType === 'platform' && (
+                        {conversations.length > 1 && (
                             <div className="w-48 flex-shrink-0 border-r border-zinc-800/60 bg-zinc-900/20 hidden md:flex flex-col">
                                 <div className="px-3 py-2 border-b border-zinc-800/40">
                                     <span className="text-[9px] font-mono text-zinc-600 uppercase tracking-widest">
@@ -509,23 +560,53 @@ export function WorkspaceContent({
                             {activeTab === 'chat' && activeConversation?.conversation_type === 'group' && (
                                 <div className="px-4 py-2 border-b border-zinc-800/60 bg-zinc-900/40 text-[11px] text-zinc-400 flex items-center gap-2">
                                     <button type="button" onClick={handleRenameConversation} className="text-emerald-400 hover:text-emerald-300">Rename</button>
-                                    <button type="button" onClick={handleAddGroupMember} className="text-emerald-400 hover:text-emerald-300">Add Member</button>
-                                    <button type="button" onClick={handleRemoveGroupMember} className="text-amber-400 hover:text-amber-300">Remove Member</button>
+                                    <button type="button" onClick={handleOpenAddMemberPicker} className="flex items-center gap-1 text-emerald-400 hover:text-emerald-300">
+                                        <UserPlus className="w-3 h-3" /> Add
+                                    </button>
+                                    <button type="button" onClick={handleOpenRemoveMemberPicker} className="flex items-center gap-1 text-amber-400 hover:text-amber-300">
+                                        <UserMinus className="w-3 h-3" /> Remove
+                                    </button>
                                     <button type="button" onClick={handleLeaveConversation} className="text-zinc-400 hover:text-zinc-200">Leave</button>
                                     <button type="button" onClick={handleArchiveConversation} className="text-red-400 hover:text-red-300">Archive</button>
                                 </div>
                             )}
+
+                            {/* Add Member Picker Modal */}
+                            {showAddMemberPicker && (
+                                <MemberPickerOverlay
+                                    title="Add Member to Group"
+                                    members={members.filter((m) => !conversationMembers.some((cm) => cm.user_id === m.user_id))}
+                                    onSelect={handleAddGroupMember}
+                                    onClose={() => setShowAddMemberPicker(false)}
+                                    emptyText="All workspace members are already in this group."
+                                />
+                            )}
+
+                            {/* Remove Member Picker Modal */}
+                            {showRemoveMemberPicker && (
+                                <MemberPickerOverlay
+                                    title="Remove Member from Group"
+                                    members={conversationMembers.filter((m) => m.user_id !== resolvedUserId)}
+                                    onSelect={handleRemoveGroupMember}
+                                    onClose={() => setShowRemoveMemberPicker(false)}
+                                    emptyText="No members to remove."
+                                    variant="danger"
+                                />
+                            )}
+
                             <MessageList
                                 messages={activeTab === 'kobby'
                                     ? messages.filter(m => m.sender_type === 'kobby_ai' || (m.metadata as any)?.kobby_query === true)
                                     : messages.filter((m) => activeConversationId ? m.conversation_id === activeConversationId : true)}
-                                currentUserId={currentUserId}
+                                allMessages={messageMap}
+                                currentUserId={resolvedUserId}
                                 typingUsers={typingUsers}
                                 isKobbyThinking={isKobbyThinking}
                                 kobbyPendingQuery={kobbyPendingQuery}
                                 onVisible={handleRead}
                                 onKobbyFollowUp={handleKobbyFollowUp}
                                 onReply={handleReply}
+                                onDelete={handleDeleteMessage}
                             />
                             <MessageInput
                                 workspaceId={workspace?.id || ''}
@@ -545,7 +626,7 @@ export function WorkspaceContent({
                 ) : (
                     <WorkspaceMemberList
                         members={members}
-                        currentUserId={currentUserId}
+                        currentUserId={resolvedUserId}
                         onlineUserIds={onlineUsers}
                         onMemberClick={handleMemberClick}
                         onCreateGroup={handleCreateGroup}
@@ -554,6 +635,75 @@ export function WorkspaceContent({
                             workspaceApi.getMembers(workspace.id).then(({ members: m }) => setMembers(m))
                         }
                     />
+                )}
+            </div>
+        </div>
+    );
+}
+
+// ============================================================================
+// Member Picker Overlay (replaces window.prompt)
+// ============================================================================
+
+function MemberPickerOverlay({
+    title,
+    members,
+    onSelect,
+    onClose,
+    emptyText = 'No members available.',
+    variant = 'default',
+}: {
+    title: string;
+    members: WorkspaceMember[];
+    onSelect: (userId: string) => void;
+    onClose: () => void;
+    emptyText?: string;
+    variant?: 'default' | 'danger';
+}) {
+    return (
+        <div className="border-b border-zinc-800/60 bg-zinc-900/80 backdrop-blur-sm">
+            <div className="px-4 py-3">
+                <div className="flex items-center justify-between mb-2">
+                    <h4 className="text-[11px] font-semibold text-zinc-200 uppercase tracking-wider">{title}</h4>
+                    <button onClick={onClose} className="text-zinc-500 hover:text-zinc-300">
+                        <X className="w-3.5 h-3.5" />
+                    </button>
+                </div>
+                {members.length === 0 ? (
+                    <p className="text-[11px] text-zinc-500 italic py-2">{emptyText}</p>
+                ) : (
+                    <div className="max-h-40 overflow-y-auto space-y-1">
+                        {members.map((m) => (
+                            <button
+                                key={m.user_id}
+                                type="button"
+                                onClick={() => onSelect(m.user_id)}
+                                className={cn(
+                                    'w-full text-left flex items-center gap-2 px-3 py-2 rounded-lg text-xs transition-colors',
+                                    variant === 'danger'
+                                        ? 'hover:bg-red-950/40 hover:text-red-300'
+                                        : 'hover:bg-zinc-800 hover:text-zinc-100',
+                                    'text-zinc-300'
+                                )}
+                            >
+                                <div className="w-6 h-6 rounded-full bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center text-white text-[10px] font-bold flex-shrink-0">
+                                    {(m.display_name || m.email || 'U')[0].toUpperCase()}
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                    <p className="truncate font-medium">{m.display_name || m.email || 'Unknown'}</p>
+                                    {m.email && m.display_name && (
+                                        <p className="text-[10px] text-zinc-500 truncate">{m.email}</p>
+                                    )}
+                                </div>
+                                <span className={cn(
+                                    'text-[10px] font-medium',
+                                    variant === 'danger' ? 'text-red-400' : 'text-emerald-400'
+                                )}>
+                                    {variant === 'danger' ? 'Remove' : 'Add'}
+                                </span>
+                            </button>
+                        ))}
+                    </div>
                 )}
             </div>
         </div>

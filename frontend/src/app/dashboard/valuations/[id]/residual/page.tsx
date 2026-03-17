@@ -17,6 +17,7 @@ import {
   ConfidenceBar,
 } from '@/components/ui/terminal'
 import { valuationsApi, pythonMethodsApi, PythonMethodResponse } from '@/lib/valuation-api'
+import { valuationConfigApi, mapShortRegionToDataHub } from '@/lib/api'
 import type { Valuation } from '@/types/valuation'
 import {
   ArrowLeft,
@@ -56,7 +57,7 @@ const TOOLTIPS = {
   timeline: 'Total duration of construction and sales period. Directly impacts finance cost calculations.',
   financeModel: 'S-Curve model reflects time-phased drawdown of construction costs and provides a more accurate estimate of finance costs in line with RICS guidance.',
   developerProfit: 'Allowance for entrepreneurial risk, reflecting market expectations, development risk, and capital exposure. Treated as a deduction from GDV in accordance with RICS and GhIS guidance.',
-  residualLandValue: 'Residual Land Value represents the maximum price payable for land after accounting for all development costs and required developer profit. It is highly sensitive to assumptions.',
+  residualLandValue: 'Residual Land Value represents the maximum price payable for land after accounting for all development costs and required developer profit. Per RICS guidance, land value cannot be negative — a nil residual indicates the scheme is not viable at stated assumptions. It is highly sensitive to inputs.',
   negativeLandValue: 'A negative residual indicates the proposed development is not financially viable at the stated assumptions.',
   costBasis: 'Select whether the construction rate is quoted on Gross Building Area (standard) or Net Saleable Area. System normalizes to gross for calculation.',
 }
@@ -72,29 +73,21 @@ const Tooltip = ({ text }: { text: string }) => (
   </div>
 )
 
-// Sale prices per sqm by property type (GHS) - NET saleable area basis
-const SALE_PRICES: Record<string, number> = {
-  house: 8500,
-  apartment: 9500,
-  townhouse: 8000,
-  commercial: 12000,
-  office: 14000,
-  industrial: 5000,
-  warehouse: 4000,
+// Development types available
+const DEVELOPMENT_TYPES = ['house', 'apartment', 'townhouse', 'commercial', 'office', 'industrial', 'warehouse']
+
+// Map development type to base_costs_per_sqm property_type
+const DEV_TYPE_TO_PROPERTY_TYPE: Record<string, string> = {
+  house: 'residential',
+  apartment: 'residential',
+  townhouse: 'residential',
+  commercial: 'commercial',
+  office: 'commercial',
+  industrial: 'industrial',
+  warehouse: 'industrial',
 }
 
-// Construction costs per sqm (GHS) - GROSS area basis (industry standard)
-const CONSTRUCTION_COSTS: Record<string, number> = {
-  house: 4500,
-  apartment: 5000,
-  townhouse: 4800,
-  commercial: 5500,
-  office: 6500,
-  industrial: 3000,
-  warehouse: 2500,
-}
-
-// Realistic efficiency rates by development type (Ghana market)
+// Realistic efficiency rates by development type (Ghana market) - engineering constants
 const EFFICIENCY_RATES: Record<string, number> = {
   house: 0.92,      // Houses have minimal common areas
   apartment: 0.78,  // Corridors, stairs, lift lobbies
@@ -158,7 +151,21 @@ export default function ResidualMethodPage() {
   const [useAdvancedFinance, setUseAdvancedFinance] = useState(true) // NEW: S-curve vs simple
 
   // Economic data from API
-  const [economicData, setEconomicData] = useState<{ policy_rate?: number } | null>(null)
+  const [economicData, setEconomicData] = useState<{
+    interest_rate_policy?: string;
+    interest_rate_prime?: string;
+    lending_rate?: string;
+    mortgage_rate_avg?: string;
+  } | null>(null)
+  const [interestRateSource, setInterestRateSource] = useState<string | null>(null)
+
+  // API-driven market data
+  const [systemSalePrices, setSystemSalePrices] = useState<Record<string, number>>({})
+  const [comparableEvidence, setComparableEvidence] = useState<Record<string, { count: number; p25: number; p75: number; median: number }>>({})
+  const [systemConstructionCosts, setSystemConstructionCosts] = useState<Record<string, number>>({})
+  const [loadingMarketData, setLoadingMarketData] = useState(false)
+  const [salePriceSource, setSalePriceSource] = useState<string | null>(null)
+  const [constructionCostSource, setConstructionCostSource] = useState<string | null>(null)
 
   // Python calculation state
   const [pythonResult, setPythonResult] = useState<PythonMethodResponse | null>(null)
@@ -228,7 +235,11 @@ export default function ResidualMethodPage() {
   const targetProfitAmount = totalDevelopmentCosts * (targetProfit / 100)
   
   // Residual Land Value (with target profit)
-  const residualLandValue = gdv - totalDevelopmentCosts - targetProfitAmount
+  // Raw calculation can be negative (indicates non-viable scheme)
+  const rawResidualLandValue = gdv - totalDevelopmentCosts - targetProfitAmount
+  // Per RICS Valuation of Development Property: market value of land cannot be negative.
+  // A negative residual indicates the scheme is not viable, but land value is floored at nil.
+  const residualLandValue = Math.max(0, rawResidualLandValue)
   const landValuePerSqm = plotSize > 0 ? residualLandValue / plotSize : 0
 
   // Break-even analysis - what profit is achievable at zero land value?
@@ -236,13 +247,14 @@ export default function ResidualMethodPage() {
   const breakEvenProfitPercent = totalDevelopmentCosts > 0 
     ? (breakEvenProfit / totalDevelopmentCosts) * 100 
     : 0
-  const isViable = residualLandValue > 0
+  const isViable = rawResidualLandValue > 0
   const profitGap = targetProfitAmount - breakEvenProfit
 
   // Minimum viable land value (at market minimum profit of 15%)
   const minimumProfit = 0.15
   const minProfitAmount = totalDevelopmentCosts * minimumProfit
-  const minViableLandValue = gdv - totalDevelopmentCosts - minProfitAmount
+  const rawMinViableLandValue = gdv - totalDevelopmentCosts - minProfitAmount
+  const minViableLandValue = Math.max(0, rawMinViableLandValue)
 
   // Fetch valuation and economic data
   useEffect(() => {
@@ -255,6 +267,7 @@ export default function ResidualMethodPage() {
         setValuation(res.data as Valuation)
 
         const prop = res.data.property
+        let devType = 'house'
         if (prop) {
           // Set plot/land size from property
           const landSize = prop.land_area_sqm || prop.plot_size || 0
@@ -268,7 +281,6 @@ export default function ResidualMethodPage() {
           const propType = (prop.property_type || '').toLowerCase()
           const propSubType = (prop.property_sub_type || '').toLowerCase()
           
-          let devType = 'house'
           if (propType.includes('commercial') || propSubType.includes('commercial')) {
             devType = 'commercial'
           } else if (propType.includes('office') || propSubType.includes('office')) {
@@ -302,16 +314,111 @@ export default function ResidualMethodPage() {
           const econRes = await fetch(`${baseUrl}/data-hub/economic/snapshot`)
           if (econRes.ok) {
             const econJson = await econRes.json()
-            const econData = econJson.data || econJson // Handle wrapped response
+            const econData = econJson.data || econJson
             setEconomicData(econData)
-            // Use policy rate + spread for development finance
-            const policyRate = parseFloat(econData.interest_rate_policy || econData.policy_rate || '0')
-            if (policyRate > 0) {
-              setInterestRate(policyRate + 8) // Policy rate + 8% spread typical for dev finance
+            // Priority: lending_rate (actual bank rate) > prime rate > policy rate
+            const lendingRate = parseFloat(econData.lending_rate || '0')
+            const primeRate = parseFloat(econData.interest_rate_prime || '0')
+            const policyRate = parseFloat(econData.interest_rate_policy || '0')
+            const mortgageRate = parseFloat(econData.mortgage_rate_avg || '0')
+            if (lendingRate > 0) {
+              setInterestRate(lendingRate)
+              setInterestRateSource('BOG Commercial Lending Rate')
+            } else if (primeRate > 0) {
+              setInterestRate(primeRate)
+              setInterestRateSource('Ghana Reference Rate (Prime)')
+            } else if (mortgageRate > 0) {
+              setInterestRate(mortgageRate)
+              setInterestRateSource('BOG Avg Mortgage Rate')
+            } else if (policyRate > 0) {
+              setInterestRate(policyRate + 5)
+              setInterestRateSource(`BOG Policy Rate + 5% spread`)
             }
           }
         } catch {
           // Economic data fetch failed, use defaults
+        }
+
+        // Fetch market data (comparable prices + construction costs) for this region
+        const regionCode = (res.data as any).property?.region || 'GAR'
+        const dataHubRegion = mapShortRegionToDataHub(regionCode)
+        setLoadingMarketData(true)
+        try {
+          const [comparablePricesRes, baseCostsRes] = await Promise.all([
+            valuationConfigApi.getComparablePrices({ region: dataHubRegion }),
+            valuationConfigApi.getBaseCosts({ region: dataHubRegion }),
+          ])
+
+          // Process comparable sale prices: map property_type → median price/sqm
+          if (comparablePricesRes.success && comparablePricesRes.data?.length) {
+            const pricesByPropType: Record<string, number> = {}
+            const evidenceByPropType: Record<string, { count: number; p25: number; p75: number; median: number }> = {}
+            comparablePricesRes.data.forEach((cp: any) => {
+              pricesByPropType[cp.property_type] = cp.median_price_sqm
+              evidenceByPropType[cp.property_type] = {
+                count: cp.comparable_count,
+                p25: cp.p25_price_sqm,
+                p75: cp.p75_price_sqm,
+                median: cp.median_price_sqm,
+              }
+            })
+            // Map to development types
+            const pricesByDevType: Record<string, number> = {}
+            const evidenceByDevType: Record<string, { count: number; p25: number; p75: number; median: number }> = {}
+            const devTypeToPropType: Record<string, string> = {
+              house: 'residential_house',
+              apartment: 'apartment_flat',
+              townhouse: 'residential_house',
+              commercial: 'commercial_shop',
+              office: 'commercial_shop',
+              industrial: 'commercial_shop',
+              warehouse: 'commercial_shop',
+            }
+            DEVELOPMENT_TYPES.forEach(dt => {
+              const propType = devTypeToPropType[dt]
+              if (pricesByPropType[propType]) {
+                pricesByDevType[dt] = pricesByPropType[propType]
+                evidenceByDevType[dt] = evidenceByPropType[propType]
+              }
+            })
+            setSystemSalePrices(pricesByDevType)
+            setComparableEvidence(evidenceByDevType)
+            const totalComps = comparablePricesRes.data.reduce((sum: number, cp: any) => sum + cp.comparable_count, 0)
+            setSalePriceSource(`${totalComps} comparable listings`)
+
+            // Set initial sale price for detected dev type
+            const detectedType = devType || 'apartment'
+            if (pricesByDevType[detectedType]) {
+              setSalePricePerSqm(pricesByDevType[detectedType])
+            }
+          }
+
+          // Process construction costs: group by property_type → standard quality cost
+          if (baseCostsRes.success && baseCostsRes.data?.length) {
+            const costsByDevType: Record<string, number> = {}
+            // Map base costs (by property_type) to each development type
+            DEVELOPMENT_TYPES.forEach(dt => {
+              const propType = DEV_TYPE_TO_PROPERTY_TYPE[dt]
+              const stdCost = baseCostsRes.data.find(
+                (c: any) => c.property_type === propType && c.quality_tier === 'standard'
+              )
+              if (stdCost) {
+                costsByDevType[dt] = stdCost.base_cost_per_sqm
+              }
+            })
+            setSystemConstructionCosts(costsByDevType)
+            setConstructionCostSource('Base cost calculation service')
+
+            // Set initial construction cost for detected dev type
+            const detectedType = devType || 'apartment'
+            if (costsByDevType[detectedType]) {
+              setConstructionCostPerSqm(costsByDevType[detectedType])
+            }
+          }
+        } catch {
+          // Market data fetch failed silently
+        } finally {
+          setLoadingMarketData(false)
         }
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to load valuation')
@@ -324,10 +431,14 @@ export default function ResidualMethodPage() {
 
   // Update defaults when development type changes
   useEffect(() => {
-    setSalePricePerSqm(SALE_PRICES[developmentType] || 8500)
-    setConstructionCostPerSqm(CONSTRUCTION_COSTS[developmentType] || 5000)
+    if (systemSalePrices[developmentType]) {
+      setSalePricePerSqm(systemSalePrices[developmentType])
+    }
+    if (systemConstructionCosts[developmentType]) {
+      setConstructionCostPerSqm(systemConstructionCosts[developmentType])
+    }
     setEfficiency(EFFICIENCY_RATES[developmentType] || 0.78)
-  }, [developmentType])
+  }, [developmentType, systemSalePrices, systemConstructionCosts])
 
   // Call Python service for Residual Method calculation
   useEffect(() => {
@@ -379,7 +490,8 @@ export default function ResidualMethodPage() {
       setError(null)
 
       // Use Python result as primary, fallback to local calculation
-      const finalValue = pythonResult?.estimated_value || residualLandValue
+      // Per RICS: land value floored at 0 (nil if scheme not viable)
+      const finalValue = Math.max(0, pythonResult?.estimated_value || residualLandValue)
       const finalConfidence = pythonResult?.confidence_score || calculateConfidence()
 
       await valuationsApi.update(valuationId, {
@@ -575,7 +687,7 @@ export default function ResidualMethodPage() {
               <div>
                 <label className="font-mono text-[10px] text-zinc-500 block mb-2">DEVELOPMENT TYPE</label>
                 <div className="grid grid-cols-4 gap-2">
-                  {Object.keys(SALE_PRICES).map(type => (
+                  {DEVELOPMENT_TYPES.map(type => (
                     <button
                       key={type}
                       onClick={() => setDevelopmentType(type)}
@@ -654,6 +766,26 @@ export default function ResidualMethodPage() {
           {/* Gross Development Value */}
           <TerminalPanel title="GROSS DEVELOPMENT VALUE (GDV)">
             <div className="p-4 space-y-4">
+              {salePriceSource && (
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="px-2 py-0.5 bg-green-500/10 border border-green-500/30 rounded font-mono text-[9px] text-green-400">
+                    {loadingMarketData ? 'LOADING...' : `EVIDENCE: ${salePriceSource.toUpperCase()}`}
+                  </span>
+                  {comparableEvidence[developmentType] && (
+                    <span className="px-2 py-0.5 bg-zinc-800 border border-zinc-700 rounded font-mono text-[9px] text-zinc-400">
+                      P25: GH₵{comparableEvidence[developmentType].p25.toLocaleString()} | MEDIAN: GH₵{comparableEvidence[developmentType].median.toLocaleString()} | P75: GH₵{comparableEvidence[developmentType].p75.toLocaleString()}
+                    </span>
+                  )}
+                  {systemSalePrices[developmentType] && salePricePerSqm !== systemSalePrices[developmentType] && (
+                    <button
+                      onClick={() => setSalePricePerSqm(systemSalePrices[developmentType])}
+                      className="px-2 py-0.5 bg-amber-500/10 border border-amber-500/30 rounded font-mono text-[9px] text-amber-400 hover:bg-amber-500/20"
+                    >
+                      ↺ RESET TO MEDIAN (GH₵{systemSalePrices[developmentType].toLocaleString()})
+                    </button>
+                  )}
+                </div>
+              )}
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="font-mono text-[10px] text-zinc-500 block mb-1">
@@ -684,6 +816,21 @@ export default function ResidualMethodPage() {
           {/* Development Costs */}
           <TerminalPanel title="DEVELOPMENT COSTS">
             <div className="p-4 space-y-4">
+              {constructionCostSource && (
+                <div className="flex items-center gap-2">
+                  <span className="px-2 py-0.5 bg-cyan-500/10 border border-cyan-500/30 rounded font-mono text-[9px] text-cyan-400">
+                    {loadingMarketData ? 'LOADING...' : `SOURCE: ${constructionCostSource.toUpperCase()}`}
+                  </span>
+                  {systemConstructionCosts[developmentType] && constructionCostPerSqm !== systemConstructionCosts[developmentType] && (
+                    <button
+                      onClick={() => setConstructionCostPerSqm(systemConstructionCosts[developmentType])}
+                      className="px-2 py-0.5 bg-amber-500/10 border border-amber-500/30 rounded font-mono text-[9px] text-amber-400 hover:bg-amber-500/20"
+                    >
+                      ↺ RESET TO SYSTEM (GH₵{systemConstructionCosts[developmentType].toLocaleString()})
+                    </button>
+                  )}
+                </div>
+              )}
               {/* Cost Basis Toggle */}
               <div className="flex items-center justify-between p-3 bg-zinc-900 border border-zinc-700">
                 <div>
@@ -799,8 +946,8 @@ export default function ResidualMethodPage() {
                 <div>
                   <label className="font-mono text-[10px] text-zinc-500 block mb-1">
                     INTEREST RATE % <Tooltip text={TOOLTIPS.interestRate} />
-                    {economicData && (
-                      <span className="text-zinc-600 ml-1">(BOG+8%)</span>
+                    {interestRateSource && (
+                      <span className="text-zinc-600 ml-1">({interestRateSource})</span>
                     )}
                   </label>
                   <input
@@ -833,6 +980,32 @@ export default function ResidualMethodPage() {
                   />
                 </div>
               </div>
+
+              {/* BOG Rate Reference */}
+              {economicData && (
+                <div className="flex items-center gap-3 flex-wrap">
+                  {economicData.lending_rate && (
+                    <span className="px-2 py-0.5 bg-blue-500/10 border border-blue-500/30 rounded font-mono text-[9px] text-blue-400">
+                      LENDING: {parseFloat(economicData.lending_rate).toFixed(1)}%
+                    </span>
+                  )}
+                  {economicData.interest_rate_prime && (
+                    <span className="px-2 py-0.5 bg-zinc-800 border border-zinc-700 rounded font-mono text-[9px] text-zinc-400">
+                      PRIME: {parseFloat(economicData.interest_rate_prime).toFixed(1)}%
+                    </span>
+                  )}
+                  {economicData.interest_rate_policy && (
+                    <span className="px-2 py-0.5 bg-zinc-800 border border-zinc-700 rounded font-mono text-[9px] text-zinc-400">
+                      POLICY: {parseFloat(economicData.interest_rate_policy).toFixed(1)}%
+                    </span>
+                  )}
+                  {economicData.mortgage_rate_avg && (
+                    <span className="px-2 py-0.5 bg-zinc-800 border border-zinc-700 rounded font-mono text-[9px] text-zinc-400">
+                      MORTGAGE: {parseFloat(economicData.mortgage_rate_avg).toFixed(1)}%
+                    </span>
+                  )}
+                </div>
+              )}
 
               {/* Finance Model Toggle */}
               <div className="flex items-center justify-between p-3 bg-zinc-900 border border-zinc-700">
@@ -1007,8 +1180,8 @@ export default function ResidualMethodPage() {
                     
                     setDevelopmentType(devType)
                     setEfficiency(EFFICIENCY_RATES[devType] || 0.78)
-                    setSalePricePerSqm(SALE_PRICES[devType] || 8500)
-                    setConstructionCostPerSqm(CONSTRUCTION_COSTS[devType] || 5000)
+                    if (systemSalePrices[devType]) setSalePricePerSqm(systemSalePrices[devType])
+                    if (systemConstructionCosts[devType]) setConstructionCostPerSqm(systemConstructionCosts[devType])
                     setTargetProfit(20)
                   }
                 }}
@@ -1057,14 +1230,29 @@ export default function ResidualMethodPage() {
                   -GH₵ {targetProfitAmount.toLocaleString()}
                 </span>
               </div>
-              <div className={`flex justify-between py-3 -mx-4 px-4 ${residualLandValue >= 0 ? 'bg-amber-500/20' : 'bg-red-500/20'}`}>
-                <span className={`font-mono text-sm font-bold ${residualLandValue >= 0 ? 'text-amber-400' : 'text-red-400'}`}>
-                  RESIDUAL LAND VALUE <Tooltip text={TOOLTIPS.residualLandValue} />
-                </span>
-                <span className={`font-mono text-xl font-bold ${residualLandValue >= 0 ? 'text-amber-400' : 'text-red-400'}`}>
+              <div className={`flex justify-between py-3 -mx-4 px-4 ${isViable ? 'bg-amber-500/20' : 'bg-red-500/20'}`}>
+                <div>
+                  <span className={`font-mono text-sm font-bold ${isViable ? 'text-amber-400' : 'text-red-400'}`}>
+                    RESIDUAL LAND VALUE <Tooltip text={TOOLTIPS.residualLandValue} />
+                  </span>
+                  {!isViable && (
+                    <span className="ml-2 px-2 py-0.5 bg-red-500/20 border border-red-500/40 rounded font-mono text-[9px] text-red-400">
+                      RICS: LAND VALUE CANNOT BE NEGATIVE — SCHEME NOT VIABLE
+                    </span>
+                  )}
+                </div>
+                <span className={`font-mono text-xl font-bold ${isViable ? 'text-amber-400' : 'text-red-400'}`}>
                   GH₵ {residualLandValue.toLocaleString()}
                 </span>
               </div>
+              {!isViable && (
+                <div className="flex justify-between py-2 bg-red-500/10 -mx-4 px-4 border-t border-red-500/20">
+                  <span className="font-mono text-[10px] text-red-400">Shortfall (development not viable by)</span>
+                  <span className="font-mono text-sm text-red-400">
+                    GH₵ {Math.abs(rawResidualLandValue).toLocaleString()}
+                  </span>
+                </div>
+              )}
               <div className="flex justify-between py-2 bg-zinc-900 -mx-4 px-4">
                 <span className="font-mono text-xs text-zinc-500">Value per SQM of Land</span>
                 <span className="font-mono text-sm text-white">
@@ -1085,21 +1273,25 @@ export default function ResidualMethodPage() {
           </TerminalPanel>
 
           {/* Viability Status */}
-          {residualLandValue < 0 ? (
+          {!isViable ? (
             <div className="p-4 bg-red-500/10 border border-red-500/30">
               <div className="flex items-start gap-3">
-                <Building2 className="w-5 h-5 text-red-400" />
+                <AlertTriangle className="w-5 h-5 text-red-400" />
                 <div>
-                  <div className="font-mono text-sm text-red-400 font-bold mb-1">⚠ NEGATIVE LAND VALUE</div>
+                  <div className="font-mono text-sm text-red-400 font-bold mb-1">⚠ SCHEME NOT VIABLE — LAND VALUE: NIL</div>
                   <div className="font-mono text-xs text-red-300">
-                    The development scheme is not viable at current assumptions.
+                    Per RICS Valuation of Development Property guidance, land value cannot be negative.
+                    A nil residual indicates the proposed development is not financially viable at stated assumptions.
+                  </div>
+                  <div className="font-mono text-xs text-red-300 mt-1">
+                    Shortfall: GH₵ {Math.abs(rawResidualLandValue).toLocaleString()} — the development costs exceed achievable GDV.
                   </div>
                   <div className="font-mono text-xs text-zinc-500 mt-2">
-                    Use Quick Sensitivity buttons above to test scenarios, or:
+                    Adjust assumptions to achieve viability:
                     <ul className="list-disc list-inside mt-1 space-y-0.5 text-red-300/80">
-                      <li>Increase sale price</li>
+                      <li>Increase sale price per sqm</li>
                       <li>Reduce construction costs</li>
-                      <li>Add more floors</li>
+                      <li>Add more floors (increase density)</li>
                       <li>Accept lower profit margin</li>
                     </ul>
                   </div>
@@ -1165,7 +1357,7 @@ export default function ResidualMethodPage() {
         </Link>
         <button
           onClick={handleSave}
-          disabled={saving || residualLandValue <= 0}
+          disabled={saving}
           className="px-6 py-3 bg-amber-500 text-white font-mono text-sm font-bold hover:bg-amber-400 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-2"
         >
           {saving && <Loader2 className="w-4 h-4 animate-spin" />}

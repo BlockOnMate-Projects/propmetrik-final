@@ -47,6 +47,7 @@ export default function ReportPage() {
   const [isGenerated, setIsGenerated] = useState(false)
   const [readOnly, setReadOnly] = useState(true)
   const [regenerating, setRegenerating] = useState(false)
+  const [preparingApproval, setPreparingApproval] = useState(false)
   const [successMessage, setSuccessMessage] = useState<string | null>(null)
 
   // Initialize: load valuation and create/get report
@@ -114,7 +115,7 @@ export default function ReportPage() {
     initialize()
   }, [valuationId])
 
-  // Regenerate report
+  // Regenerate report — clears user edits and regenerates from template defaults
   const handleRegenerate = useCallback(async () => {
     if (!report) return
 
@@ -126,9 +127,10 @@ export default function ReportPage() {
         template: 'ghis_standard',
         include_floor_plans: true,
         include_photos: true,
+        reset_sections: true,
       })
 
-      // Refresh the page to reload editor
+      // Refresh the page to reload editor with fresh template content
       window.location.reload()
     } catch (err) {
       console.error('Failed to regenerate report:', err)
@@ -164,9 +166,10 @@ export default function ReportPage() {
 
   // Open approval via e-sign redirect flow
   const handleOpenApproval = useCallback(async () => {
-    if (!report) return
+    if (!report || preparingApproval) return
 
     try {
+      setPreparingApproval(true)
       setError(null)
 
       // Auto-generate DOCX if not yet generated (required for approval)
@@ -202,8 +205,10 @@ export default function ReportPage() {
     } catch (err) {
       console.error('Failed to prepare report for signing:', err)
       setError(err instanceof Error ? err.message : 'Failed to prepare report for signing')
+    } finally {
+      setPreparingApproval(false)
     }
-  }, [report, valuation, isGenerated, router])
+  }, [report, valuation, isGenerated, preparingApproval, router])
 
 
 
@@ -323,7 +328,7 @@ export default function ReportPage() {
           {/* Regenerate */}
           <button
             onClick={handleRegenerate}
-            disabled={regenerating || report.status === 'approved'}
+            disabled={regenerating}
             className="flex items-center gap-2 px-3 py-2 bg-zinc-800 text-zinc-400 font-mono text-xs hover:text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {regenerating ? (
@@ -347,10 +352,15 @@ export default function ReportPage() {
           {(report.status === 'draft' || report.status === 'approved' || report.status === 'pending_review') && (
             <button
               onClick={handleOpenApproval}
-              className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white font-mono text-xs font-bold hover:bg-green-500 transition-colors"
+              disabled={preparingApproval}
+              className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white font-mono text-xs font-bold hover:bg-green-500 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
             >
-              <PenTool className="w-3 h-3" />
-              {report.status === 'approved' ? 'Sign Report' : 'Approve & Sign'}
+              {preparingApproval ? (
+                <Loader2 className="w-3 h-3 animate-spin" />
+              ) : (
+                <PenTool className="w-3 h-3" />
+              )}
+              {preparingApproval ? 'Preparing Sign Flow...' : (report.status === 'approved' ? 'Sign Report' : 'Approve & Sign')}
             </button>
           )}
         </div>

@@ -971,6 +971,8 @@ class ValuationEngineService {
         p.bathrooms as prop_bathrooms,
         p.land_area_sqm as prop_land_area,
         p.built_area_sqm as prop_built_area,
+        p.building_size_sqm as prop_building_size,
+        p.total_area_sqm as prop_total_area,
         p.year_built as prop_year_built,
         p.condition as prop_condition
        FROM valuations v
@@ -1136,9 +1138,11 @@ class ValuationEngineService {
       land_area_sqm: row.prop_land_area ? parseFloat(row.prop_land_area) : null,
       plotSize: row.prop_land_area ? parseFloat(row.prop_land_area) : null,
       plot_size: row.prop_land_area ? parseFloat(row.prop_land_area) : null,
-      builtArea: row.prop_built_area ? parseFloat(row.prop_built_area) : null,
-      building_area_sqm: row.prop_built_area ? parseFloat(row.prop_built_area) : null,
-      grossFloorArea: row.prop_built_area ? parseFloat(row.prop_built_area) : null,
+      builtArea: parseFloat(row.prop_built_area || row.prop_building_size || row.prop_total_area) || null,
+      building_area_sqm: parseFloat(row.prop_built_area || row.prop_building_size || row.prop_total_area) || null,
+      grossFloorArea: parseFloat(row.prop_built_area || row.prop_building_size || row.prop_total_area) || null,
+      totalArea: row.prop_total_area ? parseFloat(row.prop_total_area) : null,
+      total_area_sqm: row.prop_total_area ? parseFloat(row.prop_total_area) : null,
       yearBuilt: row.prop_year_built,
       year_built: row.prop_year_built,
       condition: row.prop_condition,

@@ -648,7 +648,23 @@ export default function MarketDataPage() {
         },
         body: JSON.stringify({
           methods: ['sales_comparison'],
-          include_comparables: true
+          include_comparables: true,
+          comparables: selectedComparables.map(c => ({
+            id: c.id,
+            price: c.sale_price || 0,
+            price_currency: c.price_currency || 'GHS',
+            bedrooms: c.bedrooms,
+            bathrooms: c.bathrooms,
+            gfa_sqm: c.gfa,
+            land_area_sqm: c.plot_size || c.gfa,
+            year_built: c.year_built,
+            condition: c.condition || 'good',
+            region: c.neighborhood,
+            property_type: c.quality_rating,
+            evidence_type: c.evidence_type || 'listing',
+            transaction_date: c.sale_date,
+            weight: c.weight || 1.0,
+          })),
         })
       })
       

@@ -366,7 +366,6 @@ router.post('/', async (req: Request, res: Response) => {
       contact_email,
       contact_phone,
       company_name,
-      company_address,
     } = req.body;
 
     if (!name) {
@@ -400,6 +399,20 @@ router.post('/', async (req: Request, res: Response) => {
       });
     }
 
+    // Check if a valuer record already exists for this user
+    if (user_id) {
+      const existing = await query(
+        `SELECT id FROM valuers WHERE user_id = $1`,
+        [user_id]
+      );
+      if (existing.rows.length > 0) {
+        return res.status(400).json({
+          error: 'Duplicate',
+          message: 'A professional profile already exists for this user. Please refresh and update instead.',
+        });
+      }
+    }
+
     const valuerId = uuidv4();
 
     const result = await query(
@@ -408,8 +421,8 @@ router.post('/', async (req: Request, res: Response) => {
         license_number, license_issuer, license_valid_until, license_status,
         pi_provider, pi_policy_number, pi_coverage, pi_valid_until,
         contact_address, contact_email, contact_phone,
-        company_name, company_address, is_active
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19)
+        company_name, is_active
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18)
       RETURNING *`,
       [
         valuerId,
@@ -423,13 +436,12 @@ router.post('/', async (req: Request, res: Response) => {
         'active',
         pi_provider || null,
         pi_policy_number || null,
-        pi_coverage || null,
+        pi_coverage ? parseFloat(String(pi_coverage).replace(/[^0-9.]/g, '')) || null : null,
         pi_valid_until ? new Date(pi_valid_until) : null,
         contact_address || null,
         contact_email || null,
         contact_phone || null,
         company_name || null,
-        company_address || null,
         true,
       ]
     );
@@ -470,18 +482,21 @@ router.put('/:id', validateUUID('id'), async (req: Request, res: Response) => {
       'license_number', 'license_issuer', 'license_valid_until', 'license_status',
       'pi_provider', 'pi_policy_number', 'pi_coverage', 'pi_valid_until',
       'contact_address', 'contact_email', 'contact_phone',
-      'company_name', 'company_address', 'is_active',
+      'company_name', 'is_active',
     ];
 
     for (const field of allowedFields) {
       if (req.body[field] !== undefined) {
         updateFields.push(`${field} = $${paramIndex++}`);
+        const val = req.body[field];
         
-        // Handle date fields
-        if (field.includes('_until') && req.body[field]) {
-          updateValues.push(new Date(req.body[field]));
+        // Handle date fields — empty string → null
+        if (field.includes('_until') || field.includes('_from')) {
+          updateValues.push(val ? new Date(val) : null);
+        } else if (field === 'pi_coverage') {
+          updateValues.push(val ? parseFloat(String(val).replace(/[^0-9.]/g, '')) || null : null);
         } else {
-          updateValues.push(req.body[field]);
+          updateValues.push(val === '' ? null : val);
         }
       }
     }

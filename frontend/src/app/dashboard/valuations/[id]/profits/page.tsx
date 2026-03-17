@@ -20,7 +20,7 @@ import {
   MethodBadge,
   ConfidenceBar,
 } from '@/components/ui/terminal'
-import { valuationsApi, pythonMethodsApi } from '@/lib/valuation-api'
+import { valuationsApi, pythonMethodsApi, capRateApi } from '@/lib/valuation-api'
 import type { Valuation } from '@/types/valuation'
 import {
   ArrowLeft,
@@ -119,14 +119,14 @@ const PROFITS_TOOLTIPS = {
   capitalValue: 'The estimated market value of the property based on its income-generating potential, calculated as MOP ÷ Cap Rate.',
 }
 
-// Capitalization rates by property type
-const CAP_RATES: Record<string, number> = {
-  hotel: 10,
-  hospital: 9,
-  school: 8.5,
-  restaurant: 12,
-  fuel_station: 11,
-  healthcare: 9,
+// Map trading property types to cap rate property types for API lookup
+const TRADING_TO_CAP_RATE_TYPE: Record<string, string> = {
+  hotel: 'commercial_office',
+  hospital: 'commercial_office',
+  school: 'commercial_office',
+  restaurant: 'commercial_shop',
+  fuel_station: 'commercial_shop',
+  healthcare: 'commercial_office',
 }
 
 export default function ProfitsMethodPage() {
@@ -155,6 +155,10 @@ export default function ProfitsMethodPage() {
   // Capitalization
   const [capRate, setCapRate] = useState(10)
   const [useCustomCapRate, setUseCustomCapRate] = useState(false)
+  const [systemCapRate, setSystemCapRate] = useState<number | null>(null)
+  const [capRateMethodology, setCapRateMethodology] = useState<string | null>(null)
+  const [capRateConfidence, setCapRateConfidence] = useState<string | null>(null)
+  const [capRateRange, setCapRateRange] = useState<{ low: number; high: number } | null>(null)
 
   // Python calculation results
   const [pythonResult, setPythonResult] = useState<any>(null)
@@ -195,6 +199,31 @@ export default function ProfitsMethodPage() {
           // Try to infer unit count from property data
           if (prop.bedrooms) setUnitCount(prop.bedrooms) // Rooms for hotel
           else if (prop.built_area_sqm) setUnitCount(Math.round(prop.built_area_sqm))
+
+          // Fetch market cap rate from RICS-compliant methodology
+          const region = prop.region?.toLowerCase()?.replace(/\s+/g, '_') || 'greater_accra'
+          const capRatePropertyType = TRADING_TO_CAP_RATE_TYPE['hotel'] || 'commercial_office'
+          try {
+            const capRateRes = await capRateApi.getMarketCapRate(region, capRatePropertyType)
+            if (capRateRes.success && capRateRes.data?.capRate > 0) {
+              const ratePercent = capRateRes.data.capRate < 1
+                ? capRateRes.data.capRate * 100
+                : capRateRes.data.capRate
+              setSystemCapRate(ratePercent)
+              setCapRate(ratePercent)
+              setCapRateMethodology(capRateRes.data.methodology)
+              setCapRateConfidence(capRateRes.data.confidence)
+              if (capRateRes.data.range) {
+                setCapRateRange({
+                  low: capRateRes.data.range.low < 1 ? capRateRes.data.range.low * 100 : capRateRes.data.range.low,
+                  high: capRateRes.data.range.high < 1 ? capRateRes.data.range.high * 100 : capRateRes.data.range.high,
+                })
+              }
+              console.log('✅ Market cap rate from API:', ratePercent, '%', capRateRes.data.methodology)
+            }
+          } catch {
+            console.log('ℹ️ Market cap rate API unavailable, using defaults')
+          }
         }
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to load valuation')
@@ -255,11 +284,40 @@ export default function ProfitsMethodPage() {
         setRevenuePerUnit(typeInfo.revenuePerUnit)
       }
     }
-    if (!useCustomCapRate) {
-      setCapRate(CAP_RATES[propertyType] || 10)
+    if (!useCustomCapRate && systemCapRate !== null) {
+      setCapRate(systemCapRate)
     }
     setOperatingCostOverrides({})
-  }, [propertyType, useCustomRevenue, useCustomCapRate])
+  }, [propertyType, useCustomRevenue, useCustomCapRate, systemCapRate])
+
+  // Fetch new cap rate when property type changes
+  useEffect(() => {
+    const fetchCapRate = async () => {
+      if (!valuation?.property) return
+      const region = valuation.property.region?.toLowerCase()?.replace(/\s+/g, '_') || 'greater_accra'
+      const capRatePropertyType = TRADING_TO_CAP_RATE_TYPE[propertyType] || 'commercial_office'
+      try {
+        const capRateRes = await capRateApi.getMarketCapRate(region, capRatePropertyType)
+        if (capRateRes.success && capRateRes.data?.capRate > 0) {
+          const ratePercent = capRateRes.data.capRate < 1
+            ? capRateRes.data.capRate * 100
+            : capRateRes.data.capRate
+          setSystemCapRate(ratePercent)
+          setCapRateMethodology(capRateRes.data.methodology)
+          setCapRateConfidence(capRateRes.data.confidence)
+          if (capRateRes.data.range) {
+            setCapRateRange({
+              low: capRateRes.data.range.low < 1 ? capRateRes.data.range.low * 100 : capRateRes.data.range.low,
+              high: capRateRes.data.range.high < 1 ? capRateRes.data.range.high * 100 : capRateRes.data.range.high,
+            })
+          }
+        }
+      } catch {
+        // Keep existing cap rate
+      }
+    }
+    fetchCapRate()
+  }, [propertyType, valuation])
 
   // Save and continue
   const handleSave = async () => {
@@ -621,9 +679,36 @@ export default function ProfitsMethodPage() {
                   {capRate}%
                 </span>
               </div>
-              <div className="font-mono text-xs text-zinc-500">
-                Default for {currentTypeInfo?.label || 'this type'}: {CAP_RATES[propertyType] || 10}%
-              </div>
+              {capRateMethodology ? (
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2">
+                    <span className={`font-mono text-[9px] px-1.5 py-0.5 ${
+                      capRateConfidence === 'high' ? 'bg-green-500/20 text-green-400' :
+                      capRateConfidence === 'moderate' ? 'bg-amber-500/20 text-amber-400' :
+                      'bg-red-500/20 text-red-400'
+                    }`}>
+                      {capRateMethodology.replace(/_/g, ' ').toUpperCase()}
+                    </span>
+                    {useCustomCapRate && (
+                      <button
+                        onClick={() => { setUseCustomCapRate(false); if (systemCapRate !== null) setCapRate(systemCapRate) }}
+                        className="font-mono text-[9px] text-blue-400 hover:text-blue-300 underline"
+                      >
+                        Reset to system
+                      </button>
+                    )}
+                  </div>
+                  {capRateRange && (
+                    <div className="font-mono text-[10px] text-zinc-500">
+                      Market range: {capRateRange.low.toFixed(1)}% – {capRateRange.high.toFixed(1)}%
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="font-mono text-xs text-zinc-500">
+                  Loading market cap rate...
+                </div>
+              )}
             </div>
           </TerminalPanel>
 

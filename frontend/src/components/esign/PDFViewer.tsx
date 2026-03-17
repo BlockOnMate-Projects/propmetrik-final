@@ -63,9 +63,9 @@ export default function PDFViewer({
       setPages([]);
 
       try {
-        const pdfjsLib = await import("pdfjs-dist");
-        // Set worker
-        pdfjsLib.GlobalWorkerOptions.workerSrc = "/pdf.worker.min.js";
+        // @ts-expect-error — runtime URL import bypasses webpack to avoid pdfjs-dist v5 conflicts
+        const pdfjsLib = await import(/* webpackIgnore: true */ "/pdf.min.mjs");
+        pdfjsLib.GlobalWorkerOptions.workerSrc = "/pdf.worker.min.mjs";
 
         let source: any;
         if (file) {

@@ -172,6 +172,16 @@ export const workspaceApi = {
             body: JSON.stringify({ content, threadId, conversationId, metadata }),
         }),
 
+    /** Delete a message (soft-delete, author only) */
+    deleteMessage: (workspaceId: string, messageId: string) =>
+        fetchWorkspaceApi<{ success: boolean }>(`/${workspaceId}/messages/${messageId}`, {
+            method: 'DELETE',
+        }),
+
+    /** Get a single message by ID (for thread parent lookups) */
+    getMessageById: (workspaceId: string, messageId: string) =>
+        fetchWorkspaceApi<{ message: WorkspaceMessage }>(`/${workspaceId}/messages/${messageId}`),
+
     /** List members */
     getMembers: (workspaceId: string) =>
         fetchWorkspaceApi<{ members: WorkspaceMember[] }>(`/${workspaceId}/members`),

@@ -39,6 +39,29 @@ interface NotifPreferences {
   emailDigestFrequency: string
 }
 
+interface ValuerProfile {
+  id: string
+  user_id: string | null
+  name: string
+  title: string | null
+  qualifications: string | null
+  license_number: string | null
+  license_issuer: string | null
+  license_valid_until: string | null
+  license_status: string | null
+  pi_provider: string | null
+  pi_policy_number: string | null
+  pi_coverage: string | null
+  pi_valid_until: string | null
+  contact_address: string | null
+  contact_email: string | null
+  contact_phone: string | null
+  company_name: string | null
+  specializations: string[] | null
+  regions_covered: string[] | null
+  memberships: { organization: string; number: string; grade: string }[] | null
+}
+
 interface UserStats {
   valuations: number
   dealsClosed: number
@@ -106,6 +129,18 @@ export default function ProfilePage() {
   // Notification save state
   const [notifMsg, setNotifMsg] = useState<{ text: string; type: 'success' | 'error' } | null>(null)
 
+  // Valuer professional details state
+  const [valuer, setValuer] = useState<ValuerProfile | null>(null)
+  const [valuerForm, setValuerForm] = useState({
+    name: '', title: '', qualifications: '',
+    license_number: '', license_issuer: '', license_valid_until: '',
+    pi_provider: '', pi_policy_number: '', pi_coverage: '', pi_valid_until: '',
+    contact_address: '', contact_email: '', contact_phone: '', company_name: '',
+  })
+  const [valuerMsg, setValuerMsg] = useState<{ text: string; type: 'success' | 'error' } | null>(null)
+  const [valuerSaving, setValuerSaving] = useState(false)
+  const [hasValuationService, setHasValuationService] = useState(false)
+
   // ── Fetch data ──
   const fetchAll = useCallback(async () => {
     setLoading(true)
@@ -121,6 +156,45 @@ export default function ProfilePage() {
         setFirstName(profRes.profile.firstName || '')
         setLastName(profRes.profile.lastName || '')
         setPhone(profRes.profile.phone || '')
+
+        // Check if user has valuation service access
+        const isValuationRole = ['valuer', 'admin', 'super_admin'].includes(profRes.profile.role)
+        setHasValuationService(isValuationRole)
+
+        // Fetch valuer profile if applicable
+        if (isValuationRole && profRes.profile.id) {
+          try {
+            const valuerRes = await authedFetch(`/api/valuers/user/${profRes.profile.id}`).then(r => r.json()).catch(() => null)
+            if (valuerRes && valuerRes.id) {
+              setValuer(valuerRes)
+              setValuerForm({
+                name: valuerRes.name || '',
+                title: valuerRes.title || '',
+                qualifications: valuerRes.qualifications || '',
+                license_number: valuerRes.license_number || '',
+                license_issuer: valuerRes.license_issuer || '',
+                license_valid_until: valuerRes.license_valid_until ? valuerRes.license_valid_until.split('T')[0] : '',
+                pi_provider: valuerRes.pi_provider || '',
+                pi_policy_number: valuerRes.pi_policy_number || '',
+                pi_coverage: valuerRes.pi_coverage || '',
+                pi_valid_until: valuerRes.pi_valid_until ? valuerRes.pi_valid_until.split('T')[0] : '',
+                contact_address: valuerRes.contact_address || '',
+                contact_email: valuerRes.contact_email || '',
+                contact_phone: valuerRes.contact_phone || '',
+                company_name: valuerRes.company_name || '',
+              })
+            } else {
+              // Pre-fill from user profile so the form isn't blank
+              setValuerForm(prev => ({
+                ...prev,
+                name: `${profRes.profile.firstName || ''} ${profRes.profile.lastName || ''}`.trim(),
+                contact_email: profRes.profile.email || '',
+                contact_phone: profRes.profile.phone || '',
+                company_name: profRes.profile.organization?.name || '',
+              }))
+            }
+          } catch { /* no valuer record yet */ }
+        }
       }
       if (statsRes?.success) setStats(statsRes.stats)
       if (notifRes?.success) setNotifPrefs(notifRes.preferences)
@@ -182,6 +256,57 @@ export default function ProfilePage() {
     } finally {
       setPwSaving(false)
     }
+  }
+
+  const saveValuerProfile = async () => {
+    setValuerSaving(true)
+    setValuerMsg(null)
+    try {
+      if (!valuerForm.name.trim()) {
+        setValuerMsg({ text: 'Name is required', type: 'error' })
+        setValuerSaving(false)
+        return
+      }
+
+      if (valuer?.id) {
+        // Update existing valuer
+        const res = await authedFetch(`/api/valuers/${valuer.id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(valuerForm),
+        })
+        const data = await res.json()
+        if (res.ok) {
+          setValuer(data)
+          setValuerMsg({ text: 'Professional details updated', type: 'success' })
+        } else {
+          setValuerMsg({ text: data.message || 'Failed to update', type: 'error' })
+        }
+      } else {
+        // Create new valuer record
+        const res = await authedFetch('/api/valuers', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ ...valuerForm, user_id: profile?.id }),
+        })
+        const data = await res.json()
+        if (res.ok) {
+          setValuer(data)
+          setValuerMsg({ text: 'Professional details saved', type: 'success' })
+        } else {
+          const details = data.details ? `\n${data.details.join(', ')}` : ''
+          setValuerMsg({ text: (data.message || 'Failed to save') + details, type: 'error' })
+        }
+      }
+    } catch {
+      setValuerMsg({ text: 'Network error', type: 'error' })
+    } finally {
+      setValuerSaving(false)
+    }
+  }
+
+  const updateValuerField = (field: string, value: string) => {
+    setValuerForm(prev => ({ ...prev, [field]: value }))
   }
 
   const toggleNotif = async (key: keyof NotifPreferences) => {
@@ -253,6 +378,7 @@ export default function ProfilePage() {
       <div className="flex gap-1 mb-4 overflow-x-auto">
         {[
           { id: 'profile', label: 'PROFILE' },
+          ...(hasValuationService ? [{ id: 'professional', label: 'PROFESSIONAL' }] : []),
           { id: 'security', label: 'SECURITY' },
           { id: 'notifications', label: 'NOTIFICATIONS' },
         ].map((tab) => (
@@ -352,6 +478,136 @@ export default function ProfilePage() {
                 </div>
               </div>
             </Panel>
+          )}
+
+          {/* ─── Professional Tab (Valuation Service) ─── */}
+          {activeTab === 'professional' && hasValuationService && (
+            <div className="space-y-4">
+              <Panel title="PROFESSIONAL CREDENTIALS">
+                {valuerMsg && <StatusMsg msg={valuerMsg.text} type={valuerMsg.type} />}
+                {!valuer && (
+                  <div className="mb-3 px-3 py-2 bg-amber-900/20 border border-amber-800 font-mono text-xs text-amber-400">
+                    No professional profile found. Complete the form below to create your valuer profile.
+                  </div>
+                )}
+                <div className="space-y-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block font-mono text-[10px] text-zinc-500 mb-1">FULL NAME *</label>
+                      <input type="text" value={valuerForm.name} onChange={e => updateValuerField('name', e.target.value)}
+                        placeholder="e.g. Eric Danso"
+                        className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 font-mono text-sm text-white focus:border-amber-500 focus:outline-none" />
+                    </div>
+                    <div>
+                      <label className="block font-mono text-[10px] text-zinc-500 mb-1">PROFESSIONAL TITLE</label>
+                      <input type="text" value={valuerForm.title} onChange={e => updateValuerField('title', e.target.value)}
+                        placeholder="e.g. Surveyor, Estate Valuer"
+                        className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 font-mono text-sm text-white focus:border-amber-500 focus:outline-none" />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block font-mono text-[10px] text-zinc-500 mb-1">QUALIFICATIONS</label>
+                    <input type="text" value={valuerForm.qualifications} onChange={e => updateValuerField('qualifications', e.target.value)}
+                      placeholder="e.g. BSc Land Economy, MGIPC"
+                      className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 font-mono text-sm text-white focus:border-amber-500 focus:outline-none" />
+                  </div>
+                  <div>
+                    <label className="block font-mono text-[10px] text-zinc-500 mb-1">COMPANY / FIRM NAME</label>
+                    <input type="text" value={valuerForm.company_name} onChange={e => updateValuerField('company_name', e.target.value)}
+                      placeholder="e.g. Cedyn Valuations Ltd"
+                      className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 font-mono text-sm text-white focus:border-amber-500 focus:outline-none" />
+                  </div>
+                </div>
+              </Panel>
+
+              <Panel title="LICENSE & REGISTRATION">
+                <div className="space-y-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block font-mono text-[10px] text-zinc-500 mb-1">LICENSE NUMBER *</label>
+                      <input type="text" value={valuerForm.license_number} onChange={e => updateValuerField('license_number', e.target.value)}
+                        placeholder="e.g. GhIS/LV/2024/001"
+                        className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 font-mono text-sm text-white focus:border-amber-500 focus:outline-none" />
+                    </div>
+                    <div>
+                      <label className="block font-mono text-[10px] text-zinc-500 mb-1">LICENSE ISSUER</label>
+                      <input type="text" value={valuerForm.license_issuer} onChange={e => updateValuerField('license_issuer', e.target.value)}
+                        placeholder="e.g. GhIS, RICS"
+                        className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 font-mono text-sm text-white focus:border-amber-500 focus:outline-none" />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block font-mono text-[10px] text-zinc-500 mb-1">LICENSE VALID UNTIL *</label>
+                    <input type="date" value={valuerForm.license_valid_until} onChange={e => updateValuerField('license_valid_until', e.target.value)}
+                      className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 font-mono text-sm text-white focus:border-amber-500 focus:outline-none" />
+                  </div>
+                </div>
+              </Panel>
+
+              <Panel title="PROFESSIONAL INDEMNITY INSURANCE">
+                <div className="space-y-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block font-mono text-[10px] text-zinc-500 mb-1">PI PROVIDER</label>
+                      <input type="text" value={valuerForm.pi_provider} onChange={e => updateValuerField('pi_provider', e.target.value)}
+                        placeholder="e.g. SIC Insurance"
+                        className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 font-mono text-sm text-white focus:border-amber-500 focus:outline-none" />
+                    </div>
+                    <div>
+                      <label className="block font-mono text-[10px] text-zinc-500 mb-1">POLICY NUMBER</label>
+                      <input type="text" value={valuerForm.pi_policy_number} onChange={e => updateValuerField('pi_policy_number', e.target.value)}
+                        className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 font-mono text-sm text-white focus:border-amber-500 focus:outline-none" />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block font-mono text-[10px] text-zinc-500 mb-1">COVERAGE AMOUNT</label>
+                      <input type="text" value={valuerForm.pi_coverage} onChange={e => updateValuerField('pi_coverage', e.target.value)}
+                        placeholder="e.g. GHS 500,000"
+                        className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 font-mono text-sm text-white focus:border-amber-500 focus:outline-none" />
+                    </div>
+                    <div>
+                      <label className="block font-mono text-[10px] text-zinc-500 mb-1">PI VALID UNTIL</label>
+                      <input type="date" value={valuerForm.pi_valid_until} onChange={e => updateValuerField('pi_valid_until', e.target.value)}
+                        className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 font-mono text-sm text-white focus:border-amber-500 focus:outline-none" />
+                    </div>
+                  </div>
+                </div>
+              </Panel>
+
+              <Panel title="CONTACT DETAILS">
+                <div className="space-y-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block font-mono text-[10px] text-zinc-500 mb-1">CONTACT EMAIL *</label>
+                      <input type="email" value={valuerForm.contact_email} onChange={e => updateValuerField('contact_email', e.target.value)}
+                        placeholder="valuer@example.com"
+                        className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 font-mono text-sm text-white focus:border-amber-500 focus:outline-none" />
+                    </div>
+                    <div>
+                      <label className="block font-mono text-[10px] text-zinc-500 mb-1">CONTACT PHONE</label>
+                      <input type="tel" value={valuerForm.contact_phone} onChange={e => updateValuerField('contact_phone', e.target.value)}
+                        placeholder="+233 XX XXX XXXX"
+                        className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 font-mono text-sm text-white focus:border-amber-500 focus:outline-none" />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block font-mono text-[10px] text-zinc-500 mb-1">OFFICE ADDRESS</label>
+                    <input type="text" value={valuerForm.contact_address} onChange={e => updateValuerField('contact_address', e.target.value)}
+                      placeholder="e.g. 14 Independence Ave, Accra"
+                      className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 font-mono text-sm text-white focus:border-amber-500 focus:outline-none" />
+                  </div>
+                </div>
+              </Panel>
+
+              <div className="flex items-center gap-3">
+                <button onClick={saveValuerProfile} disabled={valuerSaving}
+                  className="px-4 py-2 bg-amber-500 text-white font-mono text-xs font-bold hover:bg-amber-400 transition-colors disabled:opacity-50">
+                  {valuerSaving ? 'SAVING...' : valuer ? 'UPDATE PROFESSIONAL DETAILS' : 'CREATE PROFESSIONAL PROFILE'}
+                </button>
+                <span className="font-mono text-[10px] text-zinc-600">* Required for report signing</span>
+              </div>
+            </div>
           )}
 
           {/* ─── Security Tab ─── */}
@@ -492,6 +748,49 @@ export default function ProfilePage() {
                 <div className="flex justify-between">
                   <span className="font-mono text-[10px] text-zinc-500">TYPE</span>
                   <span className="font-mono text-xs text-amber-400">{profile.organization.type.toUpperCase()}</span>
+                </div>
+              </div>
+            </Panel>
+          )}
+
+          {hasValuationService && activeTab === 'professional' && (
+            <Panel title="CREDENTIAL STATUS">
+              <div className="space-y-3">
+                <div className="flex justify-between">
+                  <span className="font-mono text-[10px] text-zinc-500">PROFILE</span>
+                  <span className={cn('font-mono text-xs', valuer ? 'text-green-400' : 'text-red-400')}>
+                    {valuer ? 'CREATED' : 'MISSING'}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="font-mono text-[10px] text-zinc-500">LICENSE</span>
+                  <span className={cn('font-mono text-xs', valuer?.license_number ? 'text-green-400' : 'text-red-400')}>
+                    {valuer?.license_number || 'NOT SET'}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="font-mono text-[10px] text-zinc-500">LICENSE STATUS</span>
+                  <span className={cn('font-mono text-xs',
+                    valuer?.license_valid_until && new Date(valuer.license_valid_until) > new Date() ? 'text-green-400' : 'text-amber-400'
+                  )}>
+                    {valuer?.license_valid_until
+                      ? new Date(valuer.license_valid_until) > new Date() ? 'VALID' : 'EXPIRED'
+                      : 'UNKNOWN'}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="font-mono text-[10px] text-zinc-500">PI INSURANCE</span>
+                  <span className={cn('font-mono text-xs', valuer?.pi_provider ? 'text-green-400' : 'text-zinc-600')}>
+                    {valuer?.pi_provider ? 'ACTIVE' : 'NOT SET'}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="font-mono text-[10px] text-zinc-500">E-SIGN READY</span>
+                  <span className={cn('font-mono text-xs',
+                    valuer?.license_number && valuer?.contact_email ? 'text-green-400' : 'text-red-400'
+                  )}>
+                    {valuer?.license_number && valuer?.contact_email ? 'YES' : 'NO'}
+                  </span>
                 </div>
               </div>
             </Panel>

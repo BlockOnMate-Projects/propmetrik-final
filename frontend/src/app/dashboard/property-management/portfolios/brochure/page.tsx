@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import {
     ChevronLeft,
@@ -31,10 +31,12 @@ import { EnterpriseNav } from '@/components/layout/EnterpriseNav'
 
 export default function PortfolioBrochurePage() {
     const router = useRouter();
+    const brochureRef = useRef<HTMLDivElement>(null);
     const [metrics, setMetrics] = useState<PortfolioMetrics | null>(null);
     const [composition, setComposition] = useState<PortfolioComposition | null>(null);
     const [properties, setProperties] = useState<Property[]>([]);
     const [loading, setLoading] = useState(true);
+    const [exportingPdf, setExportingPdf] = useState(false);
 
     useEffect(() => {
         async function loadData() {
@@ -71,8 +73,55 @@ export default function PortfolioBrochurePage() {
         return `₵${val}`;
     };
 
-    const handlePrint = () => {
-        window.print();
+    const handlePrint = async () => {
+        const brochureNode = brochureRef.current;
+        if (!brochureNode || exportingPdf) return;
+
+        setExportingPdf(true);
+
+        try {
+            const [{ default: html2canvas }, { jsPDF }] = await Promise.all([
+                import('html2canvas'),
+                import('jspdf'),
+            ]);
+
+            const canvas = await html2canvas(brochureNode, {
+                scale: 2,
+                useCORS: true,
+                logging: false,
+                backgroundColor: '#ffffff',
+                width: brochureNode.scrollWidth,
+                height: brochureNode.scrollHeight,
+                windowWidth: brochureNode.scrollWidth,
+                windowHeight: brochureNode.scrollHeight,
+            });
+
+            const imgData = canvas.toDataURL('image/jpeg', 0.95);
+            const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+            const pdfWidth = pdf.internal.pageSize.getWidth();
+            const pdfHeight = pdf.internal.pageSize.getHeight();
+            const imgWidth = pdfWidth;
+            const imgHeight = (canvas.height * pdfWidth) / canvas.width;
+
+            let yOffset = 0;
+            let pageIndex = 0;
+            while (yOffset < imgHeight) {
+                if (pageIndex > 0) {
+                    pdf.addPage();
+                }
+                pdf.addImage(imgData, 'JPEG', 0, -yOffset, imgWidth, imgHeight);
+                yOffset += pdfHeight;
+                pageIndex += 1;
+            }
+
+            const fileName = `Portfolio_Brochure_${new Date().toISOString().slice(0, 10)}.pdf`;
+            pdf.save(fileName);
+        } catch (error) {
+            console.error('Portfolio brochure PDF export failed, falling back to print:', error);
+            window.print();
+        } finally {
+            setExportingPdf(false);
+        }
     };
 
     const currentDate = new Date().toLocaleDateString('en-GB', {
@@ -120,10 +169,11 @@ export default function PortfolioBrochurePage() {
                             </Button>
                             <Button
                                 onClick={handlePrint}
-                                className="bg-amber-600 hover:bg-amber-500 text-white font-bold font-mono text-xs uppercase"
+                                disabled={exportingPdf}
+                                className="bg-amber-600 hover:bg-amber-500 text-white font-bold font-mono text-xs uppercase disabled:opacity-60"
                             >
                                 <Printer className="mr-2 h-4 w-4" />
-                                Print / Export PDF
+                                {exportingPdf ? 'Exporting PDF...' : 'Print / Export PDF'}
                             </Button>
                         </div>
                     </div>
@@ -131,7 +181,7 @@ export default function PortfolioBrochurePage() {
             </div>
 
             {/* Brochure Document */}
-            <div className="max-w-[850px] mx-auto my-8 print:my-0">
+            <div ref={brochureRef} className="max-w-[850px] mx-auto my-8 print:my-0">
                 
                 {/* ============================================= */}
                 {/* PAGE 1: COVER PAGE */}

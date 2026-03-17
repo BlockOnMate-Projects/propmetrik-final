@@ -407,14 +407,14 @@ router.post('/', validateValuationRequest, async (req: Request, res: Response) =
         `INSERT INTO properties (
           reference_number, region, address_street, address_city, address_district,
           digital_address, latitude, longitude, property_type, transaction_type, title, description,
-          bedrooms, bathrooms, land_area_sqm, year_built, price, price_currency,
+          bedrooms, bathrooms, land_area_sqm, built_area_sqm, year_built, price, price_currency,
           data_source, status, created_by, 
           owner_name, owner_email, owner_phone, owner_address, owner_contact_preference
         ) VALUES (
           $1, $2, $3, $4, $5,
           $6, $7, $8, $9, $10, $11, $12,
-          $13, $14, $15, $16, $17, $18,
-          $19, $20, $21, $22, $23, $24, $25, $26
+          $13, $14, $15, $16, $17, $18, $19,
+          $20, $21, $22, $23, $24, $25, $26, $27
         ) RETURNING id`,
         [
           refNumber,
@@ -433,6 +433,7 @@ router.post('/', validateValuationRequest, async (req: Request, res: Response) =
           property.bedrooms ? parseInt(property.bedrooms) : null,
           property.bathrooms ? parseInt(property.bathrooms) : null,
           property.land_area_sqm || property.plotSize || null,
+          property.built_area_sqm || property.gfa || null,
           property.year_built || property.yearBuilt ? parseInt(property.year_built || property.yearBuilt) : null,
           0, // No price for subject property
           'GHS',
@@ -683,7 +684,11 @@ router.post('/:id/run-python', validateUUID('id'), async (req: Request, res: Res
 
     let comparables: any[] = [];
 
-    if (basketResult.rows.length > 0) {
+    // Use comparables from request body if provided (frontend sends them before basket is saved)
+    if (req.body.comparables && Array.isArray(req.body.comparables) && req.body.comparables.length > 0) {
+      comparables = req.body.comparables;
+      logger.info('Using comparables from request body', { count: comparables.length });
+    } else if (basketResult.rows.length > 0) {
       const basketId = basketResult.rows[0].basket_id;
 
       // Get comparables from the basket with property details
@@ -733,6 +738,10 @@ router.post('/:id/run-python', validateUUID('id'), async (req: Request, res: Res
       }));
     }
 
+    if (comparables.length === 0) {
+      logger.warn('No comparables available for Python valuation', { valuationId });
+    }
+
     // Prepare property data for Python service
     const propertyData = {
       id: valuation.property_id,
@@ -759,7 +768,7 @@ router.post('/:id/run-python', validateUUID('id'), async (req: Request, res: Res
     });
 
     // Use RICS endpoint if we have comparables, otherwise fall back to standard
-    const pythonBase = process.env.PYTHON_VALUATION_URL || 'http://ml-serving:8001';
+    const pythonBase = process.env.PYTHON_VALUATION_URL || 'http://localhost:8001';
     const pythonEndpoint = comparables.length > 0
       ? `${pythonBase}/api/v1/methods/sales-comparison-rics`
       : `${pythonBase}/api/v1/methods/sales-comparison`;
@@ -925,7 +934,7 @@ router.post('/:id/run-python', validateUUID('id'), async (req: Request, res: Res
  */
 router.get('/test/python-health', async (req: Request, res: Response) => {
   try {
-    const pythonBase = process.env.PYTHON_VALUATION_URL || 'http://ml-serving:8001';
+    const pythonBase = process.env.PYTHON_VALUATION_URL || 'http://localhost:8001';
     const pythonResponse = await fetch(`${pythonBase}/health`, {
       method: 'GET',
       headers: {
@@ -1135,7 +1144,7 @@ router.put('/:id', validateUUID('id'), async (req: Request, res: Response) => {
       const step = parseInt(updatedRow.current_step);
       const currentStatus = updatedRow.status;
 
-      if (step >= 7 && (currentStatus === 'in_progress' || currentStatus === 'draft')) {
+      if (step >= 7 && (currentStatus === 'in_progress' || currentStatus === 'draft' || currentStatus === 'pending_review')) {
         await query(
           `UPDATE valuations SET status = 'completed', updated_at = NOW() WHERE id = $1`,
           [id]
@@ -1714,19 +1723,20 @@ router.post('/:id/comparables/search', validateUUID('id'), async (req: Request, 
     const gapSeverity = comparablesFound === 0 ? 'severe' : comparablesFound < 3 ? 'moderate' : comparablesFound < 5 ? 'minor' : 'none';
 
     // Calculate aggregate statistics for the UI
+    // Note: PostgreSQL numeric columns are returned as strings by node-pg, so parseFloat is required
     const aggregates = comparablesFound > 0 ? {
-      avgPrice: Math.round(result.rows.reduce((sum: number, r: any) => sum + (r.sale_price || r.effective_value || 0), 0) / comparablesFound),
+      avgPrice: Math.round(result.rows.reduce((sum: number, r: any) => sum + (parseFloat(r.sale_price) || parseFloat(r.effective_value) || 0), 0) / comparablesFound),
       avgPricePerSqm: Math.round(result.rows.reduce((sum: number, r: any) => {
-        const price = r.sale_price || r.effective_value || 0;
-        const area = r.gfa || r.plot_size || 1;
+        const price = parseFloat(r.sale_price) || parseFloat(r.effective_value) || 0;
+        const area = parseFloat(r.gfa) || parseFloat(r.plot_size) || 1;
         return sum + (price / area);
       }, 0) / comparablesFound),
-      avgDistance: Math.round((result.rows.reduce((sum: number, r: any) => sum + (r.distance_km || 0), 0) / comparablesFound) * 10) / 10,
-      avgSimilarity: Math.round(result.rows.reduce((sum: number, r: any) => sum + (r.similarity_score || 0), 0) / comparablesFound),
-      minPrice: Math.min(...result.rows.map((r: any) => r.sale_price || r.effective_value || 0)),
-      maxPrice: Math.max(...result.rows.map((r: any) => r.sale_price || r.effective_value || 0)),
-      minPricePerSqm: Math.round(Math.min(...result.rows.map((r: any) => (r.sale_price || r.effective_value || 0) / (r.gfa || r.plot_size || 1)))),
-      maxPricePerSqm: Math.round(Math.max(...result.rows.map((r: any) => (r.sale_price || r.effective_value || 0) / (r.gfa || r.plot_size || 1)))),
+      avgDistance: Math.round((result.rows.reduce((sum: number, r: any) => sum + (parseFloat(r.distance_km) || 0), 0) / comparablesFound) * 10) / 10,
+      avgSimilarity: Math.round(result.rows.reduce((sum: number, r: any) => sum + (parseFloat(r.similarity_score) || 0), 0) / comparablesFound),
+      minPrice: Math.min(...result.rows.map((r: any) => parseFloat(r.sale_price) || parseFloat(r.effective_value) || 0)),
+      maxPrice: Math.max(...result.rows.map((r: any) => parseFloat(r.sale_price) || parseFloat(r.effective_value) || 0)),
+      minPricePerSqm: Math.round(Math.min(...result.rows.map((r: any) => (parseFloat(r.sale_price) || parseFloat(r.effective_value) || 0) / (parseFloat(r.gfa) || parseFloat(r.plot_size) || 1)))),
+      maxPricePerSqm: Math.round(Math.max(...result.rows.map((r: any) => (parseFloat(r.sale_price) || parseFloat(r.effective_value) || 0) / (parseFloat(r.gfa) || parseFloat(r.plot_size) || 1)))),
       // Enhanced evidence quality breakdown per RICS/GhIS guidance
       evidenceQuality: {
         // Tier 1: Government verified (highest reliability)
@@ -2309,9 +2319,9 @@ router.get('/rental-benchmarks/:area', async (req: Request, res: Response) => {
     const result = await query(benchmarkQuery, [area, `%${area}%`, propertyType || null]);
 
     if (result.rows.length === 0) {
-      return res.status(404).json({
-        success: false,
-        error: 'Not Found',
+      return res.json({
+        success: true,
+        data: null,
         message: `No rental benchmark found for area: ${area}`,
         suggestion: 'Try a nearby area or check available benchmarks at /rental-benchmarks',
       });
@@ -3219,6 +3229,7 @@ router.get('/floor-plans/:planId/image-stream', async (req: Request, res: Respon
 
     res.setHeader('Content-Type', mimeType);
     res.setHeader('Cache-Control', 'public, max-age=86400'); // 24h cache
+    res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
     res.setHeader('Content-Disposition', `inline; filename="floor-${floorPlan.floor_number}.${ext}"`);
     res.send(Buffer.from(file.body));
   } catch (error: any) {
@@ -3804,6 +3815,23 @@ router.get('/baskets/:basketId/comparables', async (req: Request, res: Response)
 });
 
 /**
+ * DELETE /api/valuations/baskets/:basketId/comparables
+ * Clear all comparables from a basket (used when re-selecting comparables)
+ */
+router.delete('/baskets/:basketId/comparables', async (req: Request, res: Response) => {
+  try {
+    const result = await query(
+      `DELETE FROM valuation_basket_comparables WHERE basket_id = $1`,
+      [req.params.basketId]
+    );
+    res.json({ success: true, deleted: result.rowCount });
+  } catch (error: any) {
+    logger.error('Failed to clear basket comparables', { error: error.message });
+    res.status(500).json({ error: 'Failed to clear basket comparables', message: error.message });
+  }
+});
+
+/**
  * POST /api/valuations/baskets/:basketId/comparables
  * Add comparable to basket
  */
@@ -4186,6 +4214,57 @@ router.post('/:id/reconciliation', validateUUID('id'), async (req: Request, res:
       }
     }
 
+    // Augment with computed methods from methods_applied that are missing from the request
+    // This ensures sales_comparison and other methods are included if they were computed
+    try {
+      const valuationRow = await query(
+        `SELECT methods_applied, method_results as v_method_results FROM valuations WHERE id = $1`,
+        [req.params.id]
+      );
+      if (valuationRow.rows.length > 0) {
+        const { methods_applied, v_method_results } = valuationRow.rows[0];
+        const appliedMethods: string[] = methods_applied || [];
+
+        for (const method of appliedMethods) {
+          if (INTERMEDIATE_METHODS.includes(method)) continue;
+          if (filteredResults[method]) continue; // already in request
+
+          // Check valuations.method_results for this method
+          if (v_method_results && v_method_results[method]) {
+            const mr = v_method_results[method];
+            const value = mr.value || mr.value_ghs || mr.estimated_value || 0;
+            if (value > 0) {
+              filteredResults[method] = {
+                ...mr,
+                method,
+                weight: mr.weight || 0,
+              };
+            }
+          }
+
+          // Also check valuation_method_inputs if still not found
+          if (!filteredResults[method]) {
+            const inputRow = await query(
+              `SELECT calculated_value, confidence_score FROM valuation_method_inputs
+               WHERE valuation_id = $1 AND method_type = $2 AND calculated_value IS NOT NULL AND calculated_value > 0`,
+              [req.params.id, method]
+            );
+            if (inputRow.rows.length > 0) {
+              filteredResults[method] = {
+                value: Number(inputRow.rows[0].calculated_value),
+                method,
+                weight: 0,
+                confidence_score: Number(inputRow.rows[0].confidence_score) || 0.5,
+                data_quality_score: 0.7,
+              };
+            }
+          }
+        }
+      }
+    } catch (augmentError: any) {
+      logger.warn('Failed to augment method_results with computed methods', { error: augmentError.message });
+    }
+
     // Calculate weighted average from method_results directly (don't rely on Python service)
     let weightedSum = 0;
     let totalWeight = 0;
@@ -4273,19 +4352,66 @@ router.put('/reconciliation/:reconciliationId/weights', async (req: Request, res
       return res.status(400).json({ error: 'weights is required' });
     }
 
+    // Get the current reconciliation to access method_results
+    const current = await query(
+      `SELECT method_results, valuation_id FROM valuation_reconciliations WHERE id = $1`,
+      [req.params.reconciliationId]
+    );
+
+    if (current.rows.length === 0) {
+      return res.status(404).json({ error: 'Reconciliation not found' });
+    }
+
+    const methodResults = current.rows[0].method_results || {};
+    const valuationId = current.rows[0].valuation_id;
+
+    // Recalculate weighted_average_value using method values × new weights
+    let weightedSum = 0;
+    let totalWeight = 0;
+
+    for (const [method, weight] of Object.entries(weights)) {
+      const w = Number(weight) || 0;
+      if (w <= 0) continue;
+
+      // Get the indicated value for this method from method_results
+      let value = 0;
+      if (methodResults[method]?.indicated_value) {
+        value = Number(methodResults[method].indicated_value);
+      } else if (methodResults[method]?.value) {
+        value = Number(methodResults[method].value);
+      }
+
+      // If method not in method_results, try valuation_method_inputs
+      if (value === 0 && valuationId) {
+        const inputResult = await query(
+          `SELECT calculated_value FROM valuation_method_inputs
+           WHERE valuation_id = $1 AND method_type = $2
+           ORDER BY created_at DESC LIMIT 1`,
+          [valuationId, method]
+        );
+        if (inputResult.rows.length > 0 && inputResult.rows[0].calculated_value) {
+          value = Number(inputResult.rows[0].calculated_value);
+        }
+      }
+
+      if (value > 0) {
+        weightedSum += value * (w / 100);
+        totalWeight += w;
+      }
+    }
+
+    const weightedAverage = totalWeight > 0 ? Math.round(weightedSum) : null;
+
     const result = await query(
       `UPDATE valuation_reconciliations SET
         method_weights = $1,
         weighting_method = 'manual',
+        weighted_average_value = COALESCE($3, weighted_average_value),
         updated_at = NOW()
       WHERE id = $2
       RETURNING *`,
-      [JSON.stringify(weights), req.params.reconciliationId]
+      [JSON.stringify(weights), req.params.reconciliationId, weightedAverage]
     );
-
-    if (result.rows.length === 0) {
-      return res.status(404).json({ error: 'Reconciliation not found' });
-    }
 
     res.json({ success: true, data: result.rows[0] });
   } catch (error: any) {
@@ -4889,6 +5015,49 @@ router.post('/:id/sales-comparison', validateUUID('id'), async (req: Request, re
         userId,
       ]
     );
+
+    // Update valuations.method_results to include sales_comparison so it's available for reconciliation
+    if (indicated_value && indicated_value > 0) {
+      const confidenceScore = Math.min(0.95, 0.5 +
+        (evidenceQuality.verifiedSales * 0.15) +
+        (evidenceQuality.delistedInferred * 0.10) +
+        (evidenceQuality.contributed * 0.05) +
+        (Math.min(comparables.length, 5) * 0.03)
+      );
+      await query(
+        `UPDATE valuations SET
+          method_results = COALESCE(method_results, '{}'::jsonb) || $1::jsonb,
+          sales_comparison_value = $2,
+          sales_comparison_confidence = $3,
+          comparables_count = $4,
+          updated_at = NOW()
+        WHERE id = $5`,
+        [
+          JSON.stringify({
+            sales_comparison: {
+              value: indicated_value,
+              method: 'sales_comparison',
+              weight: 0,
+              confidence_score: confidenceScore,
+              confidence: confidenceScore,
+              data_quality_score: 0.7,
+              notes: `Based on ${comparables.length} comparable properties`,
+              details: {
+                comparables_count: comparables.length,
+                avg_price_per_sqm: avg_price_per_sqm || null,
+                evidence_quality: evidenceQuality,
+              },
+              calculated_at: new Date().toISOString(),
+              calculated_by: 'user_sales_comparison',
+            },
+          }),
+          indicated_value,
+          confidenceScore,
+          comparables.length,
+          valuationId,
+        ]
+      );
+    }
 
     res.json({
       success: true,
@@ -5595,6 +5764,29 @@ router.get('/:id/engagement', validateUUID('id'), async (req: Request, res: Resp
       error: 'Internal Server Error',
       message: 'Failed to get engagement data',
     });
+  }
+});
+
+/**
+ * Get engagement/terms of engagement for a valuation
+ * GET /api/valuations/:id/engagement
+ */
+router.get('/:id/engagement', validateUUID('id'), async (req: Request, res: Response) => {
+  try {
+    const { id: valuationId } = req.params;
+    const result = await query(
+      `SELECT * FROM valuation_engagements WHERE valuation_id = $1 LIMIT 1`,
+      [valuationId]
+    );
+
+    if (result.rows.length === 0) {
+      return res.json({ success: true, data: null });
+    }
+
+    return res.json({ success: true, data: result.rows[0] });
+  } catch (error: any) {
+    logger.error('Failed to get engagement', { valuationId: req.params.id, error: error.message });
+    return res.status(500).json({ error: 'Internal Server Error', message: 'Failed to get engagement' });
   }
 });
 

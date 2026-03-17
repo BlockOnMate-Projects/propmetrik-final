@@ -1380,28 +1380,53 @@ export class ConstructionCostService {
   /**
    * Get base construction costs per sqm from database
    */
-  async getBaseCosts(): Promise<Array<{
+  async getBaseCosts(propertyType?: string, region?: string): Promise<Array<{
     quality_tier: string;
     display_name: string;
     base_cost_per_sqm: number;
     base_year: number;
     updated_at: string;
+    property_type: string;
+    region: string;
   }>> {
+    const conditions: string[] = [];
+    const params: any[] = [];
+    let paramIdx = 1;
+
+    if (propertyType) {
+      conditions.push(`property_type = $${paramIdx++}`);
+      params.push(propertyType);
+    } else {
+      conditions.push(`property_type = 'residential'`);
+    }
+
+    if (region) {
+      conditions.push(`region = $${paramIdx++}`);
+      params.push(region);
+    }
+
+    const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
+
     const result = await query<{
       quality_level: string;
       cost_ghs: number;
       notes: string;
       updated_at: Date;
+      property_type: string;
+      region: string;
     }>(
-      'SELECT quality_level, cost_ghs, notes, updated_at FROM base_costs_per_sqm WHERE property_type = \'residential\' ORDER BY cost_ghs ASC'
+      `SELECT quality_level, cost_ghs, notes, updated_at, property_type, region FROM base_costs_per_sqm ${whereClause} ORDER BY cost_ghs ASC`,
+      params
     );
 
     return result.rows.map(row => ({
       quality_tier: row.quality_level,
       display_name: row.notes || row.quality_level,
       base_cost_per_sqm: parseFloat(row.cost_ghs as any),
-      base_year: new Date().getFullYear(), // Default to current year or fetch from dedicated column
+      base_year: new Date().getFullYear(),
       updated_at: row.updated_at.toISOString(),
+      property_type: row.property_type,
+      region: row.region,
     }));
   }
 
@@ -1415,6 +1440,86 @@ export class ConstructionCostService {
     );
 
     logger.info('Updated base cost', { qualityTier, baseCostPerSqm, updatedBy });
+  }
+
+  /**
+   * Get comparable sale price per sqm from real market evidence
+   * Queries the properties table with quality filtering:
+   * - Only GHS-denominated listings (consistent currency)
+   * - Area >= 30 sqm (excludes bad data entries)
+   * - Price/sqm between 500-200,000 (excludes extreme outliers)
+   * Returns median, average, and percentiles by property_type
+   */
+  async getComparablePricePerSqm(region?: string, propertyType?: string): Promise<Array<{
+    property_type: string;
+    region: string;
+    median_price_sqm: number;
+    avg_price_sqm: number;
+    p25_price_sqm: number;
+    p75_price_sqm: number;
+    comparable_count: number;
+    evidence_basis: string;
+  }>> {
+    const conditions: string[] = [
+      `p.total_area_sqm >= 30`,
+      `COALESCE(p.sold_price, p.transaction_value, p.inferred_sale_price, p.price) > 0`,
+      `p.price_currency = 'GHS'`,
+      `(COALESCE(p.sold_price, p.transaction_value, p.inferred_sale_price, p.price) / p.total_area_sqm) BETWEEN 500 AND 200000`,
+    ];
+    const params: any[] = [];
+    let paramIdx = 1;
+
+    if (region) {
+      conditions.push(`p.region = $${paramIdx++}`);
+      params.push(region);
+    }
+    if (propertyType) {
+      conditions.push(`p.property_type = $${paramIdx++}`);
+      params.push(propertyType);
+    }
+
+    const whereClause = `WHERE ${conditions.join(' AND ')}`;
+
+    const result = await query<{
+      property_type: string;
+      region: string;
+      median_price_sqm: number;
+      avg_price_sqm: number;
+      p25_price_sqm: number;
+      p75_price_sqm: number;
+      comparable_count: number;
+    }>(
+      `SELECT 
+        p.property_type,
+        p.region,
+        ROUND(PERCENTILE_CONT(0.5) WITHIN GROUP (
+          ORDER BY COALESCE(p.sold_price, p.transaction_value, p.inferred_sale_price, p.price) / p.total_area_sqm
+        )::numeric, 0) as median_price_sqm,
+        ROUND(AVG(COALESCE(p.sold_price, p.transaction_value, p.inferred_sale_price, p.price) / p.total_area_sqm)::numeric, 0) as avg_price_sqm,
+        ROUND(PERCENTILE_CONT(0.25) WITHIN GROUP (
+          ORDER BY COALESCE(p.sold_price, p.transaction_value, p.inferred_sale_price, p.price) / p.total_area_sqm
+        )::numeric, 0) as p25_price_sqm,
+        ROUND(PERCENTILE_CONT(0.75) WITHIN GROUP (
+          ORDER BY COALESCE(p.sold_price, p.transaction_value, p.inferred_sale_price, p.price) / p.total_area_sqm
+        )::numeric, 0) as p75_price_sqm,
+        COUNT(*)::int as comparable_count
+      FROM properties p
+      ${whereClause}
+      GROUP BY p.property_type, p.region
+      ORDER BY p.property_type`,
+      params
+    );
+
+    return result.rows.map(row => ({
+      property_type: row.property_type,
+      region: row.region,
+      median_price_sqm: parseFloat(row.median_price_sqm as any),
+      avg_price_sqm: parseFloat(row.avg_price_sqm as any),
+      p25_price_sqm: parseFloat(row.p25_price_sqm as any),
+      p75_price_sqm: parseFloat(row.p75_price_sqm as any),
+      comparable_count: row.comparable_count,
+      evidence_basis: 'Comparable market evidence (GHS listings)',
+    }));
   }
 }
 

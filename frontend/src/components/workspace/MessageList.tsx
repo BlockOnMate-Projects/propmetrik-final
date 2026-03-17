@@ -3,13 +3,14 @@
 import { useEffect, useRef, memo, useCallback } from 'react';
 import { cn } from '@/lib/utils';
 import type { WorkspaceMessage } from '@/lib/workspace-api';
-import { Bot, Info, Paperclip, Share2 } from 'lucide-react';
+import { Info, Paperclip, Share2, Trash2 } from 'lucide-react';
 import { KobbyAIBubble, KobbyThinkingIndicator } from './KobbyAIBubble';
 import { useWindowManagerStore } from '@/store/windowManagerStore';
 import { Button } from '@/components/ui/button';
 
 interface MessageListProps {
     messages: WorkspaceMessage[];
+    allMessages?: Map<string, WorkspaceMessage>;
     currentUserId?: string | null;
     typingUsers?: Set<string>;
     isKobbyThinking?: boolean;
@@ -17,6 +18,7 @@ interface MessageListProps {
     onVisible?: (messageId: string) => void; // for read tracking
     onKobbyFollowUp?: (suggestion: string) => void;
     onReply?: (message: WorkspaceMessage) => void;
+    onDelete?: (messageId: string) => void;
 }
 
 function formatTime(dateStr: string): string {
@@ -55,17 +57,23 @@ function groupMessagesByDate(messages: WorkspaceMessage[]) {
 const MessageBubble = memo(function MessageBubble({
     message,
     isOwn,
+    allMessages,
     onVisible,
     onKobbyFollowUp,
     onReply,
+    onDelete,
 }: {
     message: WorkspaceMessage;
     isOwn: boolean;
+    allMessages?: Map<string, WorkspaceMessage>;
     onVisible?: (id: string) => void;
     onKobbyFollowUp?: (suggestion: string) => void;
     onReply?: (message: WorkspaceMessage) => void;
+    onDelete?: (messageId: string) => void;
 }) {
     const ref = useRef<HTMLDivElement>(null);
+    // Hook must be called unconditionally at top level (Rules of Hooks)
+    const { openWindow } = useWindowManagerStore();
 
     useEffect(() => {
         if (!onVisible || isOwn) return;
@@ -102,8 +110,6 @@ const MessageBubble = memo(function MessageBubble({
             followUpSuggestions: md.followUpSuggestions || [],
             dataPoints: md.dataPoints || [],
         };
-
-        const { openWindow } = useWindowManagerStore();
 
         const handlePopOut = () => {
             openWindow({
@@ -168,26 +174,51 @@ const MessageBubble = memo(function MessageBubble({
                             : 'bg-zinc-800 text-zinc-100 rounded-bl-sm border border-zinc-700/50'
                     )}
                 >
-                    {/* Reply button */}
-                    <button
-                        onClick={() => onReply?.(message)}
+                    {/* Action buttons */}
+                    <div
                         className={cn(
-                            "absolute top-0 opacity-0 group-hover:opacity-100 transition-opacity p-1.5 rounded-lg bg-zinc-900/80 text-zinc-400 hover:text-zinc-200",
-                            isOwn ? "-left-10" : "-right-10"
+                            "absolute top-0 flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity",
+                            isOwn ? "-left-[4.5rem]" : "-right-[4.5rem]"
                         )}
-                        title="Reply"
                     >
-                        <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                            <polyline points="9 17 4 12 9 7" />
-                            <path d="M20 18v-2a4 4 0 0 0-4-4H4" />
-                        </svg>
-                    </button>
+                        <button
+                            onClick={() => onReply?.(message)}
+                            className="p-1.5 rounded-lg bg-zinc-900/80 text-zinc-400 hover:text-zinc-200"
+                            title="Reply"
+                        >
+                            <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                <polyline points="9 17 4 12 9 7" />
+                                <path d="M20 18v-2a4 4 0 0 0-4-4H4" />
+                            </svg>
+                        </button>
+                        {isOwn && onDelete && (
+                            <button
+                                onClick={() => onDelete(message.id)}
+                                className="p-1.5 rounded-lg bg-zinc-900/80 text-zinc-400 hover:text-red-400"
+                                title="Delete message"
+                            >
+                                <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                        )}
+                    </div>
 
-                    {message.thread_id && (
-                        <div className="mb-2 p-2 rounded bg-black/20 border-l-2 border-emerald-500/50 text-[11px] opacity-80 italic italic">
-                            Replying to a message...
-                        </div>
-                    )}
+                    {message.thread_id && (() => {
+                        const parentMsg = allMessages?.get(message.thread_id);
+                        return (
+                            <div className="mb-2 p-2 rounded bg-black/20 border-l-2 border-emerald-500/50 text-[11px] opacity-80">
+                                {parentMsg ? (
+                                    <>
+                                        <span className="font-semibold text-emerald-400/80 not-italic">
+                                            {parentMsg.sender_name || 'User'}
+                                        </span>
+                                        <p className="italic mt-0.5 line-clamp-2">{parentMsg.content}</p>
+                                    </>
+                                ) : (
+                                    <span className="italic">Replying to a message...</span>
+                                )}
+                            </div>
+                        );
+                    })()}
 
                     {message.content}
 
@@ -224,6 +255,7 @@ const MessageBubble = memo(function MessageBubble({
 
 export function MessageList({
     messages,
+    allMessages,
     currentUserId,
     typingUsers,
     isKobbyThinking,
@@ -231,6 +263,7 @@ export function MessageList({
     onVisible,
     onKobbyFollowUp,
     onReply,
+    onDelete,
 }: MessageListProps) {
     const bottomRef = useRef<HTMLDivElement>(null);
     const containerRef = useRef<HTMLDivElement>(null);
@@ -273,9 +306,11 @@ export function MessageList({
                             key={msg.id}
                             message={msg}
                             isOwn={msg.sender_id === currentUserId}
+                            allMessages={allMessages}
                             onVisible={onVisible}
                             onKobbyFollowUp={onKobbyFollowUp}
                             onReply={onReply}
+                            onDelete={onDelete}
                         />
                     ))}
                 </div>

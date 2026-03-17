@@ -717,11 +717,12 @@ export default function ReconciliationPage() {
       })
 
       // Update valuation with final value and reconciliation metadata
+      // Note: Do NOT set status to 'pending_review' here — that status applies only to reports.
+      // The valuation status will auto-transition based on current_step in the backend.
       await valuationsApi.update(valuationId, {
         final_value_ghs: reconciledValue,
         confidence_score: confidenceScore,
         current_step: 9,
-        status: 'pending_review',
         reconciliation_data: {
           weights,
           locked_weights: lockedWeights,

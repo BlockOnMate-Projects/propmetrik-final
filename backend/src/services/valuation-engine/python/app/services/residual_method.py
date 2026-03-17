@@ -343,16 +343,48 @@ class ResidualMethodService:
         return assumptions
 
     def _calculate_gdv(self, property_data: PropertyForValuation, assumptions: DevelopmentAssumptions) -> float:
-        """Calculate Gross Development Value"""
+        """Calculate Gross Development Value using comparable evidence from Data Hub API"""
         # Handle both enum and string property_type
         property_type = property_data.property_type.value if hasattr(property_data.property_type, 'value') else str(property_data.property_type)
         region = property_data.region
+        region_str = region.value if hasattr(region, 'value') else str(region)
 
-        if property_type in SALE_PRICES_PER_SQM and region in SALE_PRICES_PER_SQM[property_type]:
-            price_per_sqm = SALE_PRICES_PER_SQM[property_type][region]
-        else:
-            # Use house prices as default
-            price_per_sqm = SALE_PRICES_PER_SQM["house"].get(region, 4000)
+        # Try to get comparable sale price from Data Hub API
+        price_per_sqm = None
+        try:
+            import httpx
+            # Map dev type to properties table property_type
+            prop_type_map = {
+                "house": "residential_house",
+                "land": "residential_house",
+                "land_residential": "residential_house",
+                "apartment": "apartment_flat",
+                "townhouse": "residential_house",
+                "commercial": "commercial_shop",
+                "office": "commercial_shop",
+                "industrial": "commercial_shop",
+            }
+            db_prop_type = prop_type_map.get(property_type, "residential_house")
+            api_url = f"http://localhost:4000/api/v1/data-hub/valuation-config/sale-prices?region={region_str}&property_type={db_prop_type}"
+            resp = httpx.get(api_url, timeout=5.0)
+            if resp.status_code == 200:
+                data = resp.json()
+                if data.get("success") and data.get("data"):
+                    for item in data["data"]:
+                        if item.get("median_price_sqm", 0) > 0:
+                            price_per_sqm = item["median_price_sqm"]
+                            logger.info(f"Using comparable sale price from API: {price_per_sqm} GHS/sqm ({item.get('comparable_count', 0)} comparables)")
+                            break
+        except Exception as e:
+            logger.warning(f"Failed to get comparable sale price from API: {e}")
+
+        if not price_per_sqm:
+            # Fallback: use hardcoded prices (should be replaced with real data over time)
+            if property_type in SALE_PRICES_PER_SQM and region in SALE_PRICES_PER_SQM[property_type]:
+                price_per_sqm = SALE_PRICES_PER_SQM[property_type][region]
+            else:
+                price_per_sqm = SALE_PRICES_PER_SQM["house"].get(region, 4000)
+            logger.warning(f"Using hardcoded sale price fallback: {price_per_sqm} GHS/sqm")
 
         return assumptions.net_sellable_area * price_per_sqm
 

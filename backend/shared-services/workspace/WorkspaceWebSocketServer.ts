@@ -55,7 +55,7 @@ interface AuthenticatedClient {
 }
 
 interface WSMessage {
-    type: 'join' | 'message' | 'ping' | 'mark_read' | 'typing' | 'kobby_query' | 'edit_message';
+    type: 'join' | 'message' | 'ping' | 'mark_read' | 'typing' | 'kobby_query' | 'edit_message' | 'delete_message';
     workspaceId?: string;
     conversationId?: string;
     content?: string;
@@ -220,7 +220,7 @@ class WorkspaceWebSocketServerImpl {
 
         switch (msg.type) {
             case 'join':
-                await this.handleJoin(client, msg.workspaceId!);
+                await this.handleJoin(client, msg.workspaceId!, msg.conversationId);
                 break;
             case 'message':
                 await this.handleSendMessage(client, msg);
@@ -242,12 +242,15 @@ class WorkspaceWebSocketServerImpl {
             case 'edit_message':
                 await this.handleEditMessage(client, msg);
                 break;
+            case 'delete_message':
+                await this.handleDeleteMessage(client, msg);
+                break;
             default:
                 this.send(client.ws, { type: 'error', error: `Unknown message type: ${msg.type}` });
         }
     }
 
-    private async handleJoin(client: AuthenticatedClient, workspaceId: string): Promise<void> {
+    private async handleJoin(client: AuthenticatedClient, workspaceId: string, conversationId?: string): Promise<void> {
         // --- Validate workspace belongs to the same organization ---
         const workspace = await workspaceService.getById(workspaceId, client.organizationId);
         if (!workspace) {
@@ -278,15 +281,25 @@ class WorkspaceWebSocketServerImpl {
         // --- Presence tracking ---
         this.addPresence(workspaceId, client.userId);
 
-        // Send acknowledgment + last 50 messages
-        const { messages } = await workspaceService.getMessages(workspaceId, undefined, 50);
+        // Send acknowledgment + last 50 messages (conversation-scoped if provided)
+        let messagePage;
+        if (conversationId) {
+            const isConvMember = await workspaceService.isConversationMember(conversationId, client.userId);
+            if (isConvMember) {
+                messagePage = await workspaceService.getMessagesByConversation(workspaceId, conversationId, undefined, 50);
+            }
+        }
+        if (!messagePage) {
+            messagePage = await workspaceService.getMessages(workspaceId, undefined, 50);
+        }
+
         const unreadCount = await workspaceService.getUnreadCount(workspaceId, client.userId);
         const onlineUsers = Array.from(this.presenceMap.get(workspaceId) || []);
 
         this.send(client.ws, {
             type: 'joined',
             workspaceId,
-            messages,
+            messages: messagePage.messages,
             unreadCount,
             onlineUsers,
         });
@@ -659,6 +672,33 @@ class WorkspaceWebSocketServerImpl {
             messageId: msg.messageId,
             content: sanitized,
             editedAt: updated.edited_at,
+        });
+    }
+
+    // --------------------------------------------------------------------------
+    // Message Deletion
+    // --------------------------------------------------------------------------
+
+    private async handleDeleteMessage(client: AuthenticatedClient, msg: WSMessage): Promise<void> {
+        if (!client.workspaceId) {
+            this.send(client.ws, { type: 'error', error: 'Not joined to a workspace' });
+            return;
+        }
+        if (!msg.messageId) {
+            this.send(client.ws, { type: 'error', error: 'messageId is required' });
+            return;
+        }
+
+        const deleted = await workspaceService.deleteMessage(msg.messageId, client.userId);
+        if (!deleted) {
+            this.send(client.ws, { type: 'error', error: 'Message not found or you are not the author' });
+            return;
+        }
+
+        // Broadcast deletion to the workspace
+        this.broadcastToWorkspace(client.workspaceId, {
+            type: 'message_deleted',
+            messageId: msg.messageId,
         });
     }
 

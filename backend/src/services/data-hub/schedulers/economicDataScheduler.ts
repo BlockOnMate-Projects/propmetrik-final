@@ -21,6 +21,7 @@ import { economicDataSyncService, SyncSource } from '../scrapers/syncService';
 import { fxFeedService } from '../scrapers/fxFeedService';
 import { constructionCostService } from '../constructionCostService';
 import { baseCostCalculationService } from '../baseCostCalculationService';
+import { specializedCostService } from '../specializedCostService';
 
 /**
  * Scheduler configuration
@@ -47,6 +48,10 @@ export interface SchedulerConfig {
   indexRecalcCron: string;
   /** Cron expression for base cost calculation (default: 1 PM on 1st of month, after index recalc) */
   baseCostRecalcCron: string;
+  /** Cron expression for GREDA/BRRI specialized cost sync (default: 2 PM on 1st of month, after base cost recalc) */
+  gredaSyncCron: string;
+  /** Cron expression for specialized cost recalculation (default: 3 PM on 1st of month, after GREDA sync) */
+  specializedCostRecalcCron: string;
   
   // === General ===
   /** Timezone for all scheduled jobs */
@@ -73,6 +78,8 @@ const DEFAULT_CONFIG: SchedulerConfig = {
   laborSyncCron: process.env.LABOR_SYNC_CRON || '0 11 1 * *',      // 11 AM on 1st of month
   indexRecalcCron: process.env.INDEX_RECALC_CRON || '0 12 1 * *',  // 12 PM on 1st of month (after all syncs)
   baseCostRecalcCron: process.env.BASE_COST_RECALC_CRON || '0 13 1 * *', // 1 PM on 1st (after index recalc)
+  gredaSyncCron: process.env.GREDA_SYNC_CRON || '0 14 1 * *',            // 2 PM on 1st (after base cost recalc)
+  specializedCostRecalcCron: process.env.SPECIALIZED_COST_RECALC_CRON || '0 15 1 * *', // 3 PM on 1st (after GREDA sync)
   
   // General
   timezone: process.env.SCHEDULER_TIMEZONE || 'Africa/Accra',
@@ -189,6 +196,16 @@ export class EconomicDataScheduler {
         await this.runBaseCostRecalculation();
       });
 
+      // GREDA/BRRI Specialized Cost Sync - monthly (runs after base cost recalc)
+      this.scheduleJob('greda-sync', this.config.gredaSyncCron, async () => {
+        await this.runGREDASync();
+      });
+
+      // Specialized Cost Recalculation - monthly (runs after GREDA sync)
+      this.scheduleJob('specialized-cost-recalc', this.config.specializedCostRecalcCron, async () => {
+        await this.runSpecializedCostRecalculation();
+      });
+
       logger.info('Construction data scheduling enabled');
     } else {
       logger.info('Construction data scheduling disabled by configuration');
@@ -270,12 +287,17 @@ export class EconomicDataScheduler {
       await this.runMaterialSync();
       await this.runLaborSync();
       await this.runConstructionIndexRecalculation();
+      await this.runBaseCostRecalculation();
+      await this.runGREDASync();
+      await this.runSpecializedCostRecalculation();
     } else if (normalizedSource === 'npa') {
       await this.runFuelSync();
     } else if (normalizedSource === 'local_materials') {
       await this.runMaterialSync();
     } else if (normalizedSource === 'gss_labor') {
       await this.runLaborSync();
+    } else if (normalizedSource === 'greda') {
+      await this.runGREDASync();
     }
   }
 
@@ -575,6 +597,53 @@ export class EconomicDataScheduler {
       }
     } catch (error) {
       logger.error('[Scheduler] Base cost recalculation failed', { error });
+      throw error;
+    }
+  }
+
+  /**
+   * Run GREDA/BRRI specialized construction cost sync
+   */
+  private async runGREDASync(): Promise<void> {
+    logger.info('[Scheduler] Running GREDA/BRRI sync...');
+    try {
+      const result = await economicDataSyncService.sync({
+        source: 'greda',
+        type: 'latest',
+        triggeredBy: 'scheduler',
+      });
+
+      const syncResult = Array.isArray(result) ? result[0] : result;
+      logger.info('[Scheduler] GREDA/BRRI sync complete', {
+        status: syncResult.status,
+        fetched: syncResult.records_fetched,
+        saved: syncResult.records_saved,
+        metadata: syncResult.metadata,
+      });
+    } catch (error) {
+      logger.error('[Scheduler] GREDA/BRRI sync failed', { error });
+      throw error;
+    }
+  }
+
+  /**
+   * Recalculate derived specialized construction costs
+   * Runs after base costs are updated, fills in any building functions
+   * not covered by published GREDA/BRRI rates
+   */
+  private async runSpecializedCostRecalculation(): Promise<void> {
+    logger.info('[Scheduler] Running specialized cost recalculation...');
+    try {
+      const result = await specializedCostService.recalculateDerivedCosts();
+      
+      logger.info('[Scheduler] Specialized cost recalculation complete', {
+        success: result.success,
+        totalCalculated: result.total_calculated,
+        skippedPublished: result.skipped_published,
+        errors: result.errors.length,
+      });
+    } catch (error) {
+      logger.error('[Scheduler] Specialized cost recalculation failed', { error });
       throw error;
     }
   }

@@ -14,12 +14,10 @@ import { Router, Request, Response, NextFunction } from 'express';
 import { kobbyAIService, EntityType } from '../../shared-services/workspace/KobbyAIService';
 import { workspaceService } from '../../shared-services/workspace/WorkspaceService';
 import { logger } from '../utils/logger';
-import { authenticate } from '../middleware/auth';
 
 const router = Router();
 
-// Apply auth middleware to all Kobby AI routes
-router.use(authenticate);
+// Auth is applied at mount level in index.ts — no need to duplicate here
 
 const getUser = (req: Request) => {
     const user = (req as any).user;

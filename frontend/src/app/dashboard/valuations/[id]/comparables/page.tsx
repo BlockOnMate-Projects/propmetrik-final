@@ -363,6 +363,9 @@ function ComparablesPageContent() {
           basketId = createRes.data.id
         }
         
+        // Clear existing comparables from basket before adding new selection
+        await comparableBasketApi.clearComparables(basketId)
+
         // Add selected comparables to basket
         for (const propertyId of selectedComparables) {
           const comp = searchResults.find(r => r.id === propertyId)

@@ -13,6 +13,7 @@ import { fxFeedService, FXFeedService } from './fxFeedService';
 import { npaScraper, NPAScraper } from './npaScraper';
 import { localMaterialScraper, LocalMaterialScraper } from './localMaterialScraper';
 import { gssLaborService, GSSLaborService } from './gssLaborService';
+import { gredaScraper, GREDAScraper } from './gredaScraper';
 import { syncLogRepository, SyncLogRepository } from './syncLogRepository';
 import { SyncResult, SyncError } from './types';
 
@@ -20,7 +21,7 @@ import { SyncResult, SyncError } from './types';
 // TYPES
 // =====================================================
 
-export type SyncSource = 'bog' | 'wdi' | 'fx' | 'npa' | 'local_materials' | 'gss_labor' | 'construction_all' | 'all';
+export type SyncSource = 'bog' | 'wdi' | 'fx' | 'npa' | 'local_materials' | 'gss_labor' | 'greda' | 'construction_all' | 'all';
 export type SyncType = 'full' | 'latest' | 'manual';
 
 export interface SyncOptions {
@@ -57,6 +58,7 @@ export class EconomicDataSyncService {
   private readonly npaScraper: NPAScraper;
   private readonly materialScraper: LocalMaterialScraper;
   private readonly laborService: GSSLaborService;
+  private readonly gredaScraper: GREDAScraper;
   private readonly syncLog: SyncLogRepository;
   private runningJobs: Map<string, boolean>;
 
@@ -67,6 +69,7 @@ export class EconomicDataSyncService {
     npaScraperInstance?: NPAScraper,
     materialScraperInstance?: LocalMaterialScraper,
     laborServiceInstance?: GSSLaborService,
+    gredaScraperInstance?: GREDAScraper,
     syncLogInstance?: SyncLogRepository
   ) {
     this.bogScraper = bogScraperInstance || bogScraper;
@@ -75,6 +78,7 @@ export class EconomicDataSyncService {
     this.npaScraper = npaScraperInstance || npaScraper;
     this.materialScraper = materialScraperInstance || localMaterialScraper;
     this.laborService = laborServiceInstance || gssLaborService;
+    this.gredaScraper = gredaScraperInstance || gredaScraper;
     this.syncLog = syncLogInstance || syncLogRepository;
     this.runningJobs = new Map();
   }
@@ -457,6 +461,67 @@ export class EconomicDataSyncService {
   }
 
   /**
+   * Run GREDA/BRRI specialized construction cost sync
+   */
+  async syncGREDA(triggeredBy: string = 'manual'): Promise<SyncResult> {
+    const source = 'GREDA/BRRI Construction Costs';
+    
+    if (this.isSourceSyncing(source)) {
+      return {
+        source,
+        status: 'failed',
+        started_at: new Date(),
+        completed_at: new Date(),
+        records_fetched: 0,
+        records_saved: 0,
+        records_failed: 0,
+        errors: [{ code: 'ALREADY_RUNNING', message: 'Sync already in progress', timestamp: new Date() }],
+        metadata: {},
+      };
+    }
+
+    this.runningJobs.set(source, true);
+    let syncId: string | undefined;
+
+    try {
+      syncId = await this.syncLog.startSync(source, 'scheduled', triggeredBy);
+      
+      logger.info('Starting GREDA/BRRI specialized cost sync', { triggeredBy, syncId });
+      
+      const result = await this.gredaScraper.syncLatest();
+      
+      await this.syncLog.completeSync(syncId, result);
+      
+      return result;
+    } catch (error) {
+      const errorResult: SyncResult = {
+        source,
+        status: 'failed',
+        started_at: new Date(),
+        completed_at: new Date(),
+        records_fetched: 0,
+        records_saved: 0,
+        records_failed: 0,
+        errors: [{
+          code: 'SYNC_ERROR',
+          message: error instanceof Error ? error.message : 'Unknown error',
+          timestamp: new Date(),
+        }],
+        metadata: {},
+      };
+
+      if (syncId) {
+        await this.syncLog.completeSync(syncId, errorResult);
+      }
+
+      logger.error('GREDA/BRRI sync failed', { error });
+      return errorResult;
+    } finally {
+      this.runningJobs.set(source, false);
+    }
+  }
+
+  /**
    * Run sync for specified source(s)
    */
   async sync(options: SyncOptions): Promise<SyncResult | SyncResult[]> {
@@ -481,26 +546,31 @@ export class EconomicDataSyncService {
       case 'gss_labor':
         return this.syncGSSLabor(triggeredBy);
       
+      case 'greda':
+        return this.syncGREDA(triggeredBy);
+      
       case 'construction_all':
         // Run all construction-related syncs in parallel
-        const [npaResult, materialsResult, laborResult] = await Promise.all([
+        const [npaResult, materialsResult, laborResult, gredaResult] = await Promise.all([
           this.syncNPA(triggeredBy),
           this.syncLocalMaterials(triggeredBy),
           this.syncGSSLabor(triggeredBy),
+          this.syncGREDA(triggeredBy),
         ]);
-        return [npaResult, materialsResult, laborResult];
+        return [npaResult, materialsResult, laborResult, gredaResult];
       
       case 'all':
         // Run all syncs in parallel
-        const [bogResult, wdiResult, fxResult, npaResultAll, materialsResultAll, laborResultAll] = await Promise.all([
+        const [bogResult, wdiResult, fxResult, npaResultAll, materialsResultAll, laborResultAll, gredaResultAll] = await Promise.all([
           this.syncBOG(type, triggeredBy),
           this.syncWDI(type, triggeredBy),
           this.syncFX(triggeredBy),
           this.syncNPA(triggeredBy),
           this.syncLocalMaterials(triggeredBy),
           this.syncGSSLabor(triggeredBy),
+          this.syncGREDA(triggeredBy),
         ]);
-        return [bogResult, wdiResult, fxResult, npaResultAll, materialsResultAll, laborResultAll];
+        return [bogResult, wdiResult, fxResult, npaResultAll, materialsResultAll, laborResultAll, gredaResultAll];
       
       default:
         throw new Error(`Unknown source: ${source}`);
@@ -517,7 +587,8 @@ export class EconomicDataSyncService {
       'ExchangeRate-API',
       'NPA Fuel Prices',
       'Local Material Prices',
-      'GSS Labor Rates'
+      'GSS Labor Rates',
+      'GREDA/BRRI Construction Costs'
     ];
     const statuses: SyncStatus[] = [];
 

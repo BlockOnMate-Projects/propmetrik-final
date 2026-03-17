@@ -2260,7 +2260,13 @@ export default function IncomeApproachPage() {
           className="px-6 py-3 bg-amber-500 text-white font-mono text-sm font-bold hover:bg-amber-400 disabled:opacity-50 transition-colors flex items-center gap-2"
         >
           {saving && <Loader2 className="w-4 h-4 animate-spin" />}
-          SAVE & CONTINUE TO RECONCILIATION →
+          {(() => {
+            const methods = valuation?.methods_applied || []
+            if (methods.includes('drc_method')) return 'SAVE & CONTINUE TO DRC →'
+            if (methods.includes('profits_method')) return 'SAVE & CONTINUE TO PROFITS →'
+            if (methods.includes('residual_method')) return 'SAVE & CONTINUE TO RESIDUAL →'
+            return 'SAVE & CONTINUE TO RECONCILIATION →'
+          })()}
         </button>
       </div>
     </div>

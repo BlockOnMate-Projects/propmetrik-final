@@ -711,15 +711,27 @@ function buildTransmittalLetter(data: ReportSectionData): FileChild[] {
     paragraphs.push(bodyText(t.date_formatted));
   }
 
-  // Subject
+  // Subject — underlined, no spacing after
   if (t?.subject) {
     paragraphs.push(emptyLine());
-    paragraphs.push(bodyText(t.subject, { bold: true }));
+    paragraphs.push(new Paragraph({
+      alignment: AlignmentType.JUSTIFIED,
+      spacing: { after: 0, line: 276 },
+      children: [
+        new TextRun({
+          text: t.subject,
+          size: 22,
+          font: 'Calibri',
+          bold: true,
+          underline: {},
+          color: COLORS.textDark,
+        }),
+      ],
+    }));
   }
 
-  // Body
+  // Body — no extra empty line before (follows directly after subject)
   if (t?.body) {
-    paragraphs.push(emptyLine());
     const bodyLines = t.body.split('\n').filter((l: string) => l.trim());
     bodyLines.forEach((line: string) => paragraphs.push(bodyText(line)));
   }
@@ -742,7 +754,8 @@ function buildTransmittalLetter(data: ReportSectionData): FileChild[] {
       valRows.push(['Forced Sale Value (USD)', fmtUSD(t.values.forced_sale_value.usd)]);
     }
     if (t.exchange_rate) {
-      valRows.push(['Exchange Rate', `${t.exchange_rate.rate} (${t.exchange_rate.source}, ${t.exchange_rate.date})`]);
+      const rateDisplay = Number(t.exchange_rate.rate).toFixed(2);
+      valRows.push(['Exchange Rate', `${rateDisplay} (${t.exchange_rate.source}, ${t.exchange_rate.date})`]);
     }
 
     if (valRows.length > 0) {
@@ -756,10 +769,9 @@ function buildTransmittalLetter(data: ReportSectionData): FileChild[] {
     paragraphs.push(bodyText(t.valuation_methods_summary));
   }
 
-  // ---- Signature block ----
-  paragraphs.push(emptyLine());
+  // ---- Signature block (compact) ----
   paragraphs.push(new Paragraph({
-    spacing: { after: 120 },
+    spacing: { before: 120, after: 60 },
     keepNext: true,
     keepLines: true,
     children: [
@@ -767,9 +779,9 @@ function buildTransmittalLetter(data: ReportSectionData): FileChild[] {
     ],
   }));
   // Space for e-sign signature placement
-  paragraphs.push(new Paragraph({ spacing: { after: 200 }, keepNext: true, children: [] }));
+  paragraphs.push(new Paragraph({ spacing: { after: 120 }, keepNext: true, children: [] }));
   paragraphs.push(new Paragraph({
-    spacing: { after: 40 },
+    spacing: { after: 20 },
     keepNext: true,
     keepLines: true,
     children: [
@@ -777,7 +789,7 @@ function buildTransmittalLetter(data: ReportSectionData): FileChild[] {
     ],
   }));
   // Space beneath signature line for permanent ID badge
-  paragraphs.push(new Paragraph({ spacing: { after: 160 }, keepNext: true, children: [] }));
+  paragraphs.push(new Paragraph({ spacing: { after: 80 }, keepNext: true, children: [] }));
   if (data.cover.certified_by?.name) {
     paragraphs.push(new Paragraph({
       spacing: { after: 40 },
@@ -825,8 +837,9 @@ function buildSummaryOfKeyData(data: ReportSectionData): FileChild[] {
 
   // Property Information table
   paragraphs.push(heading2('Property Information'));
+  const fmtType = (t: string) => t.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
   const propRows: Array<[string, string]> = [
-    ['Property Type', property?.type || 'N/A'],
+    ['Property Type', property?.type ? fmtType(property.type) : 'N/A'],
     ['Property Address', property?.address || 'N/A'],
     ['City / Region', [property?.city, property?.region].filter(Boolean).join(', ') || 'N/A'],
     ['Ghana Post Address', cover?.ghana_post_address || 'N/A'],
@@ -870,7 +883,7 @@ function buildSummaryOfKeyData(data: ReportSectionData): FileChild[] {
     ['Market Value (USD)', data.transmittal?.values?.market_value?.usd_formatted || 'N/A'],
     ['Forced Sale Value (GH₵)', data.transmittal?.values?.forced_sale_value?.ghs_formatted || 'N/A'],
     ['Forced Sale Value (USD)', data.transmittal?.values?.forced_sale_value?.usd_formatted || 'N/A'],
-    ['Primary Method', valuation?.primary_method || 'N/A'],
+    ['Primary Method', valuation?.primary_method ? fmtType(valuation.primary_method) : 'N/A'],
     ['Confidence Score', valuation?.confidence_score ? `${Math.round(valuation.confidence_score * 100)}%` : 'N/A'],
     ['Confidence Grade', valuation?.confidence_grade || 'N/A'],
   ];
@@ -1092,8 +1105,9 @@ function buildPropertyDescription(data: ReportSectionData): FileChild[] {
 
   // General Description
   paragraphs.push(heading2('General'));
+  const fmtType = (t: string) => t.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
   const descRows: Array<[string, string]> = [
-    ['Property Type', property?.type || 'N/A'],
+    ['Property Type', property?.type ? fmtType(property.type) : 'N/A'],
     ['Building Area', property?.size_sqm ? `${Number(property.size_sqm).toLocaleString()} m²` : 'N/A'],
     ['Land Area', property?.land_area_sqm ? `${Number(property.land_area_sqm).toLocaleString()} m²` : 'N/A'],
     ['Year Built / Age', property?.year_built ? `${property.year_built}` : (construction?.age_years ? `${construction.age_years} years` : 'N/A')],
@@ -1364,7 +1378,7 @@ function buildCertification(data: ReportSectionData): FileChild[] {
   // Exchange rate
   if (data.transmittal?.exchange_rate) {
     paragraphs.push(bodyText(
-      `On the date of valuation, the GH Cedi to US Dollar exchange rate is: ${data.transmittal.exchange_rate.rate}`,
+      `On the date of valuation, the GH Cedi to US Dollar exchange rate is: ${Number(data.transmittal.exchange_rate.rate).toFixed(2)}`,
       { italic: true, keepNext: true }
     ));
     paragraphs.push(bodyText(

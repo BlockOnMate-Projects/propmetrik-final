@@ -187,6 +187,9 @@ class ValuationReportService {
         comparables = await this.getComparables(valuationId);
       }
 
+      // Fetch valuer credentials from the valuers table
+      const valuer = await this.getValuerForReport(valuation.valuer_id);
+
       // Build report data
       const reportData: ReportData = {
         report_id: this.generateReportId(),
@@ -226,14 +229,19 @@ class ValuationReportService {
             : null,
         },
         
-        methods: this.formatMethodResults(valuation.method_results || [], options, valuation.method_weights),
+        methods: this.formatMethodResults(
+          valuation.method_results || [],
+          options,
+          valuation.recon_method_weights || valuation.method_weights,
+          valuation.recon_method_results
+        ),
         
         weighting_rationale: valuation.weighting_rationale || null,
         
         valuer: {
-          name: options.valuerName || 'System Valuation',
-          qualifications: options.valuerQualifications || 'MRICS, RV (GhIS)',
-          company: 'PROPMETRIK',
+          name: options.valuerName || valuer?.name || '[Valuer Name]',
+          qualifications: options.valuerQualifications || valuer?.qualifications || '[Qualifications]',
+          company: valuer?.company_name || 'PROPMETRIK',
           date: new Date().toISOString().split('T')[0],
         },
         
@@ -280,29 +288,53 @@ class ValuationReportService {
   }
 
   /**
+   * Fetch valuer credentials from the valuers table
+   */
+  private async getValuerForReport(valuerId?: string): Promise<any> {
+    if (valuerId) {
+      const result = await query(
+        `SELECT name, title, qualifications, license_number, company_name, contact_address FROM valuers WHERE id = $1`,
+        [valuerId]
+      );
+      if (result.rows.length > 0) return result.rows[0];
+    }
+    // Fallback to any active valuer
+    const result = await query(
+      `SELECT name, title, qualifications, license_number, company_name, contact_address FROM valuers WHERE is_active = true ORDER BY created_at DESC LIMIT 1`
+    );
+    return result.rows[0] || null;
+  }
+
+  /**
    * Get valuation data from database
    */
   private async getValuationData(valuationId: string): Promise<any> {
     const result = await query(
       `SELECT 
-        id,
-        property_id,
-        valuation_type,
-        valuation_purpose as purpose,
-        effective_date as valuation_date,
-        COALESCE(final_value_ghs, estimated_value) as final_value,
-        value_range_low as value_low,
-        value_range_high as value_high,
-        primary_method,
-        method_results,
-        method_weights,
-        weighting_rationale,
-        confidence_score,
-        market_conditions,
-        valuer_id,
-        status
-      FROM valuations
-      WHERE id = $1`,
+        v.id,
+        v.property_id,
+        v.valuation_type,
+        v.valuation_purpose as purpose,
+        v.effective_date as valuation_date,
+        COALESCE(v.final_value_ghs, v.estimated_value) as final_value,
+        v.value_range_low as value_low,
+        v.value_range_high as value_high,
+        v.primary_method,
+        v.method_results,
+        v.method_weights,
+        v.methods_applied,
+        v.weighting_rationale,
+        v.confidence_score,
+        v.market_conditions,
+        v.valuer_id,
+        v.status,
+        vr.method_weights as recon_method_weights,
+        vr.method_results as recon_method_results
+      FROM valuations v
+      LEFT JOIN valuation_reconciliations vr ON vr.valuation_id = v.id
+      WHERE v.id = $1
+      ORDER BY vr.updated_at DESC NULLS LAST
+      LIMIT 1`,
       [valuationId]
     );
 
@@ -343,26 +375,56 @@ class ValuationReportService {
   private formatMethodResults(
     results: any,
     options: ReportOptions,
-    methodWeights?: Record<string, number>
+    methodWeights?: Record<string, number>,
+    reconMethodResults?: Record<string, any>
   ): ReportData['methods'] {
     // Convert object format to array format
     let resultsArray: any[] = [];
     
+    // Filter out intermediate/non-valuation methods
+    const nonValuationMethods = ['rental_market', 'rental_market_analysis', 'land_value'];
+
     if (Array.isArray(results)) {
       resultsArray = results;
     } else if (results && typeof results === 'object') {
-      // Filter out intermediate/non-valuation methods
-      const nonValuationMethods = ['rental_market', 'rental_market_analysis', 'land_value'];
       // Convert object format {method_name: {value, confidence, ...}} to array
       resultsArray = Object.entries(results)
         .filter(([method]) => !nonValuationMethods.includes(method))
         .map(([method, data]: [string, any]) => ({
           method,
-          value: data.value,
+          value: data.indicated_value || data.value,
           confidence: data.confidence,
           weight: data.weight,
           details: data.details,
         }));
+    }
+
+    // Add methods that have weight > 0 in reconciliation but are missing from results
+    if (methodWeights && typeof methodWeights === 'object') {
+      const existingMethods = new Set(resultsArray.map(r => r.method));
+      for (const [method, weight] of Object.entries(methodWeights)) {
+        if (nonValuationMethods.includes(method)) continue;
+        if (existingMethods.has(method)) continue;
+        if (Number(weight) <= 0) continue;
+
+        // Try to get value from reconciliation method_results
+        let value = null;
+        let confidence = null;
+        if (reconMethodResults && reconMethodResults[method]) {
+          value = reconMethodResults[method].indicated_value || reconMethodResults[method].value;
+          confidence = reconMethodResults[method].confidence;
+        }
+
+        if (value) {
+          resultsArray.push({
+            method,
+            value,
+            confidence,
+            weight: Number(weight),
+            details: reconMethodResults?.[method]?.details,
+          });
+        }
+      }
     }
     
     if (resultsArray.length === 0) {
@@ -370,13 +432,13 @@ class ValuationReportService {
     }
     
     return resultsArray.map(result => {
-      // Use method_weights from valuations table (user-set percentages 0-100) if available
-      // Fall back to per-method weight; null if not set (do not fabricate)
+      // Use method_weights (prefer recon weights) for weight values
+      // Convert from 0-100 to 0-1 decimal
       let weight = result.weight || null;
       if (methodWeights && Object.keys(methodWeights).length > 0) {
         const methodKey = result.method || '';
         if (methodWeights[methodKey] !== undefined && methodWeights[methodKey] !== null) {
-          weight = methodWeights[methodKey] / 100; // Convert from percentage (0-100) to decimal (0-1)
+          weight = methodWeights[methodKey] / 100;
         }
       }
       return {
