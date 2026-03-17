@@ -30,6 +30,7 @@ import {
 } from 'lucide-react'
 import PaymentSettings from '@/components/property-management/PaymentSettings'
 import { valuationPaymentConfigApi } from '@/lib/valuation-api'
+import { authedFetch } from '@/lib/authed-fetch'
 
 // Types
 type FeeModel = 'percentage_of_value' | 'man_day_rate' | 'flat_fee'
@@ -123,14 +124,9 @@ function formatCurrency(amount: number): string {
 }
 
 function getHeaders(): Record<string, string> {
-    const headers: Record<string, string> = {
+    return {
         'Content-Type': 'application/json',
     }
-    if (typeof window !== 'undefined') {
-        const token = localStorage.getItem('token')
-        if (token) headers['Authorization'] = `Bearer ${token}`
-    }
-    return headers
 }
 
 export default function FinancePage() {
@@ -231,7 +227,7 @@ export default function FinancePage() {
                 if (newInvoice.feeModel === 'percentage_of_value') params.set('propertyValue', newInvoice.propertyValue)
                 if (newInvoice.feeModel === 'man_day_rate') params.set('manDays', JSON.stringify(newInvoice.manDays.filter(d => d.days > 0).map(d => ({ category: d.category, days: d.days, rate: d.rate }))))
                 if (newInvoice.feeModel === 'flat_fee') params.set('flatFee', newInvoice.flatFee)
-                const res = await fetch(`${API_BASE}/valuation-invoices/fee-calculator?${params.toString()}`, { headers: getHeaders() })
+                const res = await authedFetch(`${API_BASE}/valuation-invoices/fee-calculator?${params.toString()}`, { headers: getHeaders() })
                 if (res.ok) { const data = await res.json(); setLiveCalc(data.data) }
             } catch { /* ignore */ } finally { setLiveCalcLoading(false) }
         }, 500)
@@ -251,9 +247,9 @@ export default function FinancePage() {
             const headers = getHeaders()
 
             const [invoicesRes, summaryRes, clientsRes] = await Promise.all([
-                fetch(`${API_BASE}/valuation-invoices?limit=50`, { headers }),
-                fetch(`${API_BASE}/valuation-invoices/summary`, { headers }),
-                fetch(`${API_BASE}/valuation-clients?limit=100`, { headers }),
+                authedFetch(`${API_BASE}/valuation-invoices?limit=50`, { headers }),
+                authedFetch(`${API_BASE}/valuation-invoices/summary`, { headers }),
+                authedFetch(`${API_BASE}/valuation-clients?limit=100`, { headers }),
             ])
 
             if (invoicesRes.ok) {
@@ -293,7 +289,7 @@ export default function FinancePage() {
                 params.set('flatFee', calcFlatFee)
             }
 
-            const res = await fetch(`${API_BASE}/valuation-invoices/fee-calculator?${params.toString()}`, {
+            const res = await authedFetch(`${API_BASE}/valuation-invoices/fee-calculator?${params.toString()}`, {
                 headers: getHeaders(),
             })
 
@@ -339,7 +335,7 @@ export default function FinancePage() {
                 body.flatFee = parseFloat(newInvoice.flatFee) || 0
             }
 
-            const res = await fetch(`${API_BASE}/valuation-invoices`, {
+            const res = await authedFetch(`${API_BASE}/valuation-invoices`, {
                 method: 'POST',
                 headers: getHeaders(),
                 body: JSON.stringify(body),
@@ -368,7 +364,7 @@ export default function FinancePage() {
     // Send invoice
     const handleSend = async (id: string) => {
         try {
-            const res = await fetch(`${API_BASE}/valuation-invoices/${id}/send`, {
+            const res = await authedFetch(`${API_BASE}/valuation-invoices/${id}/send`, {
                 method: 'POST',
                 headers: getHeaders(),
             })
@@ -382,7 +378,7 @@ export default function FinancePage() {
     const handleCancel = async (id: string) => {
         if (!confirm('Cancel this invoice?')) return
         try {
-            await fetch(`${API_BASE}/valuation-invoices/${id}/cancel`, {
+            await authedFetch(`${API_BASE}/valuation-invoices/${id}/cancel`, {
                 method: 'POST',
                 headers: getHeaders(),
                 body: JSON.stringify({ reason: 'Cancelled by user' }),
@@ -397,7 +393,7 @@ export default function FinancePage() {
     const handleDelete = async (id: string) => {
         if (!confirm('Permanently delete this invoice? This cannot be undone.')) return
         try {
-            const res = await fetch(`${API_BASE}/valuation-invoices/${id}`, {
+            const res = await authedFetch(`${API_BASE}/valuation-invoices/${id}`, {
                 method: 'DELETE',
                 headers: getHeaders(),
             })

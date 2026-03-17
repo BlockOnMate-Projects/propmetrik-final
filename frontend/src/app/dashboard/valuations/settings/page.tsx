@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { authedFetch } from '@/lib/authed-fetch'
 import {
     Settings,
     Save,
@@ -30,15 +31,13 @@ import {
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api/v1'
 
 function getHeaders() {
-    const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null
     return {
         'Content-Type': 'application/json',
-        ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
     }
 }
 
 async function apiFetch(path: string, opts: RequestInit = {}) {
-    const res = await fetch(`${API_BASE}/enterprise${path}`, { ...opts, headers: { ...getHeaders(), ...opts.headers as any } })
+    const res = await authedFetch(`${API_BASE}/enterprise${path}`, { ...opts, headers: { ...getHeaders(), ...opts.headers as any } })
     if (!res.ok) throw new Error(`${res.status}: ${await res.text()}`)
     return res.json()
 }
