@@ -25,14 +25,9 @@ import { authedFetch } from '@/lib/authed-fetch'
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api/v1'
 
 function getHeaders(): Record<string, string> {
-    const headers: Record<string, string> = {
+    return {
         'Content-Type': 'application/json',
     }
-    if (typeof window !== 'undefined') {
-        const token = localStorage.getItem('token')
-        if (token) headers['Authorization'] = `Bearer ${token}`
-    }
-    return headers
 }
 
 interface InvoiceSummary {

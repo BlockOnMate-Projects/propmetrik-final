@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { useSearchParams } from 'next/navigation'
+import { authedFetch } from '@/lib/authed-fetch'
 import {
     Building2,
     Plus,
@@ -91,14 +92,9 @@ function formatCurrency(amount: number): string {
 }
 
 function getHeaders(): Record<string, string> {
-    const headers: Record<string, string> = {
+    return {
         'Content-Type': 'application/json',
     }
-    if (typeof window !== 'undefined') {
-        const token = localStorage.getItem('token')
-        if (token) headers['Authorization'] = `Bearer ${token}`
-    }
-    return headers
 }
 
 export default function ClientsPage() {
@@ -145,7 +141,7 @@ export default function ClientsPage() {
     const fetchClients = async () => {
         try {
             setLoading(true)
-            const res = await fetch(`${API_BASE}/valuation-clients`, { headers: getHeaders() })
+            const res = await authedFetch(`${API_BASE}/valuation-clients`, { headers: getHeaders() })
             if (res.ok) {
                 const data = await res.json()
                 setClients(data.clients || [])
@@ -167,7 +163,7 @@ export default function ClientsPage() {
 
             const method = editingClient ? 'PUT' : 'POST'
 
-            const res = await fetch(url, {
+            const res = await authedFetch(url, {
                 method,
                 headers: getHeaders(),
                 body: JSON.stringify(formData)
@@ -191,7 +187,7 @@ export default function ClientsPage() {
     const handleDelete = async (id: string) => {
         if (!confirm('Are you sure you want to delete this client?')) return
         try {
-            const res = await fetch(`${API_BASE}/valuation-clients/${id}`, {
+            const res = await authedFetch(`${API_BASE}/valuation-clients/${id}`, {
                 method: 'DELETE',
                 headers: getHeaders()
             })
@@ -246,8 +242,8 @@ export default function ClientsPage() {
         setLoadingDetail(true)
         try {
             const [invoicesRes, valuationsRes] = await Promise.all([
-                fetch(`${API_BASE}/valuation-clients/${client.id}/invoices`, { headers: getHeaders() }),
-                fetch(`${API_BASE}/valuation-clients/${client.id}/valuations`, { headers: getHeaders() }),
+                authedFetch(`${API_BASE}/valuation-clients/${client.id}/invoices`, { headers: getHeaders() }),
+                authedFetch(`${API_BASE}/valuation-clients/${client.id}/valuations`, { headers: getHeaders() }),
             ])
             if (invoicesRes.ok) {
                 const data = await invoicesRes.json()
@@ -282,7 +278,7 @@ export default function ClientsPage() {
         setSendingEmail(true)
         setEmailStatus(null)
         try {
-            const res = await fetch(`${API_BASE}/valuation-clients/${selectedClient.id}/send-email`, {
+            const res = await authedFetch(`${API_BASE}/valuation-clients/${selectedClient.id}/send-email`, {
                 method: 'POST',
                 headers: getHeaders(),
                 body: JSON.stringify({

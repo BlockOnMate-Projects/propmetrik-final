@@ -17,6 +17,7 @@ import {
   KeyboardShortcut,
 } from '@/components/ui/terminal'
 import { valuationsApi, type ValuationFilters } from '@/lib/valuation-api'
+import { authedFetch } from '@/lib/authed-fetch'
 import type { Valuation, ValuationStatsResponse, ValuationStatus } from '@/types/valuation'
 import { Plus, Search, Filter, RefreshCw, Download, Loader2, Edit2, Trash2 } from 'lucide-react'
 
@@ -84,21 +85,20 @@ export default function ValuationsPage() {
   // Auth headers for org API calls
   const getOrgHeaders = useCallback((): Record<string, string> => {
     const headers: Record<string, string> = { 'Content-Type': 'application/json' }
-    if (typeof window !== 'undefined') {
-      const token = localStorage.getItem('token')
-      if (token) headers['Authorization'] = `Bearer ${token}`
-      const orgId = localStorage.getItem('organizationId')
-      if (orgId) headers['x-organization-id'] = orgId
-      const userId = localStorage.getItem('userId')
-      if (userId) headers['x-user-id'] = userId
-    }
+    const token = (session as any)?.accessToken as string | undefined
+    const orgId = (session?.user as any)?.organizationId as string | undefined
+    const userId = session?.user?.id
+
+    if (token) headers['Authorization'] = `Bearer ${token}`
+    if (orgId) headers['x-organization-id'] = orgId
+    if (userId) headers['x-user-id'] = userId
     return headers
-  }, [])
+  }, [session])
 
   // Fetch org members for dropdown
   const fetchOrgMembers = useCallback(async () => {
     try {
-      const res = await fetch('/api/valuation-org/members', { headers: getOrgHeaders() })
+      const res = await authedFetch('/api/valuation-org/members', { headers: getOrgHeaders() })
       if (res.ok) {
         const data = await res.json()
         setOrgMembers(data.data || [])
@@ -109,7 +109,7 @@ export default function ValuationsPage() {
   // Fetch lead assignee for a single valuation
   const fetchTeamForValuation = useCallback(async (valuationId: string): Promise<TeamMember | null> => {
     try {
-      const res = await fetch(`/api/valuation-org/valuations/${valuationId}/team`, { headers: getOrgHeaders() })
+      const res = await authedFetch(`/api/valuation-org/valuations/${valuationId}/team`, { headers: getOrgHeaders() })
       if (res.ok) {
         const data = await res.json()
         const members: TeamMember[] = data.data || []
@@ -125,7 +125,7 @@ export default function ValuationsPage() {
     if (!userId) return
     setAssigning(valuationId)
     try {
-      const res = await fetch(`/api/valuation-org/valuations/${valuationId}/team`, {
+      const res = await authedFetch(`/api/valuation-org/valuations/${valuationId}/team`, {
         method: 'POST',
         headers: getOrgHeaders(),
         body: JSON.stringify({ userId, teamRole: 'lead_valuer' }),
