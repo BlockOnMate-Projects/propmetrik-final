@@ -14,12 +14,10 @@ RUN apk add --no-cache python3 make g++
 # Copy package files
 COPY package*.json ./
 
-# Force NODE_ENV=development during install to include devDependencies
-# (Coolify injects ARG NODE_ENV=production which would skip them)
-ENV NODE_ENV=development
-# Use npm install (not npm ci) since package-lock.json is at monorepo root
-RUN npm install --legacy-peer-deps
-ENV NODE_ENV=production
+# Force NODE_ENV=development during install to include devDependencies.
+# Inline env var in RUN overrides both ARG and ENV (Coolify injects ARG NODE_ENV=production
+# which would skip devDependencies if we relied on ENV NODE_ENV=development alone).
+RUN NODE_ENV=development npm install --legacy-peer-deps
 
 # ============================================
 # Stage 2: Builder
