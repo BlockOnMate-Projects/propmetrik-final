@@ -183,7 +183,9 @@ const fetchTypescriptApi = async (endpoint: string, options: RequestInit = {}) =
       // Include status code in error for proper handling
       const fullErrorMessage = `[${response.status}] ${errorMessage}`;
       // Only log non-404 errors (404s are often expected for new valuations)
-      if (response.status !== 404) {
+      // Also suppress errors for land-value/calculate (expected for DRC/specialized properties)
+      const isLandValueCalc = url.includes('land-value/calculate')
+      if (response.status !== 404 && !isLandValueCalc) {
         console.error(`TypeScript API Error [${response.status}]:`, errorMessage);
       }
       throw new Error(fullErrorMessage);
@@ -191,8 +193,8 @@ const fetchTypescriptApi = async (endpoint: string, options: RequestInit = {}) =
 
     return await response.json();
   } catch (error) {
-    // Only log if it's not a 404-related error
-    if (error instanceof Error && !error.message.includes('404') && !error.message.includes('not found') && !error.message.includes('Not Found')) {
+    // Only log if it's not a 404-related or land-value error
+    if (error instanceof Error && !error.message.includes('404') && !error.message.includes('not found') && !error.message.includes('Not Found') && !error.message.includes('land-value') && !error.message.includes('Land valuation')) {
       console.error('TypeScript API Error:', error.message);
     }
     throw error;
@@ -1373,6 +1375,38 @@ export const sensitivityApi = {
 };
 
 // ============================================================================
+// CAP RATE API - Market cap rate from RICS-compliant methodology
+// Endpoints: GET /cap-rate/:region/:propertyType, GET /cap-rate/benchmarks
+// ============================================================================
+
+export const capRateApi = {
+  /**
+   * Get market cap rate for region/property type using RICS hierarchy:
+   * Market Extraction > Partner Data > Listings > Survey > Defaults
+   */
+  async getMarketCapRate(region: string, propertyType: string): Promise<{
+    success: boolean;
+    data: {
+      capRate: number;
+      range: { low: number; high: number };
+      confidence: string;
+      methodology: string;
+      ricsCategory: string;
+      sampleSize: number;
+      source?: string;
+    };
+    error?: string;
+  }> {
+    try {
+      const response = await fetchTypescriptApi(`/cap-rate/${region}/${propertyType}`);
+      return response;
+    } catch (error: any) {
+      return { success: false, data: { capRate: 0, range: { low: 0, high: 0 }, confidence: 'insufficient', methodology: 'none', ricsCategory: 'C', sampleSize: 0 }, error: error.message };
+    }
+  },
+};
+
+// ============================================================================
 // OVERRIDE TRACKING API - Routes to TypeScript backend
 // Endpoints: GET/POST /:id/overrides, POST /overrides/:id/approve|reject
 // ============================================================================
@@ -1586,6 +1620,20 @@ export const comparableBasketApi = {
       return response;
     } catch (error: any) {
       return { success: false, data: {} as ComparableProperty, error: error.message };
+    }
+  },
+
+  /**
+   * Clear all comparables from a basket
+   */
+  async clearComparables(basketId: string): Promise<{ success: boolean; deleted?: number; error?: string }> {
+    try {
+      const response = await fetchTypescriptApi(`/baskets/${basketId}/comparables`, {
+        method: 'DELETE',
+      });
+      return response;
+    } catch (error: any) {
+      return { success: false, error: error.message };
     }
   },
 

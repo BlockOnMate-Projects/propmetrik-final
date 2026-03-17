@@ -18,12 +18,10 @@ import { workspaceService, EntityType, MemberRole } from '../../shared-services/
 import { documentService } from '../../shared-services/workspace/documentService';
 import { pool } from '../database';
 import { logger } from '../utils/logger';
-import { authenticate } from '../middleware/auth';
 
 const router = Router();
 
-// Apply auth middleware to all workspace routes
-router.use(authenticate);
+// Auth is applied at mount level in index.ts — no need to duplicate here
 
 // Helper to get user context from JWT middleware
 const getUser = (req: Request) => {
@@ -460,6 +458,59 @@ router.patch(
         }
 
         res.json({ message: updated });
+    })
+);
+
+/**
+ * DELETE /api/v1/workspace/:workspaceId/messages/:messageId
+ * Soft-delete a message (only the original author can delete).
+ */
+router.delete(
+    '/:workspaceId/messages/:messageId',
+    asyncHandler(async (req, res) => {
+        const { userId, organizationId } = getUser(req);
+        const { workspaceId, messageId } = req.params;
+
+        const workspace = await workspaceService.getById(workspaceId, organizationId);
+        if (!workspace) {
+            return res.status(404).json({ error: 'Workspace not found' });
+        }
+
+        const deleted = await workspaceService.deleteMessage(messageId, userId);
+        if (!deleted) {
+            return res.status(404).json({ error: 'Message not found or you are not the author' });
+        }
+
+        res.json({ success: true });
+    })
+);
+
+/**
+ * GET /api/v1/workspace/:workspaceId/messages/:messageId
+ * Get a single message by ID (for thread/reply parent lookups).
+ */
+router.get(
+    '/:workspaceId/messages/:messageId',
+    asyncHandler(async (req, res) => {
+        const { userId, organizationId } = getUser(req);
+        const { workspaceId, messageId } = req.params;
+
+        const workspace = await workspaceService.getById(workspaceId, organizationId);
+        if (!workspace) {
+            return res.status(404).json({ error: 'Workspace not found' });
+        }
+
+        const isMember = await workspaceService.isMember(workspaceId, userId);
+        if (!isMember) {
+            return res.status(403).json({ error: 'Access denied' });
+        }
+
+        const message = await workspaceService.getMessageById(messageId);
+        if (!message || message.workspace_id !== workspaceId) {
+            return res.status(404).json({ error: 'Message not found' });
+        }
+
+        res.json({ message });
     })
 );
 

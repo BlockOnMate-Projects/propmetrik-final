@@ -843,14 +843,21 @@ export const valuationConfigApi = {
     }),
 
   // Base Construction Costs
-  getBaseCosts: () =>
-    fetchApi<ApiResponse<Array<{
+  getBaseCosts: (params?: { property_type?: string; region?: string }) => {
+    const qs = new URLSearchParams();
+    if (params?.property_type) qs.set('property_type', params.property_type);
+    if (params?.region) qs.set('region', params.region);
+    const query = qs.toString();
+    return fetchApi<ApiResponse<Array<{
       quality_tier: string;
       display_name: string;
       base_cost_per_sqm: number;
       base_year: number;
       updated_at: string;
-    }>> & { count: number }>('/data-hub/valuation-config/base-costs'),
+      property_type: string;
+      region: string;
+    }>> & { count: number }>(`/data-hub/valuation-config/base-costs${query ? `?${query}` : ''}`);
+  },
 
   updateBaseCost: (qualityTier: string, baseCostPerSqm: number, updatedBy?: string) =>
     fetchApi<ApiResponse<{ message: string }>>(`/data-hub/valuation-config/base-costs/${qualityTier}`, {
@@ -873,6 +880,56 @@ export const valuationConfigApi = {
       changed_by: string;
       changed_at: string;
     }>> & { count: number }>(`/data-hub/valuation-config/history?${params}`);
+  },
+
+  // Specialized Construction Costs (RICS/GhIS)
+  getSpecializedCosts: (params?: { building_function?: string; quality_level?: string; region?: string }) => {
+    const qs = new URLSearchParams();
+    if (params?.building_function) qs.set('building_function', params.building_function);
+    if (params?.quality_level) qs.set('quality_level', params.quality_level);
+    if (params?.region) qs.set('region', params.region);
+    const query = qs.toString();
+    return fetchApi<ApiResponse<Array<{
+      building_function: string;
+      quality_level: string;
+      region: string;
+      base_cost_sqm: number;
+      substructure_pct: number;
+      superstructure_pct: number;
+      internal_finishes_pct: number;
+      me_services_pct: number;
+      external_works_pct: number;
+      professional_fees_pct: number;
+      structural_complexity_factor: number;
+      source: string;
+      is_published_rate: boolean;
+      is_calculated: boolean;
+      effective_date: string;
+    }>> & { count: number }>(`/data-hub/valuation-config/specialized-costs${query ? `?${query}` : ''}`);
+  },
+
+  getBuildingFunctions: () =>
+    fetchApi<ApiResponse<Array<{
+      value: string;
+      label: string;
+    }>>>('/data-hub/valuation-config/building-functions'),
+
+  // Comparable sale prices per sqm from market evidence (for Residual Method GDV)
+  getComparablePrices: (params?: { region?: string; property_type?: string }) => {
+    const qs = new URLSearchParams();
+    if (params?.region) qs.set('region', params.region);
+    if (params?.property_type) qs.set('property_type', params.property_type);
+    const query = qs.toString();
+    return fetchApi<ApiResponse<Array<{
+      property_type: string;
+      region: string;
+      median_price_sqm: number;
+      avg_price_sqm: number;
+      p25_price_sqm: number;
+      p75_price_sqm: number;
+      comparable_count: number;
+      evidence_basis: string;
+    }>> & { count: number }>(`/data-hub/valuation-config/sale-prices${query ? `?${query}` : ''}`);
   },
 };
 

@@ -10,6 +10,7 @@ import {
   StepIndicator,
 } from '@/components/ui/terminal'
 import { valuationsApi } from '@/lib/valuation-api'
+import { fetchApi } from '@/lib/api'
 import ComprehensivePropertyForm from '@/components/forms/ComprehensivePropertyForm'
 import { type ComprehensivePropertyData } from '@/types/comprehensiveProperty'
 import type { Valuation } from '@/types/valuation'
@@ -46,6 +47,13 @@ export default function SubjectPropertyPage() {
         const val = valuationRes.data as Valuation
         setValuation(val)
 
+        // Fetch engagement (client) data
+        let engagement: any = {}
+        try {
+          const engRes = await fetchApi<any>(`/valuations/${valuationId}/engagement`)
+          if (engRes?.data) engagement = engRes.data
+        } catch { /* no engagement yet */ }
+
         // Map valuation/property data to form fields
         const property: any = val.property || {}
         const metadata: any = property.metadata || {}
@@ -80,12 +88,12 @@ export default function SubjectPropertyPage() {
           valuation_date: val.effective_date || '',
           instruction_date: (val as any).instruction_date || '',
           is_retrospective: (val as any).is_retrospective || false,
-          // Client info
-          client_name: (val as any).client_name || property.owner_name || '',
-          client_address: (val as any).client_address || property.owner_address || '',
-          client_email: (val as any).client_email || property.owner_email || '',
-          client_phone: (val as any).client_phone || property.owner_phone || '',
-          request_type: (val as any).request_type || 'written',
+          // Client info (from engagement record, NOT from property owner)
+          client_name: engagement.client_name || '',
+          client_address: engagement.client_address || '',
+          client_email: engagement.client_email || '',
+          client_phone: engagement.client_contact || engagement.client_phone || '',
+          request_type: engagement.request_type || 'written',
           // Chapter 3 Report Data (from metadata)
           // City Data
           city_description: metadata.city_description || '',
@@ -206,16 +214,10 @@ export default function SubjectPropertyPage() {
       }
 
       // Call property update API
-      const propertyRes = await fetch(`http://localhost:4000/api/v1/properties/${propertyId}`, {
+      await fetchApi(`/properties/${propertyId}`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(propertyUpdate),
       })
-
-      if (!propertyRes.ok) {
-        const errData = await propertyRes.json()
-        throw new Error(errData.message || 'Failed to update property')
-      }
 
       // Update valuation dates, purpose, and engagement
       const valuationUpdate = {
@@ -227,11 +229,10 @@ export default function SubjectPropertyPage() {
 
       await valuationsApi.update(valuationId, valuationUpdate)
 
-      // Update engagement if client info changed
+      // Update engagement (client info) — always save to ensure it exists
       if (propertyData.client_name) {
-        await fetch(`http://localhost:4000/api/v1/valuations/${valuationId}/engagement`, {
+        await fetchApi(`/valuations/${valuationId}/engagement`, {
           method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             client_name: propertyData.client_name,
             client_address: propertyData.client_address,

@@ -4,37 +4,30 @@ import { useEffect, useRef, useState, useCallback } from 'react';
 import type { WorkspaceMessage } from '@/lib/workspace-api';
 import type { KobbyResponse } from './useKobbyAI';
 
-const getWsBase = () => {
+/**
+ * Compute WebSocket base URL lazily (not at module scope to avoid SSR issues).
+ * In production, uses the explicit WS URL env var, or falls back to same-origin.
+ * In dev, maps Next.js port 3000 → Express port 4000.
+ */
+const getWsBase = (): string => {
     if (typeof window === 'undefined') return '';
 
-    // Check if there's an explicit API URL set
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL;
-    if (apiUrl) {
-        try {
-            const parsed = new URL(apiUrl, window.location.origin);
-            const isLocal = parsed.hostname === 'localhost' || parsed.hostname === '127.0.0.1';
-            const wsProtocol = parsed.protocol === 'https:' ? 'wss' : 'ws';
-            const wsPort = isLocal && parsed.port === '3000' ? '4000' : parsed.port;
-            const host = wsPort ? `${parsed.hostname}:${wsPort}` : parsed.hostname;
-            return `${wsProtocol}://${host}`;
-        } catch {
-            // fall through to default resolver
-        }
-    }
+    // Explicit WebSocket URL takes highest priority (e.g. wss://api.propmetrik.com)
+    const wsUrl = process.env.NEXT_PUBLIC_WS_URL;
+    if (wsUrl) return wsUrl.replace(/\/$/, '');
 
-    // Fallback to current host but handle common dev port mismatch (Next 3000 -> Express 4000)
-    const host = window.location.hostname;
+    const hostname = window.location.hostname;
     const protocol = window.location.protocol === 'https:' ? 'wss' : 'ws';
+    const isLocal = hostname === 'localhost' || hostname === '127.0.0.1';
 
-    // If on localhost:3000, we know the backend is likely on 4000
-    if (host === 'localhost' || host === '127.0.0.1') {
-        return `${protocol}://localhost:4000`;
+    // Dev: Next.js 3000 → Express 4000
+    if (isLocal) {
+        return `${protocol}://${hostname}:4000`;
     }
 
+    // Production: WebSocket on same host (Traefik/reverse proxy routes /ws/*)
     return `${protocol}://${window.location.host}`;
 };
-
-const WS_BASE = getWsBase();
 
 type WSEvent =
     | { type: 'connected'; userId: string }
@@ -48,6 +41,7 @@ type WSEvent =
     | { type: 'kobby_thinking'; query: string }
     | { type: 'kobby_response'; query: string; response: KobbyResponse; conversationId?: string }
     | { type: 'kobby_error'; error: string }
+    | { type: 'message_deleted'; messageId: string }
     | { type: 'error'; error: string };
 
 interface UseWorkspaceSocketOptions {
@@ -55,6 +49,7 @@ interface UseWorkspaceSocketOptions {
     token: string | null;
     onMessage?: (msg: WorkspaceMessage) => void;
     onMessageEdited?: (messageId: string, content: string, editedAt: string) => void;
+    onMessageDeleted?: (messageId: string) => void;
     onPresenceChange?: (onlineUsers: string[]) => void;
     onKobbyResponse?: (query: string, response: KobbyResponse, conversationId?: string) => void;
     onKobbyError?: (error: string) => void;
@@ -66,6 +61,7 @@ export function useWorkspaceSocket({
     token,
     onMessage,
     onMessageEdited,
+    onMessageDeleted,
     onPresenceChange,
     onKobbyResponse,
     onKobbyError,
@@ -88,7 +84,8 @@ export function useWorkspaceSocket({
         if (!workspaceId || !token) return;
         if (wsRef.current?.readyState === WebSocket.OPEN) return;
 
-        const url = `${WS_BASE}/ws/workspace?token=${encodeURIComponent(token)}`;
+        const wsBase = getWsBase();
+        const url = `${wsBase}/ws/workspace?token=${encodeURIComponent(token)}`;
         const ws = new WebSocket(url);
         wsRef.current = ws;
 
@@ -121,6 +118,9 @@ export function useWorkspaceSocket({
                         break;
                     case 'message_edited':
                         onMessageEdited?.(data.messageId, data.content, data.editedAt);
+                        break;
+                    case 'message_deleted':
+                        onMessageDeleted?.(data.messageId);
                         break;
                     case 'presence':
                         setOnlineUsers(data.onlineUsers);
@@ -174,7 +174,7 @@ export function useWorkspaceSocket({
         ws.onerror = () => {
             setError('WebSocket connection error');
         };
-    }, [workspaceId, token, onMessage, onMessageEdited, onPresenceChange, onKobbyResponse, onKobbyError, onKobbyThinking]);
+    }, [workspaceId, token, onMessage, onMessageEdited, onMessageDeleted, onPresenceChange, onKobbyResponse, onKobbyError, onKobbyThinking]);
 
     useEffect(() => {
         connect();
@@ -205,6 +205,12 @@ export function useWorkspaceSocket({
     const editMessage = useCallback((messageId: string, content: string) => {
         if (wsRef.current?.readyState === WebSocket.OPEN) {
             wsRef.current.send(JSON.stringify({ type: 'edit_message', messageId, content }));
+        }
+    }, []);
+
+    const deleteMessage = useCallback((messageId: string) => {
+        if (wsRef.current?.readyState === WebSocket.OPEN) {
+            wsRef.current.send(JSON.stringify({ type: 'delete_message', messageId }));
         }
     }, []);
 
@@ -239,6 +245,7 @@ export function useWorkspaceSocket({
         sendTyping,
         markRead,
         editMessage,
+        deleteMessage,
         sendKobbyQuery,
     };
 }

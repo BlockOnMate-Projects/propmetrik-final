@@ -374,10 +374,11 @@ class KobbyAIServiceImpl {
         workspaceId: string,
         organizationName = 'PROPMETRIK Client'
     ): Promise<KobbyContext> {
-        // Fetch entity data + recent chat in parallel
-        const [entityData, messageHistory] = await Promise.allSettled([
+        // Fetch entity data, recent chat, and market context in parallel
+        const [entityData, messageHistory, marketData] = await Promise.allSettled([
             this.fetchEntityData(entityType, entityId),
             workspaceService.getMessages(workspaceId, undefined, 20),
+            fetchMarketContext(),
         ]);
 
         const entity = entityData.status === 'fulfilled' ? entityData.value : {};
@@ -390,6 +391,7 @@ class KobbyAIServiceImpl {
                     time: new Date(m.created_at).toLocaleTimeString(),
                 }))
             : [];
+        const market = marketData.status === 'fulfilled' ? marketData.value : undefined;
 
         // Try to extract entity name
         const entityName = this.extractEntityName(entity, entityType) || entityId.substring(0, 8);
@@ -401,6 +403,7 @@ class KobbyAIServiceImpl {
             organizationName,
             entityData: entity,
             recentMessages: messages,
+            marketData: market,
         };
     }
 

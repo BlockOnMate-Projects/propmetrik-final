@@ -132,10 +132,12 @@ class DocGenerationService {
       const docxUrl = await getPresignedDownloadUrl(MINIO_REPORTS_BUCKET, storageKey, 7 * 24 * 60 * 60); // 7 days
 
       // 7. Update report record with document storage key
+      // Editor sections are the source of truth and are NOT cleared here.
+      // The DOCX builder reads and uses them via resolveSection().
       await query(
         `UPDATE valuation_reports 
          SET docx_storage_key = $1, 
-             content = content || $2::jsonb,
+             content = COALESCE(content, '{}'::jsonb) || $2::jsonb,
              updated_at = NOW()
          WHERE id = $3`,
         [

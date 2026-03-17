@@ -39,8 +39,10 @@ import {
   pdfGenerationService,
   auditLogService,
 } from '../services/valuation-engine';
-import { getPresignedDownloadUrl, getFile } from '../database/minio';
+import { getPresignedDownloadUrl, getFile, uploadFile } from '../database/minio';
 import { reportTemplateService } from '../services/valuation-engine/reportTemplateService';
+import { notificationService, pdfSigningService } from '../../shared-services';
+import crypto from 'crypto';
 import multer from 'multer';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -723,6 +725,19 @@ router.post('/:id/generate', validateUUID('id'), async (req: Request, res: Respo
     };
 
     logger.info('Generating DOCX report', { reportId: req.params.id, options });
+
+    // If reset_sections is true, clear saved editor sections first
+    // so the DOCX builder regenerates from template defaults
+    if (req.body.reset_sections) {
+      await pool.query(
+        `UPDATE valuation_reports 
+         SET content = COALESCE(content, '{}'::jsonb) - 'sections',
+             updated_at = NOW()
+         WHERE id = $1`,
+        [req.params.id]
+      );
+      logger.info('Cleared saved editor sections for regeneration', { reportId: req.params.id });
+    }
 
     const result = await docGenerationService.generateDocx(req.params.id, options);
 
@@ -1541,7 +1556,7 @@ router.get('/:id/approval-check', validateUUID('id'), async (req: Request, res: 
  */
 router.post('/:id/approve', validateUUID('id'), async (req: Request, res: Response) => {
   try {
-    const { valuer_id, comments, generate_pdf } = req.body;
+    const { valuer_id, comments, generate_pdf, esign_fields } = req.body;
 
     if (!valuer_id) {
       return res.status(400).json({
@@ -1549,6 +1564,8 @@ router.post('/:id/approve', validateUUID('id'), async (req: Request, res: Respon
         message: 'valuer_id is required',
       });
     }
+
+    logger.info('[approve] Step 1: approving report', { reportId: req.params.id, valuer_id });
 
     // Approve the report
     const approvalResult = await approvalService.approveReport({
@@ -1564,6 +1581,8 @@ router.post('/:id/approve', validateUUID('id'), async (req: Request, res: Respon
       });
     }
 
+    logger.info('[approve] Step 2: logging audit', { reportId: req.params.id });
+
     // Log audit
     await auditLogService.logApproved(
       req.params.id,
@@ -1571,13 +1590,148 @@ router.post('/:id/approve', validateUUID('id'), async (req: Request, res: Respon
       approvalResult.digitalSealHash
     );
 
+    logger.info('[approve] Step 3: generating PDF', { reportId: req.params.id, generate_pdf });
+
     // Generate PDF if requested
     let pdfResult = null;
     if (generate_pdf !== false) {
+      // Regenerate DOCX from stored editor sections before converting to PDF.
+      // This ensures the PDF always reflects the latest editor content.
+      try {
+        logger.info('[approve] Step 3a: regenerating DOCX from editor content', { reportId: req.params.id });
+        await docGenerationService.generateDocx(req.params.id);
+      } catch (docxErr: any) {
+        logger.warn('[approve] DOCX regeneration failed, proceeding with existing DOCX', {
+          reportId: req.params.id,
+          error: docxErr.message,
+        });
+      }
+
       pdfResult = await pdfGenerationService.convertDocxToPdf(req.params.id, {
         addQrCode: true,
         addDigitalSeal: true,
       });
+
+      // Burn e-sign fields (signatures, dates, names) into the PDF and append Certificate of Completion
+      if (pdfResult.success && pdfResult.storageKey && Array.isArray(esign_fields) && esign_fields.length > 0) {
+        try {
+          logger.info('[approve] Step 3b: burning e-sign fields into PDF', {
+            reportId: req.params.id,
+            fieldCount: esign_fields.length,
+          });
+
+          const bucket = process.env.MINIO_REPORTS_BUCKET || 'propmetrik-reports';
+          const basePdfFile = await getFile(bucket, pdfResult.storageKey);
+          const basePdfBytes = new Uint8Array(Buffer.from(basePdfFile.body));
+
+          // Separate signatures from date/text fields
+          const signatureFields = esign_fields.filter(
+            (f: any) => (f.type === 'signature' || f.type === 'initial' || f.type === 'stamp') && f.data
+          );
+          const dateFields = esign_fields.filter(
+            (f: any) => f.type !== 'signature' && f.type !== 'initial' && f.type !== 'stamp' && f.data
+          );
+
+          // Get signer info
+          const signerName = req.user?.name || `${req.user?.firstName || ''} ${req.user?.lastName || ''}`.trim() || 'Valuer';
+          const signerEmail = req.user?.email || '';
+
+          // Look up signer's permanent PMT ID
+          let signerPmtId: string | undefined;
+          if (signerEmail) {
+            const pmtResult = await pool.query(
+              'SELECT permanent_id FROM esign_signer_identities WHERE email = $1 LIMIT 1',
+              [signerEmail]
+            );
+            signerPmtId = pmtResult.rows[0]?.permanent_id;
+          }
+
+          // Get property address for the certificate
+          const report = await reportService.getReportById(req.params.id);
+          let propertyAddress = 'Valuation Report';
+          if (report?.valuation_id) {
+            const propResult = await pool.query(
+              `SELECT p.title, p.address_street, p.address_city
+               FROM valuations v JOIN properties p ON v.property_id = p.id
+               WHERE v.id = $1`,
+              [report.valuation_id]
+            );
+            const prop = propResult.rows[0];
+            if (prop) {
+              propertyAddress = [prop.address_street, prop.address_city].filter(Boolean).join(', ') || prop.title || 'Valuation Report';
+            }
+          }
+
+          // Compute document hash for certificate
+          const documentHash = crypto.createHash('sha256').update(Buffer.from(basePdfBytes)).digest('hex');
+
+          const signedPdfBytes = await pdfSigningService.generateFinalSignedPdf({
+            originalPdfBytes: basePdfBytes,
+            signatures: signatureFields.map((f: any) => ({
+              signatureData: f.data,
+              page: f.page || 1,
+              x: f.x,
+              y: f.y,
+              width: f.width,
+              height: f.height,
+              signatureId: signerPmtId,
+              signerName,
+              signerEmail,
+              signedAt: new Date(),
+              usePercentage: true,
+            })),
+            dateFields: dateFields.map((f: any) => ({
+              value: f.data, // base64 image rendered by the frontend
+              page: f.page || 1,
+              x: f.x,
+              y: f.y,
+              width: f.width,
+              height: f.height,
+              usePercentage: true,
+            })),
+            appendCertificatePage: true,
+            documentHash,
+            envelopeId: req.params.id,
+            documentTitle: `Valuation Report — ${propertyAddress}`,
+            organizationName: 'PROPMETRIK Ghana Ltd.',
+            signers: [{
+              name: signerName,
+              email: signerEmail,
+              role: 'Qualified Valuer',
+              signedAt: new Date(),
+              signatureId: signerPmtId,
+            }],
+            auditEvents: [
+              { eventType: 'created', timestamp: new Date(), description: 'E-sign envelope created', actor: signerName },
+              { eventType: 'signed', timestamp: new Date(), description: 'All fields signed by valuer', actor: signerName },
+              { eventType: 'approved', timestamp: new Date(), description: 'Report approved and sealed', actor: signerName },
+            ],
+          });
+
+          // Upload the signed PDF back to MinIO (overwrite the same key)
+          await uploadFile(bucket, pdfResult.storageKey, Buffer.from(signedPdfBytes), 'application/pdf');
+
+          // Update file size for accurate reporting
+          pdfResult.fileSize = signedPdfBytes.length;
+
+          // Regenerate presigned URL for the signed version
+          pdfResult.pdfUrl = await getPresignedDownloadUrl(bucket, pdfResult.storageKey);
+
+          logger.info('[approve] E-sign fields burned into PDF with Certificate of Completion', {
+            reportId: req.params.id,
+            signatureCount: signatureFields.length,
+            dateFieldCount: dateFields.length,
+            finalSize: signedPdfBytes.length,
+          });
+        } catch (signErr: any) {
+          logger.error('[approve] Failed to burn e-sign fields into PDF (base PDF still saved)', {
+            reportId: req.params.id,
+            error: signErr.message,
+            stack: signErr.stack,
+          });
+          // Don't fail the entire approval — the base PDF is still valid
+        }
+      }
 
       if (pdfResult.success) {
         await auditLogService.logPdfGenerated(req.params.id, valuer_id, pdfResult.fileSize);
@@ -1589,6 +1743,65 @@ router.post('/:id/approve', validateUUID('id'), async (req: Request, res: Respon
       valuerId: valuer_id,
       pdfGenerated: pdfResult?.success || false,
     });
+
+    // Email signed PDF to the user (non-blocking — don't fail approval if email fails)
+    if (pdfResult?.success && pdfResult.storageKey && req.user?.email) {
+      (async () => {
+        try {
+          const bucket = process.env.MINIO_REPORTS_BUCKET || 'propmetrik-reports';
+          const pdfFile = await getFile(bucket, pdfResult.storageKey!);
+          const pdfBuffer = Buffer.from(pdfFile.body);
+
+          // Get property address for the email subject
+          const report = await reportService.getReportById(req.params.id);
+          let propertyAddress = 'Property';
+          if (report?.valuation_id) {
+            const propResult = await pool.query(
+              `SELECT p.title, p.address_street, p.address_city
+               FROM valuations v JOIN properties p ON v.property_id = p.id
+               WHERE v.id = $1`,
+              [report.valuation_id]
+            );
+            const prop = propResult.rows[0];
+            if (prop) {
+              propertyAddress = [prop.address_street, prop.address_city].filter(Boolean).join(', ') || prop.title || 'Property';
+            }
+          }
+
+          const signerName = req.user?.name || `${req.user?.firstName || ''} ${req.user?.lastName || ''}`.trim() || 'Valuer';
+
+          await notificationService.sendEmail({
+            to: req.user!.email!,
+            subject: `Signed Valuation Report — ${propertyAddress}`,
+            html: `
+              <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+                <h2 style="color: #10b981;">Valuation Report Approved & Signed</h2>
+                <p>Hi ${signerName},</p>
+                <p>Your valuation report for <strong>${propertyAddress}</strong> has been approved and digitally signed.</p>
+                <p>A copy of the signed PDF is attached to this email for your records.</p>
+                <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 20px 0;" />
+                <p style="color: #6b7280; font-size: 13px;">This is an automated message from PropMetrik. Please do not reply to this email.</p>
+              </div>
+            `,
+            attachments: [{
+              filename: `Valuation_Report_${propertyAddress.replace(/[^a-zA-Z0-9]/g, '_')}.pdf`,
+              content: pdfBuffer,
+              contentType: 'application/pdf',
+            }],
+          });
+
+          logger.info('Signed report emailed to user', {
+            reportId: req.params.id,
+            email: req.user!.email,
+          });
+        } catch (emailErr: any) {
+          logger.warn('Failed to email signed report (approval still succeeded)', {
+            reportId: req.params.id,
+            error: emailErr.message,
+          });
+        }
+      })();
+    }
 
     res.json({
       success: true,
@@ -1608,10 +1821,11 @@ router.post('/:id/approve', validateUUID('id'), async (req: Request, res: Respon
     logger.error('Failed to approve report', {
       reportId: req.params.id,
       error: error.message,
+      stack: error.stack,
     });
     res.status(500).json({
       error: 'Internal Server Error',
-      message: 'Failed to approve report',
+      message: error.message || 'Failed to approve report',
     });
   }
 });
@@ -1673,41 +1887,41 @@ router.post('/:id/prepare-esign', validateUUID('id'), async (req: Request, res: 
     const property = valResult.rows[0] || {};
     const propertyAddress = [property.address_street, property.address_city].filter(Boolean).join(', ') || property.title || 'Property';
 
-    // Get valuer email from valuers table
-    const valuerRow = await pool.query(
-      `SELECT contact_email FROM valuers WHERE id = $1`,
-      [valuer_id]
-    );
-    const valuerEmail = valuerRow.rows[0]?.contact_email || `${credentials.name.toLowerCase().replace(/\s+/g, '.')}@propmetrik.com`;
+    // Get the authenticated user's info (the person actually signing)
+    const signerName = req.user?.name || `${req.user?.firstName || ''} ${req.user?.lastName || ''}`.trim() || credentials.name;
+    const signerEmail = req.user?.email || '';
 
-    // E-sign UI requires PDF — convert DOCX to PDF if needed
-    const bucket = process.env.MINIO_REPORTS_BUCKET || 'propmetrik-reports';
-    let pdfStorageKey = report.pdf_url as string | undefined;
-
-    if (pdfStorageKey) {
-      // PDF already exists — use proxy URL to avoid CORS issues
-      logger.info('Using existing PDF for e-sign', { reportId: req.params.id, pdfKey: pdfStorageKey });
-    } else {
-      // Generate PDF from DOCX via LibreOffice
-      logger.info('Converting DOCX to PDF for e-sign', { reportId: req.params.id });
-      const pdfResult = await pdfGenerationService.convertDocxToPdf(req.params.id, {
-        addQrCode: false,
-        addDigitalSeal: false,
+    // Regenerate the DOCX to ensure it has the latest editor content and data
+    logger.info('Regenerating DOCX before e-sign to ensure latest content', { reportId: req.params.id });
+    try {
+      await docGenerationService.generateDocx(req.params.id);
+    } catch (genErr: any) {
+      logger.warn('DOCX regeneration failed, proceeding with existing DOCX', {
+        reportId: req.params.id,
+        error: genErr.message,
       });
-
-      if (!pdfResult.success || !pdfResult.pdfUrl) {
-        return res.status(500).json({
-          error: 'PDF Conversion Failed',
-          message: pdfResult.error || 'Failed to convert report to PDF for signing. Ensure LibreOffice is installed.',
-        });
-      }
-
-      pdfStorageKey = pdfResult.storageKey;
     }
+
+    // E-sign UI requires PDF — always regenerate to use latest cover page
+    const bucket = process.env.MINIO_REPORTS_BUCKET || 'propmetrik-reports';
+    logger.info('Converting DOCX to PDF for e-sign', { reportId: req.params.id });
+    const pdfResult = await pdfGenerationService.convertDocxToPdf(req.params.id, {
+      addQrCode: false,
+      addDigitalSeal: false,
+    });
+
+    if (!pdfResult.success || !pdfResult.pdfUrl) {
+      return res.status(500).json({
+        error: 'PDF Conversion Failed',
+        message: pdfResult.error || 'Failed to convert report to PDF for signing. Ensure LibreOffice is installed.',
+      });
+    }
+
+    const pdfStorageKey = pdfResult.storageKey;
 
     // Use backend proxy URL to avoid CORS issues with S3 presigned URLs
     const apiBase = process.env.APP_URL || `http://localhost:${process.env.PORT || 4000}`;
-    const documentUrl = `${apiBase}/api/v1/reports/${req.params.id}/pdf-stream`;
+    const documentUrl = `${apiBase}/api/v1/reports/${req.params.id}/pdf-stream?v=${Date.now()}`;
 
     const baseFilename = content?.filename?.replace(/\.docx$/i, '') || `valuation_report_${req.params.id}`;
     const filename = `${baseFilename}.pdf`;
@@ -1720,18 +1934,23 @@ router.post('/:id/prepare-esign', validateUUID('id'), async (req: Request, res: 
       documentKey: pdfStorageKey || storageKey,
       filename,
       propertyAddress,
+      // Authenticated user (the signer)
+      signer: {
+        name: signerName,
+        email: signerEmail,
+      },
+      // Valuer credentials (for the professional seal)
       valuer: {
         id: credentials.id,
         name: credentials.name,
         title: credentials.title,
-        email: valuerEmail,
         qualifications: credentials.qualifications,
         license_number: credentials.license_number,
       },
       signers: [{
-        name: credentials.name,
-        email: valuerEmail,
-        role: 'valuer',
+        name: signerName,
+        email: signerEmail,
+        role: 'signer',
         order: 1,
       }],
       subject: `Valuation Report - ${propertyAddress}`,
@@ -1772,7 +1991,10 @@ router.get('/:id/pdf-stream', validateUUID('id'), async (req: Request, res: Resp
 
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader('Content-Disposition', `inline; filename="report_${req.params.id}.pdf"`);
-    res.setHeader('Cache-Control', 'private, max-age=3600');
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
+    res.setHeader('Surrogate-Control', 'no-store');
     res.send(Buffer.from(file.body));
   } catch (error: any) {
     logger.error('Failed to stream report PDF', {

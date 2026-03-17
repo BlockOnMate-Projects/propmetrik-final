@@ -65,6 +65,7 @@ interface ReportData {
   property: any;
   client: any;
   valuer: any;
+  brand: any;
   reconciliation: any;
   floor_plans: any[];
   comparables: any[];
@@ -294,6 +295,15 @@ class ReportTemplateService {
         districtName: district?.name,
         regionName: district?.region,
       };
+    };
+
+    const humanizeLocationPart = (value?: string | null) => {
+      if (!value) return 'Not specified';
+      return String(value)
+        .replace(/_/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim()
+        .replace(/\b\w/g, (char) => char.toUpperCase());
     };
 
     const gpsLookup = deriveLocationFromGps(propertyRow?.digital_address || propertyRow?.gps_address);
@@ -531,6 +541,10 @@ class ReportTemplateService {
       property: { ...valuationRow, metadata: propertyRow?.metadata }, // Include property metadata for Chapter 3
       client,
       valuer,
+      brand: {
+        services_url: 'https://propmetrik.com/services',
+        services_qr: '',
+      },
       reconciliation,
       floor_plans,
       comparables,
@@ -1040,7 +1054,39 @@ class ReportTemplateService {
       return requestTypeMap[requestType] || 'received';
     };
 
+    const humanizeLocationPart = (value?: string | null) => {
+      if (!value) return 'Not specified';
+      return String(value)
+        .replace(/_/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim()
+        .replace(/\b\w/g, (char) => char.toUpperCase());
+    };
+
+    const servicesUrl = 'https://propmetrik.com/services';
+    let servicesQr = '';
+    try {
+      const QRCode = await import('qrcode');
+      servicesQr = await QRCode.toDataURL(servicesUrl, {
+        width: 128,
+        margin: 1,
+        color: {
+          dark: '#111111',
+          light: '#FFFFFF',
+        },
+      });
+    } catch (error: any) {
+      logger.warn('Failed to generate services QR code for cover page', {
+        error: error.message,
+      });
+    }
+
     return {
+      brand: {
+        services_url: servicesUrl,
+        services_qr: servicesQr,
+      },
+
       // Client data (from valuation_engagements - who instructed the valuation)
       // Falls back to property owner if no engagement record exists
       client: {
@@ -1058,10 +1104,15 @@ class ReportTemplateService {
 
       // Property data
       property: {
+        name: property.name || property.address || 'the subject property',
         address: property.address || 'Not specified',
         address_uppercase: (property.address || '').toUpperCase(),
         city: property.city || 'Not specified',
+        city_display: humanizeLocationPart(property.city),
+        city_uppercase: humanizeLocationPart(property.city).toUpperCase(),
         region: property.region || 'Greater Accra',
+        region_display: humanizeLocationPart(property.region),
+        region_uppercase: humanizeLocationPart(property.region).toUpperCase(),
         gps_address: property.gps_address || 'Not available',
         gps_address_uppercase: (property.gps_address || 'NOT AVAILABLE').toUpperCase(),
         neighborhood_uppercase: (property.neighborhood || property.city || 'NOT SPECIFIED').toUpperCase(),
@@ -1072,6 +1123,7 @@ class ReportTemplateService {
         description: property.property_description || 'Property as inspected',
         description_detailed: buildPropertyDescription(),
         land_area_sqm: landAreaSqm ? landAreaSqm.toFixed(2) : 'Not measured',
+        land_area_display: landAreaSqm ? `${landAreaSqm.toFixed(0)} sq.m (${landAreaAcres} acres)` : '',
         land_area_acres: landAreaAcres,
         land_area_hectares: landAreaHectares,
         building_area_sqm: (() => {
@@ -1200,11 +1252,11 @@ class ReportTemplateService {
       valuer: {
         name: valuer.name || valuer.full_name || '[Valuer Name]',
         name_uppercase: (valuer.name || valuer.full_name || 'VALUER NAME').toUpperCase(),
-        qualifications: valuer.qualifications || 'BSc., MGhIS',
-        title: valuer.title || 'Valuation & Estate Surveyor',
-        title_uppercase: (valuer.title || 'VALUATION & ESTATE SURVEYOR').toUpperCase(),
-        registration_number: valuer.ghis_number || valuer.registration_number || '[GhIS Reg No]',
-        firm: valuer.firm_name || valuer.company || 'PROPMETRIK',
+        qualifications: valuer.qualifications || '[Qualifications]',
+        title: valuer.title || '[Professional Title]',
+        title_uppercase: (valuer.title || '[PROFESSIONAL TITLE]').toUpperCase(),
+        registration_number: valuer.license_number || valuer.ghis_number || valuer.registration_number || '[GhIS Reg No]',
+        firm: valuer.company_name || valuer.firm_name || valuer.company || 'PROPMETRIK',
         email: valuer.contact_email || valuer.email,
         phone: valuer.contact_phone || valuer.phone,
         address: valuer.contact_address || valuer.address,

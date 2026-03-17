@@ -23,6 +23,7 @@ export type EconomicIndicatorType =
   | 'gdp_growth'
   | 'interest_rate_policy'
   | 'interest_rate_prime'
+  | 'lending_rate'
   | 'mortgage_rate_avg'
   | 'exchange_rate_usd'
   | 'exchange_rate_gbp'
@@ -87,6 +88,8 @@ export interface EconomicSnapshot {
   date: Date;
   inflation_rate: number | null;
   interest_rate_policy: number | null;
+  interest_rate_prime: number | null;
+  lending_rate: number | null;
   exchange_rate_usd: number | null;
   exchange_rate_gbp: number | null;
   exchange_rate_eur: number | null;
@@ -179,7 +182,8 @@ export class EconomicDataService {
    */
   async getLatestSnapshot(): Promise<EconomicSnapshot> {
     const indicatorTypes: EconomicIndicatorType[] = [
-      'inflation_rate', 'interest_rate_policy', 'exchange_rate_usd',
+      'inflation_rate', 'interest_rate_policy', 'interest_rate_prime',
+      'lending_rate', 'exchange_rate_usd',
       'exchange_rate_gbp', 'exchange_rate_eur', 'gdp_growth',
       'unemployment_rate', 'mortgage_rate_avg',
     ];
@@ -188,6 +192,8 @@ export class EconomicDataService {
       date: new Date(),
       inflation_rate: null,
       interest_rate_policy: null,
+      interest_rate_prime: null,
+      lending_rate: null,
       exchange_rate_usd: null,
       exchange_rate_gbp: null,
       exchange_rate_eur: null,

@@ -224,8 +224,16 @@ class WorkspaceServiceImpl {
             [workspaceId, userId, role]
         );
 
-        // Post system message
+        // Auto-add to the General channel so they can see messages
         const defaultConversation = await this.ensureDefaultConversation(workspaceId);
+        await pool.query(
+            `INSERT INTO workspace_conversation_members (conversation_id, user_id, role)
+             VALUES ($1, $2, 'member')
+             ON CONFLICT (conversation_id, user_id) DO NOTHING`,
+            [defaultConversation.id, userId]
+        );
+
+        // Post system message
         await this.persistMessage({
             workspaceId,
             conversationId: defaultConversation.id,
@@ -621,26 +629,26 @@ class WorkspaceServiceImpl {
         cursor?: string,
         limit = 50
     ): Promise<MessagePage> {
-        const params: any[] = [workspaceId, limit + 1]; // fetch one extra to detect has_more
+        // Build params in order: $1=workspaceId, $2=conversationId, $3=limit+1, $4=cursor (optional)
+        const params: any[] = [workspaceId, conversationId, limit + 1];
         let cursorClause = '';
 
         if (cursor) {
-                        cursorClause = `AND m.created_at < $4`;
+            cursorClause = 'AND m.created_at < $4';
             params.push(new Date(cursor));
         }
-                params.splice(1, 0, conversationId);
 
         const result = await pool.query<WorkspaceMessage>(
             `SELECT
-         m.*,
-         u.display_name AS sender_name
-       FROM workspace_messages m
-       LEFT JOIN users u ON u.id = m.sender_id
-       WHERE m.workspace_id = $1
-                 AND m.conversation_id = $2
-         AND m.deleted_at IS NULL
-         ${cursorClause}
-       ORDER BY m.created_at DESC
+                m.*,
+                u.display_name AS sender_name
+             FROM workspace_messages m
+             LEFT JOIN users u ON u.id = m.sender_id
+             WHERE m.workspace_id = $1
+               AND m.conversation_id = $2
+               AND m.deleted_at IS NULL
+               ${cursorClause}
+             ORDER BY m.created_at DESC
              LIMIT $3`,
             params
         );
@@ -655,6 +663,20 @@ class WorkspaceServiceImpl {
             next_cursor,
             has_more,
         };
+    }
+
+    /**
+     * Get a single message by ID (for thread parent lookups).
+     */
+    async getMessageById(messageId: string): Promise<WorkspaceMessage | null> {
+        const result = await pool.query<WorkspaceMessage>(
+            `SELECT m.*, u.display_name AS sender_name
+             FROM workspace_messages m
+             LEFT JOIN users u ON u.id = m.sender_id
+             WHERE m.id = $1 AND m.deleted_at IS NULL`,
+            [messageId]
+        );
+        return result.rows[0] || null;
     }
 
     /**

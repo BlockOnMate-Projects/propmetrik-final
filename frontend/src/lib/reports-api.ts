@@ -218,6 +218,7 @@ export const reportsApi = {
     include_comparables?: boolean;
     currency?: 'GHS' | 'USD';
     secondary_currency?: 'GHS' | 'USD' | null;
+    reset_sections?: boolean;
   }) => {
     return fetchApi<{
       report_id: string;

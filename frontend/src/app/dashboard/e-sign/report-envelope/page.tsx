@@ -17,6 +17,7 @@
 
 import React, { useEffect, useState, useCallback, useRef } from 'react'
 import { useRouter } from 'next/navigation'
+import { useSession } from 'next-auth/react'
 import { authedFetch } from '@/lib/authed-fetch'
 import { Button } from '@/components/ui/button'
 import { ArrowLeft, Loader2, CheckCircle, PenTool, Send, User, RefreshCw, Shield } from 'lucide-react'
@@ -37,11 +38,14 @@ interface ReportEsignData {
   documentKey: string
   filename: string
   propertyAddress: string
+  signer: {
+    name: string
+    email: string
+  }
   valuer: {
     id: string
     name: string
     title: string | null
-    email: string
     qualifications: string | null
     license_number: string | null
   }
@@ -61,6 +65,7 @@ const DOC_ID = 'report-doc'
 
 export default function ReportEnvelopePage() {
   const router = useRouter()
+  const { data: session } = useSession()
 
   // State
   const [isLoading, setIsLoading] = useState(true)
@@ -83,12 +88,14 @@ export default function ReportEnvelopePage() {
   const [signedFields, setSignedFields] = useState<Set<string>>(new Set())
   const [signatureDataMap, setSignatureDataMap] = useState<Record<string, SignatureData>>({})
   const fieldsInitialized = useRef(false)
+  const dataLoaded = useRef(false)
 
   // =====================================================
   // LOAD ESIGN DATA FROM sessionStorage
   // =====================================================
 
   useEffect(() => {
+    if (dataLoaded.current) return
     const loadData = async () => {
       try {
         setIsLoading(true)
@@ -118,82 +125,41 @@ export default function ReportEnvelopePage() {
           file: pdfFile,
         }])
 
-        // Create recipient (signer)
+        // Create recipient — use the signer info from the server
+        const userName = data.signer?.name || 'Signer'
+        const userEmail = data.signer?.email || ''
         setRecipients([{
           id: SIGNER_ID,
-          name: data.valuer.name,
-          email: data.valuer.email,
+          name: userName,
+          email: userEmail,
           role: 'signer' as const,
           color: '#10b981',
           order: 1,
         }])
 
-      setIsLoading(false)
-    } catch (err: any) {
-      console.error('Failed to load report e-sign data:', err)
-      setError(err.message || 'Failed to load report data')
-      setIsLoading(false)
-    }
+        dataLoaded.current = true
+        setIsLoading(false)
+      } catch (err: any) {
+        console.error('Failed to load report e-sign data:', err)
+        setError(err.message || 'Failed to load report data')
+        setIsLoading(false)
+      }
     }
     loadData()
   }, [])
 
-  // =====================================================
-  // PRE-PLACE FIELDS ON LAST PAGE WHEN SIGNING MODE SELECTED
-  // =====================================================
-
+  // Update recipient name/email when session becomes available
   useEffect(() => {
-    if (signingMode !== 'self_signed' && signingMode !== 'send_to_valuer') return
-    if (fieldsInitialized.current) return
-    if (!documents.length) return
+    if (!session?.user || recipients.length === 0) return
+    const name = session.user.name || ''
+    const email = session.user.email || ''
+    const current = recipients[0]
+    if ((!current.name || current.name === 'Signer') && name) {
+      setRecipients([{ ...current, name, email: email || current.email }])
+    }
+  }, [session?.user?.name, session?.user?.email])
 
-    // Pre-place signature, name, and date fields
-    // page: 1 initially — will be updated to last page when PDF loads via onFieldsChange
-    const defaultFields: PlacedField[] = [
-      {
-        id: 'field-signature',
-        type: 'signature',
-        recipientId: SIGNER_ID,
-        documentId: DOC_ID,
-        page: 1,
-        x: 10,
-        y: 78,
-        width: 25,
-        height: 6,
-        required: true,
-        label: 'Signature',
-      },
-      {
-        id: 'field-name',
-        type: 'name',
-        recipientId: SIGNER_ID,
-        documentId: DOC_ID,
-        page: 1,
-        x: 10,
-        y: 86,
-        width: 20,
-        height: 4,
-        required: true,
-        label: 'Full Name',
-      },
-      {
-        id: 'field-date',
-        type: 'date_signed',
-        recipientId: SIGNER_ID,
-        documentId: DOC_ID,
-        page: 1,
-        x: 55,
-        y: 86,
-        width: 15,
-        height: 4,
-        required: true,
-        label: 'Date',
-      },
-    ]
-
-    setFields(defaultFields)
-    fieldsInitialized.current = true
-  }, [signingMode, documents])
+  // Fields are NOT pre-placed — user drags them from the sidebar onto the PDF
 
   // =====================================================
   // HANDLE FIELD SIGNED (from FieldPlacement self-signing)
@@ -214,11 +180,12 @@ export default function ReportEnvelopePage() {
   const requiredFields = fields.filter((f) => f.required)
   const allFieldsSigned = requiredFields.length > 0 && requiredFields.every((f) => signedFields.has(f.id))
 
-  // Get signature data for approval
+  // Get signature data for approval — find any signature-type field
   const getSignatureData = useCallback((): string | undefined => {
-    const sigField = signatureDataMap['field-signature']
-    return sigField?.data
-  }, [signatureDataMap])
+    const sigFieldId = fields.find((f) => f.type === 'signature')?.id
+    if (!sigFieldId) return undefined
+    return signatureDataMap[sigFieldId]?.data
+  }, [signatureDataMap, fields])
 
   // =====================================================
   // HANDLE APPROVAL AFTER SIGNING
@@ -231,6 +198,40 @@ export default function ReportEnvelopePage() {
     setError(null)
 
     try {
+      const signatureData = getSignatureData()
+
+      // Persist the valuer's drawn signature to their profile if this flow collected one.
+      // Approval checks for a stored professional signature before allowing seal/approval.
+      if (signatureData && esignData.valuer?.id) {
+        const signatureResponse = await authedFetch(`${API_BASE}/valuers/${esignData.valuer.id}/signature`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            signature_data_url: signatureData,
+          }),
+        })
+
+        if (!signatureResponse.ok) {
+          const signatureResult = await signatureResponse.json().catch(() => ({}))
+          throw new Error(signatureResult.message || signatureResult.error || 'Failed to save signature on file')
+        }
+      }
+
+      // Collect ALL signed field data with positions for PDF burn-in
+      const esignFields = fields
+        .filter((f) => signedFields.has(f.id))
+        .map((f) => ({
+          id: f.id,
+          type: f.type,
+          page: f.page,
+          x: f.x,
+          y: f.y,
+          width: f.width,
+          height: f.height,
+          data: signatureDataMap[f.id]?.data,  // base64 image (all field types have images)
+          value: f.value,
+        }))
+
       const response = await authedFetch(`${API_BASE}/reports/${esignData.reportId}/approve`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -238,7 +239,8 @@ export default function ReportEnvelopePage() {
           valuer_id: esignData.valuer.id,
           comments: 'Approved via e-sign workflow',
           generate_pdf: true,
-          signature_data: getSignatureData(),
+          signature_data: signatureData,
+          esign_fields: esignFields,
         }),
       })
 
@@ -259,7 +261,7 @@ export default function ReportEnvelopePage() {
     } finally {
       setIsApproving(false)
     }
-  }, [esignData, isApproving, getSignatureData])
+  }, [esignData, isApproving, getSignatureData, fields, signedFields, signatureDataMap])
 
   // Retry approval
   const handleRetry = useCallback(() => {
@@ -277,8 +279,12 @@ export default function ReportEnvelopePage() {
     return '/dashboard/valuations'
   }
 
-  // Current user info for FieldPlacement
-  const currentUser = esignData ? { name: esignData.valuer.name, email: esignData.valuer.email } : undefined
+  // Current user info for FieldPlacement — use session user
+  const currentUser = session?.user
+    ? { name: session.user.name || '', email: session.user.email || '' }
+    : esignData?.signer
+      ? { name: esignData.signer.name, email: esignData.signer.email }
+      : undefined
 
   // =====================================================
   // RENDER — LOADING
@@ -314,11 +320,20 @@ export default function ReportEnvelopePage() {
             </p>
           )}
           <div className="flex gap-3 justify-center">
-            <Link href={getBackUrl()}>
-              <Button className="bg-emerald-600 hover:bg-emerald-700">
-                View Report
+            {approvalResult.pdf?.success && approvalResult.pdf?.url ? (
+              <Button
+                className="bg-emerald-600 hover:bg-emerald-700"
+                onClick={() => window.open(approvalResult.pdf!.url, '_blank')}
+              >
+                View Signed PDF
               </Button>
-            </Link>
+            ) : (
+              <Link href={getBackUrl()}>
+                <Button className="bg-emerald-600 hover:bg-emerald-700">
+                  View Report
+                </Button>
+              </Link>
+            )}
             <Link href="/dashboard/valuations">
               <Button variant="outline" className="border-zinc-700 text-zinc-300">
                 Back to Valuations
@@ -330,53 +345,7 @@ export default function ReportEnvelopePage() {
     )
   }
 
-  // =====================================================
-  // RENDER — APPROVING
-  // =====================================================
-
-  if (isApproving) {
-    return (
-      <div className="min-h-screen bg-zinc-950 flex items-center justify-center">
-        <div className="text-center">
-          <Loader2 className="h-12 w-12 animate-spin text-emerald-500 mx-auto mb-4" />
-          <p className="text-white text-lg">Approving & generating PDF...</p>
-          <p className="text-zinc-400 text-sm mt-2">This may take a moment</p>
-        </div>
-      </div>
-    )
-  }
-
-  // =====================================================
-  // RENDER — ERROR (with retry)
-  // =====================================================
-
-  if (error && esignData) {
-    return (
-      <div className="min-h-screen bg-zinc-950 flex items-center justify-center">
-        <div className="max-w-md text-center">
-          <div className="bg-red-900/20 border border-red-700 rounded-lg p-6 mb-4">
-            <p className="text-red-400">{error}</p>
-          </div>
-          <div className="flex gap-3 justify-center">
-            <Button
-              onClick={handleRetry}
-              className="bg-emerald-600 hover:bg-emerald-700"
-              disabled={!allFieldsSigned}
-            >
-              <RefreshCw className="mr-2 h-4 w-4" />
-              Retry Approval
-            </Button>
-            <Link href={getBackUrl()}>
-              <Button variant="outline" className="border-zinc-700">
-                <ArrowLeft className="mr-2 h-4 w-4" />
-                Back to Report
-              </Button>
-            </Link>
-          </div>
-        </div>
-      </div>
-    )
-  }
+  // (isApproving and error states are rendered inline within the signing UI below)
 
   if (!esignData) {
     return (
@@ -414,7 +383,7 @@ export default function ReportEnvelopePage() {
             <div>
               <h1 className="text-xl font-bold text-white">E-Sign: Valuation Report Approval</h1>
               <p className="text-sm text-zinc-400">
-                {esignData.propertyAddress} &mdash; {esignData.valuer.name}
+                {esignData.propertyAddress} &mdash; {session?.user?.name || esignData.signer?.name}
               </p>
             </div>
           </div>
@@ -577,7 +546,7 @@ export default function ReportEnvelopePage() {
 
   const signerName = signingMode === 'send_to_valuer'
     ? qualifiedValuerName
-    : esignData.valuer.name
+    : (session?.user?.name || esignData.signer?.name || '')
 
   const signedCount = requiredFields.filter((f) => signedFields.has(f.id)).length
 
@@ -621,18 +590,64 @@ export default function ReportEnvelopePage() {
             </div>
             <Button
               className="bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50"
-              disabled={!allFieldsSigned}
+              disabled={!allFieldsSigned || isApproving}
               onClick={handleApproveAfterSign}
             >
-              <Shield className="mr-2 h-4 w-4" />
-              Approve & Seal Report
+              {isApproving ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Approving...
+                </>
+              ) : (
+                <>
+                  <Shield className="mr-2 h-4 w-4" />
+                  Approve & Seal Report
+                </>
+              )}
             </Button>
           </div>
         </div>
       </div>
 
+      {/* Inline error banner */}
+      {error && (
+        <div className="bg-red-900/30 border-b border-red-700 px-6 py-3 flex-shrink-0">
+          <div className="flex items-center justify-between">
+            <p className="text-red-400 text-sm">{error}</p>
+            <div className="flex gap-2">
+              <Button
+                size="sm"
+                variant="ghost"
+                className="text-red-400 hover:text-red-300 h-7 px-2"
+                onClick={() => setError(null)}
+              >
+                Dismiss
+              </Button>
+              {allFieldsSigned && (
+                <Button
+                  size="sm"
+                  className="bg-red-700 hover:bg-red-600 h-7 px-3"
+                  onClick={handleRetry}
+                >
+                  <RefreshCw className="mr-1 h-3 w-3" />
+                  Retry
+                </Button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* FieldPlacement — full PDF viewer with signature fields */}
-      <div className="flex-1 overflow-hidden">
+      <div className="flex-1 overflow-hidden relative">
+        {isApproving && (
+          <div className="absolute inset-0 bg-zinc-950/70 z-50 flex items-center justify-center">
+            <div className="text-center">
+              <Loader2 className="h-10 w-10 animate-spin text-emerald-500 mx-auto mb-3" />
+              <p className="text-white text-sm">Approving & generating PDF...</p>
+            </div>
+          </div>
+        )}
         <FieldPlacement
           documents={documents}
           recipients={recipients}

@@ -337,11 +337,11 @@ class ReportDataService {
         address: engagement?.intended_user_address || engagement?.client_address || '',
       },
       certified_by: {
-        name: valuer?.name || 'Certified Valuer',
-        qualifications: valuer?.qualifications || 'BSc., MGhIS',
-        title: valuer?.title || 'Valuation & Estate Surveyor',
+        name: valuer?.name || '[Valuer Name]',
+        qualifications: valuer?.qualifications || '[Qualifications]',
+        title: valuer?.title || '[Professional Title]',
         license_number: valuer?.license_number || null,
-        address: valuer?.contact_address || 'PROPMETRIK Ghana',
+        address: valuer?.contact_address || null,
       },
       date: this.formatDate(report.effective_date || new Date()),
       company_logo_url: null, // TODO: Add company logo support
@@ -358,9 +358,9 @@ class ReportDataService {
     const property = await this.getProperty(report.property_id);
     const valuation = await this.getValuationData(report.valuation_id);
 
-    const marketValue = valuation?.final_value_ghs || valuation?.estimated_value || 0;
+    const marketValue = Number(valuation?.final_value_ghs || valuation?.estimated_value || 0);
     // FSV: use DB-stored value, or calculate from DB discount %, never hardcode
-    const fsvDiscount = valuation?.fsv_discount_percent ?? valuation?.recon_fsv_discount ?? 30;
+    const fsvDiscount = Number(valuation?.fsv_discount_percent ?? valuation?.recon_fsv_discount ?? 30);
     const forcedSaleValue = valuation?.force_sale_value
       ? Number(valuation.force_sale_value)
       : Math.round(marketValue * (1 - fsvDiscount / 100));
@@ -370,7 +370,10 @@ class ReportDataService {
       ? { rate: Number(valuation.recon_exchange_rate), source: 'Bank of Ghana', date: new Date(effectiveDate).toISOString().split('T')[0] }
       : await this.getValuationDateExchangeRate(effectiveDate);
 
-    const methodsSummary = this.generateMethodsSummary(valuation?.recon_method_results || valuation?.method_results || []);
+    // Use recon_method_weights (reconciliation page = source of truth) as primary source
+    const methodsSummary = this.generateMethodsSummary(
+      valuation?.recon_method_weights || valuation?.methods_applied || valuation?.method_weights || valuation?.recon_method_results || valuation?.method_results || []
+    );
 
     return {
       recipient: {
@@ -380,7 +383,7 @@ class ReportDataService {
       },
       date: new Date().toISOString().split('T')[0],
       date_formatted: this.formatDateLong(new Date()),
-      subject: `RE: ${(property?.property_type || 'PROPERTY').toUpperCase()} (${(property?.title || 'SUBJECT PROPERTY').toUpperCase()}) ON PLOT OF LAND SITUATE AT ${this.formatPropertyLocation(property).toUpperCase()}`,
+      subject: `RE: ${this.formatPropertyType(property?.property_type).toUpperCase()} (${(property?.title || 'SUBJECT PROPERTY').toUpperCase()}) ON PLOT OF LAND SITUATE AT ${this.formatPropertyLocation(property).toUpperCase()}`,
       body: this.generateTransmittalBody(engagement, property),
       valuation_methods_summary: methodsSummary,
       values: {
@@ -399,9 +402,9 @@ class ReportDataService {
       },
       exchange_rate: exchangeRate,
       valuer_signature: {
-        name: valuer?.name || 'Certified Valuer',
-        title: valuer?.title || 'Valuation & Estate Surveyor',
-        qualifications: valuer?.qualifications || 'BSc., MGhIS',
+        name: valuer?.name || '[Valuer Name]',
+        title: valuer?.title || '[Professional Title]',
+        qualifications: valuer?.qualifications || '[Qualifications]',
       },
     };
   }
@@ -415,9 +418,9 @@ class ReportDataService {
     const property = await this.getProperty(report.property_id);
     const valuation = await this.getValuationData(report.valuation_id);
 
-    const marketValue = valuation?.final_value_ghs || valuation?.estimated_value || 0;
+    const marketValue = Number(valuation?.final_value_ghs || valuation?.estimated_value || 0);
     // FSV: use DB-stored value, or calculate from DB discount %, never hardcode
-    const fsvDiscount = valuation?.fsv_discount_percent ?? valuation?.recon_fsv_discount ?? 30;
+    const fsvDiscount = Number(valuation?.fsv_discount_percent ?? valuation?.recon_fsv_discount ?? 30);
     const forcedSaleValue = valuation?.force_sale_value
       ? Number(valuation.force_sale_value)
       : Math.round(marketValue * (1 - fsvDiscount / 100));
@@ -445,9 +448,9 @@ class ReportDataService {
       valuation_date: this.formatDateLong(valuation?.effective_date || new Date()),
       exchange_rate: exchangeRate,
       valuer: {
-        name: valuer?.name?.toUpperCase() || 'CERTIFIED VALUER',
-        title: valuer?.title || 'Valuation & Estate Surveyor',
-        qualifications: valuer?.qualifications || 'BSc., MGhIS',
+        name: valuer?.name?.toUpperCase() || '[VALUER NAME]',
+        title: valuer?.title || '[Professional Title]',
+        qualifications: valuer?.qualifications || '[Qualifications]',
         license_number: valuer?.license_number || null,
         signature_url: valuer?.signature_storage_key || null,
       },
@@ -973,6 +976,17 @@ class ReportDataService {
     return parts.join(', ') || property.title || 'Property Location';
   }
 
+  /**
+   * Format a snake_case property type into human-readable form.
+   * e.g. "residential_house" → "Residential House"
+   */
+  private formatPropertyType(type: string | null | undefined): string {
+    if (!type) return 'Property';
+    return type
+      .replace(/_/g, ' ')
+      .replace(/\b\w/g, c => c.toUpperCase());
+  }
+
   private formatRegionName(region: string | null | undefined): string {
     if (!region) return '';
     const regions: Record<string, string> = {
@@ -1026,6 +1040,9 @@ class ReportDataService {
     const tens = ['', '', 'twenty', 'thirty', 'forty', 'fifty', 'sixty', 'seventy', 'eighty', 'ninety'];
     const teens = ['ten', 'eleven', 'twelve', 'thirteen', 'fourteen', 'fifteen', 'sixteen', 'seventeen', 'eighteen', 'nineteen'];
 
+    // Round to integer to avoid decimal indexing bugs (e.g. ones[7.03] = undefined)
+    num = Math.round(num);
+
     if (num === 0) return 'zero';
     if (num < 0) return 'negative ' + this.numberToWords(-num);
 
@@ -1060,13 +1077,20 @@ class ReportDataService {
   }
 
   private generateMethodsSummary(methodResults: any): string {
-    // Handle both array and object formats
+    // Handle array (methods_applied), object (method_weights/method_results)
     let methods: string[] = [];
     
     if (Array.isArray(methodResults)) {
       methods = methodResults.map(m => m.method || m);
     } else if (methodResults && typeof methodResults === 'object') {
-      methods = Object.keys(methodResults);
+      // Filter out zero-weight methods when using method_weights
+      methods = Object.keys(methodResults).filter(k => {
+        const val = methodResults[k];
+        // If value is a number (weight), exclude zero-weight methods
+        if (typeof val === 'number') return val > 0;
+        // If value is an object (method_results), include all
+        return true;
+      });
     }
     
     if (methods.length === 0) {
@@ -1094,10 +1118,18 @@ class ReportDataService {
   }
 
   private generateTransmittalBody(engagement: any, property: any): string {
-    const requestType = engagement?.request_type || 'commissioned';
     const purpose = engagement?.purpose || 'Market Value Assessment';
+    const neighborhood = property?.neighborhood || property?.address_street || 'the subject location';
+    const propertyType = this.formatPropertyType(property?.property_type).toLowerCase();
+    const landArea = property?.land_area_sqm ? `${parseFloat(Number(property.land_area_sqm).toFixed(0))} sqm` : '';
+    const landRef = landArea ? `${landArea} ` : '';
 
-    return `Pursuant to the ${requestType.toUpperCase()} commissioning me to carry out valuation on the above-named property, I wish to submit for your kind perusal and retention, my formal valuation report.\n\nThe purpose of this valuation is for ${purpose}.`;
+    return [
+      `Pursuant to the REQUEST commissioning me to carry out valuation on the above-named property (hereinafter referred to as "the property"), I have completed the exercise and have the pleasure to present to you the report. A careful inspection of the property located at ${neighborhood} was made giving due consideration to all factors and forces influencing property values. The report is, thus, based on an analysis of general and specific data that influence residential and commercial property value as reported herein.`,
+      `The purpose of this valuation is for ${purpose}.`,
+      `In my professionally considered opinion, having regard to the Existing Use, State/Condition, location, economic, legal, physical and institutional factors, the value of the respective interest in the subject ${landRef}${propertyType} property located at ${neighborhood} is as stated in the Valuation Summary below.`,
+      `It has been a pleasure working on your behalf in this matter. Please feel free to let me know if you desire additional information concerning this report, or if I may be of further assistance to you.`,
+    ].join('\n\n');
   }
 }
 

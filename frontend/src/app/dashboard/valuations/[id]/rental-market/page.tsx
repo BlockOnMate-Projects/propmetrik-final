@@ -301,7 +301,8 @@ export default function RentalMarketPage() {
 
       // Fetch benchmark if few results
       const compCount = response.data?.length || 0
-      const neighborhood = (valuation.property as any)?.neighborhood || (valuation.property as any)?.address_city
+      const prop = valuation.property as any
+      const neighborhood = prop?.neighborhood || prop?.district || prop?.address_city || prop?.city
       if (compCount < 5 && neighborhood) {
         try {
           const benchmarkRes = await rentalComparablesApi.getMarketBenchmarks(

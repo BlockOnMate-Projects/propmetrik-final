@@ -19,6 +19,7 @@ export { FXFeedService, fxFeedService } from './fxFeedService';
 export { NPAScraper, npaScraper } from './npaScraper';
 export { LocalMaterialScraper, localMaterialScraper } from './localMaterialScraper';
 export { GSSLaborService, gssLaborService } from './gssLaborService';
+export { GREDAScraper, gredaScraper } from './gredaScraper';
 
 // Repository
 export { SyncLogRepository, syncLogRepository } from './syncLogRepository';

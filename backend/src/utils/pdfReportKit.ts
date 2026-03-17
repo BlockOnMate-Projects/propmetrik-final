@@ -133,6 +133,10 @@ export interface CoverPageOptions {
   accentColor?: string;
   /** Optional: "Report Type" badge text shown on the right of the strip. */
   reportType?: string;
+  /** Override the brand tagline below PROPMETRIK (default: "Project Management Platform"). */
+  brandTagline?: string;
+  /** Optional QR image data URL rendered in the footer area. */
+  qrCodeDataUrl?: string;
 }
 
 export function pdfCover(doc: any, opts: CoverPageOptions) {
@@ -141,96 +145,116 @@ export function pdfCover(doc: any, opts: CoverPageOptions) {
   const accent = opts.accentColor || COLORS.brand;
   const PW = PAGE.width;
   const PH = PAGE.height;
+  const background = '#18181b';
+  const backgroundAlt = '#27272a';
+  const white = '#ffffff';
+  const soft = '#a1a1aa';
+  const faint = '#71717a';
+  const border = 'rgba(255,255,255,0.10)';
+  const overlayColor = '#ffffff';
+  const titleX = M + 12;
+  const titleY = 230;
+  const stats = (opts.meta || []).slice(0, 3).map((line, index) => {
+    const parts = line.split(':');
+    return {
+      label: parts[0] || `Metric ${index + 1}`,
+      value: parts.slice(1).join(':').trim() || line,
+    };
+  });
 
-  // ── Full-page dark background ──────────────────────────────────────
-  doc.rect(0, 0, PW, PH).fill(COLORS.heading);
-
-  // ── Left accent sidebar ────────────────────────────────────────────
-  doc.rect(0, 0, 6, PH).fill(accent);
-
-  // ── Top decorative line ────────────────────────────────────────────
+  doc.rect(0, 0, PW, PH).fill(background);
+  doc.save();
+  doc.fillColor(backgroundAlt).opacity(0.55);
+  doc.rect(0, 0, PW, PH).fill();
+  doc.restore();
   doc.rect(0, 0, PW, 4).fill(accent);
 
-  // ── Brand wordmark (top-left) ──────────────────────────────────────
-  doc.fontSize(11).fillColor(accent).font('Helvetica-Bold')
-    .text('PROPMETRIK', M + 12, 40, { width: CW });
-  doc.fontSize(8).fillColor(COLORS.muted).font('Helvetica')
-    .text('Project Management Platform', M + 12, 56, { width: CW });
-
-  // ── Report type badge (top-right) ──────────────────────────────────
-  if (opts.reportType) {
-    const badgeW = 140;
-    const badgeX = PW - M - badgeW;
-    doc.roundedRect(badgeX, 38, badgeW, 24, 4).fill(accent);
-    doc.fontSize(9).fillColor(COLORS.white).font('Helvetica-Bold')
-      .text(opts.reportType.toUpperCase(), badgeX, 45, { width: badgeW, align: 'center' });
+  doc.save();
+  doc.strokeColor(overlayColor).opacity(0.10).lineWidth(0.6);
+  for (let x = 16; x < PW; x += 22) {
+    for (let y = 16; y < PH; y += 22) {
+      doc.moveTo(x - 2, y).lineTo(x + 2, y).stroke();
+      doc.moveTo(x, y - 2).lineTo(x, y + 2).stroke();
+    }
   }
+  doc.restore();
 
-  // ── Horizontal rule below header ───────────────────────────────────
-  doc.moveTo(M + 12, 82).lineTo(PW - M, 82)
-    .strokeColor('#374151').lineWidth(0.5).stroke();
+  doc.roundedRect(titleX, 40, 36, 36, 8).fill(accent);
+  doc.fontSize(20).fillColor(white).font('Helvetica-Bold')
+    .text('P', titleX, 48, { width: 36, align: 'center' });
+  doc.fontSize(18).fillColor(white).font('Helvetica-Bold')
+    .text('PROPMETRIK', titleX + 48, 45, { width: 220 });
+  doc.fontSize(8).fillColor(soft).font('Helvetica')
+    .text(opts.brandTagline || 'Real Estate Intelligence', titleX + 48, 62, { width: 220 });
 
-  // ── Main title block (vertically centred-ish) ──────────────────────
-  const titleY = 200;
-  // Accent bar next to title
-  doc.rect(M + 12, titleY - 4, 50, 4).fill(accent);
+  const now = new Date();
+  const currentDate = now.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
+  doc.fontSize(8).fillColor(faint).font('Helvetica')
+    .text('DOCUMENT DATE', PW - M - 120, 48, { width: 120, align: 'right' });
+  doc.fontSize(12).fillColor(white).font('Helvetica-Bold')
+    .text(currentDate, PW - M - 120, 60, { width: 120, align: 'right' });
 
-  doc.fontSize(36).fillColor(COLORS.white).font('Helvetica-Bold')
-    .text(opts.title, M + 12, titleY + 12, {
-      width: CW - 24,
-      lineGap: 4,
+  doc.save();
+  doc.strokeColor('rgba(255,255,255,0.15)').lineWidth(0.6);
+  doc.moveTo(titleX, 102).lineTo(PW - M, 102).stroke();
+  doc.restore();
+
+  doc.rect(titleX, titleY, 4, 144).fill(accent);
+  doc.fontSize(11).fillColor(accent).font('Helvetica')
+    .text(opts.reportType || 'REPORT', titleX + 24, titleY - 4, {
+      width: 180,
+      characterSpacing: 2.4,
     });
-
-  // ── Subtitle ───────────────────────────────────────────────────────
-  const subY = doc.y + 16;
-  doc.fontSize(18).fillColor(accent).font('Helvetica')
-    .text(opts.subtitle, M + 12, subY, { width: CW - 24 });
-
-  // ── Decorative divider ─────────────────────────────────────────────
-  const divY = doc.y + 24;
-  doc.moveTo(M + 12, divY).lineTo(M + 12 + 80, divY)
-    .strokeColor(accent).lineWidth(3).stroke();
-
-  // ── Meta info block ────────────────────────────────────────────────
-  const metaLines = opts.meta || [];
-  if (metaLines.length > 0) {
-    let metaY = divY + 20;
-    metaLines.forEach(line => {
-      doc.fontSize(11).fillColor('#9ca3af').font('Helvetica')
-        .text(line, M + 12, metaY, { width: CW - 24 });
-      metaY += 18;
+  doc.fontSize(32).fillColor(white).font('Helvetica-Bold')
+    .text(opts.title, titleX + 24, titleY + 18, {
+      width: 280,
+      lineGap: 2,
     });
+  doc.fontSize(18).fillColor(soft).font('Helvetica')
+    .text(opts.subtitle, titleX + 24, doc.y + 8, { width: 280 });
+
+  const subAccentY = doc.y + 10;
+  doc.fontSize(16).fillColor(accent).font('Helvetica-Bold')
+    .text((opts.meta || [])[3] || '', titleX + 24, subAccentY, { width: 220 });
+
+  const cardY = 520;
+  const cardW = (CW - 24) / 3;
+  stats.forEach((stat, index) => {
+    const x = titleX + index * (cardW + 12);
+    doc.save();
+    doc.fillColor(white).opacity(0.05);
+    doc.roundedRect(x, cardY, cardW, 72, 10).fill();
+    doc.restore();
+    doc.save();
+    doc.strokeColor(border).lineWidth(1);
+    doc.roundedRect(x, cardY, cardW, 72, 10).stroke();
+    doc.restore();
+    doc.fontSize(8).fillColor(faint).font('Helvetica')
+      .text(stat.label.toUpperCase(), x + 16, cardY + 14, {
+        width: cardW - 32,
+        characterSpacing: 1.2,
+      });
+    doc.fontSize(18).fillColor(white).font('Helvetica-Bold')
+      .text(stat.value, x + 16, cardY + 32, { width: cardW - 32 });
+  });
+
+  doc.fontSize(8).fillColor('#52525b').font('Helvetica')
+    .text('Generated via PROPMETRIK', titleX, PH - 108, { width: 220 });
+  doc.fontSize(8).fillColor('#52525b').font('Helvetica')
+    .text('Professional valuation report', titleX, PH - 94, { width: 220 });
+
+  const qrX = PW - M - 76;
+  const qrY = PH - 118;
+  doc.roundedRect(qrX, qrY, 64, 64, 8).fill(white);
+  if (opts.qrCodeDataUrl) {
+    const matches = opts.qrCodeDataUrl.match(/^data:image\/[^;]+;base64,(.+)$/);
+    if (matches) {
+      doc.image(Buffer.from(matches[1], 'base64'), qrX + 8, qrY + 8, {
+        width: 48,
+        height: 48,
+      });
+    }
   }
-
-  // ── Generation timestamp ───────────────────────────────────────────
-  const genDate = new Date().toLocaleDateString('en-GB', {
-    day: 'numeric', month: 'long', year: 'numeric',
-  });
-  const genTime = new Date().toLocaleTimeString('en-GB', {
-    hour: '2-digit', minute: '2-digit',
-  });
-  doc.fontSize(10).fillColor('#6b7280').font('Helvetica')
-    .text(`Generated: ${genDate} at ${genTime}`, M + 12, divY + 20 + metaLines.length * 18 + 10, { width: CW - 24 });
-
-  // ── Bottom section ─────────────────────────────────────────────────
-  // Bottom accent bar
-  doc.rect(0, PH - 80, PW, 80).fill('#1a2332');
-  doc.rect(0, PH - 80, PW, 3).fill(accent);
-
-  // Company info (bottom-left)
-  doc.fontSize(9).fillColor(accent).font('Helvetica-Bold')
-    .text('PROPMETRIK', M + 12, PH - 60, { width: 200 });
-  doc.fontSize(7).fillColor('#6b7280').font('Helvetica')
-    .text('Real Estate Development Intelligence', M + 12, PH - 48, { width: 200 });
-  doc.fontSize(7).fillColor('#4b5563')
-    .text('www.propmetrik.com', M + 12, PH - 38, { width: 200 });
-
-  // Confidentiality (bottom-right)
-  doc.fontSize(7).fillColor('#4b5563').font('Helvetica')
-    .text('CONFIDENTIAL', PW - M - 180, PH - 58, { width: 180, align: 'right' });
-  doc.fontSize(6.5).fillColor('#374151')
-    .text('This document contains proprietary information', PW - M - 180, PH - 47, { width: 180, align: 'right' })
-    .text('intended for authorized personnel only.', PW - M - 180, PH - 38, { width: 180, align: 'right' });
 
   doc.addPage();
 }

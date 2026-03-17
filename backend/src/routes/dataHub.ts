@@ -33,6 +33,7 @@ import { dataLineageService } from '../services/data-hub/dataLineageService';
 import { dataInsightsService } from '../services/data-hub/dataInsightsService';
 import { economicDataService, EconomicIndicatorType } from '../services/data-hub/economicDataService';
 import { constructionCostService, MaterialCategory, LaborCategory } from '../services/data-hub/constructionCostService';
+import { specializedCostService, BuildingFunction, QualityLevel, RegionCode as SpecializedRegionCode } from '../services/data-hub/specializedCostService';
 import { logger } from '../utils/logger';
 import { query } from '../database';
 
@@ -1932,7 +1933,9 @@ router.put('/valuation-config/regional-factors/:regionCode', asyncHandler(async 
  * GET /data-hub/valuation-config/base-costs
  */
 router.get('/valuation-config/base-costs', asyncHandler(async (req: Request, res: Response) => {
-  const result = await constructionCostService.getBaseCosts();
+  const propertyType = req.query.property_type as string | undefined;
+  const region = req.query.region as string | undefined;
+  const result = await constructionCostService.getBaseCosts(propertyType, region);
 
   res.json({
     success: true,
@@ -1962,6 +1965,97 @@ router.put('/valuation-config/base-costs/:qualityTier', asyncHandler(async (req:
   res.json({
     success: true,
     message: `Base cost for ${qualityTier} updated`,
+  });
+}));
+
+/**
+ * Get comparable sale prices per sqm from market evidence
+ * GET /data-hub/valuation-config/sale-prices
+ * 
+ * Query params:
+ *   ?region=greater_accra&property_type=residential_house
+ */
+router.get('/valuation-config/sale-prices', asyncHandler(async (req: Request, res: Response) => {
+  const region = req.query.region as string | undefined;
+  const propertyType = req.query.property_type as string | undefined;
+
+  const result = await constructionCostService.getComparablePricePerSqm(region, propertyType);
+
+  res.json({
+    success: true,
+    data: result,
+    count: result.length,
+  });
+}));
+
+// ============================================
+// Specialized Construction Costs (RICS/GhIS)
+// ============================================
+
+/**
+ * Get specialized construction costs
+ * GET /data-hub/valuation-config/specialized-costs
+ * 
+ * Query params:
+ *   ?building_function=educational&quality_level=standard&region=greater_accra
+ *   ?region=greater_accra (all functions for a region)
+ *   ?building_function=educational (all regions for a function)
+ */
+router.get('/valuation-config/specialized-costs', asyncHandler(async (req: Request, res: Response) => {
+  const buildingFunction = req.query.building_function as BuildingFunction | undefined;
+  const qualityLevel = req.query.quality_level as QualityLevel | undefined;
+  const region = req.query.region as SpecializedRegionCode | undefined;
+
+  // Specific lookup: function + quality + region
+  if (buildingFunction && qualityLevel && region) {
+    const cost = await specializedCostService.getSpecializedCost(buildingFunction, qualityLevel, region);
+    res.json({
+      success: true,
+      data: cost,
+    });
+    return;
+  }
+
+  // By region (all functions)
+  if (region && !buildingFunction) {
+    const costs = await specializedCostService.getSpecializedCostsByRegion(region);
+    res.json({
+      success: true,
+      data: costs,
+      count: costs.length,
+    });
+    return;
+  }
+
+  // By function (all regions)
+  if (buildingFunction && !region) {
+    const costs = await specializedCostService.getSpecializedCostsByFunction(buildingFunction);
+    res.json({
+      success: true,
+      data: costs,
+      count: costs.length,
+    });
+    return;
+  }
+
+  // Default: all for greater_accra
+  const costs = await specializedCostService.getSpecializedCostsByRegion('greater_accra');
+  res.json({
+    success: true,
+    data: costs,
+    count: costs.length,
+  });
+}));
+
+/**
+ * Get available building functions
+ * GET /data-hub/valuation-config/building-functions
+ */
+router.get('/valuation-config/building-functions', asyncHandler(async (_req: Request, res: Response) => {
+  const functions = specializedCostService.listBuildingFunctions();
+  res.json({
+    success: true,
+    data: functions,
   });
 }));
 

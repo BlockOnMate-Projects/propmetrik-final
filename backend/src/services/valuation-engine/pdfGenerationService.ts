@@ -13,9 +13,10 @@ import * as fs from 'fs/promises';
 import * as path from 'path';
 import * as crypto from 'crypto';
 import { v4 as uuidv4 } from 'uuid';
-import { query } from '../../database';
+import { query, pool } from '../../database';
 import { uploadFile, getFile, getPresignedDownloadUrl, buckets } from '../../database/minio';
 import { logger } from '../../utils/logger';
+import { PDF, pdfCover } from '../../utils/pdfReportKit';
 
 const execAsync = promisify(exec);
 
@@ -78,6 +79,9 @@ export class PdfGenerationService {
    */
   async convertDocxToPdf(reportId: string, options: PdfGenerationOptions = {}): Promise<PdfGenerationResult> {
     const startTime = Date.now();
+    const conversionId = uuidv4();
+    const tempDocxPath = path.join(this.tempDir, `${reportId}-${conversionId}.docx`);
+    let tempPdfPath: string | null = null;
     
     try {
       // Get report details
@@ -120,14 +124,16 @@ export class PdfGenerationService {
       const repairedBuffer = await this.repairDocxNamespaces(docxBuffer);
 
       // Save to temp file
-      const tempDocxPath = path.join(this.tempDir, `${reportId}.docx`);
       await fs.writeFile(tempDocxPath, repairedBuffer);
 
       // Convert to PDF
-      const pdfPath = await this.convertToPdf(tempDocxPath, this.tempDir);
+      tempPdfPath = await this.convertToPdf(tempDocxPath, this.tempDir);
       
       // Read PDF
-      let pdfBuffer: Buffer = Buffer.from(await fs.readFile(pdfPath));
+      let pdfBuffer: Buffer = Buffer.from(await fs.readFile(tempPdfPath));
+
+      // Replace cover page with edge-to-edge PDFKit cover
+      pdfBuffer = await this.replaceCoverPage(pdfBuffer, report, reportId);
 
       // Generate document hash
       const documentHash = this.generateHash(pdfBuffer);
@@ -171,7 +177,7 @@ export class PdfGenerationService {
       );
 
       // Cleanup temp files
-      await this.cleanupTempFiles(reportId);
+      await this.cleanupTempFiles(tempDocxPath, tempPdfPath);
 
       const duration = Date.now() - startTime;
       logger.info('PDF generated successfully', {
@@ -197,7 +203,7 @@ export class PdfGenerationService {
       });
 
       // Cleanup on error
-      await this.cleanupTempFiles(reportId);
+      await this.cleanupTempFiles(tempDocxPath, tempPdfPath);
 
       return {
         success: false,
@@ -544,6 +550,142 @@ export class PdfGenerationService {
   }
 
   // ---------------------------------------------------
+  // COVER PAGE REPLACEMENT
+  // ---------------------------------------------------
+
+  /**
+   * Replace DOCX-generated cover page (page 1) with an edge-to-edge
+   * PDFKit cover page matching the portfolio brochure design.
+   */
+  private async replaceCoverPage(pdfBuffer: Buffer, report: any, reportId: string): Promise<Buffer> {
+    try {
+      const { PDFDocument: PdfLibDocument } = await import('pdf-lib');
+
+      // Get property/valuation/client/valuer data for cover
+      const propResult = await pool.query(
+        `SELECT p.title, p.address_street, p.address_city, p.region,
+                p.building_size_sqm, p.land_area_sqm,
+                v.final_value_ghs, v.created_at,
+                v.effective_date
+         FROM valuations v
+         JOIN properties p ON v.property_id = p.id
+         WHERE v.id = $1`,
+        [report.valuation_id]
+      );
+
+      const prop = propResult.rows[0] || {};
+
+      // Get client (engagement) info
+      const clientResult = await pool.query(
+        `SELECT client_name, client_company FROM valuation_engagements
+         WHERE valuation_id = $1 ORDER BY created_at DESC LIMIT 1`,
+        [report.valuation_id]
+      );
+      const clientName = clientResult.rows[0]?.client_name || clientResult.rows[0]?.client_company || 'Client';
+
+      // Get valuer info
+      const valuerResult = await pool.query(
+        `SELECT vl.name, vl.qualifications, vl.license_number, vl.title as job_title
+         FROM valuers vl
+         JOIN valuations v ON v.valuer_id = vl.id
+         WHERE v.id = $1`,
+        [report.valuation_id]
+      );
+      const valuer = valuerResult.rows[0] || {};
+      const valuerName = valuer.name ? `Surv. ${valuer.name}` : '';
+
+      const humanizeLocationPart = (value?: string | null) => {
+        if (!value) return '';
+        return String(value)
+          .replace(/_/g, ' ')
+          .replace(/\s+/g, ' ')
+          .trim()
+          .replace(/\b\w/g, (char) => char.toUpperCase());
+      };
+
+      const propertyAddress = [
+        humanizeLocationPart(prop.address_street),
+        humanizeLocationPart(prop.address_city),
+        humanizeLocationPart(prop.region),
+      ]
+        .filter(Boolean).join(', ') || prop.title || 'Property';
+
+      const marketValue = prop.final_value_ghs
+        ? Number(prop.final_value_ghs).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })
+        : '';
+      const buildingArea = prop.building_size_sqm ? `${Number(prop.building_size_sqm).toLocaleString()} m²` : '';
+      const landArea = prop.land_area_sqm ? `${Number(prop.land_area_sqm).toLocaleString()} m²` : '';
+      const reportDate = new Date(prop.effective_date || prop.created_at || Date.now())
+        .toLocaleDateString('en-GB', { month: 'long', year: 'numeric' });
+      const QRCode = await import('qrcode');
+      const servicesQrDataUrl = await QRCode.toDataURL('https://propmetrik.com/services', {
+        width: 128,
+        margin: 1,
+        color: {
+          dark: '#111111',
+          light: '#FFFFFF',
+        },
+      });
+      const meta = [
+        marketValue ? `Market Value: GHS ${marketValue}` : '',
+        buildingArea ? `Building Area: ${buildingArea}` : '',
+        landArea ? `Land Area: ${landArea}` : '',
+        clientName ? `Prepared For: ${clientName}` : '',
+        valuerName ? `Certified By: ${valuerName}` : '',
+        reportDate ? `Effective Date: ${reportDate}` : '',
+      ].filter(Boolean);
+
+      // Generate replacement cover page using the centralized shared cover utility.
+      const coverBuffer = await new Promise<Buffer>((resolve, reject) => {
+        const chunks: Buffer[] = [];
+        const doc = PDF.create({ margin: 0 });
+        doc.on('data', (chunk: Buffer) => chunks.push(chunk));
+        doc.on('end', () => resolve(Buffer.concat(chunks)));
+        doc.on('error', reject);
+
+        pdfCover(doc, {
+          title: propertyAddress.toUpperCase(),
+          subtitle: 'Valuation Report',
+          reportType: 'VALUATION',
+          brandTagline: 'Real Estate Intelligence',
+          meta,
+          qrCodeDataUrl: servicesQrDataUrl,
+        });
+
+        doc.end();
+      });
+
+      // Load both PDFs with pdf-lib
+      const mainPdf = await PdfLibDocument.load(pdfBuffer);
+      const coverPdf = await PdfLibDocument.load(coverBuffer);
+
+      // Create new PDF: cover page + all pages except page 1 from original
+      const finalPdf = await PdfLibDocument.create();
+
+      // Copy cover page (first page from the PDFKit-generated PDF)
+      const [coverPage] = await finalPdf.copyPages(coverPdf, [0]);
+      finalPdf.addPage(coverPage);
+
+      // Copy remaining pages from original (skip page 0 = old cover)
+      const pageCount = mainPdf.getPageCount();
+      if (pageCount > 1) {
+        const pageIndices = Array.from({ length: pageCount - 1 }, (_, i) => i + 1);
+        const copiedPages = await finalPdf.copyPages(mainPdf, pageIndices);
+        copiedPages.forEach(page => finalPdf.addPage(page));
+      }
+
+      const finalBytes = await finalPdf.save();
+      logger.info('Replaced cover page with shared valuation cover', { reportId });
+      return Buffer.from(finalBytes);
+    } catch (err: any) {
+      logger.warn('Failed to replace cover page, using original', { 
+        reportId, error: err.message 
+      });
+      return pdfBuffer;
+    }
+  }
+
+  // ---------------------------------------------------
   // HELPER METHODS
   // ---------------------------------------------------
 
@@ -560,13 +702,12 @@ export class PdfGenerationService {
     return Buffer.from(body);
   }
 
-  private async cleanupTempFiles(reportId: string): Promise<void> {
+  private async cleanupTempFiles(docxPath: string, pdfPath?: string | null): Promise<void> {
     try {
-      const docxPath = path.join(this.tempDir, `${reportId}.docx`);
-      const pdfPath = path.join(this.tempDir, `${reportId}.pdf`);
-
       await fs.unlink(docxPath).catch(() => {});
-      await fs.unlink(pdfPath).catch(() => {});
+      if (pdfPath) {
+        await fs.unlink(pdfPath).catch(() => {});
+      }
     } catch (error) {
       // Ignore cleanup errors
     }

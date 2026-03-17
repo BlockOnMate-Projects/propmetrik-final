@@ -182,13 +182,13 @@ export default function CostApproachPage() {
         setValuation(valuationRes.data as Valuation)
         // API returns property with camelCase fields: builtArea, grossFloorArea, landArea, plotSize
         const property = valuationRes.data.property
-        setGfa(property?.builtArea || property?.grossFloorArea || property?.building_area_sqm || 200)
+        setGfa(property?.builtArea || property?.grossFloorArea || property?.building_area_sqm || property?.totalArea || property?.total_area_sqm || 200)
         setPlotSize(property?.plotSize || property?.landArea || property?.land_area_sqm || 0)
 
         // Load existing cost approach data if available
         if (costRes.data) {
           const data = costRes.data
-          const gfaValue = property?.builtArea || property?.grossFloorArea || property?.building_area_sqm || 200
+          const gfaValue = property?.builtArea || property?.grossFloorArea || property?.building_area_sqm || property?.totalArea || property?.total_area_sqm || 200
           setLandValue(data.land_value || 0)
           setConstructionRate(data.replacement_cost_new ? data.replacement_cost_new / gfaValue : 5000)
           setPhysicalDepreciation(data.physical_depreciation || 0)
@@ -1057,8 +1057,8 @@ export default function CostApproachPage() {
                 <input
                   type="number"
                   value={gfa}
-                  onChange={(e) => setGfa(parseFloat(e.target.value) || 0)}
-                  className="w-full px-3 py-2 bg-black border border-zinc-700 text-white font-mono focus:border-amber-500"
+                  readOnly
+                  className="w-full px-3 py-2 bg-black border border-zinc-700 text-white font-mono cursor-not-allowed opacity-80"
                 />
               </div>
               <div className="flex items-end">

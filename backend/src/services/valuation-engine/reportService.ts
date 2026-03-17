@@ -206,12 +206,13 @@ export class ReportService {
     );
 
     if (existingDraft.rows.length > 0) {
-      logger.warn('Existing draft report found', {
+      logger.info('Returning existing draft report', {
         valuationId: input.valuation_id,
         existingReportId: existingDraft.rows[0].id,
       });
-      // Could either return existing or throw - for now, throw
-      throw new Error(`A draft report already exists for this valuation. Report ID: ${existingDraft.rows[0].id}`);
+      // Return existing draft instead of throwing — makes create idempotent
+      const existing = await this.getReportById(existingDraft.rows[0].id);
+      if (existing) return existing;
     }
 
     // Create the report

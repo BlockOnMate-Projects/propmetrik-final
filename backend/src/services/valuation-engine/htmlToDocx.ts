@@ -107,13 +107,17 @@ function processNode($: any, node: any): FileChild[] {
  * Build a heading paragraph from an HTML element.
  */
 function headingFromElement($: any, el: any, level: any): Paragraph {
-  const runs = extractTextRuns($, el);
-  const alignment = parseAlignment(el.attr('style'));
+  const style = el.attr('style') || '';
+  const hasUnderline = /text-decoration\s*:\s*underline/i.test(style);
+  const parentStyle: InlineStyle = { bold: false, italic: false, underline: hasUnderline };
+  const runs = extractTextRuns($, el, parentStyle);
+  const alignment = parseAlignment(style);
+  const spacing = parseSpacing(style, { before: 300, after: 150 });
 
   return new Paragraph({
     heading: level,
     alignment,
-    spacing: { before: 300, after: 150 },
+    spacing,
     children: runs,
   });
 }
@@ -122,8 +126,12 @@ function headingFromElement($: any, el: any, level: any): Paragraph {
  * Process a <p> element into Paragraphs.
  */
 function processParagraph($: any, el: any): Paragraph[] {
-  const alignment = parseAlignment(el.attr('style'));
-  const runs = extractTextRuns($, el);
+  const style = el.attr('style') || '';
+  const alignment = parseAlignment(style);
+  const hasUnderline = /text-decoration\s*:\s*underline/i.test(style);
+  const parentStyle: InlineStyle = { bold: false, italic: false, underline: hasUnderline };
+  const runs = extractTextRuns($, el, parentStyle);
+  const spacing = parseSpacing(style, { before: 60, after: 60 });
 
   // If the only content is &nbsp;, return an empty spacer paragraph
   const textContent = el.text().trim();
@@ -131,7 +139,7 @@ function processParagraph($: any, el: any): Paragraph[] {
     return [new Paragraph({ children: [], spacing: { before: 100, after: 100 } })];
   }
 
-  return [new Paragraph({ alignment, spacing: { before: 60, after: 60 }, children: runs })];
+  return [new Paragraph({ alignment, spacing, children: runs })];
 }
 
 /**
@@ -340,6 +348,27 @@ function parseAlignment(style?: string | null): any {
     case 'left': return AlignmentType.LEFT;
     default: return undefined;
   }
+}
+
+/**
+ * Parse margin-top / margin-bottom from inline style into DOCX spacing (twips).
+ * Falls back to provided defaults.
+ */
+function parseSpacing(
+  style: string | null | undefined,
+  defaults: { before: number; after: number }
+): { before: number; after: number } {
+  let before = defaults.before;
+  let after = defaults.after;
+  if (!style) return { before, after };
+
+  const mt = style.match(/margin-top\s*:\s*(\d+)\s*(px)?/i);
+  if (mt) before = parseInt(mt[1], 10) === 0 ? 0 : parseInt(mt[1], 10) * 15; // rough px→twip
+
+  const mb = style.match(/margin-bottom\s*:\s*(\d+)\s*(px)?/i);
+  if (mb) after = parseInt(mb[1], 10) === 0 ? 0 : parseInt(mb[1], 10) * 15;
+
+  return { before, after };
 }
 
 function bodyParagraph(

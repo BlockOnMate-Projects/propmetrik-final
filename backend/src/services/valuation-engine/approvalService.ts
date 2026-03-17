@@ -291,11 +291,15 @@ export class ApprovalService {
       }
 
       if (!credentials.can_approve) {
+        const blockingIssues = credentials.issues.filter(issue =>
+          issue === 'License is expired or inactive' || issue === 'No signature on file'
+        );
+
         return {
           success: false,
           reportId,
           status: 'rejected',
-          error: `Cannot approve: ${credentials.issues.join(', ')}`,
+          error: `Cannot approve: ${(blockingIssues.length > 0 ? blockingIssues : credentials.issues).join(', ')}`,
         };
       }
 
@@ -338,6 +342,15 @@ export class ApprovalService {
 
       if (result.rows.length === 0) {
         throw new Error('Failed to update report');
+      }
+
+      // Also update the valuation status to 'completed'
+      const report = result.rows[0];
+      if (report.valuation_id) {
+        await query(
+          `UPDATE valuations SET status = 'completed', updated_at = $1 WHERE id = $2`,
+          [now, report.valuation_id]
+        );
       }
 
       // Log approval in audit trail

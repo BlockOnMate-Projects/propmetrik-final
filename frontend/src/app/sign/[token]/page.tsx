@@ -159,8 +159,9 @@ export default function SigningPage() {
   const loadPdf = async (url: string) => {
     setPdfLoading(true);
     try {
-      const pdfjsLib = await import("pdfjs-dist");
-      pdfjsLib.GlobalWorkerOptions.workerSrc = "/pdf.worker.min.js";
+      // @ts-expect-error — runtime URL import bypasses webpack to avoid pdfjs-dist v5 conflicts
+      const pdfjsLib = await import(/* webpackIgnore: true */ "/pdf.min.mjs");
+      pdfjsLib.GlobalWorkerOptions.workerSrc = "/pdf.worker.min.mjs";
 
       const loadingTask = pdfjsLib.getDocument(url);
       const pdf = await loadingTask.promise;

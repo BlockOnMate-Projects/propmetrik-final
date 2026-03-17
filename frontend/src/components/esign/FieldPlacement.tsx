@@ -563,8 +563,9 @@ function HiddenPdfLoader({
         return;
       }
       try {
-        const pdfjsLib = await import("pdfjs-dist");
-        pdfjsLib.GlobalWorkerOptions.workerSrc = "/pdf.worker.min.js";
+        // @ts-expect-error — runtime URL import bypasses webpack to avoid pdfjs-dist v5 conflicts
+        const pdfjsLib = await import(/* webpackIgnore: true */ "/pdf.min.mjs");
+        pdfjsLib.GlobalWorkerOptions.workerSrc = "/pdf.worker.min.mjs";
         let arrayBuffer: ArrayBuffer;
         if (doc.file) {
           arrayBuffer = await doc.file.arrayBuffer();
