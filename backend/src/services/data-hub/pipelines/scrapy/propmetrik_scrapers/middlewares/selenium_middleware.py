@@ -4,6 +4,10 @@ Selenium Middleware for Scrapy
 
 Handles JavaScript-heavy websites by rendering pages with a real browser
 before passing the HTML to Scrapy for parsing.
+
+If ``selenium`` is not installed the module still exports a no-op
+``SeleniumMiddleware`` class so that Scrapy can load it from settings
+without crashing.
 """
 import logging
 from typing import Optional
@@ -13,15 +17,21 @@ from scrapy import signals
 from scrapy.http import HtmlResponse, Request
 from scrapy.downloadermiddlewares.retry import RetryMiddleware
 from scrapy.utils.response import response_status_message
-from selenium import webdriver
-from selenium.webdriver.chrome.options import Options
-from selenium.webdriver.chrome.service import Service
-from selenium.webdriver.common.by import By
-from selenium.webdriver.support import expected_conditions as EC
-from selenium.webdriver.support.ui import WebDriverWait
-from webdriver_manager.chrome import ChromeDriverManager
 
 logger = logging.getLogger(__name__)
+
+try:
+    from selenium import webdriver
+    from selenium.webdriver.chrome.options import Options
+    from selenium.webdriver.chrome.service import Service
+    from selenium.webdriver.common.by import By
+    from selenium.webdriver.support import expected_conditions as EC
+    from selenium.webdriver.support.ui import WebDriverWait
+    from webdriver_manager.chrome import ChromeDriverManager
+    _SELENIUM_AVAILABLE = True
+except ImportError:
+    _SELENIUM_AVAILABLE = False
+    logger.info("selenium not installed — SeleniumMiddleware will be a no-op")
 
 
 class SeleniumMiddleware:
@@ -33,8 +43,8 @@ class SeleniumMiddleware:
     
     def __init__(self, crawler):
         self.crawler = crawler
-        self.driver: Optional[webdriver.Chrome] = None
-        self.enabled = crawler.settings.getbool('SELENIUM_ENABLED', True)
+        self.driver = None
+        self.enabled = _SELENIUM_AVAILABLE and crawler.settings.getbool('SELENIUM_ENABLED', True)
         
     @classmethod
     def from_crawler(cls, crawler):
