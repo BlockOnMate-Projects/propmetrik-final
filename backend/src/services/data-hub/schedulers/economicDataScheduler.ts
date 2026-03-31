@@ -7,10 +7,10 @@
  * - FX Rates: Every 5 minutes for cache, daily for persistence
  * 
  * Also manages construction cost data synchronization:
- * - NPA Fuel Prices: Bi-weekly (1st and 15th of each month)
- * - Local Material Prices: Monthly (1st of each month)
- * - GSS Labor Rates: Monthly (1st of each month)
- * - Construction Index Recalculation: Monthly (after all data syncs complete)
+ * - NPA Fuel Prices: Weekly (every Monday at 9 AM)
+ * - Local Material Prices: Weekly (every Monday at 10 AM)
+ * - GSS Labor Rates: Weekly (every Monday at 11 AM)
+ * - Construction Index Recalculation: Weekly (every Monday after all data syncs complete)
  * 
  * Uses node-cron for scheduling with configurable cron expressions.
  */
@@ -38,19 +38,19 @@ export interface SchedulerConfig {
   fxDailyCron: string;
   
   // === Construction Data ===
-  /** Cron expression for NPA fuel prices (default: 9 AM on 1st and 15th of month) */
+  /** Cron expression for NPA fuel prices (default: 9 AM every Monday) */
   fuelSyncCron: string;
-  /** Cron expression for material prices (default: 10 AM on 1st of month) */
+  /** Cron expression for material prices (default: 10 AM every Monday) */
   materialSyncCron: string;
-  /** Cron expression for labor rates (default: 11 AM on 1st of month) */
+  /** Cron expression for labor rates (default: 11 AM every Monday) */
   laborSyncCron: string;
-  /** Cron expression for construction index recalculation (default: 12 PM on 1st of month) */
+  /** Cron expression for construction index recalculation (default: 12 PM every Monday) */
   indexRecalcCron: string;
-  /** Cron expression for base cost calculation (default: 1 PM on 1st of month, after index recalc) */
+  /** Cron expression for base cost calculation (default: 1 PM every Monday, after index recalc) */
   baseCostRecalcCron: string;
-  /** Cron expression for GREDA/BRRI specialized cost sync (default: 2 PM on 1st of month, after base cost recalc) */
+  /** Cron expression for GREDA/BRRI specialized cost sync (default: 2 PM every Monday, after base cost recalc) */
   gredaSyncCron: string;
-  /** Cron expression for specialized cost recalculation (default: 3 PM on 1st of month, after GREDA sync) */
+  /** Cron expression for specialized cost recalculation (default: 3 PM every Monday, after GREDA sync) */
   specializedCostRecalcCron: string;
   
   // === General ===
@@ -72,14 +72,14 @@ const DEFAULT_CONFIG: SchedulerConfig = {
   fxUpdateCron: process.env.FX_UPDATE_CRON || '*/5 * * * *',       // Every 5 minutes
   fxDailyCron: process.env.FX_DAILY_CRON || '0 17 * * 1-5',        // 5 PM on weekdays
   
-  // Construction data (Ghana NPA updates fuel prices bi-weekly)
-  fuelSyncCron: process.env.FUEL_SYNC_CRON || '0 9 1,15 * *',      // 9 AM on 1st and 15th
-  materialSyncCron: process.env.MATERIAL_SYNC_CRON || '0 10 1 * *', // 10 AM on 1st of month
-  laborSyncCron: process.env.LABOR_SYNC_CRON || '0 11 1 * *',      // 11 AM on 1st of month
-  indexRecalcCron: process.env.INDEX_RECALC_CRON || '0 12 1 * *',  // 12 PM on 1st of month (after all syncs)
-  baseCostRecalcCron: process.env.BASE_COST_RECALC_CRON || '0 13 1 * *', // 1 PM on 1st (after index recalc)
-  gredaSyncCron: process.env.GREDA_SYNC_CRON || '0 14 1 * *',            // 2 PM on 1st (after base cost recalc)
-  specializedCostRecalcCron: process.env.SPECIALIZED_COST_RECALC_CRON || '0 15 1 * *', // 3 PM on 1st (after GREDA sync)
+  // Construction data - weekly on Mondays (Ghana NPA updates fuel prices bi-weekly)
+  fuelSyncCron: process.env.FUEL_SYNC_CRON || '0 9 * * 1',          // 9 AM every Monday
+  materialSyncCron: process.env.MATERIAL_SYNC_CRON || '0 10 * * 1', // 10 AM every Monday
+  laborSyncCron: process.env.LABOR_SYNC_CRON || '0 11 * * 1',      // 11 AM every Monday
+  indexRecalcCron: process.env.INDEX_RECALC_CRON || '0 12 * * 1',  // 12 PM every Monday (after all syncs)
+  baseCostRecalcCron: process.env.BASE_COST_RECALC_CRON || '0 13 * * 1', // 1 PM every Monday (after index recalc)
+  gredaSyncCron: process.env.GREDA_SYNC_CRON || '0 14 * * 1',            // 2 PM every Monday (after base cost recalc)
+  specializedCostRecalcCron: process.env.SPECIALIZED_COST_RECALC_CRON || '0 15 * * 1', // 3 PM every Monday (after GREDA sync)
   
   // General
   timezone: process.env.SCHEDULER_TIMEZONE || 'Africa/Accra',
@@ -215,6 +215,125 @@ export class EconomicDataScheduler {
     logger.info('Economic data scheduler started successfully', {
       jobCount: this.jobs.size,
     });
+
+    // Run catch-up check after startup (delayed to let server fully initialize)
+    setTimeout(() => {
+      this.runStartupCatchUp().catch(err => {
+        logger.error('[Scheduler] Startup catch-up failed', { error: err });
+      });
+    }, 30_000); // 30 second delay
+  }
+
+  /**
+   * Check for missed syncs on startup and run them if needed.
+   * This handles the case where the container was restarted and missed
+   * its weekly cron window.
+   */
+  private async runStartupCatchUp(): Promise<void> {
+    logger.info('[Scheduler] Running startup catch-up check...');
+
+    try {
+      const { query: dbQuery } = await import('../../../database');
+
+      // Check when each source last ran successfully
+      const result = await dbQuery<{ source_name: string; last_sync: Date }>(`
+        SELECT source_name, MAX(started_at) as last_sync
+        FROM economic_data_sync_log
+        WHERE status IN ('success', 'partial')
+        GROUP BY source_name
+      `);
+
+      const lastSyncs = new Map<string, Date>();
+      for (const row of result.rows) {
+        lastSyncs.set(row.source_name, new Date(row.last_sync));
+      }
+
+      const now = new Date();
+      const ONE_WEEK_MS = 7 * 24 * 60 * 60 * 1000;
+      const staleThreshold = new Date(now.getTime() - ONE_WEEK_MS);
+
+      // Define sources and their catch-up actions
+      const catchUpSources = [
+        {
+          logName: 'NPA Fuel Prices',
+          lastSync: lastSyncs.get('NPA Fuel Prices'),
+          run: () => this.runFuelSync(),
+        },
+        {
+          logName: 'Local Material Prices (ConstructionGhana.com)',
+          lastSync: lastSyncs.get('Local Material Prices (ConstructionGhana.com)'),
+          run: () => this.runMaterialSync(),
+        },
+        {
+          logName: 'GSS Labor Rates',
+          lastSync: lastSyncs.get('GSS Labor Rates'),
+          run: () => this.runLaborSync(),
+        },
+        {
+          logName: 'Bank of Ghana',
+          lastSync: lastSyncs.get('Bank of Ghana'),
+          run: () => this.runBOGSync(),
+        },
+        {
+          logName: 'GREDA/BRRI',
+          lastSync: lastSyncs.get('GREDA/BRRI'),
+          run: () => this.runGREDASync(),
+        },
+      ];
+
+      const stale: string[] = [];
+
+      for (const source of catchUpSources) {
+        const isStale = !source.lastSync || source.lastSync < staleThreshold;
+        if (isStale) {
+          stale.push(source.logName);
+        }
+      }
+
+      if (stale.length === 0) {
+        logger.info('[Scheduler] All sources are up to date, no catch-up needed');
+        return;
+      }
+
+      logger.info('[Scheduler] Stale sources detected, running catch-up', {
+        staleSources: stale,
+      });
+
+      // Run stale syncs sequentially to avoid overwhelming external sources
+      for (const source of catchUpSources) {
+        const isStale = !source.lastSync || source.lastSync < staleThreshold;
+        if (isStale) {
+          try {
+            logger.info(`[Scheduler] Catch-up: running ${source.logName}...`);
+            await source.run();
+            logger.info(`[Scheduler] Catch-up: ${source.logName} complete`);
+          } catch (err) {
+            logger.error(`[Scheduler] Catch-up: ${source.logName} failed`, { error: err });
+          }
+        }
+      }
+
+      // After data syncs, recalculate indices if any construction source was stale
+      const constructionStale = stale.some(s =>
+        ['NPA Fuel Prices', 'Local Material Prices (ConstructionGhana.com)', 'GSS Labor Rates', 'GREDA/BRRI'].includes(s)
+      );
+
+      if (constructionStale) {
+        try {
+          logger.info('[Scheduler] Catch-up: recalculating construction indices...');
+          await this.runConstructionIndexRecalculation();
+          await this.runBaseCostRecalculation();
+          await this.runSpecializedCostRecalculation();
+          logger.info('[Scheduler] Catch-up: construction index recalculation complete');
+        } catch (err) {
+          logger.error('[Scheduler] Catch-up: construction index recalculation failed', { error: err });
+        }
+      }
+
+      logger.info('[Scheduler] Startup catch-up complete');
+    } catch (error) {
+      logger.error('[Scheduler] Startup catch-up check failed', { error });
+    }
   }
 
   /**
