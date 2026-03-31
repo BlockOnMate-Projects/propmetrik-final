@@ -1531,10 +1531,11 @@ router.post('/economic/sync/:source', asyncHandler(async (req: Request, res: Res
   const triggeredBy = req.body.triggered_by || 'api';
 
   // Validate source
-  if (!['bog', 'wdi', 'fx', 'all'].includes(source)) {
+  const validSyncSources = ['bog', 'wdi', 'fx', 'npa', 'local_materials', 'gss_labor', 'greda', 'construction_all', 'all'];
+  if (!validSyncSources.includes(source)) {
     res.status(400).json({
       success: false,
-      error: `Invalid source: ${source}. Must be one of: bog, wdi, fx, all`,
+      error: `Invalid source: ${source}. Must be one of: ${validSyncSources.join(', ')}`,
     });
     return;
   }
@@ -1698,11 +1699,11 @@ router.post('/scheduler/trigger/:source', asyncHandler(async (req: Request, res:
   const source = rawSource === 'ALL' ? 'all' : rawSource as SyncSource | 'all';
 
   // Validate source
-  const validSources = ['BOG', 'WDI', 'FX', 'all'];
-  if (!validSources.includes(source)) {
+  const validTriggerSources = ['BOG', 'WDI', 'FX', 'NPA', 'LOCAL_MATERIALS', 'GSS_LABOR', 'GREDA', 'CONSTRUCTION_ALL', 'all'];
+  if (!validTriggerSources.includes(source)) {
     res.status(400).json({
       success: false,
-      error: `Invalid source: ${source}. Must be one of: ${validSources.join(', ')}`,
+      error: `Invalid source: ${source}. Must be one of: ${validTriggerSources.join(', ')}`,
     });
     return;
   }
