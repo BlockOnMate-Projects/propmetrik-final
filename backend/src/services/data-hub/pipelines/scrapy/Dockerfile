@@ -56,18 +56,23 @@ EOF
 RUN chmod 0644 /etc/cron.d/scrapy-jobs && \
     crontab /etc/cron.d/scrapy-jobs
 
-# Health check - verify scrapy is installed and can import
-HEALTHCHECK --interval=60s --timeout=10s --start-period=10s --retries=3 \
-    CMD python -c "import scrapy; from propmetrik_scrapers.spiders import MeqasaSpider" || exit 1
+# Expose API port
+EXPOSE 5000
+
+# Health check - hit the Flask /health endpoint
+HEALTHCHECK --interval=30s --timeout=10s --start-period=15s --retries=3 \
+    CMD curl -f http://localhost:${SCRAPY_API_PORT:-5000}/health || exit 1
 
 # Environment variables
 ENV PYTHONUNBUFFERED=1
 ENV SCRAPY_LOG_ENABLED=true
 ENV SCRAPY_LOG_LEVEL=INFO
 ENV ETL_TRACKING_ENABLED=true
+ENV SCRAPY_MODE=api
+ENV SCRAPY_API_PORT=5000
 
 # Run as root for cron, but spiders run as scrapy user
 USER root
 
 ENTRYPOINT ["/entrypoint.sh"]
-CMD ["cron", "-f"]
+CMD []

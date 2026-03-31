@@ -189,22 +189,33 @@ Examples:
     )
     
     parser.add_argument(
+        '--scrape-type', '-s',
+        choices=['full', 'update'],
+        default='update',
+        help='Scrape type: "full" for all pages, "update" for recent only'
+    )
+
+    parser.add_argument(
         '--verbose', '-v',
         action='store_true',
         help='Enable verbose logging'
     )
-    
+
     args = parser.parse_args()
-    
+
     # Set log level
     if args.verbose:
         logging.getLogger().setLevel(logging.DEBUG)
-    
+
     # Determine which spiders to run
     spider_names = AVAILABLE_SPIDERS if 'all' in args.spiders else args.spiders
-    
-    logger.info(f"Running spiders: {spider_names}")
-    
+
+    # Apply scrape-type defaults if max_pages not explicitly set
+    if args.max_pages is None and args.scrape_type == 'update':
+        args.max_pages = 10
+
+    logger.info(f"Running spiders: {spider_names} (scrape_type={args.scrape_type})")
+
     # Run spiders
     run_spiders(
         spider_names=spider_names,

@@ -42,5 +42,15 @@ if [ "${SCRAPY_AUTO_START}" = "true" ] && [ "${SCRAPY_INITIAL_SCRAPE}" = "true" 
     su - scrapy -c "cd /app && python run_spider.py all --scrape-type update --max-pages 5" || true
 fi
 
-echo "Starting cron daemon..."
-exec "$@"
+# Start mode: HTTP API server (default) or legacy cron
+SCRAPY_MODE="${SCRAPY_MODE:-api}"
+if [ "${SCRAPY_MODE}" = "cron" ]; then
+    echo "Starting in CRON mode..."
+    exec cron -f
+else
+    echo "Starting in API mode on port ${SCRAPY_API_PORT:-5000}..."
+    # Start cron in background for fallback scheduling
+    cron
+    # Start the Flask API server as main process
+    exec python /app/api_server.py
+fi

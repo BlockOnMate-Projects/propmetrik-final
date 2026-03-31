@@ -18,6 +18,9 @@ w3lib>=2.1.0
 # Data processing
 python-dotenv>=1.0.0
 
+# HTTP API server (called by Node.js backend)
+flask>=3.0.0
+
 # Optional: For proxy rotation
 # scrapy-rotating-proxies>=0.6.0
 
