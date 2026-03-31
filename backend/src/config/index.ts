@@ -249,6 +249,7 @@ export const config = {
     concurrentSpiders: parseInt(process.env.SCRAPY_CONCURRENT_SPIDERS || '2', 10),
     retryFailed: process.env.SCRAPY_RETRY_FAILED !== 'false',
     maxRetries: parseInt(process.env.SCRAPY_MAX_RETRIES || '3', 10),
+    workerUrl: process.env.SCRAPY_WORKER_URL || 'http://scrapy-worker:5000',
   },
 
   // Paystack Payments (controlled by FINANCE_MODE)

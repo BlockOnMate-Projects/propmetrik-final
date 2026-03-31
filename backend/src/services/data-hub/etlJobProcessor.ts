@@ -214,15 +214,62 @@ export class EtlJobProcessor {
   }
 
   /**
-   * Process scrape job (legacy support)
+   * Process scrape job
+   *
+   * Scrape jobs are now dispatched directly to the scrapy-worker HTTP API
+   * by the ScrapyScheduler.  If a scrape job reaches this processor it
+   * means it was created outside the scheduler (e.g. via the API).
+   * We call the worker synchronously via /run-sync so it actually runs.
    */
   private async processScrapeJob(job: EtlJob): Promise<ProcessingResult> {
-    await etlJobService.addLog(job.id, 'info', 'Processing legacy scrape job through data ingestion pipeline', {
-      step: 'scrape_bridge'
+    const workerUrl = (await import('../../config')).config.scrapy?.workerUrl || 'http://scrapy-worker:5000';
+    const spiderName = (job.config as Record<string, unknown>)?.spider_name as string
+      || job.job_name?.replace(/_(full|update)_scrape$/, '')
+      || 'all';
+    const scrapeType = ((job.config as Record<string, unknown>)?.scrape_type as string) || 'update';
+    const maxPages = ((job.config as Record<string, unknown>)?.max_pages as number) ?? 10;
+
+    await etlJobService.addLog(job.id, 'info', `Dispatching scrape to worker: ${spiderName} (${scrapeType})`, {
+      step: 'scrape_dispatch',
+      record_data: { worker_url: workerUrl },
     });
 
-    // Route scrape jobs to data ingestion for now (bridge behavior)
-    return this.processDataIngestionJob(job);
+    try {
+      const res = await fetch(`${workerUrl}/run-sync`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          spider: spiderName,
+          scrape_type: scrapeType,
+          max_pages: maxPages,
+          etl_job_id: job.id,
+        }),
+        signal: AbortSignal.timeout(4 * 60 * 60 * 1000), // 4h
+      });
+
+      const result = (await res.json()) as {
+        status: string;
+        exit_code?: number;
+        stdout_tail?: string;
+        stderr_tail?: string;
+      };
+
+      if (result.status === 'completed') {
+        await etlJobService.addLog(job.id, 'info', 'Spider completed via worker', {
+          step: 'completed',
+          record_data: { exit_code: result.exit_code },
+        });
+        return { recordsProcessed: 1, recordsSuccessful: 1, recordsFailed: 0 };
+      }
+
+      const errMsg = result.stderr_tail?.slice(-500) || `Spider exited: ${result.status}`;
+      await etlJobService.addLog(job.id, 'error', errMsg);
+      throw new Error(errMsg);
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : String(error);
+      await etlJobService.addLog(job.id, 'error', `Worker call failed: ${msg}`);
+      throw error;
+    }
   }
 
   /**
