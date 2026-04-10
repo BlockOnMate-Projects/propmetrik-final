@@ -10,6 +10,7 @@ import { Router, Request, Response } from 'express';
 import { authenticate, optionalAuth, requireSuperAdmin } from '../middleware/auth';
 import { authorize } from '../middleware/authorize';
 import { logger } from '../utils/logger';
+import { config } from '../config';
 import {
   // Plans
   listPlans, getPlan, createPlan, updatePlan, deactivatePlan,
@@ -118,6 +119,7 @@ router.post('/subscription', authenticate, async (req: Request, res: Response) =
   try {
     const orgId = (req as any).user?.organizationId;
     const userId = (req as any).user?.id;
+    const userEmail = (req as any).user?.email;
     const { plan_slug, billing_interval, payment_provider, start_trial, metadata } = req.body;
 
     if (!plan_slug) {
@@ -146,7 +148,70 @@ router.post('/subscription', authenticate, async (req: Request, res: Response) =
       logger.warn('Failed to mark onboarding_completed', e);
     }
 
-    res.status(201).json(subscription);
+    // Build response with optional payment_url and invoice_id
+    const response: Record<string, any> = { ...subscription };
+
+    // When payment is NOT bypassed and provider is paystack, create invoice + initialize payment
+    if (!config.app.paymentBypass && payment_provider === 'paystack') {
+      try {
+        // Create an invoice for the first billing period
+        const invoice = await createInvoice(subscription.id);
+        response.invoice_id = invoice.id;
+
+        // Initialize Paystack transaction to get payment URL
+        const { PaystackService } = await import('../services/property-management/payment/paystackService');
+        const paystack = new PaystackService();
+
+        // Fetch user email if not on JWT (fallback)
+        let email = userEmail;
+        if (!email) {
+          const { pool: dbPool } = await import('../database');
+          const userRow = await dbPool.query('SELECT email FROM users WHERE id = $1', [userId]);
+          email = userRow.rows[0]?.email;
+        }
+
+        const paystackRes = await paystack.initializeTransaction({
+          email,
+          amount: Math.round(invoice.total * 100), // GHS → pesewas
+          currency: invoice.currency || 'GHS',
+          reference: `sub_${subscription.id}_inv_${invoice.id}`,
+          callback_url: `${config.app.frontendUrl}/dashboard?welcome=true&payment=success`,
+          metadata: {
+            subscription_id: subscription.id,
+            invoice_id: invoice.id,
+            plan_slug,
+          },
+          channels: ['card', 'mobile_money'],
+        });
+
+        if (paystackRes.status && paystackRes.data?.authorization_url) {
+          response.payment_url = paystackRes.data.authorization_url;
+          response.payment_reference = paystackRes.data.reference;
+        }
+
+        logger.info('Paystack payment initialized for subscription signup', {
+          subscriptionId: subscription.id,
+          invoiceId: invoice.id,
+          reference: paystackRes.data?.reference,
+        });
+      } catch (payErr: any) {
+        // Payment init failed but subscription was created — log and continue
+        logger.error('Failed to initialize Paystack payment for signup', payErr);
+        // Frontend will fall through to dashboard without payment_url
+      }
+    }
+
+    // For bank_transfer (not bypassed), create invoice only
+    if (!config.app.paymentBypass && payment_provider === 'bank_transfer') {
+      try {
+        const invoice = await createInvoice(subscription.id);
+        response.invoice_id = invoice.id;
+      } catch (invErr: any) {
+        logger.error('Failed to create invoice for bank_transfer signup', invErr);
+      }
+    }
+
+    res.status(201).json(response);
   } catch (err: any) {
     logger.error('Failed to create subscription', err);
     if (err.message.includes('already exists') || err.message.includes('not found') || err.message.includes('not active')) {
