@@ -33,6 +33,7 @@ export const config = {
     name: process.env.APP_NAME || 'propmetrik',
     env: process.env.NODE_ENV || 'development',
     financeMode: process.env.FINANCE_MODE || 'test',
+    paymentBypass: process.env.PAYMENT_BYPASS === 'yes',
     port: parseInt(process.env.PORT || '4000', 10),
     apiVersion: process.env.API_VERSION || 'v1',
     url: envSelect(
