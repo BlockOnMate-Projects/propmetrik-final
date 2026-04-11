@@ -17,6 +17,9 @@
 
 import { pool } from '../../src/database';
 import { mlAnalyticsService } from '../../src/services/analytics/mlAnalyticsService';
+import { rentalAnalyticsService } from '../../src/services/analytics/rentalAnalyticsService';
+import { ghaiService } from '../../src/services/analytics/ghaiService';
+import { constructionCostIndexService } from '../../src/services/analytics/constructionCostIndexService';
 import { workspaceService } from './WorkspaceService';
 import { logger } from '../../src/utils/logger';
 import { config } from '../../src/config';
@@ -36,6 +39,8 @@ export interface KobbyContext {
     entityData: Record<string, any>;
     recentMessages: Array<{ sender: string; content: string; time: string }>;
     marketData?: Record<string, any>;
+    platformData?: Record<string, any>;
+    portfolioData?: Record<string, any>;
 }
 
 export interface KobbyResponse {
@@ -311,33 +316,163 @@ async function fetchMarketContext(region?: string): Promise<Record<string, any>>
 }
 
 // ============================================================================
+// PLATFORM-WIDE CONTEXT (cached, global market intelligence)
+// ============================================================================
+
+let platformCache: { data: Record<string, any>; expiresAt: number } | null = null;
+const PLATFORM_CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+
+async function fetchPlatformContext(): Promise<Record<string, any>> {
+    if (platformCache && Date.now() < platformCache.expiresAt) {
+        return platformCache.data;
+    }
+
+    const [priceIndex, cci, ghai, rental, capRates] = await Promise.allSettled([
+        mlAnalyticsService.getMarketPriceIndex(undefined, undefined),
+        constructionCostIndexService.getNationalSummary(),
+        ghaiService.getCurrent(),
+        rentalAnalyticsService.getRentalSummary({}),
+        pool.query(
+            `SELECT region, property_type, benchmark_cap_rate, vacancy_rate_market
+             FROM market_cap_rate_benchmarks
+             WHERE valid_until IS NULL OR valid_until >= CURRENT_DATE
+             ORDER BY region, property_type`
+        ),
+    ]);
+
+    // Log any failures for debugging
+    [priceIndex, cci, ghai, rental, capRates].forEach((r, i) => {
+        if (r.status === 'rejected') {
+            const names = ['priceIndex', 'cci', 'ghai', 'rental', 'capRates'];
+            logger.warn(`KobbyAI: Platform fetch failed for ${names[i]}`, { error: r.reason?.message });
+        }
+    });
+
+    const result: Record<string, any> = {
+        priceIndex: priceIndex.status === 'fulfilled' ? priceIndex.value : null,
+        constructionCostIndex: cci.status === 'fulfilled' ? cci.value : null,
+        housingAffordabilityIndex: ghai.status === 'fulfilled' ? ghai.value : null,
+        rentalMarket: rental.status === 'fulfilled' ? rental.value : null,
+        capRateBenchmarks: capRates.status === 'fulfilled' ? (capRates.value as any).rows : null,
+    };
+
+    // Only cache if at least some data was fetched successfully
+    const hasData = Object.values(result).some(v => v !== null);
+    if (hasData) {
+        platformCache = { data: result, expiresAt: Date.now() + PLATFORM_CACHE_TTL };
+    }
+    return result;
+}
+
+// ============================================================================
+// USER PORTFOLIO CONTEXT (org-level entity summaries)
+// ============================================================================
+
+async function fetchUserPortfolioContext(organizationId: string): Promise<Record<string, any>> {
+    try {
+        const [projects, properties, deals, valuations] = await Promise.allSettled([
+            pool.query(
+                `SELECT status, COUNT(*)::int as count, COALESCE(SUM(total_budget), 0) as total_budget
+                 FROM development_projects WHERE organization_id = $1
+                 GROUP BY status`,
+                [organizationId]
+            ),
+            pool.query(
+                `SELECT status, COUNT(*)::int as count
+                 FROM properties WHERE organization_id = $1
+                 GROUP BY status`,
+                [organizationId]
+            ),
+            pool.query(
+                `SELECT deal_status as status, COUNT(*)::int as count, COALESCE(SUM(deal_value), 0) as total_value
+                 FROM deals WHERE organization_id = $1 AND deleted_at IS NULL
+                 GROUP BY deal_status`,
+                [organizationId]
+            ),
+            pool.query(
+                `SELECT COUNT(*)::int as total,
+                        COUNT(*) FILTER (WHERE status = 'completed')::int as completed,
+                        ROUND(COALESCE(AVG(estimated_value), 0)::numeric, 2) as avg_value
+                 FROM valuations WHERE valuer_organization_id = $1`,
+                [organizationId]
+            ),
+        ]);
+
+        const projectRows = projects.status === 'fulfilled' ? projects.value.rows : [];
+        const propertyRows = properties.status === 'fulfilled' ? properties.value.rows : [];
+        const dealRows = deals.status === 'fulfilled' ? deals.value.rows : [];
+        const valRow = valuations.status === 'fulfilled' ? valuations.value.rows[0] || {} : {};
+
+        return {
+            projects: {
+                byStatus: projectRows,
+                total: projectRows.reduce((s: number, r: any) => s + r.count, 0),
+                totalBudget: projectRows.reduce((s: number, r: any) => s + parseFloat(r.total_budget || 0), 0),
+            },
+            properties: {
+                byStatus: propertyRows,
+                total: propertyRows.reduce((s: number, r: any) => s + r.count, 0),
+            },
+            deals: {
+                byStatus: dealRows,
+                total: dealRows.reduce((s: number, r: any) => s + r.count, 0),
+                totalPipelineValue: dealRows.reduce((s: number, r: any) => s + parseFloat(r.total_value || 0), 0),
+            },
+            valuations: {
+                total: valRow.total || 0,
+                completed: valRow.completed || 0,
+                avgValue: valRow.avg_value ? parseFloat(valRow.avg_value) : 0,
+            },
+        };
+    } catch (err) {
+        logger.warn('KobbyAI: Could not fetch portfolio context', { error: (err as Error).message });
+        return {};
+    }
+}
+
+// ============================================================================
 // SYSTEM PROMPT BUILDER
 // ============================================================================
 
 function buildSystemPrompt(ctx: KobbyContext): string {
-    const entitySection = JSON.stringify(ctx.entityData, null, 2);
     const chatSection = ctx.recentMessages
         .slice(-10)
         .map((m) => `[${m.time}] ${m.sender}: ${m.content}`)
         .join('\n');
 
-    return `You are Kobby AI, PROPMETRIK's embedded real estate intelligence assistant.
-You are operating inside the Workspace for:
-  Entity Type: ${ctx.entityType}
-  Entity Name: ${ctx.entityName}
-  Organization: ${ctx.organizationName}
+    // Entity-specific section (only when focused on a specific entity, not platform-wide)
+    const entitySection = ctx.entityType !== 'platform'
+        ? `\nCURRENT ENTITY FOCUS (${ctx.entityType}: "${ctx.entityName}"):\n${JSON.stringify(ctx.entityData, null, 2)}`
+        : '';
 
-LIVE ENTITY DATA:
+    // Platform-wide data (always included)
+    const platformSection = ctx.platformData
+        ? `\nPLATFORM-WIDE MARKET INTELLIGENCE:\n${JSON.stringify(ctx.platformData, null, 2)}`
+        : '';
+
+    // User's portfolio summary (always included)
+    const portfolioSection = ctx.portfolioData
+        ? `\nORGANIZATION PORTFOLIO SUMMARY:\n${JSON.stringify(ctx.portfolioData, null, 2)}`
+        : '';
+
+    return `You are Kobby AI, PROPMETRIK's embedded real estate intelligence assistant for the Ghanaian market.
+You serve the organization: ${ctx.organizationName}
+Current workspace context: ${ctx.entityType}${ctx.entityType !== 'platform' ? ` — "${ctx.entityName}"` : ' (platform-wide)'}
+${platformSection}
+${portfolioSection}
 ${entitySection}
+
+${ctx.marketData ? `MARKET PRICE INDEX:\n${JSON.stringify(ctx.marketData, null, 2)}` : ''}
 
 RECENT WORKSPACE CHAT (last 10 messages):
 ${chatSection || 'No recent messages'}
 
-${ctx.marketData ? `MARKET CONTEXT:\n${JSON.stringify(ctx.marketData, null, 2)}` : ''}
-
 RULES:
-- Focus exclusively on PROPMETRIK data for ${ctx.entityType} "${ctx.entityName}"
-- Ground every answer in the provided data. If data is missing, say so explicitly
+- You have FULL platform-wide knowledge: market indices, CAP rates, construction costs, affordability data, rental yields, and the user's entire portfolio
+- You CAN and SHOULD answer questions about any PROPMETRIK data — market analytics, CAP rates, property indices, construction costs, affordability — even if the user does not have direct access to the Analytics dashboard
+- When inside a specific entity (project/valuation/deal/property), prioritize that entity's data but freely reference platform data and the user's other entities for comparisons and insights
+- When on the platform view, answer questions about any of the user's projects, properties, deals, or valuations using the portfolio data
+- Ground every answer in the provided data. If specific data is truly not available in the context, say so explicitly
 - Be concise and actionable: use bullet points, numbers, GHS currency, dates
 - Ghana/West Africa real estate context applies to all market reasoning
 - Do NOT fabricate financial figures, valuations, or legal opinions
@@ -349,10 +484,10 @@ You MUST respond with a valid JSON object matching this exact schema:
 {
   "answer": "Your detailed markdown response here",
   "confidence": 0.95,
-  "sources": ["PROPMETRIK Database: Project", "Market Trend Report"],
-  "followUpSuggestions": ["Tell me about the budget phase", "Show me comparable properties"],
+  "sources": ["PROPMETRIK Market Intelligence", "Organization Portfolio Data"],
+  "followUpSuggestions": ["What are the CAP rates by region?", "Show me my project budgets"],
   "dataPoints": [
-    { "metric": "Total Spent", "value": "GHS 1,200,000", "source": "Project Expenses" }
+    { "metric": "CAP Rate (Greater Accra)", "value": "9.43%", "source": "Market Benchmarks" }
   ]
 }
 Do NOT wrap the response in markdown code blocks like \`\`\`json. Return JUST the raw JSON string.`;
@@ -372,13 +507,16 @@ class KobbyAIServiceImpl {
         entityType: EntityType,
         entityId: string,
         workspaceId: string,
+        organizationId: string,
         organizationName = 'PROPMETRIK Client'
     ): Promise<KobbyContext> {
-        // Fetch entity data, recent chat, and market context in parallel
-        const [entityData, messageHistory, marketData] = await Promise.allSettled([
+        // Fetch entity data, recent chat, market, platform, and portfolio context in parallel
+        const [entityData, messageHistory, marketData, platformData, portfolioData] = await Promise.allSettled([
             this.fetchEntityData(entityType, entityId),
             workspaceService.getMessages(workspaceId, undefined, 20),
             fetchMarketContext(),
+            fetchPlatformContext(),
+            organizationId ? fetchUserPortfolioContext(organizationId) : Promise.resolve({}),
         ]);
 
         const entity = entityData.status === 'fulfilled' ? entityData.value : {};
@@ -392,6 +530,8 @@ class KobbyAIServiceImpl {
                 }))
             : [];
         const market = marketData.status === 'fulfilled' ? marketData.value : undefined;
+        const platform = platformData.status === 'fulfilled' ? platformData.value : undefined;
+        const portfolio = portfolioData.status === 'fulfilled' ? portfolioData.value : undefined;
 
         // Try to extract entity name
         const entityName = this.extractEntityName(entity, entityType) || entityId.substring(0, 8);
@@ -404,6 +544,8 @@ class KobbyAIServiceImpl {
             entityData: entity,
             recentMessages: messages,
             marketData: market,
+            platformData: platform,
+            portfolioData: portfolio,
         };
     }
 

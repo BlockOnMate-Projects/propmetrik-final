@@ -46,8 +46,8 @@ export function InsightWindow({
 
         const onMouseMove = (moveEvent: MouseEvent) => {
             if (!isResizing.current) return;
-            const newWidth = Math.max(320, startWidth + (moveEvent.clientX - startX));
-            const newHeight = Math.max(200, startHeight + (moveEvent.clientY - startY));
+            const newWidth = Math.min(520, Math.max(320, startWidth + (moveEvent.clientX - startX)));
+            const newHeight = Math.min(700, Math.max(200, startHeight + (moveEvent.clientY - startY)));
             setSize({ width: newWidth, height: newHeight });
         };
 
@@ -82,8 +82,10 @@ export function InsightWindow({
             onPointerDown={() => focusWindow(id)}
             style={{
                 zIndex,
-                width: size.width,
-                height: size.height,
+                width: Math.min(size.width, window.innerWidth - 40),
+                height: Math.min(size.height, window.innerHeight - 40),
+                maxWidth: 520,
+                maxHeight: 700,
                 position: 'fixed',
                 top: pos.y,
                 left: pos.x,

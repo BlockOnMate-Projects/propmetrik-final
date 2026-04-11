@@ -62,7 +62,7 @@ export function WorkspaceWidget({
 }: WorkspaceWidgetProps) {
     const [unreadCount, setUnreadCount] = useState(0);
     const { data: session } = useSession();
-    const { openWindow } = useWindowManagerStore();
+    const { openPanel } = useWindowManagerStore();
     const resolvedToken = initialToken || ((session as any)?.accessToken ?? null);
 
     useEffect(() => {
@@ -73,8 +73,7 @@ export function WorkspaceWidget({
     }, [entityType, entityId]);
 
     const handleOpenWorkspace = () => {
-        openWindow({
-            id: `workspace-${entityType}-${entityId}`,
+        openPanel({
             type: 'workspace',
             title: entityName || 'Workspace',
             data: {
@@ -82,10 +81,8 @@ export function WorkspaceWidget({
                 entityId,
                 entityName,
                 currentUserId,
-                token: resolvedToken
+                token: resolvedToken,
             },
-            size: { width: 440, height: 600 },
-            position: { x: window.innerWidth - 460, y: 100 }
         });
         setUnreadCount(0);
     };

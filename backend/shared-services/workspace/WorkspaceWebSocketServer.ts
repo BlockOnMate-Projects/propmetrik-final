@@ -432,7 +432,8 @@ class WorkspaceWebSocketServerImpl {
             const context = await kobbyAIService.buildContext(
                 entityType,
                 entityId,
-                client.workspaceId
+                client.workspaceId,
+                client.organizationId
             );
 
             // Query Kobby AI

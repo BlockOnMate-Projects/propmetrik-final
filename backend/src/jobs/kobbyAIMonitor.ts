@@ -36,7 +36,8 @@ async function runProactiveSweep() {
                 const context = await kobbyAIService.buildContext(
                     ws.entity_type,
                     ws.entity_id,
-                    ws.id
+                    ws.id,
+                    ws.organization_id
                 );
 
                 // 2. Run the specialized anomaly detection
