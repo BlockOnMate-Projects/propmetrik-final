@@ -70,8 +70,8 @@ export function initSentry(app: Application): void {
     },
   });
 
-  // Set up Sentry request handler (must be first middleware)
-  app.use(Sentry.expressErrorHandler());
+  // Sentry error handler is installed separately via installSentryErrorHandler()
+  // after all routes are registered (see index.ts).
 
   _initialised = true;
   logger.info('Sentry error monitoring initialised', {
