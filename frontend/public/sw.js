@@ -11,10 +11,10 @@
 // Service Worker globals
 const selfSW = self;
 
-const CACHE_NAME = 'propmetrik-v2';
-const STATIC_CACHE = 'propmetrik-static-v2';
-const DYNAMIC_CACHE = 'propmetrik-dynamic-v2';
-const API_CACHE = 'propmetrik-api-v2';
+const CACHE_NAME = 'propmetrik-v3';
+const STATIC_CACHE = 'propmetrik-static-v3';
+const DYNAMIC_CACHE = 'propmetrik-dynamic-v3';
+const API_CACHE = 'propmetrik-api-v3';
 
 // Static assets to cache on install
 // NOTE: Do NOT cache auth-protected routes (e.g. /dashboard/*) here.
@@ -108,6 +108,16 @@ selfSW.addEventListener('fetch', (event) => {
     return;
   }
 
+  // Skip Next.js internals, SSE/realtime, and auth routes — let the browser handle them natively.
+  // Intercepting these causes ERR_FAILED errors and stale responses.
+  if (
+    url.pathname.startsWith('/_next/') ||
+    url.pathname.includes('/realtime/') ||
+    url.pathname.startsWith('/api/auth/')
+  ) {
+    return;
+  }
+
   // API requests - Network first, then cache
   if (url.pathname.startsWith('/api/')) {
     event.respondWith(networkFirstStrategy(request));
@@ -150,7 +160,10 @@ async function cacheFirstStrategy(request) {
       if (offlinePage) return offlinePage;
     }
 
-    return new Response('Offline', { status: 503, statusText: 'Service Unavailable' });
+    // For non-navigation requests (JS, CSS, images), propagate the network
+    // error instead of returning a synthetic 503. Returning a fake response
+    // with the wrong content-type causes cascading console errors.
+    throw error;
   }
 }
 

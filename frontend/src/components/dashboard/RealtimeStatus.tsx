@@ -24,10 +24,10 @@ interface RealtimeStatusProps {
 export function RealtimeStatus({ className, showLabel = false }: RealtimeStatusProps) {
   const { isConnected, reconnectAttempts, statusText, statusColor } = useRealtimeStatus();
 
-  const Icon = isConnected 
-    ? Wifi 
-    : reconnectAttempts > 0 
-      ? RefreshCw 
+  const Icon = isConnected
+    ? Wifi
+    : reconnectAttempts > 0
+      ? RefreshCw
       : WifiOff;
 
   const colorClasses = {

@@ -149,7 +149,7 @@ export function useRealtime(options: UseRealtimeOptions = {}): UseRealtimeReturn
     autoConnect = true,
     autoReconnect = true,
     reconnectDelay = 3000,
-    maxReconnectAttempts = 3,
+    maxReconnectAttempts = Infinity,
     handlers = {},
     onEvent,
     onConnectionChange,
@@ -217,26 +217,39 @@ export function useRealtime(options: UseRealtimeOptions = {}): UseRealtimeReturn
     }
 
     try {
-      // Build URL - baseUrl (from NEXT_PUBLIC_API_URL) already contains /api/v1
+      // Build URL - baseUrl (from NEXT_PUBLIC_API_URL) already contains /api
       // So we just append /realtime/events
       const url = new URL(`${baseUrl}/realtime/events`, window.location.origin);
 
       // EventSource cannot send Authorization headers, so pass token as query param
+      let token: string | undefined;
       try {
         const session = await getSession();
-        const token = (session as any)?.accessToken;
-        if (token) {
-          url.searchParams.set('token', token);
-        }
+        token = (session as any)?.accessToken;
       } catch {
-        // Continue without token — backend may reject with 401
+        // No session available
       }
-      
+
+      if (!token) {
+        // No token — SSE endpoint requires auth, schedule retry after session loads
+        if (autoReconnect && reconnectAttemptsRef.current < maxReconnectAttempts) {
+          reconnectAttemptsRef.current += 1;
+          setReconnectAttempts(reconnectAttemptsRef.current);
+          const delay = Math.min(reconnectDelay * Math.pow(2, reconnectAttemptsRef.current - 1), 30000);
+          reconnectTimeoutRef.current = setTimeout(() => {
+            connectRef.current?.();
+          }, delay);
+        }
+        return;
+      }
+
+      url.searchParams.set('token', token);
+
       // Create EventSource
       const eventSource = new EventSource(url.toString(), {
         withCredentials: true,
       });
-      
+
       eventSourceRef.current = eventSource;
 
       // Handle open
@@ -255,13 +268,13 @@ export function useRealtime(options: UseRealtimeOptions = {}): UseRealtimeReturn
       eventSource.onerror = () => {
         // Only log warning once to avoid console spam
         if (!hasLoggedWarningRef.current) {
-          console.warn('SSE connection unavailable - realtime features disabled');
+          console.warn('SSE connection error — will retry');
           hasLoggedWarningRef.current = true;
         }
-        
+
         setIsConnected(false);
         onConnectionChangeRef.current?.(false);
-        
+
         eventSource.close();
         eventSourceRef.current = null;
 
@@ -273,9 +286,9 @@ export function useRealtime(options: UseRealtimeOptions = {}): UseRealtimeReturn
             type: RealtimeEventType.RECONNECTING,
             payload: { attempt: reconnectAttemptsRef.current },
           });
-          
-          // Exponential backoff: 3s, 6s, 12s, ...
-          const delay = reconnectDelay * Math.pow(2, reconnectAttemptsRef.current - 1);
+
+          // Exponential backoff: 3s, 6s, 12s, 24s … capped at 30s
+          const delay = Math.min(reconnectDelay * Math.pow(2, reconnectAttemptsRef.current - 1), 30000);
           reconnectTimeoutRef.current = setTimeout(() => {
             connectRef.current?.();
           }, delay);
