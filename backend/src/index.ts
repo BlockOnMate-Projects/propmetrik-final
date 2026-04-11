@@ -143,8 +143,15 @@ app.use(cors({
   exposedHeaders: ['X-Request-ID', 'X-RateLimit-Limit', 'X-RateLimit-Remaining'],
 }));
 
-// Compression
-app.use(compression());
+// Compression — exclude SSE endpoints (compression breaks EventSource streaming)
+app.use(compression({
+  filter: (req, res) => {
+    if (req.path.startsWith('/api/v1/realtime') || req.path.startsWith('/api/realtime')) {
+      return false;
+    }
+    return compression.filter(req, res);
+  },
+}));
 
 // Body parsing
 app.use(express.json({ limit: '10mb' }));
@@ -904,6 +911,13 @@ const MAX_RETRIES = 5;
 
 const server = app.listen(config.port, async () => {
   retryCount = 0; // reset on successful listen
+
+  // Allow long-lived SSE connections — default Node.js timeouts (60s headers,
+  // 120s request) kill SSE streams before heartbeats can keep them alive.
+  server.headersTimeout = 0;   // No timeout on header reception
+  server.requestTimeout = 0;   // No timeout on request duration (SSE is indefinite)
+  server.keepAliveTimeout = 65000; // Slightly above typical proxy keep-alive (60s)
+
   await bootstrap();
   // Start Kobby AI Proactive Monitor
   initKobbyMonitor();

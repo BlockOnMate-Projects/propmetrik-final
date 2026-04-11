@@ -10,7 +10,20 @@ export default function Error({
   error: Error & { digest?: string }
   reset: () => void
 }) {
-  useEffect(() => { console.error(error) }, [error])
+  useEffect(() => {
+    // ChunkLoadError: stale service worker served wrong content for a JS chunk.
+    // Auto-reload once to fetch fresh chunks from the server.
+    if (error.name === 'ChunkLoadError' || error.message?.includes('Loading chunk')) {
+      const key = 'chunk-retry-' + window.location.pathname;
+      if (!sessionStorage.getItem(key)) {
+        sessionStorage.setItem(key, '1');
+        window.location.reload();
+        return;
+      }
+      sessionStorage.removeItem(key);
+    }
+    console.error(error);
+  }, [error])
 
   return (
     <div className="min-h-[60vh] flex flex-col items-center justify-center p-8 font-mono">

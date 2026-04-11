@@ -12,7 +12,15 @@ export default function Error({
   reset: () => void;
 }) {
   useEffect(() => {
-    // Log the error to an error reporting service
+    if (error.name === 'ChunkLoadError' || error.message?.includes('Loading chunk')) {
+      const key = 'chunk-retry-' + window.location.pathname;
+      if (!sessionStorage.getItem(key)) {
+        sessionStorage.setItem(key, '1');
+        window.location.reload();
+        return;
+      }
+      sessionStorage.removeItem(key);
+    }
     console.error(error);
   }, [error]);
 
