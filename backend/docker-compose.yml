@@ -24,6 +24,7 @@ services:
       - NODE_ENV=${NODE_ENV:-production}
       - PORT=3000
       - ML_SERVING_URL=http://ml-serving:8000
+      - PYTHON_VALUATION_URL=http://valuation-engine:8001
       - ONLYOFFICE_INTERNAL_URL=http://onlyoffice:80
       - SCRAPY_WORKER_URL=http://scrapy-worker:5000
     env_file:
@@ -31,6 +32,8 @@ services:
     restart: unless-stopped
     depends_on:
       ml-serving:
+        condition: service_started
+      valuation-engine:
         condition: service_started
     networks:
       - propmetrik-network
@@ -83,6 +86,42 @@ services:
       timeout: 15s
       retries: 5
       start_period: 180s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "5"
+
+  # ============================================
+  # Python Valuation Engine Service (FastAPI)
+  # ============================================
+  valuation-engine:
+    build:
+      context: ./src/services/valuation-engine/python
+      dockerfile: Dockerfile
+    container_name: propmetrik-valuation-engine
+    environment:
+      - API_PORT=8001
+      - ML_SERVING_URL=http://ml-serving:8000
+    env_file:
+      - .env
+    restart: unless-stopped
+    depends_on:
+      ml-serving:
+        condition: service_started
+    networks:
+      - propmetrik-network
+    deploy:
+      resources:
+        limits:
+          cpus: '${VALUATION_ENGINE_CPU_LIMIT:-1.0}'
+          memory: ${VALUATION_ENGINE_MEMORY_LIMIT:-2G}
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8001/health"]
+      interval: 30s
+      timeout: 15s
+      retries: 5
+      start_period: 60s
     logging:
       driver: "json-file"
       options:
