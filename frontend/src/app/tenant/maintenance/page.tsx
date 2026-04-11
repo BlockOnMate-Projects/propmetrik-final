@@ -210,7 +210,7 @@ export default function MaintenanceListPage() {
                               {request.priority} priority
                             </span>
                             <span className="text-sm text-gray-400">
-                              {new Date(request.createdAt || request.created_at).toLocaleDateString()}
+                              {new Date(request.createdAt || request.created_at).toLocaleDateString('en-GB')}
                             </span>
                           </div>
                           {request.description && (

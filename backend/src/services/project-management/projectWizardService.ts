@@ -259,7 +259,7 @@ class ProjectWizardService extends BaseService {
     const id = uuidv4();
     
     // Generate draft name if not provided
-    const draftName = input.draft_name || `New Project ${new Date().toLocaleDateString()}`;
+    const draftName = input.draft_name || `New Project ${new Date().toLocaleDateString('en-GB')}`;
     
     // Initialize step data
     let stepData: StepData = {};

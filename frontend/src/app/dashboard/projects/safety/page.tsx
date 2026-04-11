@@ -202,7 +202,7 @@ export default function SafetyPage() {
                       <Badge className={STATUS_COLORS[inc.status] || ''}>{inc.status?.replace(/_/g, ' ')}</Badge>
                     </div>
                     <p className="text-sm text-white font-medium">{inc.title}</p>
-                    <p className="text-xs text-zinc-500">{inc.location} • {new Date(inc.incident_date).toLocaleDateString()} • Type: {inc.incident_type?.replace(/_/g, ' ')}</p>
+                    <p className="text-xs text-zinc-500">{inc.location} • {new Date(inc.incident_date).toLocaleDateString('en-GB')} • Type: {inc.incident_type?.replace(/_/g, ' ')}</p>
                   </div>
                   <div className="flex items-center gap-1">
                     {inc.osha_recordable && <Badge className="bg-red-500/20 text-red-400">OSHA</Badge>}
@@ -230,7 +230,7 @@ export default function SafetyPage() {
                         <Badge variant="outline" className="border-zinc-700 text-zinc-400">{obs.category?.replace(/_/g, ' ')}</Badge>
                       </div>
                       <p className="text-sm text-white">{obs.description}</p>
-                      <p className="text-xs text-zinc-500 mt-1">{obs.location} • {new Date(obs.created_at).toLocaleDateString()}</p>
+                      <p className="text-xs text-zinc-500 mt-1">{obs.location} • {new Date(obs.created_at).toLocaleDateString('en-GB')}</p>
                     </div>
                     <div className="flex items-center gap-1 ml-2">
                       <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-zinc-400 hover:text-white" onClick={() => openEditObservation(obs)}><Pencil className="h-3.5 w-3.5" /></Button>
@@ -255,7 +255,7 @@ export default function SafetyPage() {
                       <Badge className={STATUS_COLORS[ins.status] || ''}>{ins.status}</Badge>
                       <Badge variant="outline" className="border-zinc-700 text-zinc-400">{ins.inspection_type?.replace(/_/g, ' ')}</Badge>
                     </div>
-                    <p className="text-xs text-zinc-500">{new Date(ins.inspection_date).toLocaleDateString()} • Inspector: {ins.inspector_name || 'Unassigned'}</p>
+                    <p className="text-xs text-zinc-500">{new Date(ins.inspection_date).toLocaleDateString('en-GB')} • Inspector: {ins.inspector_name || 'Unassigned'}</p>
                   </div>
                   <div className="flex items-center gap-1">
                     {ins.score !== null && ins.score !== undefined && (

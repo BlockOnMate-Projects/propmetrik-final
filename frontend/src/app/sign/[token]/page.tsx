@@ -225,7 +225,7 @@ export default function SigningPage() {
     let value = "";
     switch (field.type) {
       case "date_signed":
-        value = new Date().toLocaleDateString();
+        value = new Date().toLocaleDateString('en-GB');
         break;
       case "name":
         value = signer.name;

@@ -648,7 +648,7 @@ export default function ProjectProcurementPage() {
                           {order.lineItems?.length || 0} items
                         </span>
                         <span className="text-zinc-500">
-                          {new Date(order.createdAt).toLocaleDateString()}
+                          {new Date(order.createdAt).toLocaleDateString('en-GB')}
                         </span>
                       </div>
                     </div>
@@ -815,7 +815,7 @@ export default function ProjectProcurementPage() {
 
               <div>
                 <h4 className="text-xs font-medium text-zinc-500 uppercase tracking-wider mb-2">Created</h4>
-                <p className="text-white">{new Date(selectedOrder.createdAt).toLocaleDateString()}</p>
+                <p className="text-white">{new Date(selectedOrder.createdAt).toLocaleDateString('en-GB')}</p>
               </div>
 
               {selectedOrder.status === 'draft' && (

@@ -532,7 +532,7 @@ export default function ConstructionAnalyticsPage() {
                   <div className="font-mono text-[10px] text-zinc-400 mt-0.5">{alert.message}</div>
                 </div>
                 <span className="font-mono text-[9px] text-zinc-600 shrink-0">
-                  {new Date(alert.created_at).toLocaleDateString()}
+                  {new Date(alert.created_at).toLocaleDateString('en-GB')}
                 </span>
               </div>
             ))}

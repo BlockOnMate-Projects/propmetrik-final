@@ -478,7 +478,7 @@ export class TenancyService {
         // Create envelope via e-sign integration service
         const envelope = await eSignIntegrationService.createEnvelope({
             subject: `Lease Agreement - ${fullTenancy.property.title}`,
-            message: `Please sign the lease agreement for ${fullTenancy.property.addressStreet || fullTenancy.property.address}. This lease is effective from ${new Date(fullTenancy.leaseStartDate).toLocaleDateString()} to ${new Date(fullTenancy.leaseEndDate).toLocaleDateString()}.`,
+            message: `Please sign the lease agreement for ${fullTenancy.property.addressStreet || fullTenancy.property.address}. This lease is effective from ${new Date(fullTenancy.leaseStartDate).toLocaleDateString('en-GB')} to ${new Date(fullTenancy.leaseEndDate).toLocaleDateString('en-GB')}.`,
             documents: [{
                 name: leaseDoc.filename,
                 content: pdfBuffer,

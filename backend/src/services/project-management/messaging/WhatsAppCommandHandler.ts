@@ -287,7 +287,7 @@ class WhatsAppCommandHandlerImpl extends BaseService {
     for (const sub of result.rows) {
       message += `📑 #${sub.submittal_number}: ${sub.title}\n`;
       message += `  📁 ${sub.project_name}\n`;
-      message += `  📅 Review due: ${new Date(sub.review_due_date).toLocaleDateString()}\n\n`;
+      message += `  📅 Review due: ${new Date(sub.review_due_date).toLocaleDateString('en-GB')}\n\n`;
     }
 
     return { success: true, message };
@@ -315,7 +315,7 @@ class WhatsAppCommandHandlerImpl extends BaseService {
     for (const del of result.rows) {
       message += `📦 ${del.description}\n`;
       message += `  🚛 ${del.supplier_name}\n`;
-      message += `  📅 ${new Date(del.scheduled_date).toLocaleDateString()}\n\n`;
+      message += `  📅 ${new Date(del.scheduled_date).toLocaleDateString('en-GB')}\n\n`;
     }
 
     return { success: true, message };

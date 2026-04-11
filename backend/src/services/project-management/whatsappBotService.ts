@@ -1546,7 +1546,7 @@ class WhatsAppPMBotService {
           projectId: row.project_id,
           projectName: row.project_name,
           data: {
-            date: new Date().toLocaleDateString()
+            date: new Date().toLocaleDateString('en-GB')
           },
           requiresResponse: true
         });

@@ -349,7 +349,7 @@ function PaymentsContent() {
                   <tbody className="divide-y divide-gray-50">
                     {history.map(payment => (
                       <tr key={payment.id} className="hover:bg-gray-50/50">
-                        <td className="px-6 py-3.5 text-sm text-gray-900">{new Date(payment.paymentDate).toLocaleDateString()}</td>
+                        <td className="px-6 py-3.5 text-sm text-gray-900">{new Date(payment.paymentDate).toLocaleDateString('en-GB')}</td>
                         <td className="px-6 py-3.5 text-sm font-semibold text-gray-900">{currency} {payment.paymentAmount.toLocaleString()}</td>
                         <td className="px-6 py-3.5 text-sm text-gray-600">{payment.paymentMethod}</td>
                         <td className="px-6 py-3.5 text-sm text-gray-500 font-mono text-xs">{payment.reference}</td>
@@ -383,7 +383,7 @@ function PaymentsContent() {
                       }`}>{payment.status}</span>
                     </div>
                     <p className="text-xs text-gray-500 mt-1">
-                      {new Date(payment.paymentDate).toLocaleDateString()} • {payment.paymentMethod}
+                      {new Date(payment.paymentDate).toLocaleDateString('en-GB')} • {payment.paymentMethod}
                     </p>
                   </div>
                 ))}

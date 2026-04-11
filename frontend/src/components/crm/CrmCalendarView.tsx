@@ -155,7 +155,7 @@ export function CrmCalendarView({ className }: CrmCalendarViewProps) {
         else setMonth(m => m + 1);
     }, [month]);
 
-    const monthLabel = new Date(year, month).toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+    const monthLabel = new Date(year, month).toLocaleDateString('en-GB', { month: 'long', year: 'numeric' });
 
     return (
         <div className={cn('space-y-4', className)}>
@@ -258,7 +258,7 @@ export function CrmCalendarView({ className }: CrmCalendarViewProps) {
             {selectedDate && (
                 <div className="rounded-xl border border-border bg-card p-4">
                     <h3 className="font-medium text-sm mb-3">
-                        {new Date(selectedDate + 'T00:00:00').toLocaleDateString('en-US', {
+                        {new Date(selectedDate + 'T00:00:00').toLocaleDateString('en-GB', {
                             weekday: 'long', month: 'long', day: 'numeric',
                         })}
                     </h3>

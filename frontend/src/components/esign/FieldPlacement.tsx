@@ -131,7 +131,7 @@ export default function FieldPlacement({
         storeLocalValue(field.id, initials, sd);
         onFieldSigned?.(field.id, sd, initials);
       } else if (field.type === "date_signed") {
-        const val = new Date().toLocaleDateString("en-US", { month: "numeric", day: "numeric", year: "numeric" });
+        const val = new Date().toLocaleDateString('en-GB', { month: "numeric", day: "numeric", year: "numeric" });
         const img = generateTextAsImage(val, { fontSize: 14, width: 120, height: 30 });
         const sd: SignatureData = { type: "typed", data: img };
         storeLocalValue(field.id, val, sd);

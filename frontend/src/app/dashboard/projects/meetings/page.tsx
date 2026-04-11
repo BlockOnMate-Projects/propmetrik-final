@@ -226,7 +226,7 @@ export default function MeetingsPage() {
                   <TableCell className="font-mono text-xs text-amber-500">{m.meeting_number}</TableCell>
                   <TableCell className="text-sm text-white max-w-[200px] truncate">{m.title}</TableCell>
                   <TableCell><Badge variant="outline" className={typeColors[m.meeting_type] || typeColors.other}>{m.meeting_type}</Badge></TableCell>
-                  <TableCell className="text-xs text-zinc-400">{new Date(m.meeting_date).toLocaleDateString()}</TableCell>
+                  <TableCell className="text-xs text-zinc-400">{new Date(m.meeting_date).toLocaleDateString('en-GB')}</TableCell>
                   <TableCell><Badge variant="outline" className={statusColors[m.status] || 'border-zinc-700'}>{m.status.replace('_', ' ')}</Badge></TableCell>
                   <TableCell className="text-xs text-zinc-400"><Users className="h-3 w-3 inline mr-1" />{m.attendee_count || 0}</TableCell>
                   <TableCell className="text-xs text-zinc-400"><CheckCircle className="h-3 w-3 inline mr-1" />{m.completed_actions || 0}/{m.action_item_count || 0}</TableCell>
@@ -319,7 +319,7 @@ export default function MeetingsPage() {
               <div className="flex gap-2 flex-wrap">
                 <Badge variant="outline" className={typeColors[selectedMeeting.meeting_type] || typeColors.other}>{selectedMeeting.meeting_type}</Badge>
                 <Badge variant="outline" className={statusColors[selectedMeeting.status] || 'border-zinc-700'}>{selectedMeeting.status.replace('_', ' ')}</Badge>
-                <Badge variant="outline" className="border-zinc-700">{new Date(selectedMeeting.meeting_date).toLocaleDateString()}</Badge>
+                <Badge variant="outline" className="border-zinc-700">{new Date(selectedMeeting.meeting_date).toLocaleDateString('en-GB')}</Badge>
                 {selectedMeeting.start_time && <Badge variant="outline" className="border-zinc-700"><Clock className="h-3 w-3 mr-1" />{selectedMeeting.start_time}{selectedMeeting.end_time ? ` - ${selectedMeeting.end_time}` : ''}</Badge>}
                 {selectedMeeting.location && <Badge variant="outline" className="border-zinc-700">{selectedMeeting.location}</Badge>}
               </div>
@@ -356,7 +356,7 @@ export default function MeetingsPage() {
                         <p className="text-sm text-white">{ai.description}</p>
                         <div className="flex gap-2 mt-1">
                           {ai.assigned_to && <span className="text-xs text-zinc-500">→ {ai.assigned_to}</span>}
-                          {ai.due_date && <span className="text-xs text-zinc-500">Due: {new Date(ai.due_date).toLocaleDateString()}</span>}
+                          {ai.due_date && <span className="text-xs text-zinc-500">Due: {new Date(ai.due_date).toLocaleDateString('en-GB')}</span>}
                           <Badge variant="outline" className={actionStatusColors[ai.status] || 'border-zinc-700'} >{ai.status}</Badge>
                         </div>
                       </div>

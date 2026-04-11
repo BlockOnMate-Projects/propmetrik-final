@@ -121,7 +121,7 @@ class ChecklistInspectionServiceImpl extends BaseService {
     }
 
     const template = templateResult.rows[0];
-    const title = input.title || `${template.name} - ${new Date().toLocaleDateString()}`;
+    const title = input.title || `${template.name} - ${new Date().toLocaleDateString('en-GB')}`;
 
     const result = await this.query(
       `INSERT INTO qc_checklist_instances (

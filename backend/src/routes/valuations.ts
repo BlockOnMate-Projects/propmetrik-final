@@ -2816,7 +2816,7 @@ router.get('/:id/report', validateUUID('id'), async (req: Request, res: Response
 router.get('/market/:region', async (req: Request, res: Response) => {
   try {
     const { region } = req.params;
-    const propertyType = req.query.propertyType as string || 'house';
+    const propertyType = (req.query.propertyType as string) || (req.query.property_type as string) || 'house';
 
     // Validate region
     const validRegions: RegionCode[] = [

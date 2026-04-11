@@ -382,7 +382,7 @@ export default function ContactDetailPage() {
                                                     {activity.activity_type?.replace(/_/g, ' ')}
                                                 </p>
                                                 <p className="font-mono text-[10px] text-muted-foreground">
-                                                    {new Date(activity.created_at).toLocaleDateString()}
+                                                    {new Date(activity.created_at).toLocaleDateString('en-GB')}
                                                 </p>
                                             </div>
                                         </div>
@@ -397,20 +397,20 @@ export default function ContactDetailPage() {
                                 <div className="flex justify-between">
                                     <span className="font-mono text-[10px] text-muted-foreground">Created</span>
                                     <span className="font-mono text-[10px] text-muted-foreground">
-                                        {new Date(contact.created_at).toLocaleDateString()}
+                                        {new Date(contact.created_at).toLocaleDateString('en-GB')}
                                     </span>
                                 </div>
                                 <div className="flex justify-between">
                                     <span className="font-mono text-[10px] text-muted-foreground">Updated</span>
                                     <span className="font-mono text-[10px] text-muted-foreground">
-                                        {new Date(contact.updated_at).toLocaleDateString()}
+                                        {new Date(contact.updated_at).toLocaleDateString('en-GB')}
                                     </span>
                                 </div>
                                 {contact.last_contacted_at && (
                                     <div className="flex justify-between">
                                         <span className="font-mono text-[10px] text-muted-foreground">Last Contacted</span>
                                         <span className="font-mono text-[10px] text-muted-foreground">
-                                            {new Date(contact.last_contacted_at).toLocaleDateString()}
+                                            {new Date(contact.last_contacted_at).toLocaleDateString('en-GB')}
                                         </span>
                                     </div>
                                 )}

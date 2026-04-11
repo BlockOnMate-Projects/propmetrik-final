@@ -1902,7 +1902,7 @@ export default function IncomeApproachPage() {
                       </div>
                       {economicData.lastUpdated && (
                         <div className="font-mono text-[8px] text-zinc-600 mt-2">
-                          Economic data as of: {new Date(economicData.lastUpdated).toLocaleDateString()}
+                          Economic data as of: {new Date(economicData.lastUpdated).toLocaleDateString('en-GB')}
                         </div>
                       )}
                     </div>

@@ -160,7 +160,7 @@ export default function ESignDashboard() {
     return <Badge className={s.cls}>{s.label}</Badge>;
   };
 
-  const fmtDate = (d: string) => d ? new Date(d).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : "—";
+  const fmtDate = (d: string) => d ? new Date(d).toLocaleDateString('en-GB', { month: "short", day: "numeric", year: "numeric" }) : "—";
 
   if (loading) return (
     <div className="flex items-center justify-center h-96">

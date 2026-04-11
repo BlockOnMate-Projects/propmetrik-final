@@ -967,7 +967,7 @@ export default function PropertyDetailPage() {
                             <CardHeader className="pb-2">
                                 <CardTitle className="text-sm font-mono text-primary uppercase">Financial Intelligence Summary</CardTitle>
                                 <CardDescription className="text-[10px] font-mono text-muted-foreground uppercase">
-                                    Computed as of {financialSummary.asOfDate ? new Date(financialSummary.asOfDate).toLocaleDateString() : 'today'} · {financialSummary.currency || 'GHS'}
+                                    Computed as of {financialSummary.asOfDate ? new Date(financialSummary.asOfDate).toLocaleDateString('en-GB') : 'today'} · {financialSummary.currency || 'GHS'}
                                 </CardDescription>
                             </CardHeader>
                             <CardContent>

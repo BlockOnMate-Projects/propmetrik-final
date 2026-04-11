@@ -111,7 +111,7 @@ class ReportManagementServiceImpl extends BaseService {
         const signingResult = await this.signingService.createSigningRequest({
           documentUrl: fileUrl,
           title: `Compliance Report - ${reportData.project.name}`,
-          description: `Compliance status report generated on ${new Date().toLocaleDateString()}`,
+          description: `Compliance status report generated on ${new Date().toLocaleDateString('en-GB')}`,
           signees: input.signees.map((s, i) => ({
             name: s.name!,
             email: s.email!,

@@ -8,7 +8,7 @@ import Link from 'next/link';
 // Types
 // ============================================================
 
-type ServiceCategory = 'full_platform' | 'property_management' | 'crm' | 'data_intelligence' | 'project_management';
+type ServiceCategory = 'full_platform' | 'valuation_services' | 'property_management' | 'crm' | 'data_intelligence' | 'project_management';
 type Segment = 'all' | 'b2c' | 'b2b';
 type BillingInterval = 'monthly' | 'annual';
 
@@ -46,6 +46,10 @@ const CATEGORY_META: Record<ServiceCategory, { label: string; description: strin
         label: 'Full Platform',
         description: 'Complete real estate management suite — valuations, PM, CRM, data & more.',
     },
+    valuation_services: {
+        label: 'Valuation Services',
+        description: 'Professional property valuations with automated reports, compliance tools, and market analytics.',
+    },
     property_management: {
         label: 'Property Management',
         description: 'End-to-end property management with tenant portals and automated workflows.',
@@ -65,193 +69,8 @@ const CATEGORY_META: Record<ServiceCategory, { label: string; description: strin
 };
 
 const CATEGORIES: ServiceCategory[] = [
-    'full_platform', 'property_management', 'crm', 'data_intelligence', 'project_management',
+    'full_platform', 'valuation_services', 'property_management', 'crm', 'data_intelligence', 'project_management',
 ];
-
-// ============================================================
-// Static Fallback Data (used when API is not yet populated)
-// ============================================================
-
-const staticPricingData: Record<ServiceCategory, PlanData[]> = {
-    full_platform: [
-        {
-            id: '1', slug: 'full-platform-core', name: 'Core', category: 'full_platform',
-            tier: 'starter', segment: 'b2c',
-            price_monthly_ghs: 390, price_annual_ghs: 3900,
-            target_audience: 'Starters & Individuals',
-            features: [
-                'Access to public listings', 'Basic Valuation (limited)', 'Standard Market Reports',
-                'Email Support', '1 User Seat', 'Up to 50 properties',
-            ],
-            cta_text: 'Start Free Trial', is_featured: false, max_users: 1,
-        },
-        {
-            id: '2', slug: 'full-platform-pro', name: 'Pro', category: 'full_platform',
-            tier: 'professional', segment: 'b2b',
-            price_monthly_ghs: 975, price_annual_ghs: 9750,
-            target_audience: 'Agencies & Developers',
-            features: [
-                'All Core Features', 'Unlimited Valuations', 'Historical Transaction Data',
-                'CRM & Deal Management', 'Property Management', 'Priority Support', 'Up to 10 User Seats',
-            ],
-            cta_text: 'Get Started', is_featured: true, max_users: 10,
-        },
-        {
-            id: '3', slug: 'full-platform-enterprise', name: 'Enterprise', category: 'full_platform',
-            tier: 'enterprise', segment: 'b2b',
-            price_monthly_ghs: 3250, price_annual_ghs: 32500,
-            target_audience: 'Banks & Institutions',
-            features: [
-                'Full API Access (100k calls)', 'Portfolio Analysis Tools', 'Risk & Compliance Modules',
-                'Custom Reporting', 'Dedicated Account Manager', 'Unlimited Seats',
-                'Project Management', 'White-label Options', 'SLA Guarantee',
-            ],
-            cta_text: 'Contact Sales', is_featured: false, max_users: undefined,
-        },
-    ],
-    property_management: [
-        {
-            id: '4', slug: 'pm-basic', name: 'Basic', category: 'property_management',
-            tier: 'starter', segment: 'b2c',
-            price_monthly_ghs: 390, price_annual_ghs: 3900,
-            target_audience: 'Small Portfolios',
-            features: [
-                'Up to 100 Properties', 'Tenant Portal', 'Maintenance Tracking',
-                'Basic Accounting', 'Lease Management',
-            ],
-            cta_text: 'Start Basic', is_featured: false, max_properties: 100,
-        },
-        {
-            id: '5', slug: 'pm-premium', name: 'Premium', category: 'property_management',
-            tier: 'professional', segment: 'b2b',
-            price_monthly_ghs: 780, price_annual_ghs: 7800,
-            target_audience: 'Property Managers',
-            features: [
-                'Up to 500 Properties', 'Vendor Management', 'Automated Invoicing',
-                'Owner Portals', 'Vacancy Marketing', 'Multi-user Roles',
-            ],
-            cta_text: 'Go Premium', is_featured: true, max_properties: 500,
-        },
-        {
-            id: '6', slug: 'pm-enterprise', name: 'Enterprise', category: 'property_management',
-            tier: 'enterprise', segment: 'b2b',
-            price_monthly_ghs: 1560, price_annual_ghs: 15600,
-            target_audience: 'Large Corporations',
-            features: [
-                'Unlimited Properties', 'Custom Workflows', 'API Integration',
-                'Dedicated Support', 'Advanced Analytics', 'Compliance Tools',
-            ],
-            cta_text: 'Contact Sales', is_featured: false,
-        },
-    ],
-    crm: [
-        {
-            id: '7', slug: 'crm-starter', name: 'Starter', category: 'crm',
-            tier: 'starter', segment: 'b2c',
-            price_monthly_ghs: 325, price_annual_ghs: 3250,
-            target_audience: 'Solo Agents',
-            features: [
-                'Up to 5 Users', 'Lead Pipeline', 'Contact Management',
-                'Task & Calendar Sync', 'Mobile App Access',
-            ],
-            cta_text: 'Start CRM', is_featured: false, max_users: 5,
-        },
-        {
-            id: '8', slug: 'crm-professional', name: 'Professional', category: 'crm',
-            tier: 'professional', segment: 'b2b',
-            price_monthly_ghs: 650, price_annual_ghs: 6500,
-            target_audience: 'Growing Teams',
-            features: [
-                'Up to 20 Users', 'Team Performance Reports', 'Document Generation',
-                'E-Signature Integration', 'Email Campaigns', 'Deal Analytics',
-            ],
-            cta_text: 'Upgrade Team', is_featured: true, max_users: 20,
-        },
-        {
-            id: '9', slug: 'crm-enterprise', name: 'Enterprise', category: 'crm',
-            tier: 'enterprise', segment: 'b2b',
-            price_monthly_ghs: 1300, price_annual_ghs: 13000,
-            target_audience: 'Brokerages',
-            features: [
-                'Unlimited Users', 'Advanced Permissions', 'Commission Tracking',
-                'Territory Management', 'API Access', 'Custom Integrations',
-            ],
-            cta_text: 'Contact Sales', is_featured: false,
-        },
-    ],
-    data_intelligence: [
-        {
-            id: '10', slug: 'data-developer', name: 'Developer', category: 'data_intelligence',
-            tier: 'starter', segment: 'b2c',
-            price_monthly_ghs: 260, price_annual_ghs: 2600,
-            target_audience: 'App Builders',
-            features: [
-                '1,000 API Calls/mo', 'Standard Endpoints', 'Weekly Data Updates',
-                'Community Support', 'Sandbox Access',
-            ],
-            cta_text: 'Get API Key', is_featured: false, max_api_calls_monthly: 1000,
-        },
-        {
-            id: '11', slug: 'data-business', name: 'Business', category: 'data_intelligence',
-            tier: 'professional', segment: 'b2b',
-            price_monthly_ghs: 650, price_annual_ghs: 6500,
-            target_audience: 'PropTech Startups',
-            features: [
-                '10,000 API Calls/mo', 'Advanced Filtering', 'Daily Data Updates',
-                'Priority Support', 'Increased Rate Limits', 'Webhooks',
-            ],
-            cta_text: 'Scale Up', is_featured: true, max_api_calls_monthly: 10000,
-        },
-        {
-            id: '12', slug: 'data-enterprise', name: 'Enterprise', category: 'data_intelligence',
-            tier: 'enterprise', segment: 'b2b',
-            price_monthly_ghs: 1950, price_annual_ghs: 19500,
-            target_audience: 'Data Aggregators',
-            features: [
-                '100,000 API Calls/mo', 'Full Database Access', 'Real-time Webhooks',
-                'SLA Guarantee', 'Dedicated Solutions Engineer', 'Custom Data Feeds',
-            ],
-            cta_text: 'Talk to Sales', is_featured: false, max_api_calls_monthly: 100000,
-        },
-    ],
-    project_management: [
-        {
-            id: '13', slug: 'proj-starter', name: 'Starter', category: 'project_management',
-            tier: 'starter', segment: 'b2c',
-            price_monthly_ghs: 325, price_annual_ghs: 3250,
-            target_audience: 'Small Developers',
-            features: [
-                'Up to 5 Active Projects', 'Task & Milestone Tracking', 'Budget Management',
-                'Document Storage (5 GB)', 'Basic Gantt Charts', 'Email Notifications',
-            ],
-            cta_text: 'Start Projects', is_featured: false, max_projects: 5,
-        },
-        {
-            id: '14', slug: 'proj-professional', name: 'Professional', category: 'project_management',
-            tier: 'professional', segment: 'b2b',
-            price_monthly_ghs: 650, price_annual_ghs: 6500,
-            target_audience: 'Construction Firms',
-            features: [
-                'Up to 25 Active Projects', 'Resource Allocation', 'Contractor Management',
-                'Financial Forecasting', 'Document Storage (25 GB)', 'Progress Dashboards',
-                'Team Collaboration', 'Inspection Tracking',
-            ],
-            cta_text: 'Go Professional', is_featured: true, max_projects: 25,
-        },
-        {
-            id: '15', slug: 'proj-enterprise', name: 'Enterprise', category: 'project_management',
-            tier: 'enterprise', segment: 'b2b',
-            price_monthly_ghs: 1300, price_annual_ghs: 13000,
-            target_audience: 'Large Developers & Govt',
-            features: [
-                'Unlimited Projects', 'Portfolio-level Analytics', 'Multi-site Management',
-                'Compliance & Audit Trail', 'Custom Workflows', 'API Integration',
-                'Unlimited Storage', 'Dedicated Support',
-            ],
-            cta_text: 'Contact Sales', is_featured: false,
-        },
-    ],
-};
 
 // ============================================================
 // Component
@@ -261,8 +80,9 @@ export default function PricingPage() {
     const [category, setCategory] = useState<ServiceCategory>('full_platform');
     const [segment, setSegment] = useState<Segment>('all');
     const [billing, setBilling] = useState<BillingInterval>('monthly');
-    const [plans, setPlans] = useState<Record<string, PlanData[]>>(staticPricingData);
+    const [plans, setPlans] = useState<Record<string, PlanData[]>>({});
     const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(false);
 
     // Fetch plans from API
     useEffect(() => {
@@ -273,10 +93,14 @@ export default function PricingPage() {
                     const data = await res.json();
                     if (data.grouped && Object.keys(data.grouped).length > 0) {
                         setPlans(data.grouped);
+                    } else {
+                        setError(true);
                     }
+                } else {
+                    setError(true);
                 }
             } catch {
-                // Use static fallback silently
+                setError(true);
             } finally {
                 setLoading(false);
             }
@@ -407,7 +231,15 @@ export default function PricingPage() {
                         transition={{ duration: 0.2 }}
                         className="grid md:grid-cols-3 gap-6 max-w-5xl mx-auto"
                     >
-                        {filteredPlans.map((plan, idx) => {
+                        {loading ? (
+                            Array.from({ length: 3 }).map((_, i) => (
+                                <div key={i} className="rounded-2xl bg-zinc-900/50 border border-zinc-800 p-6 animate-pulse h-96" />
+                            ))
+                        ) : error || filteredPlans.length === 0 ? (
+                            <div className="col-span-3 text-center py-16">
+                                <p className="text-zinc-400 font-mono">Unable to load pricing. Please try again later.</p>
+                            </div>
+                        ) : filteredPlans.map((plan, idx) => {
                             const price = getPrice(plan);
                             const savings = getAnnualSavings(plan);
                             const isHighlighted = plan.is_featured;
@@ -503,6 +335,11 @@ export default function PricingPage() {
                                                     {(plan.max_api_calls_monthly / 1000).toFixed(0)}k API calls
                                                 </span>
                                             )}
+                                            {plan.max_valuations_monthly && (
+                                                <span className="text-[10px] font-mono bg-zinc-800 text-zinc-400 px-2 py-0.5 rounded">
+                                                    {plan.max_valuations_monthly} valuations/mo
+                                                </span>
+                                            )}
                                             {plan.max_projects && (
                                                 <span className="text-[10px] font-mono bg-zinc-800 text-zinc-400 px-2 py-0.5 rounded">
                                                     {plan.max_projects} projects
@@ -545,6 +382,7 @@ export default function PricingPage() {
                             </p>
                             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 max-w-3xl mx-auto">
                                 {([
+                                    { cat: 'valuation_services' as ServiceCategory, label: 'Valuations', from: 325 },
                                     { cat: 'property_management' as ServiceCategory, label: 'Property Mgmt', from: 390 },
                                     { cat: 'crm' as ServiceCategory, label: 'CRM & Deals', from: 325 },
                                     { cat: 'project_management' as ServiceCategory, label: 'Project Mgmt', from: 325 },

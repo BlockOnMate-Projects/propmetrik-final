@@ -357,7 +357,7 @@ class TransmittalService {
         ackUrl,
         purpose: purposeLabels[transmittal.purpose] || transmittal.purpose,
         priorityColor: priorityColors[transmittal.priority] || '#3b82f6',
-        dueDate: transmittal.due_date ? new Date(transmittal.due_date).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) : null,
+        dueDate: transmittal.due_date ? new Date(transmittal.due_date).toLocaleDateString('en-GB', { year: 'numeric', month: 'long', day: 'numeric' }) : null,
       });
 
       try {
@@ -388,7 +388,7 @@ class TransmittalService {
         ackUrl: null,
         purpose: purposeLabels[transmittal.purpose] || transmittal.purpose,
         priorityColor: priorityColors[transmittal.priority] || '#3b82f6',
-        dueDate: transmittal.due_date ? new Date(transmittal.due_date).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) : null,
+        dueDate: transmittal.due_date ? new Date(transmittal.due_date).toLocaleDateString('en-GB', { year: 'numeric', month: 'long', day: 'numeric' }) : null,
       });
 
       for (const ccEmail of transmittal.cc_emails) {
@@ -419,7 +419,7 @@ class TransmittalService {
           ackUrl: null,
           purpose: purposeLabels[transmittal.purpose] || transmittal.purpose,
           priorityColor: priorityColors[transmittal.priority] || '#3b82f6',
-          dueDate: transmittal.due_date ? new Date(transmittal.due_date).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) : null,
+          dueDate: transmittal.due_date ? new Date(transmittal.due_date).toLocaleDateString('en-GB', { year: 'numeric', month: 'long', day: 'numeric' }) : null,
         });
         try {
           await notificationService.sendEmail({

@@ -347,7 +347,7 @@ export function RFIsTab({ projectId, organizationId, onRefresh }: RFIsTabProps) 
                     </h4>
                     <p className="font-mono text-xs text-zinc-500 mt-1">
                       From: {rfi.submitted_by_name || 'Project Manager'} • 
-                      {rfi.due_date && ` Due: ${new Date(rfi.due_date).toLocaleDateString()}`}
+                      {rfi.due_date && ` Due: ${new Date(rfi.due_date).toLocaleDateString('en-GB')}`}
                     </p>
                   </div>
                   

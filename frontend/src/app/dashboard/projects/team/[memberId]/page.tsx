@@ -214,7 +214,7 @@ export default function MemberProfilePage() {
                 <AlertCircle className="h-3.5 w-3.5" /> INVITATION PENDING
               </div>
               <p className="text-xs text-zinc-500 font-mono">
-                Invited on {new Date(m.invited_at).toLocaleDateString()}.
+                Invited on {new Date(m.invited_at).toLocaleDateString('en-GB')}.
                 This member has not yet accepted their invitation.
               </p>
             </div>
@@ -319,12 +319,12 @@ export default function MemberProfilePage() {
                   )}
                   <div className="flex justify-between text-xs font-mono">
                     <span className="text-zinc-500">Added</span>
-                    <span className="text-zinc-300">{new Date(m.created_at).toLocaleDateString()}</span>
+                    <span className="text-zinc-300">{new Date(m.created_at).toLocaleDateString('en-GB')}</span>
                   </div>
                   {m.start_date && (
                     <div className="flex justify-between text-xs font-mono">
                       <span className="text-zinc-500">Start Date</span>
-                      <span className="text-zinc-300">{new Date(m.start_date).toLocaleDateString()}</span>
+                      <span className="text-zinc-300">{new Date(m.start_date).toLocaleDateString('en-GB')}</span>
                     </div>
                   )}
                 </div>
@@ -358,7 +358,7 @@ export default function MemberProfilePage() {
                         <span className="text-zinc-600"> · </span>
                         <span className="text-zinc-500">{a.entity_type}</span>
                       </div>
-                      <span className="text-zinc-600 text-[10px] shrink-0">{new Date(a.created_at).toLocaleDateString()}</span>
+                      <span className="text-zinc-600 text-[10px] shrink-0">{new Date(a.created_at).toLocaleDateString('en-GB')}</span>
                     </div>
                   ))}
                 </div>
@@ -400,7 +400,7 @@ export default function MemberProfilePage() {
                     )}
                     <div className="flex items-center gap-3 mt-2 text-[10px] font-mono text-zinc-600">
                       <span className="capitalize">{p.role?.replace(/_/g, ' ')}</span>
-                      {p.start_date && <span>From {new Date(p.start_date).toLocaleDateString()}</span>}
+                      {p.start_date && <span>From {new Date(p.start_date).toLocaleDateString('en-GB')}</span>}
                     </div>
                   </CardContent>
                 </Card>
@@ -429,7 +429,7 @@ export default function MemberProfilePage() {
                       <span className="text-sm font-mono text-amber-500 font-bold">{t.hours_worked}h</span>
                     </div>
                     <div className="flex items-center gap-3 mt-2 text-[10px] font-mono text-zinc-600">
-                      <span>{new Date(t.entry_date).toLocaleDateString()}</span>
+                      <span>{new Date(t.entry_date).toLocaleDateString('en-GB')}</span>
                       {t.activity_type && <span className="capitalize">{t.activity_type.replace(/_/g, ' ')}</span>}
                       <Badge variant="outline" className={`text-[9px] font-mono uppercase ${
                         t.status === 'approved' ? 'border-emerald-900 text-emerald-400' :
@@ -470,7 +470,7 @@ export default function MemberProfilePage() {
                     <div className="flex items-center gap-3 mt-2 text-[10px] font-mono text-zinc-600">
                       {d.project_name && <span>{d.project_name}</span>}
                       {d.document_type && <span className="capitalize">{d.document_type.replace(/_/g, ' ')}</span>}
-                      <span>{new Date(d.created_at).toLocaleDateString()}</span>
+                      <span>{new Date(d.created_at).toLocaleDateString('en-GB')}</span>
                     </div>
                   </CardContent>
                 </Card>
@@ -541,7 +541,7 @@ export default function MemberProfilePage() {
                           </div>
                           <div className="flex items-center gap-3 mt-2 text-[10px] font-mono text-zinc-600">
                             {exp.project_name && <span>{exp.project_name}</span>}
-                            <span>{new Date(exp.expense_date).toLocaleDateString()}</span>
+                            <span>{new Date(exp.expense_date).toLocaleDateString('en-GB')}</span>
                           </div>
                         </CardContent>
                       </Card>

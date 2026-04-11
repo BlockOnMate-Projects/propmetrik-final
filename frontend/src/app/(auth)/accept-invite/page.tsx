@@ -262,7 +262,7 @@ function AcceptInviteForm() {
                             </span>
                             <span className="text-xs text-zinc-500 flex items-center gap-1">
                                 <Clock className="w-3 h-3" />
-                                Expires {new Date(invite?.expiresAt || '').toLocaleDateString()}
+                                Expires {new Date(invite?.expiresAt || '').toLocaleDateString('en-GB')}
                             </span>
                         </div>
                     </div>

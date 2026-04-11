@@ -182,8 +182,8 @@ export function ProjectHeader({ project, isLoading, projectManagerName }: Projec
               <div className="flex items-center gap-1.5">
                 <Calendar className="h-3.5 w-3.5 text-zinc-500" />
                 <span>
-                  {new Date(project.planned_start_date).toLocaleDateString()}
-                  {project.planned_completion_date && ` - ${new Date(project.planned_completion_date).toLocaleDateString()}`}
+                  {new Date(project.planned_start_date).toLocaleDateString('en-GB')}
+                  {project.planned_completion_date && ` - ${new Date(project.planned_completion_date).toLocaleDateString('en-GB')}`}
                 </span>
               </div>
             )}

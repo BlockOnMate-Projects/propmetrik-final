@@ -337,16 +337,36 @@ export function MarketContextPanel({
         
         // Build market conditions from market API response
         const conditionsData = conditionsResponse?.data?.conditions || conditionsResponse?.data;
+
+        const rawTrend = conditionsData?.market_trend || conditionsData?.trend || conditionsData?.price_trend;
+        const normalizedTrend: 'rising' | 'stable' | 'falling' | 'unknown' =
+          rawTrend === 'increasing' ? 'rising' :
+          rawTrend === 'decreasing' ? 'falling' :
+          rawTrend === 'rising' || rawTrend === 'stable' || rawTrend === 'falling' ? rawTrend :
+          'unknown';
+
+        const inferredSupplyDemand =
+          conditionsData?.supply_demand_ratio ??
+          (conditionsData?.inventory_level === 'low' ? 0.85 :
+           conditionsData?.inventory_level === 'high' ? 1.15 :
+           conditionsData?.inventory_level === 'balanced' ? 1.0 :
+           null);
+
+        const inferredYoY =
+          conditionsData?.price_index_change_yoy ??
+          conditionsData?.price_growth_rate ??
+          (typeof conditionsData?.price_change_6m_pct === 'number' ? conditionsData.price_change_6m_pct * 2 : null);
+
         const marketConditions: MarketConditions = {
-          trend: conditionsData?.market_trend || conditionsData?.trend || 'unknown',
+          trend: normalizedTrend,
           trend_strength: conditionsData?.trend_strength ?? 0,
-          activity_level: conditionsData?.activity_level || conditionsData?.demand_level || 'unknown',
-          days_on_market_avg: conditionsData?.days_on_market_avg ?? null,
-          supply_demand_ratio: conditionsData?.supply_demand_ratio ?? null,
+          activity_level: conditionsData?.activity_level || conditionsData?.demand_level || conditionsData?.market_activity || 'unknown',
+          days_on_market_avg: conditionsData?.days_on_market_avg ?? conditionsData?.avg_days_on_market ?? null,
+          supply_demand_ratio: inferredSupplyDemand,
           price_index: indicesResponse?.data?.price_index ?? conditionsData?.price_index ?? null,
-          price_index_change_yoy: conditionsData?.price_index_change_yoy ?? conditionsData?.price_growth_rate ?? null,
+          price_index_change_yoy: inferredYoY,
           seasonal_factor: conditionsData?.seasonal_factor,
-          cycle_phase: conditionsData?.cycle_phase,
+          cycle_phase: conditionsData?.cycle_phase || conditionsData?.market_cycle,
           price_trend_12m: conditionsData?.price_trend_12m,
           price_trend_3m: conditionsData?.price_trend_3m,
           price_metrics: conditionsData?.price_metrics,

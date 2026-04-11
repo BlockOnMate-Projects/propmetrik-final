@@ -62,7 +62,7 @@ export default function PublicationsIndicesPage() {
                   <td className="px-4 py-3 text-sm font-mono text-zinc-400">{index.change_mom ?? '-'}</td>
                   <td className="px-4 py-3 text-sm font-mono text-zinc-400">{index.change_yoy ?? '-'}</td>
                   <td className="px-4 py-3 text-xs text-zinc-500 font-mono">
-                    {index.published_at ? new Date(index.published_at).toLocaleDateString() : '-'}
+                    {index.published_at ? new Date(index.published_at).toLocaleDateString('en-GB') : '-'}
                   </td>
                 </tr>
               ))

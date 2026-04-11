@@ -53,12 +53,12 @@ function timeAgo(dateStr: string | null): string {
   if (hrs < 24) return `${hrs}h ago`
   const days = Math.floor(hrs / 24)
   if (days < 30) return `${days}d ago`
-  return d.toLocaleDateString()
+  return d.toLocaleDateString('en-GB')
 }
 
 function formatDate(dateStr: string | null): string {
   if (!dateStr) return '—'
-  return new Date(dateStr).toLocaleDateString('en-US', {
+  return new Date(dateStr).toLocaleDateString('en-GB', {
     year: 'numeric', month: 'short', day: 'numeric',
   })
 }

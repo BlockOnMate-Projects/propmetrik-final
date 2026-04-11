@@ -79,7 +79,7 @@ export default function PublicationsNewsletterPage() {
                     <td className="px-4 py-3 text-sm text-zinc-400">{subscriber.role || '-'}</td>
                     <td className="px-4 py-3 text-xs font-mono uppercase text-zinc-400">{subscriber.status || 'active'}</td>
                     <td className="px-4 py-3 text-xs text-zinc-500 font-mono">
-                      {subscriber.created_at ? new Date(subscriber.created_at).toLocaleDateString() : '-'}
+                      {subscriber.created_at ? new Date(subscriber.created_at).toLocaleDateString('en-GB') : '-'}
                     </td>
                   </tr>
                 ))

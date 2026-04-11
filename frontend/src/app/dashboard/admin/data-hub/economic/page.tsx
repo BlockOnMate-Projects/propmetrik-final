@@ -63,7 +63,7 @@ export default function EconomicDataPage() {
 
   const chartData = useMemo(() =>
     indicatorHistory?.data?.map((item) => ({
-      date: new Date(item.effective_date).toLocaleDateString('en-US', {
+      date: new Date(item.effective_date).toLocaleDateString('en-GB', {
         month: 'short',
         day: 'numeric',
       }),
@@ -269,7 +269,7 @@ export default function EconomicDataPage() {
               <span className="font-mono text-xs text-zinc-400">Last Updated</span>
               <span className="font-mono text-xs text-white">
                 {snapshot?.data?.date
-                  ? new Date(snapshot.data.date).toLocaleDateString()
+                  ? new Date(snapshot.data.date).toLocaleDateString('en-GB')
                   : 'Unknown'}
               </span>
             </div>

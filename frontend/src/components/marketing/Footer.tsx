@@ -39,6 +39,7 @@ export default function Footer() {
                             <li><Link href="/contact" className="hover:text-amber-500 transition-colors whitespace-nowrap">Contact</Link></li>
                             <li><Link href="/pricing" className="hover:text-amber-500 transition-colors whitespace-nowrap">Pricing</Link></li>
                             <li><Link href="/api" className="hover:text-amber-500 transition-colors whitespace-nowrap">API Docs</Link></li>
+                            <li><Link href="/resources" className="hover:text-amber-500 transition-colors whitespace-nowrap">Resources</Link></li>
                         </ul>
                     </div>
 

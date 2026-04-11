@@ -969,7 +969,7 @@ export default function EnhancedProjectWizard() {
                       <span className="font-mono text-[10px] text-zinc-500">Timeline</span>
                       <p className="font-mono text-zinc-200">
                         {formData.plannedStartDate && formData.plannedEndDate
-                          ? `${new Date(formData.plannedStartDate).toLocaleDateString()} - ${new Date(formData.plannedEndDate).toLocaleDateString()}`
+                          ? `${new Date(formData.plannedStartDate).toLocaleDateString('en-GB')} - ${new Date(formData.plannedEndDate).toLocaleDateString('en-GB')}`
                           : 'Not set'
                         }
                       </p>

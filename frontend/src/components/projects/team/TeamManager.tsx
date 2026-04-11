@@ -564,13 +564,13 @@ function MemberDetail({
               {member.startDate && (
                 <div>
                   <p className="text-muted-foreground">Start Date</p>
-                  <p>{new Date(member.startDate).toLocaleDateString()}</p>
+                  <p>{new Date(member.startDate).toLocaleDateString('en-GB')}</p>
                 </div>
               )}
               {member.endDate && (
                 <div>
                   <p className="text-muted-foreground">End Date</p>
-                  <p>{new Date(member.endDate).toLocaleDateString()}</p>
+                  <p>{new Date(member.endDate).toLocaleDateString('en-GB')}</p>
                 </div>
               )}
             </div>

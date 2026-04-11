@@ -335,7 +335,7 @@ export default function ProfilePage() {
     const now = new Date()
     const isToday = date.toDateString() === now.toDateString()
     if (isToday) return `TODAY ${date.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}`
-    return date.toLocaleDateString('en-US', { month: 'short', year: 'numeric' }).toUpperCase()
+    return date.toLocaleDateString('en-GB', { month: 'short', year: 'numeric' }).toUpperCase()
   }
 
   const roleName = (r: string) => {

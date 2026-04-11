@@ -496,7 +496,7 @@ export function MilestonesTab({ projectId, organizationId, frameworkId, onRefres
                   <span className="font-mono text-[10px] text-zinc-500">Target Date</span>
                   <p className="font-mono text-sm text-white">
                     {selectedMilestone?.target_date 
-                      ? new Date(selectedMilestone.target_date).toLocaleDateString() 
+                      ? new Date(selectedMilestone.target_date).toLocaleDateString('en-GB') 
                       : 'Not set'}
                   </p>
                 </div>
@@ -504,7 +504,7 @@ export function MilestonesTab({ projectId, organizationId, frameworkId, onRefres
                   <span className="font-mono text-[10px] text-zinc-500">Completed Date</span>
                   <p className="font-mono text-sm text-green-400">
                     {selectedMilestone?.completed_date 
-                      ? new Date(selectedMilestone.completed_date).toLocaleDateString() 
+                      ? new Date(selectedMilestone.completed_date).toLocaleDateString('en-GB') 
                       : 'Not completed'}
                   </p>
                 </div>
@@ -606,10 +606,10 @@ function MilestoneRow({ milestone, projectId, onApprove }: MilestoneRowProps) {
         </div>
         <p className="font-mono text-xs text-zinc-500 mt-1">
           {milestone.target_date && (
-            <>Target: {new Date(milestone.target_date).toLocaleDateString()}</>
+            <>Target: {new Date(milestone.target_date).toLocaleDateString('en-GB')}</>
           )}
           {milestone.completed_date && (
-            <> • Completed: {new Date(milestone.completed_date).toLocaleDateString()}</>
+            <> • Completed: {new Date(milestone.completed_date).toLocaleDateString('en-GB')}</>
           )}
         </p>
       </div>

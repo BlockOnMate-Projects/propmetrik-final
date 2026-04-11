@@ -1,6 +1,13 @@
 {
   "extends": ["next/core-web-vitals"],
   "rules": {
-    "react/no-unescaped-entities": "off"
+    "react/no-unescaped-entities": "off",
+    "no-restricted-properties": [
+      "warn",
+      {
+        "property": "toLocaleDateString",
+        "message": "Use formatDate from src/lib/dateFormat.ts for Ghana date formatting consistency."
+      }
+    ]
   }
 }

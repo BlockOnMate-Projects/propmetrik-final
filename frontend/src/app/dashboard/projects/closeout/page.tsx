@@ -143,7 +143,7 @@ export default function CloseoutPage() {
                       {item.category && <Badge variant="outline" className="border-zinc-700 text-zinc-400">{item.category}</Badge>}
                     </div>
                     {item.description && <p className="text-xs text-zinc-500">{item.description}</p>}
-                    {item.due_date && <p className="text-xs text-zinc-500">Due: {new Date(item.due_date).toLocaleDateString()}</p>}
+                    {item.due_date && <p className="text-xs text-zinc-500">Due: {new Date(item.due_date).toLocaleDateString('en-GB')}</p>}
                   </div>
                 </div>
               </CardContent>
@@ -170,7 +170,7 @@ export default function CloseoutPage() {
                         {expired && <Badge className="bg-red-500/20 text-red-400">EXPIRED</Badge>}
                       </div>
                       <p className="text-sm text-white font-medium">{w.item_name}</p>
-                      <p className="text-xs text-zinc-500">{w.provider} • {new Date(w.start_date).toLocaleDateString()} — {new Date(w.end_date).toLocaleDateString()}</p>
+                      <p className="text-xs text-zinc-500">{w.provider} • {new Date(w.start_date).toLocaleDateString('en-GB')} — {new Date(w.end_date).toLocaleDateString('en-GB')}</p>
                     </div>
                   </div>
                 </CardContent>
@@ -191,7 +191,7 @@ export default function CloseoutPage() {
                       <Badge className={CLAIM_STATUS[c.status] || ''}>{c.status}</Badge>
                     </div>
                     <p className="text-sm text-white">{c.description}</p>
-                    <p className="text-xs text-zinc-500">{c.item_name} • Filed: {new Date(c.created_at).toLocaleDateString()}</p>
+                    <p className="text-xs text-zinc-500">{c.item_name} • Filed: {new Date(c.created_at).toLocaleDateString('en-GB')}</p>
                   </div>
                 </div>
               </CardContent>

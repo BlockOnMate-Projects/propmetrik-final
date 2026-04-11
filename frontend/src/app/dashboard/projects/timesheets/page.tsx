@@ -224,7 +224,7 @@ export default function TimesheetsPage() {
                       {e.clock_in && !e.clock_out && <Badge className="bg-green-500/20 text-green-400 animate-pulse">Active</Badge>}
                     </div>
                     <p className="text-sm text-white">{e.description || e.activity_type} — {e.hours_worked ? `${parseFloat(e.hours_worked).toFixed(1)}h` : 'In progress'} {e.overtime_hours > 0 ? `(+${e.overtime_hours}h OT)` : ''}</p>
-                    <p className="text-xs text-zinc-500">{new Date(e.entry_date).toLocaleDateString()} • {e.cost_code || 'No cost code'} • <span className="text-zinc-300 font-medium">{e.user_name || 'Self'}</span></p>
+                    <p className="text-xs text-zinc-500">{new Date(e.entry_date).toLocaleDateString('en-GB')} • {e.cost_code || 'No cost code'} • <span className="text-zinc-300 font-medium">{e.user_name || 'Self'}</span></p>
                   </div>
                   <div className="flex items-center gap-2">
                     {e.total_cost && <span className="text-sm font-mono text-green-400">${parseFloat(e.total_cost).toFixed(2)}</span>}
@@ -271,7 +271,7 @@ export default function TimesheetsPage() {
                       <Badge className={STATUS_COLORS[ts.status] || ''}>{ts.status}</Badge>
                       <span className="text-sm text-white">{ts.user_name}</span>
                     </div>
-                    <p className="text-xs text-zinc-500">Week: {new Date(ts.week_start).toLocaleDateString()} – {new Date(ts.week_end).toLocaleDateString()}</p>
+                    <p className="text-xs text-zinc-500">Week: {new Date(ts.week_start).toLocaleDateString('en-GB')} – {new Date(ts.week_end).toLocaleDateString('en-GB')}</p>
                   </div>
                   <div className="text-right">
                     <p className="text-sm font-mono text-white">{parseFloat(ts.total_regular_hours || 0).toFixed(1)}h</p>
@@ -293,7 +293,7 @@ export default function TimesheetsPage() {
                     <div>
                       <p className="text-sm font-medium text-white">{c.crew_name}</p>
                       <p className="text-xs text-zinc-500">{c.trade} • Foreman: {c.foreman_name || 'TBA'} • {c.headcount} workers</p>
-                      <p className="text-xs text-zinc-500">{new Date(c.schedule_date).toLocaleDateString()} {c.start_time}–{c.end_time}</p>
+                      <p className="text-xs text-zinc-500">{new Date(c.schedule_date).toLocaleDateString('en-GB')} {c.start_time}–{c.end_time}</p>
                     </div>
                     <Badge className={STATUS_COLORS[c.status] || 'bg-zinc-500/20 text-zinc-400'}>{c.status}</Badge>
                   </div>

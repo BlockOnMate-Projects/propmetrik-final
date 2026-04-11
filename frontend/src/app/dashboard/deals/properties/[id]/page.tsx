@@ -200,7 +200,7 @@ function PropertyPipeline({ deals, stages }: { deals: PropertyDeal[], stages: Pi
                                     {deal.estimated_close_date && (
                                         <span className="font-mono text-[10px]">
                                             <Calendar className="h-3 w-3 inline mr-1" />
-                                            {new Date(deal.estimated_close_date).toLocaleDateString()}
+                                            {new Date(deal.estimated_close_date).toLocaleDateString('en-GB')}
                                         </span>
                                     )}
                                 </div>

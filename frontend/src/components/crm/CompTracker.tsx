@@ -236,7 +236,7 @@ export function CompTracker() {
                                                         {comp.price_per_sqft ? formatCurrency(comp.price_per_sqft) : '—'}
                                                     </td>
                                                     <td className="py-2 text-right text-muted-foreground text-xs">
-                                                        {new Date(comp.sold_date).toLocaleDateString()}
+                                                        {new Date(comp.sold_date).toLocaleDateString('en-GB')}
                                                     </td>
                                                 </tr>
                                             ))}

@@ -62,7 +62,7 @@ function formatTime(ts: string) {
   const diff = Math.floor((now.getTime() - d.getTime()) / 86400000)
   if (diff === 0) return d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })
   if (diff === 1) return 'Yesterday'
-  if (diff < 7) return d.toLocaleDateString('en-US', { weekday: 'short' })
+  if (diff < 7) return d.toLocaleDateString('en-GB', { weekday: 'short' })
   return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })
 }
 
@@ -310,7 +310,7 @@ export default function LandlordMessagesPage() {
                         {showDate && (
                           <div className="flex items-center justify-center my-4">
                             <span className="text-[10px] font-mono text-zinc-600 bg-zinc-900 px-3 py-1 rounded-full border border-zinc-800">
-                              {new Date(msg.createdAt).toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })}
+                              {new Date(msg.createdAt).toLocaleDateString('en-GB', { weekday: 'long', month: 'short', day: 'numeric' })}
                             </span>
                           </div>
                         )}

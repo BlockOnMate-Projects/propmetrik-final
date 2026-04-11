@@ -485,7 +485,7 @@ export default function RiskAnalyticsPage() {
                         {inc.neighborhood || inc.city}
                       </span>
                       <span className="font-mono text-[9px] text-zinc-600 shrink-0">
-                        {inc.incident_date ? new Date(inc.incident_date).toLocaleDateString() : '—'}
+                        {inc.incident_date ? new Date(inc.incident_date).toLocaleDateString('en-GB') : '—'}
                       </span>
                     </div>
                     <div className="font-mono text-[9px] text-zinc-500 truncate">

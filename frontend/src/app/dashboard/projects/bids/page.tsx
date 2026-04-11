@@ -443,7 +443,7 @@ export default function BidManagementPage() {
         <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
           <Card className="bg-zinc-900 border-zinc-800"><CardContent className="p-3">
             <span className="text-[10px] font-mono text-zinc-500 block">DEADLINE</span>
-            <span className="text-white text-sm font-mono">{new Date(detail.submission_deadline).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>
+            <span className="text-white text-sm font-mono">{new Date(detail.submission_deadline).toLocaleDateString('en-GB', { month: 'short', day: 'numeric' })}</span>
           </CardContent></Card>
           <Card className="bg-zinc-900 border-zinc-800"><CardContent className="p-3">
             <span className="text-[10px] font-mono text-zinc-500 block">VENDORS INVITED</span>
@@ -524,7 +524,7 @@ export default function BidManagementPage() {
                             'border-zinc-600 text-zinc-400'
                           }>{inv.status}</Badge>
                         </td>
-                        <td className="py-2 px-3 text-zinc-500 text-xs font-mono">{inv.viewed_at ? new Date(inv.viewed_at).toLocaleDateString() : '—'}</td>
+                        <td className="py-2 px-3 text-zinc-500 text-xs font-mono">{inv.viewed_at ? new Date(inv.viewed_at).toLocaleDateString('en-GB') : '—'}</td>
                         <td className="py-2 px-3 text-zinc-500 text-xs font-mono">{inv.has_submission ? '✓' : '—'}</td>
                         <td className="py-2 px-3 text-right">
                           <DropdownMenu>
@@ -731,7 +731,7 @@ export default function BidManagementPage() {
                         <span className="text-[10px] font-mono text-blue-400 bg-blue-500/10 px-1.5 py-0.5 rounded shrink-0 mt-0.5">Q</span>
                         <div className="flex-1">
                           <p className="text-zinc-200 text-sm">{thread.question}</p>
-                          <p className="text-zinc-600 text-[10px] font-mono mt-1">{thread.asked_by_name} ({thread.asked_by_email}) · {new Date(thread.asked_at).toLocaleDateString()}</p>
+                          <p className="text-zinc-600 text-[10px] font-mono mt-1">{thread.asked_by_name} ({thread.asked_by_email}) · {new Date(thread.asked_at).toLocaleDateString('en-GB')}</p>
                         </div>
                         {!thread.is_public && <Badge variant="outline" className="border-zinc-700 text-zinc-500 text-[9px]">PRIVATE</Badge>}
                       </div>
@@ -740,7 +740,7 @@ export default function BidManagementPage() {
                           <span className="text-[10px] font-mono text-amber-400 bg-amber-500/10 px-1.5 py-0.5 rounded shrink-0 mt-0.5">A</span>
                           <div>
                             <p className="text-zinc-200 text-sm">{thread.answer}</p>
-                            <p className="text-zinc-600 text-[10px] font-mono mt-1">{thread.answered_at ? new Date(thread.answered_at).toLocaleDateString() : ''}</p>
+                            <p className="text-zinc-600 text-[10px] font-mono mt-1">{thread.answered_at ? new Date(thread.answered_at).toLocaleDateString('en-GB') : ''}</p>
                           </div>
                         </div>
                       ) : (
@@ -972,7 +972,7 @@ export default function BidManagementPage() {
                     <td className="py-2.5 px-3 text-right text-zinc-300 font-mono text-xs">{br.estimated_budget ? `${br.currency} ${Number(br.estimated_budget).toLocaleString()}` : '—'}</td>
                     <td className="py-2.5 px-3 text-center text-zinc-400 font-mono text-xs">{br.invitation_count || 0}</td>
                     <td className="py-2.5 px-3 text-center text-zinc-400 font-mono text-xs">{br.submission_count || 0}</td>
-                    <td className="py-2.5 px-3 text-zinc-400 text-xs font-mono">{new Date(br.submission_deadline).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</td>
+                    <td className="py-2.5 px-3 text-zinc-400 text-xs font-mono">{new Date(br.submission_deadline).toLocaleDateString('en-GB', { month: 'short', day: 'numeric' })}</td>
                   </tr>
                 )
               })}

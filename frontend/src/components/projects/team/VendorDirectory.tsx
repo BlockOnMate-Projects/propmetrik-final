@@ -788,7 +788,7 @@ function VendorDetail({
                             isExpired ? 'text-red-600' : isExpiringSoon ? 'text-yellow-600' : 'text-muted-foreground'
                           )}>
                             {isExpired ? 'Expired: ' : 'Expires: '}
-                            {new Date(doc.expiryDate).toLocaleDateString()}
+                            {new Date(doc.expiryDate).toLocaleDateString('en-GB')}
                           </p>
                         )}
                       </div>
@@ -896,7 +896,7 @@ function VendorDetail({
                   <div className="flex items-center justify-between">
                     <StarRating rating={rating.overallRating} />
                     <span className="text-xs text-muted-foreground">
-                      {new Date(rating.createdAt).toLocaleDateString()}
+                      {new Date(rating.createdAt).toLocaleDateString('en-GB')}
                     </span>
                   </div>
                   {rating.comments && (

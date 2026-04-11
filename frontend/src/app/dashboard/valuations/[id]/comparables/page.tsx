@@ -892,7 +892,7 @@ function ComparablesPageContent() {
                           <div>
                             <div className="font-mono text-[9px] text-zinc-500 mb-1">TRANSACTION</div>
                             <div className="font-mono text-xs text-zinc-300">
-                              {result.sale_date ? new Date(result.sale_date).toLocaleDateString() : 'N/A'}
+                              {result.sale_date ? new Date(result.sale_date).toLocaleDateString('en-GB') : 'N/A'}
                             </div>
                             <div className={cn(
                               'inline-block px-1.5 py-0.5 text-[8px] font-mono rounded',

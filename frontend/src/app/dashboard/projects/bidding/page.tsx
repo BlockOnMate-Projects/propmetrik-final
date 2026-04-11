@@ -131,7 +131,7 @@ export default function BiddingPage() {
                       <Badge variant="outline" className="border-zinc-700 text-zinc-400">{pkg.trade_category}</Badge>
                     </div>
                     <p className="text-sm text-white font-medium">{pkg.title}</p>
-                    <p className="text-xs text-zinc-500">Due: {pkg.bid_due_date ? new Date(pkg.bid_due_date).toLocaleDateString() : 'TBD'} • Bids: {pkg.bid_count || 0}{pkg.estimated_value ? ` • Est: $${parseFloat(pkg.estimated_value).toLocaleString()}` : ''}</p>
+                    <p className="text-xs text-zinc-500">Due: {pkg.bid_due_date ? new Date(pkg.bid_due_date).toLocaleDateString('en-GB') : 'TBD'} • Bids: {pkg.bid_count || 0}{pkg.estimated_value ? ` • Est: $${parseFloat(pkg.estimated_value).toLocaleString()}` : ''}</p>
                   </div>
                 </div>
                 {selectedPkg === pkg.id && bids?.data?.length > 0 && (
