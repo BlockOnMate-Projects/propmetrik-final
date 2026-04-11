@@ -487,7 +487,7 @@ export default function SiteLogsPage() {
                         <div className="flex items-center gap-2">
                           <Calendar className="h-4 w-4 text-zinc-500" />
                           <span className="text-white font-semibold">
-                            {new Date(log.reportDate).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
+                            {new Date(log.reportDate).toLocaleDateString('en-GB', { weekday: 'short', month: 'short', day: 'numeric' })}
                           </span>
                         </div>
                         {log.weatherCondition && (
@@ -708,7 +708,7 @@ export default function SiteLogsPage() {
           <SheetHeader>
             <SheetTitle className="text-white">Site Log Details</SheetTitle>
             <SheetDescription className="text-zinc-400">
-              {selectedLog && new Date(selectedLog.reportDate).toLocaleDateString('en-US', { 
+              {selectedLog && new Date(selectedLog.reportDate).toLocaleDateString('en-GB', { 
                 weekday: 'long', 
                 year: 'numeric', 
                 month: 'long', 

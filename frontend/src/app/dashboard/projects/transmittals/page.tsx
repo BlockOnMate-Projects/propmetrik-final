@@ -375,7 +375,7 @@ export default function TransmittalsPage() {
                   <div><p className="text-[10px] font-mono text-zinc-500">STATUS</p><Badge variant="outline" className={STATUS_BADGE[detail.status]?.cls}>{STATUS_BADGE[detail.status]?.label}</Badge></div>
                   <div><p className="text-[10px] font-mono text-zinc-500">PURPOSE</p><p className="text-sm text-white">{PURPOSE_LABELS[detail.purpose] || detail.purpose}</p></div>
                   <div><p className="text-[10px] font-mono text-zinc-500">TO</p><p className="text-sm text-white">{detail.to_company || detail.to_contact || '—'}</p></div>
-                  <div><p className="text-[10px] font-mono text-zinc-500">DUE DATE</p><p className="text-sm text-white">{detail.due_date ? new Date(detail.due_date).toLocaleDateString() : '—'}</p></div>
+                  <div><p className="text-[10px] font-mono text-zinc-500">DUE DATE</p><p className="text-sm text-white">{detail.due_date ? new Date(detail.due_date).toLocaleDateString('en-GB') : '—'}</p></div>
                 </div>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                   {detail.to_email && <div><p className="text-[10px] font-mono text-zinc-500">TO EMAIL</p><p className="text-sm text-white">{detail.to_email}</p></div>}
@@ -510,7 +510,7 @@ export default function TransmittalsPage() {
                   <div className="space-y-2">
                     {detail.activity.map((a: any) => (
                       <div key={a.id} className="flex items-center gap-3 text-xs">
-                        <span className="text-zinc-500 font-mono">{new Date(a.created_at).toLocaleDateString()}</span>
+                        <span className="text-zinc-500 font-mono">{new Date(a.created_at).toLocaleDateString('en-GB')}</span>
                         <Badge variant="outline" className="border-zinc-700 text-zinc-400 text-[10px]">{a.action}</Badge>
                       </div>
                     ))}

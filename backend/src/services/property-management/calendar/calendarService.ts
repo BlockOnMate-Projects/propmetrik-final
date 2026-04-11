@@ -696,7 +696,7 @@ Action Required: Discuss renewal or move-out
         summary: `⏰ Renewal Reminder: ${tenancy.tenant_name}`,
         description: `
 Lease renewal reminder for ${tenancy.tenant_name}
-Lease expires: ${new Date(tenancy.end_date).toLocaleDateString()}
+Lease expires: ${new Date(tenancy.end_date).toLocaleDateString('en-GB')}
 
 Contact tenant to discuss renewal options.
         `.trim(),

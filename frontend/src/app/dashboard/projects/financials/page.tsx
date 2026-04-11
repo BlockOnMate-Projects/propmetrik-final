@@ -36,7 +36,7 @@ function formatCurrency(amount: number, currency = 'GHS'): string {
 
 function formatDate(dateStr: string | null): string {
     if (!dateStr) return '—'
-    return new Date(dateStr).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+    return new Date(dateStr).toLocaleDateString('en-GB', { month: 'short', day: 'numeric', year: 'numeric' })
 }
 
 function getStatusBadge(status: string) {
@@ -361,7 +361,7 @@ export default function ProjectsFinancialsPage() {
                                                 const maxVal = Math.max(...data.monthlyRevenue.map(r => Math.max(r.invoiced, r.paid)), 1)
                                                 const invoicedPct = (m.invoiced / maxVal) * 100
                                                 const paidPct = (m.paid / maxVal) * 100
-                                                const monthLabel = new Date(m.month + '-01').toLocaleDateString('en-US', { month: 'short', year: '2-digit' })
+                                                const monthLabel = new Date(m.month + '-01').toLocaleDateString('en-GB', { month: 'short', year: '2-digit' })
                                                 return (
                                                     <div key={m.month} className="flex items-center gap-3">
                                                         <span className="text-[10px] font-mono text-zinc-500 w-14 text-right flex-shrink-0">

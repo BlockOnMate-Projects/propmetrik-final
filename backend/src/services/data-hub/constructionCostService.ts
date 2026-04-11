@@ -623,25 +623,84 @@ export class ConstructionCostService {
     let paramIndex = 1;
 
     if (options.category) {
-      conditions.push(`material_category = $${paramIndex++}`);
+      conditions.push(`mp.material_category = $${paramIndex++}`);
       params.push(options.category);
     }
     if (options.region) {
-      conditions.push(`region = $${paramIndex++}`);
+      conditions.push(`mp.region = $${paramIndex++}`);
       params.push(options.region);
     }
     if (options.supplier_type) {
-      conditions.push(`supplier_type = $${paramIndex++}`);
+      conditions.push(`mp.supplier_type = $${paramIndex++}`);
       params.push(options.supplier_type);
     }
 
     const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
 
-    // Get latest price for each material/region combination
+    // Get latest price for each material/region combination and derive delta from
+    // the most recent prior DIFFERENT price to avoid artificial 0.0% outputs.
     const result = await query<MaterialPrice>(
-      `SELECT DISTINCT ON (material_name, region) *
-       FROM material_prices ${whereClause}
-       ORDER BY material_name, region, survey_date DESC`,
+      `WITH latest AS (
+         SELECT DISTINCT ON (mp.material_name, mp.region)
+           mp.*
+         FROM material_prices mp
+         ${whereClause}
+         ORDER BY mp.material_name, mp.region, mp.survey_date DESC, mp.created_at DESC
+       )
+       SELECT
+         l.id,
+         l.material_category,
+         l.material_name,
+         l.brand,
+         l.specification,
+         l.price_ghs,
+         COALESCE(p_diff.price_ghs, p_any.price_ghs, l.price_ghs) AS previous_price_ghs,
+         CASE
+           WHEN p_diff.price_ghs IS NOT NULL AND p_diff.price_ghs <> 0
+           THEN ((l.price_ghs - p_diff.price_ghs) / p_diff.price_ghs) * 100
+           WHEN p_any.price_ghs IS NOT NULL
+           THEN 0
+           ELSE 0
+         END AS price_change_percent,
+         l.unit,
+         l.quantity_per_unit,
+         l.region,
+         l.supplier_type,
+         l.supplier_name,
+         l.survey_date,
+         l.is_verified,
+         l.confidence_level,
+         l.notes,
+         l.metadata,
+         l.created_at,
+         l.updated_at
+       FROM latest l
+       LEFT JOIN LATERAL (
+         SELECT mp_prev.price_ghs
+         FROM material_prices mp_prev
+         WHERE mp_prev.material_name = l.material_name
+           AND mp_prev.region = l.region
+           AND (
+             mp_prev.survey_date < l.survey_date
+             OR (mp_prev.survey_date = l.survey_date AND mp_prev.created_at < l.created_at)
+           )
+           AND mp_prev.price_ghs <> l.price_ghs
+         ORDER BY mp_prev.survey_date DESC, mp_prev.created_at DESC
+         LIMIT 1
+       ) p_diff ON true
+       LEFT JOIN LATERAL (
+         SELECT mp_prev.price_ghs
+         FROM material_prices mp_prev
+         WHERE mp_prev.material_name = l.material_name
+           AND mp_prev.region = l.region
+           AND (
+             mp_prev.survey_date < l.survey_date
+             OR (mp_prev.survey_date = l.survey_date AND mp_prev.created_at < l.created_at)
+           )
+         ORDER BY mp_prev.survey_date DESC, mp_prev.created_at DESC
+         LIMIT 1
+       ) p_any ON true
+       ORDER BY l.material_name, l.region`,
       params
     );
 
@@ -663,26 +722,73 @@ export class ConstructionCostService {
     let paramIndex = 1;
 
     if (options.category) {
-      conditions.push(`labor_category = $${paramIndex++}`);
+      conditions.push(`lr.labor_category = $${paramIndex++}`);
       params.push(options.category);
     }
     if (options.skill_level) {
-      conditions.push(`skill_level = $${paramIndex++}`);
+      conditions.push(`lr.skill_level = $${paramIndex++}`);
       params.push(options.skill_level);
     }
     if (options.region) {
-      conditions.push(`region = $${paramIndex++}`);
+      conditions.push(`lr.region = $${paramIndex++}`);
       params.push(options.region);
     }
 
     const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
 
     const result = await query<LaborRate>(
-      `SELECT DISTINCT ON (labor_category, skill_level, region) 
-        id, labor_category, skill_level, daily_rate_ghs AS rate_ghs, region, 
-        survey_date, previous_rate_ghs, rate_change_percent, notes
-       FROM labor_rates ${whereClause}
-       ORDER BY labor_category, skill_level, region, survey_date DESC`,
+      `WITH latest AS (
+         SELECT DISTINCT ON (lr.labor_category, lr.skill_level, lr.region)
+           lr.*
+         FROM labor_rates lr
+         ${whereClause}
+         ORDER BY lr.labor_category, lr.skill_level, lr.region, lr.survey_date DESC, lr.created_at DESC
+       )
+       SELECT
+         l.id,
+         l.labor_category,
+         l.skill_level,
+         l.daily_rate_ghs AS rate_ghs,
+         l.region,
+         l.survey_date,
+         COALESCE(p_diff.daily_rate_ghs, p_any.daily_rate_ghs, l.daily_rate_ghs) AS previous_rate_ghs,
+         CASE
+           WHEN p_diff.daily_rate_ghs IS NOT NULL AND p_diff.daily_rate_ghs <> 0
+           THEN ((l.daily_rate_ghs - p_diff.daily_rate_ghs) / p_diff.daily_rate_ghs) * 100
+           WHEN p_any.daily_rate_ghs IS NOT NULL
+           THEN 0
+           ELSE 0
+         END AS rate_change_percent,
+         l.notes
+       FROM latest l
+       LEFT JOIN LATERAL (
+         SELECT lr_prev.daily_rate_ghs
+         FROM labor_rates lr_prev
+         WHERE lr_prev.labor_category = l.labor_category
+           AND lr_prev.skill_level = l.skill_level
+           AND lr_prev.region = l.region
+           AND (
+             lr_prev.survey_date < l.survey_date
+             OR (lr_prev.survey_date = l.survey_date AND lr_prev.created_at < l.created_at)
+           )
+           AND lr_prev.daily_rate_ghs <> l.daily_rate_ghs
+         ORDER BY lr_prev.survey_date DESC, lr_prev.created_at DESC
+         LIMIT 1
+       ) p_diff ON true
+       LEFT JOIN LATERAL (
+         SELECT lr_prev.daily_rate_ghs
+         FROM labor_rates lr_prev
+         WHERE lr_prev.labor_category = l.labor_category
+           AND lr_prev.skill_level = l.skill_level
+           AND lr_prev.region = l.region
+           AND (
+             lr_prev.survey_date < l.survey_date
+             OR (lr_prev.survey_date = l.survey_date AND lr_prev.created_at < l.created_at)
+           )
+         ORDER BY lr_prev.survey_date DESC, lr_prev.created_at DESC
+         LIMIT 1
+       ) p_any ON true
+       ORDER BY l.labor_category, l.skill_level, l.region`,
       params
     );
 
@@ -834,7 +940,7 @@ export class ConstructionCostService {
         'Municipal water and electricity connections available',
         'No abnormal site conditions',
         'Standard specifications for quality level',
-        `Prices as of ${new Date().toLocaleDateString()}`,
+        `Prices as of ${new Date().toLocaleDateString('en-GB')}`,
         `Regional multiplier: ${regionalMultiplier.value.toFixed(3)} (${regionalMultiplier.source})`,
         `Construction index multiplier: ${indexMultiplier.toFixed(2)}`,
         `Data source: ${dataSource}`,

@@ -51,7 +51,7 @@ export interface SubscriptionPlan {
   updated_at: string;
 }
 
-export type PlanCategory = 'full_platform' | 'property_management' | 'crm' | 'data_intelligence' | 'project_management';
+export type PlanCategory = 'full_platform' | 'valuation_services' | 'property_management' | 'crm' | 'data_intelligence' | 'project_management';
 export type PlanTier = 'starter' | 'professional' | 'enterprise';
 export type PlanSegment = 'b2c' | 'b2b' | 'any';
 

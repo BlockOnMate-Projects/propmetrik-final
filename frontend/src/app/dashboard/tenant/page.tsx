@@ -305,7 +305,7 @@ function DashboardContent() {
                 <Link key={req.id} href={`${T}/maintenance/${req.id}`} className="px-6 py-3.5 flex items-center gap-3.5 hover:bg-gray-50 transition-colors">
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium text-gray-900 truncate">{req.title}</p>
-                    <p className="text-xs text-gray-500">{req.category} • {new Date(req.createdAt).toLocaleDateString()}</p>
+                    <p className="text-xs text-gray-500">{req.category} • {new Date(req.createdAt).toLocaleDateString('en-GB')}</p>
                   </div>
                   <span className={`px-2.5 py-1 rounded-full text-[10px] font-semibold uppercase tracking-wider ${
                     req.status === 'completed' ? 'bg-emerald-50 text-emerald-700' :

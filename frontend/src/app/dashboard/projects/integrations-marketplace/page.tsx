@@ -256,7 +256,7 @@ export default function IntegrationsPage() {
                     <Badge className={k.is_active ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}>{k.is_active ? 'Active' : 'Revoked'}</Badge>
                     <Badge variant="outline" className="border-zinc-700 text-zinc-400">{k.permissions}</Badge>
                   </div>
-                  <p className="text-xs text-zinc-500">Prefix: {k.key_prefix}... • Created: {new Date(k.created_at).toLocaleDateString()}{k.expires_at ? ` • Expires: ${new Date(k.expires_at).toLocaleDateString()}` : ''}{k.last_used_at ? ` • Last used: ${new Date(k.last_used_at).toLocaleString()}` : ''}</p>
+                  <p className="text-xs text-zinc-500">Prefix: {k.key_prefix}... • Created: {new Date(k.created_at).toLocaleDateString('en-GB')}{k.expires_at ? ` • Expires: ${new Date(k.expires_at).toLocaleDateString('en-GB')}` : ''}{k.last_used_at ? ` • Last used: ${new Date(k.last_used_at).toLocaleString()}` : ''}</p>
                 </div>
                 {k.is_active && (
                   <Button size="sm" variant="outline" className="border-red-500/50 text-red-400 text-xs" onClick={() => revokeApiKey.mutate(k.id)}>Revoke</Button>

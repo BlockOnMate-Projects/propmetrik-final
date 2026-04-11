@@ -472,7 +472,7 @@ router.post('/bid-requests/:id/publish', requirePMWrite, async (req: Request, re
     const invitations = await pool.query(
       `SELECT * FROM bid_invitations WHERE bid_request_id = $1 AND status = 'pending'`, [id]);
     const frontendUrl = config.app.frontendUrl;
-    const deadlineStr = new Date(bidRequest.submission_deadline).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+    const deadlineStr = new Date(bidRequest.submission_deadline).toLocaleDateString('en-GB', { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' });
 
     // Fetch inviting company & PM name for personalised email
     const [orgRow, userRow] = await Promise.all([
@@ -695,7 +695,7 @@ router.post('/bid-requests/:id/invitations/resend', requirePMWrite, async (req: 
 
     const frontendUrl = config.app.frontendUrl;
     const portalUrl = `${frontendUrl}/vendor/bid/${invitation.token}`;
-    const deadlineStr = new Date(bidRequest.submission_deadline).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+    const deadlineStr = new Date(bidRequest.submission_deadline).toLocaleDateString('en-GB', { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' });
 
     const [orgRow, userRow] = await Promise.all([
       pool.query('SELECT name FROM organizations WHERE id = $1', [orgId]),

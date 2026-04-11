@@ -68,7 +68,7 @@ const HEALTH_CONFIG = {
 /* ────────────── Helper ────────────── */
 function fmtDate(d: string | null) {
   if (!d) return '—'
-  return new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+  return new Date(d).toLocaleDateString('en-GB', { month: 'short', day: 'numeric', year: 'numeric' })
 }
 
 /* ────────────── Components ────────────── */

@@ -130,7 +130,7 @@ function BaselineManager({
   })
 
   const handleCreateBaseline = () => {
-    const name = `Baseline ${new Date().toLocaleDateString()}`
+    const name = `Baseline ${new Date().toLocaleDateString('en-GB')}`
     createBaselineMutation.mutate({ name })
   }
 
@@ -178,7 +178,7 @@ function BaselineManager({
                   <div>
                     <span className="text-zinc-300">{baseline.name}</span>
                     <span className="text-zinc-500 text-[10px] block">
-                      {new Date(baseline.created_at).toLocaleDateString()}
+                      {new Date(baseline.created_at).toLocaleDateString('en-GB')}
                     </span>
                   </div>
                 </div>

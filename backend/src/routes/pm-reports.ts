@@ -147,7 +147,7 @@ router.get('/projects/:projectId/reports/issues', async (req: Request, res: Resp
     if (issuesRes.rows.length > 0) {
       pdfTable(doc, ['#', 'Title', 'Severity', 'Priority', 'Status', 'Due Date'], issuesRes.rows.map((r: any) => [
         r.issue_number || '-', (r.title || '').slice(0, 30), titleCase(r.severity), titleCase(r.priority), titleCase(r.status),
-        r.due_date ? new Date(r.due_date).toLocaleDateString() : '-',
+        r.due_date ? new Date(r.due_date).toLocaleDateString('en-GB') : '-',
       ]), [50, 135, 65, 60, 65, 70]);
     } else {
       pdfInfoPanel(doc, 'No issues found for this project.', 'success');
@@ -247,7 +247,7 @@ router.get('/projects/:projectId/reports/meeting/:meetingId', async (req: Reques
     if (actionsRes.rows.length > 0) {
       pdfTable(doc, ['Description', 'Assigned To', 'Due Date', 'Priority', 'Status'], actionsRes.rows.map((a: any) => [
         (a.description || '').slice(0, 40), a.assigned_to || '-',
-        a.due_date ? new Date(a.due_date).toLocaleDateString() : '-',
+        a.due_date ? new Date(a.due_date).toLocaleDateString('en-GB') : '-',
         titleCase(a.priority), titleCase(a.status),
       ]), [150, 80, 70, 60, 60]);
     } else {

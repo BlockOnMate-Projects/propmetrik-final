@@ -224,7 +224,7 @@ export function ZoneFacts({ property, dataQuality }: ZoneFactsProps) {
                   </div>
                   <span className="text-sm font-medium">
                     {dataQuality.last_updated 
-                      ? new Date(dataQuality.last_updated).toLocaleDateString()
+                      ? new Date(dataQuality.last_updated).toLocaleDateString('en-GB')
                       : 'Unknown'}
                   </span>
                 </div>

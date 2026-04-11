@@ -248,8 +248,8 @@ export default function DrawingsPage() {
                   <TableCell className="font-mono text-xs text-white">{d.current_revision}</TableCell>
                   <TableCell className="text-xs text-zinc-400 max-w-[140px] truncate">{d.project_name || '—'}</TableCell>
                   <TableCell><Badge variant="outline" className={statusColors[d.status] || 'border-zinc-700'}>{d.status.replace('_', ' ')}</Badge></TableCell>
-                  <TableCell className="text-xs text-zinc-400">{d.submitted_at ? new Date(d.submitted_at).toLocaleDateString() : '—'}</TableCell>
-                  <TableCell className="text-xs text-zinc-400">{d.reviewed_at ? new Date(d.reviewed_at).toLocaleDateString() : '—'}</TableCell>
+                  <TableCell className="text-xs text-zinc-400">{d.submitted_at ? new Date(d.submitted_at).toLocaleDateString('en-GB') : '—'}</TableCell>
+                  <TableCell className="text-xs text-zinc-400">{d.reviewed_at ? new Date(d.reviewed_at).toLocaleDateString('en-GB') : '—'}</TableCell>
                   <TableCell className="text-xs text-zinc-400">{d.revision_count || 0}</TableCell>
                   <TableCell>
                     <div className="flex items-center gap-1">
@@ -373,7 +373,7 @@ export default function DrawingsPage() {
                       )}
                       {rev.status === 'draft' && <Button size="sm" variant="ghost" className="h-7 text-xs text-blue-400" onClick={() => reviewRevision(rev.id, 'review')}>Review</Button>}
                       {rev.status === 'reviewed' && <Button size="sm" variant="ghost" className="h-7 text-xs text-green-400" onClick={() => reviewRevision(rev.id, 'approve')}><CheckCircle className="h-3 w-3 mr-1" />Approve</Button>}
-                      <span className="text-[10px] text-zinc-500">{new Date(rev.created_at).toLocaleDateString()}</span>
+                      <span className="text-[10px] text-zinc-500">{new Date(rev.created_at).toLocaleDateString('en-GB')}</span>
                     </div>
                   </div>
                 ))}
@@ -434,7 +434,7 @@ export default function DrawingsPage() {
                       <Card key={revId} className="bg-zinc-800 border-zinc-700 p-4">
                         <p className="font-mono text-amber-500 font-bold mb-2">Rev {rev.revision_number}</p>
                         <p className="text-xs text-zinc-400 mb-1"><span className="text-zinc-500">Status:</span> {rev.status}</p>
-                        <p className="text-xs text-zinc-400 mb-1"><span className="text-zinc-500">Date:</span> {new Date(rev.created_at).toLocaleDateString()}</p>
+                        <p className="text-xs text-zinc-400 mb-1"><span className="text-zinc-500">Date:</span> {new Date(rev.created_at).toLocaleDateString('en-GB')}</p>
                         <p className="text-xs text-zinc-400 mb-1"><span className="text-zinc-500">File:</span> {rev.file_name || 'N/A'}</p>
                         <p className="text-xs text-zinc-400"><span className="text-zinc-500">Changes:</span> {rev.change_description || 'No description'}</p>
                       </Card>

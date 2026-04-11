@@ -553,7 +553,7 @@ export default function ProjectSiteLogsPage() {
                     <div>
                       <div className="flex items-center gap-2">
                         <h3 className="font-medium text-white">
-                          {new Date(diary.date).toLocaleDateString('en-US', {
+                          {new Date(diary.date).toLocaleDateString('en-GB', {
                             weekday: 'long',
                             year: 'numeric',
                             month: 'long',
@@ -678,7 +678,7 @@ export default function ProjectSiteLogsPage() {
           <SheetHeader>
             <SheetTitle className="text-white">Site Log Details</SheetTitle>
             <SheetDescription className="text-zinc-400">
-              {selectedDiary && new Date(selectedDiary.date).toLocaleDateString('en-US', {
+              {selectedDiary && new Date(selectedDiary.date).toLocaleDateString('en-GB', {
                 weekday: 'long',
                 year: 'numeric',
                 month: 'long',

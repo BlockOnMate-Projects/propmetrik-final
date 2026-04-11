@@ -623,7 +623,7 @@ export default function ProjectPunchListsPage() {
                         )}
                         {item.dueDate && (
                           <span className={`flex items-center gap-1 ${isOverdue ? 'text-red-400' : ''}`}>
-                            <Calendar className="h-3 w-3" /> {new Date(item.dueDate).toLocaleDateString()}
+                            <Calendar className="h-3 w-3" /> {new Date(item.dueDate).toLocaleDateString('en-GB')}
                           </span>
                         )}
                         {item.assignedToName && (
@@ -781,7 +781,7 @@ export default function ProjectPunchListsPage() {
               {selectedItem.dueDate && (
                 <div>
                   <h4 className="text-xs font-medium text-zinc-500 uppercase tracking-wider mb-2">Due Date</h4>
-                  <p className="text-white">{new Date(selectedItem.dueDate).toLocaleDateString()}</p>
+                  <p className="text-white">{new Date(selectedItem.dueDate).toLocaleDateString('en-GB')}</p>
                 </div>
               )}
 

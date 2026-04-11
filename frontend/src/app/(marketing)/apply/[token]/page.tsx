@@ -563,7 +563,7 @@ export default function PropertyApplicationPage() {
                 )}
                 <div className="p-3 bg-gray-50 rounded-lg">
                   <p className="text-xs text-gray-500 mb-1">Listed</p>
-                  <p className="text-sm font-semibold text-gray-900">{new Date(property.listed_at).toLocaleDateString()}</p>
+                  <p className="text-sm font-semibold text-gray-900">{new Date(property.listed_at).toLocaleDateString('en-GB')}</p>
                 </div>
                 {property.price_negotiable && (
                   <div className="p-3 bg-gray-50 rounded-lg">

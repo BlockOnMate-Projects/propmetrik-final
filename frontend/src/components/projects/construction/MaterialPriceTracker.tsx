@@ -168,7 +168,7 @@ export function MaterialPriceTracker({ defaultRegion = 'Greater Accra' }: Materi
                     <TableCell className="font-mono text-[10px] text-right text-zinc-500">
                       {item.source || 'Scraper'}
                       <div className="text-zinc-600">
-                        {item.effectiveDate ? new Date(item.effectiveDate).toLocaleDateString() : 'Recent'}
+                        {item.effectiveDate ? new Date(item.effectiveDate).toLocaleDateString('en-GB') : 'Recent'}
                       </div>
                     </TableCell>
                   </TableRow>

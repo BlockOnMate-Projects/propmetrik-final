@@ -219,7 +219,7 @@ function CommunicationItem({
           {needsFollowUp && (
             <Badge className="flex items-center gap-1 bg-amber-100 text-amber-800">
               <Clock className="h-3 w-3" />
-              {new Date(log.followUpDate!).toLocaleDateString()}
+              {new Date(log.followUpDate!).toLocaleDateString('en-GB')}
             </Badge>
           )}
           {log.followUpCompleted && (
@@ -603,7 +603,7 @@ function CommunicationDetail({
               )}
             </div>
             <p className="mt-2 text-sm">
-              <strong>Due:</strong> {new Date(log.followUpDate).toLocaleDateString()}
+              <strong>Due:</strong> {new Date(log.followUpDate).toLocaleDateString('en-GB')}
             </p>
             {log.followUpNotes && (
               <p className="mt-1 text-sm text-muted-foreground">

@@ -582,7 +582,7 @@ export default function AnalyticsPage() {
                         <div className="space-y-3">
                             {firmData.monthly_trend.map((m, idx) => {
                                 const maxVal = Math.max(...firmData.monthly_trend.map(t => t.valuations)) || 1
-                                const month = new Date(m.month).toLocaleDateString('en-US', { month: 'short', year: '2-digit' })
+                                const month = new Date(m.month).toLocaleDateString('en-GB', { month: 'short', year: '2-digit' })
                                 return (
                                     <div key={idx}>
                                         <div className="flex items-center justify-between mb-1">

@@ -223,7 +223,7 @@ export default function IssuesPage() {
                       <TableCell><Badge variant="outline" className={severityColors[issue.severity] || 'border-zinc-700'}>{issue.severity}</Badge></TableCell>
                       <TableCell><Badge variant="outline" className={severityColors[issue.priority] || 'border-zinc-700'}>{issue.priority}</Badge></TableCell>
                       <TableCell><Badge variant="outline" className={statusColors[issue.status] || 'border-zinc-700'}>{issue.status.replace('_', ' ')}</Badge></TableCell>
-                      <TableCell className="text-xs text-zinc-400">{issue.due_date ? new Date(issue.due_date).toLocaleDateString() : '—'}</TableCell>
+                      <TableCell className="text-xs text-zinc-400">{issue.due_date ? new Date(issue.due_date).toLocaleDateString('en-GB') : '—'}</TableCell>
                       <TableCell>
                         <div className="flex gap-1">
                           {issue.status === 'open' && <Button size="sm" variant="ghost" className="h-7 text-xs text-amber-500" onClick={() => updateIssueStatus(issue.id, 'in_progress')}>Start</Button>}

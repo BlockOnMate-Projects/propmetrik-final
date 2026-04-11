@@ -224,7 +224,7 @@ class WhatsAppNotificationServiceImpl extends BaseService {
       data: {
         rfiNumber: row.rfi_number,
         rfiSubject: row.subject,
-        dueDate: new Date(row.due_date).toLocaleDateString(),
+        dueDate: new Date(row.due_date).toLocaleDateString('en-GB'),
         daysRemaining: Math.ceil(
           (new Date(row.due_date).getTime() - Date.now()) / (1000 * 60 * 60 * 24)
         ),
@@ -272,7 +272,7 @@ class WhatsAppNotificationServiceImpl extends BaseService {
       projectName: row.project_name,
       data: {
         itemDescription: row.item_description,
-        deliveryDate: new Date(row.scheduled_date).toLocaleDateString(),
+        deliveryDate: new Date(row.scheduled_date).toLocaleDateString('en-GB'),
         deliveryTime: row.scheduled_time,
         supplierName: row.supplier_name,
       },

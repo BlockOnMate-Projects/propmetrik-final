@@ -20,6 +20,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { formatDate } from '@/lib/dateFormat'
 import {
     paymentConfigApi as pmPaymentConfigApi,
     PaymentAccountConfig,
@@ -34,6 +35,30 @@ const MOMO_PROVIDERS_FALLBACK = [
 ]
 
 type SettlementMethod = 'bank' | 'mobile_money'
+
+const MOMO_PROVIDER_CODES = new Set(['MTN', 'VOD', 'ATL'])
+
+function isMomoProviderCode(code: string): boolean {
+    return MOMO_PROVIDER_CODES.has((code || '').toUpperCase())
+}
+
+function normalizeGhanaMomoNumber(raw: string): string {
+    const digits = (raw || '').replace(/\D/g, '')
+
+    if (digits.length === 10 && digits.startsWith('0')) {
+        return `233${digits.slice(1)}`
+    }
+
+    if (digits.length === 9) {
+        return `233${digits}`
+    }
+
+    if (digits.length === 12 && digits.startsWith('233')) {
+        return digits
+    }
+
+    return digits
+}
 
 /** Generic payment config API shape */
 export interface PaymentConfigApiShape {
@@ -158,7 +183,7 @@ export default function PaymentSettings({ paymentApi, serviceLabel }: PaymentSet
         } finally {
             setLoading(false)
         }
-    }, [])
+    }, [api])
 
     useEffect(() => {
         loadAccount()
@@ -191,12 +216,15 @@ export default function PaymentSettings({ paymentApi, serviceLabel }: PaymentSet
             })
             .catch(() => { setBanks([]); setMomoProviders([]) })
             .finally(() => setBanksLoading(false))
-    }, [banksLoaded])
+    }, [api, banksLoaded])
 
     // Resolve bank account when both fields are filled
     const handleResolve = async () => {
         const code = settlementMethod === 'bank' ? bankCode : momoProvider
-        const number = settlementMethod === 'bank' ? accountNumber : momoNumber
+        const rawNumber = settlementMethod === 'bank' ? accountNumber : momoNumber
+        const number = settlementMethod === 'mobile_money' && isMomoProviderCode(code)
+            ? normalizeGhanaMomoNumber(rawNumber)
+            : rawNumber
 
         if (!code || !number || number.length < 10) return
 
@@ -231,7 +259,10 @@ export default function PaymentSettings({ paymentApi, serviceLabel }: PaymentSet
         if (!resolvedName) return
 
         const code = settlementMethod === 'bank' ? bankCode : momoProvider
-        const number = settlementMethod === 'bank' ? accountNumber : momoNumber
+        const rawNumber = settlementMethod === 'bank' ? accountNumber : momoNumber
+        const number = settlementMethod === 'mobile_money' && isMomoProviderCode(code)
+            ? normalizeGhanaMomoNumber(rawNumber)
+            : rawNumber
 
         if (!code || !number || !businessName.trim()) {
             setRegisterError('Please fill in all required fields.')
@@ -383,7 +414,7 @@ export default function PaymentSettings({ paymentApi, serviceLabel }: PaymentSet
                                 <div>
                                     <p className="text-[10px] text-zinc-500 font-mono uppercase mb-1">Configured</p>
                                     <p className="text-xs text-zinc-300 font-mono">
-                                        {account.createdAt ? new Date(account.createdAt).toLocaleDateString('en-GH') : '—'}
+                                        {formatDate(account.createdAt)}
                                     </p>
                                 </div>
                             </div>
@@ -915,7 +946,7 @@ function CryptoWalletSettings({ serviceLabel, api }: { serviceLabel: string; api
                             <div>
                                 <p className="text-[10px] text-zinc-500 font-mono uppercase mb-1">Configured</p>
                                 <p className="text-xs text-zinc-300 font-mono">
-                                    {new Date(currentWallet.registeredAt).toLocaleDateString('en-GH', { year: 'numeric', month: 'long', day: 'numeric' })}
+                                    {formatDate(currentWallet.registeredAt, { year: 'numeric', month: 'long', day: 'numeric' })}
                                 </p>
                             </div>
                         )}

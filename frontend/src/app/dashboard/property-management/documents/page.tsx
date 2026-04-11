@@ -350,7 +350,7 @@ export default function DocumentVaultPage() {
                                             {/* Date */}
                                             <TableCell>
                                                 <div className="text-[10px] text-zinc-400 font-mono whitespace-nowrap">
-                                                    {new Date(doc.createdAt).toLocaleDateString()}
+                                                    {new Date(doc.createdAt).toLocaleDateString('en-GB')}
                                                 </div>
                                             </TableCell>
 

@@ -956,13 +956,13 @@ export default function ProcurementPage() {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <Label className="text-zinc-500 text-xs uppercase">Created</Label>
-                  <p className="text-white mt-1">{new Date(selectedPO.createdAt).toLocaleDateString()}</p>
+                  <p className="text-white mt-1">{new Date(selectedPO.createdAt).toLocaleDateString('en-GB')}</p>
                 </div>
                 <div>
                   <Label className="text-zinc-500 text-xs uppercase">Requested Delivery</Label>
                   <p className="text-white mt-1">
                     {selectedPO.requestedDeliveryDate 
-                      ? new Date(selectedPO.requestedDeliveryDate).toLocaleDateString() 
+                      ? new Date(selectedPO.requestedDeliveryDate).toLocaleDateString('en-GB') 
                       : '-'}
                   </p>
                 </div>

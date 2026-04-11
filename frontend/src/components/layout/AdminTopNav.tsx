@@ -80,6 +80,7 @@ const navigation: NavItem[] = [
     name: 'PLATFORM',
     icon: Zap,
     children: [
+      { name: 'Subscription Pricing', href: '/dashboard/admin/subscription-pricing', icon: CreditCard },
       { name: 'API Docs', href: '/dashboard/admin/api-docs', icon: BookOpen },
       { name: 'Usage Analytics', href: '/dashboard/admin/usage', icon: BarChart3 },
       { name: 'Customer Success', href: '/dashboard/admin/customer-success', icon: Heart },

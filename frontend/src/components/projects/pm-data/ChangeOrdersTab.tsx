@@ -514,7 +514,7 @@ export function ChangeOrdersTab({ projectId, organizationId, currency = 'GHS', o
                     {order.approved_at && (
                       <div className="flex items-center gap-4 text-zinc-500 font-mono text-xs">
                         <span>Approved by {order.approved_by_name || 'Client'}</span>
-                        <span>on {new Date(order.approved_at).toLocaleDateString()}</span>
+                        <span>on {new Date(order.approved_at).toLocaleDateString('en-GB')}</span>
                       </div>
                     )}
                   </div>

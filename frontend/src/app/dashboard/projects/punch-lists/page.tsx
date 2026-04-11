@@ -585,7 +585,7 @@ export default function PunchListsPage() {
                         {item.dueDate && (
                           <div className="flex items-center gap-1">
                             <Calendar className="h-3.5 w-3.5" />
-                            {new Date(item.dueDate).toLocaleDateString()}
+                            {new Date(item.dueDate).toLocaleDateString('en-GB')}
                           </div>
                         )}
                         {item.photoCount > 0 && (
@@ -832,7 +832,7 @@ export default function PunchListsPage() {
                 {selectedItem.dueDate && (
                   <div>
                     <Label className="text-zinc-500 text-xs uppercase">Due Date</Label>
-                    <p className="text-white mt-1">{new Date(selectedItem.dueDate).toLocaleDateString()}</p>
+                    <p className="text-white mt-1">{new Date(selectedItem.dueDate).toLocaleDateString('en-GB')}</p>
                   </div>
                 )}
               </div>

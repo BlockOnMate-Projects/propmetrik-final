@@ -152,7 +152,7 @@ export default function TenantDashboard() {
                   {paymentSummary.currency} {paymentSummary.nextPaymentDue.amount.toLocaleString()}
                 </p>
                 <p className="text-sm text-gray-500 mt-1">
-                  Due: {new Date(paymentSummary.nextPaymentDue.dueDate).toLocaleDateString()}
+                  Due: {new Date(paymentSummary.nextPaymentDue.dueDate).toLocaleDateString('en-GB')}
                 </p>
               </>
             ) : (
@@ -285,11 +285,11 @@ export default function TenantDashboard() {
               </div>
               <div>
                 <p className="text-sm text-gray-500">Lease Start</p>
-                <p className="font-medium">{activeTenancy.startDate ? new Date(activeTenancy.startDate).toLocaleDateString() : '—'}</p>
+                <p className="font-medium">{activeTenancy.startDate ? new Date(activeTenancy.startDate).toLocaleDateString('en-GB') : '—'}</p>
               </div>
               <div>
                 <p className="text-sm text-gray-500">Lease End</p>
-                <p className="font-medium">{activeTenancy.endDate ? new Date(activeTenancy.endDate).toLocaleDateString() : '—'}</p>
+                <p className="font-medium">{activeTenancy.endDate ? new Date(activeTenancy.endDate).toLocaleDateString('en-GB') : '—'}</p>
               </div>
             </div>
           </div>

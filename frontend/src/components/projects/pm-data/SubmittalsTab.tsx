@@ -311,7 +311,7 @@ export function SubmittalsTab({ projectId, organizationId, onRefresh }: Submitta
                     <p className="font-mono text-xs text-zinc-500 mt-1">
                       From: {submittal.submitted_by_name || 'Project Manager'} • 
                       {submittal.spec_section && ` Spec: ${submittal.spec_section} •`}
-                      {submittal.due_date && ` Due: ${new Date(submittal.due_date).toLocaleDateString()}`}
+                      {submittal.due_date && ` Due: ${new Date(submittal.due_date).toLocaleDateString('en-GB')}`}
                     </p>
                   </div>
                   
@@ -401,7 +401,7 @@ export function SubmittalsTab({ projectId, organizationId, onRefresh }: Submitta
                         </p>
                         {submittal.reviewed_at && (
                           <p className="font-mono text-[10px] text-zinc-500 mt-2">
-                            Reviewed on {new Date(submittal.reviewed_at).toLocaleDateString()}
+                            Reviewed on {new Date(submittal.reviewed_at).toLocaleDateString('en-GB')}
                           </p>
                         )}
                       </div>

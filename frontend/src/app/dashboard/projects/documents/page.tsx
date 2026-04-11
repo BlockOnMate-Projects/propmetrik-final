@@ -344,7 +344,7 @@ export default function PMDocumentsPage() {
                           <span className="text-[10px] text-zinc-400 font-mono">{doc.uploaded_by_name || '—'}</span>
                         </TableCell>
                         <TableCell className="hidden lg:table-cell"><span className="text-[10px] text-zinc-500 font-mono">{formatBytes(doc.file_size || doc.file_size_bytes)}</span></TableCell>
-                        <TableCell><span className="text-[10px] text-zinc-400 font-mono whitespace-nowrap">{new Date(doc.created_at).toLocaleDateString()}</span></TableCell>
+                        <TableCell><span className="text-[10px] text-zinc-400 font-mono whitespace-nowrap">{new Date(doc.created_at).toLocaleDateString('en-GB')}</span></TableCell>
                         <TableCell className="text-right">
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild><Button variant="ghost" className="h-6 w-6 p-0 text-zinc-500 hover:text-white"><MoreVertical className="h-3 w-3" /></Button></DropdownMenuTrigger>

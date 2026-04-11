@@ -31,7 +31,7 @@ function formatMessageTime(timestamp: string) {
 
   if (diffDays === 0) return date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
   if (diffDays === 1) return 'Yesterday';
-  if (diffDays < 7) return date.toLocaleDateString('en-US', { weekday: 'short' });
+  if (diffDays < 7) return date.toLocaleDateString('en-GB', { weekday: 'short' });
   return date.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
 }
 
@@ -189,7 +189,7 @@ function MessagesContent() {
                         {showDate && (
                           <div className="flex items-center justify-center my-4">
                             <span className="text-[10px] font-medium text-gray-400 bg-gray-100 px-3 py-1 rounded-full">
-                              {new Date(msg.createdAt).toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })}
+                              {new Date(msg.createdAt).toLocaleDateString('en-GB', { weekday: 'long', month: 'short', day: 'numeric' })}
                             </span>
                           </div>
                         )}

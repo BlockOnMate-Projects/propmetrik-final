@@ -638,7 +638,7 @@ export default function SettingsPage() {
                                                 <div className="font-mono text-xs text-white">{key.name}</div>
                                                 <div className="font-mono text-[10px] text-zinc-500 mt-0.5">
                                                     {key.key_prefix}••• • {key.scopes?.join(', ')} • {key.usage_count || 0} requests
-                                                    {key.last_used_at && ` • Last used ${new Date(key.last_used_at).toLocaleDateString()}`}
+                                                    {key.last_used_at && ` • Last used ${new Date(key.last_used_at).toLocaleDateString('en-GB')}`}
                                                 </div>
                                             </div>
                                             <div className="flex items-center gap-2">

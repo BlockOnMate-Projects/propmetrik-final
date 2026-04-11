@@ -206,7 +206,7 @@ export default function EquipmentPage() {
                       <Badge className={STATUS_COLORS[a.status] || ''}>{a.status}</Badge>
                     </div>
                     <p className="text-sm text-white">{a.equipment_name}</p>
-                    <p className="text-xs text-zinc-500">{a.category} • {a.make} {a.model} • Assigned: {new Date(a.assigned_date).toLocaleDateString()}</p>
+                    <p className="text-xs text-zinc-500">{a.category} • {a.make} {a.model} • Assigned: {new Date(a.assigned_date).toLocaleDateString('en-GB')}</p>
                   </div>
                   <div className="flex items-center gap-2">
                     {a.daily_rate > 0 && <span className="text-sm font-mono text-green-400">${parseFloat(a.daily_rate).toFixed(0)}/day</span>}
@@ -235,7 +235,7 @@ export default function EquipmentPage() {
                         <Badge variant="outline" className="border-zinc-700 text-zinc-400">{m.maintenance_type}</Badge>
                       </div>
                       <p className="text-sm text-white">{m.name} — {m.description}</p>
-                      <p className="text-xs text-zinc-500">Due: {new Date(m.scheduled_date).toLocaleDateString()} {m.vendor ? `• Vendor: ${m.vendor}` : ''}</p>
+                      <p className="text-xs text-zinc-500">Due: {new Date(m.scheduled_date).toLocaleDateString('en-GB')} {m.vendor ? `• Vendor: ${m.vendor}` : ''}</p>
                     </div>
                     {m.cost > 0 && <span className="text-sm font-mono text-amber-400">${parseFloat(m.cost).toFixed(0)}</span>}
                   </div>

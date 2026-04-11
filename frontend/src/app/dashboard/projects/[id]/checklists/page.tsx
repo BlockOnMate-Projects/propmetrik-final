@@ -454,7 +454,7 @@ export default function ProjectChecklistsPage() {
                         {instance.dueDate && (
                           <span className={`flex items-center gap-1 ${isOverdue ? 'text-red-400' : ''}`}>
                             <Calendar className="h-3 w-3" /> 
-                            Due {new Date(instance.dueDate).toLocaleDateString()}
+                            Due {new Date(instance.dueDate).toLocaleDateString('en-GB')}
                           </span>
                         )}
                         {instance.assignedToName && (
@@ -604,7 +604,7 @@ export default function ProjectChecklistsPage() {
               {selectedInstance.dueDate && (
                 <div>
                   <h4 className="text-xs font-medium text-zinc-500 uppercase tracking-wider mb-2">Due Date</h4>
-                  <p className="text-white">{new Date(selectedInstance.dueDate).toLocaleDateString()}</p>
+                  <p className="text-white">{new Date(selectedInstance.dueDate).toLocaleDateString('en-GB')}</p>
                 </div>
               )}
 

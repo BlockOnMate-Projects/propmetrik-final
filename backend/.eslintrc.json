@@ -47,6 +47,13 @@
     "no-debugger": "error",
     "prefer-const": "error",
     "no-var": "error",
+    "no-restricted-properties": [
+      "warn",
+      {
+        "property": "toLocaleDateString",
+        "message": "Use formatDate from src/utils/dateFormat.ts for Ghana date formatting consistency."
+      }
+    ],
     
     // Prettier
     "prettier/prettier": "error"

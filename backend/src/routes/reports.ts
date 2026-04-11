@@ -1059,7 +1059,7 @@ function generateExecutiveSummaryHTML(data: any): string {
   const finalValue = reconciliation.final_value || valuation.final_value_ghs || 0;
   const formattedValue = new Intl.NumberFormat('en-GH', { style: 'currency', currency: 'GHS' }).format(finalValue);
   
-  const effectiveDate = valuation.effective_date ? new Date(valuation.effective_date).toLocaleDateString() : new Date().toLocaleDateString();
+  const effectiveDate = valuation.effective_date ? new Date(valuation.effective_date).toLocaleDateString('en-GB') : new Date().toLocaleDateString('en-GB');
   
   return `
     <h2>Executive Summary</h2>
@@ -1084,7 +1084,7 @@ function generateInstructionsHTML(data: any): string {
   const valuation = data.valuation || {};
   const client = data.client || {};
   
-  const instructionDate = valuation.instruction_date ? new Date(valuation.instruction_date).toLocaleDateString() : 'Not specified';
+  const instructionDate = valuation.instruction_date ? new Date(valuation.instruction_date).toLocaleDateString('en-GB') : 'Not specified';
   
   return `
     <h2>Instructions & Scope</h2>
@@ -1290,7 +1290,7 @@ function generateAssumptionsHTML(data: any): string {
 
 function generateCertificationHTML(data: any): string {
   const valuer = data.valuer || {};
-  const dateStr = new Date().toLocaleDateString();
+  const dateStr = new Date().toLocaleDateString('en-GB');
   
   return `
     <h2>Valuer Certification</h2>

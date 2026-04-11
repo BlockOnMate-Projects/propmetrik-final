@@ -523,7 +523,7 @@ export default function ProjectPhotosPage() {
                           </span>
                         )}
                         <span className="flex items-center gap-1">
-                          <Calendar className="h-3 w-3" /> {new Date(photo.createdAt).toLocaleDateString()}
+                          <Calendar className="h-3 w-3" /> {new Date(photo.createdAt).toLocaleDateString('en-GB')}
                         </span>
                       </div>
                     </div>

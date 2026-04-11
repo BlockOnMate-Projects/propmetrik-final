@@ -204,7 +204,7 @@ export default function ESignDashboard() {
                     <div>
                       <h4 className="font-medium">{envelope.name}</h4>
                       <p className="text-sm text-gray-500">
-                        {envelope.contextEntityName || 'Document'} • {new Date(envelope.createdAt).toLocaleDateString()}
+                        {envelope.contextEntityName || 'Document'} • {new Date(envelope.createdAt).toLocaleDateString('en-GB')}
                       </p>
                     </div>
                   </div>

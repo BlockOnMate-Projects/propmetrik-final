@@ -229,7 +229,7 @@ function MilestoneCard({
               isOverdue && 'border-red-500/30 text-red-400'
             )}>
               <Calendar className="h-3 w-3" />
-              {new Date(milestone.dueDate).toLocaleDateString()}
+              {new Date(milestone.dueDate).toLocaleDateString('en-GB')}
             </Badge>
           )}
           {linkedInvoices.length > 0 && (
@@ -512,7 +512,7 @@ function MilestoneDetail({
               <span className="text-zinc-500">Due Date</span>
               <span className="text-zinc-300">
                 {milestone.dueDate 
-                  ? new Date(milestone.dueDate).toLocaleDateString() 
+                  ? new Date(milestone.dueDate).toLocaleDateString('en-GB') 
                   : 'Not set'}
               </span>
             </div>
@@ -723,7 +723,7 @@ function ScheduleTimeline({
                         <h4 className="font-medium text-zinc-100">{milestone.name}</h4>
                         {milestone.dueDate && (
                           <p className="text-sm text-zinc-500">
-                            Due: {new Date(milestone.dueDate).toLocaleDateString()}
+                            Due: {new Date(milestone.dueDate).toLocaleDateString('en-GB')}
                           </p>
                         )}
                       </div>

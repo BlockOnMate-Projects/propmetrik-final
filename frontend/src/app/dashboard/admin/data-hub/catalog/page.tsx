@@ -225,7 +225,7 @@ export default function CatalogPage() {
                             </div>
                             <div className="flex items-center gap-1 text-zinc-500">
                                 <Clock className="w-3 h-3" />
-                                <span className="font-mono text-[9px]">{mounted && entry.lastUpdated ? new Date(entry.lastUpdated).toLocaleDateString() : 'Never'}</span>
+                                <span className="font-mono text-[9px]">{mounted && entry.lastUpdated ? new Date(entry.lastUpdated).toLocaleDateString('en-GB') : 'Never'}</span>
                             </div>
                         </div>
                     </div>

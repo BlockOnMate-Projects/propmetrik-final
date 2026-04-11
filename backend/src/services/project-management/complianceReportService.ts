@@ -474,7 +474,7 @@ class ComplianceReportService {
       
       const expiringText = data.expiring_soon
         .slice(0, 3)
-        .map(p => `• ${p.permit_name}: ${new Date(p.expiration_date!).toLocaleDateString()}`)
+        .map(p => `• ${p.permit_name}: ${new Date(p.expiration_date!).toLocaleDateString('en-GB')}`)
         .join('\n');
       
       page.drawText(expiringText, {

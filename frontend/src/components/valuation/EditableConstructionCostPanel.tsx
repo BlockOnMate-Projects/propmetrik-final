@@ -57,14 +57,14 @@ export interface MaterialPriceItem {
   price_ghs: number;
   original_price_ghs: number; // For tracking overrides
   unit: string;
-  change_yoy: number;
+  change_yoy: number | null;
   last_updated?: string;
 }
 
 export interface MaterialIndex {
   name: string;
   index: number;
-  change_yoy: number;
+  change_yoy: number | null;
   weight: number; // Weight in composite calculation
   last_updated?: string;
 }
@@ -74,7 +74,7 @@ export interface LaborCost {
   skill_level: string;
   daily_rate: number;
   original_rate: number; // For tracking overrides
-  change_yoy: number;
+  change_yoy: number | null;
   last_updated?: string;
 }
 
@@ -140,19 +140,29 @@ interface EditableConstructionCostPanelProps {
 // HELPER COMPONENTS
 // =====================================================
 
-function TrendIndicator({ change }: { change: number }) {
-  if (change > 0) {
+function TrendIndicator({ change }: { change: number | null | undefined }) {
+  if (change === null || change === undefined || Number.isNaN(Number(change))) {
+    return (
+      <span className="flex items-center gap-1 text-zinc-500 font-mono text-[10px]">
+        <Minus className="w-3 h-3" />
+        —
+      </span>
+    );
+  }
+
+  const value = Number(change);
+  if (value > 0) {
     return (
       <span className="flex items-center gap-1 text-red-400 font-mono text-[10px]">
         <TrendingUp className="w-3 h-3" />
-        +{change.toFixed(1)}%
+        +{value.toFixed(1)}%
       </span>
     );
-  } else if (change < 0) {
+  } else if (value < 0) {
     return (
       <span className="flex items-center gap-1 text-green-400 font-mono text-[10px]">
         <TrendingDown className="w-3 h-3" />
-        {change.toFixed(1)}%
+        {value.toFixed(1)}%
       </span>
     );
   }
@@ -377,10 +387,10 @@ export function EditableConstructionCostPanel({
 
       // Fetch all data in parallel: materials, labor rates, config from database
       // Note: For labor rates, we fetch ALL rates (no region filter) to ensure we get data
-      // The Data Hub imports labor data which may not be tagged by region
+      // Fetch region-scoped labor rates for consistent market context
       const [materialsResponse, laborResponse, regionalsResponse, baseCostsResponse] = await Promise.all([
         constructionApi.getMaterials({ region: apiRegion }),
-        constructionApi.getLaborRates({}), // Fetch all labor rates - don't filter by region
+        constructionApi.getLaborRates({ region: apiRegion }),
         valuationConfigApi.getRegionalFactors(),
         valuationConfigApi.getBaseCosts(),
       ]);
@@ -420,7 +430,7 @@ export function EditableConstructionCostPanel({
               price_ghs: parseFloat(material.price_ghs) || 0,
               original_price_ghs: parseFloat(material.price_ghs) || 0,
               unit: material.unit || 'unit',
-              change_yoy: parseFloat(material.price_change_percent) || 0,
+              change_yoy: material.price_change_percent != null ? parseFloat(String(material.price_change_percent)) : null,
               last_updated: material.survey_date?.toString().split('T')[0] || new Date().toISOString().split('T')[0],
             });
           }
@@ -461,7 +471,7 @@ export function EditableConstructionCostPanel({
               skill_level: labor.skill_level || 'journeyman',
               daily_rate: parseFloat(String(dailyRate)) || 0,
               original_rate: parseFloat(String(dailyRate)) || 0,
-              change_yoy: parseFloat(String(labor.rate_change_percent || 0)),
+              change_yoy: labor.rate_change_percent != null ? parseFloat(String(labor.rate_change_percent)) : null,
               last_updated: (laborDate || new Date().toISOString()).toString().split('T')[0],
             });
           }
@@ -555,8 +565,12 @@ export function EditableConstructionCostPanel({
   // Calculate average YoY change from material prices
   const avgPriceChangeYoy = useMemo(() => {
     if (materialPrices.length === 0) return 0;
-    const total = materialPrices.reduce((sum, m) => sum + (m.change_yoy || 0), 0);
-    return total / materialPrices.length;
+    const valid = materialPrices
+      .map((m) => m.change_yoy)
+      .filter((v): v is number => v !== null && v !== undefined && Number.isFinite(v));
+    if (valid.length === 0) return 0;
+    const total = valid.reduce((sum, v) => sum + v, 0);
+    return total / valid.length;
   }, [materialPrices]);
 
   // Calculate average labor rate

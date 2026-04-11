@@ -92,7 +92,7 @@ export default function ApplicationStatusPage() {
                 <CardTitle>{status.propertyName}</CardTitle>
                 <CardDescription>
                   {status.propertyAddress && <span className="block">{status.propertyAddress}</span>}
-                  Submitted on {status.submittedAt ? new Date(status.submittedAt).toLocaleDateString() : 'N/A'}
+                  Submitted on {status.submittedAt ? new Date(status.submittedAt).toLocaleDateString('en-GB') : 'N/A'}
                 </CardDescription>
               </div>
               <Badge variant={
@@ -117,7 +117,7 @@ export default function ApplicationStatusPage() {
                     </div>
                     <div className="pb-8">
                       <p className="font-semibold text-slate-900">{event.stage}</p>
-                      <p className="text-sm text-slate-500">{event.date ? new Date(event.date).toLocaleDateString() : ''}</p>
+                      <p className="text-sm text-slate-500">{event.date ? new Date(event.date).toLocaleDateString('en-GB') : ''}</p>
                       {event.notes && <p className="mt-1 text-sm text-slate-700">{event.notes}</p>}
                     </div>
                   </div>

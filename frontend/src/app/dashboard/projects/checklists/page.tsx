@@ -790,12 +790,12 @@ export default function ChecklistsPage() {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <Label className="text-zinc-500 text-xs uppercase">Created</Label>
-                  <p className="text-white mt-1">{new Date(selectedInstance.createdAt).toLocaleDateString()}</p>
+                  <p className="text-white mt-1">{new Date(selectedInstance.createdAt).toLocaleDateString('en-GB')}</p>
                 </div>
                 {selectedInstance.dueDate && (
                   <div>
                     <Label className="text-zinc-500 text-xs uppercase">Due Date</Label>
-                    <p className="text-white mt-1">{new Date(selectedInstance.dueDate).toLocaleDateString()}</p>
+                    <p className="text-white mt-1">{new Date(selectedInstance.dueDate).toLocaleDateString('en-GB')}</p>
                   </div>
                 )}
               </div>

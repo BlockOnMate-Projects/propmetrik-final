@@ -438,7 +438,7 @@ function MembersTab({
               {/* Joined */}
               <div className="col-span-2 text-xs text-zinc-500">
                 {m.joinedAt
-                  ? new Date(m.joinedAt).toLocaleDateString()
+                  ? new Date(m.joinedAt).toLocaleDateString('en-GB')
                   : '—'}
               </div>
 
@@ -527,7 +527,7 @@ function InvitationsTab({
           </div>
 
           <div className="col-span-2 text-xs text-zinc-500">
-            {new Date(inv.createdAt).toLocaleDateString()}
+            {new Date(inv.createdAt).toLocaleDateString('en-GB')}
           </div>
 
           <div className="col-span-2 flex gap-2">

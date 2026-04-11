@@ -1580,7 +1580,7 @@ export default function ProjectDetailPage() {
                   const sizeKb = doc.file_size ? (doc.file_size / 1024).toFixed(0) : null
                   const sizeMb = doc.file_size && doc.file_size > 1024 * 1024 ? (doc.file_size / (1024 * 1024)).toFixed(1) : null
                   const sizeLabel = sizeMb ? `${sizeMb} MB` : sizeKb ? `${sizeKb} KB` : ''
-                  const date = doc.created_at ? new Date(doc.created_at).toLocaleDateString() : ''
+                  const date = doc.created_at ? new Date(doc.created_at).toLocaleDateString('en-GB') : ''
                   const docType = doc.document_type?.replace(/_/g, ' ') || doc.category || 'Uncategorized'
                   const uploader = doc.uploaded_by_name || '—'
 

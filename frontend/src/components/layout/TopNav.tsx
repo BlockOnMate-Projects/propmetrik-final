@@ -32,7 +32,7 @@ function Clock() {
     const updateTime = () => {
       const now = new Date()
       setTime(now.toLocaleTimeString('en-US', { hour12: false }))
-      setDate(now.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }))
+      setDate(now.toLocaleDateString('en-GB', { weekday: 'short', month: 'short', day: 'numeric' }))
     }
     updateTime()
     const interval = setInterval(updateTime, 1000)
@@ -216,7 +216,7 @@ function UserMenu({
 
           {/* Footer */}
           <div className="px-4 py-2 border-t border-zinc-800">
-            <p className="text-[9px] text-zinc-600">SESSION EXPIRES {new Date(session?.expires || '').toLocaleDateString()}</p>
+            <p className="text-[9px] text-zinc-600">SESSION EXPIRES {new Date(session?.expires || '').toLocaleDateString('en-GB')}</p>
           </div>
         </div>
       )}
