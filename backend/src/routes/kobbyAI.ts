@@ -60,7 +60,8 @@ router.get(
         const context = await kobbyAIService.buildContext(
             entityType as EntityType,
             entityId,
-            workspace.id
+            workspace.id,
+            organizationId
         );
 
         // Don't expose recent messages in the REST response (sensitive)
@@ -87,7 +88,7 @@ router.get(
 router.post(
     '/query',
     asyncHandler(async (req, res) => {
-        const { userId } = getUser(req);
+        const { userId, organizationId } = getUser(req);
         const { workspaceId, query, entityType, entityId, sessionId } = req.body;
 
         if (!query?.trim()) {
@@ -112,7 +113,8 @@ router.post(
         const context = await kobbyAIService.buildContext(
             entityType as EntityType,
             entityId,
-            workspaceId
+            workspaceId,
+            organizationId
         );
 
         const response = await kobbyAIService.query(query, context, sessionId);
