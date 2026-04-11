@@ -31,11 +31,13 @@ COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
 # Build TypeScript — increase heap for large project
+# Force NODE_ENV=development to ensure build tools and TypeScript compiler work correctly
+# (Coolify may inject NODE_ENV=production as build arg, which can interfere)
 ENV NODE_OPTIONS="--max-old-space-size=4096"
-RUN npm run build 2>&1 || { echo "=== TSC BUILD FAILED — full output above ==="; exit 1; }
+RUN NODE_ENV=development npm run build 2>&1 || { echo "=== TSC BUILD FAILED — full output above ==="; exit 1; }
 
-# Prune devDependencies
-RUN npm prune --production
+# Prune devDependencies (using production NODE_ENV to ensure only prod deps remain)
+RUN NODE_ENV=production npm prune --production
 
 # ============================================
 # Stage 3: Production
