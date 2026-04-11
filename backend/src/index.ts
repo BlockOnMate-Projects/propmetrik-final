@@ -144,14 +144,13 @@ app.use(cors({
 }));
 
 // Compression — exclude SSE endpoints (compression breaks EventSource streaming)
-app.use(compression({
-  filter: (req, res) => {
-    if (req.path.startsWith('/api/v1/realtime') || req.path.startsWith('/api/realtime')) {
-      return false;
-    }
-    return compression.filter(req, res);
-  },
-}));
+const compressMiddleware = compression();
+app.use((req, res, next) => {
+  if (req.path.startsWith('/api/v1/realtime') || req.path.startsWith('/api/realtime')) {
+    return next();
+  }
+  return compressMiddleware(req, res, next);
+});
 
 // Body parsing
 app.use(express.json({ limit: '10mb' }));
