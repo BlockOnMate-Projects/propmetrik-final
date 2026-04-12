@@ -5,17 +5,15 @@
  * 1. ConstructionGhana.com (primary source - WooCommerce e-commerce)
  * 2. Partner supplier CSV uploads
  *
- * Uses Puppeteer (headless browser) to handle StackProtect/reCAPTCHA
- * challenge on ConstructionGhana.com. The site uses invisible reCAPTCHA
- * that blocks plain HTTP clients (axios/fetch) but passes automatically
- * in a real browser context.
+ * Uses plain HTTP fetch + cheerio for HTML parsing.
+ * ConstructionGhana.com serves full product data in server-rendered HTML
+ * with no captcha when using a browser-like User-Agent.
  *
  * Data updates regional material prices used in construction cost calculations
  *
  * Update Frequency: Weekly
  */
 
-import puppeteer, { Browser, Page } from 'puppeteer';
 import * as cheerio from 'cheerio';
 import { query } from '../../../database';
 import { logger } from '../../../utils/logger';
@@ -56,9 +54,11 @@ interface LocalMaterialScraperConfig {
 
 const DEFAULT_CONFIG: LocalMaterialScraperConfig = {
   base_url: 'https://constructionghana.com',
-  timeout_ms: 60000,
+  timeout_ms: 30000,
   retry_attempts: 2,
 };
+
+const USER_AGENT = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
 
 // ConstructionGhana.com category URLs mapped to material_category_enum values
 const CATEGORY_CONFIGS: CategoryConfig[] = [
@@ -104,54 +104,33 @@ export class LocalMaterialScraper {
   }
 
   /**
-   * Launch a Puppeteer browser instance configured for server use
+   * Fetch a page using plain HTTP with browser-like headers
    */
-  private async launchBrowser(): Promise<Browser> {
-    return puppeteer.launch({
-      headless: true,
-      args: [
-        '--no-sandbox',
-        '--disable-setuid-sandbox',
-        '--disable-dev-shm-usage',
-        '--disable-gpu',
-        '--single-process',
-      ],
+  private async fetchPage(url: string): Promise<string> {
+    const response = await fetch(url, {
+      headers: {
+        'User-Agent': USER_AGENT,
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+        'Accept-Language': 'en-US,en;q=0.9',
+      },
+      signal: AbortSignal.timeout(this.config.timeout_ms),
     });
-  }
 
-  /**
-   * Navigate to a URL and wait for StackProtect challenge to resolve.
-   * The invisible reCAPTCHA auto-submits in a real browser and redirects
-   * to the actual page content.
-   */
-  private async navigateWithChallenge(page: Page, url: string): Promise<string> {
-    await page.goto(url, { waitUntil: 'networkidle2', timeout: this.config.timeout_ms });
-
-    // Check if we landed on a StackProtect challenge page
-    const title = await page.title();
-    if (title === 'Security Verification') {
-      logger.info('StackProtect challenge detected, waiting for auto-resolve...', { url });
-      // The invisible reCAPTCHA auto-submits and redirects — wait for navigation
-      try {
-        await page.waitForNavigation({ waitUntil: 'networkidle2', timeout: 30000 });
-      } catch {
-        // May already have navigated; check content
-      }
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
     }
 
-    return await page.content();
+    return response.text();
   }
 
   /**
-   * Parse price from text (handles ₵ currency symbol)
+   * Parse price from text (handles ₵/GH₵/GHS currency symbols and HTML entities)
    */
   private parsePrice(priceText: string): number | null {
-    // Remove currency symbols and extract number
     const cleaned = priceText
-      .replace(/₵|GH₵|GHS|,/gi, '')
+      .replace(/₵|GH₵|GHS|&#x20b5;|,/gi, '')
       .trim();
 
-    // Match the first number (price before any range)
     const match = cleaned.match(/[\d.]+/);
     if (match) {
       const price = parseFloat(match[0]);
@@ -179,21 +158,26 @@ export class LocalMaterialScraper {
         const $product = $(element);
 
         // Get product name
-        const nameElement = $product.find('.woocommerce-loop-product__title, .product-title, h2, h3').first();
-        const name = nameElement.text().trim();
-
+        const name = $product.find('h2 a, h3 a, .woocommerce-loop-product__title, .product-title').first().text().trim();
         if (!name) return;
 
-        // Get price - WooCommerce uses .price .amount or similar
-        const priceElement = $product.find('.price .amount, .price ins .amount, .woocommerce-Price-amount').first();
-        let priceText = priceElement.text().trim();
+        // Get price — WooCommerce stores prices in .woocommerce-Price-amount spans
+        // For variable products, get the lowest price (first amount)
+        let price: number | null = null;
 
-        // Fallback to any element with price class
-        if (!priceText) {
-          priceText = $product.find('.price').first().text().trim();
+        // Try sale/regular price first
+        const priceAmounts = $product.find('.woocommerce-Price-amount');
+        if (priceAmounts.length > 0) {
+          // Get text content including the currency symbol entity
+          const firstAmount = priceAmounts.first().text().trim();
+          price = this.parsePrice(firstAmount);
         }
 
-        const price = this.parsePrice(priceText);
+        // Fallback: try .price element text
+        if (!price) {
+          const priceText = $product.find('.price').first().text().trim();
+          price = this.parsePrice(priceText);
+        }
 
         if (price && price > 0) {
           prices.push({
@@ -201,17 +185,16 @@ export class LocalMaterialScraper {
             material_name: name,
             unit: categoryConfig.unit,
             price_ghs: price,
-            region: 'greater_accra', // Base region
+            region: 'greater_accra',
             source_type: 'scraped',
             source_reference: 'constructionghana.com',
             effective_date: new Date(),
             metadata: {
               url_path: categoryConfig.url_path,
-              original_price_text: priceText,
             },
           });
         }
-      } catch (err) {
+      } catch {
         // Skip individual product errors
       }
     });
@@ -220,16 +203,16 @@ export class LocalMaterialScraper {
   }
 
   /**
-   * Scrape a category page from ConstructionGhana.com using Puppeteer
+   * Scrape a category page from ConstructionGhana.com
    */
-  async scrapeCategoryPage(page: Page, categoryConfig: CategoryConfig): Promise<MaterialPrice[]> {
+  async scrapeCategoryPage(categoryConfig: CategoryConfig): Promise<MaterialPrice[]> {
     const url = `${this.config.base_url}${categoryConfig.url_path}`;
 
     for (let attempt = 0; attempt <= this.config.retry_attempts; attempt++) {
       try {
         logger.info(`Scraping category: ${categoryConfig.category}`, { url, attempt });
 
-        const html = await this.navigateWithChallenge(page, url);
+        const html = await this.fetchPage(url);
         const prices = this.parseCategoryHtml(html, categoryConfig);
 
         logger.info(`Scraped ${prices.length} prices from ${categoryConfig.category}`);
@@ -260,15 +243,13 @@ export class LocalMaterialScraper {
     const prices: MaterialPrice[] = [];
     const validRegions = VALID_REGIONS.map(r => r.code);
 
-    // Expected CSV format: category,material_name,unit,price,region
-    for (let i = 1; i < lines.length; i++) { // Skip header
+    for (let i = 1; i < lines.length; i++) {
       const parts = lines[i].split(',').map(p => p.trim());
 
       if (parts.length >= 5) {
         const [category, material_name, unit, priceStr, region] = parts;
         const price = parseFloat(priceStr);
 
-        // Validate region against enum
         if (!isNaN(price) && price > 0 && validRegions.includes(region)) {
           prices.push({
             category,
@@ -319,50 +300,34 @@ export class LocalMaterialScraper {
 
   /**
    * Fetch all construction material prices from ConstructionGhana.com
-   * Uses a single Puppeteer browser session to reuse cookies across categories
+   * Uses plain HTTP fetch — no browser/Puppeteer needed
    */
   async fetchAllPrices(): Promise<MaterialPrice[]> {
     const allPrices: MaterialPrice[] = [];
     const errors: string[] = [];
-    let browser: Browser | null = null;
 
-    logger.info('Starting material price scraping from ConstructionGhana.com (Puppeteer)', {
+    logger.info('Starting material price scraping from ConstructionGhana.com (HTTP fetch)', {
       categories_count: CATEGORY_CONFIGS.length
     });
 
-    try {
-      browser = await this.launchBrowser();
-      const page = await browser.newPage();
+    for (const categoryConfig of CATEGORY_CONFIGS) {
+      try {
+        const categoryPrices = await this.scrapeCategoryPage(categoryConfig);
 
-      // Set viewport and user agent
-      await page.setViewport({ width: 1280, height: 800 });
-      await page.setUserAgent(
-        'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
-      );
-
-      for (const categoryConfig of CATEGORY_CONFIGS) {
-        try {
-          const categoryPrices = await this.scrapeCategoryPage(page, categoryConfig);
-
-          // Apply regional pricing to each base price
-          for (const basePrice of categoryPrices) {
-            const regionalPrices = this.applyRegionalPricing(basePrice);
-            allPrices.push(...regionalPrices);
-          }
-
-          // Rate limiting - wait between category requests
-          await new Promise(resolve => setTimeout(resolve, 2000));
-
-        } catch (error) {
-          errors.push(categoryConfig.category);
-          logger.error(`Failed to scrape category: ${categoryConfig.category}`, {
-            error: error instanceof Error ? error.message : 'Unknown',
-          });
+        // Apply regional pricing to each base price
+        for (const basePrice of categoryPrices) {
+          const regionalPrices = this.applyRegionalPricing(basePrice);
+          allPrices.push(...regionalPrices);
         }
-      }
-    } finally {
-      if (browser) {
-        await browser.close().catch(() => {});
+
+        // Rate limiting — 2s between category requests
+        await new Promise(resolve => setTimeout(resolve, 2000));
+
+      } catch (error) {
+        errors.push(categoryConfig.category);
+        logger.error(`Failed to scrape category: ${categoryConfig.category}`, {
+          error: error instanceof Error ? error.message : 'Unknown',
+        });
       }
     }
 
@@ -383,9 +348,6 @@ export class LocalMaterialScraper {
 
     for (const price of prices) {
       try {
-        // Use proper enum casting for category and region
-        // Note: material_category duplicates category, survey_date duplicates effective_date (both are NOT NULL)
-        // No UNIQUE constraint exists on (material_name, region, effective_date) so we just INSERT
         await query(`
           INSERT INTO material_prices (
             category, material_category, material_name, specification, price_ghs, unit,

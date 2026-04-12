@@ -104,7 +104,7 @@ export default function EtlJobsPage() {
 
         <DataMetricCard
           title="Pending"
-          value={(stats?.data?.pending || 0) + (stats?.data?.queued || 0)}
+          value={stats?.data?.pending || 0}
           subtitle="In queue"
           icon={Clock}
           color="yellow"
