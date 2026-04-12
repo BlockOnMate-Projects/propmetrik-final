@@ -10,6 +10,8 @@
 import React, { createContext, useContext, useCallback, useEffect, useState, ReactNode } from 'react';
 import { useRealtime, RealtimeEventType, RealtimeEvent } from '@/hooks/use-realtime';
 import { useQueryClient } from '@tanstack/react-query';
+import { useSession } from 'next-auth/react';
+import { usePathname } from 'next/navigation';
 
 interface RealtimeContextValue {
   /** Whether connected to SSE */
@@ -80,7 +82,14 @@ export function RealtimeProvider({
   enabled = true,
 }: RealtimeProviderProps) {
   const queryClient = useQueryClient();
+  const { status } = useSession();
+  const pathname = usePathname();
   const [mounted, setMounted] = useState(false);
+
+  // Only connect SSE on authenticated dashboard pages — marketing/public pages
+  // don't need realtime and the backend requires projects service access.
+  const isAuthenticatedDashboard =
+    status === 'authenticated' && pathname?.startsWith('/dashboard');
 
   // Only enable on client side
   useEffect(() => {
@@ -122,7 +131,7 @@ export function RealtimeProvider({
   } = useRealtime({
     userId,
     organizationId,
-    autoConnect: mounted && enabled,
+    autoConnect: mounted && enabled && !!isAuthenticatedDashboard,
     autoReconnect: true,
     onEvent: handleEvent,
     onConnectionChange: (connected) => {
