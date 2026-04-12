@@ -224,6 +224,40 @@ export class FXFeedService {
   }
 
   /**
+   * Fetch rate from free Currency API (fawazahmed0) — no API key needed.
+   * Updates daily, covers 150+ currencies.
+   */
+  private async fetchFromFreeCurrencyAPI(currency: string): Promise<ExchangeRateFeed | null> {
+    try {
+      const currencyLower = currency.toLowerCase();
+      const response = await axios.get(
+        `https://cdn.jsdelivr.net/npm/@fawazahmed0/currency-api@latest/v1/currencies/${currencyLower}.json`,
+        { timeout: 10000 }
+      );
+
+      const rate = response.data?.[currencyLower]?.ghs;
+      if (!rate || rate <= 0) {
+        logger.warn('GHS not found in free currency API response', { currency });
+        return null;
+      }
+
+      logger.info('FX rate fetched from free Currency API', { currency, rate });
+      return {
+        pair: `${currency}/GHS`,
+        from_currency: currency,
+        to_currency: 'GHS',
+        rate,
+        source: 'Currency API (fawazahmed0)',
+        timestamp: new Date(response.data.date || Date.now()),
+        is_official: false,
+      };
+    } catch (error: any) {
+      logger.warn('Free Currency API fetch failed', { currency, error: error.message });
+      return null;
+    }
+  }
+
+  /**
    * Get last known rate from economic_indicators (BOG-scraped data).
    * Returns null if no rate exists in the database.
    */
@@ -283,6 +317,11 @@ export class FXFeedService {
     // Fallback to Yahoo Finance
     if (!rate && this.sourceHealth.yahoo_finance.healthy) {
       rate = await this.fetchFromYahooFinance(currency);
+    }
+
+    // Fallback to free Currency API (no key needed, daily updates)
+    if (!rate) {
+      rate = await this.fetchFromFreeCurrencyAPI(currency);
     }
 
     // Fallback to last known rate from economic_indicators (BOG-scraped)
@@ -456,6 +495,72 @@ export class FXFeedService {
     });
 
     return result;
+  }
+
+  /**
+   * Backfill historical daily FX rates from the free Currency API.
+   * Fetches daily rates for each date in the range and saves to DB,
+   * overwriting any existing static-fallback entries.
+   */
+  async backfillHistoricalRates(options: {
+    currencies?: string[];
+    startDate?: string; // YYYY-MM-DD, defaults to 2025-01-01
+    endDate?: string;   // YYYY-MM-DD, defaults to yesterday
+  } = {}): Promise<{ saved: number; failed: number; skipped: number }> {
+    const currencies = options.currencies || ['USD', 'GBP', 'EUR'];
+    const start = new Date(options.startDate || '2025-01-01');
+    const end = new Date(options.endDate || new Date(Date.now() - 86400000).toISOString().split('T')[0]);
+
+    let saved = 0;
+    let failed = 0;
+    let skipped = 0;
+
+    logger.info('Starting FX historical backfill', {
+      currencies,
+      startDate: start.toISOString().split('T')[0],
+      endDate: end.toISOString().split('T')[0],
+    });
+
+    // Iterate day by day
+    for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+      const dateStr = d.toISOString().split('T')[0];
+
+      for (const currency of currencies) {
+        try {
+          const currencyLower = currency.toLowerCase();
+          const url = `https://cdn.jsdelivr.net/npm/@fawazahmed0/currency-api@${dateStr}/v1/currencies/${currencyLower}.json`;
+          const response = await axios.get(url, { timeout: 10000 });
+
+          const rate = response.data?.[currencyLower]?.ghs;
+          if (!rate || rate <= 0) {
+            skipped++;
+            continue;
+          }
+
+          const rateFeed: ExchangeRateFeed = {
+            pair: `${currency}/GHS`,
+            from_currency: currency,
+            to_currency: 'GHS',
+            rate,
+            source: `Currency API (backfill ${dateStr})`,
+            timestamp: new Date(dateStr),
+            is_official: false,
+          };
+
+          const ok = await this.saveDailyRate(currency, rateFeed);
+          if (ok) saved++;
+          else failed++;
+        } catch {
+          skipped++; // Date not available in API
+        }
+      }
+
+      // Rate limit: 50ms between days to be respectful to CDN
+      await new Promise(resolve => setTimeout(resolve, 50));
+    }
+
+    logger.info('FX historical backfill complete', { saved, failed, skipped });
+    return { saved, failed, skipped };
   }
 
   /**
