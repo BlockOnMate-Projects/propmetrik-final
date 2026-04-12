@@ -456,39 +456,28 @@ export class EconomicDataService {
    */
   async updateExchangeRates(): Promise<void> {
     const currencies = ['USD', 'GBP', 'EUR'];
-    
+
     for (const currency of currencies) {
       try {
-        // In production, this would call an actual exchange rate API
-        // For now, we'll use approximations based on Bank of Ghana data
-        const rate = await this.fetchExchangeRateFromAPI(currency);
-        
-        if (rate) {
+        // Use fxFeedService which has the full fallback chain:
+        // ForexRate-API → Yahoo Finance → Free Currency API → DB last-known
+        const rateData = await fxFeedService.getCurrentRate(currency);
+
+        if (rateData && rateData.rate > 0) {
           await this.create({
             indicator_type: `exchange_rate_${currency.toLowerCase()}` as EconomicIndicatorType,
             indicator_name: `GHS/${currency} Exchange Rate`,
-            value: rate,
+            value: rateData.rate,
             unit: `GHS per ${currency}`,
             effective_date: new Date(),
             period_type: 'daily',
-            source_name: EconomicDataService.DATA_SOURCES.EXCHANGE_RATE_API,
+            source_name: rateData.source || 'FX Feed Service',
           });
         }
       } catch (error) {
         logger.error(`Failed to update ${currency} exchange rate`, { error });
       }
     }
-  }
-
-  /**
-   * Fetch exchange rate — queries the DB for the most recent known rate.
-   * No hardcoded fallback; returns null if no rate exists.
-   */
-  private async fetchExchangeRateFromAPI(currency: string): Promise<number | null> {
-    const indicator = await this.getLatest(
-      `exchange_rate_${currency.toLowerCase()}` as EconomicIndicatorType
-    );
-    return indicator ? indicator.value : null;
   }
 
   /**

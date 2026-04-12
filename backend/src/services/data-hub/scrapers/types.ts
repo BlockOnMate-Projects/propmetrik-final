@@ -50,7 +50,12 @@ export interface BOGScraperConfig {
 }
 
 export const BOG_INDICATOR_MAPPING: Record<string, string> = {
-  // Exchange Rates
+  // Exchange Rates — BOG uses en-dash (–) not hyphen (-) on their website
+  'Inter-Bank Exchange Rate \u2013 End Period (GHC/US$)': 'exchange_rate_usd',
+  'Inter-Bank Exchange Rate \u2013 Month Average (GHC/US$)': 'exchange_rate_usd_avg',
+  'Inter-Bank Exchange Rate \u2013 End Period (GHC/GBP)': 'exchange_rate_gbp',
+  'Inter-Bank Exchange Rate \u2013 End Period (GHC/EURO)': 'exchange_rate_eur',
+  // Also match with regular hyphen in case BOG fixes their HTML
   'Inter-Bank Exchange Rate - End Period (GHC/US$)': 'exchange_rate_usd',
   'Inter-Bank Exchange Rate - Month Average (GHC/US$)': 'exchange_rate_usd_avg',
   'Inter-Bank Exchange Rate - End Period (GHC/GBP)': 'exchange_rate_gbp',

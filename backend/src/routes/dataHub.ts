@@ -32,6 +32,7 @@ import { ghanaPostService } from '../services/data-hub/ghanaPostGeocodingService
 import { dataLineageService } from '../services/data-hub/dataLineageService';
 import { dataInsightsService } from '../services/data-hub/dataInsightsService';
 import { economicDataService, EconomicIndicatorType } from '../services/data-hub/economicDataService';
+import { fxFeedService } from '../services/data-hub/scrapers/fxFeedService';
 import { constructionCostService, MaterialCategory, LaborCategory } from '../services/data-hub/constructionCostService';
 import { specializedCostService, BuildingFunction, QualityLevel, RegionCode as SpecializedRegionCode } from '../services/data-hub/specializedCostService';
 import { logger } from '../utils/logger';
@@ -1607,6 +1608,28 @@ router.get('/economic/sync/health', asyncHandler(async (req: Request, res: Respo
     success: true,
     data: health,
     all_healthy: Object.values(health).every(h => h),
+  });
+}));
+
+/**
+ * Backfill historical FX rates from free Currency API
+ * POST /data-hub/economic/fx/backfill
+ * Body: { startDate?: "YYYY-MM-DD", endDate?: "YYYY-MM-DD", currencies?: ["USD","GBP","EUR"] }
+ */
+router.post('/economic/fx/backfill', asyncHandler(async (req: Request, res: Response) => {
+  const { startDate, endDate, currencies } = req.body;
+
+  logger.info('FX backfill triggered', { startDate, endDate, currencies });
+
+  const result = await fxFeedService.backfillHistoricalRates({
+    startDate,
+    endDate,
+    currencies,
+  });
+
+  res.json({
+    success: true,
+    data: result,
   });
 }));
 
