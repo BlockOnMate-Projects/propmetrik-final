@@ -462,6 +462,36 @@ app.post('/api/v1/pm-invoices/public/:id/confirm-crypto', async (req, res) => {
   }
 });
 
+// ── Guide Assets (public, served from S3/MinIO) ──────────────────────────────
+// MUST be registered before any broad /api auth middleware mounts
+app.get('/api/guides/:folder/:file', async (req, res) => {
+  try {
+    const { folder, file } = req.params;
+    // Sanitize path components
+    if (!/^[\w-]+$/.test(folder) || !/^[\w.-]+$/.test(file)) {
+      return res.status(400).json({ error: 'Invalid path' });
+    }
+    const { getFile } = await import('./database/minio');
+    const key = `guides/${folder}/${file}`;
+    const data = await getFile('propmetrik-media', key);
+    const contentType = file.endsWith('.png') ? 'image/png'
+      : file.endsWith('.md') ? 'text/markdown; charset=utf-8'
+      : 'application/octet-stream';
+    res.setHeader('Content-Type', contentType);
+    res.setHeader('Cache-Control', 'public, max-age=86400'); // 24h cache
+    if (data.body && data.body.length > 0) {
+      res.send(Buffer.from(data.body));
+    } else {
+      res.status(404).json({ error: 'File not found' });
+    }
+  } catch (err: any) {
+    if (err.name === 'NoSuchKey' || err.$metadata?.httpStatusCode === 404) {
+      return res.status(404).json({ error: 'Guide asset not found' });
+    }
+    res.status(500).json({ error: 'Failed to serve guide asset' });
+  }
+});
+
 app.use('/api/v1/webhooks', webhooksRoutes);
 app.use('/api/v1/auth', authRoutes);  // User authentication routes
 app.use('/api/v1/auth', authIntegrationsRoutes);  // OAuth integrations
@@ -724,35 +754,6 @@ app.use('/api/autopilot', authenticate, requireAdmin, autopilotRoutes);  // Also
 app.use('/api/v1/ai/kobby', authenticate, kobbyAIRoutes);
 app.use('/api/ai/kobby', authenticate, kobbyAIRoutes);  // Also mount for frontend compatibility
 
-
-// ── Guide Assets (public, served from S3/MinIO) ──────────────────────────────
-app.get('/api/guides/:folder/:file', async (req, res) => {
-  try {
-    const { folder, file } = req.params;
-    // Sanitize path components
-    if (!/^[\w-]+$/.test(folder) || !/^[\w.-]+$/.test(file)) {
-      return res.status(400).json({ error: 'Invalid path' });
-    }
-    const { getFile } = await import('./database/minio');
-    const key = `guides/${folder}/${file}`;
-    const data = await getFile('propmetrik-media', key);
-    const contentType = file.endsWith('.png') ? 'image/png'
-      : file.endsWith('.md') ? 'text/markdown; charset=utf-8'
-      : 'application/octet-stream';
-    res.setHeader('Content-Type', contentType);
-    res.setHeader('Cache-Control', 'public, max-age=86400'); // 24h cache
-    if (data.body && data.body.length > 0) {
-      res.send(Buffer.from(data.body));
-    } else {
-      res.status(404).json({ error: 'File not found' });
-    }
-  } catch (err: any) {
-    if (err.name === 'NoSuchKey' || err.$metadata?.httpStatusCode === 404) {
-      return res.status(404).json({ error: 'Guide asset not found' });
-    }
-    res.status(500).json({ error: 'Failed to serve guide asset' });
-  }
-});
 
 // 404 handler
 app.use((req, res) => {
