@@ -27,10 +27,6 @@ if (typeof window !== 'undefined') {
  * Fix: Cache the last known good session and serve it during transient failures.
  */
 function StableSessionProvider({ children }: { children: React.ReactNode }) {
-  const [basePath] = useState(() =>
-    typeof window !== 'undefined' ? window.location.origin : ''
-  )
-
   return (
     <SessionProvider
       // Don't refetch when user refocuses window — avoids race during HMR
@@ -65,7 +61,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
     <StableSessionProvider>
       <QueryClientProvider client={queryClient}>
         <I18nProvider>
-        <ThemeProvider attribute="class" defaultTheme="light" enableSystem={true}>
+        <ThemeProvider attribute="class" defaultTheme="light" enableSystem={false} disableTransitionOnChange>
           <TooltipProvider>
               {isDev ? (
                 <RealtimeProvider autoInvalidateQueries={true}>
