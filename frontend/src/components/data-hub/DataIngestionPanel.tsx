@@ -8,6 +8,7 @@ import {
     Upload,
     Landmark,
     Briefcase,
+    Users,
     CheckCircle,
     Clock,
     FileText,
@@ -36,6 +37,12 @@ export function DataIngestionPanel() {
     const { data: tier2Data } = useQuery({
         queryKey: ['data-sources', 'tier2'],
         queryFn: () => dataSourcesApi.getAll({ tier: 'tier2_financial', limit: 100 }),
+    })
+
+    // Fetch Tier 3 Sources
+    const { data: tier3Data } = useQuery({
+        queryKey: ['data-sources', 'tier3'],
+        queryFn: () => dataSourcesApi.getAll({ tier: 'tier3_partners', limit: 100 }),
     })
 
     // Fetch recent uploads
@@ -76,7 +83,9 @@ export function DataIngestionPanel() {
                                     <div className="p-2.5 rounded-lg bg-muted">
                                         {source.tier.includes('government') ?
                                             <Landmark className="h-5 w-5 text-blue-400" /> :
-                                            <Briefcase className="h-5 w-5 text-green-400" />
+                                            source.tier.includes('financial') ?
+                                            <Briefcase className="h-5 w-5 text-green-400" /> :
+                                            <Users className="h-5 w-5 text-purple-400" />
                                         }
                                     </div>
                                     <div>
@@ -118,9 +127,10 @@ export function DataIngestionPanel() {
                     <p className="text-sm text-muted-foreground mb-6">Select a data source to upload files (CSV, Excel, PDF)</p>
 
                     <Tabs defaultValue="tier1" className="w-full">
-                        <TabsList className="grid w-full grid-cols-2 max-w-[400px] mb-6">
+                        <TabsList className="grid w-full grid-cols-3 max-w-[600px] mb-6">
                             <TabsTrigger value="tier1">Tier 1: Government</TabsTrigger>
                             <TabsTrigger value="tier2">Tier 2: Financial</TabsTrigger>
+                            <TabsTrigger value="tier3">Tier 3: Partners</TabsTrigger>
                         </TabsList>
 
                         <TabsContent value="tier1" className="m-0 focus-visible:outline-none">
@@ -128,6 +138,9 @@ export function DataIngestionPanel() {
                         </TabsContent>
                         <TabsContent value="tier2" className="m-0 focus-visible:outline-none">
                             {renderSourceGrid(tier2Data?.data)}
+                        </TabsContent>
+                        <TabsContent value="tier3" className="m-0 focus-visible:outline-none">
+                            {renderSourceGrid(tier3Data?.data)}
                         </TabsContent>
                     </Tabs>
                 </div>
@@ -189,6 +202,7 @@ export function DataIngestionPanel() {
                         queryClient.invalidateQueries({ queryKey: ['recent-uploads'] })
                         queryClient.invalidateQueries({ queryKey: ['data-sources', 'tier1'] })
                         queryClient.invalidateQueries({ queryKey: ['data-sources', 'tier2'] })
+                        queryClient.invalidateQueries({ queryKey: ['data-sources', 'tier3'] })
                     }}
                 />
             )}

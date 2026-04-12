@@ -359,6 +359,11 @@ router.get('/contributions/stats', asyncHandler(async (req: Request, res: Respon
 // DATA QUALITY ROUTES
 // =====================================================
 
+router.get('/quality/summary', asyncHandler(async (req: Request, res: Response) => {
+  const summary = await dataQualityService.getQualitySummary();
+  res.json({ success: true, data: summary });
+}));
+
 router.get('/quality/trends', asyncHandler(async (req: Request, res: Response) => {
   const trends = await dataQualityService.getQualityTrends(parseInt(req.query.days as string) || 30);
   res.json({ success: true, data: trends });
@@ -1970,6 +1975,35 @@ router.put('/valuation-config/base-costs/:qualityTier', asyncHandler(async (req:
 }));
 
 /**
+ * GET /data-hub/valuation-config/history
+ * Configuration change audit trail
+ */
+router.get('/valuation-config/history', asyncHandler(async (req: Request, res: Response) => {
+  const tableName = req.query.table_name as string | undefined;
+  const limit = parseInt(req.query.limit as string) || 100;
+
+  let sql = `SELECT id, table_name, record_id, field_name, old_value, new_value, changed_by, changed_at, change_reason
+             FROM valuation_config_history`;
+  const params: any[] = [];
+
+  if (tableName) {
+    sql += ` WHERE table_name = $1`;
+    params.push(tableName);
+  }
+
+  sql += ` ORDER BY changed_at DESC LIMIT $${params.length + 1}`;
+  params.push(limit);
+
+  try {
+    const result = await query(sql, params);
+    res.json({ success: true, data: result.rows, count: result.rows.length });
+  } catch {
+    // Table may not exist yet
+    res.json({ success: true, data: [], count: 0 });
+  }
+}));
+
+/**
  * Get comparable sale prices per sqm from market evidence
  * GET /data-hub/valuation-config/sale-prices
  * 
@@ -2298,6 +2332,25 @@ router.get('/analytics/performance', asyncHandler(async (req: Request, res: Resp
 router.get('/analytics/temporal', asyncHandler(async (req: Request, res: Response) => {
   const patterns = await dataHubAnalyticsService.getTemporalPatterns();
   res.json({ success: true, data: patterns });
+}));
+
+// ============================================
+// Data Uploads (Tier 1-3 file ingestion)
+// ============================================
+
+router.get('/uploads', asyncHandler(async (req: Request, res: Response) => {
+  const page = parseInt(req.query.page as string) || 1;
+  const limit = parseInt(req.query.limit as string) || 20;
+  // Stub: return empty uploads list until file upload feature is fully built
+  res.json({ success: true, data: [], total: 0, page, limit });
+}));
+
+router.get('/uploads/recent/:limit', asyncHandler(async (req: Request, res: Response) => {
+  res.json({ success: true, data: [], count: 0 });
+}));
+
+router.get('/uploads/:id', asyncHandler(async (req: Request, res: Response) => {
+  res.status(404).json({ success: false, error: 'Upload not found' });
 }));
 
 // ============================================

@@ -192,6 +192,7 @@ app.use('/api/public/properties', propertyRoutes);  // Also mount at public path
 app.use('/api/v1/ingestion', ingestionRouter);
 app.use('/api/v1/contributions', authenticate, contributionRoutes);
 app.use('/api/v1/pull-integrations', pullIntegrationRoutes);
+app.use('/api/pull-integrations', pullIntegrationRoutes);  // Also mount for frontend compatibility
 app.use('/api/v1/reports', reportRoutes);
 app.use('/api/reports', reportRoutes);  // Also mount for frontend compatibility
 app.use('/api/v1/valuers', authenticate, requireServiceAccess('valuations'), valuersRoutes);

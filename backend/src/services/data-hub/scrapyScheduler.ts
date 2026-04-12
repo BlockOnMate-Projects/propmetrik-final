@@ -10,6 +10,7 @@
 import { schedule } from 'node-cron';
 import { config } from '../../config';
 import { logger } from '../../utils/logger';
+import { query } from '../../database';
 import { dataSourceService } from './dataSourceService';
 import { etlJobService } from './etlJobService';
 
@@ -266,6 +267,7 @@ export class ScrapyScheduler {
   private async triggerInitialScrape(): Promise<void> {
     logger.info('Starting initial scrapy scrape');
     try {
+      // Only skip if there are recent jobs that actually scraped records
       const recentJobs = await etlJobService.findAll({
         job_type: 'scrape',
         status: 'completed',
@@ -273,11 +275,22 @@ export class ScrapyScheduler {
         limit: 10,
       });
 
-      if (recentJobs.data.length > 0) {
-        logger.info('Recent scrape jobs found, skipping initial scrape', {
+      const jobsWithRecords = recentJobs.data.filter(
+        (j: any) => (j.records_successful || 0) > 0 || (j.records_processed || 0) > 0
+      );
+
+      if (jobsWithRecords.length > 0) {
+        logger.info('Recent successful scrape jobs found, skipping initial scrape', {
           recentJobs: recentJobs.data.length,
+          withRecords: jobsWithRecords.length,
         });
         return;
+      }
+
+      if (recentJobs.data.length > 0) {
+        logger.warn('Recent scrape jobs found but none have records — re-triggering scrape', {
+          recentJobs: recentJobs.data.length,
+        });
       }
 
       await this.triggerFullScrape();
@@ -386,16 +399,40 @@ export class ScrapyScheduler {
 
       // Update ETL job with result
       if (result.status === 'completed') {
-        await etlJobService.update(etlJobId, {
-          status: 'completed',
-          completed_at: new Date(),
+        // Count properties created/updated during this job's run
+        let recordsProcessed = 0;
+        try {
+          const countResult = await query<{ cnt: string }>(
+            `SELECT COUNT(*) as cnt FROM properties
+             WHERE external_source = $1
+               AND updated_at >= (SELECT started_at FROM etl_jobs WHERE id = $2)`,
+            [spider, etlJobId]
+          );
+          recordsProcessed = parseInt(countResult.rows[0]?.cnt || '0', 10);
+        } catch { /* ignore count errors */ }
+
+        await etlJobService.complete(etlJobId, {
+          records_processed: recordsProcessed,
+          records_successful: recordsProcessed,
+          records_failed: 0,
+          records_skipped: 0,
         });
         await etlJobService.addLog(etlJobId, 'info', 'Spider completed successfully', {
           step: 'completed',
-          record_data: { exit_code: result.exit_code, stdout_tail: result.stdout_tail?.slice(-500) },
+          record_data: { exit_code: result.exit_code, records: recordsProcessed, stdout_tail: result.stdout_tail?.slice(-500) },
         });
 
-        logger.info('Spider completed', { spider, jobType, etlJobId });
+        // Update data source sync stats
+        try {
+          const ds = await dataSourceService.findBySlug(spider);
+          if (ds) {
+            await dataSourceService.updateSyncStatus(ds.id, 'completed', {
+              records_synced: recordsProcessed,
+            });
+          }
+        } catch { /* ignore */ }
+
+        logger.info('Spider completed', { spider, jobType, etlJobId, recordsProcessed });
       } else {
         const errorMsg = result.stderr_tail?.slice(-500) || `Spider exited with status: ${result.status}`;
         await etlJobService.update(etlJobId, {

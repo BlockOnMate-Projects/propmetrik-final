@@ -854,7 +854,7 @@ export default function DashboardPage() {
               { key: 'property-management', label: 'Management', desc: 'Lease tracking, rent schedules, tenant portal, maintenance & utilities', href: '/dashboard/property-management', color: 'from-purple-500/20 to-purple-500/5' },
               { key: 'projects', label: 'Projects', desc: 'Construction tracking, Gantt charts, budget management & compliance', href: '/dashboard/projects', color: 'from-orange-500/20 to-orange-500/5' },
               { key: 'e-sign', label: 'E-Sign', desc: 'Digital signatures, envelope workflows, document audit trail & WhatsApp delivery', href: '/dashboard/e-sign', color: 'from-blue-500/20 to-blue-500/5' },
-              { key: 'data-hub', label: 'Data Hub', desc: 'External data feeds, ETL pipelines, geocoding, economic data & quality monitoring', href: '/dashboard/data-hub', color: 'from-pink-500/20 to-pink-500/5' },
+              { key: 'data-hub', label: 'Data Hub', desc: 'External data feeds, ETL pipelines, geocoding, economic data & quality monitoring', href: '/dashboard/admin/data-hub', color: 'from-pink-500/20 to-pink-500/5' },
               { key: 'api-access', label: 'API Access', desc: 'Programmatic integration, API keys, webhook management & rate limiting', href: '/dashboard/admin/enterprise', color: 'from-yellow-500/20 to-yellow-500/5' },
             ].map((mod) => {
               const accessible = hasAccess(mod.key)

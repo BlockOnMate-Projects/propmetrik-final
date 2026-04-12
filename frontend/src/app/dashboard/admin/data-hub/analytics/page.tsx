@@ -11,7 +11,9 @@ import {
     BarChart3,
     PieChart as PieChartIcon,
     LineChart as LineChartIcon,
+    Lightbulb,
 } from 'lucide-react'
+import Link from 'next/link'
 import { useQuery } from '@tanstack/react-query'
 import { dataSourcesApi, etlJobsApi, dataHubAnalyticsApi } from '@/lib/api'
 import { useState, useMemo, useEffect } from 'react'
@@ -43,7 +45,7 @@ const COLORS = ['#3b82f6', '#10b981', '#a855f7', '#f59e0b', '#f97316', '#ec4899'
 
 export default function AnalyticsPage() {
     const [mounted, setMounted] = useState(false)
-    const [timeRange, setTimeRange] = useState('24h')
+    const [timeRange, setTimeRange] = useState('90d')
 
     useEffect(() => {
         setMounted(true)
@@ -61,7 +63,7 @@ export default function AnalyticsPage() {
 
     const { data: volumeTrends, isLoading: isLoadingTrends } = useQuery({
         queryKey: ['analytics-trends', timeRange],
-        queryFn: () => dataHubAnalyticsApi.getTrends(timeRange as any),
+        queryFn: () => dataHubAnalyticsApi.getTrends(timeRange as '1h' | '24h' | '7d' | '30d' | '90d' | 'all'),
     })
 
     const { data: sourcePerformance, isLoading: isLoadingPerf } = useQuery({
@@ -109,12 +111,16 @@ export default function AnalyticsPage() {
         return Math.round(total / sourcePerformanceData.length)
     }, [sourcePerformanceData])
 
-    // Data for correlation matrix (remains limited for now)
-    const correlationData = useMemo(() => [
-        { source1: 'Price', source2: 'Location', correlation: 0.85 },
-        { source1: 'Price', source2: 'Size', correlation: 0.72 },
-        { source1: 'Price', source2: 'Age', correlation: -0.45 },
-    ], [])
+    // Data quality summary derived from source performance
+    const qualitySummary = useMemo(() => {
+        if (!sourcePerformanceData.length) return []
+        return sourcePerformanceData.slice(0, 6).map((s) => ({
+            source: s.name,
+            reliability: s.reliability,
+            speed: s.speed,
+            quality: s.quality,
+        }))
+    }, [sourcePerformanceData])
 
     const handleExport = (format: 'csv' | 'json' | 'pdf') => {
         console.log(`Exporting analytics data as ${format}`)
@@ -129,11 +135,20 @@ export default function AnalyticsPage() {
     return (
         <div className="min-h-screen bg-black text-white p-4 pb-10">
             {/* Header */}
-            <div className="mb-6">
-                <h1 className="font-mono text-2xl text-amber-500 tracking-wider">DATA ANALYTICS DASHBOARD</h1>
-                <p className="font-mono text-[10px] text-zinc-500 mt-1">
-                    COMPREHENSIVE DATA INSIGHTS • POWERED BY ML ANALYTICS ENGINE
-                </p>
+            <div className="flex items-start justify-between mb-6">
+                <div>
+                    <h1 className="font-mono text-2xl text-amber-500 tracking-wider">DATA ANALYTICS DASHBOARD</h1>
+                    <p className="font-mono text-[10px] text-zinc-500 mt-1">
+                        COMPREHENSIVE DATA INSIGHTS • POWERED BY ML ANALYTICS ENGINE
+                    </p>
+                </div>
+                <Link
+                    href="/dashboard/admin/data-hub/insights"
+                    className="flex items-center gap-2 px-4 py-2 bg-zinc-900 border border-zinc-700 hover:border-amber-500 transition-colors font-mono text-xs text-zinc-300 hover:text-amber-400 shrink-0"
+                >
+                    <Lightbulb className="w-4 h-4" />
+                    INSIGHTS
+                </Link>
             </div>
 
             {/* Key Metrics */}
@@ -201,6 +216,14 @@ export default function AnalyticsPage() {
                                         <stop offset="5%" stopColor="#a855f7" stopOpacity={0.8} />
                                         <stop offset="95%" stopColor="#a855f7" stopOpacity={0} />
                                     </linearGradient>
+                                    <linearGradient id="colorTier4" x1="0" y1="0" x2="0" y2="1">
+                                        <stop offset="5%" stopColor="#f59e0b" stopOpacity={0.8} />
+                                        <stop offset="95%" stopColor="#f59e0b" stopOpacity={0} />
+                                    </linearGradient>
+                                    <linearGradient id="colorTier5" x1="0" y1="0" x2="0" y2="1">
+                                        <stop offset="5%" stopColor="#ec4899" stopOpacity={0.8} />
+                                        <stop offset="95%" stopColor="#ec4899" stopOpacity={0} />
+                                    </linearGradient>
                                 </defs>
                                 <CartesianGrid strokeDasharray="3 3" stroke="#27272a" />
                                 <XAxis
@@ -208,9 +231,10 @@ export default function AnalyticsPage() {
                                     stroke="#71717a"
                                     tickFormatter={(val) => {
                                         if (!mounted) return ''
-                                        return timeRange === '24h'
-                                            ? new Date(val).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-                                            : new Date(val).toLocaleDateString([], { month: 'short', day: 'numeric' })
+                                        if (timeRange === '1h' || timeRange === '24h') {
+                                            return new Date(val).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                                        }
+                                        return new Date(val).toLocaleDateString([], { month: 'short', day: 'numeric' })
                                     }}
                                     style={{ fontSize: '10px', fontFamily: 'monospace' }}
                                 />
@@ -229,9 +253,11 @@ export default function AnalyticsPage() {
                                 <Legend
                                     wrapperStyle={{ fontFamily: 'monospace', fontSize: '10px' }}
                                 />
-                                <Area type="monotone" dataKey="tier1" stroke="#3b82f6" fillOpacity={1} fill="url(#colorTier1)" name="Tier 1" />
-                                <Area type="monotone" dataKey="tier2" stroke="#10b981" fillOpacity={1} fill="url(#colorTier2)" name="Tier 2" />
-                                <Area type="monotone" dataKey="tier3" stroke="#a855f7" fillOpacity={1} fill="url(#colorTier3)" name="Tier 3" />
+                                <Area type="monotone" dataKey="tier1" stroke="#3b82f6" fillOpacity={1} fill="url(#colorTier1)" name="Tier 1 (Government)" />
+                                <Area type="monotone" dataKey="tier2" stroke="#10b981" fillOpacity={1} fill="url(#colorTier2)" name="Tier 2 (Financial)" />
+                                <Area type="monotone" dataKey="tier3" stroke="#a855f7" fillOpacity={1} fill="url(#colorTier3)" name="Tier 3 (Partners)" />
+                                <Area type="monotone" dataKey="tier4" stroke="#f59e0b" fillOpacity={1} fill="url(#colorTier4)" name="Tier 4 (Market Data)" />
+                                <Area type="monotone" dataKey="tier5" stroke="#ec4899" fillOpacity={1} fill="url(#colorTier5)" name="Tier 5 (Public Web)" />
                             </AreaChart>
                         </ResponsiveContainer>
                     </AnalyticsChart>
@@ -323,27 +349,40 @@ export default function AnalyticsPage() {
                 </div>
             </TerminalPanel>
 
-            {/* Correlation Analysis */}
+            {/* Source Quality Summary */}
             <div className="mt-6">
-                <TerminalPanel title="Cross-Source Correlation Matrix">
-                    <div className="grid grid-cols-3 gap-3">
-                        {correlationData.map((item, idx) => (
-                            <div key={idx} className="p-3 bg-zinc-800/30 border border-zinc-800">
-                                <div className="font-mono text-[10px] text-zinc-500 mb-2">
-                                    {item.source1} ↔ {item.source2}
+                <TerminalPanel title="Source Quality Summary">
+                    {qualitySummary.length === 0 ? (
+                        <div className="font-mono text-sm text-zinc-500 text-center py-4">No source data available</div>
+                    ) : (
+                        <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                            {qualitySummary.map((item) => (
+                                <div key={item.source} className="p-3 bg-zinc-800/30 border border-zinc-800">
+                                    <div className="font-mono text-xs text-white mb-2 truncate">{item.source}</div>
+                                    <div className="space-y-1.5">
+                                        <div className="flex items-center justify-between">
+                                            <span className="font-mono text-[9px] text-zinc-500">Reliability</span>
+                                            <span className={`font-mono text-xs ${item.reliability >= 80 ? 'text-green-400' : item.reliability >= 50 ? 'text-yellow-400' : 'text-red-400'}`}>
+                                                {item.reliability}%
+                                            </span>
+                                        </div>
+                                        <div className="flex items-center justify-between">
+                                            <span className="font-mono text-[9px] text-zinc-500">Speed</span>
+                                            <span className={`font-mono text-xs ${item.speed >= 80 ? 'text-green-400' : item.speed >= 50 ? 'text-yellow-400' : 'text-red-400'}`}>
+                                                {item.speed}%
+                                            </span>
+                                        </div>
+                                        <div className="flex items-center justify-between">
+                                            <span className="font-mono text-[9px] text-zinc-500">Quality</span>
+                                            <span className={`font-mono text-xs ${item.quality >= 80 ? 'text-green-400' : item.quality >= 50 ? 'text-yellow-400' : 'text-red-400'}`}>
+                                                {item.quality}%
+                                            </span>
+                                        </div>
+                                    </div>
                                 </div>
-                                <div className={`font-mono text-2xl ${Math.abs(item.correlation) >= 0.7 ? 'text-green-400' :
-                                    Math.abs(item.correlation) >= 0.4 ? 'text-yellow-400' : 'text-zinc-400'
-                                    }`}>
-                                    {item.correlation.toFixed(2)}
-                                </div>
-                                <div className="font-mono text-[9px] text-zinc-600">
-                                    {Math.abs(item.correlation) >= 0.7 ? 'Strong' :
-                                        Math.abs(item.correlation) >= 0.4 ? 'Moderate' : 'Weak'}
-                                </div>
-                            </div>
-                        ))}
-                    </div>
+                            ))}
+                        </div>
+                    )}
                 </TerminalPanel>
             </div>
         </div>

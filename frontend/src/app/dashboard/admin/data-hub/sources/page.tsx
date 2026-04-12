@@ -1,297 +1,285 @@
 'use client'
 
-import { TerminalPanel, DataMetricCard, TierBadge } from '@/components/ui/terminal'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
+import { TerminalPanel, DataMetricCard } from '@/components/ui/terminal'
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
-import {
-  Database,
-  Search,
-  RefreshCw,
-  Pause,
-  Play,
-  CheckCircle,
-  AlertCircle,
-  Clock,
-  Zap,
+    Search,
+    Database,
+    FileText,
+    Tag,
+    Clock,
+    Activity,
+    Upload,
+    GitBranch,
+    CheckCircle,
 } from 'lucide-react'
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { dataSourcesApi, DataSourceFilters } from '@/lib/api'
-import { DataSource, DataSourceTier } from '@/types/data-hub'
-import { formatRelativeTime, cn } from '@/lib/utils'
-import { useState } from 'react'
-
-const tierOptions: { value: DataSourceTier | 'all'; label: string }[] = [
-  { value: 'all', label: 'All Tiers' },
-  { value: 'tier1_government', label: 'Tier 1' },
-  { value: 'tier2_financial', label: 'Tier 2' },
-  { value: 'tier3_partners', label: 'Tier 3' },
-  { value: 'tier4_contributions', label: 'Tier 4' },
-  { value: 'tier5_public_web', label: 'Tier 5' },
-]
+import Link from 'next/link'
+import { useState, useMemo, useEffect } from 'react'
+import { useQuery } from '@tanstack/react-query'
+import { dataCatalogApi } from '@/lib/api'
+import { formatNumber } from '@/lib/utils'
 
 export default function DataSourcesPage() {
-  const queryClient = useQueryClient()
-  const [searchQuery, setSearchQuery] = useState('')
-  const [selectedTier, setSelectedTier] = useState<string>('all')
-  const [selectedStatus, setSelectedStatus] = useState<string>('all')
+    const [mounted, setMounted] = useState(false)
+    const [searchQuery, setSearchQuery] = useState('')
+    const [selectedCategory, setSelectedCategory] = useState('all')
+    const [selectedEntry, setSelectedEntry] = useState<string | null>(null)
 
-  const queryFilters: DataSourceFilters = {
-    tier: selectedTier !== 'all' ? (selectedTier as DataSourceTier) : undefined,
-    is_active: selectedStatus === 'active' ? true : selectedStatus === 'inactive' ? false : undefined,
-    is_paused: selectedStatus === 'paused' ? true : undefined,
-    search: searchQuery || undefined,
-    limit: 50,
-  }
+    useEffect(() => { setMounted(true) }, [])
 
-  const { data: sources, isLoading } = useQuery({
-    queryKey: ['data-sources', queryFilters],
-    queryFn: () => dataSourcesApi.getAll(queryFilters),
-  })
+    const { data: catalogData } = useQuery({
+        queryKey: ['catalog-entries'],
+        queryFn: () => dataCatalogApi.listEntries(),
+    })
 
-  const { data: stats } = useQuery({
-    queryKey: ['data-sources-stats'],
-    queryFn: () => dataSourcesApi.getStatsByTier(),
-  })
+    const catalogEntries = useMemo(() => catalogData?.data || [], [catalogData])
 
-  const syncMutation = useMutation({
-    mutationFn: (id: string) => dataSourcesApi.triggerSync(id),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['data-sources'] })
-    },
-  })
+    const filteredEntries = useMemo(() => {
+        return catalogEntries.filter((entry: any) => {
+            const matchesSearch = searchQuery === '' ||
+                entry.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                entry.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                (entry.tags as string[]).some(tag => tag.toLowerCase().includes(searchQuery.toLowerCase()))
+            const matchesCategory = selectedCategory === 'all' ||
+                entry.type.toLowerCase() === selectedCategory.toLowerCase()
+            return matchesSearch && matchesCategory
+        })
+    }, [catalogEntries, searchQuery, selectedCategory])
 
-  const pauseMutation = useMutation({
-    mutationFn: ({ id, pause }: { id: string; pause: boolean }) =>
-      dataSourcesApi.update(id, { is_paused: pause }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['data-sources'] })
-    },
-  })
+    const selectedEntryData = catalogEntries.find((e: any) => e.id === selectedEntry)
 
-  const totalSources = stats?.data?.reduce((acc, s) => acc + s.total, 0) || 0
-  const activeSources = stats?.data?.reduce((acc, s) => acc + s.active, 0) || 0
-  const pausedSources = stats?.data?.reduce((acc, s) => acc + s.paused, 0) || 0
+    const { data: schemaData } = useQuery({
+        queryKey: ['catalog-schema', selectedEntry],
+        queryFn: () => dataCatalogApi.getSchema(selectedEntry!),
+        enabled: !!selectedEntry,
+    })
 
-  return (
-    <div className="min-h-screen bg-black text-white p-4 pb-10">
-      {/* Header */}
-      <div className="mb-6">
-        <h1 className="font-mono text-2xl text-amber-500 tracking-wider">DATA SOURCES MANAGEMENT</h1>
-        <p className="font-mono text-[10px] text-zinc-500 mt-1">
-          MONITOR & CONTROL DATA SOURCE CONNECTIONS • REAL-TIME SYNC STATUS
-        </p>
-      </div>
+    const schemaFields = useMemo(() => schemaData?.data || [], [schemaData])
 
-      {/* Key Metrics */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-        <DataMetricCard
-          title="Total Sources"
-          value={totalSources}
-          subtitle="Configured"
-          icon={Database}
-          color="blue"
-        />
+    const totalRecords = useMemo(() =>
+        catalogEntries.reduce((acc: number, curr: any) => acc + (Number(curr.records) || 0), 0)
+    , [catalogEntries])
 
-        <DataMetricCard
-          title="Active Sources"
-          value={activeSources}
-          subtitle={`${((activeSources / Math.max(totalSources, 1)) * 100).toFixed(0)}% of total`}
-          trend={5.2}
-          icon={CheckCircle}
-          color="green"
-          status="live"
-        />
+    const avgFields = useMemo(() => {
+        if (catalogEntries.length === 0) return 0
+        return Math.round(catalogEntries.reduce((acc: number, curr: any) => acc + (Number(curr.fields) || 0), 0) / catalogEntries.length)
+    }, [catalogEntries])
 
-        <DataMetricCard
-          title="Paused"
-          value={pausedSources}
-          subtitle="Temporarily disabled"
-          icon={Pause}
-          color="yellow"
-        />
+    const totalDataSources = useMemo(() =>
+        new Set(catalogEntries.map((e: any) => e.source)).size
+    , [catalogEntries])
 
-        <DataMetricCard
-          title="Sync Rate"
-          value="94.5%"
-          subtitle="Success rate (24h)"
-          trend={2.1}
-          icon={Zap}
-          color="purple"
-        />
-      </div>
+    const getClassificationColor = (classification: string) => {
+        switch (classification) {
+            case 'Public': return 'text-green-400 bg-green-900/20 border-green-500/30'
+            case 'Internal': return 'text-blue-400 bg-blue-900/20 border-blue-500/30'
+            case 'Sensitive': return 'text-red-400 bg-red-900/20 border-red-500/30'
+            default: return 'text-zinc-400 bg-zinc-800/20 border-zinc-700/30'
+        }
+    }
 
-      {/* Filters */}
-      <div className="mb-6">
-        <TerminalPanel title="Search & Filter">
-          <div className="flex items-center gap-4">
-            <div className="flex-1 relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
-              <input
-                type="text"
-                placeholder="Search sources..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 bg-zinc-800 border border-zinc-700 text-white font-mono text-sm focus:outline-none focus:border-amber-500"
-              />
+    const getUsageColor = (usage: string) => {
+        switch (usage) {
+            case 'High': return 'text-red-400'
+            case 'Medium': return 'text-yellow-400'
+            case 'Low': return 'text-green-400'
+            default: return 'text-zinc-400'
+        }
+    }
+
+    return (
+        <div className="min-h-screen bg-black text-white p-4 pb-10">
+            {/* Header */}
+            <div className="flex items-start justify-between mb-6">
+                <div>
+                    <h1 className="font-mono text-2xl text-amber-500 tracking-wider">DATA SOURCES & CATALOG</h1>
+                    <p className="font-mono text-[10px] text-zinc-500 mt-1">
+                        DATA INVENTORY • SCHEMA BROWSER • SOURCE MANAGEMENT
+                    </p>
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                    <Link
+                        href="/dashboard/admin/data-hub/quality"
+                        className="flex items-center gap-2 px-4 py-2 bg-zinc-900 border border-zinc-700 hover:border-amber-500 transition-colors font-mono text-xs text-zinc-300 hover:text-amber-400"
+                    >
+                        <CheckCircle className="w-4 h-4" />
+                        QUALITY
+                    </Link>
+                    <Link
+                        href="/dashboard/admin/data-hub/lineage"
+                        className="flex items-center gap-2 px-4 py-2 bg-zinc-900 border border-zinc-700 hover:border-amber-500 transition-colors font-mono text-xs text-zinc-300 hover:text-amber-400"
+                    >
+                        <GitBranch className="w-4 h-4" />
+                        LINEAGE
+                    </Link>
+                    <Link
+                        href="/dashboard/admin/data-hub/jobs"
+                        className="flex items-center gap-2 px-4 py-2 bg-zinc-900 border border-zinc-700 hover:border-amber-500 transition-colors font-mono text-xs text-zinc-300 hover:text-amber-400"
+                    >
+                        <Activity className="w-4 h-4" />
+                        ETL JOBS
+                    </Link>
+                    <Link
+                        href="/dashboard/admin/data-hub/ingestion"
+                        className="flex items-center gap-2 px-4 py-2 bg-zinc-900 border border-zinc-700 hover:border-amber-500 transition-colors font-mono text-xs text-zinc-300 hover:text-amber-400"
+                    >
+                        <Upload className="w-4 h-4" />
+                        INGESTION
+                    </Link>
+                </div>
             </div>
 
-            <Select value={selectedTier} onValueChange={setSelectedTier}>
-              <SelectTrigger className="w-40 bg-zinc-800 border-zinc-700 font-mono text-xs">
-                <SelectValue placeholder="Tier" />
-              </SelectTrigger>
-              <SelectContent>
-                {tierOptions.map((option) => (
-                  <SelectItem key={option.value} value={option.value}>
-                    {option.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            {/* Key Metrics */}
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+                <DataMetricCard
+                    title="Total Sources"
+                    value={catalogEntries.length}
+                    subtitle="Cataloged datasets"
+                    icon={Database}
+                    color="blue"
+                />
+                <DataMetricCard
+                    title="Total Records"
+                    value={formatNumber(totalRecords)}
+                    subtitle="Across all sources"
+                    trend={8.5}
+                    icon={FileText}
+                    color="green"
+                />
+                <DataMetricCard
+                    title="Avg Fields"
+                    value={avgFields.toString()}
+                    subtitle="Per dataset"
+                    icon={Tag}
+                    color="purple"
+                />
+                <DataMetricCard
+                    title="Backends"
+                    value={totalDataSources}
+                    subtitle="PostgreSQL, MinIO, OpenSearch"
+                    icon={Database}
+                    color="amber"
+                />
+            </div>
 
-            <Select value={selectedStatus} onValueChange={setSelectedStatus}>
-              <SelectTrigger className="w-32 bg-zinc-800 border-zinc-700 font-mono text-xs">
-                <SelectValue placeholder="Status" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All</SelectItem>
-                <SelectItem value="active">Active</SelectItem>
-                <SelectItem value="paused">Paused</SelectItem>
-                <SelectItem value="inactive">Inactive</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-        </TerminalPanel>
-      </div>
-
-      {/* Sources Table */}
-      <TerminalPanel title={`Data Sources (${sources?.data?.length || 0})`}>
-        {isLoading ? (
-          <div className="space-y-2">
-            {[1, 2, 3, 4, 5].map((i) => (
-              <div key={i} className="h-16 bg-zinc-800/30 animate-pulse" />
-            ))}
-          </div>
-        ) : sources?.data?.length === 0 ? (
-          <div className="text-center py-12">
-            <Database className="w-12 h-12 mx-auto mb-4 text-zinc-700" />
-            <p className="font-mono text-sm text-zinc-500">No sources found</p>
-          </div>
-        ) : (
-          <div className="space-y-2">
-            {sources?.data?.map((source) => (
-              <div
-                key={source.id}
-                className="p-4 bg-zinc-800/30 border border-zinc-800 hover:border-zinc-700 transition-colors"
-              >
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-4 flex-1">
-                    <Database className="w-5 h-5 text-blue-400" />
-
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-1">
-                        <span className="font-mono text-sm text-white">{source.name}</span>
-                        <TierBadge tier={source.tier} />
-                        {source.is_active && !source.is_paused && (
-                          <span className="flex items-center gap-1 px-2 py-0.5 bg-green-900/30 text-green-400 font-mono text-[9px]">
-                            <span className="w-1.5 h-1.5 bg-green-400 rounded-full animate-pulse" />
-                            ACTIVE
-                          </span>
-                        )}
-                        {source.is_paused && (
-                          <span className="px-2 py-0.5 bg-yellow-900/30 text-yellow-400 font-mono text-[9px]">
-                            PAUSED
-                          </span>
-                        )}
-                        {!source.is_active && (
-                          <span className="px-2 py-0.5 bg-zinc-700 text-zinc-400 font-mono text-[9px]">
-                            INACTIVE
-                          </span>
-                        )}
-                      </div>
-
-                      <div className="flex items-center gap-4 font-mono text-[10px] text-zinc-500">
-                        <span>{source.slug}</span>
-                        <span>•</span>
-                        <div className="flex items-center gap-1">
-                          <Clock className="w-3 h-3" />
-                          <span>
-                            Last sync: {source.last_sync_at ? formatRelativeTime(source.last_sync_at) : 'Never'}
-                          </span>
+            {/* Search and Filters */}
+            <div className="mb-6">
+                <TerminalPanel title="Search & Filter">
+                    <div className="flex items-center gap-4">
+                        <div className="flex-1 relative">
+                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
+                            <input
+                                type="text"
+                                placeholder="Search sources, fields, tags..."
+                                value={searchQuery}
+                                onChange={(e) => setSearchQuery(e.target.value)}
+                                className="w-full pl-10 pr-4 py-2 bg-zinc-800 border border-zinc-700 text-white font-mono text-sm focus:outline-none focus:border-amber-500"
+                            />
                         </div>
-                        <span>•</span>
-                        <span>{(source.total_records_synced || 0).toLocaleString()} records</span>
-                      </div>
+                        <div className="flex gap-1">
+                            {['all', 'table', 'object storage'].map((category) => (
+                                <button
+                                    key={category}
+                                    onClick={() => setSelectedCategory(category)}
+                                    className={`px-3 py-2 font-mono text-xs transition-colors ${selectedCategory === category
+                                        ? 'bg-amber-500 text-white'
+                                        : 'bg-zinc-800 text-zinc-400 hover:text-white'
+                                    }`}
+                                >
+                                    {category.toUpperCase()}
+                                </button>
+                            ))}
+                        </div>
                     </div>
-                  </div>
+                </TerminalPanel>
+            </div>
 
-                  <div className="flex items-center gap-2">
-                    <button
-                      onClick={() => syncMutation.mutate(source.id)}
-                      disabled={syncMutation.isPending || source.is_paused}
-                      className="p-2 bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 hover:border-amber-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            {/* Source Cards */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
+                {filteredEntries.map((entry: any) => (
+                    <div
+                        key={entry.id}
+                        onClick={() => setSelectedEntry(entry.id)}
+                        className={`p-4 border cursor-pointer transition-all ${selectedEntry === entry.id
+                            ? 'border-amber-500 bg-amber-500/10'
+                            : 'border-zinc-800 bg-zinc-800/30 hover:border-zinc-700'
+                        }`}
                     >
-                      <RefreshCw className={cn(
-                        'w-4 h-4 text-zinc-400',
-                        syncMutation.isPending && 'animate-spin'
-                      )} />
-                    </button>
+                        <div className="flex items-start justify-between mb-3">
+                            <div className="flex items-center gap-2">
+                                <Database className="w-5 h-5 text-blue-400" />
+                                <div>
+                                    <div className="font-mono text-sm text-white">{entry.name}</div>
+                                    <div className="font-mono text-[10px] text-zinc-500">
+                                        {entry.source} • {entry.schema}
+                                    </div>
+                                </div>
+                            </div>
+                            <span className={`px-2 py-1 border font-mono text-[10px] ${getClassificationColor(entry.classification)}`}>
+                                {entry.classification}
+                            </span>
+                        </div>
 
-                    <button
-                      onClick={() => pauseMutation.mutate({ id: source.id, pause: !source.is_paused })}
-                      disabled={pauseMutation.isPending}
-                      className="p-2 bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 hover:border-amber-500 transition-colors disabled:opacity-50"
-                    >
-                      {source.is_paused ? (
-                        <Play className="w-4 h-4 text-green-400" />
-                      ) : (
-                        <Pause className="w-4 h-4 text-yellow-400" />
-                      )}
-                    </button>
-                  </div>
-                </div>
+                        <p className="font-mono text-[10px] text-zinc-400 mb-3 line-clamp-2">
+                            {entry.description}
+                        </p>
 
-                {/* Sync Status */}
-                {source.last_sync_status && (
-                  <div className="mt-3 pt-3 border-t border-zinc-800">
-                    <div className="flex items-center justify-between font-mono text-[10px]">
-                      <div className="flex items-center gap-2">
-                        {source.last_sync_status === 'completed' && (
-                          <>
-                            <CheckCircle className="w-3 h-3 text-green-400" />
-                            <span className="text-green-400">Last sync successful</span>
-                          </>
-                        )}
-                        {source.last_sync_status === 'failed' && (
-                          <>
-                            <AlertCircle className="w-3 h-3 text-red-400" />
-                            <span className="text-red-400">Last sync failed</span>
-                          </>
-                        )}
-                        {source.last_sync_status === 'running' && (
-                          <>
-                            <RefreshCw className="w-3 h-3 text-blue-400 animate-spin" />
-                            <span className="text-blue-400">Sync in progress...</span>
-                          </>
-                        )}
-                      </div>
-                      <span className="text-zinc-600">
-                        Frequency: {source.sync_frequency || 'Manual'}
-                      </span>
+                        <div className="grid grid-cols-3 gap-3 mb-3">
+                            <div>
+                                <div className="font-mono text-[9px] text-zinc-500">RECORDS</div>
+                                <div className="font-mono text-sm text-white">{entry.records.toLocaleString()}</div>
+                            </div>
+                            <div>
+                                <div className="font-mono text-[9px] text-zinc-500">FIELDS</div>
+                                <div className="font-mono text-sm text-white">{entry.fields}</div>
+                            </div>
+                            <div>
+                                <div className="font-mono text-[9px] text-zinc-500">USAGE</div>
+                                <div className={`font-mono text-sm ${getUsageColor(entry.usage)}`}>{entry.usage}</div>
+                            </div>
+                        </div>
+
+                        <div className="flex items-center justify-between">
+                            <div className="flex flex-wrap gap-1">
+                                {entry.tags.map((tag: string) => (
+                                    <span key={tag} className="px-1.5 py-0.5 bg-zinc-700 text-zinc-300 font-mono text-[9px]">
+                                        {tag}
+                                    </span>
+                                ))}
+                            </div>
+                            <div className="flex items-center gap-1 text-zinc-500">
+                                <Clock className="w-3 h-3" />
+                                <span className="font-mono text-[9px]">
+                                    {mounted && entry.lastUpdated ? new Date(entry.lastUpdated).toLocaleDateString('en-GB') : 'Never'}
+                                </span>
+                            </div>
+                        </div>
                     </div>
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
-        )}
-      </TerminalPanel>
-    </div>
-  )
+                ))}
+            </div>
+
+            {/* Schema Browser */}
+            {selectedEntryData && (
+                <TerminalPanel title={`Schema: ${(selectedEntryData as any).name}`}>
+                    <div className="space-y-2">
+                        {schemaFields.map((field: any) => (
+                            <div key={field.name} className="flex items-center justify-between p-3 bg-zinc-800/30 border border-zinc-800">
+                                <div className="flex items-center gap-4">
+                                    <div className="font-mono text-sm text-white min-w-[150px]">{field.name}</div>
+                                    <div className="font-mono text-xs text-blue-400">{field.type}</div>
+                                    <div className="font-mono text-[10px] text-zinc-500">{field.description}</div>
+                                </div>
+                                <div>
+                                    {field.nullable ? (
+                                        <span className="px-2 py-1 bg-zinc-700 text-zinc-400 font-mono text-[9px]">NULLABLE</span>
+                                    ) : (
+                                        <span className="px-2 py-1 bg-red-900/30 text-red-400 font-mono text-[9px]">REQUIRED</span>
+                                    )}
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </TerminalPanel>
+            )}
+        </div>
+    )
 }
