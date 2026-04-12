@@ -309,24 +309,45 @@ export class DataSourceService {
       tier: string;
       count: string;
       active: string;
+      total_records: string;
       total_properties: string;
       avg_trust_score: string;
     }>(
-      `SELECT 
-         tier,
-         COUNT(*) as count,
-         SUM(CASE WHEN is_active THEN 1 ELSE 0 END) as active,
-         SUM(total_properties_added) as total_properties,
-         AVG(trust_score) as avg_trust_score
-       FROM data_sources
-       GROUP BY tier
-       ORDER BY tier`
+      `SELECT
+         ds.tier,
+         COUNT(DISTINCT ds.id) as count,
+         SUM(CASE WHEN ds.is_active THEN 1 ELSE 0 END) as active,
+         GREATEST(
+           COALESCE(SUM(ds.total_records_synced), 0),
+           COALESCE(pc.prop_count, 0)
+         ) as total_records,
+         COALESCE(pc.prop_count, 0) as total_properties,
+         AVG(ds.trust_score) as avg_trust_score
+       FROM data_sources ds
+       LEFT JOIN (
+         SELECT
+           CASE data_source
+             WHEN 'tier1_government' THEN 'tier1_government'
+             WHEN 'tier2_financial' THEN 'tier2_financial'
+             WHEN 'tier3_partner' THEN 'tier3_partners'
+             WHEN 'tier4_user' THEN 'tier3b_user_generated'
+             WHEN 'tier5_web' THEN 'tier5_public_web'
+             WHEN 'manual_entry' THEN 'tier3b_user_generated'
+             ELSE 'tier5_public_web'
+           END as tier,
+           COUNT(*) as prop_count
+         FROM properties
+         GROUP BY 1
+       ) pc ON ds.tier::text = pc.tier
+       GROUP BY ds.tier, pc.prop_count
+       ORDER BY ds.tier`
     );
 
     return result.rows.map(row => ({
       tier: row.tier,
       count: parseInt(row.count, 10),
       active: parseInt(row.active, 10),
+      total_records: parseInt(row.total_records || '0', 10),
       total_properties: parseInt(row.total_properties || '0', 10),
       avg_trust_score: parseFloat(row.avg_trust_score || '0'),
     }));

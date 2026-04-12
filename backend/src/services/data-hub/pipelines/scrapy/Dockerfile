@@ -22,6 +22,9 @@ COPY requirements.txt .
 # Install Python dependencies
 RUN pip install --no-cache-dir -r requirements.txt
 
+# Ensure 'python' command works (python:3.11-slim only has python3)
+RUN ln -sf /usr/local/bin/python3 /usr/local/bin/python
+
 # Copy scrapy project
 COPY . .
 
@@ -43,13 +46,13 @@ RUN cat > /etc/cron.d/scrapy-jobs << 'EOF'
 # Format: minute hour day month weekday user command
 
 # Weekly full scrape - Sunday 2 AM (all spiders)
-0 2 * * 0 scrapy cd /app && python run_spider.py all --scrape-type full >> /var/log/cron/weekly.log 2>&1
+0 2 * * 0 scrapy cd /app && python3 run_spider.py all --scrape-type full >> /var/log/cron/weekly.log 2>&1
 
 # Daily update scrape - 3 AM (recent listings only)
-0 3 * * * scrapy cd /app && python run_spider.py all --scrape-type update --max-pages 10 >> /var/log/cron/daily.log 2>&1
+0 3 * * * scrapy cd /app && python3 run_spider.py all --scrape-type update --max-pages 10 >> /var/log/cron/daily.log 2>&1
 
 # Hourly retry for failed jobs
-0 * * * * scrapy cd /app && python retry_failed.py >> /var/log/cron/retry.log 2>&1
+0 * * * * scrapy cd /app && python3 retry_failed.py >> /var/log/cron/retry.log 2>&1
 
 EOF
 

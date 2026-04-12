@@ -25,7 +25,9 @@ import {
   Server,
   HardDrive,
   Network,
+  Gauge,
 } from 'lucide-react'
+import Link from 'next/link'
 import { useQuery } from '@tanstack/react-query'
 import {
   dataSourcesApi,
@@ -36,7 +38,6 @@ import {
   systemHealthApi,
 } from '@/lib/api'
 import { formatNumber } from '@/lib/utils'
-import Link from 'next/link'
 import { useMemo, useState, useEffect } from 'react'
 import { LineChart, Line, BarChart, Bar, PieChart, Pie, Cell, ResponsiveContainer, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts'
 
@@ -169,6 +170,13 @@ export default function DataHubOverview() {
             </p>
           </div>
           <div className="flex items-center gap-2">
+            <Link
+              href="/dashboard/admin/data-hub/performance"
+              className="flex items-center gap-2 px-4 py-2 bg-zinc-900 border border-zinc-700 hover:border-amber-500 transition-colors font-mono text-xs text-zinc-300 hover:text-amber-400"
+            >
+              <Gauge className="w-4 h-4" />
+              PERFORMANCE
+            </Link>
             <div className="flex items-center gap-1 px-3 py-1 bg-green-900/30 border border-green-500/50">
               <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
               <span className="font-mono text-[10px] text-green-400">SYSTEM OPERATIONAL</span>
@@ -360,7 +368,7 @@ export default function DataHubOverview() {
           {sourceStats?.data?.map((tier: any) => (
             <Link
               key={tier.tier}
-              href={`/dashboard/data-hub/sources?tier=${tier.tier}`}
+              href={`/dashboard/admin/data-hub/sources?tier=${tier.tier}`}
               className="block p-4 bg-zinc-800/30 border border-zinc-800 hover:border-amber-500/50 transition-colors"
             >
               <div className="flex items-center justify-between mb-3">
@@ -389,7 +397,7 @@ export default function DataHubOverview() {
       {/* Quick Actions */}
       <div className="mt-6 grid grid-cols-2 md:grid-cols-4 gap-3">
         <Link
-          href="/dashboard/data-hub/analytics"
+          href="/dashboard/admin/data-hub/analytics"
           className="p-4 bg-zinc-900 border border-zinc-800 hover:border-amber-500 transition-colors group"
         >
           <TrendingUp className="w-6 h-6 text-amber-500 mb-2 group-hover:scale-110 transition-transform" />
@@ -398,7 +406,7 @@ export default function DataHubOverview() {
         </Link>
 
         <Link
-          href="/dashboard/data-hub/quality"
+          href="/dashboard/admin/data-hub/quality"
           className="p-4 bg-zinc-900 border border-zinc-800 hover:border-amber-500 transition-colors group"
         >
           <CheckCircle className="w-6 h-6 text-green-400 mb-2 group-hover:scale-110 transition-transform" />
@@ -407,7 +415,7 @@ export default function DataHubOverview() {
         </Link>
 
         <Link
-          href="/dashboard/data-hub/lineage"
+          href="/dashboard/admin/data-hub/lineage"
           className="p-4 bg-zinc-900 border border-zinc-800 hover:border-amber-500 transition-colors group"
         >
           <GitBranch className="w-6 h-6 text-blue-400 mb-2 group-hover:scale-110 transition-transform" />
@@ -416,7 +424,7 @@ export default function DataHubOverview() {
         </Link>
 
         <Link
-          href="/dashboard/data-hub/performance"
+          href="/dashboard/admin/data-hub/performance"
           className="p-4 bg-zinc-900 border border-zinc-800 hover:border-amber-500 transition-colors group"
         >
           <Zap className="w-6 h-6 text-purple-400 mb-2 group-hover:scale-110 transition-transform" />

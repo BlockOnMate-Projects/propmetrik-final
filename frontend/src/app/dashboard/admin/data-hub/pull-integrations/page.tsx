@@ -103,7 +103,7 @@ interface PullSchedule {
 const pullIntegrationsApi = {
   getEndpoints: async (): Promise<{ data: PartnerEndpoint[]; count: number }> => {
     try {
-      const response = await fetch('/api/v1/pull-integrations/endpoints')
+      const response = await fetch('/api/pull-integrations/endpoints')
       if (!response.ok) {
         throw new Error('Failed to fetch endpoints')
       }
@@ -175,7 +175,7 @@ const pullIntegrationsApi = {
 
 getJobs: async (): Promise<{ data: PullJob[]; count: number }> => {
     try {
-      const response = await fetch('/api/v1/pull-integrations/jobs')
+      const response = await fetch('/api/pull-integrations/jobs')
       if (!response.ok) {
         throw new Error('Failed to fetch jobs')
       }
@@ -230,7 +230,7 @@ getJobs: async (): Promise<{ data: PullJob[]; count: number }> => {
 
 getSchedules: async (): Promise<{ data: PullSchedule[]; count: number }> => {
     try {
-      const response = await fetch('/api/v1/pull-integrations/schedules')
+      const response = await fetch('/api/pull-integrations/schedules')
       if (!response.ok) {
         throw new Error('Failed to fetch schedules')
       }
@@ -274,7 +274,7 @@ getSchedules: async (): Promise<{ data: PullSchedule[]; count: number }> => {
 
   executeJob: async (endpointId: string) => {
     try {
-      const response = await fetch(`/api/v1/pull-integrations/endpoints/${endpointId}/execute`, {
+      const response = await fetch(`/api/pull-integrations/endpoints/${endpointId}/execute`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
@@ -294,7 +294,7 @@ getSchedules: async (): Promise<{ data: PullSchedule[]; count: number }> => {
 
   toggleEndpoint: async (endpointId: string, isActive: boolean) => {
     try {
-      const response = await fetch(`/api/v1/pull-integrations/endpoints/${endpointId}`, {
+      const response = await fetch(`/api/pull-integrations/endpoints/${endpointId}`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json'
@@ -314,7 +314,7 @@ getSchedules: async (): Promise<{ data: PullSchedule[]; count: number }> => {
 
   createEndpoint: async (endpoint: Partial<PartnerEndpoint>) => {
     try {
-      const response = await fetch('/api/v1/pull-integrations/endpoints', {
+      const response = await fetch('/api/pull-integrations/endpoints', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
@@ -335,7 +335,7 @@ getSchedules: async (): Promise<{ data: PullSchedule[]; count: number }> => {
 
   updateEndpoint: async (endpointId: string, endpoint: Partial<PartnerEndpoint>) => {
     try {
-      const response = await fetch(`/api/v1/pull-integrations/endpoints/${endpointId}`, {
+      const response = await fetch(`/api/pull-integrations/endpoints/${endpointId}`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json'
@@ -356,7 +356,7 @@ getSchedules: async (): Promise<{ data: PullSchedule[]; count: number }> => {
 
   deleteEndpoint: async (endpointId: string) => {
     try {
-      const response = await fetch(`/api/v1/pull-integrations/endpoints/${endpointId}`, {
+      const response = await fetch(`/api/pull-integrations/endpoints/${endpointId}`, {
         method: 'DELETE'
       })
       if (!response.ok) {
@@ -372,7 +372,7 @@ getSchedules: async (): Promise<{ data: PullSchedule[]; count: number }> => {
 
   createSchedule: async (schedule: Partial<PullSchedule>) => {
     try {
-      const response = await fetch('/api/v1/pull-integrations/schedules', {
+      const response = await fetch('/api/pull-integrations/schedules', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
@@ -393,7 +393,7 @@ getSchedules: async (): Promise<{ data: PullSchedule[]; count: number }> => {
 
   updateSchedule: async (scheduleId: string, schedule: Partial<PullSchedule>) => {
     try {
-      const response = await fetch(`/api/v1/pull-integrations/schedules/${scheduleId}`, {
+      const response = await fetch(`/api/pull-integrations/schedules/${scheduleId}`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json'
@@ -414,7 +414,7 @@ getSchedules: async (): Promise<{ data: PullSchedule[]; count: number }> => {
 
   deleteSchedule: async (scheduleId: string) => {
     try {
-      const response = await fetch(`/api/v1/pull-integrations/schedules/${scheduleId}`, {
+      const response = await fetch(`/api/pull-integrations/schedules/${scheduleId}`, {
         method: 'DELETE'
       })
       if (!response.ok) {

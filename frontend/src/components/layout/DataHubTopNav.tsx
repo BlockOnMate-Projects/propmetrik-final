@@ -7,37 +7,21 @@ import { cn } from '@/lib/utils'
 import {
     LayoutDashboard,
     BarChart3,
-    CheckCircle,
-    GitBranch,
-    Zap,
-    BookOpen,
-    Lightbulb,
     Database,
-    Activity,
     Users,
     DollarSign,
     Building2,
-    Layers,
-    Settings,
-    Calendar
+    Calendar,
 } from 'lucide-react'
 
 const navigation = [
-    { name: 'OVERVIEW', href: '/dashboard/admin/data-hub', exact: true, icon: LayoutDashboard },
-    { name: 'ANALYTICS', href: '/dashboard/admin/data-hub/analytics', icon: BarChart3 },
-    { name: 'QUALITY', href: '/dashboard/admin/data-hub/quality', icon: CheckCircle },
-    { name: 'LINEAGE', href: '/dashboard/admin/data-hub/lineage', icon: GitBranch },
-    { name: 'PERFORMANCE', href: '/dashboard/admin/data-hub/performance', icon: Zap },
-    { name: 'CATALOG', href: '/dashboard/admin/data-hub/catalog', icon: BookOpen },
-    { name: 'INSIGHTS', href: '/dashboard/admin/data-hub/insights', icon: Lightbulb },
-    { name: 'SOURCES', href: '/dashboard/admin/data-hub/sources', icon: Database },
-    { name: 'JOBS', href: '/dashboard/admin/data-hub/jobs', icon: Activity },
+    { name: 'OVERVIEW', href: '/dashboard/admin/data-hub', exact: true, icon: LayoutDashboard, alsoMatchPaths: ['/dashboard/admin/data-hub/performance'] },
+    { name: 'ANALYTICS', href: '/dashboard/admin/data-hub/analytics', icon: BarChart3, alsoMatchPaths: ['/dashboard/admin/data-hub/insights'] },
+    { name: 'SOURCES', href: '/dashboard/admin/data-hub/sources', icon: Database, alsoMatchPaths: ['/dashboard/admin/data-hub/jobs', '/dashboard/admin/data-hub/ingestion', '/dashboard/admin/data-hub/catalog', '/dashboard/admin/data-hub/lineage', '/dashboard/admin/data-hub/quality'] },
     { name: 'CONTRIBUTIONS', href: '/dashboard/admin/data-hub/contributions', icon: Users },
     { name: 'ECONOMIC', href: '/dashboard/admin/data-hub/economic', icon: DollarSign },
-    { name: 'CONSTRUCTION', href: '/dashboard/admin/data-hub/construction', icon: Building2 },
-    { name: 'INGESTION', href: '/dashboard/admin/data-hub/ingestion', icon: Layers },
+    { name: 'CONSTRUCTION', href: '/dashboard/admin/data-hub/construction', icon: Building2, alsoMatchPaths: ['/dashboard/admin/data-hub/valuation-config'] },
     { name: 'CALENDAR', href: '/dashboard/calendar?service=data-hub', icon: Calendar },
-    { name: 'VALUATION CONFIG', href: '/dashboard/admin/data-hub/valuation-config', icon: Settings },
 ]
 
 export function DataHubTopNav() {
@@ -49,7 +33,8 @@ export function DataHubTopNav() {
                 {navigation.map((item) => {
                     const isActive = item.exact
                         ? pathname === item.href
-                        : pathname.startsWith(item.href)
+                        : pathname.startsWith(item.href) ||
+                          ((item as any).alsoMatchPaths?.some((p: string) => pathname.startsWith(p)) ?? false)
 
                     return (
                         <Link

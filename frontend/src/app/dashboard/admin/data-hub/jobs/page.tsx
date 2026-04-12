@@ -104,7 +104,7 @@ export default function EtlJobsPage() {
 
         <DataMetricCard
           title="Pending"
-          value={stats?.data?.pending || 0}
+          value={(stats?.data?.pending || 0) + (stats?.data?.queued || 0)}
           subtitle="In queue"
           icon={Clock}
           color="yellow"
@@ -121,16 +121,16 @@ export default function EtlJobsPage() {
 
         <DataMetricCard
           title="Failed"
-          value={stats?.data?.failed_today || 0}
-          subtitle="Last 24h"
+          value={stats?.data?.failed || 0}
+          subtitle="All time"
           icon={AlertCircle}
           color="red"
         />
 
         <DataMetricCard
           title="Success Rate"
-          value={`${((stats?.data?.completed_today || 0) / Math.max((stats?.data?.completed_today || 0) + (stats?.data?.failed_today || 0), 1) * 100).toFixed(0)}%`}
-          subtitle="Today"
+          value={`${Math.round(stats?.data?.success_rate || 0)}%`}
+          subtitle="Overall"
           icon={GitBranch}
           color="purple"
         />

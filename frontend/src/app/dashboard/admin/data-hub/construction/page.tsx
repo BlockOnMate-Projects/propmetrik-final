@@ -22,7 +22,9 @@ import {
   ArrowUpRight,
   ArrowDownRight,
   MapPin,
+  Settings,
 } from 'lucide-react'
+import Link from 'next/link'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { constructionApi, MaterialFilters, LaborFilters } from '@/lib/api'
 import { RegionCode } from '@/types/data-hub'
@@ -112,18 +114,27 @@ export default function ConstructionCostsPage() {
   return (
     <div className="min-h-screen bg-black text-white p-4 pb-10">
       {/* Header */}
-      <div className="mb-6">
-        <h1 className="font-mono text-2xl text-amber-500 tracking-wider">CONSTRUCTION COSTS MONITOR</h1>
-        <p className="font-mono text-[10px] text-zinc-500 mt-1">
-          MATERIAL PRICES • LABOR RATES • REGIONAL COMPARISON • COST INDEX TRACKING
-        </p>
+      <div className="flex items-start justify-between mb-6">
+        <div>
+          <h1 className="font-mono text-2xl text-amber-500 tracking-wider">CONSTRUCTION COSTS MONITOR</h1>
+          <p className="font-mono text-[10px] text-zinc-500 mt-1">
+            MATERIAL PRICES • LABOR RATES • REGIONAL COMPARISON • COST INDEX TRACKING
+          </p>
+        </div>
+        <Link
+          href="/dashboard/admin/data-hub/valuation-config"
+          className="flex items-center gap-2 px-4 py-2 bg-zinc-900 border border-zinc-700 hover:border-amber-500 transition-colors font-mono text-xs text-zinc-300 hover:text-amber-400 shrink-0"
+        >
+          <Settings className="w-4 h-4" />
+          VALUATION CONFIG
+        </Link>
       </div>
 
       {/* Key Metrics */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
         <DataMetricCard
           title="Material Index"
-          value={index?.data?.material_index?.toFixed(1) || '-'}
+          value={index?.data?.material_index != null ? Number(index.data.material_index).toFixed(1) : '-'}
           subtitle="Base: 100"
           icon={Package}
           color="blue"
@@ -131,7 +142,7 @@ export default function ConstructionCostsPage() {
 
         <DataMetricCard
           title="Labor Index"
-          value={index?.data?.labor_index?.toFixed(1) || '-'}
+          value={index?.data?.labor_index != null ? Number(index.data.labor_index).toFixed(1) : '-'}
           subtitle="Base: 100"
           icon={Users}
           color="green"
@@ -139,7 +150,7 @@ export default function ConstructionCostsPage() {
 
         <DataMetricCard
           title="Overall Index"
-          value={index?.data?.overall_index?.toFixed(1) || '-'}
+          value={index?.data?.overall_index != null ? Number(index.data.overall_index).toFixed(1) : '-'}
           subtitle="Combined metric"
           trend={2.3}
           icon={HardHat}
@@ -286,7 +297,7 @@ export default function ConstructionCostsPage() {
                               ) : (
                                 <ArrowDownRight className="w-3 h-3" />
                               )}
-                              <span>{Math.abs(material.price_change_percent).toFixed(1)}%</span>
+                              <span>{Math.abs(Number(material.price_change_percent)).toFixed(1)}%</span>
                             </div>
                           )}
                         </div>

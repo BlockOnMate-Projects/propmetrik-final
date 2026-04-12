@@ -7,11 +7,6 @@ import {
     AlertTriangle,
     CheckCircle,
     XCircle,
-    TrendingUp,
-    TrendingDown,
-    Database,
-    FileText,
-    Shield,
 } from 'lucide-react'
 import { useState, useMemo } from 'react'
 import { useQuery } from '@tanstack/react-query'
@@ -19,8 +14,6 @@ import { dataQualityApi } from '@/lib/api'
 import {
     LineChart,
     Line,
-    BarChart,
-    Bar,
     ResponsiveContainer,
     XAxis,
     YAxis,
@@ -28,114 +21,92 @@ import {
     Tooltip,
     Legend,
 } from 'recharts'
-import { formatRelativeTime } from '@/lib/utils'
+import { formatNumber } from '@/lib/utils'
 
 export default function QualityPage() {
-    const [timeRange, setTimeRange] = useState('24h')
+    const [timeRange, setTimeRange] = useState('30d')
 
-    // Real data queries
-    const { data: trendsData, isLoading: trendsLoading } = useQuery({
+    // Quality summary (real breakdown scores)
+    const { data: summaryData } = useQuery({
+        queryKey: ['quality-summary'],
+        queryFn: () => dataQualityApi.getSummary(),
+    })
+
+    // Quality trends (real historical data)
+    const { data: trendsData } = useQuery({
         queryKey: ['quality-trends', timeRange],
-        queryFn: () => dataQualityApi.getTrends(30) // Always fetch 30 days for chart for now
+        queryFn: () => dataQualityApi.getTrends(
+            timeRange === '7d' ? 7 : timeRange === '90d' ? 90 : timeRange === 'all' ? 365 : 30
+        ),
     })
 
-    const { data: validationData, isLoading: validationLoading } = useQuery({
+    const { data: validationData } = useQuery({
         queryKey: ['quality-validation'],
-        queryFn: () => dataQualityApi.getValidationResults()
+        queryFn: () => dataQualityApi.getValidationResults(),
     })
 
-    const { data: completenessData, isLoading: completenessLoading } = useQuery({
+    const { data: completenessData } = useQuery({
         queryKey: ['quality-completeness'],
-        queryFn: () => dataQualityApi.getFieldCompleteness()
+        queryFn: () => dataQualityApi.getFieldCompleteness(),
     })
 
-    const { data: anomaliesData, isLoading: anomaliesLoading } = useQuery({
+    const { data: anomaliesData } = useQuery({
         queryKey: ['quality-anomalies'],
-        queryFn: () => dataQualityApi.getAnomalies()
+        queryFn: () => dataQualityApi.getAnomalies(20),
     })
 
-    const { data: profilesData, isLoading: profilesLoading } = useQuery({
+    const { data: profilesData } = useQuery({
         queryKey: ['quality-profiles'],
-        queryFn: () => dataQualityApi.getDataProfiles()
+        queryFn: () => dataQualityApi.getDataProfiles(),
     })
 
-    // Process real data or fall back to safe defaults
+    const summary = summaryData?.data
+    const currentScore = summary?.overall ?? 0
+
+    // Process trends for chart
     const qualityTrends = useMemo(() => {
         if (!trendsData?.data) return []
         return trendsData.data.map(t => ({
             day: new Date(t.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }),
             overall: t.score,
-            // Simulating other metrics based on overall score since DB stores mostly overall/breakdown
-            completeness: Math.min(100, t.score + 5),
-            accuracy: t.score,
-            timeliness: Math.max(0, t.score - 5),
-            consistency: t.score
+            completeness: t.completeness,
+            accuracy: t.accuracy,
+            timeliness: t.timeliness,
+            consistency: t.consistency,
         }))
     }, [trendsData])
 
     const validationResults = useMemo(() => {
-        // Transform the flat rule list into a per-source dummy list or just show rules?
-        // The UI design has "Validation Results by Source". 
-        // Our backend returns rule status. Let's map rules for now as the table structure fits.
         if (!validationData?.data) return []
-        return validationData.data.map(r => ({
-            source: r.name, // Mapping rule name to source column for display
-            passed: r.status === 'passed' ? 100 : 0,
-            failed: r.status === 'passed' ? 0 : r.affectedCount,
-            passRate: r.status === 'passed' ? 100 : 0
-        }))
+        return validationData.data
     }, [validationData])
 
     const fieldCompleteness = useMemo(() => {
         if (!completenessData?.data) return []
         return Object.entries(completenessData.data).map(([field, score]) => ({
             field,
-            completeness: score,
-            required: ['Title', 'Price', 'Location'].includes(field)
+            completeness: score as number,
+            required: ['Title', 'Price', 'Location'].includes(field),
         }))
     }, [completenessData])
 
     const anomalies = useMemo(() => {
         if (!anomaliesData?.data) return []
-        return anomaliesData.data.map(a => ({
-            id: a.id,
-            type: a.issue,
-            severity: a.severity,
-            source: 'System', // a.entityType
-            detected: formatRelativeTime(a.detectedAt),
-            status: 'investigating' // default status
-        }))
+        return anomaliesData.data
     }, [anomaliesData])
 
     const dataProfiles = useMemo(() => {
         if (!profilesData?.data) return []
-        return profilesData.data.map(p => ({
-            metric: p.dataset,
-            value: p.rowCount.toLocaleString(),
-            change: '0' // No history for change yet
-        }))
+        return profilesData.data
     }, [profilesData])
 
     const getSeverityColor = (severity: string) => {
         switch (severity) {
-            case 'critical':
-            case 'high': return 'text-red-400 bg-red-900/20 border-red-500/30'
-            case 'medium': return 'text-yellow-400 bg-yellow-900/20 border-yellow-500/30'
-            case 'low': return 'text-blue-400 bg-blue-900/20 border-blue-500/30'
+            case 'critical': return 'text-red-400 bg-red-900/20 border-red-500/30'
+            case 'warning': return 'text-yellow-400 bg-yellow-900/20 border-yellow-500/30'
             default: return 'text-zinc-400 bg-zinc-800/20 border-zinc-700/30'
         }
     }
-
-    const getStatusIcon = (status: string) => {
-        switch (status) {
-            case 'resolved': return <CheckCircle className="w-4 h-4 text-green-400" />
-            case 'investigating': return <AlertTriangle className="w-4 h-4 text-yellow-400" />
-            case 'pending': return <XCircle className="w-4 h-4 text-zinc-400" />
-            default: return null
-        }
-    }
-
-    const currentScore = qualityTrends.length > 0 ? qualityTrends[qualityTrends.length - 1].overall : 0
 
     return (
         <div className="min-h-screen bg-black text-white p-4 pb-10">
@@ -147,23 +118,29 @@ export default function QualityPage() {
                 </p>
             </div>
 
-            {/* Overall Quality Score */}
+            {/* Overall Quality Score — using REAL breakdown */}
             <div className="mb-6">
                 <DataQualityWidget
                     overallScore={Math.round(currentScore)}
                     breakdown={{
-                        completeness: Math.round(currentScore + 2),
-                        accuracy: Math.round(currentScore),
-                        timeliness: Math.round(currentScore - 2),
-                        consistency: Math.round(currentScore - 1),
+                        completeness: Math.round(summary?.completeness ?? 0),
+                        accuracy: Math.round(summary?.accuracy ?? 0),
+                        timeliness: Math.round(summary?.timeliness ?? 0),
+                        consistency: Math.round(summary?.consistency ?? 0),
                     }}
-                    trend={qualityTrends.length > 1 ? Number((currentScore - qualityTrends[0].overall).toFixed(1)) : 0}
-                    issues={{ critical: anomalies.filter(a => a.severity === 'critical').length, warning: anomalies.filter(a => a.severity === 'warning').length }}
+                    trend={qualityTrends.length > 1
+                        ? Number((qualityTrends[qualityTrends.length - 1].overall - qualityTrends[0].overall).toFixed(1))
+                        : 0
+                    }
+                    issues={{
+                        critical: anomalies.filter((a: any) => a.severity === 'critical').length,
+                        warning: anomalies.filter((a: any) => a.severity === 'warning').length,
+                    }}
                     lastUpdated={new Date()}
                 />
             </div>
 
-            {/* Quality Trends */}
+            {/* Quality Trends — real historical data */}
             <div className="mb-6">
                 <DataAnalyticsPanel
                     title="Quality Score Trends"
@@ -174,24 +151,9 @@ export default function QualityPage() {
                         <ResponsiveContainer width="100%" height="100%">
                             <LineChart data={qualityTrends}>
                                 <CartesianGrid strokeDasharray="3 3" stroke="#27272a" />
-                                <XAxis
-                                    dataKey="day"
-                                    stroke="#71717a"
-                                    style={{ fontSize: '10px', fontFamily: 'monospace' }}
-                                />
-                                <YAxis
-                                    stroke="#71717a"
-                                    style={{ fontSize: '10px', fontFamily: 'monospace' }}
-                                    domain={[0, 100]}
-                                />
-                                <Tooltip
-                                    contentStyle={{
-                                        backgroundColor: '#18181b',
-                                        border: '1px solid #27272a',
-                                        fontFamily: 'monospace',
-                                        fontSize: '11px'
-                                    }}
-                                />
+                                <XAxis dataKey="day" stroke="#71717a" style={{ fontSize: '10px', fontFamily: 'monospace' }} />
+                                <YAxis stroke="#71717a" style={{ fontSize: '10px', fontFamily: 'monospace' }} domain={[0, 100]} />
+                                <Tooltip contentStyle={{ backgroundColor: '#18181b', border: '1px solid #27272a', fontFamily: 'monospace', fontSize: '11px' }} />
                                 <Legend wrapperStyle={{ fontFamily: 'monospace', fontSize: '10px' }} />
                                 <Line type="monotone" dataKey="overall" stroke="#f59e0b" name="Overall" strokeWidth={2} />
                                 <Line type="monotone" dataKey="completeness" stroke="#3b82f6" name="Completeness" />
@@ -209,28 +171,40 @@ export default function QualityPage() {
                 {/* Validation Results */}
                 <TerminalPanel title="Validation Rules Status">
                     <div className="space-y-3">
-                        {validationResults.length === 0 && <div className="text-zinc-500 text-sm p-4">No validation rules failed</div>}
-                        {validationResults.map((result, idx) => (
-                            <div key={idx} className="p-3 bg-zinc-800/30 border border-zinc-800">
+                        {validationResults.length === 0 && (
+                            <div className="text-zinc-500 text-sm p-4">All validation rules passed</div>
+                        )}
+                        {validationResults.map((rule) => (
+                            <div key={rule.ruleId} className="p-3 bg-zinc-800/30 border border-zinc-800">
                                 <div className="flex items-center justify-between mb-2">
-                                    <div className="font-mono text-sm text-white">{result.source}</div>
-                                    <div className={`font-mono text-xs ${result.passRate >= 98 ? 'text-green-400' :
-                                        result.passRate >= 95 ? 'text-blue-400' :
-                                            result.passRate >= 90 ? 'text-yellow-400' : 'text-red-400'
-                                        }`}>
-                                        {result.passRate === 100 ? 'PASSED' : 'WARNING'}
+                                    <div className="font-mono text-sm text-white">{rule.name}</div>
+                                    <div className={`font-mono text-xs ${rule.status === 'passed' ? 'text-green-400' : 'text-yellow-400'}`}>
+                                        {rule.status.toUpperCase()}
                                     </div>
                                 </div>
+                                <div className="font-mono text-[10px] text-zinc-500 mb-2">{rule.description}</div>
                                 <div className="flex items-center gap-4 font-mono text-[10px]">
                                     <div className="flex items-center gap-1">
-                                        <XCircle className="w-3 h-3 text-red-400" />
-                                        <span className="text-zinc-400">{result.failed.toLocaleString()} affected records</span>
+                                        {rule.status === 'passed'
+                                            ? <CheckCircle className="w-3 h-3 text-green-400" />
+                                            : <XCircle className="w-3 h-3 text-red-400" />
+                                        }
+                                        <span className="text-zinc-400">
+                                            {rule.affectedCount > 0
+                                                ? `${rule.affectedCount.toLocaleString()} affected records`
+                                                : 'No issues found'
+                                            }
+                                        </span>
                                     </div>
+                                    <span className={`px-1.5 py-0.5 text-[9px] border ${
+                                        rule.impact === 'Critical' ? 'border-red-800 text-red-400 bg-red-900/20' :
+                                        rule.impact === 'High' ? 'border-orange-800 text-orange-400 bg-orange-900/20' :
+                                        'border-zinc-700 text-zinc-400 bg-zinc-800/20'
+                                    }`}>{rule.impact}</span>
                                 </div>
                                 <div className="mt-2 h-1 bg-zinc-700 overflow-hidden">
-                                    {/* Simple bar since pass/fail is binary per rule in our abstraction now */}
                                     <div
-                                        className={`h-full ${result.passRate === 100 ? 'bg-green-500' : 'bg-red-500'}`}
+                                        className={`h-full ${rule.status === 'passed' ? 'bg-green-500' : 'bg-red-500'}`}
                                         style={{ width: '100%' }}
                                     />
                                 </div>
@@ -259,7 +233,7 @@ export default function QualityPage() {
                                                 field.completeness >= 85 ? 'bg-blue-500' :
                                                     field.completeness >= 70 ? 'bg-yellow-500' : 'bg-red-500'
                                                 }`}
-                                            style={{ width: `${field.completeness}%` }}
+                                            style={{ width: `${Math.min(100, field.completeness)}%` }}
                                         />
                                     </div>
                                     <span className="font-mono text-[10px] text-zinc-400 w-10 text-right">
@@ -272,30 +246,45 @@ export default function QualityPage() {
                 </TerminalPanel>
             </div>
 
-            {/* Anomaly Detection */}
+            {/* Anomaly Detection — with property details */}
             <div className="mb-6">
                 <TerminalPanel title="Anomaly Detection & Alerts">
                     <div className="space-y-2">
-                        {anomalies.length === 0 && <div className="text-zinc-500 text-sm p-4">No active anomalies detected</div>}
-                        {anomalies.map((anomaly) => (
+                        {anomalies.length === 0 && (
+                            <div className="text-zinc-500 text-sm p-4">No active anomalies detected</div>
+                        )}
+                        {anomalies.map((anomaly: any) => (
                             <div key={anomaly.id} className={`p-3 border ${getSeverityColor(anomaly.severity)}`}>
                                 <div className="flex items-center justify-between">
                                     <div className="flex items-center gap-3">
-                                        {getStatusIcon(anomaly.status)}
+                                        <AlertTriangle className={`w-4 h-4 ${anomaly.severity === 'critical' ? 'text-red-400' : 'text-yellow-400'}`} />
                                         <div>
-                                            <div className="font-mono text-sm text-white">{anomaly.type}</div>
-                                            <div className="font-mono text-[10px] text-zinc-500">
-                                                {anomaly.source} • Detected {anomaly.detected}
+                                            <div className="font-mono text-sm text-white">{anomaly.issue}</div>
+                                            <div className="font-mono text-[10px] text-zinc-400">
+                                                {anomaly.title
+                                                    ? `${(anomaly.title as string).slice(0, 60)}${(anomaly.title as string).length > 60 ? '...' : ''}`
+                                                    : 'Untitled property'
+                                                }
+                                                {anomaly.price != null && (
+                                                    <span className="ml-2 text-amber-400">
+                                                        GHS {formatNumber(anomaly.price)}
+                                                    </span>
+                                                )}
+                                                {anomaly.city && (
+                                                    <span className="ml-2 text-zinc-500">• {anomaly.city}</span>
+                                                )}
                                             </div>
                                         </div>
                                     </div>
-                                    <div className="flex items-center gap-2">
+                                    <div className="flex items-center gap-2 shrink-0">
                                         <span className={`px-2 py-1 font-mono text-[10px] uppercase ${getSeverityColor(anomaly.severity)}`}>
                                             {anomaly.severity}
                                         </span>
-                                        <span className="px-2 py-1 bg-zinc-800 font-mono text-[10px] text-zinc-400 uppercase">
-                                            {anomaly.status}
-                                        </span>
+                                        {anomaly.qualityScore != null && (
+                                            <span className="px-2 py-1 bg-zinc-800 font-mono text-[10px] text-zinc-400">
+                                                Q:{Math.round(anomaly.qualityScore)}%
+                                            </span>
+                                        )}
                                     </div>
                                 </div>
                             </div>
@@ -306,15 +295,21 @@ export default function QualityPage() {
 
             {/* Data Profiling Statistics */}
             <TerminalPanel title="Data Profiling Statistics">
-                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-                    {dataProfiles.map((profile) => (
-                        <div key={profile.metric} className="p-3 bg-zinc-800/30 border border-zinc-800">
-                            <div className="font-mono text-[10px] text-zinc-500 mb-1">{profile.metric}</div>
-                            <div className="font-mono text-2xl text-white mb-1">{profile.value}</div>
-                            <div className={`font-mono text-[10px] ${profile.change.startsWith('+') ? 'text-green-400' :
-                                profile.change.startsWith('-') ? 'text-red-400' : 'text-zinc-500'
-                                }`}>
-                                {profile.change}
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                    {dataProfiles.map((profile: any) => (
+                        <div key={profile.dataset} className="p-3 bg-zinc-800/30 border border-zinc-800">
+                            <div className="font-mono text-[10px] text-zinc-500 mb-1">{profile.dataset}</div>
+                            <div className="font-mono text-2xl text-white mb-1">
+                                {profile.rowCount.toLocaleString()}
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <div className="w-16 h-1 bg-zinc-700 overflow-hidden">
+                                    <div
+                                        className={`h-full ${profile.completeness >= 90 ? 'bg-green-500' : profile.completeness >= 70 ? 'bg-yellow-500' : 'bg-red-500'}`}
+                                        style={{ width: `${Math.min(100, profile.completeness)}%` }}
+                                    />
+                                </div>
+                                <span className="font-mono text-[10px] text-zinc-400">{profile.completeness}% complete</span>
                             </div>
                         </div>
                     ))}

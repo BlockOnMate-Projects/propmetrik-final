@@ -110,7 +110,7 @@ interface PullSchedule {
 const pullIntegrationsApi = {
   getEndpoints: async (): Promise<{ data: PartnerEndpoint[]; count: number }> => {
     try {
-      const response = await authedFetch('/api/v1/pull-integrations/endpoints')
+      const response = await authedFetch('/api/pull-integrations/endpoints')
       if (!response.ok) {
         throw new Error('Failed to fetch endpoints')
       }
@@ -131,7 +131,7 @@ const pullIntegrationsApi = {
 
   getJobs: async (): Promise<{ data: PullJob[]; count: number }> => {
     try {
-      const response = await authedFetch('/api/v1/pull-integrations/jobs')
+      const response = await authedFetch('/api/pull-integrations/jobs')
       if (!response.ok) {
         throw new Error('Failed to fetch jobs')
       }
@@ -152,7 +152,7 @@ const pullIntegrationsApi = {
 
   getSchedules: async (): Promise<{ data: PullSchedule[]; count: number }> => {
     try {
-      const response = await authedFetch('/api/v1/pull-integrations/schedules')
+      const response = await authedFetch('/api/pull-integrations/schedules')
       if (!response.ok) {
         throw new Error('Failed to fetch schedules')
       }

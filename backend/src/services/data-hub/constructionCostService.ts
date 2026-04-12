@@ -1031,34 +1031,33 @@ export class ConstructionCostService {
    */
   async calculateMaterialIndex(region?: RegionCode): Promise<number> {
     const weights = await this.getMaterialWeights();
-    if (weights.length === 0) return 100; // Default base
+    if (weights.length === 0) return 100;
+
+    // Only use material categories, not labor/equipment/overheads/contingency
+    const nonMaterialCategories = ['labor', 'equipment', 'overheads', 'contingency'];
+    const materialWeights = weights.filter(w => !nonMaterialCategories.includes(w.category));
+    if (materialWeights.length === 0) return 100;
 
     let totalWeightedPrice = 0;
     let totalWeight = 0;
 
-    for (const item of weights) {
+    for (const item of materialWeights) {
       const prices = await this.getMaterialPrices({
         category: item.category as MaterialCategory,
         region
       });
 
       if (prices.length > 0) {
-        // Use average price for the category
-        const avgPrice = prices.reduce((sum, p) => sum + p.price_ghs, 0) / prices.length;
-
-        // This is a simplification: index = (current / base) * 100
-        // For now, we assume seed data prices are 'base' (100)
-        // In a real system, we'd compare against a specific period
-
-        // Mocking a slight increase to show it is dynamic
-        const seasonalFactor = 1 + (Math.sin(new Date().getMonth() / 2) * 0.05);
-        totalWeightedPrice += avgPrice * item.weight * seasonalFactor;
-        totalWeight += item.weight;
+        const avgPrice = prices.reduce((sum, p) => sum + parseFloat(p.price_ghs as any), 0) / prices.length;
+        if (!isNaN(avgPrice)) {
+          totalWeightedPrice += avgPrice * item.weight;
+          totalWeight += item.weight;
+        }
       }
     }
 
-    // Normalized to 100 base
-    return totalWeight > 0 ? 100 * (totalWeightedPrice / totalWeight / 100) : 100;
+    // Normalize: relative to base price of 100 GHS per unit
+    return totalWeight > 0 ? (totalWeightedPrice / totalWeight) : 100;
   }
 
   /**
@@ -1068,9 +1067,10 @@ export class ConstructionCostService {
     const laborRates = await this.getLaborRates({ region });
     if (laborRates.length === 0) return 100;
 
-    const avgRate = laborRates.reduce((sum, l) => sum + l.rate_ghs, 0) / laborRates.length;
+    const avgRate = laborRates.reduce((sum, l) => sum + parseFloat(l.rate_ghs as any), 0) / laborRates.length;
+    if (isNaN(avgRate) || avgRate === 0) return 100;
 
-    // Simplification for demo: assuming base rate is 150 GHS
+    // Base rate: average daily rate in 2024 was ~150 GHS
     return (avgRate / 150) * 100;
   }
 
@@ -1401,19 +1401,25 @@ export class ConstructionCostService {
    * Default cost breakdown weights for Ghana construction
    */
   private getFallbackWeights() {
-    const weights: Array<{ category: string; display_name: string; weight: number; updated_at: string }> = [
-      { category: 'cement', display_name: 'Cement', weight: 0.15, updated_at: new Date().toISOString() },
-      { category: 'steel', display_name: 'Steel & Reinforcement', weight: 0.12, updated_at: new Date().toISOString() },
-      { category: 'timber', display_name: 'Timber & Formwork', weight: 0.08, updated_at: new Date().toISOString() },
-      { category: 'blocks', display_name: 'Blocks & Masonry', weight: 0.10, updated_at: new Date().toISOString() },
-      { category: 'sand', display_name: 'Sand', weight: 0.05, updated_at: new Date().toISOString() },
-      { category: 'gravel', display_name: 'Gravel & Stones', weight: 0.05, updated_at: new Date().toISOString() },
-      { category: 'roofing', display_name: 'Roofing', weight: 0.10, updated_at: new Date().toISOString() },
-      { category: 'finishing', display_name: 'Finishing & Painting', weight: 0.15, updated_at: new Date().toISOString() },
-      { category: 'electrical', display_name: 'Electrical Works', weight: 0.10, updated_at: new Date().toISOString() },
-      { category: 'plumbing', display_name: 'Plumbing & Sanitary', weight: 0.10, updated_at: new Date().toISOString() },
+    // Aligned with RICS elemental analysis + GSS PBCI structure for Ghana
+    // Materials 55% + Labor 30% + Equipment 5% + Overheads 7% + Contingency 3% = 100%
+    const now = new Date().toISOString();
+    return [
+      { category: 'cement',      display_name: 'Cement & Binding Agents',    weight: 0.12, updated_at: now },
+      { category: 'steel',       display_name: 'Steel & Reinforcement',      weight: 0.10, updated_at: now },
+      { category: 'blocks',      display_name: 'Blocks & Masonry',           weight: 0.08, updated_at: now },
+      { category: 'sand',        display_name: 'Sand & Aggregates',          weight: 0.04, updated_at: now },
+      { category: 'gravel',      display_name: 'Gravel & Stones',            weight: 0.03, updated_at: now },
+      { category: 'timber',      display_name: 'Timber & Formwork',          weight: 0.05, updated_at: now },
+      { category: 'roofing',     display_name: 'Roofing',                    weight: 0.06, updated_at: now },
+      { category: 'finishing',   display_name: 'Finishing & Painting',        weight: 0.04, updated_at: now },
+      { category: 'plumbing',    display_name: 'Plumbing & Sanitary',        weight: 0.02, updated_at: now },
+      { category: 'electrical',  display_name: 'Electrical Works',           weight: 0.01, updated_at: now },
+      { category: 'labor',       display_name: 'Labor',                      weight: 0.30, updated_at: now },
+      { category: 'equipment',   display_name: 'Equipment & Plant',          weight: 0.05, updated_at: now },
+      { category: 'overheads',   display_name: 'Overheads & Profit',         weight: 0.07, updated_at: now },
+      { category: 'contingency', display_name: 'Contingency',                weight: 0.03, updated_at: now },
     ];
-    return weights;
   }
 
   /**
@@ -1509,6 +1515,9 @@ export class ConstructionCostService {
     if (region) {
       conditions.push(`region = $${paramIdx++}`);
       params.push(region);
+    } else {
+      // Default to Greater Accra as the reference region for base costs
+      conditions.push(`region = 'greater_accra'`);
     }
 
     const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
@@ -1525,9 +1534,17 @@ export class ConstructionCostService {
       params
     );
 
+    const tierDisplayNames: Record<string, string> = {
+      substandard: 'Substandard - Minimal finish',
+      basic: 'Basic - Standard residential finish',
+      standard: 'Standard - Mid-range finish with fittings',
+      premium: 'Premium - High-quality materials and finishes',
+      luxury: 'Luxury - Top-tier imported materials',
+    };
+
     return result.rows.map(row => ({
       quality_tier: row.quality_level,
-      display_name: row.notes || row.quality_level,
+      display_name: row.notes || tierDisplayNames[row.quality_level] || row.quality_level,
       base_cost_per_sqm: parseFloat(row.cost_ghs as any),
       base_year: new Date().getFullYear(),
       updated_at: row.updated_at.toISOString(),

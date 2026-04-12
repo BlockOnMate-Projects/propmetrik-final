@@ -70,11 +70,8 @@ const navigation: NavItem[] = [
   },
   {
     name: 'DATA HUB',
+    href: '/dashboard/admin/data-hub',
     icon: Database,
-    children: [
-      { name: 'Data Hub', href: '/dashboard/admin/data-hub', icon: Database },
-      { name: 'Analytics', href: '/dashboard/admin/analytics', icon: BarChart3 },
-    ],
   },
   {
     name: 'PLATFORM',
@@ -96,7 +93,7 @@ const navigation: NavItem[] = [
     name: 'SETTINGS',
     icon: Settings,
     children: [
-      { name: 'Roles & Permissions', href: '/dashboard/admin/roles', icon: Shield },
+      { name: 'Roles & Permissions', href: '/dashboard/admin/rbac', icon: Shield },
       { name: 'API Keys', href: '/dashboard/admin/api-keys', icon: Key },
       { name: 'Integrations', href: '/dashboard/admin/integrations', icon: Globe },
       { name: 'Audit Logs', href: '/dashboard/admin/audit-logs', icon: FileText },

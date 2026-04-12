@@ -29,42 +29,42 @@ import { useState } from 'react'
 const navigation = [
   {
     name: 'Overview',
-    href: '/dashboard/data-hub',
+    href: '/dashboard/admin/data-hub',
     icon: LayoutDashboard,
   },
   {
     name: 'Data Sources',
-    href: '/dashboard/data-hub/sources',
+    href: '/dashboard/admin/data-hub/sources',
     icon: Database,
   },
   {
     name: 'ETL Jobs',
-    href: '/dashboard/data-hub/jobs',
+    href: '/dashboard/admin/data-hub/jobs',
     icon: GitBranch,
   },
   {
     name: 'Contributions',
-    href: '/dashboard/data-hub/contributions',
+    href: '/dashboard/admin/data-hub/contributions',
     icon: Users,
   },
   {
     name: 'Economic Data',
-    href: '/dashboard/data-hub/economic',
+    href: '/dashboard/admin/data-hub/economic',
     icon: TrendingUp,
   },
   {
     name: 'Construction Costs',
-    href: '/dashboard/data-hub/construction',
+    href: '/dashboard/admin/data-hub/construction',
     icon: HardHat,
   },
   {
     name: 'Spiders',
-    href: '/dashboard/data-hub/spiders',
+    href: '/dashboard/admin/data-hub/spiders',
     icon: Bug,
   },
   {
     name: 'Tier Ingestion',
-    href: '/dashboard/data-hub/ingestion',
+    href: '/dashboard/admin/data-hub/ingestion',
     icon: Layers,
   },
 ]
@@ -72,12 +72,12 @@ const navigation = [
 const bottomNavigation = [
   {
     name: 'Queue Status',
-    href: '/dashboard/data-hub/queues',
+    href: '/dashboard/admin/data-hub/queues',
     icon: Server,
   },
   {
     name: 'Settings',
-    href: '/dashboard/data-hub/settings',
+    href: '/dashboard/admin/data-hub/settings',
     icon: Settings,
   },
 ]
@@ -96,7 +96,7 @@ export function Sidebar() {
       >
         {/* Logo */}
         <div className="flex h-16 items-center border-b px-4">
-          <Link href="/dashboard/data-hub" className="flex items-center gap-2">
+          <Link href="/dashboard/admin/data-hub" className="flex items-center gap-2">
             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary">
               <Database className="h-5 w-5 text-primary-foreground" />
             </div>

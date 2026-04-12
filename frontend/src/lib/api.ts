@@ -1018,7 +1018,7 @@ export const dataHubAnalyticsApi = {
   getVolumeByTier: () =>
     fetchApi<ApiResponse<Array<{ tier: string; total_records: number; source_count: number }>>>('/data-hub/analytics/volume'),
 
-  getTrends: (range: '1h' | '24h' | '7d' | '30d' = '24h') =>
+  getTrends: (range: '1h' | '24h' | '7d' | '30d' | '90d' | 'all' = '24h') =>
     fetchApi<ApiResponse<Array<{ timestamp: string; tier1: number; tier2: number; tier3: number; tier4: number; tier5: number; total: number }>>>(`/data-hub/analytics/trends?range=${range}`),
 
   getGeographicDist: () =>
@@ -1067,8 +1067,11 @@ export const dataCatalogApi = {
 // =====================================================
 
 export const dataQualityApi = {
+  getSummary: () =>
+    fetchApi<ApiResponse<{ overall: number; completeness: number; accuracy: number; timeliness: number; consistency: number; totalProperties: number; scoredProperties: number }>>('/data-hub/quality/summary'),
+
   getTrends: (days = 30) =>
-    fetchApi<ApiResponse<Array<{ date: string; score: number }>>>(`/data-hub/quality/trends?days=${days}`),
+    fetchApi<ApiResponse<Array<{ date: string; score: number; completeness: number; accuracy: number; timeliness: number; consistency: number }>>>(`/data-hub/quality/trends?days=${days}`),
 
   getValidationResults: () =>
     fetchApi<ApiResponse<Array<{
