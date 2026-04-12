@@ -11,7 +11,8 @@ const API_BASE = process.env.NEXT_PUBLIC_API_URL || '';
 
 function getGuideBaseUrl(folder: string): string {
     // Production: serve from backend API (S3-backed)
-    if (API_BASE) return `${API_BASE}/api/guides/${folder}`;
+    // API_BASE is e.g. '/api', backend route is /api/guides/:folder/:file
+    if (API_BASE) return `${API_BASE}/guides/${folder}`;
     // Dev: try backend on port 4000, fallback to local public folder
     if (typeof window !== 'undefined' && window.location.hostname === 'localhost') {
         return `http://localhost:4000/api/guides/${folder}`;

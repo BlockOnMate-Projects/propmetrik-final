@@ -35,6 +35,11 @@ const nextConfig = {
         destination: `${process.env.INTERNAL_API_URL || 'http://localhost:4000'}/api/public/:path*`,
       },
       {
+        // Guide assets from S3 (backend serves at /api/guides, not /api/v1/guides)
+        source: '/api/guides/:path*',
+        destination: `${process.env.INTERNAL_API_URL || 'http://localhost:4000'}/api/guides/:path*`,
+      },
+      {
         source: '/api/:path*',
         destination: `${process.env.INTERNAL_API_URL || 'http://localhost:4000'}/api/v1/:path*`,
       },
