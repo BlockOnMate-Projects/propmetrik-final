@@ -152,47 +152,47 @@ export default function GuidePage() {
                             <ReactMarkdown
                                 remarkPlugins={[remarkGfm]}
                                 components={{
-                                    h1: ({ children }) => (
+                                    h1: ({ children }: any) => (
                                         <h1 className="text-3xl font-black text-white mt-16 mb-6 first:mt-0">
                                             {children}
                                         </h1>
                                     ),
-                                    h2: ({ children }) => (
+                                    h2: ({ children }: any) => (
                                         <h2 className="text-2xl font-bold text-white mt-14 mb-4 pb-3 border-b border-zinc-800">
                                             {children}
                                         </h2>
                                     ),
-                                    h3: ({ children }) => (
+                                    h3: ({ children }: any) => (
                                         <h3 className="text-xl font-semibold text-zinc-200 mt-10 mb-3">
                                             {children}
                                         </h3>
                                     ),
-                                    h4: ({ children }) => (
+                                    h4: ({ children }: any) => (
                                         <h4 className="text-lg font-semibold text-zinc-300 mt-8 mb-2">
                                             {children}
                                         </h4>
                                     ),
-                                    p: ({ children }) => (
+                                    p: ({ children }: any) => (
                                         <p className="text-zinc-400 leading-relaxed mb-4">
                                             {children}
                                         </p>
                                     ),
-                                    ul: ({ children }) => (
+                                    ul: ({ children }: any) => (
                                         <ul className="list-disc list-inside space-y-2 text-zinc-400 mb-6 ml-2">
                                             {children}
                                         </ul>
                                     ),
-                                    ol: ({ children }) => (
+                                    ol: ({ children }: any) => (
                                         <ol className="list-decimal list-inside space-y-2 text-zinc-400 mb-6 ml-2">
                                             {children}
                                         </ol>
                                     ),
-                                    li: ({ children }) => (
+                                    li: ({ children }: any) => (
                                         <li className="text-zinc-400 leading-relaxed">
                                             {children}
                                         </li>
                                     ),
-                                    a: ({ href, children }) => (
+                                    a: ({ href, children }: any) => (
                                         <a
                                             href={href}
                                             className="text-amber-500 hover:text-amber-400 underline underline-offset-2 transition-colors"
@@ -200,20 +200,20 @@ export default function GuidePage() {
                                             {children}
                                         </a>
                                     ),
-                                    strong: ({ children }) => (
+                                    strong: ({ children }: any) => (
                                         <strong className="text-zinc-200 font-semibold">
                                             {children}
                                         </strong>
                                     ),
-                                    em: ({ children }) => (
+                                    em: ({ children }: any) => (
                                         <em className="text-zinc-300 italic">{children}</em>
                                     ),
-                                    blockquote: ({ children }) => (
+                                    blockquote: ({ children }: any) => (
                                         <blockquote className="border-l-4 border-amber-500/40 bg-amber-500/5 pl-4 py-3 pr-4 my-6 rounded-r-lg text-zinc-300">
                                             {children}
                                         </blockquote>
                                     ),
-                                    code: ({ children, className }) => {
+                                    code: ({ children, className }: any) => {
                                         const isInline = !className;
                                         if (isInline) {
                                             return (
@@ -228,7 +228,7 @@ export default function GuidePage() {
                                             </code>
                                         );
                                     },
-                                    pre: ({ children }) => (
+                                    pre: ({ children }: any) => (
                                         <pre className="bg-zinc-900 border border-zinc-800 rounded-xl p-4 overflow-x-auto mb-6 text-sm">
                                             {children}
                                         </pre>
@@ -236,37 +236,37 @@ export default function GuidePage() {
                                     hr: () => (
                                         <hr className="border-zinc-800 my-10" />
                                     ),
-                                    table: ({ children }) => (
+                                    table: ({ children }: any) => (
                                         <div className="overflow-x-auto mb-6 rounded-lg border border-zinc-800">
                                             <table className="min-w-full text-sm">
                                                 {children}
                                             </table>
                                         </div>
                                     ),
-                                    thead: ({ children }) => (
+                                    thead: ({ children }: any) => (
                                         <thead className="bg-zinc-900 text-zinc-300 uppercase text-xs tracking-wider">
                                             {children}
                                         </thead>
                                     ),
-                                    tbody: ({ children }) => (
+                                    tbody: ({ children }: any) => (
                                         <tbody className="divide-y divide-zinc-800">
                                             {children}
                                         </tbody>
                                     ),
-                                    tr: ({ children }) => (
+                                    tr: ({ children }: any) => (
                                         <tr className="hover:bg-zinc-900/50 transition-colors">
                                             {children}
                                         </tr>
                                     ),
-                                    th: ({ children }) => (
+                                    th: ({ children }: any) => (
                                         <th className="px-4 py-3 text-left font-semibold text-zinc-300">
                                             {children}
                                         </th>
                                     ),
-                                    td: ({ children }) => (
+                                    td: ({ children }: any) => (
                                         <td className="px-4 py-3 text-zinc-400">{children}</td>
                                     ),
-                                    img: ({ src, alt }) => (
+                                    img: ({ src, alt }: any) => (
                                         <figure className="my-8">
                                             <div className="rounded-xl overflow-hidden border border-zinc-800 bg-zinc-900">
                                                 {/* eslint-disable-next-line @next/next/no-img-element */}

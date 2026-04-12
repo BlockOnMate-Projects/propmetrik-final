@@ -189,11 +189,13 @@ export interface EtlJobStats {
   total: number;
   running?: number;
   pending?: number;
+  queued?: number;
   completed?: number;
   failed?: number;
   failed_today?: number;
   cancelled?: number;
   completed_today?: number;
+  success_rate?: number;
   by_status: Record<EtlJobStatus, number>;
   by_type: Record<EtlJobType, number>;
   avg_duration_seconds: number;
