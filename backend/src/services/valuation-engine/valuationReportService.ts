@@ -15,6 +15,7 @@
 
 import { query } from '../../database';
 import { logger } from '../../utils/logger';
+import { economicDataService } from '../data-hub/economicDataService';
 import {
   ValuationResult,
   PropertyForValuation,
@@ -721,8 +722,11 @@ class ValuationReportService {
   private formatCurrency(amount: number, currency: string = 'GHS', exchangeRate?: number): string {
     if (amount == null || isNaN(amount)) return currency === 'USD' ? '$0' : 'GHS 0';
     if (currency === 'USD') {
-      const rate = exchangeRate || 10.99; // should always be passed from valuation data
-      return `$${(amount / rate).toLocaleString('en-US', { maximumFractionDigits: 0 })}`;
+      if (!exchangeRate || exchangeRate <= 0) {
+        logger.warn('formatCurrency called for USD without exchange rate — returning GHS value');
+        return `GHS ${amount.toLocaleString('en-US', { maximumFractionDigits: 0 })}`;
+      }
+      return `$${(amount / exchangeRate).toLocaleString('en-US', { maximumFractionDigits: 0 })}`;
     }
     return `GHS ${amount.toLocaleString('en-US', { maximumFractionDigits: 0 })}`;
   }

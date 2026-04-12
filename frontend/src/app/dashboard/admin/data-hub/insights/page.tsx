@@ -48,59 +48,15 @@ export default function InsightsPage() {
         return insightsResponse.data.predictions
     }, [insightsResponse])
 
-    // Pattern recognition results (Mock for now as backend doesn't support yet)
-    const patterns = useMemo(() => [
-        {
-            pattern: 'Seasonal Pricing Trend',
-            description: 'Property prices consistently increase 12-15% in Q1 (Jan-Mar) across all regions',
-            occurrences: 5,
-            confidence: 94,
-        },
-        {
-            pattern: 'Weekend Ingestion Spike',
-            description: 'User contributions increase by 40% on weekends, particularly Saturdays',
-            occurrences: 12,
-            confidence: 88,
-        },
-        {
-            pattern: 'Economic Indicator Correlation',
-            description: 'Strong negative correlation (-0.78) between USD/GHS rate and property transaction volume',
-            occurrences: 8,
-            confidence: 91,
-        },
-    ], [])
+    const patterns = useMemo(() => {
+        if (!insightsResponse?.data?.patterns) return []
+        return insightsResponse.data.patterns
+    }, [insightsResponse])
 
-    // Recommendations (Mock for now as backend doesn't support yet)
-    const recommendations = useMemo(() => [
-        {
-            category: 'Data Quality',
-            priority: 'high',
-            action: 'Implement automated validation rules for address fields',
-            expectedImpact: '+5% data quality score',
-            effort: 'Medium',
-        },
-        {
-            category: 'Performance',
-            priority: 'high',
-            action: 'Scale geocoding workers from 3 to 5 instances',
-            expectedImpact: '-35% processing time',
-            effort: 'Low',
-        },
-        {
-            category: 'Coverage',
-            priority: 'medium',
-            action: 'Establish data partnership with Ashanti Region land registry',
-            expectedImpact: '+15K property records',
-            effort: 'High',
-        },
-        {
-            category: 'Efficiency',
-            priority: 'low',
-            action: 'Implement incremental ETL for economic data',
-            expectedImpact: '-20% ETL runtime',
-            effort: 'Medium',
-        },
-    ], [])
+    const recommendations = useMemo(() => {
+        if (!insightsResponse?.data?.recommendations) return []
+        return insightsResponse.data.recommendations
+    }, [insightsResponse])
 
     const getSeverityColor = (severity: string) => {
         switch (severity) {
@@ -143,9 +99,11 @@ export default function InsightsPage() {
 
                 <DataMetricCard
                     title="Avg Confidence"
-                    value="91%"
-                    subtitle="ML model accuracy" // Placeholder
-                    trend={3.2}
+                    value={insights.length > 0
+                        ? `${Math.round(insights.reduce((acc, i) => acc + i.confidence, 0) / insights.length)}%`
+                        : '—'
+                    }
+                    subtitle="Across active insights"
                     icon={Brain}
                     color="purple"
                 />
@@ -248,7 +206,8 @@ export default function InsightsPage() {
                 {/* Pattern Recognition */}
                 <TerminalPanel title="Detected Patterns">
                     <div className="space-y-3">
-                        {patterns.map((pattern, idx) => (
+                        {patterns.length === 0 && <div className="text-zinc-500 text-sm p-4">No patterns detected yet.</div>}
+                        {patterns.map((pattern: any, idx: number) => (
                             <div key={idx} className="p-3 bg-zinc-800/30 border border-zinc-800">
                                 <div className="flex items-center justify-between mb-2">
                                     <div className="font-mono text-sm text-white">{pattern.pattern}</div>
@@ -270,7 +229,8 @@ export default function InsightsPage() {
                 {/* Recommendations */}
                 <TerminalPanel title="Smart Recommendations">
                     <div className="space-y-3">
-                        {recommendations.map((rec, idx) => (
+                        {recommendations.length === 0 && <div className="text-zinc-500 text-sm p-4">No recommendations available.</div>}
+                        {recommendations.map((rec: any, idx: number) => (
                             <div key={idx} className="p-3 bg-zinc-800/30 border border-zinc-800">
                                 <div className="flex items-center justify-between mb-2">
                                     <div className="flex items-center gap-2">

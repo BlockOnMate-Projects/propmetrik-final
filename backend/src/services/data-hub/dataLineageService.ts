@@ -83,11 +83,6 @@ export class DataHubLineageService {
         LIMIT $1
       `, [limit]);
 
-            if (result.rows.length === 0) {
-                // Return some dummy data if empty so the UI isn't blank during demo
-                return this.getMockAuditLogs();
-            }
-
             return result.rows.map(row => ({
                 id: row.id,
                 entityType: row.entity_type,
@@ -102,31 +97,6 @@ export class DataHubLineageService {
         } finally {
             client.release();
         }
-    }
-
-    private getMockAuditLogs(): AuditLogEvent[] {
-        return [
-            {
-                id: '1',
-                entityType: 'property',
-                entityId: 'prop-123',
-                action: 'ingested',
-                sourceSystem: 'spider-meqasa',
-                targetSystem: 'data-hub',
-                occurredAt: new Date().toISOString(),
-                performedBy: 'system'
-            },
-            {
-                id: '2',
-                entityType: 'job',
-                entityId: 'job-456',
-                action: 'completed',
-                sourceSystem: 'etl-pipeline',
-                targetSystem: 'logs',
-                occurredAt: new Date(Date.now() - 1000 * 60 * 5).toISOString(),
-                performedBy: 'system'
-            }
-        ];
     }
 }
 

@@ -2,6 +2,7 @@ import { query } from '../../database';
 import { logger } from '../../utils/logger';
 import { dataHubQueueManager } from './jobQueue';
 import os from 'os';
+import { execSync } from 'child_process';
 
 export interface SystemHealth {
     database: {
@@ -52,7 +53,7 @@ export class SystemHealthService {
             storage: storageHealth,
             api: {
                 status: 'healthy',
-                avg_latency_ms: 45, // Placeholder until middleware implemented
+                avg_latency_ms: await this.getAvgApiLatency(),
                 uptime_seconds: (Date.now() - this.startTime) / 1000
             }
         };
@@ -116,20 +117,15 @@ export class SystemHealthService {
     }
 
     private async getStorageHealth() {
-        // In absence of real MinIO client, we'll check file uploads table
         try {
-            const result = await query<{ total_size: string }>(
-                'SELECT SUM(file_size) as total_size FROM file_uploads'
-            );
-
-            const usedBytes = parseInt(result.rows[0]?.total_size || '0');
-            const totalBytes = 5 * 1024 * 1024 * 1024 * 1024; // 5TB Mock Total
+            // Get actual disk usage from the OS
+            const diskInfo = this.getDiskUsage();
 
             return {
                 status: 'healthy' as const,
-                used_bytes: usedBytes,
-                total_bytes: totalBytes,
-                percent_used: (usedBytes / totalBytes) * 100
+                used_bytes: diskInfo.used,
+                total_bytes: diskInfo.total,
+                percent_used: diskInfo.total > 0 ? (diskInfo.used / diskInfo.total) * 100 : 0
             };
         } catch (error) {
             return {
@@ -138,6 +134,31 @@ export class SystemHealthService {
                 total_bytes: 0,
                 percent_used: 0
             };
+        }
+    }
+
+    private getDiskUsage(): { total: number; used: number } {
+        try {
+            // `df -k /` gives disk usage in 1K blocks for the root filesystem
+            const output = execSync('df -k / | tail -1', { encoding: 'utf8' });
+            const parts = output.trim().split(/\s+/);
+            // Format: Filesystem 1K-blocks Used Available Use% Mounted
+            const total = parseInt(parts[1]) * 1024;
+            const used = parseInt(parts[2]) * 1024;
+            return { total, used };
+        } catch {
+            return { total: 0, used: 0 };
+        }
+    }
+
+    private async getAvgApiLatency(): Promise<number> {
+        try {
+            // Measure actual DB round-trip as a proxy for API latency
+            const start = Date.now();
+            await query('SELECT 1');
+            return Date.now() - start;
+        } catch {
+            return 0;
         }
     }
 }

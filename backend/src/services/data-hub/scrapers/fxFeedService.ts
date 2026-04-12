@@ -6,7 +6,7 @@
  * Data Sources (in priority order):
  * 1. ForexRate-API (primary) - using FOREXRATE_API_KEY
  * 2. Yahoo Finance via yfinance-style endpoint (fallback)
- * 3. Static fallback rates (last resort)
+ * 3. Last known BOG-scraped rate from economic_indicators DB (last resort)
  * 
  * Features:
  * - Redis caching with configurable TTL
@@ -45,16 +45,8 @@ const FX_CONFIG = {
   daily_rate_cache_ttl: 86400, // 24 hours for daily closing rates
 };
 
-// Static fallback rates — last resort when both ForexRate-API and Yahoo Finance are unavailable.
-// These MUST be kept current. Last updated from Bank of Ghana mid-rate (2025-06).
-// The live FX pipeline and economic_indicators DB table are the canonical sources.
-const FALLBACK_RATES: Record<string, number> = {
-  USD: 10.99,
-  GBP: 14.50,
-  EUR: 12.30,
-  CNY: 1.55,
-  NGN: 0.0068,
-};
+// No static fallback rates — we use BOG-scraped rates from the economic_indicators
+// table as the last resort. This ensures rates are always from a real source.
 
 // =====================================================
 // FX FEED SERVICE CLASS
@@ -232,20 +224,38 @@ export class FXFeedService {
   }
 
   /**
-   * Get fallback static rate
+   * Get last known rate from economic_indicators (BOG-scraped data).
+   * Returns null if no rate exists in the database.
    */
-  private getFallbackRate(currency: string): ExchangeRateFeed {
-    const rate = FALLBACK_RATES[currency] || 10.99;
+  private async getLastKnownRate(currency: string): Promise<ExchangeRateFeed | null> {
+    try {
+      const indicatorType = `exchange_rate_${currency.toLowerCase()}`;
+      const result = await query<{ value: string; effective_date: Date; source_name: string }>(
+        `SELECT value, effective_date, source_name FROM economic_indicators
+         WHERE indicator_type = $1 AND value > 0
+         ORDER BY effective_date DESC LIMIT 1`,
+        [indicatorType]
+      );
 
-    return {
-      pair: `${currency}/GHS`,
-      from_currency: currency,
-      to_currency: 'GHS',
-      rate,
-      source: 'Static Fallback',
-      timestamp: new Date(),
-      is_official: false,
-    };
+      if (result.rows.length === 0) {
+        logger.warn('No exchange rate found in economic_indicators', { currency });
+        return null;
+      }
+
+      const row = result.rows[0];
+      return {
+        pair: `${currency}/GHS`,
+        from_currency: currency,
+        to_currency: 'GHS',
+        rate: parseFloat(row.value),
+        source: row.source_name || 'Bank of Ghana (DB)',
+        timestamp: new Date(row.effective_date),
+        is_official: true,
+      };
+    } catch (error) {
+      logger.error('Failed to get last known rate from DB', { currency, error });
+      return null;
+    }
   }
 
   /**
@@ -275,21 +285,28 @@ export class FXFeedService {
       rate = await this.fetchFromYahooFinance(currency);
     }
 
-    // Ultimate fallback to static rates
+    // Fallback to last known rate from economic_indicators (BOG-scraped)
     if (!rate) {
-      logger.warn('Using static fallback rate', { currency });
-      rate = this.getFallbackRate(currency);
+      logger.info('Using last known BOG rate from database', { currency });
+      rate = await this.getLastKnownRate(currency);
+    }
+
+    // If still no rate, log error — no static fallback
+    if (!rate) {
+      logger.error('No exchange rate available from any source', { currency });
+      throw new Error(`No exchange rate available for ${currency}/GHS — all sources failed and no historical data in DB`);
     }
 
     // Validate the rate
     const validation = dataValidator.validate(`exchange_rate_${currency.toLowerCase()}`, rate.rate);
     if (!validation.is_valid) {
-      logger.warn('FX rate failed validation, using fallback', {
+      logger.warn('FX rate failed validation, trying DB fallback', {
         currency,
         rate: rate.rate,
         errors: validation.errors,
       });
-      rate = this.getFallbackRate(currency);
+      const dbRate = await this.getLastKnownRate(currency);
+      if (dbRate) rate = dbRate;
     }
 
     // Cache the rate

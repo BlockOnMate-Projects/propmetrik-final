@@ -525,11 +525,21 @@ class ValuationEngineService {
         inflation_rate: snapshot.inflation_rate ?? 0.12,
         interest_rate_policy: snapshot.interest_rate_policy ?? 0.27,
         mortgage_rate_avg: snapshot.mortgage_rate_avg ?? 0.32,
-        exchange_rate_usd: snapshot.exchange_rate_usd ?? 10.99,
+        exchange_rate_usd: snapshot.exchange_rate_usd ?? 0,
         gdp_growth: snapshot.gdp_growth ?? 0.032,
         construction_cost_index: constructionIndex?.index_value ?? 110,
         snapshot_date: snapshot.date || new Date(),
       };
+
+      // If exchange rate missing from snapshot, get from DB
+      if (!factors.exchange_rate_usd || factors.exchange_rate_usd <= 0) {
+        try {
+          const fxResult = await query(
+            `SELECT value FROM economic_indicators WHERE indicator_type = 'exchange_rate_usd' AND value > 0 ORDER BY effective_date DESC LIMIT 1`
+          );
+          factors.exchange_rate_usd = fxResult.rows[0] ? parseFloat(fxResult.rows[0].value) : 0;
+        } catch { /* leave as 0 */ }
+      }
 
       logger.debug('Loaded live economic factors', {
         inflation: factors.inflation_rate,
@@ -540,16 +550,22 @@ class ValuationEngineService {
 
       return factors;
     } catch (error: any) {
-      logger.warn('Failed to load live economic factors, using defaults', {
-        error: error.message
-      });
+      logger.error('Failed to load live economic factors', { error: error.message });
 
-      // Fallback to sensible defaults
+      // Try to get at least the exchange rate from DB
+      let exchangeRate = 0;
+      try {
+        const fxResult = await query(
+          `SELECT value FROM economic_indicators WHERE indicator_type = 'exchange_rate_usd' AND value > 0 ORDER BY effective_date DESC LIMIT 1`
+        );
+        exchangeRate = fxResult.rows[0] ? parseFloat(fxResult.rows[0].value) : 0;
+      } catch { /* leave as 0 */ }
+
       return {
         inflation_rate: 0.12,
         interest_rate_policy: 0.27,
         mortgage_rate_avg: 0.32,
-        exchange_rate_usd: 10.99,
+        exchange_rate_usd: exchangeRate,
         gdp_growth: 0.032,
         construction_cost_index: 110,
         snapshot_date: new Date(),

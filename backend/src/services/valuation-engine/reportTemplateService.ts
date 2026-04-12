@@ -13,6 +13,20 @@ import { economicDataService } from '../data-hub/economicDataService';
 import { GHANA_GPS_DISTRICTS } from '../data-hub/ghanaPostGeocodingService';
 import { floorPlanService } from './floorPlanService';
 
+/**
+ * Fetch the last known USD/GHS rate from the DB.
+ * Returns 0 if no rate has ever been recorded (caller must handle).
+ */
+async function getLastKnownUsdRate(): Promise<number> {
+  try {
+    const indicator = await economicDataService.getLatest('exchange_rate_usd');
+    if (indicator && indicator.value > 0) return indicator.value;
+  } catch {
+    // DB unavailable
+  }
+  return 0;
+}
+
 // Template paths - resolve relative to this service file
 // Templates are now in ./report-templates (same directory as this service)
 function getTemplatesDir(): string {
@@ -769,9 +783,10 @@ class ReportTemplateService {
     const isRetrospective = valuation.is_retrospective || (valuationDate < new Date());
     
     // Fetch exchange rate AS OF THE VALUATION DATE (RICS/GhIS compliant)
-    let exchangeRateData = { 
-      rate: 10.99, 
-      source: 'Bank of Ghana', 
+    const lastKnownRate = await getLastKnownUsdRate();
+    let exchangeRateData = {
+      rate: lastKnownRate,
+      source: 'Bank of Ghana',
       date: valuationDate.toISOString().split('T')[0],
       is_historical: false,
     };
@@ -812,7 +827,7 @@ class ReportTemplateService {
       if (valuation.exchange_rate_used) {
         const savedRate = Number(valuation.exchange_rate_used);
         exchangeRateData = {
-          rate: Number.isFinite(savedRate) ? savedRate : 10.99,
+          rate: Number.isFinite(savedRate) ? savedRate : lastKnownRate,
           source: 'Bank of Ghana',
           date: valuation.exchange_rate_date || valuationDate.toISOString().split('T')[0],
           is_historical: true,
@@ -822,11 +837,7 @@ class ReportTemplateService {
 
     const normalizedRate = Number(exchangeRateData.rate);
     if (!Number.isFinite(normalizedRate) || normalizedRate <= 0) {
-      exchangeRateData = {
-        ...exchangeRateData,
-        rate: 10.99,
-        source: 'Bank of Ghana',
-      };
+      logger.error('No USD/GHS exchange rate available from DB or live feed — report will omit USD values');
     }
 
     // Calculate USD values using the date-appropriate exchange rate
