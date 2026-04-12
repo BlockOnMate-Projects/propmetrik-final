@@ -99,177 +99,26 @@ interface PullSchedule {
   priority: number
 }
 
-// Real API functions connected to backend
 const pullIntegrationsApi = {
   getEndpoints: async (): Promise<{ data: PartnerEndpoint[]; count: number }> => {
-    try {
-      const response = await fetch('/api/pull-integrations/endpoints')
-      if (!response.ok) {
-        throw new Error('Failed to fetch endpoints')
-      }
-      const result = await response.json()
-      return {
-        data: result.data || [],
-        count: result.count || 0
-      }
-    } catch (error) {
-      console.warn('Failed to fetch endpoints, using mock data:', error)
-      // Fallback to mock data if API fails
-      return {
-        data: [
-          {
-            id: 'ep1',
-            source_name: 'Ghana Lands Commission',
-            endpoint_name: 'Land Records API',
-            endpoint_url: 'https://api.landscommission.gov.gh/v1/records',
-            auth_method: 'oauth2',
-            dataset_type: 'land_title_records',
-            pull_frequency: 'daily',
-            pull_method: 'incremental',
-            is_active: true,
-            last_pull_at: '2026-01-07T08:30:00Z',
-            last_success_at: '2026-01-07T08:30:00Z',
-            health_status: 'healthy',
-            total_records: 15420,
-            failed_attempts: 0,
-            created_at: '2026-01-01T10:00:00Z'
-        },
-        {
-          id: 'ep2',
-          source_name: 'Ghana Revenue Authority',
-          endpoint_name: 'Tax Assessment API',
-          endpoint_url: 'https://api.gra.gov.gh/v2/assessments',
-          auth_method: 'oauth2',
-          dataset_type: 'tax_assessments',
-          pull_frequency: 'weekly',
-          pull_method: 'full_sync',
-          is_active: true,
-          last_pull_at: '2026-01-05T14:15:00Z',
-          last_success_at: '2026-01-05T14:15:00Z',
-          health_status: 'healthy',
-          total_records: 8932,
-          failed_attempts: 0,
-          created_at: '2025-12-28T15:30:00Z'
-        },
-        {
-          id: 'ep3',
-          source_name: 'Bank of Ghana',
-          endpoint_name: 'Mortgage Transactions API',
-          endpoint_url: 'https://api.bog.gov.gh/v1/mortgages/stats',
-          auth_method: 'mtls',
-          dataset_type: 'mortgage_transaction_stats',
-          pull_frequency: 'monthly',
-          pull_method: 'delta',
-          is_active: false,
-          last_pull_at: '2026-01-01T09:00:00Z',
-          health_status: 'down',
-          total_records: 2156,
-          failed_attempts: 3,
-          created_at: '2025-12-20T11:45:00Z'
-        }
-      ],
-      count: 3
-    }
-  }
-},
+    const response = await fetch('/api/pull-integrations/endpoints')
+    if (!response.ok) throw new Error('Failed to fetch endpoints')
+    const result = await response.json()
+    return { data: result.data || [], count: result.count || 0 }
+  },
 
-getJobs: async (): Promise<{ data: PullJob[]; count: number }> => {
-    try {
-      const response = await fetch('/api/pull-integrations/jobs')
-      if (!response.ok) {
-        throw new Error('Failed to fetch jobs')
-      }
-      const result = await response.json()
-      return {
-        data: result.data || [],
-        count: result.count || 0
-      }
-    } catch (error) {
-      console.warn('Failed to fetch jobs, using mock data:', error)
-      // Fallback to mock data if API fails
-      return {
-        data: [
-          {
-            id: 'job1',
-            endpoint_id: 'ep1',
-            endpoint_name: 'Land Records API',
-            status: 'completed',
-            started_at: '2026-01-07T08:30:00Z',
-            completed_at: '2026-01-07T08:32:15Z',
-            records_processed: 156,
-            records_imported: 154,
-            execution_time_seconds: 135
-          },
-        {
-          id: 'job2',
-          endpoint_id: 'ep2',
-          endpoint_name: 'Tax Assessment API',
-          status: 'running',
-          started_at: '2026-01-07T14:00:00Z',
-          records_processed: 2341,
-          records_imported: 2341,
-          execution_time_seconds: 0
-        },
-        {
-          id: 'job3',
-          endpoint_id: 'ep3',
-          endpoint_name: 'Mortgage Transactions API',
-          status: 'failed',
-          started_at: '2026-01-07T09:00:00Z',
-          completed_at: '2026-01-07T09:01:30Z',
-          records_processed: 0,
-          records_imported: 0,
-          error_message: 'SSL certificate verification failed',
-          execution_time_seconds: 90
-        }
-      ],
-      count: 3
-    }
-  }
-},
+  getJobs: async (): Promise<{ data: PullJob[]; count: number }> => {
+    const response = await fetch('/api/pull-integrations/jobs')
+    if (!response.ok) throw new Error('Failed to fetch jobs')
+    const result = await response.json()
+    return { data: result.data || [], count: result.count || 0 }
+  },
 
-getSchedules: async (): Promise<{ data: PullSchedule[]; count: number }> => {
-    try {
-      const response = await fetch('/api/pull-integrations/schedules')
-      if (!response.ok) {
-        throw new Error('Failed to fetch schedules')
-      }
-      const result = await response.json()
-      return {
-        data: result.data || [],
-        count: result.count || 0
-      }
-    } catch (error) {
-      console.warn('Failed to fetch schedules, using mock data:', error)
-      // Fallback to mock data if API fails
-      return {
-        data: [
-          {
-            id: 'sched1',
-            endpoint_id: 'ep1',
-            endpoint_name: 'Land Records API',
-            schedule_name: 'Daily Land Records Sync',
-            cron_expression: '0 8 * * *',
-            timezone: 'Africa/Accra',
-            is_active: true,
-            next_run_at: '2026-01-08T08:00:00Z',
-            priority: 1
-          },
-          {
-            id: 'sched2',
-            endpoint_id: 'ep2',
-            endpoint_name: 'Tax Assessment API',
-            schedule_name: 'Weekly Tax Data Pull',
-            cron_expression: '0 14 * * 1',
-            timezone: 'Africa/Accra',
-            is_active: true,
-            next_run_at: '2026-01-13T14:00:00Z',
-            priority: 2
-          }
-        ],
-        count: 2
-      }
-    }
+  getSchedules: async (): Promise<{ data: PullSchedule[]; count: number }> => {
+    const response = await fetch('/api/pull-integrations/schedules')
+    if (!response.ok) throw new Error('Failed to fetch schedules')
+    const result = await response.json()
+    return { data: result.data || [], count: result.count || 0 }
   },
 
   executeJob: async (endpointId: string) => {

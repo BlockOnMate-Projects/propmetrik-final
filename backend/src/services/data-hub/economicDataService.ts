@@ -103,17 +103,6 @@ export interface EconomicSnapshot {
 // =====================================================
 
 export class EconomicDataService {
-  // Default exchange rates for GHS (Ghana Cedis) — last resort fallback.
-  // These are ONLY used by the scheduled updateExchangeRates() job when external
-  // APIs are unreachable. The canonical rates come from the economic_indicators table
-  // and the live FX feed service. Last updated from Bank of Ghana (2025-06).
-  private static readonly DEFAULT_EXCHANGE_RATES: Record<string, number> = {
-    USD: 10.99,
-    GBP: 14.50,
-    EUR: 12.30,
-    NGN: 0.0068,
-  };
-
   // Official data sources
   private static readonly DATA_SOURCES = {
     BOG: 'Bank of Ghana',
@@ -280,11 +269,11 @@ export class EconomicDataService {
     // Get live rate from FX Feed Service (Yahoo Finance / ForexRate-API)
     const liveRate = await fxFeedService.getCurrentRate(fromCurrency.toUpperCase());
     
-    if (liveRate && liveRate.rate > 0 && liveRate.source !== 'Static Fallback') {
-      logger.info('Using live FX rate', { 
-        currency: fromCurrency, 
-        rate: liveRate.rate, 
-        source: liveRate.source 
+    if (liveRate && liveRate.rate > 0) {
+      logger.info('Using FX rate', {
+        currency: fromCurrency,
+        rate: liveRate.rate,
+        source: liveRate.source
       });
       return {
         from_currency: fromCurrency,
@@ -295,22 +284,7 @@ export class EconomicDataService {
       };
     }
 
-    // If static fallback was returned, still use it but log warning
-    if (liveRate && liveRate.source === 'Static Fallback') {
-      logger.warn('FX service returned static fallback - external APIs may be unavailable', { 
-        currency: fromCurrency, 
-        rate: liveRate.rate 
-      });
-      return {
-        from_currency: fromCurrency,
-        to_currency: toCurrency,
-        rate: liveRate.rate,
-        date: liveRate.timestamp,
-        source: liveRate.source,
-      };
-    }
-
-    throw new Error(`Unable to fetch live exchange rate for ${fromCurrency}/${toCurrency}`);
+    throw new Error(`Unable to fetch exchange rate for ${fromCurrency}/${toCurrency} — no live API or DB data available`);
   }
 
   /**
@@ -507,14 +481,14 @@ export class EconomicDataService {
   }
 
   /**
-   * Fetch exchange rate from external API
+   * Fetch exchange rate — queries the DB for the most recent known rate.
+   * No hardcoded fallback; returns null if no rate exists.
    */
   private async fetchExchangeRateFromAPI(currency: string): Promise<number | null> {
-    // TODO: Implement actual API call
-    // Options: exchangerate-api.com, xe.com, Bank of Ghana API
-    
-    // For now, return default rates
-    return EconomicDataService.DEFAULT_EXCHANGE_RATES[currency] || null;
+    const indicator = await this.getLatest(
+      `exchange_rate_${currency.toLowerCase()}` as EconomicIndicatorType
+    );
+    return indicator ? indicator.value : null;
   }
 
   /**

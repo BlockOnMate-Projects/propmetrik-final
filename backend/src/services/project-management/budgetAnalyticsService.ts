@@ -15,7 +15,7 @@
  * - Burn rate calculations
  */
 
-import { pool } from '../../database';
+import { pool, query } from '../../database';
 import { logger } from '../../utils/logger';
 import { fxFeedService } from '../data-hub/scrapers/fxFeedService';
 import { economicDataService } from '../data-hub/economicDataService';
@@ -185,21 +185,25 @@ class BudgetAnalyticsService {
             lastUpdated: new Date(),
           };
         } catch (error) {
-          logger.warn(`Failed to get rate for ${currency}`, { error });
-          // Use fallback static rate
-          const fallbackRates: Record<string, number> = {
-            USD: 15.50,
-            GBP: 19.50,
-            EUR: 16.80,
-            CNY: 2.15,
-          };
-          conversions[currency] = {
-            currency,
-            amount: fallbackRates[currency] ? totalGHS / fallbackRates[currency] : 0,
-            rate: fallbackRates[currency] || 0,
-            source: 'Static Fallback',
-            lastUpdated: new Date(),
-          };
+          logger.warn(`Failed to get live rate for ${currency}, trying DB`, { error });
+          // Fall back to last known rate from economic_indicators (BOG data)
+          try {
+            const dbRate = await query(
+              `SELECT value FROM economic_indicators WHERE indicator_type = $1 AND value > 0 ORDER BY effective_date DESC LIMIT 1`,
+              [`exchange_rate_${currency.toLowerCase()}`]
+            );
+            const rate = dbRate.rows[0] ? parseFloat(dbRate.rows[0].value) : 0;
+            conversions[currency] = {
+              currency,
+              amount: rate > 0 ? totalGHS / rate : 0,
+              rate,
+              source: 'Bank of Ghana (DB)',
+              lastUpdated: new Date(),
+            };
+          } catch {
+            logger.error(`No exchange rate available for ${currency}`);
+            conversions[currency] = { currency, amount: 0, rate: 0, source: 'unavailable', lastUpdated: new Date() };
+          }
         }
       }
       

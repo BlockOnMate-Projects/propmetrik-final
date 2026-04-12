@@ -1156,6 +1156,19 @@ export const dataInsightsApi = {
         confidence: number;
         trend: 'up' | 'down' | 'stable';
       }>;
+      patterns?: Array<{
+        pattern: string;
+        description: string;
+        occurrences: number;
+        confidence: number;
+      }>;
+      recommendations?: Array<{
+        category: string;
+        priority: string;
+        action: string;
+        expectedImpact: string;
+        effort: string;
+      }>;
     }>>('/data-hub/insights'),
 };
 
