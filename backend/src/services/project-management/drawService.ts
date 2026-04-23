@@ -88,6 +88,10 @@ export interface DrawRequest {
 export interface CreateDrawInput {
   project_id: string;
   organization_id: string;
+  draw_number?: string | number;
+  period_start?: string;
+  period_end?: string;
+  description?: string;
   line_items: Omit<DrawLineItem, 'id'>[];
   retention_percentage?: number;
   notes?: string;
@@ -354,7 +358,7 @@ class DrawService extends BaseService {
       return null;
     }
     
-    const amount = approvedAmount || draw.current_draw_amount;
+    const amount = approvedAmount || draw.total_amount;
     
     const result = await pool.query(`
       UPDATE draw_requests
