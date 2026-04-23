@@ -983,9 +983,9 @@ async def calculate_income_approach(request: ValuationMethodRequest):
         building_sqm = prop.building_size_sqm or 150
         prop_type = _normalize_property_type(prop.property_type)
         
-        # Monthly rent — MUST come from Rental Market Analysis (rental comparables basket)
-        # or from user manual entry. No hardcoded fallback.
-        monthly_rent = opts.get("monthly_rent") or prop.monthly_rent_ghs
+        # Monthly rent — MUST come from options (Rental Market Analysis / rental comparables basket
+        # or user manual entry). Property.monthly_rent_ghs is NOT used as a fallback.
+        monthly_rent = opts.get("monthly_rent")
         if not monthly_rent or monthly_rent <= 0:
             raise HTTPException(
                 status_code=400,
@@ -1206,36 +1206,135 @@ async def calculate_residual_method(request: ValuationMethodRequest):
 async def calculate_profits_method(request: ValuationMethodRequest):
     """
     Profits Method
-    
+
     Values property based on business profits it can generate.
     Primary method for hotels, petrol stations, healthcare facilities.
+
+    Workflow callers can supply any of the following in ``request.options``
+    (or via ``ValuationOptions.profits_method_options`` when using the full
+    valuation pipeline):
+
+    * ``gross_annual_revenue``   – actual audited turnover (GHS)
+    * ``revenue_per_sqm_annual`` – override per-sqm revenue benchmark
+    * ``operating_ratio``        – aggregate operating cost ratio (0–1 or 0–100)
+    * ``operating_cost_ratios``  – dict of per-category ratios; ``"total"`` key
+                                   takes precedence when present
+    * ``owner_remuneration_pct`` – owner drawings as fraction of net profit (0–1 or 0–100)
+    * ``cap_rate``               – capitalisation rate (0–1 or 0–100); mutually
+                                   exclusive with ``years_purchase``
+    * ``years_purchase`` / ``yp``– Years' Purchase multiplier (ignored when
+                                   ``cap_rate`` is provided)
     """
     start_time = datetime.now()
     prop = request.property
-    
+
     try:
         region = _normalize_region(prop.region)
         building_sqm = prop.building_size_sqm or 500
-        
-        # Estimate business turnover based on property size and type
-        revenue_per_sqm_annual = 2000  # Conservative estimate GHS
-        gross_revenue = building_sqm * revenue_per_sqm_annual
-        
-        # Operating costs (60% for typical trading property)
-        operating_costs = gross_revenue * 0.60
+        opts: dict = request.options or {}
+
+        # ── 1. Gross annual revenue ──────────────────────────────────────────
+        if opts.get("gross_annual_revenue"):
+            gross_revenue = float(opts["gross_annual_revenue"])
+            revenue_per_sqm_annual = gross_revenue / building_sqm if building_sqm else None
+            revenue_source = "workflow_provided"
+        else:
+            revenue_per_sqm_annual = float(opts.get("revenue_per_sqm_annual") or 2000)
+            gross_revenue = building_sqm * revenue_per_sqm_annual
+            revenue_source = "benchmark_estimate"
+
+        # ── 2. Operating costs ───────────────────────────────────────────────
+        # Per-category dict takes precedence; then aggregate ratio; then default.
+        operating_cost_ratios: dict = opts.get("operating_cost_ratios") or {}
+        if operating_cost_ratios:
+            # Normalise any values accidentally supplied as percentages
+            normalised = {k: (v / 100 if v > 1 else v) for k, v in operating_cost_ratios.items()}
+            if "total" not in normalised:
+                normalised["total"] = sum(v for k, v in normalised.items() if k != "total")
+            operating_ratio = normalised["total"]
+            ratios_source = "workflow_override"
+        elif opts.get("operating_ratio") is not None:
+            raw = float(opts["operating_ratio"])
+            operating_ratio = raw / 100 if raw > 1 else raw
+            normalised = {}
+            ratios_source = "workflow_override"
+        else:
+            operating_ratio = 0.60
+            normalised = {}
+            ratios_source = "benchmark_defaults"
+
+        operating_costs = gross_revenue * operating_ratio
         net_profit = gross_revenue - operating_costs
-        
-        # Maintainable profit (after owner's salary/drawings)
-        owner_remuneration = net_profit * 0.15
+
+        # ── 3. Owner remuneration ────────────────────────────────────────────
+        raw_rem = opts.get("owner_remuneration_pct")
+        if raw_rem is not None:
+            owner_rem_pct = float(raw_rem)
+            owner_rem_pct = owner_rem_pct / 100 if owner_rem_pct > 1 else owner_rem_pct
+        else:
+            owner_rem_pct = 0.15
+
+        owner_remuneration = net_profit * owner_rem_pct
         maintainable_profit = net_profit - owner_remuneration
-        
-        # Capitalize at appropriate YP (Years' Purchase)
-        yp = 8  # Typical for trading properties in Ghana
+
+        # ── 4. Years' Purchase / cap rate ────────────────────────────────────
+        if opts.get("cap_rate") is not None:
+            cap_rate = float(opts["cap_rate"])
+            cap_rate = cap_rate / 100 if cap_rate > 1 else cap_rate
+            yp = 1 / cap_rate if cap_rate > 0 else 8
+            yp_source = "cap_rate_provided"
+        elif opts.get("years_purchase") is not None or opts.get("yp") is not None:
+            yp = float(opts.get("years_purchase") or opts.get("yp"))
+            cap_rate = 1 / yp if yp > 0 else None
+            yp_source = "years_purchase_provided"
+        else:
+            yp = 8
+            cap_rate = None
+            yp_source = "benchmark_defaults"
+
         value = maintainable_profit * yp
-        
-        confidence = 0.55  # Lower confidence - needs actual accounts
+
+        # ── 5. Confidence ────────────────────────────────────────────────────
+        confidence = 0.55
+        if revenue_source == "workflow_provided":
+            confidence += 0.15
+        if ratios_source == "workflow_override":
+            confidence += 0.10
+        if yp_source in ("cap_rate_provided", "years_purchase_provided"):
+            confidence += 0.10
+        confidence = min(confidence, 0.90)
+
         calc_time = (datetime.now() - start_time).total_seconds() * 1000
-        
+
+        details = {
+            "gross_revenue": round(gross_revenue, 2),
+            "revenue_source": revenue_source,
+            "operating_ratio": operating_ratio,
+            "ratios_source": ratios_source,
+            "operating_costs": round(operating_costs, 2),
+            "net_profit": round(net_profit, 2),
+            "owner_remuneration_pct": owner_rem_pct,
+            "owner_remuneration": round(owner_remuneration, 2),
+            "maintainable_profit": round(maintainable_profit, 2),
+            "years_purchase": round(yp, 4),
+            "yp_source": yp_source,
+        }
+        if revenue_per_sqm_annual is not None:
+            details["revenue_per_sqm_annual"] = round(revenue_per_sqm_annual, 2)
+        if cap_rate is not None:
+            details["cap_rate"] = round(cap_rate, 6)
+        if normalised:
+            details["operating_cost_ratios"] = {k: round(v, 4) for k, v in normalised.items()}
+
+        assumptions = [
+            "Trading property with business attached",
+            f"Revenue source: {revenue_source.replace('_', ' ')}",
+            f"Operating costs: {operating_ratio * 100:.1f}% of gross revenue ({ratios_source.replace('_', ' ')})",
+            f"Owner remuneration: {owner_rem_pct * 100:.1f}% of net profit",
+            f"Years' Purchase: {yp:.2f} ({yp_source.replace('_', ' ')})",
+            "Reasonably efficient operator assumed",
+        ]
+
         return ValuationMethodResponse(
             success=True,
             method="profits_method",
@@ -1246,31 +1345,17 @@ async def calculate_profits_method(request: ValuationMethodRequest):
                 "low": round(value * 0.80, 2),
                 "high": round(value * 1.20, 2),
             },
-            details={
-                "gross_revenue_estimate": round(gross_revenue, 2),
-                "operating_costs": round(operating_costs, 2),
-                "net_profit": round(net_profit, 2),
-                "owner_remuneration": round(owner_remuneration, 2),
-                "maintainable_profit": round(maintainable_profit, 2),
-                "years_purchase": yp,
-                "revenue_per_sqm": revenue_per_sqm_annual,
-            },
-            assumptions=[
-                "Trading property with business attached",
-                "Revenue estimated from property size",
-                "Operating costs at 60% of revenue",
-                f"Years' Purchase: {yp}",
-                "Reasonably efficient operator assumed",
-            ],
+            details=details,
+            assumptions=assumptions,
             limitations=[
-                "Requires actual trading accounts for accuracy",
+                "Requires actual trading accounts for highest accuracy",
                 "Business goodwill may vary significantly",
                 "Sensitive to management efficiency",
                 "Market conditions affect trading potential",
             ],
             calculation_time_ms=calc_time
         )
-        
+
     except Exception as e:
         logger.error(f"Profits method failed: {e}")
         raise HTTPException(status_code=500, detail=str(e))
@@ -1618,6 +1703,8 @@ async def calculate_drc_method(request: ValuationMethodRequest):
             calculation_time_ms=calc_time
         )
         
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"DRC method failed: {e}")
         import traceback

@@ -67,7 +67,7 @@ router.get(
   asyncHandler(async (req: Request, res: Response) => {
     if (!validateRequest(req, res)) return;
     
-    const organizationId = (req as any).user.organization_id;
+    const organizationId = (req as any).user.organization_id || (req as any).user.organizationId;
     const { status, trigger_type, page = 1, limit = 20 } = req.query;
 
     // Convert status to isActive boolean
@@ -104,7 +104,7 @@ router.post(
   '/',
   authenticate,
   requireOrganization(),
-  requireRoles('admin', 'manager'),
+  requireRoles('admin', 'manager', 'super_admin'),
   requirePMWrite,
   [
     body('name').isString().trim().isLength({ min: 1, max: 255 }),
@@ -122,7 +122,7 @@ router.post(
   asyncHandler(async (req: Request, res: Response) => {
     if (!validateRequest(req, res)) return;
     
-    const organizationId = (req as any).user.organization_id;
+    const organizationId = (req as any).user.organization_id || (req as any).user.organizationId;
     const userId = (req as any).user.id;
 
     const workflow = await workflowService.create({
@@ -177,7 +177,7 @@ router.post(
   '/from-template',
   authenticate,
   requireOrganization(),
-  requireRoles('admin', 'manager'),
+  requireRoles('admin', 'manager', 'super_admin'),
   requirePMWrite,
   [
     body('template_id').isUUID(),
@@ -186,7 +186,7 @@ router.post(
   asyncHandler(async (req: Request, res: Response) => {
     if (!validateRequest(req, res)) return;
     
-    const organizationId = (req as any).user.organization_id;
+    const organizationId = (req as any).user.organization_id || (req as any).user.organizationId;
     const userId = (req as any).user.id;
     const { template_id, name } = req.body;
 
@@ -215,7 +215,7 @@ router.get(
   authenticate,
   requireOrganization(),
   asyncHandler(async (req: Request, res: Response) => {
-    const organizationId = (req as any).user.organization_id;
+    const organizationId = (req as any).user.organization_id || (req as any).user.organizationId;
 
     const stats = await workflowService.getWorkflowStats(organizationId);
 
@@ -241,7 +241,7 @@ router.get(
     if (!validateRequest(req, res)) return;
     
     const { id } = req.params;
-    const organizationId = (req as any).user.organization_id;
+    const organizationId = (req as any).user.organization_id || (req as any).user.organizationId;
 
     const workflow = await workflowService.getById(id);
 
@@ -271,7 +271,7 @@ router.put(
   '/:id',
   authenticate,
   requireOrganization(),
-  requireRoles('admin', 'manager'),
+  requireRoles('admin', 'manager', 'super_admin'),
   requirePMWrite,
   [
     param('id').isUUID(),
@@ -286,7 +286,7 @@ router.put(
     if (!validateRequest(req, res)) return;
     
     const { id } = req.params;
-    const organizationId = (req as any).user.organization_id;
+    const organizationId = (req as any).user.organization_id || (req as any).user.organizationId;
     const userId = (req as any).user.id;
 
     const existing = await workflowService.getById(id);
@@ -324,7 +324,7 @@ router.delete(
   '/:id',
   authenticate,
   requireOrganization(),
-  requireRoles('admin'),
+  requireRoles('admin', 'super_admin'),
   requirePMWrite,
   [
     param('id').isUUID()
@@ -333,7 +333,7 @@ router.delete(
     if (!validateRequest(req, res)) return;
     
     const { id } = req.params;
-    const organizationId = (req as any).user.organization_id;
+    const organizationId = (req as any).user.organization_id || (req as any).user.organizationId;
     const userId = (req as any).user.id;
 
     const existing = await workflowService.getById(id);
@@ -363,7 +363,7 @@ router.post(
   '/:id/activate',
   authenticate,
   requireOrganization(),
-  requireRoles('admin', 'manager'),
+  requireRoles('admin', 'manager', 'super_admin'),
   requirePMWrite,
   [
     param('id').isUUID()
@@ -372,7 +372,7 @@ router.post(
     if (!validateRequest(req, res)) return;
     
     const { id } = req.params;
-    const organizationId = (req as any).user.organization_id;
+    const organizationId = (req as any).user.organization_id || (req as any).user.organizationId;
     const userId = (req as any).user.id;
 
     const existing = await workflowService.getById(id);
@@ -402,7 +402,7 @@ router.post(
   '/:id/deactivate',
   authenticate,
   requireOrganization(),
-  requireRoles('admin', 'manager'),
+  requireRoles('admin', 'manager', 'super_admin'),
   requirePMWrite,
   [
     param('id').isUUID()
@@ -411,7 +411,7 @@ router.post(
     if (!validateRequest(req, res)) return;
     
     const { id } = req.params;
-    const organizationId = (req as any).user.organization_id;
+    const organizationId = (req as any).user.organization_id || (req as any).user.organizationId;
     const userId = (req as any).user.id;
 
     const existing = await workflowService.getById(id);
@@ -441,7 +441,7 @@ router.post(
   '/:id/trigger',
   authenticate,
   requireOrganization(),
-  requireRoles('admin', 'manager'),
+  requireRoles('admin', 'manager', 'super_admin'),
   requirePMWrite,
   [
     param('id').isUUID(),
@@ -453,7 +453,7 @@ router.post(
     if (!validateRequest(req, res)) return;
     
     const { id } = req.params;
-    const organizationId = (req as any).user.organization_id;
+    const organizationId = (req as any).user.organization_id || (req as any).user.organizationId;
     const userId = (req as any).user.id;
     const { entity_type, entity_id, data } = req.body;
 
@@ -505,7 +505,7 @@ router.post(
   '/:id/dry-run',
   authenticate,
   requireOrganization(),
-  requireRoles('admin', 'manager'),
+  requireRoles('admin', 'manager', 'super_admin'),
   requirePMWrite,
   [
     param('id').isUUID(),
@@ -515,7 +515,7 @@ router.post(
     if (!validateRequest(req, res)) return;
     
     const { id } = req.params;
-    const organizationId = (req as any).user.organization_id;
+    const organizationId = (req as any).user.organization_id || (req as any).user.organizationId;
     const { context } = req.body;
 
     const workflow = await workflowService.getById(id);
@@ -557,7 +557,7 @@ router.get(
     if (!validateRequest(req, res)) return;
     
     const { id } = req.params;
-    const organizationId = (req as any).user.organization_id;
+    const organizationId = (req as any).user.organization_id || (req as any).user.organizationId;
     const { status, page = 1, limit = 20 } = req.query;
 
     const workflow = await workflowService.getById(id);
@@ -600,7 +600,7 @@ router.get(
     if (!validateRequest(req, res)) return;
     
     const { executionId } = req.params;
-    const organizationId = (req as any).user.organization_id;
+    const organizationId = (req as any).user.organization_id || (req as any).user.organizationId;
 
     const execution = await workflowService.getExecution(executionId);
 
@@ -626,7 +626,7 @@ router.post(
   '/executions/:executionId/cancel',
   authenticate,
   requireOrganization(),
-  requireRoles('admin', 'manager'),
+  requireRoles('admin', 'manager', 'super_admin'),
   requirePMWrite,
   [
     param('executionId').isUUID()
@@ -635,7 +635,7 @@ router.post(
     if (!validateRequest(req, res)) return;
     
     const { executionId } = req.params;
-    const organizationId = (req as any).user.organization_id;
+    const organizationId = (req as any).user.organization_id || (req as any).user.organizationId;
     const userId = (req as any).user.id;
 
     const execution = await workflowService.getExecution(executionId);

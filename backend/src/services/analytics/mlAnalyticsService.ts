@@ -601,7 +601,20 @@ class MLAnalyticsService {
   /** 8.1 — AVM Performance Metrics */
   async getAVMPerformance(modelVersion?: string, periodDays?: number) {
     try {
-      return await this.client.getModelPerformance({ model_version: modelVersion, period_days: periodDays });
+      const data = await this.client.getModelPerformance({ model_version: modelVersion, period_days: periodDays });
+      if (data) {
+        const sampleSize: number = (data as any).sample_size ?? (data as any).total_predictions ?? 0;
+        (data as any).data_quality = {
+          sample_size: sampleSize,
+          sufficient_for_inference: sampleSize >= 30,
+          note: sampleSize === 0
+            ? 'No prediction history recorded yet — all metrics are zero-initialized defaults'
+            : sampleSize < 30
+            ? `Only ${sampleSize} predictions recorded — metrics are not yet statistically meaningful (need ≥30)`
+            : `${sampleSize} predictions — metrics reflect actual AVM performance`,
+        };
+      }
+      return data;
     } catch (err: any) {
       logger.warn('ML service unavailable for AVM performance', { error: err.message });
       return null;
@@ -651,7 +664,28 @@ class MLAnalyticsService {
   /** 8.3 — Confidence Distribution */
   async getConfidenceDistribution(modelVersion?: string, periodDays?: number) {
     try {
-      return await this.client.getConfidenceDistribution({ model_version: modelVersion, period_days: periodDays });
+      const data = await this.client.getConfidenceDistribution({ model_version: modelVersion, period_days: periodDays });
+      if (data) {
+        const totalPredictions: number = (data as any).total_predictions ?? 0;
+        const meanConfidence: number = (data as any).mean_confidence ?? 0;
+        (data as any).data_quality = {
+          sample_size: totalPredictions,
+          sufficient_for_inference: totalPredictions >= 50,
+          note: totalPredictions === 0
+            ? 'Insufficient prediction history — returning defaults'
+            : totalPredictions < 50
+            ? `Only ${totalPredictions} predictions recorded — distribution is indicative (need ≥50 for statistical validity)`
+            : `Based on ${totalPredictions} predictions`,
+        };
+        if (totalPredictions > 0 && totalPredictions < 50) {
+          (data as any).confidence_note =
+            `indicative — ${totalPredictions} comparables (need ≥50 for statistical validity)`;
+        } else if (totalPredictions === 0) {
+          (data as any).confidence_note = 'no prediction history — confidence score is a default placeholder';
+          (data as any).mean_confidence = meanConfidence;
+        }
+      }
+      return data;
     } catch (err: any) {
       logger.warn('ML service unavailable for confidence distribution', { error: err.message });
       return null;
@@ -661,11 +695,28 @@ class MLAnalyticsService {
   /** 8.4 — Drift Detection */
   async detectDrift(modelVersion?: string, baselineDays?: number, currentDays?: number) {
     try {
-      return await this.client.detectDrift({
+      const data = await this.client.detectDrift({
         model_version: modelVersion,
         baseline_days: baselineDays,
         current_days: currentDays,
       });
+      if (data) {
+        const baselineSamples: number = (data as any).metrics?.baseline_samples ?? 0;
+        const currentSamples: number = (data as any).metrics?.current_samples ?? 0;
+        const sampleSize = baselineSamples + currentSamples;
+        (data as any).data_quality = {
+          sample_size: sampleSize,
+          sufficient_for_inference: baselineSamples >= 10 && currentSamples >= 5,
+          note: sampleSize === 0
+            ? 'Insufficient prediction history — returning defaults'
+            : `Baseline: ${baselineSamples} samples, current: ${currentSamples} samples${
+                baselineSamples < 10 || currentSamples < 5
+                  ? ' — below minimum thresholds for reliable drift detection (need ≥10 baseline, ≥5 current)'
+                  : ''
+              }`,
+        };
+      }
+      return data;
     } catch (err: any) {
       logger.warn('ML service unavailable for drift detection', { error: err.message });
       return null;
@@ -695,7 +746,30 @@ class MLAnalyticsService {
   /** 8.6 — Ensemble Analytics */
   async getEnsembleAnalytics(modelVersion?: string) {
     try {
-      return await this.client.getEnsembleAnalytics(modelVersion);
+      const data = await this.client.getEnsembleAnalytics(modelVersion);
+      if (data) {
+        const weights: any[] = (data as any).weights ?? [];
+        // Detect whether per-model metrics were individually measured or proxied
+        // from the overall ensemble (all individual_mae identical = proxy values).
+        const uniqueMae = new Set(weights.map((w: any) => w.individual_mae)).size;
+        const metricsAreProxied = weights.length > 1 && uniqueMae === 1;
+
+        if (metricsAreProxied) {
+          (data as any).status = 'pre-training defaults';
+          (data as any).note =
+            'Individual model metrics are estimated from overall ensemble metrics — '
+            + 'per-model accuracy will be available after segmented retraining completes';
+          for (const w of weights) {
+            w.source = 'domain_assumption';
+            w.individual_metrics_note =
+              'individual_mae and individual_r2 are proxied from ensemble overall — '
+              + 'not independently measured per model';
+          }
+        } else {
+          (data as any).status = 'trained';
+        }
+      }
+      return data;
     } catch (err: any) {
       logger.warn('ML service unavailable for ensemble analytics', { error: err.message });
       return null;

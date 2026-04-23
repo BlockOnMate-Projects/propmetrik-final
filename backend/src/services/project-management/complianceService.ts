@@ -327,43 +327,44 @@ class ComplianceService {
   // --------------------------------------------------------------------------
 
   async createPermit(input: CreatePermitInput): Promise<ProjectPermit> {
+    // Normalize field aliases from API clients
+    const permitTypeCode = (input as any).permit_type_code || (input as any).permit_type || null;
+    const authorityName = input.authority_name || (input as any).issuing_authority || null;
+    const expirationDate = (input as any).expiration_date || (input as any).expiry_date || null;
+    const effectiveDate = (input as any).effective_date || (input as any).issue_date || null;
+
     const id = uuidv4();
     const result = await pool.query(
       `INSERT INTO project_permits (
-        id, project_id, organization_id, permit_type, permit_name, description,
-        authority_id, authority_name, authority_contact,
-        expected_approval_date, effective_date, expiration_date,
-        renewal_reminder_days, status, conditions,
-        fees_paid, fees_currency, notes, created_by
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19)
+        id, project_id, organization_id, permit_type_code,
+        permit_number, authority_name,
+        expected_approval_date, expiration_date,
+        status, notes, created_by
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
       RETURNING *`,
       [
         id,
         input.project_id,
         input.organization_id,
-        input.permit_type,
-        input.permit_name,
-        input.description,
-        input.authority_id,
-        input.authority_name,
-        input.authority_contact,
-        input.expected_approval_date,
-        input.effective_date,
-        input.expiration_date,
-        input.renewal_reminder_days || 30,
-        input.status || 'not_started',
-        input.conditions,
-        input.fees_paid,
-        input.fees_currency || 'GHS',
-        input.notes,
+        permitTypeCode,
+        (input as any).permit_number || null,
+        authorityName,
+        (input as any).expected_approval_date || null,
+        expirationDate,
+        (input as any).status || 'not_started',
+        input.notes || null,
         input.created_by,
       ]
     );
 
     const permit = result.rows[0];
 
-    // Update compliance score
-    await this.calculateComplianceScore(input.project_id, input.organization_id);
+    // Update compliance score (non-fatal)
+    try {
+      await this.calculateComplianceScore(input.project_id, input.organization_id);
+    } catch (scoreErr) {
+      // Compliance score calculation failure should not prevent permit creation
+    }
 
     // Emit real-time update
     emitProjectUpdated(input.project_id, input.organization_id, 'permit_created' as any);
@@ -436,6 +437,11 @@ class ComplianceService {
     const existing = await this.getPermitById(permitId);
     if (!existing) return null;
 
+    // Normalize field aliases
+    if ((input as any).description !== undefined && (input as any).notes === undefined) {
+      (input as any).notes = (input as any).description;
+    }
+
     // Build dynamic update query
     const updates: string[] = [];
     const values: any[] = [];
@@ -443,7 +449,6 @@ class ComplianceService {
 
     const fields = [
       'permit_name',
-      'description',
       'authority_id',
       'authority_name',
       'authority_contact',
@@ -488,8 +493,12 @@ class ComplianceService {
 
     const permit = result.rows[0];
 
-    // Recalculate compliance score
-    await this.calculateComplianceScore(permit.project_id, permit.organization_id);
+    // Recalculate compliance score (non-fatal)
+    try {
+      await this.calculateComplianceScore(permit.project_id, permit.organization_id);
+    } catch (scoreErr) {
+      // Score calculation failure should not block permit update
+    }
 
     // Emit real-time update
     emitProjectUpdated(permit.project_id, permit.organization_id, 'permit_updated' as any);

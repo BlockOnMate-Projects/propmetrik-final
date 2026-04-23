@@ -474,7 +474,11 @@ router.post(
 router.post(
   '/ner/batch',
   asyncHandler(async (req, res) => {
-    const data = await mlAnalyticsService.batchExtractEntities(req.body);
+    // Accept both array of NERRequests or { texts: string[] } convenience shape
+    const requests = Array.isArray(req.body)
+      ? req.body
+      : (req.body.texts ?? []).map((t: string) => ({ text: t }));
+    const data = await mlAnalyticsService.batchExtractEntities(requests);
     res.json({ success: true, data });
   }),
 );
@@ -517,7 +521,13 @@ router.get(
 router.post(
   '/documents/process',
   asyncHandler(async (req, res) => {
-    const data = await mlAnalyticsService.processDocument(req.body);
+    // Normalize: accept `content` as alias for `document_text`
+    const body = { ...req.body };
+    if (body.content !== undefined && body.document_text === undefined) {
+      body.document_text = body.content;
+      delete body.content;
+    }
+    const data = await mlAnalyticsService.processDocument(body);
     res.json({ success: true, data });
   }),
 );
@@ -529,7 +539,19 @@ router.post(
 router.post(
   '/documents/batch',
   asyncHandler(async (req, res) => {
-    const data = await mlAnalyticsService.batchProcessDocuments(req.body);
+    // Accept both array of DocumentIntelligenceRequests or { documents: [...] } convenience shape
+    const rawDocs: any[] = Array.isArray(req.body)
+      ? req.body
+      : req.body.documents ?? [];
+    const docs = rawDocs.map((d: any) => {
+      const doc = { ...d };
+      if (doc.content !== undefined && doc.document_text === undefined) {
+        doc.document_text = doc.content;
+        delete doc.content;
+      }
+      return doc;
+    });
+    const data = await mlAnalyticsService.batchProcessDocuments(docs);
     res.json({ success: true, data });
   }),
 );

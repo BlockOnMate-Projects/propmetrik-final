@@ -716,9 +716,15 @@ router.get('/projects/:projectId/availability', async (req: Request, res: Respon
 router.post('/communications', requirePMWrite, async (req: Request, res: Response) => {
   try {
     const userId = (req as any).user?.id || req.body.loggedBy;
+    const orgId = (req as any).user?.organizationId || req.headers['x-organization-id'] as string;
     
     const log = await teamService.logCommunication({
       ...req.body,
+      projectId: req.body.projectId || req.body.project_id,
+      organizationId: req.body.organizationId || req.body.organization_id || orgId,
+      communicationType: req.body.communicationType || req.body.communication_type || 'other',
+      direction: req.body.direction || 'outbound',
+      communicationDate: req.body.communicationDate || req.body.communication_date || req.body.date || new Date().toISOString().split('T')[0],
       loggedBy: userId,
     });
     

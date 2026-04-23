@@ -201,10 +201,10 @@ class TargetService {
     async getById(id: string): Promise<SalesTarget | null> {
         const result = await db.query<SalesTarget>(`
             SELECT t.*, 
-                   a.full_name AS agent_name,
+                   CONCAT(a.first_name, ' ', a.last_name) AS agent_name,
                    a.avatar_url AS agent_avatar
             FROM sales_targets t
-            LEFT JOIN crm_agents a ON a.id = t.agent_id
+            LEFT JOIN agents a ON a.id = t.agent_id
             WHERE t.id = $1
         `, [id]);
 
@@ -217,10 +217,10 @@ class TargetService {
     async getAll(organizationId: string, filters: TargetFilters = {}): Promise<SalesTarget[]> {
         let query = `
             SELECT t.*, 
-                   a.full_name AS agent_name,
+                   CONCAT(a.first_name, ' ', a.last_name) AS agent_name,
                    a.avatar_url AS agent_avatar
             FROM sales_targets t
-            LEFT JOIN crm_agents a ON a.id = t.agent_id
+            LEFT JOIN agents a ON a.id = t.agent_id
             WHERE t.organization_id = $1
         `;
         const params: any[] = [organizationId];
@@ -278,10 +278,10 @@ class TargetService {
     async getActiveForAgent(agentId: string): Promise<SalesTarget[]> {
         const result = await db.query<SalesTarget>(`
             SELECT t.*, 
-                   a.full_name AS agent_name,
+                   CONCAT(a.first_name, ' ', a.last_name) AS agent_name,
                    a.avatar_url AS agent_avatar
             FROM sales_targets t
-            LEFT JOIN crm_agents a ON a.id = t.agent_id
+            LEFT JOIN agents a ON a.id = t.agent_id
             WHERE t.agent_id = $1
               AND t.status = 'active'
               AND t.period_start <= CURRENT_DATE
@@ -708,8 +708,8 @@ class TargetService {
     ): Promise<SalesTarget[]> {
         // Get all active agents
         const agentsResult = await db.query<{ id: string }>(`
-            SELECT id FROM crm_agents
-            WHERE organization_id = $1 AND is_active = TRUE
+            SELECT id FROM agents
+            WHERE organization_id = $1 AND status = 'active'
         `, [organizationId]);
 
         const targets: SalesTarget[] = [];

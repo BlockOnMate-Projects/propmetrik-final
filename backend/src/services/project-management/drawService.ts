@@ -132,31 +132,47 @@ class DrawService extends BaseService {
   async create(input: CreateDrawInput): Promise<DrawRequest> {
     return this.executeInTransaction(async (client) => {
       
-      // Calculate totals
-      const totalAmount = input.line_items.reduce((sum, item) => sum + item.current_draw_amount, 0);
-      const retentionPct = input.retention_percentage || 10;
-      const retentionHeld = totalAmount * (retentionPct / 100);
-      const netAmount = totalAmount - retentionHeld;
+      // Support simplified input: if no line_items but a requested_amount is provided, build one
+      const lineItems = (input as any).line_items || (
+        ((input as any).requested_amount || (input as any).amount_requested)
+          ? [{ description: (input as any).title || 'Draw request', current_draw_amount: (input as any).requested_amount || (input as any).amount_requested }]
+          : []
+      );
       
-      // Insert draw request
+      // Calculate totals using actual DB column names
+      const currentDrawAmount = lineItems.reduce((sum: number, item: any) => sum + (item.current_draw_amount || 0), 0)
+        || (input as any).requested_amount || (input as any).amount_requested || 0;
+      const retentionPct = input.retention_percentage || 0;
+      const retentionAmount = currentDrawAmount * (retentionPct / 100);
+      const netAmount = currentDrawAmount - retentionAmount;
+      const drawNumber = (input as any).draw_number || input.draw_number || 1;
+      const periodStart = input.period_start || (input as any).period_start || new Date().toISOString().split('T')[0];
+      const periodEnd = input.period_end || (input as any).period_end || new Date().toISOString().split('T')[0];
+      
+      // Insert draw request using actual DB columns
       const result = await client.query(`
         INSERT INTO draw_requests (
           project_id, organization_id, status,
-          total_amount, retention_percentage, retention_held, net_amount,
-          line_items, supporting_documents, notes, created_by
+          draw_number, title, description,
+          period_start, period_end,
+          current_draw_amount, retention_amount, net_amount,
+          line_items, notes, created_by
         )
-        VALUES ($1, $2, 'draft', $3, $4, $5, $6, $7, $8, $9, $10)
+        VALUES ($1, $2, 'draft', $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
         RETURNING *
       `, [
         input.project_id,
         input.organization_id,
-        totalAmount,
-        retentionPct,
-        retentionHeld,
+        drawNumber,
+        (input as any).title || null,
+        input.description || (input as any).notes || null,
+        periodStart,
+        periodEnd,
+        currentDrawAmount,
+        retentionAmount,
         netAmount,
-        JSON.stringify(input.line_items),
-        input.supporting_documents || [],
-        input.notes,
+        JSON.stringify(lineItems),
+        input.notes || null,
         input.created_by
       ]);
       
@@ -177,7 +193,7 @@ class DrawService extends BaseService {
       FROM draw_requests dr
       LEFT JOIN users u1 ON dr.submitted_by = u1.id
       LEFT JOIN users u2 ON dr.approved_by = u2.id
-      WHERE dr.id = $1 AND dr.deleted_at IS NULL
+      WHERE dr.id = $1
     `, [id]);
     
     if (result.rows.length === 0) {
@@ -202,7 +218,7 @@ class DrawService extends BaseService {
     limit: number;
     totalPages: number;
   }> {
-    let whereClause = `WHERE dr.project_id = $1 AND dr.deleted_at IS NULL`;
+    let whereClause = `WHERE dr.project_id = $1`;
     const params: any[] = [projectId];
     let paramCount = 1;
     
@@ -313,10 +329,10 @@ class DrawService extends BaseService {
     const result = await pool.query(`
       UPDATE draw_requests
       SET status = 'submitted',
-          submitted_date = NOW(),
+          submitted_at = NOW(),
           submitted_by = $2,
           updated_at = NOW()
-      WHERE id = $1 AND status = 'draft' AND deleted_at IS NULL
+      WHERE id = $1 AND status = 'draft'
       RETURNING *
     `, [id, userId]);
     
@@ -338,18 +354,17 @@ class DrawService extends BaseService {
       return null;
     }
     
-    const amount = approvedAmount || draw.total_amount;
+    const amount = approvedAmount || draw.current_draw_amount;
     
     const result = await pool.query(`
       UPDATE draw_requests
       SET status = 'approved',
-          approved_amount = $2,
-          approved_date = NOW(),
-          approved_by = $3,
+          approved_at = NOW(),
+          approved_by = $2,
           updated_at = NOW()
-      WHERE id = $1 AND status = 'submitted' AND deleted_at IS NULL
+      WHERE id = $1 AND status = 'submitted'
       RETURNING *
-    `, [id, amount, userId]);
+    `, [id, userId]);
     
     if (result.rows.length === 0) {
       return null;
@@ -373,10 +388,10 @@ class DrawService extends BaseService {
       UPDATE draw_requests
       SET status = 'rejected',
           rejection_reason = $2,
-          approved_by = $3,
-          approved_date = NOW(),
+          rejected_by = $3,
+          rejected_at = NOW(),
           updated_at = NOW()
-      WHERE id = $1 AND status IN ('submitted', 'under_review') AND deleted_at IS NULL
+      WHERE id = $1 AND status IN ('submitted', 'under_review')
       RETURNING *
     `, [id, reason, userId]);
     

@@ -184,7 +184,7 @@ class AdvancedAnalyticsService {
         periodFormat = 'YYYY-WW';
         break;
       case 'quarter':
-        periodFormat = "'Q'Q YYYY";
+        periodFormat = '"Q"Q YYYY';
         break;
       case 'year':
         periodFormat = 'YYYY';
@@ -386,8 +386,8 @@ class AdvancedAnalyticsService {
     const cycleResult = await pool.query(`
       WITH cycle_data AS (${baseQuery})
       SELECT 
-        ROUND(AVG(cycle_days), 1) as avg_cycle,
-        ROUND(PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY cycle_days), 1) as median_cycle
+        ROUND(AVG(cycle_days)::numeric, 1) as avg_cycle,
+        ROUND(PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY cycle_days)::numeric, 1) as median_cycle
       FROM cycle_data
     `, params);
     
@@ -403,7 +403,7 @@ class AdvancedAnalyticsService {
         AND actual_close_date IS NOT NULL
         AND actual_close_date >= NOW() - INTERVAL '12 months'
       ${pipelineId ? 'AND pipeline_id = $2' : ''}
-      GROUP BY TO_CHAR(closed_at, 'YYYY-MM')
+      GROUP BY TO_CHAR(actual_close_date, 'YYYY-MM')
       ORDER BY period DESC
       LIMIT 12
     `, params);

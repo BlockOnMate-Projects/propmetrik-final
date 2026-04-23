@@ -433,15 +433,15 @@ router.put('/settings', async (req: Request, res: Response) => {
       values.push(global_enabled);
     }
     if (confidence_floor !== undefined) {
-      updates.push(`confidence_floor = $${paramIdx++}`);
+      updates.push(`default_confidence_floor = $${paramIdx++}`);
       values.push(confidence_floor);
     }
     if (max_daily_publications !== undefined) {
-      updates.push(`max_daily_publications = $${paramIdx++}`);
+      updates.push(`max_publishes_per_day = $${paramIdx++}`);
       values.push(max_daily_publications);
     }
     if (max_daily_flashes !== undefined) {
-      updates.push(`max_daily_flashes = $${paramIdx++}`);
+      updates.push(`max_flashes_per_day = $${paramIdx++}`);
       values.push(max_daily_flashes);
     }
 

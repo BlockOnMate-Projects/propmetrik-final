@@ -174,8 +174,8 @@ class DailyLogService {
   async create(input: CreateDailyLogInput): Promise<DailyLog> {
     // Check if log already exists for this date
     const existing = await pool.query(`
-      SELECT id FROM daily_logs
-      WHERE project_id = $1 AND log_date = $2 AND deleted_at IS NULL
+      SELECT id FROM project_daily_logs
+      WHERE project_id = $1 AND log_date = $2
     `, [input.project_id, input.log_date]);
     
     if (existing.rows.length > 0) {
@@ -183,33 +183,28 @@ class DailyLogService {
     }
     
     const result = await pool.query(`
-      INSERT INTO daily_logs (
+      INSERT INTO project_daily_logs (
         project_id, organization_id, log_date, weather,
-        temperature_high, temperature_low, workers_on_site,
-        subcontractors_on_site, activities, delays, issues,
+        workers_on_site,
         safety_incidents, safety_notes, materials_delivered,
-        equipment_on_site, photos, notes, submitted_by
+        equipment_on_site, photos, notes, work_summary, work_performed, created_by
       )
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
       RETURNING *
     `, [
       input.project_id,
       input.organization_id,
       input.log_date,
-      input.weather,
-      input.temperature_high,
-      input.temperature_low,
-      input.workers_on_site,
-      input.subcontractors_on_site || [],
-      JSON.stringify(input.activities || []),
-      input.delays || [],
-      input.issues || [],
+      (input as any).weather || (input as any).weather_condition || null,
+      (input as any).workers_count || (input as any).workers_on_site || (input as any).total_workers || null,
       input.safety_incidents || 0,
-      input.safety_notes,
-      input.materials_delivered || [],
-      input.equipment_on_site || [],
-      input.photos || [],
-      input.notes,
+      (input as any).safety_notes || null,
+      JSON.stringify((input as any).materials_delivered || []),
+      JSON.stringify((input as any).equipment_on_site || []),
+      JSON.stringify((input as any).photos || []),
+      (input as any).notes || null,
+      (input as any).work_description || (input as any).work_summary || null,
+      (input as any).work_performed || null,
       input.created_by
     ]);
     
@@ -224,12 +219,10 @@ class DailyLogService {
   async getById(id: string): Promise<DailyLog | null> {
     const result = await pool.query(`
       SELECT dl.*,
-             u1.full_name as submitted_by_name,
-             u2.full_name as approved_by_name
-      FROM daily_logs dl
+             u1.full_name as submitted_by_name
+      FROM project_daily_logs dl
       LEFT JOIN users u1 ON dl.submitted_by = u1.id
-      LEFT JOIN users u2 ON dl.approved_by = u2.id
-      WHERE dl.id = $1 AND dl.deleted_at IS NULL
+      WHERE dl.id = $1
     `, [id]);
     
     if (result.rows.length === 0) {
@@ -245,12 +238,10 @@ class DailyLogService {
   async getByDate(projectId: string, date: Date): Promise<DailyLog | null> {
     const result = await pool.query(`
       SELECT dl.*,
-             u1.full_name as submitted_by_name,
-             u2.full_name as approved_by_name
-      FROM daily_logs dl
+             u1.full_name as submitted_by_name
+      FROM project_daily_logs dl
       LEFT JOIN users u1 ON dl.submitted_by = u1.id
-      LEFT JOIN users u2 ON dl.approved_by = u2.id
-      WHERE dl.project_id = $1 AND dl.log_date = $2 AND dl.deleted_at IS NULL
+      WHERE dl.project_id = $1 AND dl.log_date = $2
     `, [projectId, date]);
     
     if (result.rows.length === 0) {
@@ -275,7 +266,7 @@ class DailyLogService {
     limit: number;
     totalPages: number;
   }> {
-    const conditions: string[] = ['dl.deleted_at IS NULL', 'dl.project_id = $1'];
+    const conditions: string[] = ['dl.project_id = $1'];
     const params: any[] = [projectId];
     let paramCount = 1;
     
@@ -318,7 +309,7 @@ class DailyLogService {
     
     // Count total
     const countResult = await pool.query(`
-      SELECT COUNT(*) FROM daily_logs dl ${whereClause}
+      SELECT COUNT(*) FROM project_daily_logs dl ${whereClause}
     `, params);
     const total = parseInt(countResult.rows[0].count);
     
@@ -328,7 +319,7 @@ class DailyLogService {
       SELECT dl.*,
              u1.full_name as submitted_by_name,
              u2.full_name as approved_by_name
-      FROM daily_logs dl
+      FROM project_daily_logs dl
       LEFT JOIN users u1 ON dl.submitted_by = u1.id
       LEFT JOIN users u2 ON dl.approved_by = u2.id
       ${whereClause}
@@ -435,9 +426,9 @@ class DailyLogService {
     params.push(id);
     
     const result = await pool.query(`
-      UPDATE daily_logs
+      UPDATE project_daily_logs
       SET ${updates.join(', ')}
-      WHERE id = $${++paramCount} AND deleted_at IS NULL
+      WHERE id = $${++paramCount}
       RETURNING *
     `, params);
     
@@ -468,10 +459,10 @@ class DailyLogService {
       : photoUrl;
     
     const result = await pool.query(`
-      UPDATE daily_logs
+      UPDATE project_daily_logs
       SET photos = array_append(photos, $2),
           updated_at = NOW()
-      WHERE id = $1 AND deleted_at IS NULL
+      WHERE id = $1
       RETURNING *
     `, [id, photoEntry]);
     
@@ -488,10 +479,10 @@ class DailyLogService {
    */
   async removePhoto(id: string, photoUrl: string): Promise<DailyLog | null> {
     const result = await pool.query(`
-      UPDATE daily_logs
+      UPDATE project_daily_logs
       SET photos = array_remove(photos, $2),
           updated_at = NOW()
-      WHERE id = $1 AND deleted_at IS NULL
+      WHERE id = $1
       RETURNING *
     `, [id, photoUrl]);
     
@@ -518,10 +509,10 @@ class DailyLogService {
     const activities = [...log.activities, activity];
     
     const result = await pool.query(`
-      UPDATE daily_logs
+      UPDATE project_daily_logs
       SET activities = $2,
           updated_at = NOW()
-      WHERE id = $1 AND deleted_at IS NULL
+      WHERE id = $1
       RETURNING *
     `, [id, JSON.stringify(activities)]);
     
@@ -541,11 +532,11 @@ class DailyLogService {
    */
   async approve(id: string, userId: string): Promise<DailyLog | null> {
     const result = await pool.query(`
-      UPDATE daily_logs
+      UPDATE project_daily_logs
       SET approved_by = $2,
           approved_at = NOW(),
           updated_at = NOW()
-      WHERE id = $1 AND approved_at IS NULL AND deleted_at IS NULL
+      WHERE id = $1 AND approved_at IS NULL
       RETURNING *
     `, [id, userId]);
     
@@ -562,11 +553,11 @@ class DailyLogService {
    */
   async revokeApproval(id: string): Promise<DailyLog | null> {
     const result = await pool.query(`
-      UPDATE daily_logs
+      UPDATE project_daily_logs
       SET approved_by = NULL,
           approved_at = NULL,
           updated_at = NOW()
-      WHERE id = $1 AND deleted_at IS NULL
+      WHERE id = $1
       RETURNING *
     `, [id]);
     
@@ -616,8 +607,8 @@ class DailyLogService {
         COALESCE(SUM(workers_on_site), 0) as total_worker_days,
         COALESCE(AVG(workers_on_site), 0) as avg_workers,
         COALESCE(SUM(safety_incidents), 0) as total_incidents
-      FROM daily_logs
-      WHERE project_id = $1 AND deleted_at IS NULL${dateCondition}
+      FROM project_daily_logs
+      WHERE project_id = $1${dateCondition}
     `, params);
     
     const stats = result.rows[0];
@@ -625,8 +616,8 @@ class DailyLogService {
     // Weather breakdown
     const weatherResult = await pool.query(`
       SELECT weather, COUNT(*) as count
-      FROM daily_logs
-      WHERE project_id = $1 AND deleted_at IS NULL
+      FROM project_daily_logs
+      WHERE project_id = $1
       GROUP BY weather
     `, [projectId]);
     
@@ -638,8 +629,8 @@ class DailyLogService {
     // Find missing dates in last 30 days (weekdays only)
     const existingDates = await pool.query(`
       SELECT log_date::date as date
-      FROM daily_logs
-      WHERE project_id = $1 AND log_date >= $2 AND deleted_at IS NULL
+      FROM project_daily_logs
+      WHERE project_id = $1 AND log_date >= $2
     `, [projectId, monthAgo]);
     
     const existingSet = new Set(
@@ -678,9 +669,8 @@ class DailyLogService {
    */
   async delete(id: string): Promise<boolean> {
     const result = await pool.query(`
-      UPDATE daily_logs
-      SET deleted_at = NOW()
-      WHERE id = $1 AND approved_at IS NULL AND deleted_at IS NULL
+      DELETE FROM project_daily_logs
+      WHERE id = $1
     `, [id]);
     
     return (result.rowCount ?? 0) > 0;

@@ -91,7 +91,7 @@ class InvestmentScoringService {
     let idx = 1;
     let where = '';
     if (opts.region) {
-      where += ` AND LOWER(cb.region) = LOWER($${idx++})`;
+      where += ` AND LOWER(cb.region::text) = LOWER($${idx++})`;
       params.push(opts.region);
     }
     if (opts.propertyType) {
@@ -102,7 +102,7 @@ class InvestmentScoringService {
     const sql = `
       WITH cap_data AS (
         SELECT
-          cb.region,
+          cb.region::text AS region,
           cb.property_type::text AS property_type,
           COALESCE(cb.benchmark_cap_rate, cb.cap_rate_median, 0) AS cap_rate,
           COALESCE(cb.vacancy_rate_market, 0) AS vacancy,
@@ -343,31 +343,26 @@ class InvestmentScoringService {
           INSERT INTO investment_opportunity_metrics
             (region, property_type, period_date,
              opportunity_score, opportunity_factors,
-             risk_score, risk_level, cap_rate,
-             avg_price_growth_yoy, avg_rental_growth_yoy,
-             vacancy_rate, absorption_rate, inventory_months,
-             market_condition)
-          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+             risk_score, avg_cap_rate,
+             price_growth_12m, rental_growth_12m,
+             absorption_rate, inventory_months)
+          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
           ON CONFLICT (region, property_type, period_date)
           DO UPDATE SET
             opportunity_score = EXCLUDED.opportunity_score,
             opportunity_factors = EXCLUDED.opportunity_factors,
             risk_score = EXCLUDED.risk_score,
-            risk_level = EXCLUDED.risk_level,
-            cap_rate = EXCLUDED.cap_rate,
-            avg_price_growth_yoy = EXCLUDED.avg_price_growth_yoy,
-            avg_rental_growth_yoy = EXCLUDED.avg_rental_growth_yoy,
-            vacancy_rate = EXCLUDED.vacancy_rate,
+            avg_cap_rate = EXCLUDED.avg_cap_rate,
+            price_growth_12m = EXCLUDED.price_growth_12m,
+            rental_growth_12m = EXCLUDED.rental_growth_12m,
             absorption_rate = EXCLUDED.absorption_rate,
-            inventory_months = EXCLUDED.inventory_months,
-            market_condition = EXCLUDED.market_condition
+            inventory_months = EXCLUDED.inventory_months
         `, [
           o.region, o.property_type, dateStr,
           o.opportunity_score, JSON.stringify(o.opportunity_factors),
-          o.opportunity_factors.risk_score, o.risk_level, o.cap_rate,
+          o.opportunity_factors.risk_score, o.cap_rate,
           o.avg_price_growth_yoy, o.avg_rental_growth_yoy,
-          o.vacancy_rate, o.absorption_rate, o.inventory_months,
-          o.market_condition,
+          o.absorption_rate, o.inventory_months,
         ]);
       }
       await client.query('COMMIT');

@@ -137,6 +137,10 @@ router.post('/events', requirePMWrite, validate(createCalendarEventSchema), asyn
       ...req.body,
       organizationId,
       userId: req.body.userId || userId,
+      // Map snake_case schema fields to camelCase service fields
+      startTime: req.body.startTime || req.body.start,
+      endTime: req.body.endTime || req.body.end,
+      eventType: req.body.eventType || req.body.event_type,
     };
     
     const event = await calendarService.createEvent(eventData);

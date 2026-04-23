@@ -611,8 +611,15 @@ router.post('/:id/units', requirePMWrite, async (req: Request, res: Response, ne
     const orgId = getOrgId(req);
     const userId = getUserId(req);
     
+    // Normalize field aliases from API clients
+    const body = { ...req.body };
+    if (body.price !== undefined && body.list_price === undefined) body.list_price = body.price;
+    if (body.floor_area_sqm !== undefined && body.internal_sqm === undefined) body.internal_sqm = body.floor_area_sqm;
+    if (body.floor_number !== undefined && body.floor === undefined) body.floor = body.floor_number;
+    if (body.unit_type === 'apartment') body.unit_type = 'other';
+    
     const unit = await unitService.create({
-      ...req.body,
+      ...body,
       project_id: req.params.id,
       organization_id: orgId,
       created_by: userId
@@ -663,8 +670,17 @@ router.put('/units/:unitId', requirePMWrite, async (req: Request, res: Response,
   try {
     const userId = getUserId(req);
     
+    // Normalize field aliases (same as POST route)
+    const body = { ...req.body };
+    if (body.price !== undefined && body.list_price === undefined) body.list_price = body.price;
+    if (body.floor_area_sqm !== undefined && body.internal_sqm === undefined) body.internal_sqm = body.floor_area_sqm;
+    if (body.floor_number !== undefined && body.floor === undefined) body.floor = body.floor_number;
+    if (body.unit_type === 'apartment') body.unit_type = 'other';
+    // Remove aliased fields so they don't become invalid column SET clauses
+    delete body.price; delete body.floor_area_sqm; delete body.floor_number;
+    
     const unit = await unitService.update(req.params.unitId, {
-      ...req.body,
+      ...body,
       updated_by: userId
     });
     
@@ -904,8 +920,17 @@ router.post('/:id/costs', requirePMWrite, async (req: Request, res: Response, ne
     const orgId = getOrgId(req);
     const userId = getUserId(req);
     
+    // Normalize field aliases from API clients
+    const body = { ...req.body };
+    if (body.name !== undefined && body.description === undefined) body.description = body.name;
+    if (body.cost_type !== undefined && body.category === undefined) body.category = body.cost_type;
+    if (body.amount !== undefined && body.original_budget === undefined) body.original_budget = body.amount;
+    // Map to valid cost_category enum values
+    const VALID_COST_CATEGORIES = new Set(['land_acquisition','permits_approvals','design_engineering','site_preparation','foundation','structural','roofing','mep','exterior_finishing','interior_finishing','landscaping','amenities','contingency','professional_fees','insurance','marketing_sales','legal','financing_costs','other']);
+    if (body.category && !VALID_COST_CATEGORIES.has(body.category)) body.category = 'other';
+    
     const cost = await projectCostService.create({
-      ...req.body,
+      ...body,
       project_id: req.params.id,
       organization_id: orgId,
       created_by: userId
@@ -935,8 +960,15 @@ router.put('/costs/:costId', requirePMWrite, async (req: Request, res: Response,
   try {
     const userId = getUserId(req);
     
+    // Normalize field aliases (same as POST route)
+    const body = { ...req.body };
+    if (body.amount !== undefined && body.original_budget === undefined) body.original_budget = body.amount;
+    delete body.amount;
+    const VALID_COST_CATEGORIES = new Set(['land_acquisition','permits_approvals','design_engineering','site_preparation','foundation','structural','roofing','mep','exterior_finishing','interior_finishing','landscaping','amenities','contingency','professional_fees','insurance','marketing_sales','legal','financing_costs','other']);
+    if (body.category && !VALID_COST_CATEGORIES.has(body.category)) body.category = 'other';
+    
     const cost = await projectCostService.update(req.params.costId, {
-      ...req.body,
+      ...body,
       updated_by: userId
     });
     
@@ -1588,7 +1620,7 @@ router.get('/:projectId/logs/date/:date', async (req: Request, res: Response, ne
     );
     
     if (!log) {
-      return res.status(404).json({ error: 'Daily log not found for this date' });
+      return res.status(200).json({ data: null, message: 'No daily log found for this date' });
     }
     
     res.json(log);
@@ -4270,29 +4302,14 @@ router.get('/:projectId/permits', async (req: Request, res: Response, next: Next
 // Add permit to project
 router.post('/:projectId/permits', requirePMWrite, async (req: Request, res: Response, next: NextFunction) => {
   try {
+    const orgId = getOrgId(req);
     const userId = getUserId(req);
-    const { 
-      permitTypeId, 
-      applicationNumber, 
-      status, 
-      submittedDate, 
-      approvedDate,
-      expiryDate,
-      fees,
-      documents 
-    } = req.body;
     
-    const permit = await projectLocationService.addProjectPermit({
-      projectId: req.params.projectId,
-      permitTypeId,
-      applicationNumber,
-      status,
-      submittedDate,
-      approvedDate,
-      expiryDate,
-      fees,
-      documents,
-      createdBy: userId,
+    const permit = await complianceService.createPermit({
+      ...req.body,
+      project_id: req.params.projectId,
+      organization_id: orgId,
+      created_by: userId,
     });
     
     res.status(201).json(permit);
@@ -4614,16 +4631,18 @@ router.post('/:id/milestones', requirePMWrite, async (req: Request, res: Respons
     const userId = getUserId(req);
     
     // Map snake_case from frontend to camelCase for service
-    const { target_date, phase_id, milestone_type, ...rest } = req.body;
+    const { target_date, planned_date, phase_id, milestone_type, ...rest } = req.body;
+    const VALID_MS_TYPES = new Set(['permit','inspection','payment','handover','construction','legal','internal','external']);
+    const rawMsType = milestone_type || rest.milestoneType || 'internal';
     
     const milestone = await milestoneService.createMilestone({
       ...rest,
       projectId: req.params.id,
       organizationId: orgId,
       createdBy: userId,
-      targetDate: target_date || rest.targetDate,
+      targetDate: target_date || planned_date || rest.targetDate || rest.due_date,
       phaseId: phase_id || rest.phaseId,
-      milestoneType: milestone_type || rest.milestoneType || 'internal'
+      milestoneType: VALID_MS_TYPES.has(rawMsType) ? rawMsType : 'internal'
     });
     
     res.status(201).json(milestone);

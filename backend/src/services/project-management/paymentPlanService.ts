@@ -269,13 +269,9 @@ class PaymentPlanService extends BaseService {
    */
   async getByUnit(unitId: string): Promise<BuyerPaymentPlan | null> {
     const result = await pool.query(`
-      SELECT pp.*,
-             c.full_name as buyer_name,
-             c.email as buyer_email,
-             c.phone as buyer_phone
+      SELECT pp.*
       FROM buyer_payment_plans pp
-      LEFT JOIN contacts c ON pp.buyer_contact_id = c.id
-      WHERE pp.unit_id = $1 AND pp.is_active = true AND pp.deleted_at IS NULL
+      WHERE pp.unit_id = $1 AND pp.is_active = true
     `, [unitId]);
     
     if (result.rows.length === 0) {

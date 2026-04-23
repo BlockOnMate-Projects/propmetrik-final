@@ -388,7 +388,7 @@ router.get('/deals/:id/status-history', asyncHandler(async (req: Request, res: R
             created_at
         FROM deal_activities
         WHERE deal_id = $1 
-        AND activity_type IN ('deal_status_change', 'stage_change')
+        AND activity_type = 'stage_change'
         ORDER BY created_at DESC
     `;
 

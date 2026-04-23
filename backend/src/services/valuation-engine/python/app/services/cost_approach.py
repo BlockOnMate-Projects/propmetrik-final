@@ -66,33 +66,7 @@ class CostApproach:
         self.data_hub = get_data_hub_adapter()  # Live API adapter
         self.reconciliation_service = DepreciationReconciliationService()
         
-        # Default land value ratios by region (of total property value)
-        self.DEFAULT_LAND_VALUE_RATIOS = {
-            GhanaRegion.GREATER_ACCRA: 0.40,  # Land is expensive in Accra
-            GhanaRegion.KUMASI_METRO: 0.30,
-            GhanaRegion.EASTERN: 0.25,
-            GhanaRegion.WESTERN_CLUSTER: 0.25,
-            GhanaRegion.NORTHERN_CLUSTER: 0.20
-        }
-        
-        # Depreciation rates by age
-        self.DEPRECIATION_SCHEDULE = {
-            # Age range (years): annual depreciation rate
-            (0, 5): 0.02,    # 2% per year for first 5 years
-            (6, 15): 0.025,  # 2.5% per year for years 6-15
-            (16, 30): 0.03,  # 3% per year for years 16-30
-            (31, 50): 0.02,  # 2% per year for years 31-50
-            (51, 100): 0.01  # 1% per year for years 51+
-        }
-        
-        # Maximum depreciation by property type
-        self.MAX_DEPRECIATION = {
-            PropertyType.RESIDENTIAL_HOUSE: 0.80,     # Max 80% depreciation
-            PropertyType.RESIDENTIAL_APARTMENT: 0.75,
-            PropertyType.COMMERCIAL_OFFICE: 0.85,
-            PropertyType.INDUSTRIAL_WAREHOUSE: 0.90,
-            PropertyType.LAND_RESIDENTIAL: 0.0        # Land doesn't depreciate
-        }
+
     
     async def value_property(
         self,
@@ -129,23 +103,16 @@ class CostApproach:
                 )
         
         if not construction_costs:
-            logger.warning("No construction cost data available, using fallback estimates")
-            construction_costs = self._estimate_construction_costs(
-                target_property.location.region,
-                target_property.property_type
+            raise ValueError(
+                f"Construction cost data unavailable for region '{target_property.location.region}': "
+                "both the Data Hub API and database adapter returned no data. "
+                "Seed construction costs via the Data Hub admin panel before running a cost approach valuation."
             )
         
         # Get regional multiplier from live API
         multiplier_data = await self.data_hub.get_regional_multiplier(region_str)
         regional_multiplier = multiplier_data.get("value", 1.0)
         multiplier_source = multiplier_data.get("source", "fallback")
-        
-        if not construction_costs:
-            logger.warning("No construction cost data available, using estimates")
-            construction_costs = self._estimate_construction_costs(
-                target_property.location.region,
-                target_property.property_type
-            )
         
         # Calculate cost components
         cost_components = self._calculate_cost_components(
@@ -224,63 +191,7 @@ class CostApproach:
         
         return True
     
-    def _estimate_construction_costs(
-        self,
-        region: GhanaRegion,
-        property_type: PropertyType
-    ) -> ConstructionCosts:
-        """Estimate construction costs when database data is unavailable"""
-        
-        # Regional base construction costs (GHS per sqm) - rough estimates
-        base_costs = {
-            GhanaRegion.GREATER_ACCRA: {
-                'basic': 1200,
-                'standard': 2000,
-                'premium': 3500,
-                'luxury': 6000
-            },
-            GhanaRegion.KUMASI_METRO: {
-                'basic': 1000,
-                'standard': 1600,
-                'premium': 2800,
-                'luxury': 4800
-            },
-            GhanaRegion.EASTERN: {
-                'basic': 900,
-                'standard': 1400,
-                'premium': 2500,
-                'luxury': 4200
-            },
-            GhanaRegion.WESTERN_CLUSTER: {
-                'basic': 950,
-                'standard': 1500,
-                'premium': 2600,
-                'luxury': 4400
-            },
-            GhanaRegion.NORTHERN_CLUSTER: {
-                'basic': 800,
-                'standard': 1200,
-                'premium': 2000,
-                'luxury': 3500
-            }
-        }
-        
-        costs = base_costs.get(region, base_costs[GhanaRegion.KUMASI_METRO])
-        
-        return ConstructionCosts(
-            region=region,
-            effective_date=date.today(),
-            cost_per_sqm_basic=costs['basic'],
-            cost_per_sqm_standard=costs['standard'],
-            cost_per_sqm_premium=costs['premium'],
-            cost_per_sqm_luxury=costs['luxury'],
-            skilled_labor_rate_per_day=120.0,  # Rough estimate
-            unskilled_labor_rate_per_day=60.0,
-            utilities_connection_cost=5000.0,
-            site_preparation_cost_per_sqm=50.0,
-            data_source="Estimated",
-            material_costs={}
-        )
+
     
     def _calculate_cost_components(
         self,
@@ -338,39 +249,21 @@ class CostApproach:
         # For now, using method 2
         
         # Method 2: Extract from improved property sales
-        # Using default land value ratios
-        land_ratio = self.DEFAULT_LAND_VALUE_RATIOS.get(region, 0.30)
-        
-        # Estimate total property value to calculate land value
-        # This is circular reasoning - using construction costs as proxy
-        if property.specifications.built_area_sqm:
-            estimated_total_value = (
-                property.specifications.built_area_sqm * construction_costs.cost_per_sqm_standard +
-                land_size * 200  # Base land value estimate
-            )
-            land_value = estimated_total_value * land_ratio
-        else:
-            # For vacant land, use regional land value estimates
-            land_value_per_sqm = self._get_regional_land_value_per_sqm(region)
-            land_value = land_size * land_value_per_sqm
+        # Land value must come from live comparable land sales — no hardcoded estimates.
+        # If comparable land sales are unavailable, the caller should supply a
+        # land_value_per_sqm override via cost_approach_options.
+        raise ValueError(
+            f"Land value data unavailable for region '{region}': "
+            "no comparable land sales found from the Data Hub or database adapter. "
+            "Supply land_value_per_sqm via cost_approach_options, or seed land sale "
+            "comparables via LandComparableSalesService before running a cost approach valuation."
+        )
         
         land_value_per_sqm = land_value / land_size if land_size > 0 else 0
         
         return land_value, land_value_per_sqm
     
-    def _get_regional_land_value_per_sqm(self, region: GhanaRegion) -> float:
-        """Get estimated land value per sqm by region"""
-        
-        # These are very rough estimates - should come from market data
-        land_values = {
-            GhanaRegion.GREATER_ACCRA: 500,
-            GhanaRegion.KUMASI_METRO: 300,
-            GhanaRegion.EASTERN: 200,
-            GhanaRegion.WESTERN_CLUSTER: 250,
-            GhanaRegion.NORTHERN_CLUSTER: 150
-        }
-        
-        return land_values.get(region, 200)
+
     
     def _calculate_construction_cost_new(
         self,
@@ -394,10 +287,12 @@ class CostApproach:
         base_construction_cost = built_area * cost_per_sqm
         
         # Add site preparation costs
-        if property.specifications.land_size_sqm:
-            site_prep_cost = property.specifications.land_size_sqm * construction_costs.site_preparation_cost_per_sqm
-        else:
-            site_prep_cost = built_area * 50  # Estimate based on built area
+        if not property.specifications.land_size_sqm:
+            raise ValueError(
+                "land_size_sqm is required for construction cost calculation — "
+                "cannot estimate site preparation cost without it."
+            )
+        site_prep_cost = property.specifications.land_size_sqm * construction_costs.site_preparation_cost_per_sqm
         
         # Add utilities connection costs
         utilities_cost = construction_costs.utilities_connection_cost
@@ -473,12 +368,12 @@ class CostApproach:
             construction_type=self._infer_construction_type(property),
         )
         
-        # If calculator couldn't calculate (missing data), fall back
+        # If the calculator couldn't run, we need more data — no legacy fallback.
         if not physical_result.auto_calculated:
-            physical_depreciation = self._calculate_physical_depreciation_legacy(
-                property, construction_cost_new, valuation_date
+            raise ValueError(
+                "Physical depreciation could not be calculated: missing year_built or condition. "
+                "Provide these fields before running a cost approach valuation."
             )
-            physical_rate = physical_depreciation / construction_cost_new if construction_cost_new > 0 else 0
         else:
             physical_rate = physical_result.depreciation_rate
             physical_depreciation = construction_cost_new * physical_rate
@@ -487,10 +382,10 @@ class CostApproach:
         functional_result = calculate_functional_obsolescence(property)
         
         if not functional_result.auto_calculated:
-            functional_obsolescence = self._calculate_functional_obsolescence_legacy(
-                property, construction_cost_new
+            raise ValueError(
+                "Functional obsolescence could not be calculated: insufficient property specification data. "
+                "Provide year_built, condition, and bedroom/bathroom counts before running a cost approach valuation."
             )
-            functional_rate = functional_obsolescence / construction_cost_new if construction_cost_new > 0 else 0
         else:
             functional_rate = functional_result.depreciation_rate
             functional_obsolescence = construction_cost_new * functional_rate
@@ -602,81 +497,7 @@ class CostApproach:
         # Default fallback
         return ConstructionType.CONCRETE_BLOCK
     
-    def _calculate_physical_depreciation_legacy(
-        self,
-        property: Property,
-        construction_cost_new: float,
-        valuation_date: date
-    ) -> float:
-        """
-        Legacy physical depreciation calculation - used as fallback
-        when new calculator cannot compute due to missing data.
-        """
-        if not property.specifications.year_built:
-            # Assume 10 years if age unknown
-            age = 10
-        else:
-            age = valuation_date.year - property.specifications.year_built
-        
-        # Calculate depreciation based on age schedule
-        total_depreciation_rate = 0.0
-        remaining_years = age
-        
-        for (start_year, end_year), annual_rate in self.DEPRECIATION_SCHEDULE.items():
-            if remaining_years <= 0:
-                break
-            
-            years_in_bracket = min(remaining_years, end_year - start_year + 1)
-            total_depreciation_rate += years_in_bracket * annual_rate
-            remaining_years -= years_in_bracket
-        
-        # Adjust for condition
-        condition_adjustment = {
-            PropertyCondition.NEW: -0.05,           # Reduce depreciation
-            PropertyCondition.EXCELLENT: 0.0,
-            PropertyCondition.GOOD: 0.0,
-            PropertyCondition.FAIR: 0.10,          # Increase depreciation
-            PropertyCondition.POOR: 0.25,
-            PropertyCondition.RENOVATION_NEEDED: 0.40
-        }
-        
-        if property.specifications.condition:
-            total_depreciation_rate += condition_adjustment.get(
-                property.specifications.condition, 0.0
-            )
-        
-        # Cap depreciation rate
-        total_depreciation_rate = min(total_depreciation_rate, 0.90)
-        
-        return construction_cost_new * total_depreciation_rate
-    
-    def _calculate_functional_obsolescence_legacy(
-        self,
-        property: Property,
-        construction_cost_new: float
-    ) -> float:
-        """
-        Legacy functional obsolescence calculation - used as fallback
-        when new calculator cannot compute.
-        """
-        
-        obsolescence_rate = 0.0
-        
-        # Check for functional issues
-        if property.specifications.year_built and property.specifications.year_built < 1990:
-            obsolescence_rate += 0.05  # Older design standards
-        
-        if property.specifications.year_built and property.specifications.year_built < 1970:
-            obsolescence_rate += 0.10  # Very outdated design
-        
-        # Check bathroom/bedroom ratio
-        if (property.specifications.bedrooms and property.specifications.bathrooms and
-            property.specifications.bedrooms > 0):
-            bathroom_ratio = property.specifications.bathrooms / property.specifications.bedrooms
-            if bathroom_ratio < 0.5:  # Less than 1 bathroom per 2 bedrooms
-                obsolescence_rate += 0.05
-        
-        return construction_cost_new * obsolescence_rate
+
     
     def _calculate_external_obsolescence(
         self,
