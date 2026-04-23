@@ -890,72 +890,48 @@ class TeamService {
       await client.query('BEGIN');
       
       const id = uuidv4();
+      // Resolve field aliases (camelCase or snake_case from route body)
+      const businessName = input.name || (input as any).business_name || (input as any).businessName;
+      const contactPerson = (input as any).primaryContactName || (input as any).primary_contact_name
+        || (input as any).contact_name || (input as any).contactPerson || (input as any).contact_person || null;
+      const phonePrimary = (input as any).primaryContactPhone || (input as any).primary_contact_phone
+        || (input as any).phone || (input as any).phonePrimary || (input as any).phone_primary || null;
+      const serviceCategories = Array.isArray((input as any).service_categories)
+        ? (input as any).service_categories
+        : ((input as any).category ? [(input as any).category] : (input as any).specializations || []);
+      const orgId = input.organizationId || (input as any).organization_id;
+      // Normalize service_categories to valid vendor_category enum values
+      // Valid maintenance_category_enum values used by vendors.service_categories
+      const VALID_MAINT_CATS = new Set(['plumbing','electrical','hvac','roofing','painting','flooring','doors_windows','security','water_supply','borehole','generator','solar_system','compound_maintenance','pest_control','septic_tank','other']);
+      const MAINT_CAT_MAP: Record<string, string> = { plumbing: 'plumbing', electrical: 'electrical', hvac: 'hvac', roofing: 'roofing', painting: 'painting', flooring: 'flooring', security: 'security' };
+      const normalizedCategories = serviceCategories.length > 0
+        ? serviceCategories.map((c: string) => VALID_MAINT_CATS.has(c) ? c : (MAINT_CAT_MAP[c] || 'other'))
+        : ['other'];
+      
       const result = await client.query(
         `INSERT INTO vendors (
           id, organization_id,
-          name, trading_name, category, specializations,
-          business_registration, tin_number, vat_registered, vat_number,
-          primary_contact_name, primary_contact_title, primary_contact_email,
-          primary_contact_phone, primary_contact_whatsapp,
-          alt_contact_name, alt_contact_email, alt_contact_phone,
-          address_line1, address_line2, city, region, country, ghana_post_gps, postal_code,
-          latitude, longitude,
-          bank_name, bank_branch, bank_account_number, bank_account_name,
-          mobile_money_number, mobile_money_provider,
-          credit_limit, payment_terms, preferred_currency,
-          has_insurance, insurance_expiry, has_safety_certification, safety_certification_expiry,
-          is_approved, approval_status, is_active,
-          tags, notes, created_by
+          business_name, contact_person, phone_primary, email,
+          address, region, tin_number, business_registration,
+          service_categories, notes, created_by
         ) VALUES (
-          $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15,
-          $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31,
-          $32, $33, $34, $35, $36, $37, $38, $39, $40, false, 'pending', true, $41, $42, $43
+          $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13
         )
         RETURNING *`,
         [
           id,
-          input.organizationId,
-          input.name,
-          input.tradingName || null,
-          input.category,
-          input.specializations || [],
-          input.businessRegistration || null,
-          input.tinNumber || null,
-          input.vatRegistered || false,
-          input.vatNumber || null,
-          input.primaryContactName || null,
-          input.primaryContactTitle || null,
-          input.primaryContactEmail || null,
-          input.primaryContactPhone || null,
-          input.primaryContactWhatsapp || null,
-          input.altContactName || null,
-          input.altContactEmail || null,
-          input.altContactPhone || null,
-          input.addressLine1 || null,
-          input.addressLine2 || null,
-          input.city || null,
-          input.region || null,
-          input.country || 'Ghana',
-          input.ghanaPostGps || null,
-          input.postalCode || null,
-          input.latitude || null,
-          input.longitude || null,
-          input.bankName || null,
-          input.bankBranch || null,
-          input.bankAccountNumber || null,
-          input.bankAccountName || null,
-          input.mobileMoneyNumber || null,
-          input.mobileMoneyProvider || null,
-          input.creditLimit || null,
-          input.paymentTerms || 'net_30',
-          input.preferredCurrency || 'GHS',
-          input.hasInsurance || false,
-          input.insuranceExpiry || null,
-          input.hasSafetyCertification || false,
-          input.safetyCertificationExpiry || null,
-          input.tags || [],
-          input.notes || null,
-          input.createdBy || null,
+          orgId,
+          businessName,
+          contactPerson,
+          phonePrimary,
+          (input as any).primaryContactEmail || (input as any).email || null,
+          (input as any).addressLine1 || (input as any).address_line1 || (input as any).address || null,
+          (input as any).region || null,
+          (input as any).tinNumber || (input as any).tin_number || null,
+          (input as any).businessRegistration || (input as any).business_registration || null,
+          normalizedCategories,
+          (input as any).notes || null,
+          input.createdBy || (input as any).created_by || null,
         ]
       );
       
@@ -1124,14 +1100,11 @@ class TeamService {
     try {
       const result = await pool.query(
         `UPDATE vendors 
-         SET is_approved = true, 
-             approval_status = 'approved',
-             approved_by = $2, 
-             approved_at = NOW(),
+         SET status = 'active',
              updated_at = NOW()
          WHERE id = $1
          RETURNING *`,
-        [vendorId, approvedBy]
+        [vendorId]
       );
       
       if (!result.rows[0]) {
@@ -1542,6 +1515,125 @@ class TeamService {
 
   async getRolesByCategory(category: string): Promise<Array<{ role: GhanaTeamRole; category: string; displayName: string; description: string }>> {
     return TeamService.GHANA_ROLES.filter(r => r.category === category);
+  }
+
+  // ============================================================================
+  // MISSING COMMUNICATION METHODS
+  // ============================================================================
+
+  async getCommunicationLogs(filters: any = {}, limit = 50, offset = 0): Promise<{ logs: CommunicationLog[]; total: number }> {
+    const conditions: string[] = [];
+    const values: any[] = [];
+    let idx = 1;
+    if (filters.projectId) { conditions.push(`project_id = $${idx++}`); values.push(filters.projectId); }
+    if (filters.organizationId) { conditions.push(`organization_id = $${idx++}`); values.push(filters.organizationId); }
+    const where = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
+    const [rows, countRow] = await Promise.all([
+      pool.query(`SELECT * FROM communication_logs ${where} ORDER BY communication_date DESC LIMIT $${idx++} OFFSET $${idx++}`, [...values, limit, offset]),
+      pool.query(`SELECT COUNT(*) FROM communication_logs ${where}`, values),
+    ]);
+    return { logs: rows.rows.map(r => this.mapCommunicationLog(r)), total: parseInt(countRow.rows[0].count) };
+  }
+
+  async getCommunicationById(id: string): Promise<CommunicationLog | null> {
+    const result = await pool.query(`SELECT * FROM communication_logs WHERE id = $1`, [id]);
+    return result.rows[0] ? this.mapCommunicationLog(result.rows[0]) : null;
+  }
+
+  async updateCommunication(id: string, updates: any): Promise<CommunicationLog> {
+    const allowed = ['subject', 'summary', 'notes', 'outcome', 'follow_up_required', 'follow_up_date', 'follow_up_notes', 'is_important', 'status', 'communication_date', 'communication_type', 'direction'];
+    const fields: string[] = [];
+    const values: any[] = [];
+    let idx = 1;
+    for (const key of allowed) {
+      const val = updates[key] ?? updates[key.replace(/_([a-z])/g, (_, c) => c.toUpperCase())];
+      if (val !== undefined) { fields.push(`${key} = $${idx++}`); values.push(val); }
+    }
+    if (fields.length === 0) {
+      const row = await pool.query(`SELECT * FROM communication_logs WHERE id = $1`, [id]);
+      return this.mapCommunicationLog(row.rows[0]);
+    }
+    values.push(id);
+    const result = await pool.query(`UPDATE communication_logs SET ${fields.join(', ')}, updated_at = NOW() WHERE id = $${idx} RETURNING *`, values);
+    return this.mapCommunicationLog(result.rows[0]);
+  }
+
+  async deleteCommunication(id: string): Promise<void> {
+    await pool.query(`DELETE FROM communication_logs WHERE id = $1`, [id]);
+  }
+
+  // ============================================================================
+  // MISSING VENDOR METHODS
+  // ============================================================================
+
+  async updateVendor(id: string, updates: any): Promise<Vendor> {
+    const allowed = ['business_name', 'contact_person', 'phone_primary', 'phone_secondary', 'email', 'address', 'region', 'tin_number', 'business_registration', 'notes', 'bank_name', 'bank_account_number', 'mobile_money_number'];
+    const fields: string[] = [];
+    const values: any[] = [];
+    let idx = 1;
+    // Accept snake_case or camelCase aliases
+    const aliases: Record<string, string> = { name: 'business_name', contact_name: 'contact_person', phone: 'phone_primary' };
+    const merged = { ...updates };
+    for (const [alias, col] of Object.entries(aliases)) {
+      if (merged[alias] !== undefined && merged[col] === undefined) merged[col] = merged[alias];
+    }
+    for (const key of allowed) {
+      if (merged[key] !== undefined) { fields.push(`${key} = $${idx++}`); values.push(merged[key]); }
+    }
+    if (fields.length === 0) {
+      const row = await pool.query(`SELECT * FROM vendors WHERE id = $1`, [id]);
+      return this.mapVendor(row.rows[0]);
+    }
+    values.push(id);
+    const result = await pool.query(`UPDATE vendors SET ${fields.join(', ')}, updated_at = NOW() WHERE id = $${idx} RETURNING *`, values);
+    return this.mapVendor(result.rows[0]);
+  }
+
+  async deleteVendor(id: string): Promise<void> {
+    await pool.query(`DELETE FROM vendors WHERE id = $1`, [id]);
+  }
+
+  async getVendorRatings(vendorId: string): Promise<any[]> {
+    const result = await pool.query(`SELECT * FROM pm_vendor_ratings WHERE vendor_id = $1 ORDER BY created_at DESC`, [vendorId]);
+    return result.rows;
+  }
+
+  async getVendorRatingSummary(vendorId: string): Promise<any> {
+    const result = await pool.query(
+      `SELECT COUNT(*) as total, AVG(rating)::numeric(3,2) as average,
+              AVG(quality_rating)::numeric(3,2) as quality_avg,
+              AVG(timeliness_rating)::numeric(3,2) as timeliness_avg,
+              AVG(communication_rating)::numeric(3,2) as communication_avg
+       FROM pm_vendor_ratings WHERE vendor_id = $1`,
+      [vendorId]
+    );
+    return result.rows[0];
+  }
+
+  async addVendorRating(vendorId: string, ratedBy: string, data: any): Promise<any> {
+    const result = await pool.query(
+      `INSERT INTO pm_vendor_ratings (vendor_id, rated_by, rating, quality_rating, timeliness_rating, communication_rating, value_rating, comment)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *`,
+      [vendorId, ratedBy, data.rating, data.criteria?.quality || null, data.criteria?.timeliness || null, data.criteria?.communication || null, data.criteria?.value || null, data.comment || null]
+    );
+    return result.rows[0];
+  }
+
+  async getVendorAssignments(vendorId: string): Promise<any[]> {
+    const result = await pool.query(`SELECT * FROM project_vendor_assignments WHERE vendor_id = $1 ORDER BY created_at DESC`, [vendorId]);
+    return result.rows;
+  }
+
+  async createVendorAssignment(vendorId: string, assignedBy: string, data: any): Promise<any> {
+    const orgId = data.organization_id || data.organizationId;
+    const projectId = data.project_id || data.projectId;
+    const workScope = data.scope || data.work_scope || data.workScope || 'General services';
+    const result = await pool.query(
+      `INSERT INTO project_vendor_assignments (vendor_id, project_id, organization_id, work_scope, work_category, contract_value, contract_start_date, contract_end_date, assigned_by)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING *`,
+      [vendorId, projectId, orgId, workScope, data.work_category || null, data.contract_value || null, data.start_date || data.contract_start_date || null, data.end_date || data.contract_end_date || null, assignedBy]
+    );
+    return result.rows[0];
   }
 }
 

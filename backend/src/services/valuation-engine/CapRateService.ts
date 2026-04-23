@@ -474,15 +474,19 @@ export class CapRateService {
     // Get average rent per sqm from market
     const rentResult = await query(`
       SELECT 
-        AVG(p.price) / NULLIF(COALESCE(p.total_area_sqm, p.built_area_sqm), 0) AS avg_rent_per_sqm,
+        AVG(price_per_sqm) AS avg_rent_per_sqm,
         COUNT(*) as sample_count
-      FROM properties p
-      WHERE p.region = $1::region_code_enum
-        AND p.property_type = $2::property_type_enum
-        AND p.transaction_type = 'rent'
-        AND p.price > 0
-        AND COALESCE(p.total_area_sqm, p.built_area_sqm) > 0
-        AND p.created_at >= NOW() - INTERVAL '12 months'
+      FROM (
+        SELECT
+          p.price / NULLIF(COALESCE(p.total_area_sqm, p.built_area_sqm), 0) AS price_per_sqm
+        FROM properties p
+        WHERE p.region = $1::region_code_enum
+          AND p.property_type = $2::property_type_enum
+          AND p.transaction_type = 'rental'
+          AND p.price > 0
+          AND COALESCE(p.total_area_sqm, p.built_area_sqm) > 0
+          AND p.created_at >= NOW() - INTERVAL '12 months'
+      ) sub
     `, [region, propertyType]);
 
     let rentPerSqm = 15; // Default GHS 15/sqm/month for Ghana
@@ -981,7 +985,7 @@ export class CapRateService {
       FROM properties p
       WHERE p.region = $1::region_code_enum
         AND p.property_type = $2::property_type_enum
-        AND p.transaction_type = 'rent'
+        AND p.transaction_type = 'rental'
         AND p.price > 0
         AND COALESCE(p.total_area_sqm, p.built_area_sqm, p.building_size_sqm) > 0
         AND p.is_active = true
@@ -1215,16 +1219,17 @@ export class CapRateService {
       const transactionResult = await query(`
         SELECT 
           benchmark_cap_rate,
-          cap_rate_range_low,
-          cap_rate_range_high,
+          typical_cap_rate_low,
+          typical_cap_rate_high,
           sample_size,
           confidence_score,
-          methodology
+          methodology_notes
         FROM market_cap_rate_benchmarks
         WHERE region = $1::region_code_enum
           AND property_type = $2::property_type_enum
-          AND methodology = 'market_extraction'
-          AND effective_date >= NOW() - INTERVAL '6 months'
+          AND data_quality IN ('high', 'moderate')
+          AND confidence_score >= 0.65
+          AND (valid_until IS NULL OR valid_until >= CURRENT_DATE)
           AND sample_size >= 3
         ORDER BY confidence_score DESC, effective_date DESC
         LIMIT 1
@@ -1235,8 +1240,8 @@ export class CapRateService {
         return {
           method: 'market_extraction',
           capRate: parseFloat(row.benchmark_cap_rate),
-          capRateLow: parseFloat(row.cap_rate_range_low),
-          capRateHigh: parseFloat(row.cap_rate_range_high),
+          capRateLow: parseFloat(row.typical_cap_rate_low),
+          capRateHigh: parseFloat(row.typical_cap_rate_high),
           confidence: parseFloat(row.confidence_score) >= 0.75 ? 'high' : 'moderate',
           ricsCategory: 'A',
           sampleSize: parseInt(row.sample_size),
@@ -1252,15 +1257,16 @@ export class CapRateService {
       const partnerResult = await query(`
         SELECT 
           benchmark_cap_rate,
-          cap_rate_range_low,
-          cap_rate_range_high,
+          typical_cap_rate_low,
+          typical_cap_rate_high,
           sample_size,
           confidence_score
         FROM market_cap_rate_benchmarks
         WHERE region = $1::region_code_enum
           AND property_type = $2::property_type_enum
-          AND methodology = 'partner_data'
-          AND effective_date >= NOW() - INTERVAL '6 months'
+          AND data_quality IN ('high', 'moderate')
+          AND confidence_score BETWEEN 0.55 AND 0.65
+          AND (valid_until IS NULL OR valid_until >= CURRENT_DATE)
           AND sample_size >= 2
         ORDER BY confidence_score DESC, effective_date DESC
         LIMIT 1
@@ -1271,8 +1277,8 @@ export class CapRateService {
         return {
           method: 'partner_data',
           capRate: parseFloat(row.benchmark_cap_rate),
-          capRateLow: parseFloat(row.cap_rate_range_low),
-          capRateHigh: parseFloat(row.cap_rate_range_high),
+          capRateLow: parseFloat(row.typical_cap_rate_low),
+          capRateHigh: parseFloat(row.typical_cap_rate_high),
           confidence: 'moderate',
           ricsCategory: 'A',
           sampleSize: parseInt(row.sample_size),
@@ -1316,15 +1322,15 @@ export class CapRateService {
       const surveyResult = await query(`
         SELECT 
           benchmark_cap_rate,
-          cap_rate_range_low,
-          cap_rate_range_high,
+          typical_cap_rate_low,
+          typical_cap_rate_high,
           sample_size,
-          source_description
+          methodology_notes
         FROM market_cap_rate_benchmarks
         WHERE region = $1::region_code_enum
           AND property_type = $2::property_type_enum
-          AND methodology = 'survey'
-          AND effective_date >= NOW() - INTERVAL '12 months'
+          AND data_quality = 'low'
+          AND (valid_until IS NULL OR valid_until >= CURRENT_DATE)
         ORDER BY effective_date DESC
         LIMIT 1
       `, [region, propertyType]);
@@ -1334,13 +1340,13 @@ export class CapRateService {
         return {
           method: 'survey_data',
           capRate: parseFloat(row.benchmark_cap_rate),
-          capRateLow: parseFloat(row.cap_rate_range_low),
-          capRateHigh: parseFloat(row.cap_rate_range_high),
+          capRateLow: parseFloat(row.typical_cap_rate_low),
+          capRateHigh: parseFloat(row.typical_cap_rate_high),
           confidence: 'limited',
           ricsCategory: 'C',
           sampleSize: parseInt(row.sample_size) || 0,
           description: 'Cap rate from published surveys - verify applicability',
-          source: row.source_description
+          source: row.methodology_notes
         };
       }
     } catch (error: any) {
@@ -1376,24 +1382,22 @@ export class CapRateService {
           id,
           region,
           property_type,
-          transaction_type,
           benchmark_cap_rate,
-          cap_rate_range_low,
-          cap_rate_range_high,
+          typical_cap_rate_low,
+          typical_cap_rate_high,
           sample_size,
           confidence_score,
           market_condition,
           yield_trend,
           data_quality,
-          methodology,
-          source_description,
+          methodology_notes,
           effective_date,
-          expiry_date
+          valid_until,
+          valid_from
         ) VALUES (
           gen_random_uuid(),
           $1::region_code_enum,
           $2::property_type_enum,
-          'sale',
           $3,
           $4,
           $5,
@@ -1402,22 +1406,21 @@ export class CapRateService {
           $8,
           $9,
           $10,
-          'listing_derived',
           $11,
           CURRENT_DATE,
-          CURRENT_DATE + INTERVAL '30 days'
+          CURRENT_DATE + INTERVAL '30 days',
+          CURRENT_DATE
         )
-        ON CONFLICT (region, property_type, methodology) 
-        WHERE methodology = 'listing_derived'
+        ON CONFLICT (region, property_type, property_subtype, valid_from)
         DO UPDATE SET
           benchmark_cap_rate = EXCLUDED.benchmark_cap_rate,
-          cap_rate_range_low = EXCLUDED.cap_rate_range_low,
-          cap_rate_range_high = EXCLUDED.cap_rate_range_high,
+          typical_cap_rate_low = EXCLUDED.typical_cap_rate_low,
+          typical_cap_rate_high = EXCLUDED.typical_cap_rate_high,
           sample_size = EXCLUDED.sample_size,
           confidence_score = EXCLUDED.confidence_score,
           effective_date = EXCLUDED.effective_date,
-          expiry_date = EXCLUDED.expiry_date,
-          updated_at = NOW()
+          valid_until = EXCLUDED.valid_until,
+          last_updated = NOW()
       `, [
         region,
         propertyType,

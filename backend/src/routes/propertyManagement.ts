@@ -247,7 +247,11 @@ router.post('/tenants', validate(pmCreateTenantSchema), asyncHandler(async (req:
         return res.status(401).json({ error: 'Organization not found' });
     }
 
-    const tenant = await tenantService.createTenant(organizationId, req.body, userId);
+    const tenantData = {
+        ...req.body,
+        phonePrimary: req.body.phonePrimary ?? req.body.phone ?? null,
+    };
+    const tenant = await tenantService.createTenant(organizationId, tenantData, userId);
     res.status(201).json(tenant);
 }));
 
@@ -1149,7 +1153,14 @@ router.post('/vendors', validate(pmCreateVendorSchema), asyncHandler(async (req:
         return res.status(401).json({ error: 'User ID required' });
     }
 
-    const vendor = await vendorService.createVendor(organizationId, req.body, userId);
+    const vendorData = {
+        ...req.body,
+        businessName: req.body.businessName ?? req.body.name,
+        contactPerson: req.body.contactPerson ?? req.body.name ?? null,
+        phonePrimary: req.body.phonePrimary ?? req.body.phone ?? null,
+        serviceCategories: req.body.serviceCategories ?? (req.body.category ? [req.body.category] : []),
+    };
+    const vendor = await vendorService.createVendor(organizationId, vendorData, userId);
     res.status(201).json(vendor);
 }));
 
@@ -1928,7 +1939,14 @@ router.get('/leases/:tenancyId/signing-status', asyncHandler(async (req: Request
     const { signingService } = await import('../../shared-services/e-sign');
 
     // Get signing requests for this tenancy
-    const requests = await signingService.getSigningRequestsByDocument(tenancyId, 'tenancy_agreement');
+    // Note: signing_requests table may not exist if legacy e-sign schema was dropped (migration 126)
+    let requests: any[] = [];
+    try {
+        requests = await signingService.getSigningRequestsByDocument(tenancyId, 'tenancy_agreement');
+    } catch (err: any) {
+        // Legacy table may have been removed — return empty list gracefully
+        console.warn('signing_requests table unavailable, returning empty list', { tenancyId, error: err.message });
+    }
 
     res.json({
         success: true,
@@ -2330,7 +2348,7 @@ router.get('/applications/:id/lease', asyncHandler(async (req: Request, res: Res
 
     // First, try to find the application
     const appResult = await db.query(
-        `SELECT a.id, a.status, a.envelope_id,
+        `SELECT a.id, a.status,
                 a.applicant_full_name, a.applicant_email,
                 p.title as property_title, p.address_street
          FROM applications a

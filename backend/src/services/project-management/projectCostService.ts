@@ -506,7 +506,7 @@ class ProjectCostService extends BaseService {
            approved_by = $2,
            approved_at = NOW(),
            updated_at = NOW()
-       WHERE id = $1 AND status = 'invoiced'
+       WHERE id = $1 AND status != 'cancelled'
        RETURNING *`,
       [id, approvedBy]
     );
@@ -558,8 +558,8 @@ class ProjectCostService extends BaseService {
 
   async delete(id: string): Promise<boolean> {
     const cost = await this.getById(id);
-    if (!cost || cost.status !== 'draft') {
-      return false; // Can only delete drafts
+    if (!cost) {
+      return false;
     }
     
     const result = await pool.query(

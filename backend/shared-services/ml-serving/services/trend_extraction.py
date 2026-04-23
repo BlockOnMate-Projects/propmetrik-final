@@ -299,7 +299,16 @@ class TrendAnalysisService:
     ) -> List[Dict[str, Any]]:
         """Fetch sentiment analysis results for trend computation."""
         conditions = ["analyzed_at >= $1::timestamp", "analyzed_at <= $2::timestamp"]
-        params: list = [start_date, end_date]
+        # asyncpg requires datetime objects, not strings
+        def _to_dt(v):
+            if isinstance(v, str):
+                from datetime import datetime as _dt
+                try:
+                    return _dt.fromisoformat(v)
+                except ValueError:
+                    return _dt.strptime(v[:10], "%Y-%m-%d")
+            return v
+        params: list = [_to_dt(start_date), _to_dt(end_date)]
         idx = 3
 
         if region:

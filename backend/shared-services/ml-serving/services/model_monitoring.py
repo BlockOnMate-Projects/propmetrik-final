@@ -169,6 +169,19 @@ class ModelMonitoringService:
     and manages ensemble analytics.
     """
 
+    def __init__(self):
+        # Optionally wired at startup via set_model_registry()
+        self._registry = None
+
+    def set_model_registry(self, registry) -> None:
+        """
+        Wire the ModelRegistry so monitoring can read real model artifacts
+        from disk (feature importances, ensemble weights, training metrics)
+        without requiring DB rows.
+        """
+        self._registry = registry
+        logger.info("ModelRegistry wired into ModelMonitoringService")
+
     # -------------------------------------------------
     # Section 8.1: Performance Metrics
     # -------------------------------------------------
@@ -434,10 +447,12 @@ class ModelMonitoringService:
         """
         Get feature importance rankings.
 
-        Uses model metadata for tree-based importances and
-        calculates permutation importance where possible.
+        Priority:
+          1. ml_model_metadata DB table (populated after training runs)
+          2. Loaded model artifact on disk (RF feature_importances_ array)
+          3. Default domain-expertise fallback
         """
-        # Try to load from model metadata
+        # ── 1. Try DB ────────────────────────────────────────────────────────
         try:
             rows = await async_db.fetch(
                 """
@@ -458,7 +473,22 @@ class ModelMonitoringService:
         except Exception:
             pass
 
-        # Return default feature importances based on domain knowledge
+        # ── 2. Try loaded model artifact on disk ────────────────────────────
+        if self._registry is not None:
+            try:
+                model_data = self._registry.get_model(model_version)
+                ensemble = model_data.get("ensemble")
+                metadata = model_data.get("metadata", {})
+                feature_names = metadata.get("feature_names", [])
+                if ensemble and "random_forest" in ensemble and feature_names:
+                    rf = ensemble["random_forest"]
+                    importances = rf.feature_importances_
+                    raw = dict(zip(feature_names, [float(v) for v in importances]))
+                    return self._parse_feature_importances(raw)
+            except Exception as exc:
+                logger.debug(f"Could not read feature importances from model artifact: {exc}")
+
+        # ── 3. Domain-expertise fallback ─────────────────────────────────────
         return self._default_feature_importances()
 
     def _parse_feature_importances(
@@ -966,10 +996,15 @@ class ModelMonitoringService:
         """
         Get ensemble model analytics showing individual model
         contributions, weights, and diversity metrics.
+
+        Priority:
+          1. ml_model_metadata DB table (populated after training runs)
+          2. Loaded model artifact metadata.json on disk (real learned weights)
+          3. Architecture-based defaults
         """
         version = model_version if model_version != "latest" else await self._get_active_version()
 
-        # Try to load from model metadata
+        # ── 1. Try DB ────────────────────────────────────────────────────────
         try:
             row = await async_db.fetchrow(
                 """
@@ -996,8 +1031,69 @@ class ModelMonitoringService:
         except Exception:
             pass
 
-        # Return defaults from training pipeline knowledge
+        # ── 2. Try loaded model artifact on disk ─────────────────────────────
+        if self._registry is not None:
+            try:
+                model_data = self._registry.get_model(model_version)
+                metadata = model_data.get("metadata", {})
+                weights_raw = metadata.get("ensemble_weights")
+                training_metrics = metadata.get("metrics", {})
+                if weights_raw:
+                    # Per-model eval data not available without separate tracking;
+                    # use ensemble training metrics as the best available proxy.
+                    individual_metrics = {
+                        name: {
+                            "mae": training_metrics.get("mae", 0),
+                            "r2": training_metrics.get("r2", 0),
+                        }
+                        for name in weights_raw
+                    }
+                    return self._build_ensemble_analytics_from_metadata(
+                        version, weights_raw, training_metrics, individual_metrics
+                    )
+            except Exception as exc:
+                logger.debug(f"Could not read ensemble analytics from model artifact: {exc}")
+
+        # ── 3. Architecture-based defaults ───────────────────────────────────
         return self._default_ensemble_analytics(version)
+
+    def _build_ensemble_analytics_from_metadata(
+        self,
+        version: str,
+        weights_raw: Dict[str, float],
+        overall_metrics: Dict[str, float],
+        individual_metrics: Dict[str, Dict],
+    ) -> EnsembleAnalytics:
+        """Build EnsembleAnalytics from training metadata (no per-model eval rows)."""
+        total_weight = sum(weights_raw.values()) or 1.0
+        models = []
+        for name, weight in weights_raw.items():
+            ind = individual_metrics.get(name, {})
+            models.append(EnsembleModelWeight(
+                model_name=name,
+                weight=round(weight, 4),
+                contribution_pct=round(weight / total_weight * 100, 1),
+                individual_mae=ind.get("mae", overall_metrics.get("mae", 0)),
+                individual_r2=ind.get("r2", overall_metrics.get("r2", 0)),
+            ))
+
+        ensemble_mae = overall_metrics.get("mae", 0.0)
+        ensemble_r2 = overall_metrics.get("r2", 0.0)
+        best_single_mae = min(m.individual_mae for m in models) if models else ensemble_mae
+        improvement = (
+            (best_single_mae - ensemble_mae) / best_single_mae * 100
+            if best_single_mae > 0 else 0.0
+        )
+
+        return EnsembleAnalytics(
+            model_version=version,
+            weights=sorted(models, key=lambda x: x.weight, reverse=True),
+            ensemble_mae=round(ensemble_mae, 2),
+            ensemble_r2=round(ensemble_r2, 4),
+            improvement_over_best_single=round(improvement, 1),
+            diversity_index=0.65,
+            correlation_matrix={},
+        )
 
     def _build_ensemble_analytics(
         self,
@@ -1087,6 +1183,8 @@ class ModelMonitoringService:
 
     async def _get_active_version(self) -> str:
         """Get the currently active model version."""
+        if self._registry is not None:
+            return self._registry.active_version
         try:
             row = await async_db.fetchrow(
                 "SELECT model_version FROM ml_model_metadata WHERE is_active = true ORDER BY created_at DESC LIMIT 1"

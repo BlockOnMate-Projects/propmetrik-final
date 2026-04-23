@@ -241,6 +241,11 @@ class ValuationEngineService {
       // 10. Cache the result
       await this.cacheValuation(savedValuation);
 
+      // 11. Mirror into ml_predictions for continuous monitoring
+      this.persistToMlPredictions(savedValuation, property).catch(err =>
+        logger.warn('ml_predictions insert failed (non-fatal)', { error: err.message })
+      );
+
       const duration = Date.now() - startTime;
       logger.info('Valuation completed', {
         propertyId: input.property_id,
@@ -958,6 +963,55 @@ class ValuationEngineService {
     } catch (err: any) {
       logger.warn('Failed to cache valuation', { error: err.message });
     }
+  }
+
+  /**
+   * Mirror a completed valuation into ml_predictions so the monitoring
+   * pipeline captures every AVM result automatically.
+   * Fires fire-and-forget — never throws to the caller.
+   */
+  private async persistToMlPredictions(
+    valuation: ValuationResult,
+    property: PropertyForValuation
+  ): Promise<void> {
+    const value = valuation.estimated_value;
+    if (!value || value <= 0) return;
+
+    const priceBand = (() => {
+      if (value < 100_000)   return 'under_100k';
+      if (value < 300_000)   return '100k_300k';
+      if (value < 600_000)   return '300k_600k';
+      if (value < 1_000_000) return '600k_1m';
+      if (value < 3_000_000) return '1m_3m';
+      return 'over_3m';
+    })();
+
+    await query(
+      `INSERT INTO ml_predictions
+         (property_id, model_version, property_type, region,
+          price_band, predicted_value, confidence, features)
+       VALUES ($1, $2, $3, $4, $5, $6::numeric, $7::numeric, $8::jsonb)
+       ON CONFLICT DO NOTHING`,
+      [
+        valuation.property_id,
+        `avm_hybrid_${valuation.valuation_type || 'avm'}`,
+        property.property_type,
+        property.region,
+        priceBand,
+        Math.min(value, 9_999_999_999_999.99),
+        valuation.confidence_score ?? null,
+        JSON.stringify({
+          bedrooms: property.bedrooms,
+          bathrooms: property.bathrooms,
+          built_area_sqm: property.built_area_sqm,
+          total_area_sqm: property.total_area_sqm,
+          latitude: property.latitude,
+          longitude: property.longitude,
+          methods_used: (valuation.methods_used || []).map((m: any) => m.method || m),
+          primary_method: valuation.primary_method,
+        }),
+      ]
+    );
   }
 
   /**

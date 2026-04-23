@@ -105,6 +105,10 @@ router.post('/', async (req: Request, res: Response) => {
             return res.status(400).json({ success: false, error: 'Organization ID required' });
         }
 
+        if (!req.body.lineItems || !Array.isArray(req.body.lineItems) || req.body.lineItems.length === 0) {
+            return res.status(400).json({ success: false, error: 'lineItems array is required and must not be empty' });
+        }
+
         const invoice = await valuationInvoiceService.createInvoice({
             ...req.body,
             organizationId,

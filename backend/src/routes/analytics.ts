@@ -107,6 +107,10 @@ router.get('/funnel/:pipelineId', async (req: Request, res: Response) => {
       endDate ? new Date(endDate as string) : undefined
     );
     
+    if (!funnel) {
+      res.status(404).json({ success: false, error: 'Pipeline not found' });
+      return;
+    }
     res.json({ success: true, data: funnel });
   } catch (error) {
     logger.error('Failed to get funnel analysis', { error: (error as Error).message });

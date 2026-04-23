@@ -283,10 +283,15 @@ router.get(
  * GET /sensitivity/:valuationId
  * Get sensitivity analyses for a specific valuation.
  */
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 router.get(
   '/sensitivity/:valuationId',
   asyncHandler(async (req: Request, res: Response) => {
     const { valuationId } = req.params;
+    if (!UUID_RE.test(valuationId)) {
+      return res.status(400).json({ success: false, error: 'valuationId must be a valid UUID' });
+    }
     const data = await valuationAnalyticsService.getSensitivityAnalyses(valuationId);
     res.json({ success: true, data });
   }),

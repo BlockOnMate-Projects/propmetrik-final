@@ -465,7 +465,7 @@ export const pmCreateVendorSchema = z.object({
 }).passthrough();
 
 export const pmCreateDocumentSchema = z.object({
-    propertyId: uuidSchema.optional(),
+    propertyId: uuidSchema,
     tenancyId: uuidSchema.optional(),
     documentType: z.string().min(1).max(100),
     title: z.string().min(1).max(255),

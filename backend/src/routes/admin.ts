@@ -218,15 +218,24 @@ router.post('/fee-configurations', asyncHandler(async (req: Request, res: Respon
         return;
     }
 
-    const result = await pool.query(`
-        INSERT INTO fee_configurations (
-            payment_type, organization_id, fee_mode, percentage_rate, flat_amount,
-            min_fee, max_fee, currency
-        )
-        VALUES ($1, $2, $3, $4, $5, $6, $7, COALESCE($8, 'GHS'))
-        RETURNING *
-    `, [paymentType, organizationId || null, feeMode, pctRate, parseFloat(flatAmount),
-        minFee ?? null, maxFee ?? null, currency]);
+    let result;
+    try {
+        result = await pool.query(`
+            INSERT INTO fee_configurations (
+                payment_type, organization_id, fee_mode, percentage_rate, flat_amount,
+                min_fee, max_fee, currency
+            )
+            VALUES ($1, $2, $3, $4, $5, $6, $7, COALESCE($8, 'GHS'))
+            RETURNING *
+        `, [paymentType, organizationId || null, feeMode, pctRate, parseFloat(flatAmount),
+            minFee ?? null, maxFee ?? null, currency]);
+    } catch (err: any) {
+        if (err.code === '23505') {
+            res.status(409).json({ error: 'Fee configuration for this payment type already exists' });
+            return;
+        }
+        throw err;
+    }
 
     feeEngine.clearCache();
 
@@ -253,6 +262,7 @@ router.post('/fee-configurations', asyncHandler(async (req: Request, res: Respon
 
 // =====================================================
 // CRYPTO PAYMENT ADMIN ROUTES
+// =====================================================
 // =====================================================
 
 /**
@@ -496,11 +506,20 @@ router.get('/crypto/nowpayments/estimate', asyncHandler(async (req: Request, res
         return res.status(400).json({ error: 'Required query params: amount, from, to' });
     }
 
-    const estimate = await nowPaymentsService.getEstimate(
-        parseFloat(amount as string),
-        from as string,
-        to as string,
-    );
+    if (!nowPaymentsService.isConfigured()) {
+        return res.status(503).json({ error: 'NOWPayments not configured' });
+    }
+
+    let estimate;
+    try {
+        estimate = await nowPaymentsService.getEstimate(
+            parseFloat(amount as string),
+            from as string,
+            to as string,
+        );
+    } catch (err: any) {
+        return res.status(502).json({ error: 'NOWPayments API unavailable', details: err.message });
+    }
     res.json(estimate);
 }));
 
@@ -517,7 +536,16 @@ router.get('/crypto/nowpayments/min-amount', asyncHandler(async (req: Request, r
         return res.status(400).json({ error: 'Required query params: from, to' });
     }
 
-    const minAmount = await nowPaymentsService.getMinimumAmount(from as string, to as string);
+    if (!nowPaymentsService.isConfigured()) {
+        return res.status(503).json({ error: 'NOWPayments not configured' });
+    }
+
+    let minAmount;
+    try {
+        minAmount = await nowPaymentsService.getMinimumAmount(from as string, to as string);
+    } catch (err: any) {
+        return res.status(502).json({ error: 'NOWPayments API unavailable', details: err.message });
+    }
     res.json(minAmount);
 }));
 

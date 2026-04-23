@@ -793,9 +793,18 @@ router.delete('/invoices/:id', requirePMWrite, async (req: Request, res: Respons
 router.post('/expenses', requirePMWrite, validate(createExpenseSchema), async (req: Request, res: Response) => {
   try {
     const userId = (req as any).user?.id || req.body.loggedBy;
+    const orgId = (req as any).user?.organizationId || req.headers['x-organization-id'] as string;
     
     const expense = await expenseLogService.create({
       ...req.body,
+      // Map snake_case body fields to camelCase for the service
+      projectId: req.body.projectId || req.body.project_id,
+      organizationId: req.body.organizationId || req.body.organization_id || orgId,
+      categoryId: req.body.categoryId || req.body.category_id,
+      costId: req.body.costId || req.body.cost_id,
+      expenseType: req.body.expenseType || req.body.expense_type || 'general',
+      receiptUrl: req.body.receiptUrl || req.body.receipt_url,
+      expenseDate: req.body.expenseDate || req.body.expense_date,
       loggedBy: userId,
     });
     

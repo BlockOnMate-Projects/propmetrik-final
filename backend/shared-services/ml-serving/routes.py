@@ -15,6 +15,7 @@ Endpoint Groups:
 """
 
 import logging
+from datetime import datetime, timedelta
 from typing import List, Optional
 
 from fastapi import APIRouter, HTTPException, Query
@@ -34,6 +35,29 @@ documents_router = APIRouter(prefix="/api/v1/ml/documents", tags=["Document Inte
 assistant_router = APIRouter(prefix="/api/v1/ml/assistant", tags=["AI Assistant"])
 monitoring_router = APIRouter(prefix="/api/v1/ml/monitoring", tags=["Model Monitoring"])
 ensemble_router = APIRouter(prefix="/api/v1/ml/ensemble", tags=["Ensemble Analytics"])
+training_router = APIRouter(prefix="/api/v1/ml/training", tags=["Model Training"])
+
+# Minimum prediction rows for statistically reliable drift / ensemble analysis
+_DRIFT_MIN_PREDICTIONS = 1_000
+
+
+async def _get_data_sufficiency_warning() -> Optional[str]:
+    """
+    Return a warning string when ml_predictions history is too thin for
+    reliable drift or ensemble analysis, otherwise return None.
+    """
+    try:
+        from database import async_db
+        row = await async_db.fetchrow("SELECT COUNT(*) AS n FROM ml_predictions")
+        n = int(row["n"]) if row else 0
+        if n < _DRIFT_MIN_PREDICTIONS:
+            return (
+                f"Insufficient prediction history ({n} rows, {_DRIFT_MIN_PREDICTIONS} required) "
+                "for statistically reliable drift/ensemble analysis. Results are indicative only."
+            )
+    except Exception:
+        pass
+    return None
 
 
 # =====================================================
@@ -50,7 +74,7 @@ async def analyze_sentiment(request: dict):
         source_type: str — news | social_media | report | policy
         source_url: str (optional) — Original source URL
     """
-    from services.sentiment_analysis import sentiment_analysis_service, SentimentRequest
+    from services.sentiment_analysis import sentiment_analysis_service, SentimentAnalysisRequest as SentimentRequest
 
     try:
         req = SentimentRequest(**request)
@@ -72,7 +96,7 @@ async def get_sentiment_history(
 
     try:
         results = await sentiment_analysis_service.get_history(
-            source_type=source_type, days=days, limit=limit
+            source=source_type, period_days=days
         )
         return {"results": results, "count": len(results)}
     except Exception as e:
@@ -91,7 +115,7 @@ async def get_market_confidence(
     from services.sentiment_analysis import sentiment_analysis_service
 
     try:
-        result = await sentiment_analysis_service.get_market_confidence_index(days=days)
+        result = await sentiment_analysis_service.get_market_confidence_index()
         return result
     except Exception as e:
         logger.error(f"Market confidence calculation failed: {e}")
@@ -130,7 +154,7 @@ async def batch_extract_entities(requests: List[dict]):
 
     try:
         reqs = [NERRequest(**r) for r in requests]
-        results = await ner_service.batch_extract(reqs)
+        results = await ner_service.batch_extract([r.text for r in reqs], reqs[0].document_type if reqs else None)
         return {"results": [r.model_dump() for r in results], "count": len(results)}
     except Exception as e:
         logger.error(f"Batch NER extraction failed: {e}")
@@ -153,11 +177,17 @@ async def analyze_trends(request: dict):
     from services.trend_extraction import trend_analysis_service
 
     try:
-        result = await trend_analysis_service.analyze_trends(
-            text=request.get("text", ""),
-            source_type=request.get("source_type"),
+        from services.trend_extraction import TrendAnalysisRequest
+        now = datetime.utcnow()
+        req = TrendAnalysisRequest(
+            data_source=request.get("source_type") or "all",
+            time_range={
+                "start_date": (now - timedelta(days=30)).strftime("%Y-%m-%d"),
+                "end_date": now.strftime("%Y-%m-%d"),
+            },
         )
-        return result
+        result = await trend_analysis_service.analyze_trends(req)
+        return result.model_dump()
     except Exception as e:
         logger.error(f"Trend analysis failed: {e}")
         raise HTTPException(status_code=500, detail=str(e))
@@ -172,7 +202,7 @@ async def get_trending_topics(
     from services.trend_extraction import trend_analysis_service
 
     try:
-        result = await trend_analysis_service.get_trending_topics(days=days, limit=limit)
+        result = await trend_analysis_service.get_trending_topics(limit=limit)
         return result
     except Exception as e:
         logger.error(f"Trending topics fetch failed: {e}")
@@ -418,7 +448,11 @@ async def detect_drift(
             baseline_days=baseline_days,
             current_days=current_days,
         )
-        return result.model_dump()
+        data = result.model_dump()
+        warning = await _get_data_sufficiency_warning()
+        if warning:
+            data["data_sufficiency_warning"] = warning
+        return data
     except Exception as e:
         logger.error(f"Drift detection failed: {e}")
         raise HTTPException(status_code=500, detail=str(e))
@@ -433,7 +467,11 @@ async def get_data_drift_details(
 
     try:
         results = await model_monitoring_service.get_data_drift_details(model_version)
-        return {"features": [r.model_dump() for r in results], "count": len(results)}
+        data = {"features": [r.model_dump() for r in results], "count": len(results)}
+        warning = await _get_data_sufficiency_warning()
+        if warning:
+            data["data_sufficiency_warning"] = warning
+        return data
     except Exception as e:
         logger.error(f"Data drift detail fetch failed: {e}")
         raise HTTPException(status_code=500, detail=str(e))
@@ -455,9 +493,124 @@ async def get_ensemble_analytics(
 
     try:
         result = await model_monitoring_service.get_ensemble_analytics(model_version)
-        return result.model_dump()
+        data = result.model_dump()
+        warning = await _get_data_sufficiency_warning()
+        if warning:
+            data["data_sufficiency_warning"] = warning
+        return data
     except Exception as e:
         logger.error(f"Ensemble analytics fetch failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# =====================================================
+# MODEL TRAINING ENDPOINTS
+# =====================================================
+
+@training_router.post("/retrain")
+async def trigger_retrain(
+    no_tune: bool = Query(False, description="Skip hyperparameter tuning (faster, for testing)"),
+    all_types_only: bool = Query(
+        False, description="Train a single combined model only (skip per-type segmentation)"
+    ),
+):
+    """
+    Trigger a full model retraining run.
+
+    Runs `training/train_pipeline.py` as a background process.
+    By default trains per-property-type segmented ensembles for better accuracy.
+    Use `all_types_only=true` to train a single combined model instead.
+
+    Returns a `job_id` — poll `GET /api/v1/ml/training/status/{job_id}` for progress.
+    """
+    import asyncio
+    import uuid
+    from pathlib import Path
+
+    job_id = str(uuid.uuid4())
+
+    # Prefer the venv Python so all deps are available
+    python = Path(__file__).parent / ".venv" / "bin" / "python"
+    if not python.exists():
+        python = Path(__file__).parent / ".venv" / "bin" / "python3"
+    python_str = str(python) if python.exists() else "python3"
+
+    # Run as a module (-m) so classes pickle as training.train_pipeline.X
+    # (not __main__.X), which survives uvicorn re-import without hacks.
+    cmd = [python_str, "-m", "training.train_pipeline"]
+    if no_tune:
+        cmd.append("--no-tune")
+    if all_types_only:
+        cmd.append("--all-types-only")
+
+    log_file = f"/tmp/retrain-{job_id}.log"
+
+    try:
+        proc = await asyncio.create_subprocess_exec(
+            *cmd,
+            stdout=open(log_file, "w"),
+            stderr=asyncio.subprocess.STDOUT,
+        )
+        return {
+            "status": "started",
+            "job_id": job_id,
+            "pid": proc.pid,
+            "log_file": log_file,
+            "segmented": not all_types_only,
+            "hyperparameter_tuning": not no_tune,
+            "message": (
+                "Segmented retraining started (one model per property type + all-types fallback). "
+                "Estimated time: 5–30 minutes depending on data size. "
+                f"Poll GET /api/v1/ml/training/status/{job_id} for progress."
+            ),
+        }
+    except Exception as e:
+        logger.error(f"Failed to start retraining: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to start retraining: {e}")
+
+
+@training_router.get("/status/{job_id}")
+async def get_retrain_status(job_id: str):
+    """
+    Get the status of a retraining job by reading its log file.
+    """
+    from pathlib import Path
+
+    # Validate job_id to prevent path traversal
+    if not job_id.replace("-", "").isalnum():
+        raise HTTPException(status_code=400, detail="Invalid job_id format")
+
+    log_file = f"/tmp/retrain-{job_id}.log"
+    path = Path(log_file)
+
+    if not path.exists():
+        raise HTTPException(status_code=404, detail=f"Job {job_id} not found")
+
+    try:
+        content = path.read_text()
+        lines = content.strip().split("\n") if content.strip() else []
+        last_lines = lines[-25:] if len(lines) > 25 else lines
+
+        is_complete = (
+            "=== Segmented training complete" in content
+            or "Training pipeline completed successfully" in content
+        )
+        has_error = "ERROR" in content and not is_complete
+
+        # Extract per-type metrics from log if available
+        type_results = []
+        for line in lines:
+            if "R²=" in line and "MAE=" in line:
+                type_results.append(line.strip())
+
+        return {
+            "job_id": job_id,
+            "status": "complete" if is_complete else ("error" if has_error else "running"),
+            "log_lines": len(lines),
+            "log_tail": last_lines,
+            "type_results": type_results,
+        }
+    except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -473,4 +626,5 @@ all_ml_routers = [
     assistant_router,
     monitoring_router,
     ensemble_router,
+    training_router,
 ]

@@ -543,22 +543,22 @@ export class BulkOperationsService {
                         p.title as property_name,
                         '' as unit_number,
                         ten.full_name as tenant_name,
-                        rp.amount_due,
-                        rp.payment_amount as amount_paid,
+                        rp.payment_amount,
                         rp.payment_date,
                         rp.payment_method,
                         rp.status,
-                        rp.due_date,
+                        rp.period_start_date,
+                        rp.period_end_date,
                         rp.created_at
                     FROM rent_payments rp
                     JOIN tenancies t ON rp.tenancy_id = t.id
                     JOIN properties p ON t.property_id = p.id
                     JOIN tenants ten ON t.tenant_id = ten.id
-                    WHERE rp.organization_id = $1
-                    ORDER BY rp.due_date DESC
+                    WHERE t.organization_id = $1
+                    ORDER BY rp.payment_date DESC
                 `;
-                columns = ['id', 'property_name', 'unit_number', 'tenant_name', 'amount_due',
-                           'amount_paid', 'payment_date', 'payment_method', 'status', 'due_date', 'created_at'];
+                columns = ['id', 'property_name', 'unit_number', 'tenant_name', 'payment_amount',
+                           'payment_date', 'payment_method', 'status', 'period_start_date', 'period_end_date', 'created_at'];
                 break;
 
             case 'work-orders':

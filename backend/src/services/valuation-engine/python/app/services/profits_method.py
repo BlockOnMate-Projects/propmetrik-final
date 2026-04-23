@@ -270,16 +270,18 @@ class ProfitsMethodService:
                 )
 
             # 2. Analyze revenue potential
-            revenue_analysis = await self._analyze_revenue(property_data)
+            revenue_analysis = await self._analyze_revenue(property_data, options)
 
             # 3. Analyze operating costs
-            cost_analysis = self._analyze_operating_costs(revenue_analysis.effective_gross_revenue, property_data)
+            cost_analysis = self._analyze_operating_costs(
+                revenue_analysis.effective_gross_revenue, property_data, options
+            )
 
             # 4. Calculate Maintainable Operating Profit (MOP)
             mop = revenue_analysis.effective_gross_revenue - cost_analysis.total_operating_costs
 
-            # 5. Get capitalization rate
-            cap_rate = self._get_profits_cap_rate(property_data)
+            # 5. Get capitalization rate (option override honoured inside the method)
+            cap_rate = self._get_profits_cap_rate(property_data, options)
 
             # 6. Calculate property value (MOP / Cap Rate)
             property_value = mop / cap_rate if cap_rate > 0 and mop > 0 else 0
@@ -340,13 +342,14 @@ class ProfitsMethodService:
         suitable_keywords = ["hotel", "hospital", "school", "restaurant", "fuel", "healthcare", "clinic"]
         return any(keyword in property_type for keyword in suitable_keywords)
 
-    async def _analyze_revenue(self, property_data: PropertyForValuation) -> RevenueAnalysis:
+    async def _analyze_revenue(self, property_data: PropertyForValuation, options: ValuationOptions = None) -> RevenueAnalysis:
         """Analyze revenue potential"""
         analysis = RevenueAnalysis()
         property_type = property_data.property_type.value.lower()
         region = property_data.region
 
         # Get revenue benchmark data
+        pm_opts = (options.profits_method_options or {}) if options else {}
         if property_type in REVENUE_BENCHMARKS:
             benchmark_data = REVENUE_BENCHMARKS[property_type]
             analysis.revenue_metric = benchmark_data["metric"]
@@ -361,14 +364,23 @@ class ProfitsMethodService:
             analysis.revenue_metric = "per_sqm_year"
             analysis.revenue_per_unit = DEFAULT_REVENUE_PER_SQM
 
+        # Allow workflow override of the benchmark revenue
+        if pm_opts.get("revenue_per_sqm"):
+            analysis.revenue_metric = "per_sqm_year"
+            analysis.revenue_per_unit = float(pm_opts["revenue_per_sqm"])
+
         # Determine revenue units based on metric
         analysis.revenue_units = self._get_revenue_units(property_data, analysis.revenue_metric)
         
         # Calculate gross revenue
         analysis.gross_annual_revenue = analysis.revenue_units * analysis.revenue_per_unit
 
-        # Apply occupancy rate
-        analysis.occupancy_rate = self._get_occupancy_rate(property_data)
+        # Apply occupancy rate (option override takes precedence)
+        if pm_opts.get("occupancy_rate") is not None:
+            occ = float(pm_opts["occupancy_rate"])
+            analysis.occupancy_rate = occ / 100 if occ > 1 else occ
+        else:
+            analysis.occupancy_rate = self._get_occupancy_rate(property_data)
         analysis.effective_gross_revenue = analysis.gross_annual_revenue * analysis.occupancy_rate
 
         return analysis
@@ -411,14 +423,49 @@ class ProfitsMethodService:
         property_type = property_data.property_type.value.lower()
         return occupancy_rates.get(property_type, 0.70)
 
-    def _analyze_operating_costs(self, gross_revenue: float, property_data: PropertyForValuation) -> OperatingCostAnalysis:
-        """Analyze operating cost structure"""
+    def _analyze_operating_costs(
+        self,
+        gross_revenue: float,
+        property_data: PropertyForValuation,
+        options: ValuationOptions = None,
+    ) -> OperatingCostAnalysis:
+        """Analyze operating cost structure.
+
+        Workflow callers can pass per-category or aggregate overrides via
+        ``options.profits_method_options["operating_cost_ratios"]``::
+
+            {
+                "cost_of_sales": 0.30,
+                "staff_costs": 0.35,
+                "utilities": 0.06,
+                "total": 0.80   # optional – overrides sum of categories
+            }
+
+        If only a ``"total"`` key is supplied the individual breakdown columns
+        are left at zero and the aggregate ratio is used directly.
+        """
         analysis = OperatingCostAnalysis()
         property_type = property_data.property_type.value.lower()
 
-        # Get cost ratios for property type
-        if property_type in OPERATING_COST_RATIOS:
+        # Check for workflow-provided overrides first
+        pm_opts = (options.profits_method_options or {}) if options else {}
+        override_ratios: Optional[Dict[str, float]] = pm_opts.get("operating_cost_ratios")
+
+        if override_ratios:
+            # Normalise any values accidentally supplied as percentages (e.g. 30 → 0.30)
+            normalised: Dict[str, float] = {
+                k: (v / 100 if v > 1 else v) for k, v in override_ratios.items()
+            }
+            cost_ratios = normalised
+            # If individual categories are given but no "total", calculate it
+            if "total" not in cost_ratios:
+                cost_ratios["total"] = sum(
+                    v for k, v in cost_ratios.items() if k != "total"
+                )
+            ratios_source = "workflow_override"
+        elif property_type in OPERATING_COST_RATIOS:
             cost_ratios = OPERATING_COST_RATIOS[property_type]
+            ratios_source = "benchmark"
         else:
             # Use default ratios
             cost_ratios = {
@@ -430,6 +477,7 @@ class ProfitsMethodService:
                 "marketing": 0.04,
                 "total": DEFAULT_OPERATING_RATIO,
             }
+            ratios_source = "default"
 
         # Calculate individual cost components
         analysis.cost_of_sales = gross_revenue * cost_ratios.get("cost_of_sales", 0)
@@ -442,18 +490,27 @@ class ProfitsMethodService:
         # Calculate total
         analysis.total_operating_costs = gross_revenue * cost_ratios["total"]
         analysis.operating_ratio = cost_ratios["total"]
+        analysis.other = ratios_source  # surfaced in details for audit
 
         return analysis
 
-    def _get_profits_cap_rate(self, property_data: PropertyForValuation) -> float:
-        """Get capitalization rate for profits method"""
+    def _get_profits_cap_rate(self, property_data: PropertyForValuation, options: ValuationOptions = None) -> float:
+        """Get capitalization rate for profits method.
+
+        Accepts an override via ``options.profits_method_options["cap_rate"]``
+        (value 0–1 or 0–100 — both are normalised).
+        """
+        pm_opts = (options.profits_method_options or {}) if options else {}
+        if pm_opts.get("cap_rate") is not None:
+            rate = float(pm_opts["cap_rate"])
+            return rate / 100 if rate > 1 else rate
+
         property_type = property_data.property_type.value.lower()
         region = property_data.region
 
         if property_type in PROFITS_CAP_RATES and region in PROFITS_CAP_RATES[property_type]:
             return PROFITS_CAP_RATES[property_type][region]
-        else:
-            return DEFAULT_CAP_RATE
+        return DEFAULT_CAP_RATE
 
     async def _calculate_tenant_improvements(self, property_data: PropertyForValuation) -> float:
         """Calculate value of tenant improvements and fixtures"""

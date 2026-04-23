@@ -299,7 +299,7 @@ class ConstructionCostIndexService {
       const conditions: string[] = [];
 
       if (category) {
-        conditions.push(`LOWER(category) = LOWER($${paramIdx++})`);
+        conditions.push(`LOWER(category::text) = LOWER($${paramIdx++})`)
         params.push(category);
       }
       if (region) {
@@ -421,7 +421,7 @@ class ConstructionCostIndexService {
       const conditions: string[] = [];
 
       if (category) {
-        conditions.push(`LOWER(category) = LOWER($${paramIdx++})`);
+        conditions.push(`LOWER(category::text) = LOWER($${paramIdx++})`);
         params.push(category);
       }
       if (skillLevel) {

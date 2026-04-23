@@ -836,6 +836,158 @@ class TrainingPipeline:
         logger.info("Training pipeline completed successfully!")
         return model_path
 
+
+# =====================================================
+# PER-TYPE SEGMENTED TRAINING PIPELINE
+# =====================================================
+
+# Minimum samples required to train a per-type model
+MIN_SAMPLES_PER_TYPE = 50
+
+# Canonical property type groups — aliases map raw DB values to group names
+PROPERTY_TYPE_GROUPS: Dict[str, List[str]] = {
+    "residential_house": [
+        "residential_house", "detached_house", "semi_detached",
+        "townhouse", "bungalow", "terraced_house",
+    ],
+    "apartment_flat": [
+        "apartment_flat", "apartment", "flat", "studio", "condo",
+        "penthouse", "maisonette",
+    ],
+    "land": [
+        "land", "plot", "serviced_plot", "bare_land",
+        "agricultural_land", "mixed_use_land",
+    ],
+    "commercial": [
+        "commercial_shop", "office_space", "warehouse",
+        "commercial", "retail", "showroom", "industrial",
+    ],
+}
+
+
+class SegmentedTrainingPipeline:
+    """
+    Trains property-type-specific ensemble models for higher accuracy.
+
+    Mixed-type models suffer from extreme price-range variance (e.g. raw land
+    vs. residential houses vs. commercial warehouses).  Training a separate
+    ensemble per type substantially reduces MAPE and improves R².
+
+    Output structure produced:
+        models/{version}/                        ← all-types fallback
+        models/{version}/per_type/{group}/       ← type-specific models
+
+    Per-type predictions are tagged "{version}_{group}" in ml_predictions and
+    ml_model_metadata so monitoring queries can segment them correctly.
+    """
+
+    def __init__(self, base_config: TrainingConfig):
+        self.config = base_config
+        self.all_types_pipeline = TrainingPipeline(base_config)
+        self.per_type_pipelines: Dict[str, TrainingPipeline] = {}
+        self.version: Optional[str] = None
+
+    def _resolve_group(self, property_type: Optional[str]) -> Optional[str]:
+        """Map a raw property_type value to a canonical group name."""
+        if not property_type:
+            return None
+        pt = property_type.lower().replace(" ", "_").replace("-", "_")
+        for group, aliases in PROPERTY_TYPE_GROUPS.items():
+            if any(alias in pt or pt in alias for alias in aliases):
+                return group
+        return None
+
+    def run(
+        self,
+        data_path: Optional[str] = None,
+        tune_hyperparams: bool = False,
+    ) -> Dict[str, str]:
+        """
+        Run the full segmented training pipeline.
+
+        Returns mapping of {group_name: saved_model_path}.
+        """
+        self.version = datetime.now().strftime("%Y%m%d_%H%M%S")
+        logger.info(f"=== Segmented Training Pipeline — version {self.version} ===")
+
+        # ── 1. Load training data once ───────────────────────────────────────
+        df = self.all_types_pipeline.load_data(data_path)
+        logger.info(f"Loaded {len(df)} total samples")
+
+        results: Dict[str, str] = {}
+
+        # ── 2. All-types fallback model ──────────────────────────────────────
+        logger.info("Training all-types fallback ensemble …")
+        X_tr, y_tr, X_v, y_v, X_te, y_te = self.all_types_pipeline.prepare_data(df.copy())
+        self.all_types_pipeline.ensemble_trainer.train(
+            X_tr, y_tr, X_v, y_v, tune_hyperparams
+        )
+        self.all_types_pipeline.evaluate(X_te, y_te)
+        all_path = self.all_types_pipeline.save_model(version=self.version)
+        self.all_types_pipeline._record_predictions(self.version, X_te, y_te)
+        results["all"] = all_path
+        m = self.all_types_pipeline.metrics
+        logger.info(
+            f"  all-types  R²={m.get('r2', 0):.3f}  "
+            f"MAE={m.get('mae', 0):,.0f}  n_test={m.get('samples_used', 0)}"
+        )
+
+        # ── 3. Per-type models ───────────────────────────────────────────────
+        df["_type_group"] = df["property_type"].apply(self._resolve_group)
+
+        for group in PROPERTY_TYPE_GROUPS:
+            group_df = df[df["_type_group"] == group].drop(columns=["_type_group"])
+            n = len(group_df)
+
+            if n < MIN_SAMPLES_PER_TYPE:
+                logger.warning(
+                    f"  Skipping '{group}': {n} samples "
+                    f"(need at least {MIN_SAMPLES_PER_TYPE})"
+                )
+                continue
+
+            logger.info(f"  Training '{group}' model on {n} samples …")
+            type_pipeline = TrainingPipeline(self.config)
+
+            try:
+                X_tr, y_tr, X_v, y_v, X_te, y_te = type_pipeline.prepare_data(
+                    group_df.copy()
+                )
+                type_pipeline.ensemble_trainer.train(
+                    X_tr, y_tr, X_v, y_v, tune_hyperparams
+                )
+                type_pipeline.evaluate(X_te, y_te)
+
+                # Save into per_type/ subdirectory of the main version dir
+                per_type_dir = str(
+                    Path(self.config.MODEL_OUTPUT_PATH) / self.version / "per_type"
+                )
+                saved_path = type_pipeline.save_model(
+                    version=group, output_path=per_type_dir
+                )
+
+                # Tag ml_predictions with composite version for monitoring
+                type_version_tag = f"{self.version}_{group}"
+                type_pipeline._record_predictions(type_version_tag, X_te, y_te)
+
+                self.per_type_pipelines[group] = type_pipeline
+                results[group] = saved_path
+
+                m = type_pipeline.metrics
+                logger.info(
+                    f"    {group:<25} R²={m.get('r2', 0):.3f}  "
+                    f"MAE={m.get('mae', 0):,.0f}  n_test={m.get('samples_used', 0)}"
+                )
+
+            except Exception as exc:
+                logger.error(f"  '{group}' training failed: {exc}", exc_info=True)
+
+        logger.info(
+            f"=== Segmented training complete — {len(results)} models saved ==="
+        )
+        return results
+
+
 # =====================================================
 # CLI ENTRY POINT
 # =====================================================
@@ -843,30 +995,49 @@ class TrainingPipeline:
 def main():
     """Main entry point for training pipeline."""
     import argparse
-    
+
     parser = argparse.ArgumentParser(description="PROPMETRIK ML Model Training Pipeline")
     parser.add_argument("--data-path", type=str, help="Path to training data")
     parser.add_argument("--output-path", type=str, help="Path to save trained models")
-    parser.add_argument("--version", type=str, help="Model version name")
-    parser.add_argument("--no-tune", action="store_true", help="Skip hyperparameter tuning")
-    
+    parser.add_argument("--version", type=str, help="Model version name (all-types only)")
+    parser.add_argument("--no-tune", action="store_true", help="Skip hyperparameter tuning (faster)")
+    parser.add_argument(
+        "--all-types-only", action="store_true",
+        help="Train a single combined model only (skip per-type segmentation)"
+    )
+
     args = parser.parse_args()
-    
-    # Update config if paths provided
+
     if args.output_path:
         config.MODEL_OUTPUT_PATH = args.output_path
     if args.data_path:
         config.DATA_PATH = args.data_path
-    
-    # Run training
-    pipeline = TrainingPipeline(config)
-    model_path = pipeline.run(
-        data_path=args.data_path,
-        tune_hyperparams=not args.no_tune
-    )
-    
-    print(f"\nModel saved to: {model_path}")
-    print(f"Metrics: {json.dumps(pipeline.metrics, indent=2)}")
+
+    if args.all_types_only:
+        # Legacy / diagnostic: single combined model
+        pipeline = TrainingPipeline(config)
+        model_path = pipeline.run(
+            data_path=args.data_path,
+            tune_hyperparams=not args.no_tune,
+        )
+        print(f"\nModel saved to: {model_path}")
+        print(f"Metrics: {json.dumps(pipeline.metrics, indent=2)}")
+    else:
+        # Default: per-type segmented training
+        seg = SegmentedTrainingPipeline(config)
+        results = seg.run(
+            data_path=args.data_path,
+            tune_hyperparams=not args.no_tune,
+        )
+        print("\nTraining complete:")
+        for group, path in results.items():
+            pipeline = seg.per_type_pipelines.get(group, seg.all_types_pipeline)
+            m = pipeline.metrics or {}
+            print(
+                f"  {group:<25} path={path}  "
+                f"R²={m.get('r2', 0):.3f}  MAE={m.get('mae', 0):,.0f}"
+            )
+
 
 if __name__ == "__main__":
     main()

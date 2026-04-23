@@ -2574,23 +2574,21 @@ router.get('/cap-rate/benchmarks', async (req: Request, res: Response) => {
         id,
         region,
         property_type,
-        transaction_type,
         benchmark_cap_rate,
-        cap_rate_range_low,
-        cap_rate_range_high,
+        typical_cap_rate_low,
+        typical_cap_rate_high,
         sample_size,
         confidence_score,
         market_condition,
         yield_trend,
         data_quality,
-        methodology,
-        source_description,
+        methodology_notes,
         effective_date,
-        expiry_date,
+        valid_until,
         created_at,
-        updated_at
+        last_updated
       FROM market_cap_rate_benchmarks
-      WHERE (expiry_date IS NULL OR expiry_date >= CURRENT_DATE)
+      WHERE (valid_until IS NULL OR valid_until >= CURRENT_DATE)
     `;
     const params: any[] = [];
 
@@ -2605,11 +2603,11 @@ router.get('/cap-rate/benchmarks', async (req: Request, res: Response) => {
     }
 
     if (methodology) {
-      params.push(methodology);
-      benchmarkQuery += ` AND methodology = $${params.length}`;
+      params.push(`%${methodology}%`);
+      benchmarkQuery += ` AND methodology_notes ILIKE $${params.length}`;
     }
 
-    benchmarkQuery += ` ORDER BY region, property_type, methodology, effective_date DESC`;
+    benchmarkQuery += ` ORDER BY region, property_type, effective_date DESC`;
 
     const result = await query(benchmarkQuery, params);
 
@@ -2619,24 +2617,22 @@ router.get('/cap-rate/benchmarks', async (req: Request, res: Response) => {
         id: row.id,
         region: row.region,
         propertyType: row.property_type,
-        transactionType: row.transaction_type,
         benchmarkCapRate: parseFloat(row.benchmark_cap_rate),
         benchmarkCapRatePercentage: (parseFloat(row.benchmark_cap_rate) * 100).toFixed(2) + '%',
         range: {
-          low: parseFloat(row.cap_rate_range_low),
-          high: parseFloat(row.cap_rate_range_high)
+          low: parseFloat(row.typical_cap_rate_low),
+          high: parseFloat(row.typical_cap_rate_high)
         },
         sampleSize: row.sample_size,
         confidenceScore: parseFloat(row.confidence_score),
         marketCondition: row.market_condition,
         yieldTrend: row.yield_trend,
         dataQuality: row.data_quality,
-        methodology: row.methodology,
-        sourceDescription: row.source_description,
+        methodologyNotes: row.methodology_notes,
         effectiveDate: row.effective_date,
-        expiryDate: row.expiry_date,
+        expiryDate: row.valid_until,
         createdAt: row.created_at,
-        updatedAt: row.updated_at
+        updatedAt: row.last_updated
       })),
       meta: {
         count: result.rows.length,

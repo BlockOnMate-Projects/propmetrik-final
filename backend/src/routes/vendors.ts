@@ -32,9 +32,11 @@ registerPMParamValidation(router);
 router.post('/', requirePMWrite, async (req: Request, res: Response) => {
   try {
     const userId = (req as any).user?.id || req.body.createdBy;
+    const orgId = (req as any).user?.organizationId || req.headers['x-organization-id'] as string;
     
     const vendor = await teamService.addVendor({
       ...req.body,
+      organizationId: orgId,
       createdBy: userId,
     });
     
@@ -240,11 +242,7 @@ router.post('/:id/ratings', requirePMWrite, async (req: Request, res: Response) 
     const { id: vendorId } = req.params;
     const userId = (req as any).user?.id || req.body.ratedBy;
     
-    const rating = await teamService.rateVendorPerformance({
-      vendorId,
-      ...req.body,
-      ratedBy: userId,
-    });
+    const rating = await ts.addVendorRating(vendorId, userId, req.body);
     
     res.status(201).json({
       success: true,
@@ -317,11 +315,11 @@ router.post('/:id/assignments', requirePMWrite, async (req: Request, res: Respon
   try {
     const { id: vendorId } = req.params;
     const userId = (req as any).user?.id || req.body.assignedBy;
+    const orgId = (req as any).user?.organizationId || req.headers['x-organization-id'] as string;
     
-    const assignment = await ts.assignVendorToProject({
-      vendorId,
+    const assignment = await ts.createVendorAssignment(vendorId, userId, {
       ...req.body,
-      assignedBy: userId,
+      organization_id: req.body.organization_id || orgId,
     });
     
     res.status(201).json({

@@ -112,16 +112,12 @@ export class PropertyService {
                     bedrooms, bathrooms, floors, total_area_sqm,
                     price, price_currency, status, data_source,
                     created_by, latitude, longitude, location_verified, location_accuracy,
-                    geom,
                     parent_property_id, unit_number, permanent_link_token,
                     marketplace_enabled, marketplace_listed_at
                 ) VALUES (
                     $1, $2, $3, $4, $5, $6, $7, $8, $9, $10,
                     $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21,
                     $22, $23, $24, $25,
-                    CASE WHEN $22 IS NOT NULL AND $23 IS NOT NULL 
-                        THEN ST_SetSRID(ST_MakePoint($23, $22), 4326)
-                        ELSE NULL END,
                     $26, $27, $28, $29, $30
                 ) RETURNING *
             `;
@@ -151,7 +147,7 @@ export class PropertyService {
                 latitude,
                 longitude,
                 verifiedLocation,
-                locationAccuracy,
+                null, // locationAccuracy — column is integer; geocoded string accuracy not applicable here
                 data.parentPropertyId || null,
                 data.unitNumber || null,
                 permanentLinkToken,
@@ -374,7 +370,7 @@ export class PropertyService {
 
         const query = `
             UPDATE properties
-            SET status = 'deleted', updated_at = CURRENT_TIMESTAMP
+            SET status = 'withdrawn', updated_at = CURRENT_TIMESTAMP
             WHERE id = $1 AND organization_id = $2
             RETURNING id
         `;
@@ -399,7 +395,7 @@ export class PropertyService {
         const { page = 1, limit = 20, sortBy = 'created_at', sortOrder = 'desc' } = pagination;
         const offset = (page - 1) * limit;
 
-        const conditions: string[] = ['organization_id = $1', "status != 'deleted'"];
+        const conditions: string[] = ['organization_id = $1', "status != 'withdrawn'"];
         const params: any[] = [organizationId];
         let paramIndex = 2;
 
