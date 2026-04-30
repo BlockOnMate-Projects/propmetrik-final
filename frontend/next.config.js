@@ -69,6 +69,15 @@ const nextConfig = {
           },
         ],
       },
+      {
+        source: '/.well-known/apple-developer-merchantid-domain-association',
+        headers: [
+          {
+            key: 'Content-Type',
+            value: 'application/json',
+          },
+        ],
+      },
     ];
   },
   webpack: (config, { isServer }) => {
