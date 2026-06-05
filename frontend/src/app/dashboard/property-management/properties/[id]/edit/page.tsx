@@ -95,6 +95,14 @@ export default function EditPropertyPage() {
         setFormData(prev => ({ ...prev, [field]: value }))
     }
 
+    const optionalText = (value: string) => value.trim() === '' ? undefined : value.trim()
+    const optionalNumber = (value: string) => value.trim() === '' ? undefined : Number(value)
+
+    const formatErrorMessage = (err: unknown) => {
+        if (err instanceof Error) return err.message
+        return 'Failed to update property. Please try again.'
+    }
+
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
         try {
@@ -102,22 +110,22 @@ export default function EditPropertyPage() {
             setError(null)
             
             await propertyManagementApi.updateProperty(propertyId, {
-                title: formData.title,
-                description: formData.description,
-                propertyType: formData.propertyType as any,
-                transactionType: formData.transactionType as any,
-                status: formData.status as any,
-                price: parseFloat(formData.price) || 0,
-                priceCurrency: formData.priceCurrency,
-                addressStreet: formData.addressStreet,
-                addressCity: formData.addressCity,
-                region: formData.region as any,
-                digitalAddress: formData.digitalAddress,
-                bedrooms: parseInt(formData.bedrooms) || 0,
-                bathrooms: parseInt(formData.bathrooms) || 0,
-                totalAreaSqm: parseFloat(formData.totalAreaSqm) || 0,
-                floors: parseInt(formData.floors) || 1,
-                unitNumber: formData.unitNumber
+                title: formData.title.trim(),
+                description: optionalText(formData.description) as any,
+                propertyType: optionalText(formData.propertyType) as any,
+                transactionType: optionalText(formData.transactionType) as any,
+                status: optionalText(formData.status) as any,
+                price: optionalNumber(formData.price) as any,
+                priceCurrency: optionalText(formData.priceCurrency),
+                addressStreet: optionalText(formData.addressStreet),
+                addressCity: optionalText(formData.addressCity),
+                region: optionalText(formData.region) as any,
+                digitalAddress: optionalText(formData.digitalAddress),
+                bedrooms: optionalNumber(formData.bedrooms) as any,
+                bathrooms: optionalNumber(formData.bathrooms) as any,
+                totalAreaSqm: optionalNumber(formData.totalAreaSqm) as any,
+                floors: optionalNumber(formData.floors) as any,
+                unitNumber: optionalText(formData.unitNumber)
             })
 
             setSuccessMessage('Property updated successfully!')
@@ -126,7 +134,7 @@ export default function EditPropertyPage() {
             }, 1500)
         } catch (err) {
             console.error('Failed to update property:', err)
-            setError('Failed to update property. Please try again.')
+            setError(formatErrorMessage(err))
         } finally {
             setIsSaving(false)
         }
@@ -253,11 +261,14 @@ export default function EditPropertyPage() {
                                         <SelectValue placeholder="Select type" />
                                     </SelectTrigger>
                                     <SelectContent className="bg-zinc-950 border-zinc-800">
-                                        <SelectItem value="residential">Residential</SelectItem>
-                                        <SelectItem value="commercial">Commercial</SelectItem>
+                                        <SelectItem value="residential_house">Residential House</SelectItem>
+                                        <SelectItem value="apartment_flat">Apartment / Flat</SelectItem>
+                                        <SelectItem value="commercial_shop">Commercial Shop</SelectItem>
+                                        <SelectItem value="commercial_office">Commercial Office</SelectItem>
+                                        <SelectItem value="warehouse">Warehouse</SelectItem>
                                         <SelectItem value="industrial">Industrial</SelectItem>
-                                        <SelectItem value="land">Land</SelectItem>
                                         <SelectItem value="mixed_use">Mixed Use</SelectItem>
+                                        <SelectItem value="land">Land</SelectItem>
                                     </SelectContent>
                                 </Select>
                             </div>
@@ -287,10 +298,14 @@ export default function EditPropertyPage() {
                                         <SelectValue placeholder="Select status" />
                                     </SelectTrigger>
                                     <SelectContent className="bg-zinc-950 border-zinc-800">
+                                        <SelectItem value="draft">Draft</SelectItem>
+                                        <SelectItem value="pending_review">Pending Review</SelectItem>
                                         <SelectItem value="active">Active</SelectItem>
-                                        <SelectItem value="vacant">Vacant</SelectItem>
-                                        <SelectItem value="under_maintenance">Under Maintenance</SelectItem>
+                                        <SelectItem value="under_offer">Under Offer</SelectItem>
                                         <SelectItem value="sold">Sold</SelectItem>
+                                        <SelectItem value="rented">Rented</SelectItem>
+                                        <SelectItem value="expired">Expired</SelectItem>
+                                        <SelectItem value="withdrawn">Withdrawn</SelectItem>
                                     </SelectContent>
                                 </Select>
                             </div>

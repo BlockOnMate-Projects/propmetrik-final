@@ -1,6 +1,7 @@
 
 import { v4 as uuidv4 } from 'uuid';
 import db from '../../../database';
+import { getSignedLeaseDownloadUrl, isS3ObjectRef, parseS3ObjectRef, storeSignedLeaseDocument } from '../leases/signedLeaseStorage';
 import {
     PropertyDocument,
     CreatePropertyDocumentDto,
@@ -170,7 +171,11 @@ export class DocumentService {
         values.push(limit, offset);
 
         const result = await db.query(query, values);
-        const data = result.rows.map(this.mapToDocument);
+        const data = await Promise.all(result.rows.map(async (row) => {
+            const document = this.mapToDocument(row);
+            document.fileUrl = await this.resolveStoredFileUrl(document.fileUrl);
+            return document;
+        }));
 
         return {
             data,
@@ -445,10 +450,19 @@ export class DocumentService {
                 // Convert MinIO keys and data URLs to proper download URLs
                 let resolvedFileUrl = row.file_url;
                 
-                // Handle data: URLs (base64-encoded signed PDFs stored in tenancies.lease_signed_url)
-                if (resolvedFileUrl && resolvedFileUrl.startsWith('data:')) {
-                    // Route through a dedicated signed-lease endpoint
-                    resolvedFileUrl = `/api/v1/pm/tenancies/${row.tenancy_id}/signed-lease`;
+                // Handle legacy data URLs by migrating signed PDFs to S3/MinIO.
+                if (resolvedFileUrl && resolvedFileUrl.startsWith('data:') && row.tenancy_id) {
+                    const objectRef = await storeSignedLeaseDocument({
+                        tenancyId: row.tenancy_id,
+                        sourceUrl: resolvedFileUrl,
+                    });
+                    await db.query(
+                        `UPDATE tenancies SET lease_signed_url = $1, updated_at = NOW() WHERE id = $2`,
+                        [objectRef, row.tenancy_id]
+                    );
+                    resolvedFileUrl = await getSignedLeaseDownloadUrl(objectRef) || objectRef;
+                } else if (resolvedFileUrl && isS3ObjectRef(resolvedFileUrl)) {
+                    resolvedFileUrl = await getSignedLeaseDownloadUrl(resolvedFileUrl) || resolvedFileUrl;
                 } else if (resolvedFileUrl && !resolvedFileUrl.startsWith('http') && !resolvedFileUrl.startsWith('/api/')) {
                     // It's a MinIO key — route through the file proxy
                     // Determine the bucket from the key pattern
@@ -543,6 +557,13 @@ export class DocumentService {
             createdAt: row.created_at,
             updatedAt: row.updated_at
         };
+    }
+
+    private async resolveStoredFileUrl(fileUrl: string): Promise<string> {
+        if (!fileUrl || !isS3ObjectRef(fileUrl)) return fileUrl;
+        const ref = parseS3ObjectRef(fileUrl);
+        if (!ref) return fileUrl;
+        return await getSignedLeaseDownloadUrl(fileUrl) || fileUrl;
     }
 }
 

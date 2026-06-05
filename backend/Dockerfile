@@ -33,7 +33,8 @@ COPY . .
 # Build TypeScript — increase heap for large project
 # Force NODE_ENV=development to ensure build tools and TypeScript compiler work correctly
 # (Coolify may inject NODE_ENV=production as build arg, which can interfere)
-ENV NODE_OPTIONS="--max-old-space-size=4096"
+ARG TS_BUILD_MEMORY_MB=3072
+ENV NODE_OPTIONS="--max-old-space-size=${TS_BUILD_MEMORY_MB}"
 RUN NODE_ENV=development npm run build 2>&1 || { echo "=== TSC BUILD FAILED — full output above ==="; exit 1; }
 
 # Prune devDependencies (using production NODE_ENV to ensure only prod deps remain)

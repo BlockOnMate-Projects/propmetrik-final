@@ -420,7 +420,7 @@ export default function FinancialsPage() {
 
                     {/* Crypto Revenue Card */}
                     {cryptoRevenue && cryptoRevenue.totalCryptoPayments > 0 && (
-                        <Card className="bg-gradient-to-r from-amber-950/30 via-black to-orange-950/20 border border-amber-900/40">
+                        <Card className="bg-zinc-950 border border-amber-900/40 shadow-[inset_0_1px_0_rgba(245,158,11,0.08)]">
                             <CardHeader className="pb-3">
                                 <div className="flex items-center justify-between">
                                     <div className="flex items-center gap-2">
@@ -443,37 +443,39 @@ export default function FinancialsPage() {
                                 </div>
                             </CardHeader>
                             <CardContent>
-                                <div className="grid grid-cols-2 gap-4">
-                                    <div>
-                                        <p className="text-[10px] text-zinc-500 font-mono uppercase">Crypto Payments</p>
+                                <div className="grid gap-3 sm:grid-cols-2">
+                                    <div className="rounded-lg border border-zinc-800 bg-black/70 p-3">
+                                        <p className="text-[10px] text-zinc-400 font-mono uppercase">Crypto Payments</p>
                                         <p className="text-xl font-bold text-white font-mono">{cryptoRevenue.totalCryptoPayments}</p>
                                     </div>
-                                    <div>
-                                        <p className="text-[10px] text-zinc-500 font-mono uppercase">Total Rent Received</p>
+                                    <div className="rounded-lg border border-zinc-800 bg-black/70 p-3">
+                                        <p className="text-[10px] text-zinc-400 font-mono uppercase">Total Rent Received</p>
                                         <p className="text-xl font-bold text-green-400 font-mono">{formatCurrency(cryptoRevenue.totalCryptoRentGhs)}</p>
                                     </div>
                                 </div>
                                 {/* Crypto payment details table */}
                                 {cryptoRevenue.payments.length > 0 && (
-                                    <div className="mt-4 border-t border-amber-900/30 pt-3">
-                                        <p className="text-[10px] text-zinc-500 font-mono uppercase mb-2">Payment Breakdown</p>
+                                    <div className="mt-4 rounded-lg border border-zinc-800 bg-black/70 overflow-hidden">
+                                        <div className="border-b border-zinc-800 px-3 py-2">
+                                            <p className="text-[10px] text-zinc-400 font-mono uppercase">Payment Breakdown</p>
+                                        </div>
                                         <Table>
                                             <TableHeader>
-                                                <TableRow className="border-amber-900/20 hover:bg-transparent">
-                                                    <TableHead className="text-zinc-500 font-mono text-[9px] uppercase">Date</TableHead>
-                                                    <TableHead className="text-zinc-500 font-mono text-[9px] uppercase">Reference</TableHead>
-                                                    <TableHead className="text-zinc-500 font-mono text-[9px] uppercase">Settled In</TableHead>
-                                                    <TableHead className="text-right text-zinc-500 font-mono text-[9px] uppercase">Settlement Amount</TableHead>
-                                                    <TableHead className="text-right text-zinc-500 font-mono text-[9px] uppercase">Rent (GHS)</TableHead>
+                                                <TableRow className="border-zinc-800 bg-zinc-950 hover:bg-zinc-950">
+                                                    <TableHead className="text-zinc-400 font-mono text-[9px] uppercase">Date</TableHead>
+                                                    <TableHead className="text-zinc-400 font-mono text-[9px] uppercase">Reference</TableHead>
+                                                    <TableHead className="text-zinc-400 font-mono text-[9px] uppercase">Settled In</TableHead>
+                                                    <TableHead className="text-right text-zinc-400 font-mono text-[9px] uppercase">Settlement Amount</TableHead>
+                                                    <TableHead className="text-right text-zinc-400 font-mono text-[9px] uppercase">Rent (GHS)</TableHead>
                                                 </TableRow>
                                             </TableHeader>
                                             <TableBody>
                                                 {cryptoRevenue.payments.map((p) => (
-                                                    <TableRow key={p.reference} className="border-amber-900/15 hover:bg-amber-900/5">
-                                                        <TableCell className="font-mono text-[10px] text-zinc-400">
+                                                    <TableRow key={p.reference} className="border-zinc-800 hover:bg-zinc-900/70">
+                                                        <TableCell className="font-mono text-[10px] text-zinc-300">
                                                             {new Date(p.date).toLocaleDateString('en-GH')}
                                                         </TableCell>
-                                                        <TableCell className="font-mono text-[10px] text-zinc-300">
+                                                        <TableCell className="font-mono text-[10px] text-white">
                                                             {p.reference.slice(0, 12)}...
                                                         </TableCell>
                                                         <TableCell>
@@ -481,7 +483,7 @@ export default function FinancialsPage() {
                                                                 {p.settlementCurrency || p.cryptoCurrency || '—'}
                                                             </Badge>
                                                         </TableCell>
-                                                        <TableCell className="text-right font-mono text-[10px] text-zinc-300">
+                                                        <TableCell className="text-right font-mono text-[10px] text-zinc-200">
                                                             {p.settlementAmount != null ? `${p.settlementAmount.toFixed(4)} ${p.settlementCurrency || ''}` : '—'}
                                                         </TableCell>
                                                         <TableCell className="text-right font-mono text-xs text-green-400 font-bold">

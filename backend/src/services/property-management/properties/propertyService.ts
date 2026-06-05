@@ -218,6 +218,23 @@ export class PropertyService {
      * Update an existing property
      */
     async updateProperty(id: string, organizationId: string, data: Partial<CreatePropertyDto>, userId: string): Promise<Property | null> {
+        const propertyTypeAliases: Record<string, string> = {
+            residential: 'residential_house',
+            commercial: 'commercial_office',
+        };
+        const statusAliases: Record<string, string> = {
+            vacant: 'active',
+            under_maintenance: 'withdrawn',
+            maintenance: 'withdrawn',
+        };
+
+        if (data.propertyType && propertyTypeAliases[data.propertyType]) {
+            data.propertyType = propertyTypeAliases[data.propertyType] as any;
+        }
+        if ((data as any).status && statusAliases[(data as any).status]) {
+            (data as any).status = statusAliases[(data as any).status];
+        }
+
         // Check if address fields are being updated - if so, re-geocode
         const addressFieldsChanged = !!(
             data.digitalAddress !== undefined ||
@@ -256,7 +273,6 @@ export class PropertyService {
                         // Add geocode results to update data
                         (data as any).latitude = geocodeResult.latitude;
                         (data as any).longitude = geocodeResult.longitude;
-                        (data as any).locationAccuracy = geocodeResult.accuracy;
                         (data as any).locationVerified = true;
                         logger.info('Property re-geocoded on update', {
                             propertyId: id,
@@ -288,12 +304,14 @@ export class PropertyService {
             digitalAddress: 'digital_address',
             propertyType: 'property_type',
             transactionType: 'transaction_type',
+            status: 'status',
             bedrooms: 'bedrooms',
             bathrooms: 'bathrooms',
             floors: 'floors',
             totalAreaSqm: 'total_area_sqm',
             price: 'price',
             priceCurrency: 'price_currency',
+            unitNumber: 'unit_number',
             latitude: 'latitude',
             longitude: 'longitude',
             locationAccuracy: 'location_accuracy',
@@ -310,7 +328,9 @@ export class PropertyService {
 
         // If latitude and longitude are being updated, also update geom
         if ((data as any).latitude !== undefined && (data as any).longitude !== undefined) {
-            updates.push(`geom = ST_SetSRID(ST_MakePoint($${paramIndex}, $${paramIndex - 1}), 4326)`);
+            updates.push(`geom = ST_SetSRID(ST_MakePoint($${paramIndex}::double precision, $${paramIndex + 1}::double precision), 4326)`);
+            values.push((data as any).longitude, (data as any).latitude);
+            paramIndex += 2;
         }
 
         if (updates.length === 0) {

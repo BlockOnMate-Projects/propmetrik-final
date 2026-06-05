@@ -22,10 +22,18 @@ export class MarketplaceController {
       const filters = req.body;
       let result: { total: number; properties: any[]; aggregations?: any };
       let searchEngine = 'opensearch';
+      const hasGeoFilter = Boolean(filters.geo_radius || filters.geo_bbox);
 
       try {
         // Primary: OpenSearch
         result = await opensearchMarketplaceService.search(filters);
+        if (result.total === 0 && !hasGeoFilter) {
+          const fallbackResult = await marketplaceService.searchProperties(filters);
+          if (fallbackResult.total > 0) {
+            result = fallbackResult;
+            searchEngine = 'postgresql';
+          }
+        }
       } catch (osError: any) {
         // Fallback: PostgreSQL
         logger.warn('OpenSearch search failed, falling back to PostgreSQL:', {
@@ -34,6 +42,8 @@ export class MarketplaceController {
         searchEngine = 'postgresql';
         result = await marketplaceService.searchProperties(filters);
       }
+
+      result.properties = await marketplaceService.enrichPmPropertyImages(result.properties);
 
       return res.json({
         total: result.total,

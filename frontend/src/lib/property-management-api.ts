@@ -66,7 +66,7 @@ export const propertyManagementApi = {
 
     updateProperty: (id: string, data: Partial<Property>) =>
         fetchApi<Property>(`${PM_BASE}/properties/${id}`, {
-            method: 'PUT',
+            method: 'PATCH',
             body: JSON.stringify(data)
         }),
 
@@ -315,6 +315,17 @@ export const propertyManagementApi = {
             method: 'POST',
             body: JSON.stringify(data)
         }),
+
+    uploadPropertyPhoto: (propertyId: string, file: File, title?: string) => {
+        const formData = new FormData();
+        formData.append('file', file);
+        if (title) formData.append('title', title);
+
+        return fetchApi<PropertyDocument>(`${PM_BASE}/properties/${propertyId}/photos`, {
+            method: 'POST',
+            body: formData
+        });
+    },
 
     deleteDocument: (id: string) =>
         fetchApi<void>(`${PM_BASE}/documents/${id}`, {

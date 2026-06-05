@@ -22,6 +22,7 @@ import {
 } from '../../../types/property-management.types';
 import { eSignIntegrationService, CompletionEvent } from '../../../../shared-services/e-sign';
 import { leaseTemplateService } from './leaseTemplateService';
+import { storeSignedLeaseDocument } from './signedLeaseStorage';
 
 /**
  * Service for managing tenancies/leases
@@ -530,8 +531,15 @@ export class TenancyService {
             envelopeId: event.envelope.id
         });
 
-        // Get signed document URL
+        // Get signed document URL and persist it in our private S3/MinIO bucket.
         const signedDocUrl = event.documents[0]?.signedUrl;
+        const signedLeaseObjectRef = signedDocUrl
+            ? await storeSignedLeaseDocument({
+                tenancyId,
+                envelopeId: event.envelope.id,
+                sourceUrl: signedDocUrl,
+            })
+            : null;
         const certificateUrl = event.documents[0]?.certificateUrl;
 
         // Extract signer completion times
@@ -551,7 +559,7 @@ export class TenancyService {
              WHERE id = $5`,
             [
                 event.envelope.completedAt,
-                signedDocUrl,
+                signedLeaseObjectRef,
                 tenantSigner?.signedAt,
                 landlordSigner?.signedAt,
                 tenancyId
@@ -577,7 +585,7 @@ export class TenancyService {
                 signer_details = EXCLUDED.signer_details`,
             [
                 tenancyId,
-                signedDocUrl,
+                signedLeaseObjectRef,
                 certificateUrl,
                 event.security.hash,
                 event.security.algorithm,

@@ -368,10 +368,15 @@ export function clampPagination(req: Request, _res: Response, next: NextFunction
 
 export const pmCreatePropertySchema = z.object({
     name: z.string().min(1, 'Property name is required').max(255),
+  title: z.string().min(1, 'Property title is required').max(255).optional(),
     propertyType: z.string().max(100).optional(),
+  transactionType: z.string().max(50).optional(),
     status: z.string().max(50).optional(),
     addressLine1: z.string().max(255).optional(),
     addressLine2: z.string().max(255).optional(),
+  addressStreet: z.string().max(255).optional(),
+  addressCity: z.string().max(100).optional(),
+  addressDistrict: z.string().max(100).optional(),
     city: z.string().max(100).optional(),
     region: z.string().max(100).optional(),
     country: z.string().max(100).optional(),
@@ -380,6 +385,8 @@ export const pmCreatePropertySchema = z.object({
     longitude: z.number().min(-180).max(180).optional(),
     price: z.number().min(0).optional(),
     currency: z.string().max(10).optional(),
+    priceCurrency: z.string().max(10).optional(),
+    digitalAddress: z.string().max(50).optional(),
     bedrooms: z.number().int().min(0).max(100).optional(),
     bathrooms: z.number().min(0).max(100).optional(),
     totalAreaSqm: z.number().min(0).optional(),
@@ -535,7 +542,10 @@ export const pmRegisterAccountSchema = z.object({
     bankCode: z.string().min(1),
     accountNumber: z.string().min(1).max(30),
     businessName: z.string().min(1).max(255),
-    contactEmail: z.string().email(),
+    contactEmail: z.preprocess(
+        (value) => value === '' ? undefined : value,
+        z.string().email().optional()
+    ),
     contactPhone: z.string().optional(),
 });
 
