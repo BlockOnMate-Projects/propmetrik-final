@@ -8,6 +8,7 @@
  */
 
 import { Router, Request, Response, NextFunction } from 'express';
+import multer from 'multer';
 import { TenantService } from '../services/property-management/tenants/tenantService';
 import { TenancyService } from '../services/property-management/leases/tenancyService';
 import { RentCollectionService } from '../services/property-management/rent-collection/rentCollectionService';
@@ -60,8 +61,35 @@ import {
     FinancialFilters
 } from '../types/property-management.types';
 import { createCustomRateLimiter } from '../middleware/rateLimiter';
+import { getSignedLeaseDownloadUrl, isS3ObjectRef, storeSignedLeaseDocument } from '../services/property-management/leases/signedLeaseStorage';
+import { buckets, uploadFile } from '../database/minio';
 
 const router = Router();
+
+const propertyPhotoUpload = multer({
+    storage: multer.memoryStorage(),
+    limits: { fileSize: 10 * 1024 * 1024 },
+    fileFilter: (_req, file, cb) => {
+        if (['image/jpeg', 'image/png', 'image/webp'].includes(file.mimetype)) {
+            cb(null, true);
+            return;
+        }
+        cb(new Error('Only JPG, PNG, and WebP images are supported'));
+    },
+});
+
+function isSupportedImageBuffer(file: Express.Multer.File): boolean {
+    const buffer = file.buffer;
+    if (file.mimetype === 'image/jpeg') return buffer.length > 3 && buffer[0] === 0xff && buffer[1] === 0xd8 && buffer[2] === 0xff;
+    if (file.mimetype === 'image/png') return buffer.length > 8 && buffer.subarray(0, 8).equals(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]));
+    if (file.mimetype === 'image/webp') return buffer.length > 12 && buffer.subarray(0, 4).toString('ascii') === 'RIFF' && buffer.subarray(8, 12).toString('ascii') === 'WEBP';
+    return false;
+}
+
+function safeStorageFilename(filename: string): string {
+    const fallback = `photo.${filename.split('.').pop() || 'jpg'}`;
+    return (filename || fallback).replace(/[^a-zA-Z0-9._-]/g, '_').slice(0, 120);
+}
 
 // =====================================================
 // SENSITIVE ENDPOINT RATE LIMITERS
@@ -475,6 +503,53 @@ router.get('/tenancies/:id/payment-summary', asyncHandler(async (req: Request, r
     } catch (error: any) {
         res.status(404).json({ error: error.message });
     }
+}));
+
+/**
+ * GET /api/v1/pm/tenancies/:id/signed-lease
+ * Serve a signed lease stored on the tenancy record.
+ */
+router.get('/tenancies/:id/signed-lease', asyncHandler(async (req: Request, res: Response) => {
+    const organizationId = await getOrganizationId(req);
+    const result = await db.query(
+        `SELECT id, reference_number, lease_signed_url
+         FROM tenancies
+         WHERE id = $1 AND organization_id = $2`,
+        [req.params.id, organizationId]
+    );
+
+    const tenancy = result.rows[0];
+    if (!tenancy?.lease_signed_url) {
+        return res.status(404).json({ error: 'Signed lease not found' });
+    }
+
+    const signedUrl = tenancy.lease_signed_url as string;
+    if (isS3ObjectRef(signedUrl)) {
+        const downloadUrl = await getSignedLeaseDownloadUrl(signedUrl);
+        if (!downloadUrl) return res.status(422).json({ error: 'Signed lease storage reference is invalid' });
+        return res.redirect(downloadUrl);
+    }
+
+    if (signedUrl.startsWith('http')) {
+        return res.redirect(signedUrl);
+    }
+
+    const dataUrlMatch = signedUrl.match(/^data:([^;]+);base64,(.+)$/);
+    if (dataUrlMatch) {
+        const objectRef = await storeSignedLeaseDocument({
+            tenancyId: tenancy.id,
+            sourceUrl: signedUrl,
+        });
+        await db.query(
+            `UPDATE tenancies SET lease_signed_url = $1, updated_at = NOW() WHERE id = $2`,
+            [objectRef, tenancy.id]
+        );
+        const downloadUrl = await getSignedLeaseDownloadUrl(objectRef);
+        if (!downloadUrl) return res.status(422).json({ error: 'Signed lease storage reference is invalid' });
+        return res.redirect(downloadUrl);
+    }
+
+    return res.status(422).json({ error: 'Signed lease URL format is not supported' });
 }));
 
 /**
@@ -1269,6 +1344,44 @@ router.get('/documents', clampPagination, asyncHandler(async (req: Request, res:
 }));
 
 /**
+ * POST /api/v1/pm/properties/:id/photos
+ * Upload a property photo and record it as a property_photos document
+ */
+router.post('/properties/:id/photos', propertyPhotoUpload.single('file'), asyncHandler(async (req: Request, res: Response) => {
+    const organizationId = await getOrganizationId(req);
+    const userId = await getUserId(req);
+    const file = req.file;
+
+    if (!userId) return res.status(401).json({ error: 'User ID required' });
+    if (!file) return res.status(400).json({ error: 'Image file is required' });
+    if (!isSupportedImageBuffer(file)) return res.status(422).json({ error: 'Uploaded file does not match a supported image format' });
+
+    const property = await propertyService.getPropertyById(req.params.id, organizationId);
+    if (!property) return res.status(404).json({ error: 'Property not found' });
+
+    const bucket = buckets.documents || 'propmetrik-documents';
+    const fileName = safeStorageFilename(file.originalname);
+    const objectKey = `property-management/${organizationId}/properties/${req.params.id}/photos/${Date.now()}_${fileName}`;
+
+    await uploadFile(bucket, objectKey, file.buffer, file.mimetype, {
+        propertyId: req.params.id,
+        documentType: 'property_photos',
+    });
+
+    const doc = await documentService.createDocument(organizationId, {
+        propertyId: req.params.id,
+        documentType: 'property_photos' as PropertyDocumentType,
+        title: req.body.title || fileName,
+        fileUrl: `s3://${bucket}/${objectKey}`,
+        fileName,
+        fileSizeBytes: file.size,
+        mimeType: file.mimetype,
+    }, userId);
+
+    res.status(201).json(doc);
+}));
+
+/**
  * POST /api/v1/pm/documents/:id/verify
  * Verify document
  */
@@ -1481,11 +1594,7 @@ router.post('/payments/webhook', asyncHandler(async (req: Request, res: Response
 // ENTERPRISE FEATURES: PROPERTY CRUD EXTENSIONS
 // =====================================================
 
-/**
- * PATCH /api/v1/pm/properties/:id
- * Update an existing property
- */
-router.patch('/properties/:id', validate(pmCreatePropertySchema.partial()), asyncHandler(async (req: Request, res: Response) => {
+const updatePropertyHandler = asyncHandler(async (req: Request, res: Response) => {
     const organizationId = await getOrganizationId(req);
     const userId = await getUserId(req);
 
@@ -1505,7 +1614,19 @@ router.patch('/properties/:id', validate(pmCreatePropertySchema.partial()), asyn
     }
 
     res.json(property);
-}));
+});
+
+/**
+ * PATCH /api/v1/pm/properties/:id
+ * Update an existing property
+ */
+router.patch('/properties/:id', validate(pmCreatePropertySchema.partial()), updatePropertyHandler);
+
+/**
+ * PUT /api/v1/pm/properties/:id
+ * Compatibility alias for older frontend bundles
+ */
+router.put('/properties/:id', validate(pmCreatePropertySchema.partial()), updatePropertyHandler);
 
 /**
  * DELETE /api/v1/pm/properties/:id

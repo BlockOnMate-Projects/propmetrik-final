@@ -1,6 +1,7 @@
 // Marketplace Service - Aggregates PM and CRM properties for public marketplace
 import db from '../../src/database';
 import { logger } from '../../src/utils/logger';
+import { getSignedLeaseDownloadUrl, isS3ObjectRef } from '../../src/services/property-management/leases/signedLeaseStorage';
 
 export interface MarketplaceProperty {
   id: string;
@@ -96,6 +97,65 @@ export interface SearchFilters {
 }
 
 export class MarketplaceService {
+  async enrichPmPropertyImages(properties: MarketplaceProperty[]): Promise<MarketplaceProperty[]> {
+    const pmPropertyIds = properties
+      .filter(property => property.source === 'pm')
+      .map(property => property.id);
+
+    if (pmPropertyIds.length === 0) return properties;
+
+    const result = await db.query(`
+      SELECT DISTINCT ON (property_id, id)
+        id,
+        property_id,
+        title,
+        file_url,
+        file_name
+      FROM property_management_documents
+      WHERE property_id = ANY($1)
+        AND document_type = 'property_photos'
+      ORDER BY property_id, id, created_at DESC
+    `, [pmPropertyIds]);
+
+    const imagesByPropertyId = new Map<string, Array<{ id: string; url: string; caption: string | null; original_name?: string }>>();
+
+    for (const row of result.rows) {
+      const url = await this.resolveImageUrl(row.file_url);
+      if (!url) continue;
+
+      const images = imagesByPropertyId.get(row.property_id) || [];
+      images.push({
+        id: row.id,
+        url,
+        caption: row.title || null,
+        original_name: row.file_name || '',
+      });
+      imagesByPropertyId.set(row.property_id, images);
+    }
+
+    return properties.map(property => {
+      if (property.source !== 'pm') return property;
+
+      const documentImages = imagesByPropertyId.get(property.id) || [];
+      if (documentImages.length === 0) return property;
+
+      const seenUrls = new Set<string>();
+      const images = [...documentImages, ...(property.images || [])].filter(image => {
+        if (!image.url || seenUrls.has(image.url)) return false;
+        seenUrls.add(image.url);
+        return true;
+      });
+
+      return { ...property, images };
+    });
+  }
+
+  private async resolveImageUrl(fileUrl: string | null): Promise<string | null> {
+    if (!fileUrl) return null;
+    if (isS3ObjectRef(fileUrl)) return await getSignedLeaseDownloadUrl(fileUrl) || null;
+    return fileUrl;
+  }
+
   /**
    * Search properties for marketplace using PostgreSQL
    * Note: This is a fallback. Production should use OpenSearch for better performance
@@ -305,7 +365,6 @@ export class MarketplaceService {
           WHERE organization_id IS NOT NULL
             AND marketplace_enabled = TRUE
             AND status IN ('active', 'under_offer')
-            AND (digital_address IS NOT NULL OR (latitude IS NOT NULL AND longitude IS NOT NULL))
         ),
         crm_props AS (
           SELECT 
@@ -351,7 +410,6 @@ export class MarketplaceService {
           WHERE organization_id IS NOT NULL
             AND marketplace_enabled = TRUE
             AND status IN ('active', 'pending')
-            AND (digital_address IS NOT NULL OR (latitude IS NOT NULL AND longitude IS NOT NULL))
         ),
         all_properties AS (
           SELECT * FROM pm_properties
@@ -423,7 +481,7 @@ export class MarketplaceService {
 
       return {
         total: propertiesResult.rows.length > 0 ? parseInt(propertiesResult.rows[0].total_count) : 0,
-        properties
+        properties: await this.enrichPmPropertyImages(properties)
       };
 
     } catch (error: any) {
@@ -486,7 +544,8 @@ export class MarketplaceService {
       const pmResult = await db.query(pmQuery, [token]);
       if (pmResult.rows.length > 0) {
         const row = pmResult.rows[0];
-        return this.mapRowToProperty(row);
+        const [property] = await this.enrichPmPropertyImages([this.mapRowToProperty(row)]);
+        return property;
       }
 
       const crmResult = await db.query(crmQuery, [token]);

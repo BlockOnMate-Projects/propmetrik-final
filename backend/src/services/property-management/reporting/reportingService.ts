@@ -372,6 +372,7 @@ export class ReportingService {
                 FROM tenancies
                 WHERE organization_id = $1
                 AND lease_start_date BETWEEN $2 AND $3
+                AND status IN ('active', 'expired', 'terminated', 'renewed')
                 GROUP BY date_trunc('month', lease_start_date)
                 
                 UNION ALL
@@ -393,14 +394,27 @@ export class ReportingService {
                     SUM(move_outs) as move_outs
                 FROM monthly_activity
                 GROUP BY period
+            ),
+            active_by_period AS (
+                SELECT
+                    a.period,
+                    COUNT(DISTINCT t.id) as active_tenancies
+                FROM aggregated a
+                LEFT JOIN tenancies t ON t.organization_id = $1
+                    AND t.status IN ('active', 'expired', 'terminated', 'renewed')
+                    AND t.lease_start_date <= (to_date(a.period, 'YYYY-MM') + INTERVAL '1 month - 1 day')::date
+                    AND COALESCE(t.terminated_at::date, t.lease_end_date) >= to_date(a.period, 'YYYY-MM')
+                GROUP BY a.period
             )
             SELECT 
-                period,
-                move_ins,
-                move_outs,
-                move_ins - move_outs as net_change
-            FROM aggregated
-            ORDER BY period
+                a.period,
+                a.move_ins,
+                a.move_outs,
+                a.move_ins - a.move_outs as net_change,
+                COALESCE(NULLIF(abp.active_tenancies, 0), a.move_ins + a.move_outs, 1) as turnover_base
+            FROM aggregated a
+            LEFT JOIN active_by_period abp ON abp.period = a.period
+            ORDER BY a.period
         `;
 
         const result = await db.query(query, [organizationId, startDate, endDate]);
@@ -430,7 +444,7 @@ export class ReportingService {
             moveIns: parseInt(row.move_ins) || 0,
             moveOuts: parseInt(row.move_outs) || 0,
             netChange: parseInt(row.net_change) || 0,
-            turnoverRate: Math.round((parseInt(row.move_outs) / activeCount) * 100 * 10) / 10,
+            turnoverRate: Math.round(((parseInt(row.move_outs) || 0) / (parseInt(row.turnover_base) || 1)) * 100 * 10) / 10,
             averageTenancyLength: Math.round(avgTenancyLength * 10) / 10
         }));
     }

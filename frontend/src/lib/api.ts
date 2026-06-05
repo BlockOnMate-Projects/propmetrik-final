@@ -67,7 +67,8 @@ export async function fetchApi<T>(
 
   // Attach auth token from NextAuth session
   const token = await getAuthToken();
-  const authHeaders: Record<string, string> = {
+  const isFormData = typeof FormData !== 'undefined' && options?.body instanceof FormData;
+  const authHeaders: Record<string, string> = isFormData ? {} : {
     'Content-Type': 'application/json',
   };
   if (token) {

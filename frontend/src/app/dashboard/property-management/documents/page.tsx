@@ -51,7 +51,9 @@ const API_HOST = process.env.NEXT_PUBLIC_API_URL?.replace(/\/api\/v1\/?$/, '') |
 function resolveFileUrl(fileUrl?: string): string | undefined {
     if (!fileUrl) return undefined
     if (fileUrl.startsWith('http')) return fileUrl
-    // /api/v1/files/... → http://localhost:4000/api/v1/files/...
+    if (fileUrl.startsWith('/api/v1/')) return `/api/${fileUrl.slice('/api/v1/'.length)}`
+    if (fileUrl.startsWith('/api/')) return fileUrl
+    // Storage keys and other backend-relative paths still go through the configured API host.
     return `${API_HOST}${fileUrl.startsWith('/') ? '' : '/'}${fileUrl}`
 }
 

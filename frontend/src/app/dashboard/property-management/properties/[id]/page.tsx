@@ -99,7 +99,7 @@ export default function PropertyDetailPage() {
 
     const [isLoading, setIsLoading] = useState(true)
     const [isUploading, setIsUploading] = useState(false)
-    const [newPhotoUrl, setNewPhotoUrl] = useState('')
+    const [newPhotoFile, setNewPhotoFile] = useState<File | null>(null)
     const [newPhotoTitle, setNewPhotoTitle] = useState('')
     const [error, setError] = useState<string | null>(null)
     const [isUploadDialogOpen, setIsUploadDialogOpen] = useState(false)
@@ -200,20 +200,14 @@ export default function PropertyDetailPage() {
     }, [propertyId])
 
     const handleUploadPhoto = async () => {
-        if (!newPhotoUrl) return
+        if (!newPhotoFile) return
         try {
             setIsUploading(true)
-            await propertyManagementApi.createDocument({
-                propertyId,
-                documentType: 'property_photos' as any,
-                title: newPhotoTitle || 'Property Photo',
-                fileUrl: newPhotoUrl,
-                fileName: 'photo.jpg'
-            })
+            await propertyManagementApi.uploadPropertyPhoto(propertyId, newPhotoFile, newPhotoTitle || newPhotoFile.name)
             // Refresh photos
             const photosRes = await propertyManagementApi.getDocuments({ propertyId, type: 'property_photos' })
             setAssetPhotos(Array.isArray(photosRes) ? photosRes : photosRes.data || [])
-            setNewPhotoUrl('')
+            setNewPhotoFile(null)
             setNewPhotoTitle('')
             setIsUploadDialogOpen(false)
         } catch (err) {
@@ -1407,20 +1401,21 @@ export default function PropertyDetailPage() {
                                         />
                                     </div>
                                     <div className="space-y-2">
-                                        <Label htmlFor="url" className="text-[10px] font-mono uppercase text-zinc-500">Resource URL (Public Link)</Label>
+                                        <Label htmlFor="photo-file" className="text-[10px] font-mono uppercase text-zinc-500">Image File</Label>
                                         <Input
-                                            id="url"
-                                            placeholder="https://example.com/image.jpg"
+                                            id="photo-file"
+                                            type="file"
+                                            accept="image/jpeg,image/png,image/webp"
                                             className="bg-black border-zinc-800 text-white font-mono text-sm"
-                                            value={newPhotoUrl}
-                                            onChange={(e) => setNewPhotoUrl(e.target.value)}
+                                            onChange={(e) => setNewPhotoFile(e.target.files?.[0] || null)}
                                         />
+                                        <p className="text-[9px] text-zinc-600 font-mono uppercase">JPG, PNG, or WebP up to 10MB</p>
                                     </div>
                                 </div>
                                 <DialogFooter>
                                     <Button
                                         onClick={handleUploadPhoto}
-                                        disabled={isUploading || !newPhotoUrl}
+                                        disabled={isUploading || !newPhotoFile}
                                         className="bg-amber-600 hover:bg-amber-500 text-white font-bold font-mono text-[10px] uppercase w-full"
                                     >
                                         {isUploading ? <Loader2 className="h-3 w-3 animate-spin mr-2" /> : <Plus className="h-3 w-3 mr-2" />}
