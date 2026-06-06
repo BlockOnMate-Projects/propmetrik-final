@@ -14,7 +14,7 @@
  */
 
 import { google, calendar_v3 } from 'googleapis';
-import { OAuth2Client, Credentials } from 'google-auth-library';
+import { Credentials } from 'google-auth-library';
 import { config } from '../../src/config';
 import { logger } from '../../src/utils/logger';
 
@@ -76,7 +76,7 @@ export interface UserCalendarAuth {
 
 export class GoogleCalendarService {
   private enabled: boolean;
-  private oauth2Client: OAuth2Client;
+  private oauth2Client: InstanceType<typeof google.auth.OAuth2>;
 
   constructor() {
     this.enabled = config.google.enabled;

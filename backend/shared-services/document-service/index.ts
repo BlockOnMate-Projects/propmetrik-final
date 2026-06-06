@@ -494,7 +494,7 @@ export class PDFGenerationService {
                 
                 // Set the HTML content with proper styling
                 await page.setContent(sanitizedHtml, {
-                    waitUntil: 'networkidle0'
+                    waitUntil: 'load'
                 });
                 
                 // Generate PDF with proper formatting
