@@ -47,6 +47,7 @@ interface LeaseFormData {
     startDate: string
     endDate: string
     monthlyRent: number
+    currency: string
     securityDeposit: number
     advanceMonths: number
     noticePeriodDays: number
@@ -84,6 +85,9 @@ export default function GenerateLeasePage() {
     const [templates, setTemplates] = useState<LeaseTemplate[]>([])
     const [isLoading, setIsLoading] = useState(true)
     const [isGenerating, setIsGenerating] = useState(false)
+    const [isPreparingEsign, setIsPreparingEsign] = useState(false)
+    // When true, show the lease form even though a lease already exists (regeneration)
+    const [forceShowForm, setForceShowForm] = useState(false)
     const [error, setError] = useState<string | null>(null)
     const [previewHtml, setPreviewHtml] = useState<string | null>(null)
     const [isPreviewOpen, setIsPreviewOpen] = useState(false)
@@ -95,6 +99,7 @@ export default function GenerateLeasePage() {
         startDate: format(new Date(), 'yyyy-MM-dd'),
         endDate: format(addMonths(new Date(), 12), 'yyyy-MM-dd'),
         monthlyRent: 0,
+        currency: 'GHS',
         securityDeposit: 0,
         advanceMonths: 1,
         noticePeriodDays: 30,
@@ -149,7 +154,7 @@ export default function GenerateLeasePage() {
                     const esignData = JSON.parse(existingEsignData)
                     // If it's for the same application, redirect to e-sign wizard
                     if (esignData.applicationId === applicationId) {
-                        router.push('/dashboard/e-sign/lease-envelope?source=lease-generator')
+                        router.push('/dashboard/e-sign/new?source=lease-generator')
                         return
                     }
                 }
@@ -173,6 +178,7 @@ export default function GenerateLeasePage() {
                     startDate,
                     endDate: format(addMonths(new Date(startDate), desiredMonths), 'yyyy-MM-dd'),
                     monthlyRent,
+                    currency: (appData as any).propertyPriceCurrency || 'GHS',
                     securityDeposit,
                 }))
 
@@ -235,6 +241,14 @@ export default function GenerateLeasePage() {
             return
         }
 
+        // Strict governance: the landlord must be explicitly named so they appear on the
+        // lease agreement. Without a name the document silently falls back to the
+        // organization name, which is not an acceptable record of who the landlord is.
+        if (!formData.isUserLandlord && !formData.landlordName?.trim()) {
+            setError('Please enter the landlord name — it must appear on the lease agreement')
+            return
+        }
+
         // Validate landlord email if landlord will sign
         if (!formData.isUserLandlord && formData.landlordWillSign && !formData.landlordEmail) {
             setError('Please provide the landlord email since they will be signing the lease')
@@ -290,6 +304,7 @@ export default function GenerateLeasePage() {
                 startDate: formData.startDate,
                 endDate: formData.endDate,
                 monthlyRent: formData.monthlyRent,
+                currency: formData.currency,
                 securityDeposit: formData.securityDeposit,
                 advanceMonths: formData.advanceMonths,
                 noticePeriodDays: formData.noticePeriodDays,
@@ -324,7 +339,7 @@ export default function GenerateLeasePage() {
             sessionStorage.setItem('esign_lease_document', JSON.stringify(esignData))
 
             // Redirect to e-sign wizard for field placement
-            router.push('/dashboard/e-sign/lease-envelope?source=lease-generator')
+            router.push('/dashboard/e-sign/new?source=lease-generator')
         } catch (err: any) {
             console.error('Failed to generate lease:', err)
             setError(err.message || 'Failed to generate lease. Please try again.')
@@ -339,6 +354,80 @@ export default function GenerateLeasePage() {
             router.push(`/dashboard/property-management/leases/${generatedResult.tenancyId}`)
         } else {
             router.push('/dashboard/property-management/applications')
+        }
+    }
+
+    // When a lease was already generated (e.g. in a prior session), the e-sign wizard's
+    // sessionStorage handoff is empty — so we must re-fetch the lease PDF for the existing
+    // tenancy and rebuild the handoff before sending the user into the wizard. Without this
+    // the wizard falls back to a blank self-sign envelope.
+    const handleContinueToESign = async () => {
+        if (!application?.tenancyId) {
+            setError('No tenancy is linked to this application yet.')
+            return
+        }
+
+        try {
+            setIsPreparingEsign(true)
+            setError(null)
+
+            const result = await propertyManagementApi.generateLeaseDocumentFromTenancy({
+                tenancyId: application.tenancyId,
+                format: 'pdf',
+            })
+
+            const documentUrl = (result as any).documentUrl || (result as any).downloadUrl
+            if (!documentUrl) {
+                throw new Error('Could not load the generated lease document.')
+            }
+
+            // Prefer the signers stored on the tenancy when the lease was generated (these include
+            // the landlord when "landlord will also sign" was chosen). Fall back to a sensible
+            // default order (property manager → tenant) if none are stored.
+            let signers: Array<{ role: string; name: string; email: string; order: number }> = [
+                {
+                    role: 'property_manager',
+                    name: user?.name || 'Property Manager',
+                    email: user?.email || '',
+                    order: 1,
+                },
+                {
+                    role: 'tenant',
+                    name: application.applicantFullName,
+                    email: application.applicantEmail,
+                    order: 2,
+                },
+            ]
+            try {
+                const tenancy = await propertyManagementApi.getTenancyById(application.tenancyId)
+                const stored = (tenancy as any)?.leaseTerms?.signers
+                if (Array.isArray(stored) && stored.length > 0) {
+                    signers = stored.map((s: any, i: number) => ({
+                        role: s.role || 'signer',
+                        name: s.name,
+                        email: s.email,
+                        order: s.order ?? i + 1,
+                    }))
+                }
+            } catch { /* keep default signers */ }
+
+            const esignData = {
+                documentUrl,
+                documentKey: result.documentKey,
+                filename: result.filename,
+                tenancyId: application.tenancyId,
+                applicationId,
+                propertyName: application.propertyName || application.propertyAddress || 'Property',
+                signers,
+                subject: `Lease Agreement - ${application.propertyName || application.propertyAddress}`,
+                message: `Please review and sign the lease agreement for ${application.propertyAddress || application.propertyName}.`,
+            }
+            sessionStorage.setItem('esign_lease_document', JSON.stringify(esignData))
+            router.push('/dashboard/e-sign/new?source=lease-generator')
+        } catch (err: any) {
+            console.error('Failed to prepare e-sign:', err)
+            setError(err.message || 'Failed to load the lease for e-signing. Please try again.')
+            setIsPreparingEsign(false)
         }
     }
 
@@ -364,15 +453,15 @@ export default function GenerateLeasePage() {
 
     // If lease was already generated (either by status or by having a tenancy), show appropriate message with options
     // Note: tenantId is only set AFTER the lease is signed
-    if (application.status === ApplicationStatus.LEASE_GENERATED || application.tenancyId) {
+    if ((application.status === ApplicationStatus.LEASE_GENERATED || application.tenancyId) && !forceShowForm) {
         return (
             <div className="flex flex-col items-center justify-center h-96 gap-4">
                 <CheckCircle2 className="h-12 w-12 text-emerald-500" />
                 <h2 className="text-xl font-semibold text-white">Lease Already Generated</h2>
                 <p className="text-zinc-400 text-center max-w-md">
-                    A lease has already been generated for this application. You can continue to e-sign, view the lease, or regenerate if needed.
+                    A lease has already been generated for this application. You can continue to e-sign, view the lease, or regenerate it (e.g. to fix the currency, rent, or signers).
                 </p>
-                <div className="flex gap-3 mt-4">
+                <div className="flex flex-wrap gap-3 mt-4 justify-center">
                     <Link href={`/dashboard/property-management/applications/${applicationId}`}>
                         <Button variant="outline">Back to Application</Button>
                     </Link>
@@ -381,18 +470,37 @@ export default function GenerateLeasePage() {
                             <Button variant="outline">View Tenancy</Button>
                         </Link>
                     )}
-                    <Link href="/dashboard/e-sign/lease-envelope?source=lease-generator">
-                        <Button className="bg-emerald-600 hover:bg-emerald-500">
-                            <FileSignature className="h-4 w-4 mr-2" />
-                            Continue to E-Sign
-                        </Button>
-                    </Link>
+                    <Button
+                        variant="outline"
+                        onClick={() => { setError(null); setForceShowForm(true); }}
+                        className="border-amber-700 text-amber-400 hover:bg-amber-950/40 hover:text-amber-300"
+                    >
+                        <FileSignature className="h-4 w-4 mr-2" />
+                        Regenerate Lease
+                    </Button>
+                    <Button
+                        onClick={handleContinueToESign}
+                        disabled={isPreparingEsign || !application.tenancyId}
+                        className="bg-emerald-600 hover:bg-emerald-500"
+                    >
+                        {isPreparingEsign ? (
+                            <>
+                                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                Preparing…
+                            </>
+                        ) : (
+                            <>
+                                <FileSignature className="h-4 w-4 mr-2" />
+                                Continue to E-Sign
+                            </>
+                        )}
+                    </Button>
                 </div>
             </div>
         )
     }
 
-    if (application.status !== ApplicationStatus.APPROVED) {
+    if (application.status !== ApplicationStatus.APPROVED && !forceShowForm) {
         return (
             <div className="flex flex-col items-center justify-center h-96 gap-4">
                 <AlertCircle className="h-12 w-12 text-yellow-500" />
@@ -600,9 +708,23 @@ export default function GenerateLeasePage() {
                         </CardTitle>
                     </CardHeader>
                     <CardContent className="space-y-4">
+                        <div className="space-y-2">
+                            <Label htmlFor="currency" className="text-zinc-300">Currency</Label>
+                            <select
+                                id="currency"
+                                value={formData.currency}
+                                onChange={(e) => setFormData(prev => ({ ...prev, currency: e.target.value }))}
+                                className="flex h-10 w-full rounded-md border border-zinc-800 bg-zinc-950 px-3 py-2 text-sm text-white focus:border-orange-500 focus:outline-none"
+                            >
+                                <option value="GHS">GHS (Ghana Cedi)</option>
+                                <option value="USD">USD (US Dollar)</option>
+                                <option value="EUR">EUR (Euro)</option>
+                                <option value="GBP">GBP (Pound Sterling)</option>
+                            </select>
+                        </div>
                         <div className="grid grid-cols-2 gap-4">
                             <div className="space-y-2">
-                                <Label htmlFor="monthlyRent" className="text-zinc-300">Monthly Rent (GHS)</Label>
+                                <Label htmlFor="monthlyRent" className="text-zinc-300">Monthly Rent ({formData.currency})</Label>
                                 <Input
                                     id="monthlyRent"
                                     type="number"
@@ -612,7 +734,7 @@ export default function GenerateLeasePage() {
                                 />
                             </div>
                             <div className="space-y-2">
-                                <Label htmlFor="securityDeposit" className="text-zinc-300">Security Deposit (GHS)</Label>
+                                <Label htmlFor="securityDeposit" className="text-zinc-300">Security Deposit ({formData.currency})</Label>
                                 <Input
                                     id="securityDeposit"
                                     type="number"

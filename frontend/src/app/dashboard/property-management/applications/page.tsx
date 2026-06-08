@@ -61,7 +61,9 @@ import {
     X,
     ClipboardList,
     Send,
-    Link2
+    Link2,
+    Trash2,
+    AlertTriangle
 } from 'lucide-react'
 import { propertyManagementApi, Application, ApplicationStatus, ApplicationStats, ApplicationLink } from '@/lib/property-management-api'
 import { format } from 'date-fns'
@@ -86,6 +88,7 @@ export default function ApplicationsPage() {
     const [rejectionReason, setRejectionReason] = useState('')
     const [approvalNotes, setApprovalNotes] = useState('')
     const [isProcessing, setIsProcessing] = useState(false)
+    const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
     
     // Link generation
     const [isLinkDialogOpen, setIsLinkDialogOpen] = useState(false)
@@ -244,6 +247,22 @@ export default function ApplicationsPage() {
             router.push(`/dashboard/property-management/tenants/${result.tenantId}`)
         } catch (err) {
             console.error('Failed to convert:', err)
+        } finally {
+            setIsProcessing(false)
+        }
+    }
+
+    const handleDelete = async () => {
+        if (!selectedApp) return
+        try {
+            setIsProcessing(true)
+            await propertyManagementApi.deleteApplication(selectedApp.id)
+            setIsDeleteDialogOpen(false)
+            setSelectedApp(null)
+            await loadData()
+        } catch (err) {
+            console.error('Failed to delete application:', err)
+            setError('Failed to delete application. Please try again.')
         } finally {
             setIsProcessing(false)
         }
@@ -554,7 +573,7 @@ export default function ApplicationsPage() {
                                                     {app.tenantId && (
                                                         <>
                                                             <DropdownMenuSeparator className="bg-zinc-700" />
-                                                            <DropdownMenuItem 
+                                                            <DropdownMenuItem
                                                                 className="cursor-pointer text-emerald-400"
                                                                 onClick={() => router.push(`/dashboard/property-management/tenants/${app.tenantId}`)}
                                                             >
@@ -563,6 +582,18 @@ export default function ApplicationsPage() {
                                                             </DropdownMenuItem>
                                                         </>
                                                     )}
+
+                                                    <DropdownMenuSeparator className="bg-zinc-700" />
+                                                    <DropdownMenuItem
+                                                        className="cursor-pointer text-red-400 focus:text-red-400"
+                                                        onClick={() => {
+                                                            setSelectedApp(app)
+                                                            setIsDeleteDialogOpen(true)
+                                                        }}
+                                                    >
+                                                        <Trash2 className="h-4 w-4 mr-2" />
+                                                        Delete Application
+                                                    </DropdownMenuItem>
                                                 </DropdownMenuContent>
                                             </DropdownMenu>
                                         </TableCell>
@@ -642,6 +673,34 @@ export default function ApplicationsPage() {
                         >
                             {isProcessing && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
                             Reject Application
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            {/* Delete Dialog */}
+            <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+                <DialogContent className="bg-zinc-900 border-zinc-800">
+                    <DialogHeader>
+                        <DialogTitle className="text-white flex items-center gap-2">
+                            <AlertTriangle className="h-5 w-5 text-red-500" />
+                            Delete Application
+                        </DialogTitle>
+                        <DialogDescription className="text-zinc-400">
+                            Delete the application from <span className="text-white font-medium">{selectedApp?.applicantFullName}</span>? This removes it from your applications list. It does not delete any tenant record already created from it.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <DialogFooter>
+                        <Button variant="ghost" onClick={() => setIsDeleteDialogOpen(false)}>
+                            Cancel
+                        </Button>
+                        <Button
+                            onClick={handleDelete}
+                            disabled={isProcessing}
+                            className="bg-red-600 hover:bg-red-700"
+                        >
+                            {isProcessing && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                            Delete Application
                         </Button>
                     </DialogFooter>
                 </DialogContent>

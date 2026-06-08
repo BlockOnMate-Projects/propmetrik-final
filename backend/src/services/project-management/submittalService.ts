@@ -6,6 +6,8 @@
 
 import { pool } from '../../database';
 import { v4 as uuidv4 } from 'uuid';
+import { logger } from '../../utils/logger';
+import { notify, resolveOrgStaff, resolveStaffUser } from '../../../shared-services/notifications/in-mail';
 
 // Types
 export type SubmittalStatus = 
@@ -395,8 +397,44 @@ class SubmittalService {
     await this.logHistory(id, 'submitted', submittal.status, 'pending_review', userId, {
       revision: newRevision
     });
-    
+
+    // Notify org staff (reviewers) that a submittal awaits review
+    try {
+      const organizationId = await this.resolveProjectOrg(submittal.project_id);
+      if (organizationId) {
+        const staff = (await resolveOrgStaff(organizationId)).filter((s) => s.userId !== userId);
+        if (staff.length) {
+          await notify({
+            recipients: staff,
+            category: 'project',
+            type: 'submittal.submitted',
+            title: 'Submittal awaiting review',
+            body: `Submittal ${submittal.submittal_number} "${submittal.title}" has been submitted for review.`,
+            priority: 'normal',
+            organizationId,
+            sourceType: 'submittal',
+            sourceId: id,
+            sourceUrl: `/dashboard/projects/${submittal.project_id}/submittals`,
+            channels: { inApp: true, email: true },
+          });
+        }
+      }
+    } catch (notifyError: any) {
+      logger.warn('Failed to notify reviewers of submittal submission', { submittalId: id, error: notifyError.message });
+    }
+
     return result.rows[0];
+  }
+
+  /** Resolve a project's organization_id (submittals are project-scoped). Best-effort. */
+  private async resolveProjectOrg(projectId: string): Promise<string | null> {
+    try {
+      const res = await pool.query(`SELECT organization_id FROM development_projects WHERE id = $1`, [projectId]);
+      return res.rows[0]?.organization_id || null;
+    } catch (err: any) {
+      logger.warn('resolveProjectOrg failed', { projectId, error: err.message });
+      return null;
+    }
   }
 
   /**
@@ -422,7 +460,31 @@ class SubmittalService {
         reviewer_id: reviewerId
       });
     }
-    
+
+    // Notify the assigned reviewer (skip self-assignment)
+    if (reviewerId && reviewerId !== assignedBy) {
+      try {
+        const recipient = await resolveStaffUser(reviewerId);
+        if (recipient) {
+          await notify({
+            recipients: recipient,
+            category: 'project',
+            type: 'submittal.review_assigned',
+            title: 'Submittal review assigned to you',
+            body: `You have been assigned to review submittal ${submittal.submittal_number} "${submittal.title}".`,
+            priority: 'normal',
+            organizationId: (await this.resolveProjectOrg(submittal.project_id)) || undefined,
+            sourceType: 'submittal',
+            sourceId: id,
+            sourceUrl: `/dashboard/projects/${submittal.project_id}/submittals`,
+            channels: { inApp: true, email: true },
+          });
+        }
+      } catch (notifyError: any) {
+        logger.warn('Failed to notify submittal reviewer', { submittalId: id, error: notifyError.message });
+      }
+    }
+
     return result.rows[0];
   }
 

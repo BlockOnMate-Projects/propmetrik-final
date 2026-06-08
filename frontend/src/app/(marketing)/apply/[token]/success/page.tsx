@@ -3,8 +3,18 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { CheckCircle2, Building2, Clock, FileText } from 'lucide-react';
 
-export default async function ApplySuccessPage({ params }: { params: Promise<{ token: string }> }) {
-  const { token: id } = await params;
+export default async function ApplySuccessPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ token: string }>;
+  searchParams: Promise<{ id?: string; token?: string }>;
+}) {
+  const { token: routeToken } = await params;
+  const sp = await searchParams;
+  // The apply form redirects here with the application id + tracking token in the query.
+  // Prefer those for the status link; the route param is the property/link token (not an application).
+  const id = sp.token || sp.id || routeToken;
 
   return (
     <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">

@@ -16,6 +16,7 @@ import { fxFeedService } from '../data-hub/scrapers/fxFeedService';
 import { v4 as uuidv4 } from 'uuid';
 import { feeEngine } from '../../../shared-services/payments/feeEngine';
 import { notificationService } from '../../../shared-services/notifications/unified';
+import { notify, resolveOrgStaff } from '../../../shared-services/notifications/in-mail';
 import { generateInvoicePdf } from '../../utils/invoicePdfGenerator';
 
 // ============================================================================
@@ -603,11 +604,49 @@ class InvoiceService {
       }
       
       logger.info('Invoice marked as paid', { invoiceId: id, paymentReference });
-      return this.mapInvoice(result.rows[0]);
+
+      const invoice = this.mapInvoice(result.rows[0]);
+      await this.dispatchPaidNotification(invoice);
+      return invoice;
     } catch (error) {
       logger.error('Error marking invoice as paid', { id, error });
       throw error;
     }
+  }
+
+  /**
+   * Notify org staff that a project invoice has been paid. Best-effort.
+   */
+  private async dispatchPaidNotification(invoice: ProjectInvoice): Promise<void> {
+    try {
+      if (!invoice.organizationId) return;
+      const staff = await resolveOrgStaff(invoice.organizationId);
+      if (!staff.length) return;
+      await notify({
+        recipients: staff,
+        category: 'finance',
+        type: 'project_invoice.paid',
+        title: 'Project invoice paid',
+        body: `Invoice ${invoice.invoiceNumber} (GHS ${invoice.totalAmount}) has been marked paid.`,
+        priority: 'normal',
+        organizationId: invoice.organizationId,
+        sourceType: 'project_invoice',
+        sourceId: invoice.id,
+        sourceUrl: invoice.projectId ? `/dashboard/projects/${invoice.projectId}/budget-cost` : '/dashboard/projects',
+        channels: { inApp: true },
+      });
+    } catch (notifyError: any) {
+      logger.warn('Failed to notify staff of paid invoice', { invoiceId: invoice.id, error: notifyError.message });
+    }
+  }
+
+  /**
+   * Notify staff of a paid invoice by id — used by payment paths that update the
+   * invoice row directly (e.g. crypto settlement) instead of calling markAsPaid.
+   */
+  async notifyPaidById(invoiceId: string): Promise<void> {
+    const invoice = await this.getById(invoiceId);
+    if (invoice) await this.dispatchPaidNotification(invoice);
   }
 
   /**
@@ -690,7 +729,7 @@ class InvoiceService {
           platformFeePesewas = feeCalc.serviceFeeSubunits;
           platformFeeAmount = feeCalc.serviceFee;
 
-          const frontendUrl = process.env.FRONTEND_URL || 'https://app.propmetrik.com';
+          const frontendUrl = process.env.FRONTEND_URL || 'https://propmetrik.com';
           const response = await paystackService.initializeWithSubaccount(
             {
               email: clientEmail,
@@ -837,7 +876,7 @@ class InvoiceService {
 
         // Always link to the payment page — it handles inline Paystack checkout
         // even when server-side Paystack init failed (e.g. amount over test limits)
-        const paymentPageUrl = `${process.env.FRONTEND_URL || 'https://app.propmetrik.com'}/payment/invoice?id=${sentInvoice.id}`;
+        const paymentPageUrl = `${process.env.FRONTEND_URL || 'https://propmetrik.com'}/payment/invoice?id=${sentInvoice.id}`;
         const paymentSection = `
             <div style="text-align: center; margin: 32px 0;">
               <a href="${paymentPageUrl}"

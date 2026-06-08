@@ -42,7 +42,7 @@ export const config = {
     ),
     frontendUrl: envSelect(
       process.env.DEV_FRONTEND_URL || 'http://localhost:3000',
-      process.env.PROD_FRONTEND_URL || 'https://app.propmetrik.com'
+      process.env.PROD_FRONTEND_URL || 'https://propmetrik.com'
     ),
     tenantPortalUrl: envSelect(
       process.env.DEV_TENANT_PORTAL_URL || 'http://localhost:3001',

@@ -468,8 +468,20 @@ export interface Property {
     updatedAt: string;
     parentPropertyId?: string;
     unitNumber?: string;
+    floorNumber?: number;
+    totalUnits?: number;
     // Transient for creation
     unitsCount?: number;
+    units?: PropertyUnitInput[];
     // Computed fields optionally returned
     occupancy_rate?: number;
+}
+
+export interface PropertyUnitInput {
+    label: string;
+    floorNumber?: number;
+    bedrooms?: number;
+    bathrooms?: number;
+    totalAreaSqm?: number;
+    price?: number;
 }

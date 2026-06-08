@@ -53,6 +53,7 @@ export interface TenancySummary {
     propertyId: string;
     propertyTitle: string;
     propertyAddress: string;
+    unitNumber?: string;
     organizationId: string;
     leaseStartDate: Date;
     leaseEndDate: Date;
@@ -106,7 +107,9 @@ export class TenantAuthService {
      */
     async generateMagicLink(
         identifier: string, // Phone or email
-        baseUrl: string
+        baseUrl: string,
+        linkPath: string = '/login',
+        expiryMinutes: number = TOKEN_EXPIRY_MINUTES
     ): Promise<AuthTokenResult> {
         try {
             // Find tenant by phone or email
@@ -120,7 +123,7 @@ export class TenantAuthService {
             // Generate secure token
             const token = crypto.randomBytes(32).toString('hex');
             const tokenHash = this.hashToken(token);
-            const expiresAt = new Date(Date.now() + TOKEN_EXPIRY_MINUTES * 60 * 1000);
+            const expiresAt = new Date(Date.now() + expiryMinutes * 60 * 1000);
 
             // Store token
             await this.db.query(
@@ -136,7 +139,9 @@ export class TenantAuthService {
                 ]
             );
 
-            const magicLink = `${baseUrl}/login?token=${token}`;
+            const normalizedBase = baseUrl.replace(/\/+$/, '');
+            const normalizedPath = linkPath.startsWith('/') ? linkPath : `/${linkPath}`;
+            const magicLink = `${normalizedBase}${normalizedPath}?token=${token}`;
 
             logger.info('Generated magic link for tenant', { tenantId: tenant.id });
 
@@ -593,6 +598,7 @@ export class TenantAuthService {
                 propertyId: row.property_id,
                 propertyTitle: row.property_title,
                 propertyAddress: `${row.address_street || ''}, ${row.address_city || ''}`.trim(),
+                unitNumber: row.unit_number || undefined,
                 organizationId: row.organization_id,
                 leaseStartDate: new Date(row.lease_start_date),
                 leaseEndDate: new Date(row.lease_end_date),

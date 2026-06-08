@@ -8,11 +8,21 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '@/components/ui/textarea'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import Link from 'next/link'
-import { ArrowLeft, Save, Loader2, Building2 } from 'lucide-react'
+import { ArrowLeft, Save, Loader2, Building2, Layers, Wand2, Plus, Trash2 } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { propertyManagementApi } from '@/lib/property-management-api'
-// Note: CreatePropertyDto might not be in frontend types, I'll use Partial<Property> instead or define locally or verify.
-// I'll use any or Partial<Property> since I added Property interface.
+import { Property } from '@/types/property-management'
+
+type NumberingScheme = 'floor_letter' | 'floor_number' | 'sequential'
+
+interface UnitRow {
+    label: string
+    floorNumber: number
+    bedrooms: string
+    bathrooms: string
+    totalAreaSqm: string
+    price: string
+}
 
 export default function NewPropertyPage() {
     const router = useRouter()
@@ -37,8 +47,15 @@ export default function NewPropertyPage() {
         price: '',
         priceCurrency: 'GHS',
         status: 'active',
-        unitsCount: '1'
     })
+
+    // Multi-unit building layout configuration
+    const [floorsCount, setFloorsCount] = useState('1')
+    const [unitsPerFloorMode, setUnitsPerFloorMode] = useState<'same' | 'custom'>('same')
+    const [unitsPerFloor, setUnitsPerFloor] = useState('2')
+    const [perFloorCounts, setPerFloorCounts] = useState<string[]>([])
+    const [numberingScheme, setNumberingScheme] = useState<NumberingScheme>('floor_letter')
+    const [units, setUnits] = useState<UnitRow[]>([])
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
         const { name, value } = e.target
@@ -49,40 +66,126 @@ export default function NewPropertyPage() {
         setFormData(prev => ({ ...prev, [name]: value }))
     }
 
+    const unitLabel = (floor: number, indexOnFloor: number, sequential: number): string => {
+        if (numberingScheme === 'floor_letter') {
+            // 1A, 1B ... falls back to a number past Z (26+ units on a floor is unusual)
+            return indexOnFloor < 26
+                ? `${floor}${String.fromCharCode(65 + indexOnFloor)}`
+                : `${floor}-${indexOnFloor + 1}`
+        }
+        if (numberingScheme === 'floor_number') {
+            return `${floor}${String(indexOnFloor + 1).padStart(2, '0')}`
+        }
+        return `Unit ${sequential}`
+    }
+
+    const generateUnits = () => {
+        const floors = Math.max(1, Math.min(200, parseInt(floorsCount) || 1))
+        const rows: UnitRow[] = []
+        let seq = 1
+        for (let f = 1; f <= floors; f++) {
+            const count = unitsPerFloorMode === 'same'
+                ? Math.max(1, parseInt(unitsPerFloor) || 1)
+                : Math.max(1, parseInt(perFloorCounts[f - 1] ?? unitsPerFloor) || 1)
+            for (let j = 0; j < count; j++) {
+                rows.push({
+                    label: unitLabel(f, j, seq),
+                    floorNumber: f,
+                    bedrooms: formData.bedrooms,
+                    bathrooms: formData.bathrooms,
+                    totalAreaSqm: formData.totalAreaSqm,
+                    price: formData.price,
+                })
+                seq++
+            }
+        }
+        setUnits(rows)
+    }
+
+    const updateUnit = (idx: number, field: keyof UnitRow, value: string) => {
+        setUnits(prev => prev.map((u, i) =>
+            i === idx ? { ...u, [field]: field === 'floorNumber' ? (parseInt(value) || 0) : value } : u
+        ))
+    }
+
+    const removeUnit = (idx: number) => setUnits(prev => prev.filter((_, i) => i !== idx))
+
+    const addUnit = () => setUnits(prev => [...prev, {
+        label: '',
+        floorNumber: Math.max(1, parseInt(floorsCount) || 1),
+        bedrooms: formData.bedrooms,
+        bathrooms: formData.bathrooms,
+        totalAreaSqm: formData.totalAreaSqm,
+        price: formData.price,
+    }])
+
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
         setError(null)
         setIsLoading(true)
 
         try {
-            // Convert numbers
-            const payload = {
-                ...formData,
-                bedrooms: formData.bedrooms ? parseInt(formData.bedrooms) : undefined,
-                bathrooms: formData.bathrooms ? parseInt(formData.bathrooms) : undefined,
-                floors: formData.floors ? parseInt(formData.floors) : undefined,
-                totalAreaSqm: formData.totalAreaSqm ? parseFloat(formData.totalAreaSqm) : undefined,
-                price: parseFloat(formData.price) || 0,
-                unitsCount: isMultiUnit ? parseInt(formData.unitsCount) : 1,
-                // Add required fields expected by backend if missing (though form has defaults)
-                referenceNumber: `PROP-${Date.now().toString().slice(-6)}` // Fallback or let backend generate
-            }
+            let payload: Partial<Property>
 
-            // Backend usually generates referenceNumber if missing, but let's see. 
-            // In PropertyService.ts I saw it generates it.
+            if (isMultiUnit) {
+                if (units.length === 0) {
+                    setError('Generate the unit layout (or add a unit) before saving.')
+                    setIsLoading(false)
+                    return
+                }
+                if (units.some(u => !u.label.trim())) {
+                    setError('Every unit needs a label/number (e.g. 3A, 201).')
+                    setIsLoading(false)
+                    return
+                }
+
+                payload = {
+                    title: formData.title,
+                    description: formData.description,
+                    region: formData.region,
+                    addressCity: formData.addressCity,
+                    addressDistrict: formData.addressDistrict,
+                    addressStreet: formData.addressStreet,
+                    digitalAddress: formData.digitalAddress,
+                    propertyType: formData.propertyType,
+                    transactionType: formData.transactionType,
+                    priceCurrency: formData.priceCurrency,
+                    status: formData.status,
+                    floors: parseInt(floorsCount) || undefined,
+                    units: units.map(u => ({
+                        label: u.label.trim(),
+                        floorNumber: u.floorNumber || undefined,
+                        bedrooms: u.bedrooms ? parseInt(u.bedrooms) : undefined,
+                        bathrooms: u.bathrooms ? parseInt(u.bathrooms) : undefined,
+                        totalAreaSqm: u.totalAreaSqm ? parseFloat(u.totalAreaSqm) : undefined,
+                        price: u.price ? parseFloat(u.price) : 0,
+                    })),
+                }
+            } else {
+                payload = {
+                    ...formData,
+                    bedrooms: formData.bedrooms ? parseInt(formData.bedrooms) : undefined,
+                    bathrooms: formData.bathrooms ? parseInt(formData.bathrooms) : undefined,
+                    floors: formData.floors ? parseInt(formData.floors) : undefined,
+                    totalAreaSqm: formData.totalAreaSqm ? parseFloat(formData.totalAreaSqm) : undefined,
+                    price: parseFloat(formData.price) || 0,
+                }
+            }
 
             await propertyManagementApi.createProperty(payload)
             router.push('/dashboard/property-management/properties')
         } catch (err: any) {
             console.error('Failed to create property:', err)
-            setError(err.message || 'Failed to create property. Please checking your inputs.')
+            setError(err.message || 'Failed to create property. Please check your inputs.')
         } finally {
             setIsLoading(false)
         }
     }
 
+    const floorsForCustom = Math.max(1, Math.min(200, parseInt(floorsCount) || 1))
+
     return (
-        <div className="space-y-6 max-w-4xl mx-auto">
+        <div className="space-y-6 max-w-5xl mx-auto">
             <div className="flex items-center gap-4">
                 <Link href="/dashboard/property-management/properties">
                     <Button variant="ghost" size="icon" className="text-zinc-400 hover:text-white">
@@ -145,7 +248,7 @@ export default function NewPropertyPage() {
                             <div className="space-y-2">
                                 <Label className="text-xs font-mono uppercase text-zinc-400">Structure</Label>
                                 <Select
-                                    value={isMultiUnit ? "multi" : "single"}
+                                    value={isMultiUnit ? 'multi' : 'single'}
                                     onValueChange={(val) => setIsMultiUnit(val === 'multi')}
                                 >
                                     <SelectTrigger className="bg-black border-zinc-700 font-mono">
@@ -157,21 +260,101 @@ export default function NewPropertyPage() {
                                     </SelectContent>
                                 </Select>
                             </div>
-
-                            {isMultiUnit && (
-                                <div className="space-y-2">
-                                    <Label className="text-xs font-mono uppercase text-zinc-400">Number of Units</Label>
-                                    <Input
-                                        name="unitsCount"
-                                        type="number"
-                                        value={formData.unitsCount}
-                                        onChange={handleChange}
-                                        className="bg-black border-zinc-700 font-mono text-amber-500 font-bold"
-                                        min="2"
-                                    />
-                                </div>
-                            )}
                         </div>
+
+                        {/* Multi-unit building layout */}
+                        {isMultiUnit && (
+                            <div className="space-y-4 rounded-lg border border-amber-900/40 bg-amber-950/10 p-4">
+                                <div className="flex items-center gap-2 text-amber-500 font-mono text-xs uppercase">
+                                    <Layers className="h-4 w-4" />
+                                    Building Layout
+                                </div>
+
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                    <div className="space-y-2">
+                                        <Label className="text-xs font-mono uppercase text-zinc-400">Floors</Label>
+                                        <Input
+                                            type="number"
+                                            min="1"
+                                            value={floorsCount}
+                                            onChange={(e) => setFloorsCount(e.target.value)}
+                                            className="bg-black border-zinc-700 font-mono text-amber-500 font-bold"
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label className="text-xs font-mono uppercase text-zinc-400">Units Per Floor</Label>
+                                        <Select value={unitsPerFloorMode} onValueChange={(v) => setUnitsPerFloorMode(v as 'same' | 'custom')}>
+                                            <SelectTrigger className="bg-black border-zinc-700 font-mono">
+                                                <SelectValue />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="same">Same on every floor</SelectItem>
+                                                <SelectItem value="custom">Different per floor</SelectItem>
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label className="text-xs font-mono uppercase text-zinc-400">Numbering</Label>
+                                        <Select value={numberingScheme} onValueChange={(v) => setNumberingScheme(v as NumberingScheme)}>
+                                            <SelectTrigger className="bg-black border-zinc-700 font-mono">
+                                                <SelectValue />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="floor_letter">Floor + Letter (3A, 3B)</SelectItem>
+                                                <SelectItem value="floor_number">Floor + Number (301, 302)</SelectItem>
+                                                <SelectItem value="sequential">Sequential (Unit 1, 2)</SelectItem>
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+                                </div>
+
+                                {unitsPerFloorMode === 'same' ? (
+                                    <div className="space-y-2 max-w-[12rem]">
+                                        <Label className="text-xs font-mono uppercase text-zinc-400"># Units / Floor</Label>
+                                        <Input
+                                            type="number"
+                                            min="1"
+                                            value={unitsPerFloor}
+                                            onChange={(e) => setUnitsPerFloor(e.target.value)}
+                                            className="bg-black border-zinc-700 font-mono text-amber-500 font-bold"
+                                        />
+                                    </div>
+                                ) : (
+                                    <div className="space-y-2">
+                                        <Label className="text-xs font-mono uppercase text-zinc-400">Units on each floor</Label>
+                                        <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
+                                            {Array.from({ length: floorsForCustom }, (_, i) => (
+                                                <div key={i} className="space-y-1">
+                                                    <span className="text-[10px] font-mono text-zinc-500">Floor {i + 1}</span>
+                                                    <Input
+                                                        type="number"
+                                                        min="1"
+                                                        value={perFloorCounts[i] ?? ''}
+                                                        placeholder={unitsPerFloor}
+                                                        onChange={(e) => {
+                                                            const next = [...perFloorCounts]
+                                                            next[i] = e.target.value
+                                                            setPerFloorCounts(next)
+                                                        }}
+                                                        className="bg-black border-zinc-700 font-mono text-xs h-9"
+                                                    />
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+
+                                <div className="flex items-center gap-3 pt-1">
+                                    <Button type="button" onClick={generateUnits} variant="outline" className="border-amber-700 text-amber-500 hover:bg-amber-950 hover:text-amber-400 bg-transparent font-mono text-xs">
+                                        <Wand2 className="h-3 w-3 mr-2" />
+                                        {units.length > 0 ? 'Regenerate Units' : 'Generate Units'}
+                                    </Button>
+                                    <p className="text-[11px] font-mono text-zinc-500">
+                                        Uses the default specs below as a starting point — edit each unit in the roster.
+                                    </p>
+                                </div>
+                            </div>
+                        )}
 
                         {/* Location */}
                         <div className="space-y-4">
@@ -249,46 +432,53 @@ export default function NewPropertyPage() {
                         </div>
 
                         {/* Specs */}
-                        <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-                            <div className="space-y-2">
-                                <Label className="text-xs font-mono uppercase text-zinc-400">Bedrooms</Label>
-                                <Input
-                                    name="bedrooms"
-                                    type="number"
-                                    value={formData.bedrooms}
-                                    onChange={handleChange}
-                                    className="bg-black border-zinc-700 font-mono"
-                                />
-                            </div>
-                            <div className="space-y-2">
-                                <Label className="text-xs font-mono uppercase text-zinc-400">Bathrooms</Label>
-                                <Input
-                                    name="bathrooms"
-                                    type="number"
-                                    value={formData.bathrooms}
-                                    onChange={handleChange}
-                                    className="bg-black border-zinc-700 font-mono"
-                                />
-                            </div>
-                            <div className="space-y-2">
-                                <Label className="text-xs font-mono uppercase text-zinc-400">Area (sqm)</Label>
-                                <Input
-                                    name="totalAreaSqm"
-                                    type="number"
-                                    value={formData.totalAreaSqm}
-                                    onChange={handleChange}
-                                    className="bg-black border-zinc-700 font-mono"
-                                />
-                            </div>
-                            <div className="space-y-2">
-                                <Label className="text-xs font-mono uppercase text-zinc-400">Floors</Label>
-                                <Input
-                                    name="floors"
-                                    type="number"
-                                    value={formData.floors}
-                                    onChange={handleChange}
-                                    className="bg-black border-zinc-700 font-mono"
-                                />
+                        <div className="space-y-2">
+                            {isMultiUnit && (
+                                <p className="text-[11px] font-mono text-zinc-500 uppercase">Default Unit Specs (seed each unit — edit individually below)</p>
+                            )}
+                            <div className={`grid grid-cols-2 gap-6 ${isMultiUnit ? 'md:grid-cols-3' : 'md:grid-cols-4'}`}>
+                                <div className="space-y-2">
+                                    <Label className="text-xs font-mono uppercase text-zinc-400">Bedrooms</Label>
+                                    <Input
+                                        name="bedrooms"
+                                        type="number"
+                                        value={formData.bedrooms}
+                                        onChange={handleChange}
+                                        className="bg-black border-zinc-700 font-mono"
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label className="text-xs font-mono uppercase text-zinc-400">Bathrooms</Label>
+                                    <Input
+                                        name="bathrooms"
+                                        type="number"
+                                        value={formData.bathrooms}
+                                        onChange={handleChange}
+                                        className="bg-black border-zinc-700 font-mono"
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label className="text-xs font-mono uppercase text-zinc-400">Area (sqm)</Label>
+                                    <Input
+                                        name="totalAreaSqm"
+                                        type="number"
+                                        value={formData.totalAreaSqm}
+                                        onChange={handleChange}
+                                        className="bg-black border-zinc-700 font-mono"
+                                    />
+                                </div>
+                                {!isMultiUnit && (
+                                    <div className="space-y-2">
+                                        <Label className="text-xs font-mono uppercase text-zinc-400">Floors</Label>
+                                        <Input
+                                            name="floors"
+                                            type="number"
+                                            value={formData.floors}
+                                            onChange={handleChange}
+                                            className="bg-black border-zinc-700 font-mono"
+                                        />
+                                    </div>
+                                )}
                             </div>
                         </div>
 
@@ -296,7 +486,7 @@ export default function NewPropertyPage() {
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                             <div className="space-y-2">
                                 <Label className="text-xs font-mono uppercase text-zinc-400">
-                                    {isMultiUnit ? 'Rental Price (Per Unit) *' : 'Rental Price *'}
+                                    {isMultiUnit ? 'Default Rent (Per Unit)' : 'Rental Price *'}
                                 </Label>
                                 <Input
                                     name="price"
@@ -305,7 +495,7 @@ export default function NewPropertyPage() {
                                     onChange={handleChange}
                                     placeholder="0.00"
                                     className="bg-black border-zinc-700 font-mono font-bold text-amber-500"
-                                    required
+                                    required={!isMultiUnit}
                                 />
                             </div>
                             <div className="space-y-2">
@@ -334,6 +524,69 @@ export default function NewPropertyPage() {
                                 </Select>
                             </div>
                         </div>
+
+                        {/* Unit roster */}
+                        {isMultiUnit && units.length > 0 && (
+                            <div className="space-y-3 rounded-lg border border-zinc-800 bg-black/40 p-4">
+                                <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-2 text-amber-500 font-mono text-xs uppercase">
+                                        <Building2 className="h-4 w-4" />
+                                        Unit Roster
+                                        <span className="text-zinc-500 normal-case">
+                                            ({units.length} units{floorsCount ? ` across ${floorsForCustom} floor${floorsForCustom > 1 ? 's' : ''}` : ''})
+                                        </span>
+                                    </div>
+                                    <Button type="button" onClick={addUnit} variant="ghost" size="sm" className="text-zinc-400 hover:text-amber-500 font-mono text-xs h-7">
+                                        <Plus className="h-3 w-3 mr-1" /> Add Unit
+                                    </Button>
+                                </div>
+
+                                <div className="overflow-x-auto">
+                                    <table className="w-full text-xs font-mono">
+                                        <thead>
+                                            <tr className="text-zinc-500 uppercase text-[10px]">
+                                                <th className="text-left font-normal py-1 px-2">Unit #</th>
+                                                <th className="text-left font-normal py-1 px-2 w-16">Floor</th>
+                                                <th className="text-left font-normal py-1 px-2 w-20">Beds</th>
+                                                <th className="text-left font-normal py-1 px-2 w-20">Baths</th>
+                                                <th className="text-left font-normal py-1 px-2 w-24">Area m²</th>
+                                                <th className="text-left font-normal py-1 px-2 w-28">Rent</th>
+                                                <th className="py-1 px-2 w-8"></th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {units.map((u, idx) => (
+                                                <tr key={idx} className="border-t border-zinc-800/60">
+                                                    <td className="py-1 px-2">
+                                                        <Input value={u.label} onChange={(e) => updateUnit(idx, 'label', e.target.value)} className="bg-black border-zinc-800 font-mono h-8 text-amber-500" />
+                                                    </td>
+                                                    <td className="py-1 px-2">
+                                                        <Input type="number" value={u.floorNumber} onChange={(e) => updateUnit(idx, 'floorNumber', e.target.value)} className="bg-black border-zinc-800 font-mono h-8" />
+                                                    </td>
+                                                    <td className="py-1 px-2">
+                                                        <Input type="number" value={u.bedrooms} onChange={(e) => updateUnit(idx, 'bedrooms', e.target.value)} className="bg-black border-zinc-800 font-mono h-8" />
+                                                    </td>
+                                                    <td className="py-1 px-2">
+                                                        <Input type="number" value={u.bathrooms} onChange={(e) => updateUnit(idx, 'bathrooms', e.target.value)} className="bg-black border-zinc-800 font-mono h-8" />
+                                                    </td>
+                                                    <td className="py-1 px-2">
+                                                        <Input type="number" value={u.totalAreaSqm} onChange={(e) => updateUnit(idx, 'totalAreaSqm', e.target.value)} className="bg-black border-zinc-800 font-mono h-8" />
+                                                    </td>
+                                                    <td className="py-1 px-2">
+                                                        <Input type="number" value={u.price} onChange={(e) => updateUnit(idx, 'price', e.target.value)} className="bg-black border-zinc-800 font-mono h-8" />
+                                                    </td>
+                                                    <td className="py-1 px-2 text-center">
+                                                        <button type="button" onClick={() => removeUnit(idx)} className="text-zinc-600 hover:text-red-500">
+                                                            <Trash2 className="h-3.5 w-3.5" />
+                                                        </button>
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        )}
 
                         <div className="space-y-2">
                             <Label className="text-xs font-mono uppercase text-zinc-400">Description</Label>

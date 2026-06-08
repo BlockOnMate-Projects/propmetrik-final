@@ -1,5 +1,5 @@
-import { validateApplicationToken, getPropertyById } from '@/lib/api';
-import ApplicationForm from '@/components/ApplicationForm';
+import { validateApplicationToken, getPropertyById } from '@/lib/tenant/api';
+import ApplicationForm from '@/components/tenant/ApplicationForm';
 import { Card, CardContent } from '@/components/ui/card';
 
 export default async function ApplyPage({ params }: { params: Promise<{ id: string }> }) {
@@ -20,6 +20,13 @@ export default async function ApplyPage({ params }: { params: Promise<{ id: stri
       // It's a valid application link token
       propertyId = validation.propertyId;
       applicationToken = tokenOrPropertyId;
+      if (validation.property) {
+        return (
+          <div className="container py-10">
+            <ApplicationForm property={validation.property} token={applicationToken} units={validation.units} />
+          </div>
+        );
+      }
     } else {
       // Fallback: treat it as a direct property ID (for testing)
       propertyId = tokenOrPropertyId;

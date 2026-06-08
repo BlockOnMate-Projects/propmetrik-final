@@ -192,12 +192,13 @@ export default function TenantsPage() {
 
         try {
             setIsDeleting(true)
-            // Note: You may need to add deleteTenant to the API
-            // await propertyManagementApi.deleteTenant(tenantToDelete.id)
+            await propertyManagementApi.deleteTenant(tenantToDelete.id)
             setTenants(prev => prev.filter(t => t.id !== tenantToDelete.id))
+            setTenancies(prev => prev.filter(t => t.tenantId !== tenantToDelete.id))
             setTenantToDelete(null)
         } catch (err) {
             console.error('Failed to delete tenant:', err)
+            setError(err instanceof Error ? err.message : 'Failed to delete tenant. Please try again.')
         } finally {
             setIsDeleting(false)
         }
@@ -468,7 +469,10 @@ export default function TenantsPage() {
                                                     <DropdownMenuSeparator className="bg-border" />
                                                     <DropdownMenuItem
                                                         className="text-destructive hover:text-destructive focus:text-destructive focus:bg-destructive/10 font-mono text-xs cursor-pointer"
-                                                        onClick={() => setTenantToDelete(tenant)}
+                                                        onClick={(e) => {
+                                                            e.stopPropagation()
+                                                            setTenantToDelete(tenant)
+                                                        }}
                                                     >
                                                         <Trash2 className="h-3 w-3 mr-2" />
                                                         Remove Tenant

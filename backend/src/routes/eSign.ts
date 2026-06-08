@@ -28,7 +28,8 @@ import {
 } from '../../shared-services/e-sign/types';
 import { logger } from '../utils/logger';
 import { pool, query as dbQuery } from '../database';
-import { getFile, uploadFile, buckets } from '../database/minio';
+import { getFile, uploadFile, buckets, getPresignedDownloadUrl } from '../database/minio';
+import { notify } from '../../shared-services/notifications/notify';
 import { PDFDocument } from 'pdf-lib';
 
 // Multer configuration for PDF uploads
@@ -99,7 +100,7 @@ const getOrganizationId = (req: Request): string | undefined => {
 const maybeProcessPropertyManagementCompletion = async (envelopeId: string): Promise<void> => {
     const envelopeResult = await dbQuery(
         `SELECT id, name, status, completed_at, context_type, context_entity_id, context_entity_name,
-                signed_pdf_url, document_pdf_url, document_image_url
+                signed_pdf_url, document_pdf_url, document_image_url, organization_id, created_by
          FROM esign_envelopes
          WHERE id = $1`,
         [envelopeId]
@@ -122,7 +123,11 @@ const maybeProcessPropertyManagementCompletion = async (envelopeId: string): Pro
             // 1. Get the original PDF bytes
             let originalPdfBytes: Uint8Array;
 
-            if (envelopeRow.document_pdf_url) {
+            if (envelopeRow.document_pdf_url && envelopeRow.document_pdf_url.startsWith('data:')) {
+                // Stored inline as a base64 data URL (designer-uploaded leases) — decode directly.
+                const base64 = envelopeRow.document_pdf_url.replace(/^data:application\/pdf;base64,/, '');
+                originalPdfBytes = new Uint8Array(Buffer.from(base64, 'base64'));
+            } else if (envelopeRow.document_pdf_url) {
                 let bucket = buckets.documents;
                 let key = envelopeRow.document_pdf_url;
 
@@ -157,8 +162,8 @@ const maybeProcessPropertyManagementCompletion = async (envelopeId: string): Pro
             // 2. Get signature AND date_signed fields from esign_fields
             const fieldsResult = await dbQuery(
                 `SELECT ef.id, ef.field_type, ef.value, ef.page, ef.x_position, ef.y_position,
-                        ef.width, ef.height, ef.signature_hash, ef.signed_at, ef.signer_id,
-                        es.name as signer_name, es.email as signer_email, es.permanent_signer_id
+                        ef.width, ef.height, ef.signed_at, ef.signer_id,
+                        es.name as signer_name, es.email as signer_email
                  FROM esign_fields ef
                  LEFT JOIN esign_signers es ON es.id = ef.signer_id
                  WHERE ef.envelope_id = $1 AND ef.field_type IN ('signature', 'date_signed') AND ef.value IS NOT NULL`,
@@ -183,7 +188,9 @@ const maybeProcessPropertyManagementCompletion = async (envelopeId: string): Pro
                         const raw = tenantRes.rows[0].id.replace(/-/g, '');
                         return `PMT-${raw.substring(0, 4).toUpperCase()}-${raw.substring(4, 8).toUpperCase()}`;
                     }
-                    return '';
+                    // Last resort: deterministic PMT id from the email (so external signers still get one).
+                    const hash = createHash('sha256').update(email.toLowerCase()).digest('hex');
+                    return `PMT-${hash.substring(0, 4).toUpperCase()}-${hash.substring(4, 8).toUpperCase()}`;
                 };
 
                 const signatureFields = await Promise.all(sigRows.map(async (f: any) => ({
@@ -194,11 +201,11 @@ const maybeProcessPropertyManagementCompletion = async (envelopeId: string): Pro
                     width: f.width,
                     height: f.height,
                     signatureId: await resolveSignerId(f.signer_email, f.permanent_signer_id),
-                    signatureHash: f.signature_hash,
                     signedAt: f.signed_at ? new Date(f.signed_at) : undefined,
                     signerName: f.signer_name,
                     signerEmail: f.signer_email,
-                    usePercentage: false,
+                    // Fields are placed by FieldPlacement as percentages (0-100) of the page
+                    usePercentage: true,
                 })));
 
                 const dateFields = dateRows.map((f: any) => ({
@@ -208,12 +215,12 @@ const maybeProcessPropertyManagementCompletion = async (envelopeId: string): Pro
                     y: f.y_position,
                     width: f.width,
                     height: f.height,
-                    usePercentage: false,
+                    usePercentage: true,
                 }));
 
                 // Get signers and audit for full certificate
                 const signersRes = await dbQuery(
-                    `SELECT name, email, role, signed_at, permanent_signer_id, signed_from_ip, signed_user_agent
+                    `SELECT name, email, role, signed_at, signed_from_ip, signed_user_agent
                      FROM esign_signers WHERE envelope_id = $1 AND status = 'signed' ORDER BY signing_order`,
                     [envelopeId]
                 ).catch(() => ({ rows: [] }));
@@ -286,6 +293,81 @@ const maybeProcessPropertyManagementCompletion = async (envelopeId: string): Pro
         signedDocumentUrl = envelopeRow.document_pdf_url;
     }
 
+    // --- Email every signer the fully-executed document (the signed PDF ends with the
+    // certificate-of-completion page). Best-effort; never blocks completion processing. ---
+    try {
+        const allSigners = await dbQuery(
+            `SELECT name, email FROM esign_signers
+             WHERE envelope_id = $1 AND email IS NOT NULL AND email <> ''
+             ORDER BY signing_order`,
+            [envelopeId]
+        );
+
+        // Load the signed PDF bytes once: used both to attach the file and to presign a link.
+        let signedPdfBuffer: Buffer | null = null;
+        let downloadUrl: string | null = null;
+        if (signedDocumentUrl && signedDocumentUrl.startsWith('data:')) {
+            const b64 = signedDocumentUrl.replace(/^data:application\/pdf;base64,/, '');
+            signedPdfBuffer = Buffer.from(b64, 'base64');
+        } else if (signedDocumentUrl) {
+            let bucket = buckets.documents;
+            let key = signedDocumentUrl;
+            const parts = signedDocumentUrl.split('/');
+            if (parts.length > 1 && (parts[0] === buckets.documents || parts[0] === buckets.uploads)) {
+                bucket = parts[0];
+                key = parts.slice(1).join('/');
+            }
+            // Presign for the in-body link (works even if the attachment is stripped by a mail client).
+            downloadUrl = await getPresignedDownloadUrl(bucket, key, 7 * 24 * 60 * 60).catch(() => null);
+            // Pull the actual bytes so we can attach the executed PDF directly to the email.
+            try {
+                const { body } = await getFile(bucket, key);
+                signedPdfBuffer = Buffer.isBuffer(body) ? body : Buffer.from(body);
+            } catch (e: any) {
+                logger.warn('Could not load signed PDF for email attachment', { envelopeId, error: e?.message });
+            }
+        }
+
+        const docName = envelopeRow.name || 'Signed Document';
+        const attachmentName = `${docName.replace(/[^a-zA-Z0-9_-]+/g, '_')}_signed.pdf`;
+        const emailAttachments = signedPdfBuffer
+            ? [{ filename: attachmentName, content: signedPdfBuffer, contentType: 'application/pdf' }]
+            : undefined;
+        const attachNote = emailAttachments
+            ? `<p style="color:#111827;">The fully-executed PDF is <strong>attached to this email</strong>.</p>`
+            : '';
+        const linkBlock = downloadUrl
+            ? `${attachNote}<p style="margin:24px 0;"><a href="${downloadUrl}" style="background:#059669;color:#fff;padding:12px 20px;border-radius:6px;text-decoration:none;font-weight:600;">Download signed document</a></p>
+               <p style="color:#6b7280;font-size:13px;">Or paste this link into your browser:<br>${downloadUrl}</p>`
+            : (attachNote || `<p style="color:#6b7280;">Your fully-executed copy is available from your PropMetrik account.</p>`);
+
+        for (const s of allSigners.rows) {
+            const greeting = s.name ? `Hi ${s.name},` : 'Hello,';
+            const html = `
+                <div style="font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;color:#111827;max-width:560px;margin:0 auto;">
+                  <h2 style="color:#059669;">Signing complete</h2>
+                  <p>${greeting}</p>
+                  <p>All parties have signed <strong>"${docName}"</strong>. Your fully-executed copy — including the certificate of completion — is ready.</p>
+                  ${linkBlock}
+                  <p style="color:#6b7280;font-size:13px;">Completed via PropMetrik e-Sign. The certificate of completion is the final page of the document.</p>
+                </div>`;
+            await notify({
+                recipients: [{ audience: 'staff', userId: '', email: s.email, name: s.name }],
+                category: 'esign',
+                type: 'esign.completed',
+                title: `Completed & signed: ${docName}`,
+                body: `All parties have signed "${docName}". Your executed copy is ready to download.`,
+                priority: 'normal',
+                channels: { email: true },
+                sourceUrl: downloadUrl || undefined,
+                email: { subject: `Completed & signed: ${docName}`, html, attachments: emailAttachments },
+            }).catch((e: any) => logger.warn('Completion email failed for a signer', { envelopeId, email: s.email, error: e?.message }));
+        }
+        logger.info('Sent completion emails to signers', { envelopeId, recipients: allSigners.rows.length });
+    } catch (emailError: any) {
+        logger.error('Failed to send completion emails', { envelopeId, error: emailError?.message || 'Unknown error' });
+    }
+
     let tenancyId: string | null = null;
 
     if (
@@ -297,13 +379,16 @@ const maybeProcessPropertyManagementCompletion = async (envelopeId: string): Pro
     }
 
     if (!tenancyId && envelopeRow.context_type === 'lease' && envelopeRow.context_entity_id) {
-        const applicationLinkResult = await dbQuery(
-            `SELECT tenancy_id
-             FROM applications
-             WHERE id = $1`,
-            [envelopeRow.context_entity_id]
-        );
-        tenancyId = applicationLinkResult.rows[0]?.tenancy_id || null;
+        const cid = envelopeRow.context_entity_id;
+        // The e-sign designer stores the TENANCY id directly; older flows stored the APPLICATION
+        // id. Accept either: try as a tenancy first, then fall back to an application lookup.
+        const tenancyDirect = await dbQuery(`SELECT id FROM tenancies WHERE id = $1`, [cid]).catch(() => ({ rows: [] }));
+        if (tenancyDirect.rows.length > 0) {
+            tenancyId = cid;
+        } else {
+            const applicationLinkResult = await dbQuery(`SELECT tenancy_id FROM applications WHERE id = $1`, [cid]);
+            tenancyId = applicationLinkResult.rows[0]?.tenancy_id || null;
+        }
     }
 
     if (!tenancyId) {
@@ -323,6 +408,23 @@ const maybeProcessPropertyManagementCompletion = async (envelopeId: string): Pro
         .update([envelopeId, signedDocumentUrl || '', new Date(completedAt).toISOString()].join('|'))
         .digest('hex');
 
+    // storeSignedLeaseDocument (in handleEsignCompletion) only accepts data:/http/s3:// refs.
+    // Our generated signed PDF is a bare MinIO key — normalize it to an s3:// object ref.
+    let signedLeaseRef = signedDocumentUrl;
+    if (signedDocumentUrl
+        && !signedDocumentUrl.startsWith('data:')
+        && !signedDocumentUrl.startsWith('http')
+        && !signedDocumentUrl.startsWith('s3://')) {
+        let bucket = buckets.documents;
+        let key = signedDocumentUrl;
+        const parts = signedDocumentUrl.split('/');
+        if (parts.length > 1 && (parts[0] === buckets.documents || parts[0] === buckets.uploads)) {
+            bucket = parts[0];
+            key = parts.slice(1).join('/');
+        }
+        signedLeaseRef = `s3://${bucket}/${key}`;
+    }
+
     const completionEvent = {
         event: 'envelope.completed' as const,
         timestamp: new Date(),
@@ -339,7 +441,7 @@ const maybeProcessPropertyManagementCompletion = async (envelopeId: string): Pro
         documents: [{
             id: envelopeId,
             name: envelopeRow.name || 'Signed Document',
-            signedUrl: signedDocumentUrl,
+            signedUrl: signedLeaseRef,
             certificateUrl: undefined
         }],
         signers: signerRowsResult.rows.map((row: any) => ({
@@ -355,8 +457,27 @@ const maybeProcessPropertyManagementCompletion = async (envelopeId: string): Pro
         }
     };
 
-    const { tenancyService } = await import('../services/property-management/leases/tenancyService');
-    await tenancyService.handleEsignCompletion(completionEvent);
+    // Make the signed tenancy produce an active tenant automatically (no separate "convert"
+    // step that would create a divergent tenancy). Best-effort; runs before activation below.
+    if (envelopeRow.organization_id) {
+        try {
+            const { applicationService } = await import('../services/property-management/applications/applicationService');
+            await applicationService.ensureTenantForSignedTenancy(
+                tenancyId,
+                envelopeRow.organization_id,
+                envelopeRow.created_by || null
+            );
+        } catch (e: any) {
+            logger.warn('ensureTenantForSignedTenancy failed (non-fatal)', { envelopeId, tenancyId, error: e?.message });
+        }
+    }
+
+    try {
+        const { tenancyService } = await import('../services/property-management/leases/tenancyService');
+        await tenancyService.handleEsignCompletion(completionEvent);
+    } catch (e: any) {
+        logger.error('handleEsignCompletion failed', { envelopeId, tenancyId, error: e?.message });
+    }
 };
 
 // =====================================================
@@ -1722,8 +1843,10 @@ router.get('/envelopes/:id', asyncHandler(async (req: Request, res: Response) =>
         return res.status(404).json({ error: 'Envelope not found' });
     }
 
-    // Build signing URLs for each signer from their access tokens
-    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+    // Build signing URLs for each signer from their access tokens (env-resolved public URL)
+    const frontendUrl = process.env.FRONTEND_URL
+        || (process.env.NODE_ENV === 'production' ? process.env.PROD_FRONTEND_URL : process.env.DEV_FRONTEND_URL)
+        || 'http://localhost:3000';
     if ((envelope as any).signers) {
         (envelope as any).signers = (envelope as any).signers.map((s: any) => ({
             ...s,
@@ -1985,6 +2108,17 @@ router.post('/sign-envelope/:token/complete', asyncHandler(async (req: Request, 
             });
         }
 
+        // Sequential signing: now that this signer is done, email the next pending
+        // signer their link. No-op when this was the last signer. Best-effort.
+        try {
+            await esignEnvelopeService.notifyNextPendingSigner(envelope.id);
+        } catch (advanceError: any) {
+            logger.warn('Failed to notify next pending signer after completion', {
+                envelopeId: envelope.id,
+                error: advanceError?.message || 'Unknown error'
+            });
+        }
+
         res.json({ success: true, message: 'Document signed successfully' });
     } catch (error: any) {
         logger.error('Error completing signing', { error: error.message, signerId: signer.id });
@@ -2069,9 +2203,20 @@ router.post('/sign-envelope/:token/fields/:fieldId', asyncHandler(async (req: Re
 }));
 
 /**
+ * POST /api/v1/esign/envelopes/:id/resend-completed
+ * Re-run completion processing for an already-completed envelope: (re)generate + store the
+ * signed PDF and email the fully-executed copy + certificate to every signer. Useful when an
+ * envelope completed before completion handling worked, or to re-send the signed documents.
+ */
+router.post('/envelopes/:id/resend-completed', asyncHandler(async (req: Request, res: Response) => {
+    await maybeProcessPropertyManagementCompletion(req.params.id);
+    res.json({ success: true, message: 'Completion reprocessed; signed documents emailed to all signers.' });
+}));
+
+/**
  * Download signed PDF for an envelope
  * GET /api/v1/esign/envelopes/:id/download
- * 
+ *
  * Returns the original PDF with all signatures embedded at their field positions.
  * Only available for completed or voided envelopes.
  */
@@ -2086,11 +2231,13 @@ router.get('/envelopes/:id/download', asyncHandler(async (req: Request, res: Res
             return res.status(404).json({ error: 'Envelope not found' });
         }
 
-        // Check envelope status - only allow download for completed/voided envelopes or if admin
-        const allowedStatuses: EnvelopeStatus[] = [EnvelopeStatus.COMPLETED, EnvelopeStatus.VOIDED];
-        if (!allowedStatuses.includes(envelope.status)) {
+        // Allow downloading once an envelope has been sent — so the preparer can preview the
+        // document with signatures placed so far (in-progress), not only when fully completed.
+        // Only a still-unsent DRAFT (no fields/signatures yet) is disallowed.
+        const blockedStatuses: EnvelopeStatus[] = [EnvelopeStatus.DRAFT];
+        if (blockedStatuses.includes(envelope.status)) {
             return res.status(400).json({
-                error: 'Signed PDF is only available for completed or voided envelopes',
+                error: 'The document is not available for download until the envelope has been sent for signing',
                 currentStatus: envelope.status
             });
         }
@@ -2098,7 +2245,12 @@ router.get('/envelopes/:id/download', asyncHandler(async (req: Request, res: Res
         // Get the original PDF from storage, or generate from stored image if missing
         let originalPdfBytes: Uint8Array;
 
-        if (envelope.documentPdfUrl) {
+        if (envelope.documentPdfUrl && envelope.documentPdfUrl.startsWith('data:')) {
+            // The document was stored inline as a base64 data URL (e.g. designer-uploaded leases),
+            // not as a storage key — decode it directly instead of treating it as a bucket/key.
+            const base64 = envelope.documentPdfUrl.replace(/^data:application\/pdf;base64,/, '');
+            originalPdfBytes = new Uint8Array(Buffer.from(base64, 'base64'));
+        } else if (envelope.documentPdfUrl) {
             // Parse the storage URL to get bucket and key
             // Format: "bucket/path/to/file.pdf" or just "path/to/file.pdf"
             let bucket = buckets.documents;
@@ -2150,15 +2302,14 @@ router.get('/envelopes/:id/download', asyncHandler(async (req: Request, res: Res
         logger.info('Envelope fields for PDF download:', {
             envelopeId: envelope.id,
             totalFields: envelope.fields?.length || 0,
-            signatureFields: envelope.fields?.filter(f => f.fieldType === 'signature').map(f => ({
+            signatureFields: envelope.fields?.filter(f => f.type === 'signature').map(f => ({
                 id: f.id,
                 signerId: f.signerId,
                 hasValue: !!f.value,
-                x: f.xPosition,
-                y: f.yPosition,
+                x: f.x,
+                y: f.y,
                 width: f.width,
                 height: f.height,
-                signatureHash: f.signatureHash,
                 signedAt: f.signedAt
             })),
             signers: envelope.signers?.map(s => ({
@@ -2170,38 +2321,33 @@ router.get('/envelopes/:id/download', asyncHandler(async (req: Request, res: Res
             pdfPageSize: pdfPages[0]?.getSize()
         });
 
-        // Collect all signature fields with their data
-        // INVARIANT: Field coordinates are absolute pixels relative to the captured document image
-        // The PDF is generated from the same image, so coordinates are used AS-IS
-        // Only Y-axis flip is needed (handled by pdfSigningService with usePercentage: false)
+        // Collect all signature fields with their data.
+        // Field coordinates are placed by FieldPlacement as PERCENTAGES (0-100) of the page,
+        // so pdfSigningService converts them to points using the page size (with Y-axis flip).
         const signatureFields = (envelope.fields || [])
-            .filter(f => f.fieldType === 'signature' && f.value)
+            .filter(f => f.type === 'signature' && f.value)
             .map(f => {
                 // Find the signer for this field
                 const signer = (envelope.signers || []).find(s => s.id === f.signerId);
 
                 // Convert signedAt to Date if it's a string
-                const signedAtDate = f.signedAt 
+                const signedAtDate = f.signedAt
                     ? (f.signedAt instanceof Date ? f.signedAt : new Date(f.signedAt))
                     : undefined;
 
-                // Pass coordinates AS-IS to pdfSigningService
-                // usePercentage: false tells pdfSigningService to:
-                //   - Use x,y as absolute pixels (not percentages)
-                //   - Do the Y-axis flip internally (browser origin = top-left, PDF origin = bottom-left)
+                // EnvelopeField DTO (mapRowToField) exposes type/x/y — NOT fieldType/xPosition/yPosition.
                 const signatureField = {
                     signatureData: f.value!,
                     page: f.page || 1,
-                    x: f.xPosition,           // Absolute pixels from left
-                    y: f.yPosition,           // Absolute pixels from top (pdfSigningService will flip)
-                    width: f.width,           // Absolute pixels
-                    height: f.height,         // Absolute pixels
-                    signatureId: signer?.permanentSignerId,
-                    signatureHash: f.signatureHash,
+                    x: f.x,                   // Percentage of page width
+                    y: f.y,                   // Percentage of page height (from top; flipped internally)
+                    width: f.width,           // Percentage of page width
+                    height: f.height,         // Percentage of page height
+                    signatureId: undefined as string | undefined,  // resolved below via resolveSignerId
                     signedAt: signedAtDate,
                     signerName: signer?.name,
                     signerEmail: signer?.email,
-                    usePercentage: false      // Tells pdfSigningService these are absolute pixels
+                    usePercentage: true
                 };
 
                 return signatureField;
@@ -2209,15 +2355,15 @@ router.get('/envelopes/:id/download', asyncHandler(async (req: Request, res: Res
 
         // Collect date fields
         const dateFields = (envelope.fields || [])
-            .filter(f => f.fieldType === 'date_signed' && f.value)
+            .filter(f => f.type === 'date_signed' && f.value)
             .map(f => ({
                 value: f.value!,
                 page: f.page || 1,
-                x: f.xPosition,
-                y: f.yPosition,
+                x: f.x,
+                y: f.y,
                 width: f.width,
                 height: f.height,
-                usePercentage: false,
+                usePercentage: true,
             }));
 
         // Resolve PMT IDs for signers
@@ -2234,7 +2380,9 @@ router.get('/envelopes/:id/download', asyncHandler(async (req: Request, res: Res
                 const raw = tenantRes.rows[0].id.replace(/-/g, '');
                 return `PMT-${raw.substring(0, 4).toUpperCase()}-${raw.substring(4, 8).toUpperCase()}`;
             }
-            return '';
+            // Last resort: deterministic PMT id from the email (so external signers still get one).
+            const hash = createHash('sha256').update(email.toLowerCase()).digest('hex');
+            return `PMT-${hash.substring(0, 4).toUpperCase()}-${hash.substring(4, 8).toUpperCase()}`;
         };
 
         // Resolve PMT IDs in signature fields

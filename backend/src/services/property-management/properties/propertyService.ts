@@ -4,7 +4,8 @@ import crypto from 'crypto';
 import db from '../../../database';
 import {
     Property,
-    CreatePropertyDto
+    CreatePropertyDto,
+    PropertyUnitInput
 } from '../../../types/property-management.types';
 import { logger } from '../../../utils/logger';
 import { ghanaPostService } from '../../data-hub/ghanaPostGeocodingService';
@@ -14,39 +15,26 @@ export class PropertyService {
      * Create a new property for the PM module
      */
     async createProperty(organizationId: string, data: CreatePropertyDto, userId: string): Promise<Property> {
-        logger.info('Starting createProperty', { organizationId, unitsCount: data.unitsCount, title: data.title });
+        logger.info('Starting createProperty', { organizationId, unitsCount: data.unitsCount, units: data.units?.length, title: data.title });
         try {
-            // Multi-unit creation logic
-            if (data.unitsCount && data.unitsCount > 1) {
-                logger.info(`Creating multi-unit property: ${data.title} with ${data.unitsCount} units`);
-
-                // 1. Create Parent Property (Container)
-                const parentData: CreatePropertyDto = {
-                    ...data,
-                    price: 0, // Parent container usually doesn't have a "rent" itself, it's the units
-                    description: (data.description || '') + `\n(Multi-unit Building with ${data.unitsCount} units)`
-                };
-
-                const parent = await this.createSingleProperty(organizationId, parentData, userId);
-
-                // 2. Create Units
-                const unitPromises = [];
-                for (let i = 1; i <= data.unitsCount; i++) {
-                    const unitData: CreatePropertyDto = {
-                        ...data,
-                        title: `${data.title} - Unit ${i}`,
-                        parentPropertyId: parent.id,
-                        unitNumber: String(i),
-                        // Ensure units inherit relevant fields
-                    };
-                    unitPromises.push(this.createSingleProperty(organizationId, unitData, userId));
-                }
-
-                await Promise.all(unitPromises);
-                return parent;
-            } else {
-                return await this.createSingleProperty(organizationId, data, userId);
+            // Preferred path: explicit per-unit layout (each unit carries its own specs)
+            if (data.units && data.units.length > 0) {
+                return await this.createMultiUnitProperty(organizationId, data, userId, data.units);
             }
+
+            // Legacy path: a uniform count of identical units (kept for API back-compat)
+            if (data.unitsCount && data.unitsCount > 1) {
+                const uniformUnits: PropertyUnitInput[] = Array.from({ length: data.unitsCount }, (_, i) => ({
+                    label: `Unit ${i + 1}`,
+                    bedrooms: data.bedrooms,
+                    bathrooms: data.bathrooms,
+                    totalAreaSqm: data.totalAreaSqm,
+                    price: data.price,
+                }));
+                return await this.createMultiUnitProperty(organizationId, data, userId, uniformUnits);
+            }
+
+            return await this.createSingleProperty(organizationId, data, userId);
         } catch (error: any) {
             logger.error('Error in createProperty', {
                 error: error.message,
@@ -56,6 +44,80 @@ export class PropertyService {
             });
             throw error;
         }
+    }
+
+    /**
+     * Create a multi-unit building: one parent "container" row plus a child row per unit.
+     * The parent stores building-level rollups (total units/floors/area) rather than a single
+     * unit's specs, and each unit stores its OWN bedrooms/bathrooms/area/rent/floor — so a
+     * building can hold a 2-bed "3A" alongside a studio "3B".
+     */
+    private async createMultiUnitProperty(
+        organizationId: string,
+        data: CreatePropertyDto,
+        userId: string,
+        units: PropertyUnitInput[]
+    ): Promise<Property> {
+        logger.info(`Creating multi-unit property: ${data.title} with ${units.length} units`);
+
+        const sum = (selector: (u: PropertyUnitInput) => number | undefined): number =>
+            units.reduce((acc, u) => acc + (Number(selector(u)) || 0), 0);
+
+        const totalBeds = sum(u => u.bedrooms);
+        const totalBaths = sum(u => u.bathrooms);
+        const totalArea = sum(u => u.totalAreaSqm);
+        const floorNumbers = units
+            .map(u => u.floorNumber)
+            .filter((f): f is number => typeof f === 'number');
+        const totalFloors = data.floors || (floorNumbers.length ? Math.max(...floorNumbers) : undefined);
+
+        // Parent shows a "from" price = cheapest unit rent, so marketplace cards aren't GHS 0.
+        const unitPrices = units
+            .map(u => u.price)
+            .filter((p): p is number => typeof p === 'number' && p > 0);
+        const fromPrice = unitPrices.length ? Math.min(...unitPrices) : 0;
+
+        // 1. Parent container — building-level rollups, no cloned per-unit specs, no own rent.
+        const parentData: CreatePropertyDto = {
+            ...data,
+            units: undefined,
+            unitsCount: undefined,
+            floorNumber: undefined,
+            parentPropertyId: undefined,
+            unitNumber: undefined,
+            bedrooms: totalBeds || undefined,
+            bathrooms: totalBaths || undefined,
+            totalAreaSqm: totalArea || undefined,
+            floors: totalFloors,
+            totalUnits: units.length,
+            price: fromPrice,
+            description: `${data.description || ''}\n(Multi-unit building: ${units.length} units${totalFloors ? `, ${totalFloors} floors` : ''})`.trim(),
+        };
+        const parent = await this.createSingleProperty(organizationId, parentData, userId);
+
+        // 2. One child row per unit, each with its own specs.
+        const unitPromises = units.map(u => this.createSingleProperty(organizationId, {
+            title: `${data.title} - ${u.label}`,
+            description: data.description,
+            region: data.region,
+            addressCity: data.addressCity,
+            addressDistrict: data.addressDistrict,
+            addressStreet: data.addressStreet,
+            digitalAddress: data.digitalAddress,
+            propertyType: data.propertyType,
+            transactionType: data.transactionType,
+            priceCurrency: data.priceCurrency,
+            bedrooms: u.bedrooms,
+            bathrooms: u.bathrooms,
+            totalAreaSqm: u.totalAreaSqm,
+            price: u.price ?? 0,
+            floorNumber: u.floorNumber,
+            unitNumber: u.label,
+            parentPropertyId: parent.id,
+        }, userId));
+
+        await Promise.all(unitPromises);
+        return parent;
     }
 
     private async createSingleProperty(organizationId: string, data: CreatePropertyDto, userId: string): Promise<Property> {
@@ -113,12 +175,14 @@ export class PropertyService {
                     price, price_currency, status, data_source,
                     created_by, latitude, longitude, location_verified, location_accuracy,
                     parent_property_id, unit_number, permanent_link_token,
-                    marketplace_enabled, marketplace_listed_at
+                    marketplace_enabled, marketplace_listed_at,
+                    floor_number, total_units
                 ) VALUES (
                     $1, $2, $3, $4, $5, $6, $7, $8, $9, $10,
                     $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21,
                     $22, $23, $24, $25,
-                    $26, $27, $28, $29, $30
+                    $26, $27, $28, $29, $30,
+                    $31, $32
                 ) RETURNING *
             `;
 
@@ -152,7 +216,9 @@ export class PropertyService {
                 data.unitNumber || null,
                 permanentLinkToken,
                 true, // marketplace_enabled
-                new Date() // marketplace_listed_at
+                new Date(), // marketplace_listed_at
+                data.floorNumber ?? null,
+                data.totalUnits ?? null
             ];
 
             const result = await db.query(query, values);
@@ -209,8 +275,25 @@ export class PropertyService {
      * List properties for an organization
      */
     async listProperties(organizationId: string): Promise<Property[]> {
-        const query = `SELECT * FROM properties WHERE organization_id = $1 ORDER BY created_at DESC`;
+        const query = `SELECT * FROM properties WHERE organization_id = $1 AND status != 'withdrawn' ORDER BY created_at DESC`;
         const result = await db.query(query, [organizationId]);
+        return result.rows.map(row => this.mapToProperty(row));
+    }
+
+    /**
+     * List the child units of a multi-unit building (ordered by floor, then unit number).
+     * @param parentId  the building (parent) property id
+     * @param organizationId  org scope; pass null for public/marketplace lookups already scoped by token
+     */
+    async getUnits(parentId: string, organizationId?: string): Promise<Property[]> {
+        const params: any[] = [parentId];
+        let query = `SELECT * FROM properties WHERE parent_property_id = $1 AND status != 'withdrawn'`;
+        if (organizationId) {
+            params.push(organizationId);
+            query += ` AND organization_id = $2`;
+        }
+        query += ` ORDER BY floor_number NULLS LAST, unit_number`;
+        const result = await db.query(query, params);
         return result.rows.map(row => this.mapToProperty(row));
     }
 
@@ -375,7 +458,7 @@ export class PropertyService {
     }
 
     /**
-     * Soft delete a property (set status to 'deleted')
+     * Soft delete a property by withdrawing it from active PM views.
      */
     async deleteProperty(id: string, organizationId: string, userId: string): Promise<boolean> {
         // Check for active tenancies first
@@ -524,7 +607,9 @@ export class PropertyService {
             createdAt: row.created_at,
             updatedAt: row.updated_at,
             parentPropertyId: row.parent_property_id,
-            unitNumber: row.unit_number
+            unitNumber: row.unit_number,
+            floorNumber: row.floor_number,
+            totalUnits: row.total_units
         };
     }
 }

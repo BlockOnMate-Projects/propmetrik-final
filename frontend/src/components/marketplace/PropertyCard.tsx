@@ -1,7 +1,7 @@
 // PropertyCard Component - Display property in marketplace
 'use client';
 
-import { Heart, MapPin, Bed, Bath, Square, Car, Navigation, ImageIcon } from 'lucide-react';
+import { Heart, MapPin, Bed, Bath, Square, Car, Navigation, ImageIcon, Building2 } from 'lucide-react';
 import { useState } from 'react';
 import { authedFetch } from '@/lib/authed-fetch';
 
@@ -93,6 +93,9 @@ export function PropertyCard({ property, onClick, showDistance }: PropertyCardPr
       <div className="p-5">
         {/* Price */}
         <div className="mb-3">
+          {property.total_units > 0 && (
+            <span className="text-gray-500 text-sm font-medium mr-1">from</span>
+          )}
           <span className="text-2xl font-bold text-gray-900">
             {property.currency} {property.price.toLocaleString()}
           </span>
@@ -127,29 +130,38 @@ export function PropertyCard({ property, onClick, showDistance }: PropertyCardPr
         
         {/* Property Specs */}
         <div className="flex items-center gap-5 text-gray-700 text-sm border-t border-gray-200 pt-4">
-          {property.bedrooms && (
+          {property.total_units > 0 ? (
             <div className="flex items-center gap-1.5">
-              <Bed className="h-4 w-4 text-gray-500" />
-              <span className="font-medium">{property.bedrooms}</span>
+              <Building2 className="h-4 w-4 text-gray-500" />
+              <span className="font-medium">{property.total_units} units available</span>
             </div>
-          )}
-          {property.bathrooms && (
-            <div className="flex items-center gap-1.5">
-              <Bath className="h-4 w-4 text-gray-500" />
-              <span className="font-medium">{property.bathrooms}</span>
-            </div>
-          )}
-          {property.total_area_sqm && (
-            <div className="flex items-center gap-1.5">
-              <Square className="h-4 w-4 text-gray-500" />
-              <span className="font-medium">{property.total_area_sqm} m²</span>
-            </div>
-          )}
-          {property.parking_spaces && (
-            <div className="flex items-center gap-1.5">
-              <Car className="h-4 w-4 text-gray-500" />
-              <span className="font-medium">{property.parking_spaces}</span>
-            </div>
+          ) : (
+            <>
+              {property.bedrooms && (
+                <div className="flex items-center gap-1.5">
+                  <Bed className="h-4 w-4 text-gray-500" />
+                  <span className="font-medium">{property.bedrooms}</span>
+                </div>
+              )}
+              {property.bathrooms && (
+                <div className="flex items-center gap-1.5">
+                  <Bath className="h-4 w-4 text-gray-500" />
+                  <span className="font-medium">{property.bathrooms}</span>
+                </div>
+              )}
+              {property.total_area_sqm && (
+                <div className="flex items-center gap-1.5">
+                  <Square className="h-4 w-4 text-gray-500" />
+                  <span className="font-medium">{property.total_area_sqm} m²</span>
+                </div>
+              )}
+              {property.parking_spaces && (
+                <div className="flex items-center gap-1.5">
+                  <Car className="h-4 w-4 text-gray-500" />
+                  <span className="font-medium">{property.parking_spaces}</span>
+                </div>
+              )}
+            </>
           )}
         </div>
 

@@ -34,6 +34,7 @@ export interface MarketplaceProperty {
   bedrooms: number;
   bathrooms: number;
   total_area_sqm: number | null;
+  total_units?: number | null;
   parking_spaces: number | null;
 
   // Additional details
@@ -347,6 +348,7 @@ export class MarketplaceService {
             bedrooms,
             bathrooms,
             total_area_sqm,
+            total_units,
             NULL::integer AS parking_spaces,
             year_built,
             land_area_sqm,
@@ -365,6 +367,7 @@ export class MarketplaceService {
           WHERE organization_id IS NOT NULL
             AND marketplace_enabled = TRUE
             AND status IN ('active', 'under_offer')
+            AND parent_property_id IS NULL
         ),
         crm_props AS (
           SELECT 
@@ -392,6 +395,7 @@ export class MarketplaceService {
             bedrooms,
             bathrooms,
             total_area_sqm,
+            NULL::integer AS total_units,
             NULL::integer AS parking_spaces,
             year_built,
             land_area_sqm,
@@ -461,6 +465,7 @@ export class MarketplaceService {
         bedrooms: row.bedrooms,
         bathrooms: row.bathrooms,
         total_area_sqm: row.total_area_sqm,
+        total_units: row.total_units || null,
         parking_spaces: row.parking_spaces || null,
         year_built: row.year_built || null,
         land_area_sqm: row.land_area_sqm ? parseFloat(row.land_area_sqm) : null,
@@ -508,6 +513,7 @@ export class MarketplaceService {
           address_city AS city, region, neighborhood, digital_address,
           latitude, longitude, price, price_currency AS currency,
           FALSE AS price_negotiable, bedrooms, bathrooms, total_area_sqm,
+          total_units,
           NULL::integer AS parking_spaces, year_built, land_area_sqm,
           condition::text AS property_condition,
           marketplace_listed_at AS listed_at, marketplace_views AS views,
@@ -529,6 +535,7 @@ export class MarketplaceService {
           NULL AS digital_address, latitude, longitude, price,
           price_currency AS currency, price_negotiable, bedrooms, bathrooms,
           total_area_sqm,
+          NULL::integer AS total_units,
           NULL::integer AS parking_spaces, year_built, land_area_sqm,
           NULL::text AS property_condition,
           marketplace_listed_at AS listed_at, marketplace_views AS views,
@@ -653,6 +660,7 @@ export class MarketplaceService {
       bedrooms: row.bedrooms,
       bathrooms: row.bathrooms,
       total_area_sqm: row.total_area_sqm,
+      total_units: row.total_units ?? null,
       parking_spaces: row.parking_spaces || null,
       year_built: row.year_built || null,
       land_area_sqm: row.land_area_sqm ? parseFloat(row.land_area_sqm) : null,

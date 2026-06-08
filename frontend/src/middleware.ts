@@ -6,12 +6,28 @@ const PROTECTED_PREFIXES = ['/dashboard', '/onboarding'];
 // Routes that should redirect to /dashboard if already authenticated
 const AUTH_PAGES = ['/login', '/tenant-login'];
 
+// Hostname of the tenant portal subdomain, e.g. "tenant.propmetrik.com" or
+// "tenant.localhost". Config-driven so nothing is hardcoded; when unset the app
+// behaves as a single host (legacy path-based tenant access still works).
+const TENANT_HOST = process.env.NEXT_PUBLIC_TENANT_HOST
+  ?.replace(/^https?:\/\//, '')
+  .replace(/:\d+$/, '')
+  .toLowerCase();
+
 function hasSessionCookie(request: NextRequest): boolean {
   // NextAuth v5 session cookies (dev + production names)
   return (
     request.cookies.has('authjs.session-token') ||
     request.cookies.has('__Secure-authjs.session-token')
   );
+}
+
+function isTenantHost(request: NextRequest): boolean {
+  if (!TENANT_HOST) return false;
+  const host = (request.headers.get('host') || request.nextUrl.hostname || '')
+    .replace(/:\d+$/, '')
+    .toLowerCase();
+  return host === TENANT_HOST;
 }
 
 export function middleware(request: NextRequest) {
@@ -38,6 +54,29 @@ export function middleware(request: NextRequest) {
       url.pathname = `/dashboard/deals${subPath}`;
     }
     return NextResponse.redirect(url);
+  }
+
+  // ── Tenant subdomain routing ───────────────────────────────────────────
+  // On the tenant host, the portal is the whole site: send the root and any
+  // staff login to the tenant flow so tenants never see staff routes.
+  if (isTenantHost(request)) {
+    const loggedIn = hasSessionCookie(request);
+
+    if (pathname === '/' || pathname === '/login') {
+      url.pathname = loggedIn ? '/dashboard/tenant' : '/tenant-login';
+      return NextResponse.redirect(url);
+    }
+    if (pathname === '/tenant-login' && loggedIn) {
+      url.pathname = '/dashboard/tenant';
+      return NextResponse.redirect(url);
+    }
+    const isProtectedTenant = PROTECTED_PREFIXES.some(prefix => pathname.startsWith(prefix));
+    if (isProtectedTenant && !loggedIn) {
+      url.pathname = '/tenant-login';
+      url.searchParams.set('callbackUrl', pathname);
+      return NextResponse.redirect(url);
+    }
+    return NextResponse.next();
   }
 
   // Auth guard: redirect unauthenticated users to appropriate login page

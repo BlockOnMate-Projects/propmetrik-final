@@ -5,6 +5,7 @@ import config, { keycloakConfig } from '../../../config';
 import { logger } from '../../../utils/logger';
 import { tenantAuthService } from './tenantAuthService';
 import { keycloakAdminService } from '../../keycloakAdminService';
+import { notificationService } from '../../../../shared-services/notifications/unified';
 
 interface KeycloakTenantTokenPayload extends JWTPayload {
     sub: string;
@@ -18,6 +19,8 @@ export interface TenantInviteResult {
     portalAccessStatus: 'invited' | 'active';
     onboardingUrl: string;
     inviteExpiresAt: Date;
+    emailSent: boolean;
+    emailError?: string;
 }
 
 export interface TenantAuthExchangeResult {
@@ -32,7 +35,10 @@ const keycloakRealm = config.keycloak.realm || '';
 const tenantClientId = process.env.KEYCLOAK_TENANT_CLIENT_ID || 'propmetrik-tenant-portal';
 const tenantClientSecret = process.env.KEYCLOAK_TENANT_CLIENT_SECRET || '';
 const tenantPortalUrl = config.app.tenantPortalUrl.replace(/\/$/, '');
-const defaultRedirectUri = `${tenantPortalUrl}/login`;
+const defaultRedirectUri = `${tenantPortalUrl}/tenant-login`;
+// Single source of truth for the tenant set-password page + invite token lifetime.
+const SETUP_PASSWORD_PATH = '/tenant/set-password';
+const INVITE_EXPIRY_MINUTES = 24 * 60;
 
 const jwks = createRemoteJWKSet(
     new URL(`${keycloakConfig.authServerUrl}/realms/${keycloakRealm}/protocol/openid-connect/certs`)
@@ -116,26 +122,61 @@ export class KeycloakTenantOnboardingService {
             [tenant.id, keycloakUser.id, invitedByUserId, inviteExpiresAt]
         );
 
-        const safeRedirectUri = redirectUri || defaultRedirectUri;
-        if (process.env.KEYCLOAK_SEND_EXECUTE_ACTIONS_EMAIL === 'true') {
-            await keycloakAdminService.sendActionsEmail(
-                keycloakUser.id,
-                ['VERIFY_EMAIL', 'UPDATE_PASSWORD'],
-                { clientId: tenantClientId, redirectUri: safeRedirectUri },
-            );
+        // Base URL is dynamic: honour the caller's origin (multi-domain deployments)
+        // and fall back to the environment-aware tenant portal URL from config.
+        let baseUrl = tenantPortalUrl;
+        if (redirectUri) {
+            try {
+                baseUrl = new URL(redirectUri).origin;
+            } catch {
+                // keep config default
+            }
         }
 
-        logger.info('Tenant invited to Keycloak tenant portal', {
+        // Generate a set-password link that points at our own portal page.
+        // The token is stored in tenant_auth_tokens; the page consumes it via
+        // /tenant-portal/auth/setup-password, which sets the password in Keycloak.
+        const linkResult = await tenantAuthService.generateMagicLink(
+            tenant.email,
+            baseUrl,
+            SETUP_PASSWORD_PATH,
+            INVITE_EXPIRY_MINUTES
+        );
+        if (!linkResult.success || !linkResult.token) {
+            throw new Error('Failed to generate tenant setup link');
+        }
+        const onboardingUrl = linkResult.token;
+
+        // Send the branded invite through the unified 3-tier notifier
+        // (Microsoft → AWS SES → Google), not Keycloak's own SMTP.
+        const emailResult = await notificationService.sendPortalInvite(tenant.email, onboardingUrl, {
+            tenantName: tenant.full_name || 'Tenant',
+            organizationName: tenant.organization_name || 'Your property manager',
+            propertyTitle: tenant.property_title || 'your tenancy',
+            propertyAddress: tenant.property_address || ''
+        });
+
+        if (!emailResult.success) {
+            logger.warn('Tenant portal invite email failed to send', {
+                tenantId: tenant.id,
+                error: emailResult.error
+            });
+        }
+
+        logger.info('Tenant invited to tenant portal', {
             tenantId: tenant.id,
-            keycloakUserId: keycloakUser.id
+            keycloakUserId: keycloakUser.id,
+            emailSent: emailResult.success
         });
 
         return {
             tenantId: tenant.id,
             keycloakUserId: keycloakUser.id,
             portalAccessStatus: 'invited',
-            onboardingUrl: `${safeRedirectUri}${safeRedirectUri.includes('?') ? '&' : '?'}loginHint=${encodeURIComponent(tenant.email)}`,
-            inviteExpiresAt
+            onboardingUrl,
+            inviteExpiresAt: linkResult.expiresAt || inviteExpiresAt,
+            emailSent: emailResult.success,
+            emailError: emailResult.success ? undefined : emailResult.error
         };
     }
 
@@ -392,9 +433,17 @@ export class KeycloakTenantOnboardingService {
 
     private async getTenantForInvite(tenantId: string, organizationId: string): Promise<any> {
         const result = await pool.query(
-            `SELECT id, organization_id, full_name, email
-             FROM tenants
-             WHERE id = $1 AND organization_id = $2`,
+            `SELECT t.id, t.organization_id, t.full_name, t.email,
+                    p.title AS property_title,
+                    NULLIF(TRIM(BOTH ', ' FROM CONCAT_WS(', ', p.address_street, p.address_city)), '') AS property_address,
+                    o.name AS organization_name
+             FROM tenants t
+             LEFT JOIN tenancies tn ON tn.tenant_id = t.id AND tn.status IN ('active', 'pending')
+             LEFT JOIN properties p ON tn.property_id = p.id
+             LEFT JOIN organizations o ON o.id = t.organization_id
+             WHERE t.id = $1 AND t.organization_id = $2
+             ORDER BY tn.lease_start_date DESC NULLS LAST
+             LIMIT 1`,
             [tenantId, organizationId]
         );
 

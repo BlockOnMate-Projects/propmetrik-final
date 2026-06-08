@@ -86,7 +86,7 @@ export async function fetchApi<T>(
 
   if (!response.ok) {
     const error = await response.json().catch(() => ({ error: 'Network error' }));
-    const message = error.error || error.message || error.detail || `HTTP ${response.status}`;
+    const message = error.error?.message || error.error || error.message || error.detail || `HTTP ${response.status}`;
     throw new Error(typeof message === 'string' ? message : JSON.stringify(message));
   }
 

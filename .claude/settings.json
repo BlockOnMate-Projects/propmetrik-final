@@ -1,0 +1,41 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(sort -t_ -k1 -n)",
+      "Bash(sed -n '/export async function createEnvelope/,/^}/p' src/lib/esign-api.ts)",
+      "Bash(sed -n '/ExternalDocumentData/,/^}/p' src/lib/esign-types.ts)",
+      "Bash(awk '/private \\(isFieldMarkedSigned|normalizeFieldValue\\)/{p=1} p{print} p&&/^    }/{c++; if\\(c>=1\\){p=0}}' backend/shared-services/e-sign/envelopeService.ts)",
+      "Bash(echo \"--- status check done \\(exit: $?\\) ---\")",
+      "Bash(echo \"--- exit: $? ---\")",
+      "Bash(git mv *)",
+      "Bash(mv database/migrations/231_property_unit_layout.sql database/migrations/232_property_unit_layout.sql)",
+      "Bash(awk '/private mapApplicationDocumentType|private getApplicationDocumentTitle/{p=1} p{print} p&&/^  }/{print \"---\"; p=0}' backend/src/services/property-management/applications/applicationService.ts)",
+      "Bash(grep -rn \"/application/.*status\\\\|application/\\\\${\\\\|/status\\\\`\\\\|status from\\\\|View as\\\\|Track Status\\\\|application-status\" \"frontend/src/app/dashboard/property-management/applications/[id]/page.tsx\")",
+      "Bash(sed -n '287,308p' \"frontend/src/app/dashboard/property-management/applications/[id]/generate-lease/page.tsx\")",
+      "Bash(sed -n '1082,1180p' backend/src/services/property-management/applications/applicationService.ts)",
+      "Bash(grep -rn \"router.push\\('/dashboard'\\)\\\\|router.replace\\('/dashboard'\\)\\\\|redirect\\('/dashboard'\\)\\\\|push\\(\\\\`/dashboard\\\\`\\)\\\\|window.location\" src/app/dashboard/e-sign src/components/esign)",
+      "Bash(node -e ' *)",
+      "Bash(curl -s -o /tmp/lease_test.out -w 'HTTP %{http_code} | type=%{content_type} | size=%{size_download}\\\\n' http://localhost:4000/api/v1/pm/tenancies/__TRACKED_VAR__/lease-document)",
+      "Bash(curl -s -i -X OPTIONS http://localhost:4000/api/v1/pm/tenancies/__TRACKED_VAR__/lease-document -H 'Origin: http://localhost:3000' -H 'Access-Control-Request-Method: GET' -H 'Access-Control-Request-Headers: authorization')",
+      "Bash(curl -s -o /dev/null -D - http://localhost:4000/api/v1/pm/tenancies/__TRACKED_VAR__/lease-document -H 'Origin: http://localhost:3000')",
+      "Bash(curl -s -o /dev/null -w '/api/pm/...        -> HTTP %{http_code} type=%{content_type}\\\\n' http://localhost:4000/api/pm/tenancies/__TRACKED_VAR__/lease-document)",
+      "Bash(curl -s -o /dev/null -w '/api/v1/pm/...     -> HTTP %{http_code} type=%{content_type}\\\\n' http://localhost:4000/api/v1/pm/tenancies/__TRACKED_VAR__/lease-document)",
+      "Bash(curl -s -o /dev/null -w 'localhost:3000/api/pm/...    -> HTTP %{http_code} type=%{content_type} size=%{size_download}\\\\n' http://localhost:3000/api/pm/tenancies/__TRACKED_VAR__/lease-document)",
+      "Bash(curl -s -o /dev/null -w 'localhost:3000/api/v1/pm/... -> HTTP %{http_code} type=%{content_type} size=%{size_download}\\\\n' http://localhost:3000/api/v1/pm/tenancies/__TRACKED_VAR__/lease-document)",
+      "Bash(sed -n '544,600p' backend/shared-services/e-sign/envelopeService.ts)",
+      "Bash(sed -n '140,165p' backend/src/routes/eSign.ts)",
+      "Bash(git log *)",
+      "Bash(pdftoppm -v)",
+      "Bash(/opt/homebrew/bin/pdftoppm -png -f 8 -l 8 -r 110 signed_verify.pdf page)",
+      "Bash(rm -f _inspect_fields.js _verify_embed.js)",
+      "Bash(rm -f /tmp/signed_verify.pdf /tmp/page-8.png)",
+      "Bash(xargs -I{} echo \"backend total errors: {}\")",
+      "Bash(echo \"tsc: $\\(npx tsc --noEmit 2>&1)",
+      "Bash(curl -sS -X POST \"http://localhost:4000/api/v1/esign/envelopes/43a491f2-7fde-4756-a785-262165cb4280/resend-completed\" -H \"Content-Type: application/json\" -w \"\\\\nHTTP %{http_code}\\\\n\")",
+      "Bash(xargs -I{} echo \"tsc errors: {}\")",
+      "Bash(sed 's/\\\\\\(SECRET\\\\|PASSWORD\\\\|KEY\\\\\\)=.*/\\\\1=***/')",
+      "Bash(curl -sS -m 4 -o /dev/null -w \"localhost:9000 -> HTTP %{http_code}\\\\n\" http://localhost:9000/minio/health/live)",
+      "Bash(xargs -I{} echo \"{} errors\")"
+    ]
+  }
+}

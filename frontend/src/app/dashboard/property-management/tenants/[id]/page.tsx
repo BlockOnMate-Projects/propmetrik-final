@@ -74,9 +74,20 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { propertyManagementApi, UtilityCharge, UtilityType, RentScheduleItem, CreateUtilityChargeDto } from '@/lib/property-management-api'
 import { openLeaseAgreement, LeaseAgreementData } from '@/lib/lease-generator'
-import { Tenant, Tenancy, FinancialRecord, WorkOrder } from '@/types/property-management'
+import { Tenant, Tenancy, FinancialRecord, WorkOrder, PropertyDocumentType, VaultDocument } from '@/types/property-management'
 import { format, differenceInDays, addYears } from 'date-fns'
 import { Zap, Droplets, Flame, Wifi, Trash, Shield, Plus } from 'lucide-react'
+
+const API_HOST = process.env.NEXT_PUBLIC_API_URL?.replace(/\/api\/v1\/?$/, '') || 'http://localhost:4000'
+
+/** Resolve a stored fileUrl/storage key to a working download URL through the backend */
+function resolveFileUrl(fileUrl?: string): string | undefined {
+    if (!fileUrl) return undefined
+    if (fileUrl.startsWith('http')) return fileUrl
+    if (fileUrl.startsWith('/api/v1/')) return `/api/${fileUrl.slice('/api/v1/'.length)}`
+    if (fileUrl.startsWith('/api/')) return fileUrl
+    return `${API_HOST}${fileUrl.startsWith('/') ? '' : '/'}${fileUrl}`
+}
 
 // Lease signing workflow states
 type LeaseSigningStatus = 'none' | 'draft' | 'pending_sign' | 'partially_signed' | 'signed' | 'expired' | 'voided'
@@ -204,7 +215,21 @@ export default function TenantDetailsPage() {
     const [isDeleting, setIsDeleting] = useState(false)
     const [isInvitingPortal, setIsInvitingPortal] = useState(false)
     const [portalInviteMessage, setPortalInviteMessage] = useState<string | null>(null)
+    const [portalInviteLink, setPortalInviteLink] = useState<string | null>(null)
     const [maintenanceRequests, setMaintenanceRequests] = useState<WorkOrder[]>([])
+    const [tenantDocuments, setTenantDocuments] = useState<VaultDocument[]>([])
+    // Resolved lease documents (signed/unsigned) keyed by tenancy id — fileUrl is backend-served
+    const [leaseDocsByTenancy, setLeaseDocsByTenancy] = useState<Record<string, VaultDocument>>({})
+
+    // Document upload dialog
+    const [isUploadDocumentOpen, setIsUploadDocumentOpen] = useState(false)
+    const [isUploadingDocument, setIsUploadingDocument] = useState(false)
+    const [documentFile, setDocumentFile] = useState<File | null>(null)
+    const [documentForm, setDocumentForm] = useState({
+        documentType: PropertyDocumentType.TENANT_AGREEMENTS,
+        title: '',
+        description: ''
+    })
 
     // Utility charges state
     const [utilityCharges, setUtilityCharges] = useState<UtilityCharge[]>([])
@@ -226,23 +251,44 @@ export default function TenantDetailsPage() {
                 setIsLoading(true)
                 const [tenantData, tenanciesRes] = await Promise.all([
                     propertyManagementApi.getTenantById(tenantId),
-                    propertyManagementApi.getTenancies({ limit: 50 })
+                    propertyManagementApi.getTenancies({ tenantId, limit: 50 })
                 ])
                 setTenant(tenantData)
 
                 const allTenancies = Array.isArray(tenanciesRes) ? tenanciesRes : tenanciesRes.data || []
-                const tenantTenancies = allTenancies.filter(t => t.tenantId === tenantId)
+                const tenantTenancies = allTenancies
                 setTenancies(tenantTenancies)
+
+                // Fetch resolved lease documents (signed/unsigned) per tenancy. The vault endpoint
+                // converts stored S3/MinIO keys into working download URLs — the raw lease_signed_url
+                // on the tenancy is an unresolved storage key that won't open directly.
+                Promise.all(
+                    tenantTenancies.map(t =>
+                        propertyManagementApi.getVaultDocuments({ tenancyId: t.id, limit: 10 })
+                            .then(res => {
+                                const docs = res.data || []
+                                const doc = docs.find(d => d.source === 'signed_lease') || docs.find(d => d.source === 'lease')
+                                return doc ? { tenancyId: t.id, doc } : null
+                            })
+                            .catch(() => null)
+                    )
+                ).then(results => {
+                    const map: Record<string, VaultDocument> = {}
+                    for (const r of results) { if (r) map[r.tenancyId] = r.doc }
+                    setLeaseDocsByTenancy(map)
+                })
 
                 // Load payments if there's an active tenancy
                 const active = tenantTenancies.find(t => t.status === 'active')
                 if (active?.propertyId) {
-                    const [financials, workOrders] = await Promise.all([
+                    const [financials, workOrders, vaultDocs] = await Promise.all([
                         propertyManagementApi.getFinancials({ propertyId: active.propertyId, limit: 20 }),
-                        propertyManagementApi.getWorkOrders({ propertyId: active.propertyId, limit: 50 })
+                        propertyManagementApi.getWorkOrders({ propertyId: active.propertyId, limit: 50 }),
+                        propertyManagementApi.getVaultDocuments({ tenancyId: active.id, source: 'upload', category: 'tenant', limit: 50 })
                     ])
                     const data = Array.isArray(financials) ? financials : financials.data || []
                     setPayments(data.filter(f => f.recordType === 'income'))
+                    setTenantDocuments(vaultDocs.data || [])
 
                     // Filter work orders to this tenant's tenancy
                     const allWO = Array.isArray(workOrders) ? workOrders : workOrders.data || []
@@ -257,6 +303,8 @@ export default function TenantDetailsPage() {
                         setUtilityCharges(chargesRes.charges || [])
                         setRentSchedules(schedulesRes.schedules || [])
                     } catch { /* utility charges may not be available yet */ }
+                } else {
+                    setTenantDocuments([])
                 }
             } catch (err) {
                 console.error('Failed to load tenant:', err)
@@ -401,16 +449,68 @@ export default function TenantDetailsPage() {
         try {
             setIsInvitingPortal(true)
             setPortalInviteMessage(null)
+            setPortalInviteLink(null)
 
-            const tenantPortalLoginUrl = `${process.env.NEXT_PUBLIC_TENANT_PORTAL_URL || window.location.origin}/tenant/login`
-            await propertyManagementApi.inviteTenantPortal(tenantId, tenantPortalLoginUrl)
+            const tenantPortalLoginUrl = `${process.env.NEXT_PUBLIC_TENANT_PORTAL_URL || window.location.origin}/tenant-login`
+            const result = await propertyManagementApi.inviteTenantPortal(tenantId, tenantPortalLoginUrl)
 
-            setPortalInviteMessage('Access invite email sent. Tenant must use the email link to verify and create a password before first login.')
+            setPortalInviteMessage(
+                result?.emailSent
+                    ? 'Access invite emailed to the tenant. They click the set-password link in the email, create their password, then land on the tenant portal. The setup link is below if you need to share it directly.'
+                    : 'Tenant account provisioned, but the invite email could not be delivered. Share the setup link below with the tenant directly.'
+            )
+            setPortalInviteLink(result?.onboardingUrl || tenantPortalLoginUrl)
         } catch (err: any) {
             setPortalInviteMessage(err?.message || 'Failed to send tenant portal invite')
         } finally {
             setIsInvitingPortal(false)
         }
+    }
+
+    const handleUploadTenantDocument = async () => {
+        if (!activeTenancy?.propertyId || !documentFile) return
+
+        try {
+            setIsUploadingDocument(true)
+            await propertyManagementApi.uploadDocument({
+                file: documentFile,
+                propertyId: activeTenancy.propertyId,
+                tenancyId: activeTenancy.id,
+                documentType: documentForm.documentType,
+                title: documentForm.title.trim() || documentFile.name,
+                description: documentForm.description.trim() || undefined
+            })
+
+            const vaultDocs = await propertyManagementApi.getVaultDocuments({
+                tenancyId: activeTenancy.id,
+                source: 'upload',
+                category: 'tenant',
+                limit: 50
+            })
+            setTenantDocuments(vaultDocs.data || [])
+            setDocumentFile(null)
+            setDocumentForm({ documentType: PropertyDocumentType.TENANT_AGREEMENTS, title: '', description: '' })
+            setIsUploadDocumentOpen(false)
+        } catch (err) {
+            console.error('Failed to upload tenant document:', err)
+            setError(err instanceof Error ? err.message : 'Failed to upload tenant document')
+        } finally {
+            setIsUploadingDocument(false)
+        }
+    }
+
+    // Resolve a working URL for a tenancy's lease document — prefers the backend-served vault doc,
+    // falls back to resolving the raw stored URL on the tenancy.
+    const getLeaseDocUrl = (tenancy?: Tenancy | null): string | undefined => {
+        if (!tenancy) return undefined
+        const vaultUrl = resolveFileUrl(leaseDocsByTenancy[tenancy.id]?.fileUrl)
+        if (vaultUrl) return vaultUrl
+        return resolveFileUrl(tenancy.leaseSignedUrl || tenancy.leaseDocumentUrl)
+    }
+
+    const openLeaseDocument = (tenancy?: Tenancy | null) => {
+        const url = getLeaseDocUrl(tenancy)
+        if (url) window.open(url, '_blank', 'noopener,noreferrer')
     }
 
     // Handle generate lease agreement - navigates to e-sign page
@@ -509,8 +609,18 @@ export default function TenantDetailsPage() {
             </div>
 
             {portalInviteMessage && (
-                <div className="rounded-md border border-amber-900/40 bg-amber-950/20 px-3 py-2 text-xs font-mono text-amber-400">
-                    {portalInviteMessage}
+                <div className="rounded-md border border-amber-900/40 bg-amber-950/20 px-3 py-2 text-xs font-mono text-amber-400 space-y-1">
+                    <div>{portalInviteMessage}</div>
+                    {portalInviteLink && (
+                        <a
+                            href={portalInviteLink}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="block break-all text-cyan-400 underline hover:text-cyan-300"
+                        >
+                            {portalInviteLink}
+                        </a>
+                    )}
                 </div>
             )}
 
@@ -1071,23 +1181,46 @@ export default function TenantDetailsPage() {
                                                         variant="ghost"
                                                         size="icon"
                                                         className="h-8 w-8 text-zinc-500 hover:text-white"
-                                                        disabled={!tenancy.leaseSignedUrl && !tenancy.leaseDocumentUrl}
-                                                        onClick={() => {
-                                                            const documentUrl = tenancy.leaseSignedUrl || tenancy.leaseDocumentUrl
-                                                            if (documentUrl) {
-                                                                window.open(documentUrl, '_blank', 'noopener,noreferrer')
-                                                            }
-                                                        }}
+                                                        disabled={!getLeaseDocUrl(tenancy)}
+                                                        onClick={() => openLeaseDocument(tenancy)}
                                                     >
                                                         <Download className="h-4 w-4" />
                                                     </Button>
                                                 </div>
                                             ))}
-                                            <div className="bg-zinc-950 border border-dashed border-zinc-800 rounded-lg p-3 flex items-center justify-center cursor-pointer hover:bg-zinc-900 hover:border-zinc-700 transition-colors">
+                                            {tenantDocuments.map((document) => (
+                                                <div key={document.id} className="bg-zinc-950 border border-zinc-800 rounded-lg p-3 flex items-center justify-between group hover:border-zinc-700 transition-colors">
+                                                    <div className="flex items-center gap-3 min-w-0">
+                                                        <FileText className="h-6 w-6 text-blue-400 flex-shrink-0" />
+                                                        <div className="min-w-0">
+                                                            <div className="text-sm font-medium text-zinc-300 group-hover:text-white font-mono truncate">
+                                                                {document.title}
+                                                            </div>
+                                                            <div className="text-xs text-zinc-500 font-mono truncate">
+                                                                {document.documentType.replace(/_/g, ' ')} • {document.fileName}
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="icon"
+                                                        className="h-8 w-8 text-zinc-500 hover:text-white flex-shrink-0"
+                                                        onClick={() => window.open(document.fileUrl, '_blank', 'noopener,noreferrer')}
+                                                    >
+                                                        <Download className="h-4 w-4" />
+                                                    </Button>
+                                                </div>
+                                            ))}
+                                            <button
+                                                type="button"
+                                                className="bg-zinc-950 border border-dashed border-zinc-800 rounded-lg p-3 flex items-center justify-center cursor-pointer hover:bg-zinc-900 hover:border-zinc-700 transition-colors disabled:cursor-not-allowed disabled:opacity-50"
+                                                disabled={!activeTenancy}
+                                                onClick={() => setIsUploadDocumentOpen(true)}
+                                            >
                                                 <div className="text-sm text-zinc-500 flex items-center gap-2 font-mono">
                                                     <Upload className="h-4 w-4" /> Upload Document
                                                 </div>
-                                            </div>
+                                            </button>
                                         </div>
                                     </CardContent>
                                 </Card>
@@ -1227,6 +1360,8 @@ export default function TenantDetailsPage() {
                                                 <Button
                                                     variant="outline"
                                                     className="w-full border-zinc-800 text-zinc-400 hover:text-white font-mono text-xs"
+                                                    disabled={!getLeaseDocUrl(activeTenancy)}
+                                                    onClick={() => openLeaseDocument(activeTenancy)}
                                                 >
                                                     <Download className="h-3 w-3 mr-2" />
                                                     Download Signed Lease
@@ -1234,7 +1369,8 @@ export default function TenantDetailsPage() {
                                                 <Button
                                                     variant="outline"
                                                     className="w-full border-zinc-800 text-zinc-400 hover:text-white font-mono text-xs"
-                                                    onClick={() => handleGenerateLease()}
+                                                    disabled={!getLeaseDocUrl(activeTenancy)}
+                                                    onClick={() => openLeaseDocument(activeTenancy)}
                                                 >
                                                     <Eye className="h-3 w-3 mr-2" />
                                                     View Document
@@ -1326,6 +1462,81 @@ export default function TenantDetailsPage() {
                     </div>
                 </div>
             </div>
+
+            <Dialog open={isUploadDocumentOpen} onOpenChange={setIsUploadDocumentOpen}>
+                <DialogContent className="bg-zinc-900 border-zinc-800 text-white">
+                    <DialogHeader>
+                        <DialogTitle className="font-mono text-amber-500 uppercase">Upload Tenant Document</DialogTitle>
+                        <DialogDescription className="text-zinc-500 font-mono text-xs">
+                            Add identity, proof of address, or supporting files to this tenant vault.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-4 py-2">
+                        <div className="space-y-2">
+                            <Label className="text-[10px] font-mono uppercase text-zinc-500">Document Type</Label>
+                            <Select
+                                value={documentForm.documentType}
+                                onValueChange={(value) => setDocumentForm(prev => ({ ...prev, documentType: value as PropertyDocumentType }))}
+                            >
+                                <SelectTrigger className="bg-zinc-950 border-zinc-800 text-zinc-300 font-mono text-xs">
+                                    <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent className="bg-zinc-900 border-zinc-800">
+                                    <SelectItem value={PropertyDocumentType.TENANT_AGREEMENTS}>Tenant ID / Ghana Card</SelectItem>
+                                    <SelectItem value={PropertyDocumentType.UTILITY_BILLS}>Proof of Address</SelectItem>
+                                    <SelectItem value={PropertyDocumentType.CORRESPONDENCE}>Correspondence</SelectItem>
+                                    <SelectItem value={PropertyDocumentType.OTHER}>Other</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
+                        <div className="space-y-2">
+                            <Label className="text-[10px] font-mono uppercase text-zinc-500">Title</Label>
+                            <Input
+                                value={documentForm.title}
+                                onChange={(event) => setDocumentForm(prev => ({ ...prev, title: event.target.value }))}
+                                placeholder="Ghana Card - Cedyn"
+                                className="bg-zinc-950 border-zinc-800 text-zinc-300 font-mono text-xs"
+                            />
+                        </div>
+                        <div className="space-y-2">
+                            <Label className="text-[10px] font-mono uppercase text-zinc-500">File</Label>
+                            <Input
+                                type="file"
+                                accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.webp"
+                                onChange={(event) => setDocumentFile(event.target.files?.[0] || null)}
+                                className="bg-zinc-950 border-zinc-800 text-zinc-300 font-mono text-xs"
+                            />
+                        </div>
+                        <div className="space-y-2">
+                            <Label className="text-[10px] font-mono uppercase text-zinc-500">Notes</Label>
+                            <Textarea
+                                value={documentForm.description}
+                                onChange={(event) => setDocumentForm(prev => ({ ...prev, description: event.target.value }))}
+                                placeholder="Optional notes for this document"
+                                className="bg-zinc-950 border-zinc-800 text-zinc-300 font-mono text-xs min-h-20"
+                            />
+                        </div>
+                    </div>
+                    <DialogFooter>
+                        <Button
+                            variant="outline"
+                            className="border-zinc-800 text-zinc-400 font-mono text-xs"
+                            onClick={() => setIsUploadDocumentOpen(false)}
+                            disabled={isUploadingDocument}
+                        >
+                            Cancel
+                        </Button>
+                        <Button
+                            className="bg-amber-600 hover:bg-amber-700 text-white font-mono text-xs"
+                            onClick={handleUploadTenantDocument}
+                            disabled={isUploadingDocument || !documentFile || !activeTenancy}
+                        >
+                            {isUploadingDocument ? <Loader2 className="h-3 w-3 mr-2 animate-spin" /> : <Upload className="h-3 w-3 mr-2" />}
+                            Upload Document
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
 
             {/* Edit Tenancy Dialog */}
             <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>

@@ -7,6 +7,7 @@ import {
     WorkOrder,
     Vendor,
     PropertyDocument,
+    PropertyDocumentType,
     FinancialRecord,
     TenantStatus,
     TenancyStatus,
@@ -57,6 +58,8 @@ export const propertyManagementApi = {
     },
 
     getPropertyById: (id: string) => fetchApi<Property>(`${PM_BASE}/properties/${id}`),
+
+    getPropertyUnits: (id: string) => fetchApi<Property[]>(`${PM_BASE}/properties/${id}/units`),
 
     createProperty: (data: Partial<Property>) =>
         fetchApi<Property>(`${PM_BASE}/properties`, {
@@ -141,6 +144,9 @@ export const propertyManagementApi = {
             body: JSON.stringify(data)
         }),
 
+    deleteTenant: (id: string) =>
+        fetchApi<void>(`${PM_BASE}/tenants/${id}`, { method: 'DELETE' }),
+
     inviteTenantPortal: (tenantId: string, redirectUri?: string) =>
         fetchApi<{
             success: boolean;
@@ -150,6 +156,8 @@ export const propertyManagementApi = {
             portalAccessStatus: string;
             onboardingUrl: string;
             inviteExpiresAt: string;
+            emailSent: boolean;
+            emailError?: string;
         }>(`${PM_BASE}/tenants/${tenantId}/portal-invite`, {
             method: 'POST',
             body: JSON.stringify({ redirectUri })
@@ -163,12 +171,14 @@ export const propertyManagementApi = {
         limit?: number;
         status?: TenancyStatus;
         propertyId?: string;
+        tenantId?: string;
     }) => {
         const query = new URLSearchParams();
         if (params?.page) query.append('page', String(params.page));
         if (params?.limit) query.append('limit', String(params.limit));
         if (params?.status) query.append('status', params.status);
         if (params?.propertyId) query.append('propertyId', params.propertyId);
+        if (params?.tenantId) query.append('tenantId', params.tenantId);
 
         return fetchApi<PaginatedResponse<Tenancy>>(`${PM_BASE}/tenancies?${query.toString()}`);
     },
@@ -240,10 +250,14 @@ export const propertyManagementApi = {
             body: JSON.stringify(data)
         }),
 
-    assignWorkOrder: (id: string, vendorId: string) =>
+    assignWorkOrder: (
+        id: string,
+        vendorId: string,
+        schedule?: { scheduledDate?: string; scheduledTimeStart?: string; scheduledTimeEnd?: string }
+    ) =>
         fetchApi<WorkOrder>(`${PM_BASE}/work-orders/${id}/assign`, {
             method: 'POST',
-            body: JSON.stringify({ vendorId })
+            body: JSON.stringify({ vendorId, ...schedule })
         }),
 
     completeWorkOrder: (id: string, data: { actualCost: number; completionNotes: string }) =>
@@ -315,6 +329,28 @@ export const propertyManagementApi = {
             method: 'POST',
             body: JSON.stringify(data)
         }),
+
+    uploadDocument: (data: {
+        file: File;
+        propertyId: string;
+        tenancyId?: string;
+        documentType: PropertyDocumentType;
+        title?: string;
+        description?: string;
+    }) => {
+        const formData = new FormData();
+        formData.append('file', data.file);
+        formData.append('propertyId', data.propertyId);
+        if (data.tenancyId) formData.append('tenancyId', data.tenancyId);
+        formData.append('documentType', data.documentType);
+        if (data.title) formData.append('title', data.title);
+        if (data.description) formData.append('description', data.description);
+
+        return fetchApi<PropertyDocument>(`${PM_BASE}/documents/upload`, {
+            method: 'POST',
+            body: formData
+        });
+    },
 
     uploadPropertyPhoto: (propertyId: string, file: File, title?: string) => {
         const formData = new FormData();

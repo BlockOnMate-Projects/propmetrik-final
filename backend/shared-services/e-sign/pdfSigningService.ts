@@ -440,21 +440,29 @@ export class PdfSigningService {
         let currentPdfBytes = pdfBytes;
 
         for (const sig of signatures) {
-            currentPdfBytes = await this.embedSignatureAtPosition(
-                currentPdfBytes,
-                sig.signatureData,
-                {
-                    page: sig.page,
-                    x: sig.x,
-                    y: sig.y,
-                    width: sig.width,
-                    height: sig.height,
-                    signatureId: sig.signatureId,
-                    signatureHash: sig.signatureHash,
-                    signedAt: sig.signedAt,
-                    usePercentage: sig.usePercentage,
-                }
-            );
+            try {
+                currentPdfBytes = await this.embedSignatureAtPosition(
+                    currentPdfBytes,
+                    sig.signatureData,
+                    {
+                        page: sig.page,
+                        x: sig.x,
+                        y: sig.y,
+                        width: sig.width,
+                        height: sig.height,
+                        signatureId: sig.signatureId,
+                        signatureHash: sig.signatureHash,
+                        signedAt: sig.signedAt,
+                        usePercentage: sig.usePercentage,
+                    }
+                );
+            } catch (err: any) {
+                // Never let one bad field (out-of-range page, corrupt image) drop every
+                // other signature + the date fields. Skip it and keep the rest.
+                logger.warn('Skipped a signature during embedding', {
+                    page: sig.page, signatureId: sig.signatureId, error: err?.message,
+                });
+            }
         }
 
         return currentPdfBytes;

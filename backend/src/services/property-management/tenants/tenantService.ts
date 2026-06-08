@@ -113,7 +113,7 @@ export class TenantService {
     ): Promise<Tenant | null> {
         const query = `
       SELECT * FROM tenants
-      WHERE id = $1 AND organization_id = $2
+            WHERE id = $1 AND organization_id = $2 AND deleted_at IS NULL
     `;
 
         const result = await this.db.query(query, [tenantId, organizationId]);
@@ -139,7 +139,7 @@ export class TenantService {
         const offset = (page - 1) * limit;
 
         // Build WHERE clause
-        const conditions: string[] = ['organization_id = $1'];
+        const conditions: string[] = ['organization_id = $1', 'deleted_at IS NULL'];
         const params: (string | number | boolean)[] = [organizationId];
         let paramIndex = 2;
 
@@ -300,8 +300,8 @@ export class TenantService {
     ): Promise<boolean> {
         // Check for active tenancies first
         const activeTenancyCheck = await this.db.query(
-            `SELECT COUNT(*) FROM tenancies WHERE tenant_id = $1 AND status = 'active'`,
-            [tenantId]
+            `SELECT COUNT(*) FROM tenancies WHERE tenant_id = $1 AND organization_id = $2 AND status = 'active'`,
+            [tenantId, organizationId]
         );
 
         if (parseInt(activeTenancyCheck.rows[0].count, 10) > 0) {
@@ -310,8 +310,8 @@ export class TenantService {
 
         const query = `
       UPDATE tenants
-      SET status = $1, updated_at = CURRENT_TIMESTAMP
-      WHERE id = $2 AND organization_id = $3
+            SET status = $1, deleted_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP
+            WHERE id = $2 AND organization_id = $3 AND deleted_at IS NULL
       RETURNING id
     `;
 

@@ -28,6 +28,7 @@
 
 import { pool } from '../../database';
 import { logger } from '../../utils/logger';
+import { notify, resolveOrgStaff } from '../../../shared-services/notifications/in-mail';
 import { eSignIntegrationService } from '../../../shared-services/e-sign/integration/eSignIntegrationService';
 import { CompletionEvent, ESignField, ESignSigner } from '../../../shared-services/e-sign/integration/types';
 
@@ -764,6 +765,29 @@ class ChangeOrderService {
       await client.query('COMMIT');
 
       logger.info(`Change Order submitted: ${current.rows[0].co_number}`, { coId: id });
+
+      // Notify org staff (approvers) that a change order awaits review
+      try {
+        const co = current.rows[0];
+        const staff = (await resolveOrgStaff(co.organization_id)).filter((s) => s.userId !== userId);
+        if (staff.length) {
+          await notify({
+            recipients: staff,
+            category: 'project',
+            type: 'change_order.submitted',
+            title: 'Change order submitted for review',
+            body: `Change Order ${co.co_number} has been submitted and is awaiting review.`,
+            priority: 'normal',
+            organizationId: co.organization_id,
+            sourceType: 'change_order',
+            sourceId: id,
+            sourceUrl: `/dashboard/projects/${co.project_id}/change-orders`,
+            channels: { inApp: true, email: true },
+          });
+        }
+      } catch (notifyError: any) {
+        logger.warn('Failed to notify approvers of change order submission', { coId: id, error: notifyError.message });
+      }
 
       return this.getById(id) as Promise<ChangeOrderWithDetails>;
     } catch (error) {

@@ -7,8 +7,9 @@
  * Steps: 1) Prepare (doc + recipients) → 2) Place Fields → 3) Sign / Review & Send → 4) Complete / Send
  */
 
-import { useState, useCallback, useEffect, useRef } from "react";
+import { useState, useCallback, useEffect, useRef, useMemo } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { useSession } from "next-auth/react";
 import Link from "next/link";
 import {
   ArrowLeft,
@@ -56,25 +57,23 @@ import { PDFDocument, rgb, StandardFonts } from "pdf-lib";
 // ─── Current user mock (replace with auth context) ──────
 
 function useCurrentUser() {
-  const [user, setUser] = useState<{ id: string; name: string; email: string; signerId: string } | null>(null);
-  useEffect(() => {
-    try {
-      const session = localStorage.getItem('pm_user_session');
-      if (session) {
-        const parsed = JSON.parse(session);
-        const id = parsed.id || 'unknown';
-        // Generate a permanent signer ID: PMT-XXXX-XXXX from first 8 chars of user UUID
-        const rawId = id.replace(/-/g, '').substring(0, 8).toUpperCase();
-        const signerId = `PMT-${rawId.substring(0, 4)}-${rawId.substring(4, 8)}`;
-        setUser({ id, name: parsed.name || 'Current User', email: parsed.email || 'user@propmetrik.com', signerId });
-        return;
-      }
-    } catch { /* ignore */ }
-    const name = localStorage.getItem("user_name") || "Current User";
-    const email = localStorage.getItem("user_email") || "user@propmetrik.com";
-    setUser({ id: 'unknown', name, email, signerId: 'PMT-0000-0000' });
-  }, []);
-  return user;
+  // Identity MUST come from the authenticated session — not localStorage. The
+  // signing-mode detection compares signer emails against the current user's email
+  // to decide whether the preparer signs inline (sign-and-send) vs. send-to-others.
+  // Reading an empty localStorage here silently mis-identified the user as
+  // "user@propmetrik.com", so the preparer was never recognised as a signer.
+  const { data: session } = useSession();
+  return useMemo(() => {
+    const u = session?.user;
+    if (!u?.email) return null;
+    const id = (u as any).id || 'unknown';
+    // Permanent signer ID: PMT-XXXX-XXXX from first 8 chars of the user id.
+    const rawId = id.replace(/-/g, '').substring(0, 8).toUpperCase().padEnd(8, '0');
+    const signerId = id !== 'unknown'
+      ? `PMT-${rawId.substring(0, 4)}-${rawId.substring(4, 8)}`
+      : 'PMT-0000-0000';
+    return { id, name: u.name || 'Current User', email: u.email, signerId };
+  }, [session?.user]);
 }
 
 // ─── Step definitions ────────────────────────────────────
@@ -118,6 +117,14 @@ export default function NewEnvelopePage() {
   const [signedPdfBlob, setSignedPdfBlob] = useState<Blob | null>(null);
   const [signedPdfUrl, setSignedPdfUrl] = useState<string | null>(null);
 
+  // Context for externally-sourced documents (PM lease, etc.) so the created
+  // envelope is linked back to its entity and the right completion handler runs.
+  const [externalContext, setExternalContext] = useState<{
+    contextType: string;
+    contextEntityId?: string;
+    contextEntityName?: string;
+  } | null>(null);
+
   // Signing mode detection
   const [isSelfSigning, setIsSelfSigning] = useState(isSelfMode);
   const [isSignAndSend, setIsSignAndSend] = useState(false);
@@ -127,12 +134,17 @@ export default function NewEnvelopePage() {
   const [reminderDays, setReminderDays] = useState("3");
   const [expiresInDays, setExpiresInDays] = useState("30");
 
+  // True when this envelope was opened with a pre-loaded external document (e.g. a lease),
+  // so the "sign alone" initializer doesn't clobber its signers.
+  const hasExternalDocRef = useRef(false);
+
   // External document from sessionStorage (PM/CRM/Valuation integration)
   useEffect(() => {
     const stored = sessionStorage.getItem("esign_lease_document");
     if (stored) {
       try {
         const ext: ExternalDocumentData = JSON.parse(stored);
+        hasExternalDocRef.current = true;
         loadExternalDocument(ext);
         sessionStorage.removeItem("esign_lease_document");
       } catch { /* ignore */ }
@@ -140,18 +152,29 @@ export default function NewEnvelopePage() {
   }, []);
 
   const loadExternalDocument = async (ext: ExternalDocumentData) => {
+    // Link the envelope to its source entity (e.g. a lease) so completion stamps the signed
+    // PDF + certificate against the right tenancy and notifies the right parties.
+    if (ext.tenancyId) {
+      setExternalContext({
+        contextType: 'lease',
+        contextEntityId: ext.tenancyId,
+        contextEntityName: ext.propertyName || ext.filename,
+      });
+    }
+
+    // Fetch + populate exactly as the working version did: only advance to field placement
+    // once the document is in hand, so we never show "No document loaded" on step 2.
     try {
       const resp = await fetch(ext.documentUrl, { mode: "cors", credentials: "omit" });
       if (!resp.ok) throw new Error("Failed to fetch document");
       const blob = await resp.blob();
       const file = new File([blob], ext.filename, { type: "application/pdf" });
 
-      const doc: DocumentFile = { id: `ext-${Date.now()}`, name: ext.filename, source: "desktop", file };
-      setDocuments([doc]);
+      setDocuments([{ id: `ext-${Date.now()}`, name: ext.filename, source: "desktop", file }]);
       setSubject(ext.subject);
       setMessage(ext.message);
 
-      const rList: Recipient[] = ext.signers.map((s, i) => ({
+      const rList: Recipient[] = (ext.signers || []).map((s, i) => ({
         id: `r-${i + 1}`,
         name: s.name,
         email: s.email,
@@ -297,6 +320,8 @@ export default function NewEnvelopePage() {
 
   // Initialize current user as signer on mount
   useEffect(() => {
+    // Never override the signers of a pre-loaded external document (e.g. a lease)
+    if (hasExternalDocRef.current) return;
     if (currentUser && recipients.length === 0) {
       const selfR: Recipient = {
         id: "self-signer",
@@ -312,38 +337,68 @@ export default function NewEnvelopePage() {
     }
   }, [isSelfMode, currentUser]);
 
+  // If the authenticated user resolves AFTER an external document (e.g. a lease)
+  // loaded its recipients, re-classify the signing mode. Otherwise the preparer
+  // is mis-detected as an outside party and never gets the inline signing step.
+  useEffect(() => {
+    if (currentUser && recipients.length > 0) {
+      const me = recipients.find(
+        (r) => r.role === "signer" && r.email.toLowerCase() === currentUser.email.toLowerCase()
+      );
+      if (me && me.id !== currentUserRecipientId) {
+        detectMode(recipients);
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentUser?.email]);
+
   // ─── Submit / Send ─────────────────────────────────
 
-  // For send-to-others mode: calls the backend
+  // For send-to-others / sign-and-send mode: calls the backend.
+  // Sends the shape the backend's multipart envelope route expects:
+  //   file=<pdf>, signers=JSON([{...recipient, fields:[{...,value,signed}]}]), name/message/context.
+  // Each placed field carries its position (percentages) and, for fields this user already
+  // signed, the captured signature image + signed flag — so the signer who placed the
+  // fields (e.g. landlord) is recorded as signed and remaining signers (e.g. tenant) stay pending.
   const handleSend = async () => {
     setIsSubmitting(true);
     setError(null);
     try {
-      const envelopeData = {
-        subject,
-        message,
-        documents: documents.map((d) => ({ id: d.id, name: d.name, source: d.source })),
-        recipients: recipients.map((r) => ({ name: r.name, email: r.email, role: r.role, order: r.order })),
-        fields: fields.map((f) => ({
-          type: f.type,
-          recipientEmail: recipients.find((r) => r.id === f.recipientId)?.email,
-          documentIndex: documents.findIndex((d) => d.id === f.documentId),
-          page: f.page,
-          x: f.x,
-          y: f.y,
-          width: f.width,
-          height: f.height,
-          required: f.required,
-        })),
-        settings: {
-          reminderFrequencyDays: parseInt(reminderDays),
-          expiresInDays: parseInt(expiresInDays),
-        },
-      };
+      const doc = documents[0];
+      if (!doc?.file) throw new Error("No document to send");
+
+      const signerRecipients = recipients.filter((r) => r.role === "signer");
+      const signersPayload = signerRecipients.map((r) => ({
+        name: r.name,
+        email: r.email,
+        role: r.role,
+        order: r.order,
+        fields: fields
+          .filter((f) => f.recipientId === r.id)
+          .map((f) => ({
+            type: f.type,
+            page: f.page,
+            x: f.x,
+            y: f.y,
+            width: f.width,
+            height: f.height,
+            required: f.required,
+            // Captured signature/initial/text image for fields this user signed inline
+            value: f.signatureData?.data || f.value || null,
+            signed: signedFields.has(f.id),
+          })),
+      }));
 
       const formData = new FormData();
-      formData.append("envelope_data", JSON.stringify(envelopeData));
-      documents.forEach((d) => d.file && formData.append("files", d.file));
+      formData.append("file", doc.file);
+      formData.append("name", subject || doc.name);
+      formData.append("message", message || "");
+      formData.append("signers", JSON.stringify(signersPayload));
+      if (externalContext) {
+        formData.append("contextType", externalContext.contextType);
+        if (externalContext.contextEntityId) formData.append("contextEntityId", externalContext.contextEntityId);
+        if (externalContext.contextEntityName) formData.append("contextEntityName", externalContext.contextEntityName);
+      }
 
       const result = await createEnvelope(formData);
       router.push(`/dashboard/e-sign?created=${result?.data?.id || result?.envelope_id || result?.id || "true"}`);

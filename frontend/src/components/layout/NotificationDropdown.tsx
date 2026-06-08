@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { notificationApi, type Notification } from '@/lib/notification-api'
+import { useRealtimeEvent } from '@/lib/realtime-provider'
 
 const CATEGORY_COLORS: Record<string, string> = {
   esign: 'bg-blue-500',
@@ -72,9 +73,20 @@ export function NotificationDropdown() {
 
   useEffect(() => {
     fetchUnreadCount()
-    const interval = setInterval(fetchUnreadCount, 30000) // every 30s
+    const interval = setInterval(fetchUnreadCount, 30000) // every 30s safety net
     return () => clearInterval(interval)
   }, [fetchUnreadCount])
+
+  // Live update via SSE — bump the badge the instant the backend emits one,
+  // and refresh the list if the dropdown is open.
+  useRealtimeEvent('notification:new', () => {
+    setUnreadCount(prev => prev + 1)
+    if (open) {
+      notificationApi.getNotifications({ limit: 20 })
+        .then(data => setNotifications(data.notifications || []))
+        .catch(() => {})
+    }
+  }, [open])
 
   // Load notifications when opened
   useEffect(() => {

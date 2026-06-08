@@ -104,6 +104,8 @@ import serviceTeamRoutes from './routes/serviceTeam';
 import { workspaceWebSocketServer } from '../shared-services/workspace/WorkspaceWebSocketServer';
 import { initKobbyMonitor } from './jobs/kobbyAIMonitor';
 import { initWhatsAppDigest } from './jobs/whatsappDigest';
+import { initRentReminderJob } from './jobs/rentReminderJob';
+import { initCrmTaskReminderJob } from './jobs/crmTaskReminderJob';
 
 // Import shared services
 import { realtimeEmitter } from '../shared-services/realtime';
@@ -335,7 +337,7 @@ app.post('/api/v1/pm-invoices/public/:id/initiate-crypto', async (req, res) => {
     const ticker = payCurrency.toLowerCase();
 
     const reference = `PM-INV-CRYPTO-${Date.now()}-${Math.random().toString(36).substring(2, 8)}`;
-    const frontendUrl = process.env.FRONTEND_URL || 'https://app.propmetrik.com';
+    const frontendUrl = process.env.FRONTEND_URL || 'https://propmetrik.com';
 
     const npResult = await nowPaymentsService.createPayment({
       priceAmount: usdAmount,
@@ -953,6 +955,10 @@ const server = app.listen(config.port, async () => {
   initKobbyMonitor();
   // Start WhatsApp Daily Digest
   initWhatsAppDigest();
+  // Start daily rent reminder / overdue notice job
+  initRentReminderJob();
+  // Start daily CRM task due / overdue reminder job
+  initCrmTaskReminderJob();
   // Attach WebSocket server for workspace real-time collaboration
   workspaceWebSocketServer.attach(server);
   logger.info(`Propmetrik API server running on port ${config.port}`, {

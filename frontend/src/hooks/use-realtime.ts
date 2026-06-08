@@ -77,6 +77,9 @@ export enum RealtimeEventType {
   // Task events (from existing backend)
   TASK_CREATED = 'task.created',
   TASK_COMPLETED = 'task.completed',
+
+  // In-app notification (emitted by the notification core for the bell/portal)
+  NOTIFICATION_NEW = 'notification:new',
 }
 
 export interface RealtimeEvent {
