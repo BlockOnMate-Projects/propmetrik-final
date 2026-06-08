@@ -308,7 +308,7 @@ class TransmittalService {
     recipients: any[],
     items: any[],
   ) {
-    const frontendUrl = (config.app.frontendUrl || 'https://app.propmetrik.com').replace(/\/$/, '');
+    const frontendUrl = (config.app.frontendUrl || 'https://propmetrik.com').replace(/\/$/, '');
     const appUrl = (config.app.url || 'http://localhost:4000').replace(/\/$/, '');
 
     const purposeLabels: Record<string, string> = {

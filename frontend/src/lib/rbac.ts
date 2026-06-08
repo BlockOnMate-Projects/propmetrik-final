@@ -469,6 +469,10 @@ function getFeatureGates(): Record<string, { minTier: string; label: string; des
  */
 export function canAccessPlatformTab(role: string | undefined | null, tabKey: string): boolean {
   if (!role) return false;
+  // Overview and E-Sign are shared services available to every authenticated user
+  // (consistent with navigation filtering); never gate them on the RBAC config,
+  // which may omit them for some roles/orgs.
+  if (tabKey === 'overview' || tabKey === 'e-sign') return true;
   const tabs = getPlatformTabAccess();
   const allowed = tabs[tabKey];
   if (!allowed) return false;

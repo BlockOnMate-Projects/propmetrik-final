@@ -125,24 +125,26 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       async authorize(credentials) {
         if (!credentials?.email || !credentials?.password) return null;
         try {
-          const res = await fetch(`${API_BASE}/api/v1/tenant-portal/auth/login`, {
+          const res = await fetch(`${API_BASE}/api/v1/tenant-portal/auth/keycloak/password-login`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ email: credentials.email, password: credentials.password }),
           });
           const data = await res.json();
-          if (!res.ok || !data.success) return null;
+          if (!res.ok || !data.success || !data.tenant) return null;
+          const tenant = data.tenant;
+          const organizationId = tenant.organizationId || tenant.activeTenancies?.[0]?.organizationId;
           return {
-            id: data.user.id,
-            email: data.user.email,
-            name: `${data.user.firstName || ''} ${data.user.lastName || ''}`.trim() || data.user.email,
+            id: tenant.id,
+            email: tenant.email,
+            name: tenant.fullName || tenant.email,
             image: null,
-            accessToken: data.token,
+            accessToken: data.accessToken,
             role: 'tenant',
             tier: 'starter',
             userType: 'tenant',
             subscribedServices: [],
-            organizationId: data.user.organizationId,
+            organizationId,
           };
         } catch {
           return null;
@@ -329,6 +331,10 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
     signIn: '/login',
     error: '/login',
   },
+  // Derive the auth URL from the incoming request host (X-Forwarded-Host behind
+  // the proxy) instead of a single fixed NEXTAUTH_URL. Lets one app serve both
+  // app.propmetrik.com and tenant.propmetrik.com with correct callback/cookie hosts.
+  trustHost: true,
   session: {
     strategy: "jwt",
     maxAge: 30 * 24 * 60 * 60, // 30 days

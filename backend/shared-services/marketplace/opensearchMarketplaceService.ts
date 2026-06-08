@@ -339,6 +339,7 @@ class OpenSearchMarketplaceService {
       bedrooms: src.bedrooms || 0,
       bathrooms: src.bathrooms || 0,
       total_area_sqm: src.land_area_sqm || src.built_area_sqm || null,
+      total_units: src.total_units ?? null,
       parking_spaces: src.parking_spaces ?? null,
       year_built: src.year_built ?? null,
       land_area_sqm: src.land_area_sqm ?? null,

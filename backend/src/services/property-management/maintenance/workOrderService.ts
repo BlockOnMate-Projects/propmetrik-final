@@ -9,6 +9,8 @@
 
 import { Pool } from 'pg';
 import { pool } from '../../../database';
+import { notify, resolveOrgStaff, resolveTenantByTenancy } from '../../../../shared-services/notifications/in-mail';
+import { logger } from '../../../utils/logger';
 import {
     WorkOrder,
     CreateWorkOrderDto,
@@ -113,6 +115,48 @@ export class WorkOrderService {
             });
         } catch (hookError) {
             console.error('Failed to create work order contribution hook', hookError);
+        }
+
+        // Notify landlord staff (new request) + tenant (request logged).
+        try {
+            const staff = await resolveOrgStaff(organizationId);
+            if (staff.length) {
+                await notify({
+                    recipients: staff,
+                    category: 'property',
+                    type: 'work_order.created',
+                    title: 'New maintenance request',
+                    body: `A maintenance request "${workOrder.title}" (${workOrder.priority}) was logged.`,
+                    summary: workOrder.title,
+                    priority: workOrder.priority === Priority.URGENT ? 'high' : 'normal',
+                    sourceType: 'work_order',
+                    sourceId: workOrder.id,
+                    sourceUrl: `/dashboard/property-management/maintenance/${workOrder.id}`,
+                    organizationId,
+                    channels: { inApp: true },
+                });
+            }
+            if (workOrder.tenancyId) {
+                const tenant = await resolveTenantByTenancy(workOrder.tenancyId);
+                if (tenant) {
+                    await notify({
+                        recipients: tenant,
+                        category: 'property',
+                        type: 'work_order.created',
+                        title: 'Maintenance request received',
+                        body: `Your maintenance request "${workOrder.title}" has been logged. We'll keep you updated.`,
+                        summary: `Logged: ${workOrder.title}`,
+                        priority: 'normal',
+                        sourceType: 'work_order',
+                        sourceId: workOrder.id,
+                        tenantActionUrl: '/dashboard/tenant/maintenance',
+                        organizationId,
+                        channels: { inApp: true, email: true },
+                    });
+                }
+            }
+        } catch (err: any) {
+            logger.warn('notify(work_order.created) failed', { workOrderId: workOrder.id, error: err.message });
         }
 
         return workOrder;
@@ -324,16 +368,31 @@ export class WorkOrderService {
             await this.createExpenseRecord(result.rows[0]);
         }
 
-        return this.mapRowToWorkOrder(result.rows[0]);
+        const workOrder = this.mapRowToWorkOrder(result.rows[0]);
+
+        // A reschedule (schedule changed outside the initial assign) notifies the
+        // already-assigned vendor + tenant. The assign flow sets status=ASSIGNED
+        // and handles its own notification, so it's excluded here to avoid dupes.
+        if (
+            data.scheduledDate !== undefined &&
+            data.status !== WorkOrderStatus.ASSIGNED &&
+            workOrder.assignedVendorId
+        ) {
+            await this.notifyVendorAndTenant(workOrder, organizationId, 'rescheduled');
+        }
+
+        return workOrder;
     }
 
     /**
-     * Assign work order to vendor
+     * Assign work order to vendor (optionally scheduling the visit at the same
+     * time) and notify both the vendor and the tenant.
      */
     async assignWorkOrder(
         workOrderId: string,
         vendorId: string,
-        organizationId: string
+        organizationId: string,
+        schedule?: { scheduledDate?: string; scheduledTimeStart?: string; scheduledTimeEnd?: string }
     ): Promise<WorkOrder | null> {
         // Verify vendor belongs to organization
         const vendorCheck = await this.db.query(
@@ -345,10 +404,126 @@ export class WorkOrderService {
             throw new Error('Vendor not found');
         }
 
-        return this.updateWorkOrder(workOrderId, organizationId, {
+        const workOrder = await this.updateWorkOrder(workOrderId, organizationId, {
             assignedVendorId: vendorId,
-            status: WorkOrderStatus.ASSIGNED
+            status: WorkOrderStatus.ASSIGNED,
+            scheduledDate: schedule?.scheduledDate,
+            scheduledTimeStart: schedule?.scheduledTimeStart,
+            scheduledTimeEnd: schedule?.scheduledTimeEnd,
         });
+
+        if (workOrder) {
+            await this.notifyVendorAndTenant(workOrder, organizationId, 'assigned');
+        }
+
+        return workOrder;
+    }
+
+    /**
+     * Notify the assigned vendor (email + SMS — vendors have no login account)
+     * and the tenant (in-app + email) that a vendor has been assigned or the
+     * visit rescheduled. Best-effort: never throws into the calling action.
+     */
+    private async notifyVendorAndTenant(
+        workOrder: WorkOrder,
+        organizationId: string,
+        kind: 'assigned' | 'rescheduled'
+    ): Promise<void> {
+        try {
+            if (!workOrder.assignedVendorId) return;
+
+            const vendorRes = await this.db.query(
+                `SELECT v.business_name, v.contact_person, v.email, v.phone_primary,
+                        p.title AS property_title, p.address_street AS property_address
+                   FROM vendors v
+                   LEFT JOIN properties p ON p.id = $2
+                  WHERE v.id = $1`,
+                [workOrder.assignedVendorId, workOrder.propertyId]
+            );
+            const v = vendorRes.rows[0];
+            if (!v) return;
+
+            const propertyName = (v.property_title as string) || 'the property';
+            const propertyAddress = (v.property_address as string) || '';
+            const visit = this.formatVisitWindow(workOrder);
+
+            // ---- Vendor (email + SMS) ----------------------------------------
+            if (v.email || v.phone_primary) {
+                const intro = kind === 'assigned'
+                    ? `You have been assigned a maintenance job: "${workOrder.title}".`
+                    : `The visit for maintenance job "${workOrder.title}" has been rescheduled.`;
+                const lines = [
+                    intro,
+                    `Property: ${propertyName}${propertyAddress ? `, ${propertyAddress}` : ''}`,
+                    workOrder.specificLocation ? `Location: ${workOrder.specificLocation}` : '',
+                    `Category: ${workOrder.category}  •  Priority: ${workOrder.priority}`,
+                    visit ? `Scheduled: ${visit}` : 'Scheduled: to be confirmed',
+                    workOrder.accessInstructions ? `Access: ${workOrder.accessInstructions}` : '',
+                    workOrder.description ? `Details: ${workOrder.description}` : '',
+                ].filter(Boolean);
+                const body = lines.join('\n');
+
+                await notify({
+                    recipients: {
+                        audience: 'staff',
+                        userId: '',
+                        email: v.email,
+                        phone: v.phone_primary,
+                        name: v.business_name,
+                    },
+                    category: 'property',
+                    type: kind === 'assigned' ? 'work_order.vendor_assigned' : 'work_order.vendor_rescheduled',
+                    title: kind === 'assigned' ? `New job assigned: ${workOrder.title}` : `Job rescheduled: ${workOrder.title}`,
+                    body,
+                    summary: `${workOrder.title} — ${propertyName}`,
+                    priority: workOrder.priority === Priority.URGENT ? 'high' : 'normal',
+                    sourceType: 'work_order',
+                    sourceId: workOrder.id,
+                    organizationId,
+                    channels: { email: !!v.email, sms: !!v.phone_primary },
+                    smsBody: `PropMetrik: ${kind === 'assigned' ? 'New job' : 'Rescheduled'} "${workOrder.title}" at ${propertyName}.${visit ? ` Visit: ${visit}.` : ''}`,
+                });
+            }
+
+            // ---- Tenant (in-app + email) -------------------------------------
+            if (workOrder.tenancyId) {
+                const tenant = await resolveTenantByTenancy(workOrder.tenancyId);
+                if (tenant) {
+                    const tenantBody = kind === 'assigned'
+                        ? `${v.business_name} has been assigned to your maintenance request "${workOrder.title}".${visit ? ` They are scheduled to visit ${visit}.` : ' We will confirm a visit time shortly.'}`
+                        : `Your maintenance visit for "${workOrder.title}" with ${v.business_name} has been rescheduled${visit ? ` to ${visit}.` : '.'}`;
+                    await notify({
+                        recipients: tenant,
+                        category: 'property',
+                        type: kind === 'assigned' ? 'work_order.vendor_assigned' : 'work_order.vendor_rescheduled',
+                        title: kind === 'assigned' ? 'A vendor has been assigned' : 'Your maintenance visit was rescheduled',
+                        body: tenantBody,
+                        summary: `${workOrder.title}: ${v.business_name}${visit ? ` — ${visit}` : ''}`,
+                        priority: 'normal',
+                        sourceType: 'work_order',
+                        sourceId: workOrder.id,
+                        tenantActionUrl: `/dashboard/tenant/maintenance/${workOrder.id}`,
+                        organizationId,
+                        channels: { inApp: true, email: true },
+                    });
+                }
+            }
+        } catch (err: any) {
+            logger.warn(`notify(work_order.${kind}) failed`, { workOrderId: workOrder.id, error: err.message });
+        }
+    }
+
+    /** Human-readable visit window, e.g. "12 Jun 2026, 09:00–11:00". Empty if unscheduled. */
+    private formatVisitWindow(workOrder: WorkOrder): string {
+        if (!workOrder.scheduledDate) return '';
+        const date = new Date(workOrder.scheduledDate).toLocaleDateString('en-GB', {
+            day: '2-digit', month: 'short', year: 'numeric',
+        });
+        const start = workOrder.scheduledTimeStart?.slice(0, 5);
+        const end = workOrder.scheduledTimeEnd?.slice(0, 5);
+        if (start && end) return `${date}, ${start}–${end}`;
+        if (start) return `${date}, ${start}`;
+        return date;
     }
 
     /**
@@ -363,12 +538,39 @@ export class WorkOrderService {
             photosAfter?: string[];
         }
     ): Promise<WorkOrder | null> {
-        return this.updateWorkOrder(workOrderId, organizationId, {
+        const workOrder = await this.updateWorkOrder(workOrderId, organizationId, {
             status: WorkOrderStatus.COMPLETED,
             actualCost: completionData.actualCost,
             completionNotes: completionData.completionNotes,
             photosAfter: completionData.photosAfter
         });
+
+        // Notify the tenant their maintenance request is complete.
+        try {
+            if (workOrder?.tenancyId) {
+                const tenant = await resolveTenantByTenancy(workOrder.tenancyId);
+                if (tenant) {
+                    await notify({
+                        recipients: tenant,
+                        category: 'property',
+                        type: 'work_order.completed',
+                        title: 'Maintenance request completed',
+                        body: `Your maintenance request "${workOrder.title}" has been completed.`,
+                        summary: `Completed: ${workOrder.title}`,
+                        priority: 'normal',
+                        sourceType: 'work_order',
+                        sourceId: workOrder.id,
+                        tenantActionUrl: '/dashboard/tenant/maintenance',
+                        organizationId,
+                        channels: { inApp: true, email: true },
+                    });
+                }
+            }
+        } catch (err: any) {
+            logger.warn('notify(work_order.completed) failed', { workOrderId, error: err.message });
+        }
+
+        return workOrder;
     }
 
     /**

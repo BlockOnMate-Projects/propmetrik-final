@@ -13,7 +13,8 @@
 import { pool } from '../../database';
 import { QueryResult } from 'pg';
 import { BaseService } from '../../../shared-services/base/BaseService';
-import { eventBus, ProjectEventType } from './events';
+import { logger } from '../../utils/logger';
+import { notify, resolveOrgStaff } from '../../../shared-services/notifications/in-mail';
 
 // ============================================================================
 // TYPES
@@ -427,8 +428,32 @@ export async function completeMilestone(
   if (result.rows.length === 0) {
     return null;
   }
-  
-  return mapRowToMilestone(result.rows[0]);
+
+  const milestone = mapRowToMilestone(result.rows[0]);
+
+  // Notify org staff that a project milestone has been completed
+  try {
+    const staff = (await resolveOrgStaff(organizationId)).filter((s) => s.userId !== updatedBy);
+    if (staff.length) {
+      await notify({
+        recipients: staff,
+        category: 'project',
+        type: 'milestone.completed',
+        title: 'Project milestone completed',
+        body: `Milestone "${milestone.name}" has been marked complete.`,
+        priority: milestone.priority === 'critical' || milestone.priority === 'high' ? 'high' : 'normal',
+        organizationId,
+        sourceType: 'milestone',
+        sourceId: milestone.id,
+        sourceUrl: `/dashboard/projects/${milestone.projectId}`,
+        channels: { inApp: true },
+      });
+    }
+  } catch (notifyError: any) {
+    logger.warn('Failed to notify staff of milestone completion', { milestoneId, error: notifyError.message });
+  }
+
+  return milestone;
 }
 
 /**

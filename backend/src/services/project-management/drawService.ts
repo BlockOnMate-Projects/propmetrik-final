@@ -18,6 +18,7 @@ import { BaseService } from '../../../shared-services/base/BaseService';
 import { eventBus, ProjectEventType } from './events';
 import { eSignIntegrationService } from '../../../shared-services/e-sign/integration/eSignIntegrationService';
 import { CompletionEvent, ESignField, ESignSigner } from '../../../shared-services/e-sign/integration/types';
+import { notify, resolveOrgStaff, resolveStaffUser } from '../../../shared-services/notifications/in-mail';
 
 // =====================================================
 // TYPES
@@ -345,7 +346,64 @@ class DrawService extends BaseService {
     }
     
     logger.info({ drawId: id, userId }, 'Draw request submitted');
-    return this.mapRow(result.rows[0]);
+
+    const draw = this.mapRow(result.rows[0]);
+
+    // Notify org staff (approvers) that a draw request needs review
+    try {
+      const staff = (await resolveOrgStaff(draw.organization_id)).filter((s) => s.userId !== userId);
+      if (staff.length) {
+        await notify({
+          recipients: staff,
+          category: 'project',
+          type: 'draw.submitted',
+          title: 'Draw request submitted for approval',
+          body: `Draw ${draw.draw_number} (GHS ${draw.total_amount}) has been submitted and is awaiting approval.`,
+          priority: 'normal',
+          organizationId: draw.organization_id,
+          sourceType: 'draw_request',
+          sourceId: draw.id,
+          sourceUrl: `/dashboard/projects/${draw.project_id}/draws`,
+          channels: { inApp: true, email: true },
+        });
+      }
+    } catch (notifyError: any) {
+      logger.warn('Failed to notify approvers of draw submission', { drawId: id, error: notifyError.message });
+    }
+
+    return draw;
+  }
+
+  /**
+   * Notify the draw submitter of an approval/rejection outcome.
+   */
+  private async notifyDrawSubmitter(
+    draw: DrawRequest,
+    type: string,
+    title: string,
+    body: string,
+    priority: 'normal' | 'high',
+  ): Promise<void> {
+    try {
+      if (!draw.submitted_by) return;
+      const recipient = await resolveStaffUser(draw.submitted_by);
+      if (!recipient) return;
+      await notify({
+        recipients: recipient,
+        category: 'project',
+        type,
+        title,
+        body,
+        priority,
+        organizationId: draw.organization_id,
+        sourceType: 'draw_request',
+        sourceId: draw.id,
+        sourceUrl: `/dashboard/projects/${draw.project_id}/draws`,
+        channels: { inApp: true, email: true },
+      });
+    } catch (notifyError: any) {
+      logger.warn('Failed to notify draw submitter', { drawId: draw.id, error: notifyError.message });
+    }
   }
 
   /**
@@ -377,10 +435,18 @@ class DrawService extends BaseService {
     logger.info({ drawId: id, userId, approvedAmount: amount }, 'Draw request approved');
     
     const approvedDraw = this.mapRow(result.rows[0]);
-    
+
+    await this.notifyDrawSubmitter(
+      approvedDraw,
+      'draw.approved',
+      'Draw request approved',
+      `Draw ${approvedDraw.draw_number} (GHS ${amount}) has been approved.`,
+      'normal',
+    );
+
     // Phase 5: Check if e-sign is configured and trigger workflow
     await this.checkAndTriggerEsign(approvedDraw, userId);
-    
+
     return approvedDraw;
   }
 
@@ -404,7 +470,18 @@ class DrawService extends BaseService {
     }
     
     logger.info({ drawId: id, userId, reason }, 'Draw request rejected');
-    return this.mapRow(result.rows[0]);
+
+    const rejectedDraw = this.mapRow(result.rows[0]);
+
+    await this.notifyDrawSubmitter(
+      rejectedDraw,
+      'draw.rejected',
+      'Draw request rejected',
+      `Draw ${rejectedDraw.draw_number} was rejected: ${reason}`,
+      'high',
+    );
+
+    return rejectedDraw;
   }
 
   /**

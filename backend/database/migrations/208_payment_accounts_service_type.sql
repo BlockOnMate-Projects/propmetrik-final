@@ -11,7 +11,9 @@ ALTER TABLE payment_accounts
 ALTER TABLE payment_accounts
   DROP CONSTRAINT IF EXISTS payment_accounts_entity_type_entity_id_key;
 
--- 3. Add new unique constraint that includes service_type
+-- 3. Add new unique constraint that includes service_type (idempotent — drop first if present)
+ALTER TABLE payment_accounts
+  DROP CONSTRAINT IF EXISTS payment_accounts_entity_service_unique;
 ALTER TABLE payment_accounts
   ADD CONSTRAINT payment_accounts_entity_service_unique
   UNIQUE (entity_id, entity_type, service_type);

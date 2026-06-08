@@ -21,8 +21,37 @@ import { activityService } from './activityService';
 import { eSignIntegrationService } from '../../../shared-services/e-sign/integration/eSignIntegrationService';
 import { CompletionEvent, ESignField } from '../../../shared-services/e-sign/integration/types';
 import { calendarService } from '../../../shared-services/calendar/calendarService';
+import { notify, NotifyRecipient } from '../../../shared-services/notifications/in-mail';
 
 export class DealService {
+    /**
+     * Resolve a CRM agent into a notification recipient.
+     * Agents may or may not be linked to a platform user (agents.user_id) — when
+     * linked the in-app inbox works; otherwise email/SMS still reach them.
+     * Best-effort: returns null on any failure.
+     */
+    private async resolveAgentRecipient(agentId?: string | null): Promise<NotifyRecipient | null> {
+        if (!agentId) return null;
+        try {
+            const res = await db.query(
+                `SELECT user_id, email, phone_primary, first_name, last_name FROM agents WHERE id = $1`,
+                [agentId],
+            );
+            if (!res.rows.length) return null;
+            const a = res.rows[0];
+            return {
+                audience: 'staff',
+                userId: a.user_id || '',
+                email: a.email || null,
+                phone: a.phone_primary || null,
+                name: [a.first_name, a.last_name].filter(Boolean).join(' ') || null,
+            };
+        } catch (err: any) {
+            logger.warn('resolveAgentRecipient failed', { agentId, error: err.message });
+            return null;
+        }
+    }
+
     /**
      * Create a new deal
      */
@@ -144,6 +173,28 @@ export class DealService {
                 });
             } catch (hookError) {
                 logger.error('Failed to create deal contribution hook', hookError);
+            }
+
+            // Notify the assigned agent (skip if the agent is the creator)
+            try {
+                const recipient = await this.resolveAgentRecipient(data.assigned_agent);
+                if (recipient && recipient.userId !== (userId || '')) {
+                    await notify({
+                        recipients: recipient,
+                        category: 'crm',
+                        type: 'deal.assigned',
+                        title: 'New deal assigned to you',
+                        body: `You have been assigned the deal "${deal.title}".`,
+                        priority: 'normal',
+                        organizationId,
+                        sourceType: 'deal',
+                        sourceId: id,
+                        sourceUrl: `/dashboard/deals/${id}`,
+                        channels: { inApp: true, email: true },
+                    });
+                }
+            } catch (notifyError: any) {
+                logger.warn('Failed to notify agent of deal assignment', { dealId: id, error: notifyError.message });
             }
 
             return deal;
@@ -391,7 +442,35 @@ export class DealService {
             }
 
             logger.info('Deal updated', { dealId, organizationId });
-            return result.rows[0];
+
+            const updatedDeal = result.rows[0];
+
+            // Notify the assigned agent when a deal is won/lost/closed
+            if (data.deal_status && ['won', 'lost', 'closed'].includes(data.deal_status)) {
+                try {
+                    const recipient = await this.resolveAgentRecipient(updatedDeal.assigned_agent);
+                    if (recipient) {
+                        const won = data.deal_status === 'won';
+                        await notify({
+                            recipients: recipient,
+                            category: 'crm',
+                            type: `deal.${data.deal_status}`,
+                            title: `Deal ${data.deal_status}`,
+                            body: `Deal "${updatedDeal.title}" was marked ${data.deal_status}.`,
+                            priority: won ? 'normal' : 'high',
+                            organizationId,
+                            sourceType: 'deal',
+                            sourceId: dealId,
+                            sourceUrl: `/dashboard/deals/${dealId}`,
+                            channels: { inApp: true, email: true },
+                        });
+                    }
+                } catch (notifyError: any) {
+                    logger.warn('Failed to notify agent of deal status change', { dealId, error: notifyError.message });
+                }
+            }
+
+            return updatedDeal;
         } catch (error) {
             logger.error('Error updating deal', { error, dealId, organizationId });
             throw error;
@@ -531,6 +610,33 @@ export class DealService {
                     stageId: newStageId,
                     error: calError.message,
                 });
+            }
+
+            // Notify the assigned agent of the stage change (skip the actor)
+            try {
+                const recipient = await this.resolveAgentRecipient(updatedDeal.assigned_agent);
+                if (recipient && recipient.userId !== (userId || '')) {
+                    const stageRow = await db.query(
+                        `SELECT stage_name FROM deal_stages WHERE id = $1`,
+                        [newStageId],
+                    );
+                    const stageName = stageRow.rows[0]?.stage_name || 'a new stage';
+                    await notify({
+                        recipients: recipient,
+                        category: 'crm',
+                        type: 'deal.stage_changed',
+                        title: 'Deal moved to a new stage',
+                        body: `Deal "${updatedDeal.title}" was moved to ${stageName}.`,
+                        priority: 'normal',
+                        organizationId,
+                        sourceType: 'deal',
+                        sourceId: dealId,
+                        sourceUrl: `/dashboard/deals/${dealId}`,
+                        channels: { inApp: true },
+                    });
+                }
+            } catch (notifyError: any) {
+                logger.warn('Failed to notify agent of deal stage change', { dealId, error: notifyError.message });
             }
 
             return updatedDeal;

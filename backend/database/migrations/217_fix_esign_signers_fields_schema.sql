@@ -6,8 +6,14 @@
 -- Step 1: Drop FK constraints that reference the old integer-based esign_signers
 ALTER TABLE esign_audit_log DROP CONSTRAINT IF EXISTS esign_audit_log_signer_id_fkey;
 
--- Step 2: Rename the old integer-based esign_signers to preserve existing data
-ALTER TABLE IF EXISTS esign_signers RENAME TO esign_signers_v1;
+-- Step 2: Rename the old integer-based esign_signers to preserve existing data.
+-- Idempotent: only rename when the legacy table hasn't already been preserved.
+DO $$ BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'esign_signers')
+     AND NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'esign_signers_v1') THEN
+    ALTER TABLE esign_signers RENAME TO esign_signers_v1;
+  END IF;
+END $$;
 
 -- Step 3: Create new UUID-based esign_signers (matches envelopeService.ts expectations)
 CREATE TABLE IF NOT EXISTS esign_signers (

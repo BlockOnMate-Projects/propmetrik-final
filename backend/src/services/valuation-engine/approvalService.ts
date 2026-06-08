@@ -17,6 +17,7 @@ import { logger } from '../../utils/logger';
 import { v4 as uuidv4 } from 'uuid';
 import { eSignIntegrationService } from '../../../shared-services/e-sign/integration/eSignIntegrationService';
 import { CompletionEvent, ESignField } from '../../../shared-services/e-sign/integration/types';
+import { notify, resolveOrgStaff, resolveStaffUser } from '../../../shared-services/notifications/in-mail';
 
 // =====================================================
 // TYPES
@@ -362,6 +363,14 @@ export class ApprovalService {
         digitalSealHash,
       });
 
+      await this.notifyCreator(
+        reportId,
+        'valuation.report_approved',
+        'Valuation report approved',
+        'has been approved and sealed',
+        'normal',
+      );
+
       // ===================================================================
       // Phase 3: Trigger client e-sign workflow if requested
       // ===================================================================
@@ -425,6 +434,14 @@ export class ApprovalService {
       await this.logApproval(reportId, valuerId, 'rejected', reason);
 
       logger.info('Report rejected', { reportId, valuerId, reason });
+
+      await this.notifyCreator(
+        reportId,
+        'valuation.report_rejected',
+        'Valuation report needs revision',
+        `was sent back for revision: ${reason}`,
+        'high',
+      );
 
       return {
         success: true,
@@ -493,9 +510,93 @@ export class ApprovalService {
 
     if (result.rows.length > 0) {
       await this.logApproval(reportId, userId || null, 'submitted');
+      await this.notifyApprovers(reportId);
     }
 
     return result.rows.length > 0;
+  }
+
+  /**
+   * Fetch the report's notification context (org, creator, property).
+   * Best-effort: returns null on any failure so it can never break the workflow.
+   */
+  private async getReportNotifyContext(reportId: string): Promise<{
+    valuationId: string | null;
+    organizationId: string | null;
+    createdBy: string | null;
+    propertyTitle: string | null;
+  } | null> {
+    try {
+      const res = await query(
+        `SELECT r.valuation_id, r.created_by,
+                v.valuer_organization_id AS organization_id,
+                p.title AS property_title
+           FROM valuation_reports r
+           LEFT JOIN valuations v ON v.id = r.valuation_id
+           LEFT JOIN properties p ON p.id = v.property_id
+          WHERE r.id = $1`,
+        [reportId],
+      );
+      if (!res.rows.length) return null;
+      const row = res.rows[0];
+      return {
+        valuationId: row.valuation_id || null,
+        organizationId: row.organization_id || null,
+        createdBy: row.created_by || null,
+        propertyTitle: row.property_title || null,
+      };
+    } catch (err: any) {
+      logger.warn('getReportNotifyContext failed', { reportId, error: err.message });
+      return null;
+    }
+  }
+
+  /** Notify org staff that a report is awaiting approval. */
+  private async notifyApprovers(reportId: string): Promise<void> {
+    const ctx = await this.getReportNotifyContext(reportId);
+    if (!ctx?.organizationId) return;
+    const staff = await resolveOrgStaff(ctx.organizationId);
+    if (!staff.length) return;
+    await notify({
+      recipients: staff,
+      category: 'valuation',
+      type: 'valuation.approval_needed',
+      title: 'Valuation report awaiting approval',
+      body: `A valuation report${ctx.propertyTitle ? ` for ${ctx.propertyTitle}` : ''} has been submitted and is awaiting review.`,
+      priority: 'normal',
+      organizationId: ctx.organizationId,
+      sourceType: 'valuation_report',
+      sourceId: reportId,
+      sourceUrl: ctx.valuationId ? `/dashboard/valuations/${ctx.valuationId}` : '/dashboard/valuations',
+      channels: { inApp: true, email: true },
+    });
+  }
+
+  /** Notify the report's creator about an approval-workflow outcome. */
+  private async notifyCreator(
+    reportId: string,
+    type: string,
+    title: string,
+    bodyAction: string,
+    priority: 'normal' | 'high',
+  ): Promise<void> {
+    const ctx = await this.getReportNotifyContext(reportId);
+    if (!ctx?.createdBy) return;
+    const creator = await resolveStaffUser(ctx.createdBy);
+    if (!creator) return;
+    await notify({
+      recipients: creator,
+      category: 'valuation',
+      type,
+      title,
+      body: `Your valuation report${ctx.propertyTitle ? ` for ${ctx.propertyTitle}` : ''} ${bodyAction}.`,
+      priority,
+      organizationId: ctx.organizationId || undefined,
+      sourceType: 'valuation_report',
+      sourceId: reportId,
+      sourceUrl: ctx.valuationId ? `/dashboard/valuations/${ctx.valuationId}` : '/dashboard/valuations',
+      channels: { inApp: true, email: true },
+    });
   }
 
   // ---------------------------------------------------

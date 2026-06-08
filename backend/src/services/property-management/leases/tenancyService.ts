@@ -21,6 +21,7 @@ import {
     PaginatedResponse
 } from '../../../types/property-management.types';
 import { eSignIntegrationService, CompletionEvent } from '../../../../shared-services/e-sign';
+import { notify, resolveTenantByTenancy } from '../../../../shared-services/notifications/in-mail';
 import { leaseTemplateService } from './leaseTemplateService';
 import { storeSignedLeaseDocument } from './signedLeaseStorage';
 
@@ -48,7 +49,7 @@ export class TenancyService {
     ): Promise<Tenancy> {
         // Validate property exists and belongs to organization
         const propertyCheck = await this.db.query(
-            `SELECT id FROM properties WHERE id = $1`,
+            `SELECT id, unit_number FROM properties WHERE id = $1`,
             [data.propertyId]
         );
 
@@ -56,20 +57,24 @@ export class TenancyService {
             throw new Error('Property not found');
         }
 
+        // When the tenancy points at a unit (child property row), inherit its unit number
+        // so the lease document renders the unit even if the caller didn't pass one explicitly.
+        const effectiveUnitNumber = data.unitNumber || propertyCheck.rows[0].unit_number || null;
+
         // Check for overlapping active tenancies
         const overlapCheck = await this.db.query(
-            `SELECT id FROM tenancies 
-       WHERE property_id = $1 
+            `SELECT id FROM tenancies
+       WHERE property_id = $1
        AND unit_number IS NOT DISTINCT FROM $2
        AND status = 'active'
        AND (
          ($3::DATE, $4::DATE) OVERLAPS (lease_start_date, lease_end_date)
        )`,
-            [data.propertyId, data.unitNumber || null, data.leaseStartDate, data.leaseEndDate]
+            [data.propertyId, effectiveUnitNumber, data.leaseStartDate, data.leaseEndDate]
         );
 
         if (overlapCheck.rows.length > 0) {
-            throw new Error('Overlapping tenancy exists for this property/unit');
+            throw new Error('An active tenancy already overlaps this lease period for the selected property/unit');
         }
 
         const query = `
@@ -106,7 +111,7 @@ export class TenancyService {
             data.propertyId,
             data.tenantId || null, // Optional - tenant created after e-sign
             organizationId,
-            data.unitNumber || null,
+            effectiveUnitNumber,
             new Date(data.leaseStartDate),
             new Date(data.leaseEndDate),
             data.monthlyRent,
@@ -546,13 +551,15 @@ export class TenancyService {
         const tenantSigner = event.signers.find(s => s.email !== ''); // First signer is tenant
         const landlordSigner = event.signers.length > 1 ? event.signers[1] : null;
 
-        // Update tenancy with signed lease info
+        // Update tenancy with signed lease info. A fully-executed lease means the tenancy is now
+        // active — flip status to 'active' (but never resurrect a terminated/expired tenancy).
         await this.db.query(
-            `UPDATE tenancies 
+            `UPDATE tenancies
              SET esign_status = 'completed',
                  esign_completed_at = $1,
                  lease_signed_url = $2,
-                 lease_status = 'executed',
+                 lease_status = 'countersigned',
+                 status = CASE WHEN status IN ('pending', 'pending_signature') THEN 'active' ELSE status END,
                  tenant_signed_at = $3,
                  landlord_signed_at = $4,
                  updated_at = NOW()
@@ -725,10 +732,19 @@ export class TenancyService {
         organizationId: string,
         reason: string
     ): Promise<Tenancy | null> {
-        return this.updateTenancy(tenancyId, organizationId, {
+        const tenancy = await this.updateTenancy(tenancyId, organizationId, {
             status: TenancyStatus.TERMINATED,
             terminationReason: reason
         });
+        await this.notifyTenancyLifecycle(
+            tenancyId,
+            organizationId,
+            'lease.terminated',
+            'Your tenancy has ended',
+            `Your tenancy has been terminated.${reason ? ` Reason: ${reason}` : ''}`,
+            'high',
+        );
+        return tenancy;
     }
 
     /**
@@ -752,12 +768,55 @@ export class TenancyService {
             throw new Error('Only active tenancies can be renewed');
         }
 
-        return this.updateTenancy(tenancyId, organizationId, {
+        const tenancy = await this.updateTenancy(tenancyId, organizationId, {
             leaseEndDate: renewalData.newEndDate,
             monthlyRent: renewalData.newMonthlyRent,
             advancePaymentAmount: renewalData.advancePaymentAmount,
             status: TenancyStatus.RENEWED
         });
+        await this.notifyTenancyLifecycle(
+            tenancyId,
+            organizationId,
+            'lease.renewed',
+            'Your tenancy has been renewed',
+            `Your tenancy has been renewed through ${renewalData.newEndDate}.`,
+            'normal',
+        );
+        return tenancy;
+    }
+
+    /**
+     * Notify the tenant of a tenancy lifecycle change (renewal, termination, …).
+     * Best-effort — never throws into the caller.
+     */
+    private async notifyTenancyLifecycle(
+        tenancyId: string,
+        organizationId: string,
+        type: string,
+        title: string,
+        body: string,
+        priority: 'low' | 'normal' | 'high' | 'urgent',
+    ): Promise<void> {
+        try {
+            const tenant = await resolveTenantByTenancy(tenancyId);
+            if (!tenant) return;
+            await notify({
+                recipients: tenant,
+                category: 'property',
+                type,
+                title,
+                body,
+                summary: title,
+                priority,
+                sourceType: 'tenancy',
+                sourceId: tenancyId,
+                tenantActionUrl: '/dashboard/tenant/lease',
+                organizationId,
+                channels: { inApp: true, email: true },
+            });
+        } catch (err: any) {
+            logger.warn(`notify(${type}) failed`, { tenancyId, error: err.message });
+        }
     }
 
     /**
@@ -866,6 +925,15 @@ export class TenancyService {
             leaseTerms: row.lease_terms as LeaseTerms || {},
             specialConditions: row.special_conditions as string | undefined,
             leaseDocumentUrl: row.lease_document_url as string | undefined,
+            leaseSignedUrl: row.lease_signed_url as string | undefined,
+            leaseStatus: row.lease_status as string | undefined,
+            leaseSentAt: row.lease_sent_at as Date | undefined,
+            tenantSignedAt: row.tenant_signed_at as Date | undefined,
+            landlordSignedAt: row.landlord_signed_at as Date | undefined,
+            esignEnvelopeId: row.esign_envelope_id as string | undefined,
+            esignStatus: row.esign_status as string | undefined,
+            esignCreatedAt: row.esign_created_at as Date | undefined,
+            esignCompletedAt: row.esign_completed_at as Date | undefined,
             terminatedAt: row.terminated_at as Date | undefined,
             terminationReason: row.termination_reason as string | undefined,
             createdBy: row.created_by as string | undefined,

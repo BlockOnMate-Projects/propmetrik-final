@@ -8,7 +8,28 @@
 
 import { authedFetch } from '@/lib/authed-fetch';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+const PUBLIC_API_BASE = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000').replace(/\/$/, '');
+
+function apiUrl(path: string): string {
+  const normalizedPath = path.startsWith('/') ? path : `/${path}`;
+
+  if (typeof window === 'undefined') {
+    const serverBase = (process.env.INTERNAL_API_URL || (PUBLIC_API_BASE.startsWith('http') ? PUBLIC_API_BASE : 'http://localhost:4000')).replace(/\/$/, '');
+    if (serverBase.endsWith('/api/v1')) return `${serverBase}${normalizedPath}`;
+    if (serverBase.endsWith('/api')) return `${serverBase}/v1${normalizedPath}`;
+    return `${serverBase}/api/v1${normalizedPath}`;
+  }
+
+  if (PUBLIC_API_BASE.startsWith('http')) {
+    if (PUBLIC_API_BASE.endsWith('/api/v1')) return `${PUBLIC_API_BASE}${normalizedPath}`;
+    if (PUBLIC_API_BASE.endsWith('/api')) return `${PUBLIC_API_BASE}/v1${normalizedPath}`;
+    return `${PUBLIC_API_BASE}/api/v1${normalizedPath}`;
+  }
+
+  if (PUBLIC_API_BASE.endsWith('/api/v1')) return `${PUBLIC_API_BASE}${normalizedPath}`;
+  if (PUBLIC_API_BASE.endsWith('/api')) return `${PUBLIC_API_BASE}${normalizedPath}`;
+  return `${PUBLIC_API_BASE}/api/v1${normalizedPath}`;
+}
 
 // =====================================================
 // TYPES
@@ -30,8 +51,29 @@ export interface Property {
   description?: string;
 }
 
+export interface PropertyUnit {
+  id: string;
+  unitNumber: string;
+  floorNumber?: number;
+  bedrooms?: number;
+  bathrooms?: number;
+  totalAreaSqm?: number;
+  price: number;
+  priceCurrency: string;
+  status: string;
+}
+
+interface ApplicationLinkValidation {
+  valid: boolean;
+  propertyId?: string;
+  organizationId?: string;
+  property?: Property;
+  units?: PropertyUnit[];
+}
+
 export interface ApplicationInput {
   propertyId: string;
+  unitId?: string;
   applicationToken?: string;
   applicant: {
     fullName: string;
@@ -39,6 +81,9 @@ export interface ApplicationInput {
     phone: string;
     dateOfBirth: string;
     currentAddress: string;
+    idType: string;
+    idNumber: string;
+    documents: Array<{ type: string; side: string; url: string; filename: string }>;
     employment: {
       status: string;
       employer: string;
@@ -81,23 +126,29 @@ export interface ApplicationStatus {
 // PUBLIC APPLICATION ENDPOINTS (no auth required)
 // =====================================================
 
-export async function validateApplicationToken(token: string): Promise<{ valid: boolean; propertyId?: string }> {
-  const res = await fetch(`${API_URL}/api/v1/pm/applications/validate-token/${token}`);
+export async function validateApplicationToken(token: string): Promise<ApplicationLinkValidation> {
+  const res = await fetch(apiUrl(`/pm/application-links/${token}/validate`));
   if (!res.ok) return { valid: false };
   return res.json();
 }
 
 export async function getPropertyById(propertyId: string): Promise<Property> {
-  const res = await fetch(`${API_URL}/api/v1/pm/properties/${propertyId}`);
+  const res = await fetch(apiUrl(`/pm/properties/${propertyId}`));
   if (!res.ok) throw new Error('Property not found');
-  return res.json();
+  const property = await res.json();
+  return normalizeProperty(property);
 }
 
 export async function submitApplication(data: ApplicationInput): Promise<{ id: string; applicationToken?: string }> {
-  const res = await fetch(`${API_URL}/api/v1/pm/applications`, {
+  const payload = mapApplicationPayload(data);
+  const endpoint = data.applicationToken
+    ? apiUrl(`/pm/application-links/${data.applicationToken}/apply`)
+    : apiUrl('/pm/applications');
+
+  const res = await fetch(endpoint, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(data),
+    body: JSON.stringify(payload),
   });
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
@@ -106,8 +157,74 @@ export async function submitApplication(data: ApplicationInput): Promise<{ id: s
   return res.json();
 }
 
+function normalizeProperty(property: any): Property {
+  return {
+    ...property,
+    addressRegion: property.addressRegion || property.region || '',
+    type: property.type || property.propertyType || '',
+    monthlyRent: Number(property.monthlyRent ?? property.price ?? 0),
+    currency: property.currency || property.priceCurrency || 'GHS',
+  };
+}
+
+function mapApplicationPayload(data: ApplicationInput) {
+  const applicant = data.applicant;
+
+  return {
+    propertyId: data.propertyId,
+    unitId: data.unitId,
+    applicantFullName: applicant.fullName,
+    applicantEmail: applicant.email,
+    applicantPhone: applicant.phone,
+    applicantDateOfBirth: applicant.dateOfBirth,
+    applicantCurrentAddress: applicant.currentAddress,
+    applicantIdType: applicant.idType,
+    applicantGhanaCard: applicant.idNumber, // ID number (column name kept for back-compat)
+    occupation: applicant.employment.position,
+    employerName: applicant.employment.employer,
+    monthlyIncome: applicant.employment.monthlyIncome,
+    emergencyContactName: applicant.emergencyContact.name,
+    emergencyContactRelationship: applicant.emergencyContact.relationship,
+    emergencyContactPhone: applicant.emergencyContact.phone,
+    characterReferences: applicant.references,
+    uploadedDocuments: (applicant.documents || []).map((d) => ({
+      type: d.type,
+      side: d.side,
+      url: d.url,
+      filename: d.filename,
+      uploadedAt: new Date().toISOString(),
+    })),
+  };
+}
+
+/**
+ * Upload an ID/supporting document during an application (public, token-scoped).
+ * Returns the stored object ref to attach to the application.
+ */
+export async function uploadApplicationDocument(
+  token: string,
+  file: File,
+  documentType: string,
+  side: string
+): Promise<{ url: string; filename: string; type: string; side: string }> {
+  const form = new FormData();
+  form.append('file', file);
+  form.append('documentType', documentType);
+  form.append('side', side);
+  const res = await fetch(apiUrl(`/pm/application-links/${token}/documents`), {
+    method: 'POST',
+    body: form,
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error || 'Failed to upload document');
+  }
+  return res.json();
+}
+
 export async function getApplicationStatus(idOrToken: string): Promise<ApplicationStatus> {
-  const res = await fetch(`${API_URL}/api/v1/pm/applications/${idOrToken}/status`);
+  // Public status lookup — backend resolves by application token, falling back to application id.
+  const res = await fetch(apiUrl(`/pm/applications/public/${idOrToken}`));
   if (!res.ok) throw new Error('Application not found');
   const data = await res.json();
   return {
@@ -161,7 +278,7 @@ export interface LeaseAgreement {
 
 export async function getLeaseByApplicationId(applicationId: string, signerToken?: string): Promise<LeaseAgreement> {
   const tokenParam = signerToken ? `?token=${encodeURIComponent(signerToken)}` : '';
-  const res = await fetch(`${API_URL}/api/v1/pm/applications/${applicationId}/lease${tokenParam}`);
+  const res = await fetch(apiUrl(`/pm/applications/${applicationId}/lease${tokenParam}`));
   if (res.ok) {
     const data = await res.json();
     return {
@@ -182,7 +299,7 @@ export async function getLeaseByApplicationId(applicationId: string, signerToken
 }
 
 export async function submitLeaseSignature(leaseId: string, signatureDataUrl: string): Promise<boolean> {
-  const res = await fetch(`${API_URL}/api/v1/pm/leases/${leaseId}/sign`, {
+  const res = await fetch(apiUrl(`/pm/leases/${leaseId}/sign`), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ signatureDataUrl }),
@@ -197,7 +314,7 @@ export async function submitLeaseSignature(leaseId: string, signatureDataUrl: st
 // ── Auth API (tenant-portal specific login flows) ──
 
 export async function requestMagicLink(identifier: string): Promise<{ success: boolean; message: string }> {
-  const res = await fetch(`${API_URL}/api/v1/tenant-portal/auth/magic-link`, {
+  const res = await fetch(apiUrl(`/tenant-portal/auth/magic-link`), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ identifier }),
@@ -217,7 +334,7 @@ export async function getKeycloakAuthUrl(
     query.append('codeChallenge', codeChallenge);
     query.append('codeChallengeMethod', codeChallengeMethod);
   }
-  const res = await fetch(`${API_URL}/api/v1/tenant-portal/auth/keycloak/config?${query.toString()}`);
+  const res = await fetch(apiUrl(`/tenant-portal/auth/keycloak/config?${query.toString()}`));
   if (!res.ok) {
     const error = await res.json().catch(() => ({}));
     throw new Error(error.error || 'Failed to initialize Keycloak login');
@@ -230,7 +347,7 @@ export async function exchangeKeycloakCode(
   redirectUri: string,
   codeVerifier?: string
 ): Promise<{ success: boolean; accessToken?: string; error?: string }> {
-  const res = await fetch(`${API_URL}/api/v1/tenant-portal/auth/keycloak/exchange`, {
+  const res = await fetch(apiUrl(`/tenant-portal/auth/keycloak/exchange`), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ code, redirectUri, codeVerifier }),
@@ -243,7 +360,7 @@ export async function loginWithEmailPassword(
   password: string
 ): Promise<{ success: boolean; accessToken?: string; error?: string }> {
   try {
-    const res = await fetch(`${API_URL}/api/v1/tenant-portal/auth/keycloak/password-login`, {
+    const res = await fetch(apiUrl(`/tenant-portal/auth/keycloak/password-login`), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email, password }),
@@ -260,7 +377,7 @@ export async function getResetPasswordUrl(
 ): Promise<{ success: boolean; url: string }> {
   const query = new URLSearchParams({ redirectUri });
   if (loginHint) query.append('loginHint', loginHint);
-  const res = await fetch(`${API_URL}/api/v1/tenant-portal/auth/keycloak/reset-password-url?${query.toString()}`);
+  const res = await fetch(apiUrl(`/tenant-portal/auth/keycloak/reset-password-url?${query.toString()}`));
   if (!res.ok) {
     const error = await res.json().catch(() => ({}));
     throw new Error(error.error || 'Failed to get reset password URL');
@@ -270,7 +387,7 @@ export async function getResetPasswordUrl(
 
 export async function requestOTP(identifier: string, method: 'sms' | 'email'): Promise<{ success: boolean; message: string }> {
   const payload = method === 'sms' ? { phone: identifier } : { email: identifier };
-  const res = await fetch(`${API_URL}/api/v1/tenant-portal/auth/otp/request`, {
+  const res = await fetch(apiUrl(`/tenant-portal/auth/otp/request`), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
@@ -280,7 +397,7 @@ export async function requestOTP(identifier: string, method: 'sms' | 'email'): P
 
 export async function verifyOTP(identifier: string, otp: string, method: 'sms' | 'email'): Promise<{ success: boolean; token?: string; error?: string }> {
   const payload = method === 'sms' ? { phone: identifier, otp } : { email: identifier, otp };
-  const res = await fetch(`${API_URL}/api/v1/tenant-portal/auth/otp/verify`, {
+  const res = await fetch(apiUrl(`/tenant-portal/auth/otp/verify`), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
@@ -289,7 +406,7 @@ export async function verifyOTP(identifier: string, otp: string, method: 'sms' |
 }
 
 export async function verifyMagicLink(token: string): Promise<{ success: boolean; setupRequired?: boolean; tenantEmail?: string; error?: string }> {
-  const res = await fetch(`${API_URL}/api/v1/tenant-portal/auth/verify?token=${token}`);
+  const res = await fetch(apiUrl(`/tenant-portal/auth/verify?token=${encodeURIComponent(token)}`));
   return res.json();
 }
 
@@ -298,7 +415,7 @@ export async function completePasswordSetup(
   password: string,
   confirmPassword: string
 ): Promise<{ success: boolean; accessToken?: string; error?: string }> {
-  const res = await fetch(`${API_URL}/api/v1/tenant-portal/auth/setup-password`, {
+  const res = await fetch(apiUrl('/tenant-portal/auth/setup-password'), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ token, password, confirmPassword }),
@@ -308,7 +425,7 @@ export async function completePasswordSetup(
 
 export async function logout(): Promise<void> {
   try {
-    await authedFetch(`${API_URL}/api/v1/tenant-portal/auth/logout`, { method: 'POST' });
+    await authedFetch(apiUrl('/tenant-portal/auth/logout'), { method: 'POST' });
   } catch {}
 }
 
@@ -331,6 +448,7 @@ export interface TenantProfile {
     propertyId: string;
     propertyTitle: string;
     propertyAddress: string;
+    unitNumber?: string;
     startDate: string;
     endDate: string;
     rentAmount: number;
@@ -356,6 +474,7 @@ function normalizeTenantProfile(data: any): TenantProfile {
           propertyId: tenancy.propertyId || tenancy.property_id,
           propertyTitle: tenancy.propertyTitle || tenancy.property_title || '',
           propertyAddress: tenancy.propertyAddress || tenancy.property_address || '',
+          unitNumber: tenancy.unitNumber || tenancy.unit_number || undefined,
           startDate: tenancy.startDate || tenancy.leaseStartDate || tenancy.lease_start_date,
           endDate: tenancy.endDate || tenancy.leaseEndDate || tenancy.lease_end_date,
           rentAmount: Number(tenancy.rentAmount ?? tenancy.monthlyRent ?? tenancy.monthly_rent ?? 0),
@@ -367,14 +486,14 @@ function normalizeTenantProfile(data: any): TenantProfile {
 }
 
 export async function getTenantProfile(): Promise<TenantProfile> {
-  const res = await authedFetch(`${API_URL}/api/v1/tenant-portal/profile`);
+  const res = await authedFetch(apiUrl(`/tenant-portal/profile`));
   if (!res.ok) throw new Error('Failed to fetch profile');
   const data = await res.json();
   return normalizeTenantProfile(data);
 }
 
 export async function updateTenantProfile(data: { email?: string; phoneSecondary?: string; currentAddress?: string }): Promise<TenantProfile> {
-  const res = await authedFetch(`${API_URL}/api/v1/tenant-portal/profile`, {
+  const res = await authedFetch(apiUrl(`/tenant-portal/profile`), {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data),
@@ -417,7 +536,7 @@ export interface PaymentHistory {
 }
 
 export async function getPaymentSummary(tenancyId: string): Promise<PaymentSummary> {
-  const res = await authedFetch(`${API_URL}/api/v1/tenant-portal/payments/summary/${tenancyId}`);
+  const res = await authedFetch(apiUrl(`/tenant-portal/payments/summary/${tenancyId}`));
   if (!res.ok) throw new Error('Failed to fetch payment summary');
   const raw = await res.json();
 
@@ -452,7 +571,7 @@ export async function getPaymentSummary(tenancyId: string): Promise<PaymentSumma
 }
 
 export async function getRentSchedules(tenancyId: string): Promise<RentSchedule[]> {
-  const res = await authedFetch(`${API_URL}/api/v1/tenant-portal/payments/schedules/${tenancyId}`);
+  const res = await authedFetch(apiUrl(`/tenant-portal/payments/schedules/${tenancyId}`));
   if (!res.ok) throw new Error('Failed to fetch rent schedules');
   const raw = await res.json();
   const list = Array.isArray(raw) ? raw : (raw.schedules || raw.data || []);
@@ -469,7 +588,7 @@ export async function getRentSchedules(tenancyId: string): Promise<RentSchedule[
 }
 
 export async function getPaymentHistory(tenancyId: string): Promise<PaymentHistory[]> {
-  const res = await authedFetch(`${API_URL}/api/v1/tenant-portal/payments/history/${tenancyId}`);
+  const res = await authedFetch(apiUrl(`/tenant-portal/payments/history/${tenancyId}`));
   if (!res.ok) throw new Error('Failed to fetch payment history');
   const raw = await res.json();
   const list = Array.isArray(raw) ? raw : (raw.data || raw.payments || []);
@@ -484,7 +603,7 @@ export async function getPaymentHistory(tenancyId: string): Promise<PaymentHisto
 }
 
 export async function initiatePayment(tenancyId: string, amount: number, scheduleIds?: string[], channel?: string): Promise<{ authorizationUrl: string; reference: string; feeBreakdown?: any }> {
-  const res = await authedFetch(`${API_URL}/api/v1/tenant-portal/payments/initiate`, {
+  const res = await authedFetch(apiUrl(`/tenant-portal/payments/initiate`), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ tenancyId, amount, scheduleIds, channel }),
@@ -506,7 +625,7 @@ export interface FeeBreakdown {
 }
 
 export async function calculateFee(tenancyId: string, amount: number): Promise<FeeBreakdown> {
-  const res = await authedFetch(`${API_URL}/api/v1/tenant-portal/payments/calculate-fee`, {
+  const res = await authedFetch(apiUrl(`/tenant-portal/payments/calculate-fee`), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ tenancyId, amount }),
@@ -519,7 +638,7 @@ export async function calculateFee(tenancyId: string, amount: number): Promise<F
 }
 
 export async function verifyPayment(reference: string): Promise<{ success: boolean; payment?: any }> {
-  const res = await authedFetch(`${API_URL}/api/v1/tenant-portal/payments/verify/${reference}`);
+  const res = await authedFetch(apiUrl(`/tenant-portal/payments/verify/${reference}`));
   return res.json();
 }
 
@@ -561,7 +680,7 @@ export interface CryptoVerifyResult {
 }
 
 export async function getCryptoStatus(): Promise<CryptoStatus> {
-  const res = await authedFetch(`${API_URL}/api/v1/tenant-portal/payments/crypto/status`);
+  const res = await authedFetch(apiUrl(`/tenant-portal/payments/crypto/status`));
   return res.json();
 }
 
@@ -571,7 +690,7 @@ export async function initiateCryptoPayment(
   payerWalletAddress: string,
   scheduleIds?: string[],
 ): Promise<CryptoInitResult> {
-  const res = await authedFetch(`${API_URL}/api/v1/tenant-portal/payments/crypto/initiate`, {
+  const res = await authedFetch(apiUrl(`/tenant-portal/payments/crypto/initiate`), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ tenancyId, amount, payerWalletAddress, scheduleIds }),
@@ -584,7 +703,7 @@ export async function initiateCryptoPayment(
 }
 
 export async function verifyCryptoPayment(txHash: string): Promise<CryptoVerifyResult> {
-  const res = await authedFetch(`${API_URL}/api/v1/tenant-portal/payments/crypto/verify`, {
+  const res = await authedFetch(apiUrl(`/tenant-portal/payments/crypto/verify`), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ txHash }),
@@ -656,7 +775,7 @@ export interface NowPaymentsStatus {
 }
 
 export async function getSettlementCoins(): Promise<SettlementCoin[]> {
-  const res = await authedFetch(`${API_URL}/api/v1/tenant-portal/payments/crypto/settlement-coins`);
+  const res = await authedFetch(apiUrl(`/tenant-portal/payments/crypto/settlement-coins`));
   const data = await res.json();
   return data.coins || [];
 }
@@ -670,7 +789,7 @@ export async function getCryptoEstimate(
   const params = new URLSearchParams({ amount: amount.toString(), payCurrency });
   if (payChain) params.set('payChain', payChain);
   if (tenancyId) params.set('tenancyId', tenancyId);
-  const res = await authedFetch(`${API_URL}/api/v1/tenant-portal/payments/crypto/estimate?${params}`);
+  const res = await authedFetch(apiUrl(`/tenant-portal/payments/crypto/estimate?${params}`));
   return res.json();
 }
 
@@ -682,7 +801,7 @@ export async function initiateUnifiedCrypto(params: {
   payerWalletAddress?: string;
   scheduleIds?: string[];
 }): Promise<UnifiedCryptoResult> {
-  const res = await authedFetch(`${API_URL}/api/v1/tenant-portal/payments/crypto/unified-initiate`, {
+  const res = await authedFetch(apiUrl(`/tenant-portal/payments/crypto/unified-initiate`), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(params),
@@ -695,7 +814,7 @@ export async function initiateUnifiedCrypto(params: {
 }
 
 export async function getNowPaymentsStatus(paymentId: number): Promise<NowPaymentsStatus> {
-  const res = await authedFetch(`${API_URL}/api/v1/tenant-portal/payments/crypto/nowpayments-status/${paymentId}`);
+  const res = await authedFetch(apiUrl(`/tenant-portal/payments/crypto/nowpayments-status/${paymentId}`));
   return res.json();
 }
 
@@ -716,8 +835,12 @@ export interface MaintenanceRequest {
   updatedAt: string;
   location?: string;
   scheduledDate?: string;
+  scheduledTimeStart?: string;
+  scheduledTimeEnd?: string;
   completedAt?: string;
   vendorName?: string;
+  vendorContact?: string;
+  vendorPhone?: string;
   estimatedCost?: number;
   actualCost?: number;
   preferredDate?: string;
@@ -738,14 +861,14 @@ export interface CreateMaintenanceParams {
 }
 
 export async function getMaintenanceRequests(tenancyId: string): Promise<MaintenanceRequest[]> {
-  const res = await authedFetch(`${API_URL}/api/v1/tenant-portal/maintenance/${tenancyId}`);
+  const res = await authedFetch(apiUrl(`/tenant-portal/maintenance/${tenancyId}`));
   if (!res.ok) throw new Error('Failed to fetch maintenance requests');
   const data = await res.json();
   return data.workOrders || (Array.isArray(data) ? data : []);
 }
 
 export async function getMaintenanceStatus(workOrderId: string): Promise<MaintenanceRequest> {
-  const res = await authedFetch(`${API_URL}/api/v1/tenant-portal/maintenance/status/${workOrderId}`);
+  const res = await authedFetch(apiUrl(`/tenant-portal/maintenance/status/${workOrderId}`));
   if (!res.ok) throw new Error('Failed to fetch maintenance status');
   return res.json();
 }
@@ -766,7 +889,7 @@ export async function createMaintenanceRequest(tenancyId: string, params: Create
     });
   }
 
-  const res = await authedFetch(`${API_URL}/api/v1/tenant-portal/maintenance`, {
+  const res = await authedFetch(apiUrl(`/tenant-portal/maintenance`), {
     method: 'POST',
     body: formData,
   });
@@ -802,7 +925,7 @@ export interface TenantDocument {
 }
 
 export async function getTenantDocuments(tenancyId: string): Promise<TenantDocument[]> {
-  const res = await authedFetch(`${API_URL}/api/v1/tenant-portal/documents/${tenancyId}`);
+  const res = await authedFetch(apiUrl(`/tenant-portal/documents/${tenancyId}`));
   if (!res.ok) throw new Error('Failed to fetch documents');
   const data = await res.json();
   return data.documents || [];
@@ -822,7 +945,7 @@ export async function uploadTenantDocument(
   if (title) formData.append('title', title);
   if (description) formData.append('description', description);
 
-  const res = await authedFetch(`${API_URL}/api/v1/tenant-portal/documents/upload`, {
+  const res = await authedFetch(apiUrl(`/tenant-portal/documents/upload`), {
     method: 'POST',
     body: formData,
   });
@@ -849,14 +972,14 @@ export interface TenantSession {
 }
 
 export async function getActiveSessions(): Promise<TenantSession[]> {
-  const res = await authedFetch(`${API_URL}/api/v1/tenant-portal/sessions`);
+  const res = await authedFetch(apiUrl(`/tenant-portal/sessions`));
   if (!res.ok) throw new Error('Failed to fetch sessions');
   const data = await res.json();
   return data.sessions || [];
 }
 
 export async function revokeSession(sessionId: string): Promise<void> {
-  const res = await authedFetch(`${API_URL}/api/v1/tenant-portal/sessions/${sessionId}`, { method: 'DELETE' });
+  const res = await authedFetch(apiUrl(`/tenant-portal/sessions/${sessionId}`), { method: 'DELETE' });
   if (!res.ok) throw new Error('Failed to revoke session');
 }
 
@@ -865,7 +988,7 @@ export async function revokeSession(sessionId: string): Promise<void> {
 // =====================================================
 
 export async function changePassword(currentPassword: string, newPassword: string): Promise<{ success: boolean; message?: string; error?: string }> {
-  const res = await authedFetch(`${API_URL}/api/v1/tenant-portal/change-password`, {
+  const res = await authedFetch(apiUrl(`/tenant-portal/change-password`), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ currentPassword, newPassword }),
@@ -880,13 +1003,13 @@ export async function changePassword(currentPassword: string, newPassword: strin
 // =====================================================
 
 export async function get2FAStatus(): Promise<{ enabled: boolean; method: string }> {
-  const res = await authedFetch(`${API_URL}/api/v1/tenant-portal/2fa/status`);
+  const res = await authedFetch(apiUrl(`/tenant-portal/2fa/status`));
   if (!res.ok) throw new Error('Failed to get 2FA status');
   return res.json();
 }
 
 export async function enable2FA(method: 'email' | 'sms'): Promise<{ success: boolean; message: string }> {
-  const res = await authedFetch(`${API_URL}/api/v1/tenant-portal/2fa/enable`, {
+  const res = await authedFetch(apiUrl(`/tenant-portal/2fa/enable`), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ method }),
@@ -897,7 +1020,7 @@ export async function enable2FA(method: 'email' | 'sms'): Promise<{ success: boo
 }
 
 export async function verify2FA(otp: string, method: 'email' | 'sms'): Promise<{ success: boolean }> {
-  const res = await authedFetch(`${API_URL}/api/v1/tenant-portal/2fa/verify`, {
+  const res = await authedFetch(apiUrl(`/tenant-portal/2fa/verify`), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ otp, method }),
@@ -908,7 +1031,7 @@ export async function verify2FA(otp: string, method: 'email' | 'sms'): Promise<{
 }
 
 export async function disable2FA(password: string): Promise<{ success: boolean }> {
-  const res = await authedFetch(`${API_URL}/api/v1/tenant-portal/2fa/disable`, {
+  const res = await authedFetch(apiUrl(`/tenant-portal/2fa/disable`), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ password }),
@@ -933,18 +1056,18 @@ export interface TenantNotification {
 }
 
 export async function getNotifications(limit?: number): Promise<{ notifications: TenantNotification[]; unreadCount: number }> {
-  const url = `${API_URL}/api/v1/tenant-portal/notifications${limit ? `?limit=${limit}` : ''}`;
+  const url = apiUrl(`/tenant-portal/notifications${limit ? `?limit=${limit}` : ''}`);
   const res = await authedFetch(url);
   if (!res.ok) throw new Error('Failed to fetch notifications');
   return res.json();
 }
 
 export async function markNotificationRead(id: string): Promise<void> {
-  await authedFetch(`${API_URL}/api/v1/tenant-portal/notifications/${id}/read`, { method: 'PATCH' });
+  await authedFetch(apiUrl(`/tenant-portal/notifications/${id}/read`), { method: 'PATCH' });
 }
 
 export async function markAllNotificationsRead(): Promise<void> {
-  await authedFetch(`${API_URL}/api/v1/tenant-portal/notifications/mark-all-read`, { method: 'POST' });
+  await authedFetch(apiUrl(`/tenant-portal/notifications/mark-all-read`), { method: 'POST' });
 }
 
 // =====================================================
@@ -975,14 +1098,14 @@ export interface Message {
 }
 
 export async function getConversations(): Promise<Conversation[]> {
-  const res = await authedFetch(`${API_URL}/api/v1/tenant-portal/conversations`);
+  const res = await authedFetch(apiUrl(`/tenant-portal/conversations`));
   if (!res.ok) throw new Error('Failed to fetch conversations');
   const data = await res.json();
   return data.conversations || [];
 }
 
 export async function createConversation(tenancyId: string, subject: string, message: string): Promise<Conversation> {
-  const res = await authedFetch(`${API_URL}/api/v1/tenant-portal/conversations`, {
+  const res = await authedFetch(apiUrl(`/tenant-portal/conversations`), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ tenancyId, subject, message }),
@@ -993,14 +1116,14 @@ export async function createConversation(tenancyId: string, subject: string, mes
 }
 
 export async function getMessages(conversationId: string): Promise<Message[]> {
-  const res = await authedFetch(`${API_URL}/api/v1/tenant-portal/conversations/${conversationId}/messages`);
+  const res = await authedFetch(apiUrl(`/tenant-portal/conversations/${conversationId}/messages`));
   if (!res.ok) throw new Error('Failed to fetch messages');
   const data = await res.json();
   return data.messages || [];
 }
 
 export async function sendMessage(conversationId: string, content: string): Promise<Message> {
-  const res = await authedFetch(`${API_URL}/api/v1/tenant-portal/conversations/${conversationId}/messages`, {
+  const res = await authedFetch(apiUrl(`/tenant-portal/conversations/${conversationId}/messages`), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ content }),
@@ -1039,13 +1162,13 @@ export interface UtilityCharge {
 }
 
 export async function getUtilityCharges(tenancyId: string): Promise<{ charges: UtilityCharge[] }> {
-  const res = await authedFetch(`${API_URL}/api/v1/tenant-portal/utility-charges/${tenancyId}`);
+  const res = await authedFetch(apiUrl(`/tenant-portal/utility-charges/${tenancyId}`));
   if (!res.ok) throw new Error('Failed to fetch utility charges');
   return res.json();
 }
 
 export async function disputeUtilityCharge(chargeId: string, reason: string): Promise<{ charge: UtilityCharge }> {
-  const res = await authedFetch(`${API_URL}/api/v1/tenant-portal/utility-charges/${chargeId}/dispute`, {
+  const res = await authedFetch(apiUrl(`/tenant-portal/utility-charges/${chargeId}/dispute`), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ reason }),
@@ -1061,14 +1184,14 @@ export async function disputeUtilityCharge(chargeId: string, reason: string): Pr
 
 // Documents - aliases for migrated page compatibility
 export const getDocuments = async (): Promise<TenantDocument[]> => {
-  const res = await authedFetch(`${API_URL}/api/v1/tenant-portal/documents`);
+  const res = await authedFetch(apiUrl(`/tenant-portal/documents`));
   if (!res.ok) throw new Error('Failed to fetch documents');
   const data = await res.json();
   return data.documents || [];
 };
 
 export async function downloadDocument(documentId: string, fileName: string): Promise<void> {
-  const res = await authedFetch(`${API_URL}/api/v1/tenant-portal/documents/${documentId}/download`);
+  const res = await authedFetch(apiUrl(`/tenant-portal/documents/${documentId}/download`));
   if (!res.ok) throw new Error('Failed to download document');
   const blob = await res.blob();
   const url = window.URL.createObjectURL(blob);
@@ -1095,14 +1218,14 @@ export interface MaintenanceComment {
 }
 
 export async function getMaintenanceRequest(id: string): Promise<{ request: MaintenanceRequest; comments: MaintenanceComment[] }> {
-  const res = await authedFetch(`${API_URL}/api/v1/tenant-portal/maintenance/status/${id}`);
+  const res = await authedFetch(apiUrl(`/tenant-portal/maintenance/status/${id}`));
   if (!res.ok) throw new Error('Failed to fetch maintenance request');
   const data = await res.json();
   return { request: data.request || data, comments: data.comments || [] };
 }
 
 export async function addMaintenanceComment(requestId: string, content: string): Promise<MaintenanceComment> {
-  const res = await authedFetch(`${API_URL}/api/v1/tenant-portal/maintenance/${requestId}/comments`, {
+  const res = await authedFetch(apiUrl(`/tenant-portal/maintenance/${requestId}/comments`), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ content }),
@@ -1129,7 +1252,7 @@ export interface LeaseForSigning {
 }
 
 export async function getLeaseForSigning(leaseId: string): Promise<LeaseForSigning> {
-  const res = await authedFetch(`${API_URL}/api/v1/tenant-portal/lease/${leaseId}`);
+  const res = await authedFetch(apiUrl(`/tenant-portal/lease/${leaseId}`));
   if (!res.ok) throw new Error('Failed to fetch lease');
   const data = await res.json();
   return data.lease || data;

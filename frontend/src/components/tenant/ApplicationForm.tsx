@@ -6,16 +6,26 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Progress } from '@/components/ui/progress';
-import { submitApplication, ApplicationInput, Property } from '@/lib/tenant/api';
+import { submitApplication, uploadApplicationDocument, ApplicationInput, Property, PropertyUnit } from '@/lib/tenant/api';
 import { useRouter } from 'next/navigation';
+
+const ID_LABELS: Record<string, string> = { ghana_card: 'Ghana Card', passport: 'Passport' };
+const SIDE_LABELS: Record<string, string> = { front: 'Front', back: 'Back', bio: 'Bio Page' };
+const idDocLabel = (type: string, side: string) => `${ID_LABELS[type] || 'ID'} - ${SIDE_LABELS[side] || side}`;
 
 interface ApplicationFormProps {
   property: Property;
   token?: string;
+  units?: PropertyUnit[];
 }
 
-export default function ApplicationForm({ property, token }: ApplicationFormProps) {
+export default function ApplicationForm({ property, token, units }: ApplicationFormProps) {
   const router = useRouter();
+  const hasUnits = !!units && units.length > 0;
+  const [selectedUnitId, setSelectedUnitId] = useState<string>(
+    units && units.length === 1 ? units[0].id : ''
+  );
+  const selectedUnit = units?.find((u) => u.id === selectedUnitId);
   const [step, setStep] = useState(1);
   const [formData, setFormData] = useState<ApplicationInput['applicant']>({
     fullName: '',
@@ -23,6 +33,9 @@ export default function ApplicationForm({ property, token }: ApplicationFormProp
     phone: '',
     dateOfBirth: '',
     currentAddress: '',
+    idType: 'ghana_card',
+    idNumber: '',
+    documents: [],
     employment: {
       status: 'employed',
       employer: '',
@@ -42,6 +55,43 @@ export default function ApplicationForm({ property, token }: ApplicationFormProp
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
+
+  // ID document upload state
+  const [uploadingSide, setUploadingSide] = useState<string | null>(null);
+  const [previews, setPreviews] = useState<Record<string, string>>({});
+
+  const requiredSides = formData.idType === 'passport' ? ['bio'] : ['front', 'back'];
+  const hasAllIdImages = requiredSides.every((s) => formData.documents.some((d) => d.side === s));
+
+  const handleIdTypeChange = (idType: string) => {
+    // Switching ID type invalidates previously uploaded images
+    setFormData((prev) => ({ ...prev, idType, documents: [] }));
+    setPreviews({});
+  };
+
+  const handleIdUpload = async (side: string, file: File) => {
+    if (!token) {
+      setError('Document upload requires opening this form from your application link.');
+      return;
+    }
+    setUploadingSide(side);
+    setError('');
+    try {
+      const uploaded = await uploadApplicationDocument(token, file, formData.idType, side);
+      setFormData((prev) => ({
+        ...prev,
+        documents: [
+          ...prev.documents.filter((d) => d.side !== side),
+          { type: formData.idType, side, url: uploaded.url, filename: idDocLabel(formData.idType, side) },
+        ],
+      }));
+      setPreviews((prev) => ({ ...prev, [side]: URL.createObjectURL(file) }));
+    } catch (err: any) {
+      setError(err.message || 'Failed to upload document');
+    } finally {
+      setUploadingSide(null);
+    }
+  };
 
   const totalSteps = 4;
   const progress = (step / totalSteps) * 100;
@@ -64,6 +114,27 @@ export default function ApplicationForm({ property, token }: ApplicationFormProp
   };
 
   const handleNext = () => {
+    if (step === 1) {
+      if (hasUnits && !selectedUnitId) { setError('Please select a unit to apply for.'); return; }
+      if (!formData.fullName.trim()) { setError('Full name is required.'); return; }
+      if (!formData.dateOfBirth) { setError('Date of birth is required.'); return; }
+      if (!formData.email.trim()) { setError('Email is required.'); return; }
+      if (!formData.phone.trim()) { setError('Mobile number is required.'); return; }
+      if (!formData.currentAddress.trim()) { setError('Current residential address is required.'); return; }
+      if (!formData.idNumber.trim()) { setError(`${ID_LABELS[formData.idType] || 'ID'} number is required.`); return; }
+      if (!hasAllIdImages) {
+        setError(formData.idType === 'passport'
+          ? 'Please upload your passport bio page.'
+          : 'Please upload the front and back of your Ghana Card.');
+        return;
+      }
+    }
+    if (step === 2) {
+      if (!formData.employment.position.trim()) { setError('Occupation / job title is required.'); return; }
+      if (!formData.employment.employer.trim()) { setError('Employer is required.'); return; }
+      if (!formData.employment.monthlyIncome || formData.employment.monthlyIncome <= 0) { setError('Monthly income is required.'); return; }
+    }
+    setError('');
     if (step < totalSteps) {
       setStep(step + 1);
     } else {
@@ -78,12 +149,18 @@ export default function ApplicationForm({ property, token }: ApplicationFormProp
   };
 
   const handleSubmit = async () => {
+    if (hasUnits && !selectedUnitId) {
+      setStep(1);
+      setError('Please select a unit to apply for.');
+      return;
+    }
     setIsSubmitting(true);
     setError('');
 
     try {
       const result = await submitApplication({
         propertyId: property.id,
+        unitId: selectedUnitId || undefined,
         applicationToken: token,
         applicant: formData,
       });
@@ -101,7 +178,10 @@ export default function ApplicationForm({ property, token }: ApplicationFormProp
     <div className="max-w-2xl mx-auto p-4 space-y-6">
       <div className="mb-6">
         <h1 className="text-2xl font-bold mb-2">Apply for {property.title}</h1>
-        <p className="text-gray-500">{property.addressStreet}, {property.addressCity}</p>
+        <p className="text-gray-500">
+          {property.addressStreet}, {property.addressCity}
+          {selectedUnit && <span className="font-medium text-foreground"> · Unit {selectedUnit.unitNumber}</span>}
+        </p>
         <div className="mt-4">
           <Progress value={progress} className="h-2" />
           <div className="text-xs text-right mt-1 text-gray-500">Step {step} of {totalSteps}</div>
@@ -126,9 +206,40 @@ export default function ApplicationForm({ property, token }: ApplicationFormProp
         <CardContent className="space-y-4">
           {step === 1 && (
             <>
+              {hasUnits && (
+                <div className="space-y-2 border-b pb-4 mb-2">
+                  <Label>Select Unit <span className="text-red-500">*</span></Label>
+                  <p className="text-xs text-muted-foreground">This building has multiple units — choose the one you'd like to apply for.</p>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-2">
+                    {units!.map((u) => (
+                      <button
+                        type="button"
+                        key={u.id}
+                        onClick={() => { setSelectedUnitId(u.id); setError(''); }}
+                        className={`text-left rounded-md border p-3 transition-colors ${
+                          selectedUnitId === u.id
+                            ? 'border-primary bg-primary/5 ring-1 ring-primary'
+                            : 'border-input hover:border-primary/50'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between">
+                          <span className="font-semibold">Unit {u.unitNumber}</span>
+                          <span className="text-sm font-medium">{u.priceCurrency} {u.price.toLocaleString()}/mo</span>
+                        </div>
+                        <div className="text-xs text-muted-foreground mt-1">
+                          {u.floorNumber != null && <span>Floor {u.floorNumber} · </span>}
+                          {u.bedrooms ?? 0} bd · {u.bathrooms ?? 0} ba
+                          {u.totalAreaSqm ? ` · ${u.totalAreaSqm} m²` : ''}
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="fullName">Full Name</Label>
+                  <Label htmlFor="fullName">Full Name <span className="text-red-500">*</span></Label>
                   <Input
                     id="fullName"
                     value={formData.fullName}
@@ -137,7 +248,7 @@ export default function ApplicationForm({ property, token }: ApplicationFormProp
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="dateOfBirth">Date of Birth</Label>
+                  <Label htmlFor="dateOfBirth">Date of Birth <span className="text-red-500">*</span></Label>
                   <Input
                     id="dateOfBirth"
                     type="date"
@@ -149,7 +260,7 @@ export default function ApplicationForm({ property, token }: ApplicationFormProp
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="email">Email Address</Label>
+                  <Label htmlFor="email">Email Address <span className="text-red-500">*</span></Label>
                   <Input
                     id="email"
                     type="email"
@@ -159,7 +270,7 @@ export default function ApplicationForm({ property, token }: ApplicationFormProp
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="phone">Phone Number</Label>
+                  <Label htmlFor="phone">Mobile Number <span className="text-red-500">*</span></Label>
                   <Input
                     id="phone"
                     value={formData.phone}
@@ -170,7 +281,7 @@ export default function ApplicationForm({ property, token }: ApplicationFormProp
               </div>
 
                <div className="space-y-2">
-                  <Label htmlFor="currentAddress">Current Residential Address</Label>
+                  <Label htmlFor="currentAddress">Current Residential Address <span className="text-red-500">*</span></Label>
                   <Input
                     id="currentAddress"
                     value={formData.currentAddress}
@@ -178,13 +289,78 @@ export default function ApplicationForm({ property, token }: ApplicationFormProp
                     placeholder="House No, Street, City"
                   />
                 </div>
+
+              {/* Identification */}
+              <div className="space-y-4 border-t pt-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="idType">Form of ID <span className="text-red-500">*</span></Label>
+                    <select
+                      id="idType"
+                      className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                      value={formData.idType}
+                      onChange={(e) => handleIdTypeChange(e.target.value)}
+                    >
+                      <option value="ghana_card">Ghana Card</option>
+                      <option value="passport">Passport</option>
+                    </select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="idNumber">{ID_LABELS[formData.idType]} Number <span className="text-red-500">*</span></Label>
+                    <Input
+                      id="idNumber"
+                      value={formData.idNumber}
+                      onChange={(e) => handleInputChange('idNumber', e.target.value)}
+                      placeholder={formData.idType === 'passport' ? 'e.g. G1234567' : 'e.g. GHA-123456789-0'}
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label>
+                    Upload {formData.idType === 'passport' ? 'Passport Bio Page' : 'Ghana Card — Front & Back'} <span className="text-red-500">*</span>
+                  </Label>
+                  <p className="text-xs text-gray-500">
+                    Take a clear photo or upload an image of your {formData.idType === 'passport' ? 'passport bio page' : 'Ghana Card (both sides)'}.
+                  </p>
+                  <div className={`grid gap-3 ${requiredSides.length > 1 ? 'grid-cols-2' : 'grid-cols-1'}`}>
+                    {requiredSides.map((side) => {
+                      const uploaded = formData.documents.some((d) => d.side === side);
+                      return (
+                        <label
+                          key={side}
+                          className="relative border-2 border-dashed border-input rounded-lg p-3 flex flex-col items-center justify-center cursor-pointer hover:border-primary transition-colors min-h-[130px] text-center"
+                        >
+                          <input
+                            type="file"
+                            accept="image/*"
+                            capture="environment"
+                            className="hidden"
+                            onChange={(e) => { const fl = e.target.files?.[0]; if (fl) handleIdUpload(side, fl); }}
+                          />
+                          {previews[side] ? (
+                            <img src={previews[side]} alt={SIDE_LABELS[side]} className="max-h-24 object-contain rounded" />
+                          ) : uploadingSide === side ? (
+                            <span className="text-xs text-gray-500">Uploading…</span>
+                          ) : (
+                            <span className="text-xs text-gray-500">{SIDE_LABELS[side]}<br />Tap to upload or scan</span>
+                          )}
+                          {uploaded && (
+                            <span className="text-[10px] text-green-600 font-medium mt-1">✓ {SIDE_LABELS[side]} uploaded</span>
+                          )}
+                        </label>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
             </>
           )}
 
           {step === 2 && (
              <>
                 <div className="space-y-2">
-                  <Label htmlFor="employer">Current Employer</Label>
+                  <Label htmlFor="employer">Current Employer <span className="text-red-500">*</span></Label>
                   <Input
                     id="employer"
                     value={formData.employment.employer}
@@ -193,7 +369,7 @@ export default function ApplicationForm({ property, token }: ApplicationFormProp
                   />
                 </div>
                 <div className="space-y-2">
-                    <Label htmlFor="position">Job Title/Position</Label>
+                    <Label htmlFor="position">Job Title / Occupation <span className="text-red-500">*</span></Label>
                     <Input
                         id="position"
                         value={formData.employment.position}
@@ -203,7 +379,7 @@ export default function ApplicationForm({ property, token }: ApplicationFormProp
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="space-y-2">
-                        <Label htmlFor="income">Monthly Income</Label>
+                        <Label htmlFor="income">Monthly Income <span className="text-red-500">*</span></Label>
                         <Input
                             id="income"
                             type="number"

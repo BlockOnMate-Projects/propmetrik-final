@@ -95,9 +95,9 @@ export async function resendEnvelope(id: string, signerEmail?: string) {
   });
 }
 
-export async function downloadEnvelopeDocument(envelopeId: string, documentId?: string): Promise<Blob> {
-  const docId = documentId || '0';
-  return esignFetch(`/envelopes/${envelopeId}/documents/${docId}/download`);
+export async function downloadEnvelopeDocument(envelopeId: string): Promise<Blob> {
+  // Backend renders the (partially) signed PDF with all placed fields overlaid.
+  return esignFetch(`/envelopes/${envelopeId}/download`);
 }
 
 // ─── Templates ─────────────────────────────────────────────────

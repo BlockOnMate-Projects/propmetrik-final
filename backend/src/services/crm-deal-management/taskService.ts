@@ -13,6 +13,7 @@ import db from '../../database';
 import { logger } from '../../utils/logger';
 import { Task, CreateTaskInput, UpdateTaskInput, PaginatedResponse } from './types';
 import { activityService } from './activityService';
+import { notify, resolveStaffUser } from '../../../shared-services/notifications/in-mail';
 
 // =============================================
 // Types
@@ -102,6 +103,30 @@ export class TaskService {
                     });
                 } catch (activityError) {
                     logger.error('Failed to log task creation activity', activityError);
+                }
+            }
+
+            // Notify the assignee (skip self-assignment)
+            if (data.assigned_to && data.assigned_to !== userId) {
+                try {
+                    const recipient = await resolveStaffUser(data.assigned_to);
+                    if (recipient) {
+                        await notify({
+                            recipients: recipient,
+                            category: 'crm',
+                            type: 'task.assigned',
+                            title: 'New task assigned to you',
+                            body: `You have been assigned the task "${data.title}"${data.due_date ? `, due ${new Date(data.due_date).toLocaleDateString('en-GB')}` : ''}.`,
+                            priority: data.priority === 'high' || data.priority === 'urgent' ? 'high' : 'normal',
+                            organizationId,
+                            sourceType: 'task',
+                            sourceId: id,
+                            sourceUrl: data.deal_id ? `/dashboard/deals/${data.deal_id}` : '/dashboard/deals/tasks',
+                            channels: { inApp: true, email: true },
+                        });
+                    }
+                } catch (notifyError: any) {
+                    logger.warn('Failed to notify task assignee', { taskId: id, error: notifyError.message });
                 }
             }
 

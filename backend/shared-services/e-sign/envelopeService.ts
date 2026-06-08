@@ -22,6 +22,7 @@ import {
 } from './types';
 import { templateService } from './templateService';
 import { auditLogService } from './auditLogService';
+import { notify } from '../notifications/notify';
 
 /**
  * Factory function to create an envelope service instance
@@ -157,6 +158,22 @@ export class EnvelopeService {
             });
 
             logger.info('Envelope created', { envelopeId, organizationId, userId });
+
+            // Best-effort: email the next pending signer their signing link. The
+            // envelope is created and committed regardless of notification outcome —
+            // a notification failure must never break the send.
+            const createdStatus = envelopeResult.rows[0].status;
+            if (createdStatus === EnvelopeStatus.SENT) {
+                try {
+                    await this.notifyNextPendingSigner(envelopeId);
+                } catch (notifyErr: any) {
+                    logger.warn('Failed to notify next pending signer on send', {
+                        envelopeId,
+                        error: notifyErr?.message || 'Unknown error'
+                    });
+                }
+            }
+
             return this.mapRowToEnvelope(envelopeResult.rows[0]);
 
         } catch (error) {
@@ -165,6 +182,69 @@ export class EnvelopeService {
         } finally {
             client.release();
         }
+    }
+
+    /**
+     * Email the next pending signer (lowest signing order) their personal signing
+     * link. Sequential signing: only one signer is invited at a time, and the next
+     * is invited when the prior one completes (see the sign-envelope complete route).
+     *
+     * Returns true if a signer was notified, false if there are no pending signers.
+     * Never throws — notification is best-effort.
+     */
+    async notifyNextPendingSigner(envelopeId: string): Promise<boolean> {
+        const res = await this.pool.query(
+            `SELECT s.name, s.email, s.access_token,
+                    e.name AS envelope_name, e.message AS envelope_message
+             FROM esign_signers s
+             JOIN esign_envelopes e ON e.id = s.envelope_id
+             WHERE s.envelope_id = $1 AND s.status = 'pending'
+             ORDER BY s.signing_order ASC NULLS LAST, s.created_at ASC
+             LIMIT 1`,
+            [envelopeId]
+        );
+
+        if (res.rowCount === 0) return false;
+
+        const row = res.rows[0];
+        if (!row.email || !row.access_token) return false;
+
+        // Resolve the public frontend URL the same way the app config does, so signing links in
+        // emails are reachable by external signers. FRONTEND_URL overrides; otherwise pick the
+        // env-specific URL (these are the vars actually defined in .env), falling back to localhost.
+        const frontendUrl = process.env.FRONTEND_URL
+            || (process.env.NODE_ENV === 'production' ? process.env.PROD_FRONTEND_URL : process.env.DEV_FRONTEND_URL)
+            || 'http://localhost:3000';
+        const signingUrl = `${frontendUrl}/sign/${row.access_token}`;
+        const docName = row.envelope_name || 'a document';
+        const greeting = row.name ? `Hi ${row.name},` : 'Hello,';
+
+        const html = `
+            <p>${greeting}</p>
+            <p>You have a document awaiting your signature: <strong>${docName}</strong>.</p>
+            ${row.envelope_message ? `<p>${row.envelope_message}</p>` : ''}
+            <p style="margin:24px 0;">
+              <a href="${signingUrl}" style="background:#059669;color:#fff;padding:12px 20px;border-radius:6px;text-decoration:none;font-weight:600;">Review &amp; Sign</a>
+            </p>
+            <p style="color:#6b7280;font-size:13px;">Or paste this link into your browser:<br>${signingUrl}</p>
+        `;
+
+        await notify({
+            recipients: [{ audience: 'staff', userId: '', email: row.email, name: row.name }],
+            category: 'esign',
+            type: 'esign.signature_requested',
+            title: `Signature requested: ${docName}`,
+            body: `You have a document awaiting your signature: "${docName}".`,
+            priority: 'high',
+            channels: { email: true },
+            sourceUrl: signingUrl,
+            email: {
+                subject: `Signature requested: ${docName}`,
+                html
+            }
+        });
+
+        return true;
     }
 
     /**

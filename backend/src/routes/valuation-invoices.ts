@@ -19,6 +19,7 @@
 
 import { Router, Request, Response } from 'express';
 import { valuationInvoiceService, MWH_MAN_DAY_RATES, type FeeModel } from '../services/valuation-engine/valuationInvoiceService';
+import { invoiceService as projectInvoiceService } from '../services/project-management/invoiceService';
 import { authenticate } from '../middleware/auth';
 import { requireServiceAccess } from '../middleware/serviceAccess';
 import { logger } from '../utils/logger';
@@ -480,7 +481,7 @@ router.post('/public/invoice/:id/initiate-crypto', async (req: Request, res: Res
         // Generate a unique reference for this crypto payment
         const reference = `PM-INV-CRYPTO-${Date.now()}-${Math.random().toString(36).substring(2, 8)}`;
 
-        const frontendUrl = process.env.FRONTEND_URL || 'https://app.propmetrik.com';
+        const frontendUrl = process.env.FRONTEND_URL || 'https://propmetrik.com';
 
         // Create NOWPayments payment
         const npResult = await nowPaymentsService.createPayment({
@@ -629,17 +630,19 @@ router.get('/public/crypto/nowpayments-status/:paymentId', async (req: Request, 
 
                     // Mark the invoice as paid
                     if (invoiceId && npRow.rows[0].domain_record_type === 'valuation_invoice') {
-                        await pool.query(
+                        const upd = await pool.query(
                             `UPDATE valuation_invoices SET status = 'paid', paid_at = NOW(), payment_reference = $1 WHERE id = $2 AND status != 'paid'`,
                             [paymentRef, invoiceId]
                         );
                         logger.info('Crypto polling: valuation invoice marked as paid', { invoiceId, paymentRef, paymentId });
+                        if (upd.rowCount) await valuationInvoiceService.notifyPaidById(invoiceId);
                     } else if (invoiceId && npRow.rows[0].domain_record_type === 'project_invoice') {
-                        await pool.query(
+                        const upd = await pool.query(
                             `UPDATE project_invoices SET status = 'paid', paid_date = NOW(), payment_reference = $1, payment_method = 'crypto' WHERE id = $2 AND status != 'paid'`,
                             [paymentRef, invoiceId]
                         );
                         logger.info('Crypto polling: PM invoice marked as paid', { invoiceId, paymentRef, paymentId });
+                        if (upd.rowCount) await projectInvoiceService.notifyPaidById(invoiceId);
                     }
                 }
             } else if (status.payment_status === 'failed' || status.payment_status === 'expired' || status.payment_status === 'refunded') {
@@ -851,7 +854,7 @@ router.post('/webhook/nowpayments-ipn', async (req: Request, res: Response) => {
 
                 // Mark the invoice as paid
                 if (invoiceId && npRow.rows[0].domain_record_type === 'valuation_invoice') {
-                    await pool.query(
+                    const upd = await pool.query(
                         `UPDATE valuation_invoices SET status = 'paid', paid_at = NOW(), payment_reference = $1 WHERE id = $2 AND status != 'paid'`,
                         [paymentRef, invoiceId]
                     );
@@ -860,8 +863,9 @@ router.post('/webhook/nowpayments-ipn', async (req: Request, res: Response) => {
                         paymentRef,
                         paymentId,
                     });
+                    if (upd.rowCount) await valuationInvoiceService.notifyPaidById(invoiceId);
                 } else if (invoiceId && npRow.rows[0].domain_record_type === 'project_invoice') {
-                    await pool.query(
+                    const upd = await pool.query(
                         `UPDATE project_invoices SET status = 'paid', paid_date = NOW(), payment_reference = $1, payment_method = 'crypto' WHERE id = $2 AND status != 'paid'`,
                         [paymentRef, invoiceId]
                     );
@@ -870,6 +874,7 @@ router.post('/webhook/nowpayments-ipn', async (req: Request, res: Response) => {
                         paymentRef,
                         paymentId,
                     });
+                    if (upd.rowCount) await projectInvoiceService.notifyPaidById(invoiceId);
                 }
             }
         } else if (['failed', 'expired', 'refunded'].includes(paymentStatus)) {

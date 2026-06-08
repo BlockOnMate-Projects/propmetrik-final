@@ -354,20 +354,50 @@ export class TemplateService {
             return new Intl.NumberFormat('en-GH').format(value);
         });
 
-        // Format date
-        this.handlebars.registerHelper('formatDate', (date: Date | string, format: string = 'long') => {
+        // Format date.
+        // NOTE: Handlebars passes an `options` object as the final argument, so a
+        // call like `{{formatDate someDate}}` (no explicit format) receives that
+        // object as `format` — NOT undefined. Guard with a typeof check, otherwise
+        // the default never applies and the helper would fall through to a raw ISO
+        // string (the cause of leases printing `2026-06-06T04:00:00.000Z`).
+        this.handlebars.registerHelper('formatDate', (date: Date | string, format?: unknown) => {
+            const fmt = typeof format === 'string' ? format : 'long';
             const d = new Date(date);
-            if (format === 'short') {
-                return d.toLocaleDateString('en-GH');
-            } else if (format === 'long') {
-                return d.toLocaleDateString('en-GH', {
-                    weekday: 'long',
-                    year: 'numeric',
-                    month: 'long',
-                    day: 'numeric'
-                });
+            if (isNaN(d.getTime())) return '';
+            if (fmt === 'short') {
+                return d.toLocaleDateString('en-GH'); // dd/mm/yyyy
             }
-            return d.toISOString();
+            if (fmt === 'medium') {
+                return d.toLocaleDateString('en-GH', { year: 'numeric', month: 'long', day: 'numeric' }); // 6 June 2026
+            }
+            return d.toLocaleDateString('en-GH', {
+                weekday: 'long',
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric'
+            });
+        });
+
+        // Humanize an enum/slug value: "apartment_flat" -> "Apartment Flat"
+        this.handlebars.registerHelper('humanize', (value: unknown) => {
+            return String(value == null ? '' : value)
+                .replace(/[_-]+/g, ' ')
+                .replace(/\s+/g, ' ')
+                .trim()
+                .replace(/\b\w/g, (c) => c.toUpperCase());
+        });
+
+        // Map a currency code to its full name for amount-in-words clauses.
+        this.handlebars.registerHelper('currencyName', (code: unknown) => {
+            const map: Record<string, string> = {
+                USD: 'United States Dollars',
+                GHS: 'Ghana Cedis',
+                EUR: 'Euros',
+                GBP: 'Pounds Sterling',
+                NGN: 'Nigerian Naira'
+            };
+            const key = String(code == null ? '' : code).toUpperCase();
+            return map[key] || String(code == null ? '' : code);
         });
 
         // Uppercase

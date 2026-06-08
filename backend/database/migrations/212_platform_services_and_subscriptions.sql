@@ -76,11 +76,11 @@ CREATE TABLE IF NOT EXISTS user_service_subscriptions (
   CONSTRAINT uq_user_service UNIQUE (user_id, service_id)   -- one subscription per service
 );
 
-CREATE INDEX idx_uss_user        ON user_service_subscriptions(user_id);
-CREATE INDEX idx_uss_service     ON user_service_subscriptions(service_id);
-CREATE INDEX idx_uss_org         ON user_service_subscriptions(organization_id);
-CREATE INDEX idx_uss_status      ON user_service_subscriptions(status);
-CREATE INDEX idx_uss_lookup      ON user_service_subscriptions(user_id, status) WHERE status = 'active';
+CREATE INDEX IF NOT EXISTS idx_uss_user        ON user_service_subscriptions(user_id);
+CREATE INDEX IF NOT EXISTS idx_uss_service     ON user_service_subscriptions(service_id);
+CREATE INDEX IF NOT EXISTS idx_uss_org         ON user_service_subscriptions(organization_id);
+CREATE INDEX IF NOT EXISTS idx_uss_status      ON user_service_subscriptions(status);
+CREATE INDEX IF NOT EXISTS idx_uss_lookup      ON user_service_subscriptions(user_id, status) WHERE status = 'active';
 
 COMMENT ON TABLE  user_service_subscriptions IS 'Maps customer users to their subscribed platform services';
 COMMENT ON COLUMN user_service_subscriptions.tier IS 'Feature tier within this service (free/starter/professional/enterprise)';

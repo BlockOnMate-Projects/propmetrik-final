@@ -5,8 +5,10 @@
  * @module scripts/rent-reminder-job
  */
 
+import cron from 'node-cron';
 import { rentScheduleService, RentScheduleStatus } from '../services/property-management/rent-collection/rentScheduleService';
 import { notificationService } from '../../shared-services/notifications/unified';
+import { notify } from '../../shared-services/notifications/in-mail';
 import { logger } from '../utils/logger';
 import { config } from '../config';
 import db from '../database';
@@ -116,7 +118,7 @@ export class RentReminderJob {
         for (const row of result.rows) {
             try {
                 // Generate payment link
-                const paymentLink = `${config.app.tenantPortalUrl}/payments?tenancy=${row.tenancy_id}`;
+                const paymentLink = `${config.app.tenantPortalUrl}/dashboard/tenant/payments?tenancy=${row.tenancy_id}`;
 
                 await notificationService.sendRentReminder(
                     this.config.channel,
@@ -130,6 +132,23 @@ export class RentReminderJob {
                         paymentLink
                     }
                 );
+
+                // In-app inbox push (email/SMS already handled above by notificationService)
+                await notify({
+                    recipients: {
+                        audience: 'tenant',
+                        userId: row.tenant_id,
+                        email: row.tenant_email,
+                        phone: row.tenant_phone,
+                    },
+                    category: 'finance',
+                    type: 'rent.reminder',
+                    title: 'Rent due soon',
+                    body: `Your rent of ${row.currency || 'GHS'} ${parseFloat(row.amount_outstanding || row.expected_amount)} for ${row.property_title} is due on ${new Date(row.due_date).toLocaleDateString('en-GB')}.`,
+                    organizationId: row.organization_id,
+                    tenantActionUrl: `/dashboard/tenant/payments?tenancy=${row.tenancy_id}`,
+                    channels: { inApp: true },
+                });
 
                 sentCount++;
 
@@ -177,7 +196,7 @@ export class RentReminderJob {
 
         for (const row of result.rows) {
             try {
-                const paymentLink = `${config.app.tenantPortalUrl}/payments?tenancy=${row.tenancy_id}`;
+                const paymentLink = `${config.app.tenantPortalUrl}/dashboard/tenant/payments?tenancy=${row.tenancy_id}`;
 
                 await notificationService.sendRentOverdueNotice(
                     this.config.channel,
@@ -192,6 +211,23 @@ export class RentReminderJob {
                         paymentLink
                     }
                 );
+
+                await notify({
+                    recipients: {
+                        audience: 'tenant',
+                        userId: row.tenant_id,
+                        email: row.tenant_email,
+                        phone: row.tenant_phone,
+                    },
+                    category: 'finance',
+                    type: 'rent.overdue',
+                    title: 'Rent overdue',
+                    body: `Your rent of ${row.currency || 'GHS'} ${parseFloat(row.amount_outstanding || row.expected_amount)} for ${row.property_title} is ${row.days_overdue} day(s) overdue.`,
+                    priority: 'high',
+                    organizationId: row.organization_id,
+                    tenantActionUrl: `/dashboard/tenant/payments?tenancy=${row.tenancy_id}`,
+                    channels: { inApp: true },
+                });
 
                 sentCount++;
 
@@ -295,3 +331,18 @@ if (require.main === module) {
 }
 
 export const rentReminderJob = new RentReminderJob();
+
+/**
+ * Schedule the rent reminder job to run daily at 08:00 (server time).
+ */
+export function initRentReminderJob(): void {
+    cron.schedule('0 8 * * *', async () => {
+        try {
+            const results = await rentReminderJob.run();
+            logger.info('Scheduled rent reminder job finished', results);
+        } catch (error: any) {
+            logger.error('Scheduled rent reminder job threw', { error: error.message });
+        }
+    });
+    logger.info('Rent reminder job scheduled (daily 08:00)');
+}

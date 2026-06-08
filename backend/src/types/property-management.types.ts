@@ -172,6 +172,8 @@ export interface Property {
     status: string;
     parentPropertyId?: string;
     unitNumber?: string;
+    floorNumber?: number;
+    totalUnits?: number;
     createdAt: Date;
     updatedAt: Date;
 }
@@ -195,6 +197,23 @@ export interface CreatePropertyDto {
     unitsCount?: number;
     parentPropertyId?: string;
     unitNumber?: string;
+    floorNumber?: number;
+    totalUnits?: number;
+    // Explicit per-unit layout for multi-unit buildings (overrides the legacy uniform unitsCount path)
+    units?: PropertyUnitInput[];
+}
+
+/**
+ * A single unit within a multi-unit building, with its own specs.
+ * Lets "3A" be a 2-bed while "3B" is a studio, instead of cloning building-level specs.
+ */
+export interface PropertyUnitInput {
+    label: string;            // human-facing unit number, e.g. "3A", "201", "Unit 5"
+    floorNumber?: number;
+    bedrooms?: number;
+    bathrooms?: number;
+    totalAreaSqm?: number;
+    price?: number;
 }
 
 // =====================================================

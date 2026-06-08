@@ -160,7 +160,7 @@ export default function PropertyApplicationPage() {
       const data = await response.json();
       
       // Redirect to tenant application page (integrated into main app)
-      window.location.href = data.tenant_portal_url || `/tenant/apply/${data.application_token}`;
+      window.location.href = `/tenant/apply/${data.application_token}`;
     } catch (error: any) {
       console.error('Failed to start application:', error);
       setError(error.message || 'Failed to start application. Please try again.');

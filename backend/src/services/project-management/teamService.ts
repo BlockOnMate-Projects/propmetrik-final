@@ -21,6 +21,7 @@
 import { pool } from '../../database';
 import { logger } from '../../utils/logger';
 import { v4 as uuidv4 } from 'uuid';
+import { notify } from '../../../shared-services/notifications/in-mail';
 
 // ============================================================================
 // TYPES
@@ -562,8 +563,41 @@ class TeamService {
       }
       
       await client.query('COMMIT');
-      
+
       logger.info('Team member added', { memberId: id, projectId: input.projectId });
+
+      // Notify the assigned member that they've been added to the project
+      if ((input.canReceiveNotifications ?? true) && (resolvedUserId || input.email) && resolvedUserId !== input.invitedBy) {
+        try {
+          const projRow = await pool.query(
+            `SELECT name FROM development_projects WHERE id = $1`,
+            [input.projectId],
+          );
+          const projectName = projRow.rows[0]?.name || 'a project';
+          await notify({
+            recipients: {
+              audience: 'staff',
+              userId: resolvedUserId || '',
+              email: input.email || null,
+              phone: input.phone || null,
+              name: input.fullName,
+            },
+            category: 'project',
+            type: 'project.team_assigned',
+            title: 'You have been added to a project',
+            body: `You have been added to ${projectName} as ${input.role}.`,
+            priority: 'normal',
+            organizationId: input.organizationId,
+            sourceType: 'project',
+            sourceId: input.projectId,
+            sourceUrl: `/dashboard/projects/${input.projectId}`,
+            channels: { inApp: true, email: true },
+          });
+        } catch (notifyError: any) {
+          logger.warn('Failed to notify new team member', { memberId: id, error: notifyError.message });
+        }
+      }
+
       return this.mapTeamMember(result.rows[0]);
     } catch (error) {
       await client.query('ROLLBACK');
@@ -913,9 +947,9 @@ class TeamService {
           id, organization_id,
           business_name, contact_person, phone_primary, email,
           address, region, tin_number, business_registration,
-          service_categories, notes, created_by
+          service_categories, status, notes, created_by
         ) VALUES (
-          $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13
+          $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, 'active', $12, $13
         )
         RETURNING *`,
         [

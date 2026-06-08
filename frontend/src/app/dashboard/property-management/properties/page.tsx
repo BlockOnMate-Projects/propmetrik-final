@@ -9,7 +9,8 @@ import { Label } from '@/components/ui/label'
 import Link from 'next/link'
 import {
     Building2, Search, Filter, Plus, Home, MapPin, Loader2, BedDouble, Bath, Square,
-    MoreVertical, Eye, Edit, Trash2, X, CheckCircle, AlertCircle, Warehouse, DollarSign, SlidersHorizontal
+    MoreVertical, Eye, Edit, Trash2, X, CheckCircle, AlertCircle, Warehouse, DollarSign, SlidersHorizontal,
+    ChevronRight, ChevronDown, Layers
 } from 'lucide-react'
 import { propertyManagementApi } from '@/lib/property-management-api'
 import { Property } from '@/types/property-management'
@@ -41,6 +42,34 @@ export default function PropertiesPage() {
     const [isDeleting, setIsDeleting] = useState(false)
     const [successMessage, setSuccessMessage] = useState<string | null>(null)
 
+    // Multi-unit building expand/collapse state (units fetched on demand)
+    const [expandedBuildings, setExpandedBuildings] = useState<Set<string>>(new Set())
+    const [buildingUnits, setBuildingUnits] = useState<Record<string, Property[]>>({})
+    const [loadingUnitsFor, setLoadingUnitsFor] = useState<string | null>(null)
+
+    const toggleBuilding = async (buildingId: string) => {
+        const next = new Set(expandedBuildings)
+        if (next.has(buildingId)) {
+            next.delete(buildingId)
+            setExpandedBuildings(next)
+            return
+        }
+        next.add(buildingId)
+        setExpandedBuildings(next)
+        if (!buildingUnits[buildingId]) {
+            setLoadingUnitsFor(buildingId)
+            try {
+                const units = await propertyManagementApi.getPropertyUnits(buildingId)
+                setBuildingUnits(prev => ({ ...prev, [buildingId]: Array.isArray(units) ? units : [] }))
+            } catch (err) {
+                console.error('Failed to load units:', err)
+                setBuildingUnits(prev => ({ ...prev, [buildingId]: [] }))
+            } finally {
+                setLoadingUnitsFor(null)
+            }
+        }
+    }
+
     useEffect(() => { loadProperties() }, [])
 
     const loadProperties = async () => {
@@ -59,6 +88,8 @@ export default function PropertiesPage() {
 
     const filteredProperties = useMemo(() => {
         return properties.filter(property => {
+            // Child units are shown nested under their building, not as top-level rows
+            if (property.parentPropertyId) return false
             const searchMatch = searchTerm === '' ||
                 property.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
                 property.addressCity?.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -81,7 +112,7 @@ export default function PropertiesPage() {
             loadProperties()
         } catch (err) {
             console.error('Failed to delete property:', err)
-            setError('Failed to delete property. Please try again.')
+            setError(err instanceof Error ? err.message : 'Failed to delete property. Please try again.')
         } finally {
             setIsDeleting(false)
         }
@@ -156,32 +187,54 @@ export default function PropertiesPage() {
                         <div className="flex items-center justify-center py-12"><Loader2 className="h-8 w-8 text-amber-600 animate-spin" /></div>
                     ) : (
                         <div className="space-y-3">
-                            {filteredProperties.map((property) => (
-                                <div key={property.id} className="p-4 border border-border bg-card/30 rounded-lg hover:bg-card transition-colors group">
+                            {filteredProperties.map((property) => {
+                                const isBuilding = !!property.totalUnits && property.totalUnits > 0
+                                const isExpanded = expandedBuildings.has(property.id)
+                                const units = buildingUnits[property.id] || []
+                                return (
+                                <div key={property.id}>
+                                    <div className="p-4 border border-border bg-card/30 rounded-lg hover:bg-card transition-colors group">
                                     <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                                        <Link href={`/dashboard/property-management/properties/${property.id}`} className="flex flex-1 items-start gap-4 cursor-pointer">
-                                            <div className="h-14 w-14 bg-secondary rounded-lg border border-border flex items-center justify-center text-muted-foreground group-hover:border-primary/50 group-hover:bg-primary/10 transition-colors flex-shrink-0">
-                                                <Building2 className="h-6 w-6" />
-                                            </div>
-                                            <div className="flex-1 min-w-0">
-                                                <div className="flex items-center gap-2 mb-1">
-                                                    <h3 className="font-semibold text-foreground font-mono group-hover:text-primary transition-colors truncate">{property.title}</h3>
-                                                    <Badge variant="outline" className="text-[9px] border-border text-muted-foreground flex-shrink-0">{TYPE_LABELS[property.propertyType] || property.propertyType}</Badge>
+                                        <div className="flex flex-1 items-start gap-2 min-w-0">
+                                            {isBuilding ? (
+                                                <button type="button" onClick={() => toggleBuilding(property.id)} className="mt-4 text-muted-foreground hover:text-primary flex-shrink-0" aria-label={isExpanded ? 'Collapse units' : 'Expand units'}>
+                                                    {isExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+                                                </button>
+                                            ) : <span className="w-4 flex-shrink-0" />}
+                                            <Link href={`/dashboard/property-management/properties/${property.id}`} className="flex flex-1 items-start gap-4 cursor-pointer min-w-0">
+                                                <div className="h-14 w-14 bg-secondary rounded-lg border border-border flex items-center justify-center text-muted-foreground group-hover:border-primary/50 group-hover:bg-primary/10 transition-colors flex-shrink-0">
+                                                    <Building2 className="h-6 w-6" />
                                                 </div>
-                                                <div className="flex items-center gap-2 text-xs text-muted-foreground font-mono mb-2">
-                                                    <MapPin className="h-3 w-3 flex-shrink-0" />
-                                                    <span className="truncate">{property.addressCity}, {property.region?.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')}</span>
+                                                <div className="flex-1 min-w-0">
+                                                    <div className="flex items-center gap-2 mb-1">
+                                                        <h3 className="font-semibold text-foreground font-mono group-hover:text-primary transition-colors truncate">{property.title}</h3>
+                                                        <Badge variant="outline" className="text-[9px] border-border text-muted-foreground flex-shrink-0">{TYPE_LABELS[property.propertyType] || property.propertyType}</Badge>
+                                                        {isBuilding && <Badge variant="outline" className="text-[9px] border-primary/40 text-primary flex-shrink-0">{property.totalUnits} units</Badge>}
+                                                    </div>
+                                                    <div className="flex items-center gap-2 text-xs text-muted-foreground font-mono mb-2">
+                                                        <MapPin className="h-3 w-3 flex-shrink-0" />
+                                                        <span className="truncate">{property.addressCity}, {property.region?.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')}</span>
+                                                    </div>
+                                                    <div className="flex items-center gap-4 text-[10px] text-muted-foreground font-mono">
+                                                        {isBuilding ? (
+                                                            <>
+                                                                <span className="flex items-center gap-1"><Layers className="h-3 w-3" /> {property.totalUnits} units</span>
+                                                                {property.floors ? <span className="flex items-center gap-1"><Building2 className="h-3 w-3" /> {property.floors} floors</span> : null}
+                                                            </>
+                                                        ) : (
+                                                            <>
+                                                                {property.bedrooms ? <span className="flex items-center gap-1"><BedDouble className="h-3 w-3" /> {property.bedrooms} Beds</span> : null}
+                                                                {property.bathrooms ? <span className="flex items-center gap-1"><Bath className="h-3 w-3" /> {property.bathrooms} Baths</span> : null}
+                                                                {property.totalAreaSqm ? <span className="flex items-center gap-1"><Square className="h-3 w-3" /> {property.totalAreaSqm} m²</span> : null}
+                                                            </>
+                                                        )}
+                                                    </div>
                                                 </div>
-                                                <div className="flex items-center gap-4 text-[10px] text-muted-foreground font-mono">
-                                                    {property.bedrooms && <span className="flex items-center gap-1"><BedDouble className="h-3 w-3" /> {property.bedrooms} Beds</span>}
-                                                    {property.bathrooms && <span className="flex items-center gap-1"><Bath className="h-3 w-3" /> {property.bathrooms} Baths</span>}
-                                                    {property.totalAreaSqm && <span className="flex items-center gap-1"><Square className="h-3 w-3" /> {property.totalAreaSqm} m²</span>}
-                                                </div>
-                                            </div>
-                                        </Link>
+                                            </Link>
+                                        </div>
                                         <div className="flex items-center gap-3 ml-auto">
                                             <div className="text-right mr-2">
-                                                <p className="text-sm font-bold text-primary font-mono">{formatCurrency(property.price, property.priceCurrency || 'GHS')}</p>
+                                                <p className="text-sm font-bold text-primary font-mono">{isBuilding && <span className="text-[10px] text-muted-foreground font-normal mr-1">from</span>}{formatCurrency(property.price, property.priceCurrency || 'GHS')}</p>
                                                 <p className="text-[9px] text-muted-foreground font-mono">{property.referenceNumber}</p>
                                             </div>
                                             <Badge variant="outline" className={`text-[10px] font-mono uppercase ${property.status === 'active' ? 'border-emerald-900 text-emerald-500 bg-emerald-900/10' : property.status === 'vacant' ? 'border-primary/50 text-primary bg-primary/10' : property.status === 'maintenance' ? 'border-destructive/50 text-destructive bg-destructive/10' : 'border-border text-muted-foreground'}`}>{property.status}</Badge>
@@ -197,8 +250,43 @@ export default function PropertiesPage() {
                                             </DropdownMenu>
                                         </div>
                                     </div>
+                                    </div>
+
+                                    {isBuilding && isExpanded && (
+                                        <div className="ml-9 mt-1 mb-1 border-l border-border pl-4 space-y-1">
+                                            {loadingUnitsFor === property.id ? (
+                                                <div className="flex items-center gap-2 py-3 text-xs text-muted-foreground font-mono"><Loader2 className="h-3 w-3 animate-spin" /> Loading units…</div>
+                                            ) : units.length === 0 ? (
+                                                <div className="py-3 text-xs text-muted-foreground font-mono">No units found for this building.</div>
+                                            ) : (
+                                                units.map((unit) => (
+                                                    <Link key={unit.id} href={`/dashboard/property-management/properties/${unit.id}`} className="flex items-center justify-between gap-3 p-2 rounded-md hover:bg-card transition-colors group/unit">
+                                                        <div className="flex items-center gap-3 min-w-0">
+                                                            <div className="h-8 w-8 rounded bg-secondary border border-border flex items-center justify-center text-muted-foreground text-[10px] font-mono flex-shrink-0">{unit.unitNumber || '—'}</div>
+                                                            <div className="min-w-0">
+                                                                <div className="flex items-center gap-2">
+                                                                    <span className="text-xs font-mono text-foreground group-hover/unit:text-primary truncate">Unit {unit.unitNumber}</span>
+                                                                    {unit.floorNumber != null ? <span className="text-[10px] text-muted-foreground font-mono">· Floor {unit.floorNumber}</span> : null}
+                                                                </div>
+                                                                <div className="flex items-center gap-3 text-[10px] text-muted-foreground font-mono mt-0.5">
+                                                                    <span className="flex items-center gap-1"><BedDouble className="h-3 w-3" /> {unit.bedrooms ?? 0} bed</span>
+                                                                    <span className="flex items-center gap-1"><Bath className="h-3 w-3" /> {unit.bathrooms ?? 0} bath</span>
+                                                                    {unit.totalAreaSqm ? <span className="flex items-center gap-1"><Square className="h-3 w-3" /> {unit.totalAreaSqm} m²</span> : null}
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                        <div className="flex items-center gap-3 flex-shrink-0">
+                                                            <span className="text-xs font-bold text-primary font-mono">{formatCurrency(unit.price, unit.priceCurrency || 'GHS')}</span>
+                                                            <Badge variant="outline" className={`text-[9px] font-mono uppercase ${unit.status === 'active' ? 'border-emerald-900 text-emerald-500 bg-emerald-900/10' : unit.status === 'vacant' ? 'border-primary/50 text-primary bg-primary/10' : 'border-border text-muted-foreground'}`}>{unit.status}</Badge>
+                                                        </div>
+                                                    </Link>
+                                                ))
+                                            )}
+                                        </div>
+                                    )}
                                 </div>
-                            ))}
+                                )
+                            })}
                             {filteredProperties.length === 0 && (
                                 <div className="text-center py-12 border border-dashed border-border rounded-lg">
                                     <Building2 className="h-12 w-12 text-muted-foreground mx-auto mb-4" />

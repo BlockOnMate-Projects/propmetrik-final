@@ -26,6 +26,7 @@
 
 import { pool } from '../../database';
 import { logger } from '../../utils/logger';
+import { notify, resolveStaffUser } from '../../../shared-services/notifications/in-mail';
 
 // =====================================================
 // TYPES
@@ -307,6 +308,30 @@ class RfiService {
       await client.query('COMMIT');
 
       logger.info(`RFI created: ${rfi.rfi_number}`, { rfiId: rfi.id, projectId: input.project_id });
+
+      // Notify the assignee when the RFI is submitted (not a draft) to someone other than the creator
+      if (input.submit_immediately && input.assigned_to && input.assigned_to !== input.created_by) {
+        try {
+          const recipient = await resolveStaffUser(input.assigned_to);
+          if (recipient) {
+            await notify({
+              recipients: recipient,
+              category: 'project',
+              type: 'rfi.assigned',
+              title: 'RFI assigned to you',
+              body: `RFI ${rfi.rfi_number} "${rfi.subject}" has been assigned to you for a response.`,
+              priority: input.priority === 'critical' ? 'high' : 'normal',
+              organizationId: input.organization_id,
+              sourceType: 'rfi',
+              sourceId: rfi.id,
+              sourceUrl: `/dashboard/projects/${input.project_id}/rfis`,
+              channels: { inApp: true, email: true },
+            });
+          }
+        } catch (notifyError: any) {
+          logger.warn('Failed to notify RFI assignee', { rfiId: rfi.id, error: notifyError.message });
+        }
+      }
 
       return this.mapRfi(rfi);
     } catch (error) {

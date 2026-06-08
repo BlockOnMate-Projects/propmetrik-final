@@ -111,7 +111,8 @@ export default function TenantDashboard() {
           </h2>
           {activeTenancy && (
             <p className="text-gray-600 mt-1">
-              {activeTenancy.propertyTitle} • {activeTenancy.propertyAddress}
+              {activeTenancy.propertyTitle}
+              {activeTenancy.unitNumber ? ` · Unit ${activeTenancy.unitNumber}` : ''} • {activeTenancy.propertyAddress}
             </p>
           )}
         </div>
@@ -277,7 +278,10 @@ export default function TenantDashboard() {
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               <div>
                 <p className="text-sm text-gray-500">Property</p>
-                <p className="font-medium">{activeTenancy.propertyTitle}</p>
+                <p className="font-medium">
+                  {activeTenancy.propertyTitle}
+                  {activeTenancy.unitNumber ? <span className="text-gray-500"> · Unit {activeTenancy.unitNumber}</span> : ''}
+                </p>
               </div>
               <div>
                 <p className="text-sm text-gray-500">Monthly Rent</p>

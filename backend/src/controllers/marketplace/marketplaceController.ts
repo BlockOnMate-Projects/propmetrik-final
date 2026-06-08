@@ -22,20 +22,37 @@ export class MarketplaceController {
       const filters = req.body;
       let result: { total: number; properties: any[]; aggregations?: any };
       let searchEngine = 'opensearch';
-      const hasGeoFilter = Boolean(filters.geo_radius || filters.geo_bbox);
 
       try {
-        // Primary: OpenSearch
-        result = await opensearchMarketplaceService.search(filters);
-        if (result.total === 0 && !hasGeoFilter) {
-          const fallbackResult = await marketplaceService.searchProperties(filters);
-          if (fallbackResult.total > 0) {
-            result = fallbackResult;
-            searchEngine = 'postgresql';
-          }
+        // OpenSearch holds scraped external listings; PM-managed listings live only in
+        // Postgres. Run both and merge so dashboard-created properties (incl. multi-unit
+        // buildings — child units are filtered out in marketplaceService) appear in search.
+        const osResult = await opensearchMarketplaceService.search(filters);
+
+        let pmResult: { total: number; properties: any[]; aggregations?: any } = { total: 0, properties: [] };
+        try {
+          pmResult = await marketplaceService.searchProperties(filters);
+        } catch (pmError: any) {
+          logger.warn('PM (PostgreSQL) marketplace search failed during merge:', { error: pmError.message });
         }
+
+        // PM listings first, then OpenSearch results, deduped by id
+        const seen = new Set<string>();
+        const mergedProperties: any[] = [];
+        for (const p of [...pmResult.properties, ...osResult.properties]) {
+          if (p?.id && seen.has(p.id)) continue;
+          if (p?.id) seen.add(p.id);
+          mergedProperties.push(p);
+        }
+
+        result = {
+          total: osResult.total + pmResult.total,
+          properties: mergedProperties,
+          aggregations: osResult.aggregations,
+        };
+        searchEngine = pmResult.total > 0 ? 'opensearch+postgresql' : 'opensearch';
       } catch (osError: any) {
-        // Fallback: PostgreSQL
+        // Fallback: PostgreSQL only (e.g. OpenSearch unavailable)
         logger.warn('OpenSearch search failed, falling back to PostgreSQL:', {
           error: osError.message
         });
@@ -454,7 +471,7 @@ export class MarketplaceController {
       return res.json({
         success: true,
         application_token: applicationToken,
-        tenant_portal_url: `${config.app.tenantPortalUrl}/apply/${applicationToken}`
+        tenant_portal_url: `${config.app.frontendUrl}/tenant/apply/${applicationToken}`
       });
     } catch (error: any) {
       logger.error('Get application link error:', {

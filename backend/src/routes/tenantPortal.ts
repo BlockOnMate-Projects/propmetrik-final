@@ -20,6 +20,7 @@ import { paymentProcessor } from '../services/property-management/payment/paymen
 import { paystackService } from '../services/property-management/payment/paystackService';
 import { WorkOrderService } from '../services/property-management/maintenance/workOrderService';
 import { notificationService } from '../../shared-services/notifications/unified';
+import { notify, resolveOrgStaff } from '../../shared-services/notifications/in-mail';
 import { uploadFile } from '../database/minio';
 import { logger } from '../utils/logger';
 import { config } from '../config';
@@ -1322,9 +1323,15 @@ router.get('/maintenance/status/:workOrderId', requireTenantAuth, asyncHandler(a
 
     // Get work order and verify tenant has access via tenancy link
     const result = await db.query(
-        `SELECT wo.*
+        `SELECT wo.*,
+                v.business_name  AS vendor_name,
+                v.contact_person AS vendor_contact,
+                v.phone_primary  AS vendor_phone,
+                p.title          AS property_title
          FROM maintenance_work_orders wo
          JOIN tenancies t ON wo.tenancy_id = t.id
+         LEFT JOIN vendors v ON wo.assigned_vendor_id = v.id
+         LEFT JOIN properties p ON wo.property_id = p.id
          WHERE wo.id = $1 AND t.tenant_id = $2`,
         [workOrderId, tenant.id]
     );
@@ -1333,7 +1340,34 @@ router.get('/maintenance/status/:workOrderId', requireTenantAuth, asyncHandler(a
         return res.status(404).json({ error: 'Work order not found' });
     }
 
-    res.json(result.rows[0]);
+    const row = result.rows[0];
+    const request = {
+        id: row.id,
+        propertyId: row.property_id,
+        propertyTitle: row.property_title,
+        tenancyId: row.tenancy_id,
+        title: row.title,
+        description: row.description,
+        category: row.category,
+        priority: row.priority || 'medium',
+        status: row.status || 'open',
+        location: row.specific_location,
+        scheduledDate: row.scheduled_date,
+        scheduledTimeStart: row.scheduled_time_start,
+        scheduledTimeEnd: row.scheduled_time_end,
+        completedAt: row.completed_at,
+        vendorName: row.vendor_name,
+        vendorContact: row.vendor_contact,
+        vendorPhone: row.vendor_phone,
+        estimatedCost: row.estimated_cost ? parseFloat(row.estimated_cost) : null,
+        actualCost: row.actual_cost ? parseFloat(row.actual_cost) : null,
+        completionNotes: row.completion_notes,
+        photos: row.photos_before || [],
+        createdAt: row.created_at || row.reported_at,
+        updatedAt: row.updated_at,
+    };
+
+    res.json({ request });
 }));
 
 // =====================================================
@@ -1879,6 +1913,31 @@ router.post('/conversations', requireTenantAuth, asyncHandler(async (req: Reques
         [conversationId, tenant.id, message]
     );
 
+    // Notify the landlord's staff that a tenant opened a new conversation.
+    try {
+        const tenantName = tenant.fullName || tenant.full_name
+            || [tenant.firstName, tenant.lastName].filter(Boolean).join(' ') || 'A tenant';
+        const staff = await resolveOrgStaff(tenancy.organizationId);
+        if (staff.length) {
+            await notify({
+                recipients: staff,
+                category: 'property',
+                type: 'message.received',
+                title: `New message from ${tenantName}`,
+                body: message,
+                summary: `${tenantName}: ${message.slice(0, 120)}`,
+                priority: 'normal',
+                sourceType: 'tenant_conversation',
+                sourceId: conversationId,
+                sourceUrl: '/dashboard/property-management/messages',
+                organizationId: tenancy.organizationId,
+                channels: { inApp: true, email: true },
+            });
+        }
+    } catch (err: any) {
+        logger.warn('notify(message.received/new-conversation) failed', { error: err.message });
+    }
+
     res.json({
         success: true,
         conversation: {
@@ -1982,6 +2041,32 @@ router.post('/conversations/:conversationId/messages', requireTenantAuth, asyncH
          WHERE id = $1`,
         [conversationId]
     );
+
+    // Notify the landlord's staff of the new tenant reply.
+    try {
+        const conv = convCheck.rows[0];
+        const tenantName = tenant.fullName || tenant.full_name
+            || [tenant.firstName, tenant.lastName].filter(Boolean).join(' ') || 'A tenant';
+        const staff = await resolveOrgStaff(conv.organization_id);
+        if (staff.length) {
+            await notify({
+                recipients: staff,
+                category: 'property',
+                type: 'message.received',
+                title: `New message from ${tenantName}`,
+                body: content,
+                summary: `${tenantName}: ${content.slice(0, 120)}`,
+                priority: 'normal',
+                sourceType: 'tenant_conversation',
+                sourceId: conversationId,
+                sourceUrl: '/dashboard/property-management/messages',
+                organizationId: conv.organization_id,
+                channels: { inApp: true, email: true },
+            });
+        }
+    } catch (err: any) {
+        logger.warn('notify(message.received) failed', { error: err.message });
+    }
 
     const msg = result.rows[0];
     res.json({

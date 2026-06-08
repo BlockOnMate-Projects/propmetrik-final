@@ -25,6 +25,7 @@ import {
 } from '../../../../shared-services/payments/crypto';
 import { logger } from '../../../utils/logger';
 import { pool } from '../../../database';
+import { notify, resolveOrgStaff, resolveTenantByTenancy } from '../../../../shared-services/notifications/in-mail';
 
 // =====================================================
 // TYPES
@@ -476,6 +477,15 @@ export class PaymentProcessor {
                     schedulesUpdated
                 });
 
+                // Notify tenant (confirmation) + landlord staff (payment received).
+                await this.notifyRentPaymentReceived(
+                    metadata.organization_id,
+                    metadata.tenancy_id,
+                    principalAmount,
+                    currency,
+                    reference,
+                );
+
                 return {
                     success: true,
                     payment: recordedPayment,
@@ -496,6 +506,95 @@ export class PaymentProcessor {
         } catch (error: any) {
             logger.error('Error verifying/recording payment', { reference, error: error.message });
             return { success: false, error: error.message };
+        }
+    }
+
+    // ─── Payment Notifications ──────────────────────────────────
+
+    /**
+     * Notify the tenant (confirmation) and the landlord's staff (payment
+     * received) after a successful rent payment. Best-effort — never throws.
+     */
+    private async notifyRentPaymentReceived(
+        organizationId: string | undefined,
+        tenancyId: string | undefined,
+        amount: number,
+        currency: string,
+        reference: string,
+    ): Promise<void> {
+        try {
+            const formatted = `${currency || 'GHS'} ${Number(amount).toLocaleString('en-GH', { minimumFractionDigits: 2 })}`;
+            const tenant = tenancyId ? await resolveTenantByTenancy(tenancyId) : null;
+            if (tenant) {
+                await notify({
+                    recipients: tenant,
+                    category: 'finance',
+                    type: 'payment.received',
+                    title: 'Payment received',
+                    body: `We received your rent payment of ${formatted}. Thank you.`,
+                    summary: `Payment confirmed: ${formatted}`,
+                    priority: 'low',
+                    sourceType: 'rent_payment',
+                    sourceId: reference,
+                    tenantActionUrl: '/dashboard/tenant/payments',
+                    organizationId,
+                    channels: { inApp: true, email: true },
+                });
+            }
+            if (organizationId) {
+                const staff = await resolveOrgStaff(organizationId);
+                if (staff.length) {
+                    await notify({
+                        recipients: staff,
+                        category: 'finance',
+                        type: 'payment.received',
+                        title: 'Rent payment received',
+                        body: `A rent payment of ${formatted} was received${tenant?.name ? ` from ${tenant.name}` : ''}.`,
+                        summary: `Rent received: ${formatted}`,
+                        priority: 'normal',
+                        sourceType: 'rent_payment',
+                        sourceId: reference,
+                        sourceUrl: '/dashboard/property-management/rent-collection',
+                        organizationId,
+                        channels: { inApp: true },
+                    });
+                }
+            }
+        } catch (err: any) {
+            logger.warn('notifyRentPaymentReceived failed', { reference, error: err.message });
+        }
+    }
+
+    /**
+     * Notify the tenant when their payment attempt fails. Best-effort.
+     */
+    private async notifyPaymentFailed(reference: string): Promise<void> {
+        try {
+            const txResult = await pool.query(
+                `SELECT metadata FROM payment_transactions WHERE paystack_reference = $1`,
+                [reference],
+            );
+            const metadata = txResult.rows[0]?.metadata || {};
+            const tenancyId = metadata.tenancy_id;
+            if (!tenancyId) return;
+            const tenant = await resolveTenantByTenancy(tenancyId);
+            if (!tenant) return;
+            await notify({
+                recipients: tenant,
+                category: 'finance',
+                type: 'payment.failed',
+                title: 'Payment failed',
+                body: 'Your recent rent payment did not go through. Please try again.',
+                summary: 'Payment failed — please retry',
+                priority: 'high',
+                sourceType: 'rent_payment',
+                sourceId: reference,
+                tenantActionUrl: '/dashboard/tenant/payments',
+                organizationId: metadata.organization_id,
+                channels: { inApp: true, email: true },
+            });
+        } catch (err: any) {
+            logger.warn('notifyPaymentFailed failed', { reference, error: err.message });
         }
     }
 
@@ -727,6 +826,7 @@ export class PaymentProcessor {
                      WHERE paystack_reference = $2`,
                     [data.gateway_response || 'charge.failed', data.reference]
                 ).catch(() => {});
+                await this.notifyPaymentFailed(data.reference);
                 break;
 
             default:

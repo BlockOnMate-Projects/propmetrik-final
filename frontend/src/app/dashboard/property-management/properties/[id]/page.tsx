@@ -83,6 +83,7 @@ export default function PropertyDetailPage() {
     const propertyId = typeof params.id === 'string' ? params.id : Array.isArray(params.id) ? params.id[0] : String(params.id)
 
     const [property, setProperty] = useState<Property | null>(null)
+    const [units, setUnits] = useState<Property[]>([])
     const [tenancies, setTenancies] = useState<Tenancy[]>([])
     const [workOrders, setWorkOrders] = useState<WorkOrder[]>([])
     const [documents, setDocuments] = useState<PropertyDocument[]>([])
@@ -156,7 +157,8 @@ export default function PropertyDetailPage() {
                 noiRes,
                 capRateRes,
                 irrRes,
-                dscrRes
+                dscrRes,
+                unitsRes
             ] = await Promise.all([
                 propertyManagementApi.getPropertyById(propertyId),
                 propertyManagementApi.getTenancies({ propertyId }),
@@ -170,10 +172,12 @@ export default function PropertyDetailPage() {
                 propertyManagementApi.getNOI(propertyId).catch(() => null),
                 propertyManagementApi.getCapRate(propertyId).catch(() => null),
                 propertyManagementApi.getIRR(propertyId).catch(() => null),
-                propertyManagementApi.getDSCR(propertyId).catch(() => null)
+                propertyManagementApi.getDSCR(propertyId).catch(() => null),
+                propertyManagementApi.getPropertyUnits(propertyId).catch(() => [])
             ])
 
             setProperty(propRes)
+            setUnits(Array.isArray(unitsRes) ? unitsRes : [])
             setTenancies(Array.isArray(tenanciesRes) ? tenanciesRes : tenanciesRes.data || [])
             setWorkOrders(Array.isArray(workOrdersRes) ? workOrdersRes : workOrdersRes.data || [])
             setDocuments(Array.isArray(docsRes) ? docsRes : docsRes.data || [])
@@ -233,7 +237,7 @@ export default function PropertyDetailPage() {
             router.push('/dashboard/property-management/properties')
         } catch (err) {
             console.error('Failed to delete property:', err)
-            setError('Failed to delete property. Please try again.')
+            setError(err instanceof Error ? err.message : 'Failed to delete property. Please try again.')
         } finally {
             setIsDeleting(false)
             setIsDeleteDialogOpen(false)
@@ -656,6 +660,12 @@ export default function PropertyDetailPage() {
                         <Building2 className="h-3 w-3 mr-2 hidden md:block" />
                         Attribute Matrix
                     </TabsTrigger>
+                    {units.length > 0 && (
+                        <TabsTrigger value="units" className="data-[state=active]:bg-background data-[state=active]:text-primary">
+                            <Building2 className="h-3 w-3 mr-2 hidden md:block" />
+                            Units ({units.length})
+                        </TabsTrigger>
+                    )}
                     <TabsTrigger value="financials" className="data-[state=active]:bg-background data-[state=active]:text-primary">
                         <Activity className="h-3 w-3 mr-2 hidden md:block" />
                         Financial Intel
@@ -677,6 +687,59 @@ export default function PropertyDetailPage() {
                         Assets
                     </TabsTrigger>
                 </TabsList>
+
+                {/* UNITS TAB */}
+                {units.length > 0 && (
+                    <TabsContent value="units" className="mt-6">
+                        <Card className="bg-card border-border">
+                            <CardHeader>
+                                <CardTitle className="text-sm font-mono text-primary uppercase">
+                                    Building Units ({units.length})
+                                </CardTitle>
+                            </CardHeader>
+                            <CardContent>
+                                <div className="overflow-x-auto">
+                                    <table className="w-full text-xs font-mono">
+                                        <thead>
+                                            <tr className="text-muted-foreground uppercase text-[10px] border-b border-border">
+                                                <th className="text-left font-normal py-2 px-2">Unit</th>
+                                                <th className="text-left font-normal py-2 px-2">Floor</th>
+                                                <th className="text-left font-normal py-2 px-2">Beds</th>
+                                                <th className="text-left font-normal py-2 px-2">Baths</th>
+                                                <th className="text-left font-normal py-2 px-2">Area m²</th>
+                                                <th className="text-left font-normal py-2 px-2">Rent</th>
+                                                <th className="text-left font-normal py-2 px-2">Status</th>
+                                                <th className="py-2 px-2"></th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {units.map((u) => (
+                                                <tr key={u.id} className="border-b border-border/50 hover:bg-secondary/40">
+                                                    <td className="py-2 px-2 text-primary font-semibold">{u.unitNumber || u.title}</td>
+                                                    <td className="py-2 px-2">{u.floorNumber ?? '—'}</td>
+                                                    <td className="py-2 px-2">{u.bedrooms ?? '—'}</td>
+                                                    <td className="py-2 px-2">{u.bathrooms ?? '—'}</td>
+                                                    <td className="py-2 px-2">{u.totalAreaSqm ?? '—'}</td>
+                                                    <td className="py-2 px-2">{u.priceCurrency || 'GHS'} {Number(u.price || 0).toLocaleString()}</td>
+                                                    <td className="py-2 px-2">
+                                                        <Badge variant="outline" className="text-[9px] font-mono uppercase border-border text-muted-foreground">
+                                                            {u.status}
+                                                        </Badge>
+                                                    </td>
+                                                    <td className="py-2 px-2 text-right">
+                                                        <Link href={`/dashboard/property-management/properties/${u.id}`} className="text-primary hover:underline">
+                                                            View
+                                                        </Link>
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </CardContent>
+                        </Card>
+                    </TabsContent>
+                )}
 
                 {/* OVERVIEW TAB */}
                 <TabsContent value="overview" className="mt-6">
@@ -1196,15 +1259,35 @@ export default function PropertyDetailPage() {
                                 <CardTitle className="text-sm font-mono text-amber-500 uppercase">Personnel Requests & Logs</CardTitle>
                             </CardHeader>
                             <CardContent className="space-y-4">
-                                <div className="p-3 border border-zinc-900 rounded bg-black/40 flex items-start gap-3">
-                                    <div className="p-2 bg-blue-950/20 rounded">
-                                        <Calendar className="h-4 w-4 text-blue-500" />
-                                    </div>
-                                    <div>
-                                        <p className="text-xs text-white font-mono uppercase italic">Lease Renewal Incoming</p>
-                                        <p className="text-[9px] text-zinc-500 font-mono mt-1">Tenant "Seun" lease expires in 45 days. Initialized negotiation protocols.</p>
-                                    </div>
-                                </div>
+                                {(() => {
+                                    const renewals = tenancies
+                                        .filter(t => t.status === 'active' && t.leaseEndDate)
+                                        .map(t => ({ t, days: Math.ceil((new Date(t.leaseEndDate).getTime() - Date.now()) / 86400000) }))
+                                        .filter(r => r.days >= 0 && r.days <= 60)
+                                        .sort((a, b) => a.days - b.days)
+
+                                    if (renewals.length === 0) {
+                                        return (
+                                            <div className="p-8 text-center bg-zinc-900/10 italic text-zinc-600 font-mono text-xs">
+                                                No personnel requests or upcoming renewals.
+                                            </div>
+                                        )
+                                    }
+
+                                    return renewals.map(({ t, days }) => (
+                                        <div key={t.id} className="p-3 border border-zinc-900 rounded bg-black/40 flex items-start gap-3">
+                                            <div className="p-2 bg-blue-950/20 rounded">
+                                                <Calendar className="h-4 w-4 text-blue-500" />
+                                            </div>
+                                            <div>
+                                                <p className="text-xs text-white font-mono uppercase italic">Lease Renewal Incoming</p>
+                                                <p className="text-[9px] text-zinc-500 font-mono mt-1">
+                                                    {(t.tenant?.fullName || 'Tenant')} lease expires in {days} day{days !== 1 ? 's' : ''} ({format(new Date(t.leaseEndDate), 'dd MMM yyyy')}).
+                                                </p>
+                                            </div>
+                                        </div>
+                                    ))
+                                })()}
                             </CardContent>
                         </Card>
                     </div>

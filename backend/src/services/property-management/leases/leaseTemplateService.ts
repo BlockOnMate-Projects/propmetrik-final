@@ -377,6 +377,7 @@ export class LeaseTemplateService {
             propertyAddress: tenancyData.propertyAddress,
             propertyType: tenancyData.propertyType,
             unitNumber: tenancyData.unitNumber,
+            floorNumber: tenancyData.floorNumber,
             bedrooms: tenancyData.bedrooms,
             bathrooms: tenancyData.bathrooms,
             
@@ -388,12 +389,16 @@ export class LeaseTemplateService {
             tenantIdNumber: tenancyData.tenantIdNumber,
             tenantAddress: tenancyData.tenantAddress,
             
-            // Landlord/Organization
+            // Landlord — use ONLY the landlord's own captured details (from the lease
+            // form / lease_terms). NEVER fall back to the organization's contact details:
+            // the organization (managing agent) is a separate party, and leaking its email
+            // (e.g. admin@propmetrik.com), phone, or address as the landlord's is wrong.
+            // Missing fields are left blank and the template hides them.
             landlordName: tenancyData.landlordNameOverride || tenancyData.organizationName,
-            landlordAddress: tenancyData.organizationAddress,
-            landlordPhone: tenancyData.organizationPhone,
-            landlordEmail: tenancyData.organizationEmail,
-            landlordIdNumber: tenancyData.organizationIdNumber || '',
+            landlordAddress: '',
+            landlordPhone: '',
+            landlordEmail: tenancyData.landlordEmailOverride || '',
+            landlordIdNumber: '',
             
             // Utilities (from lease_terms) - keep as arrays for Handlebars iteration
             tenantUtilities: tenancyData.tenantUtilities || [],
@@ -523,7 +528,8 @@ export class LeaseTemplateService {
                 p.address_city as property_city,
                 p.property_type,
                 p.features,
-                t.unit_number,
+                COALESCE(t.unit_number, p.unit_number) as unit_number,
+                p.floor_number,
                 p.bedrooms,
                 p.bathrooms,
                 tn.full_name as tenant_name,
@@ -582,6 +588,7 @@ export class LeaseTemplateService {
             propertyType: row.property_type,
             furnishing: furnishing,
             unitNumber: row.unit_number,
+            floorNumber: row.floor_number,
             bedrooms: row.bedrooms,
             bathrooms: row.bathrooms,
             tenantName: tenantName,
@@ -606,6 +613,7 @@ export class LeaseTemplateService {
             landlordWillSign: leaseTerms.landlordWillSign || false,
             propertyManagerName: row.organization_name,
             landlordNameOverride: leaseTerms.landlordName || '',
+            landlordEmailOverride: leaseTerms.landlordEmail || '',
             signers: leaseTerms.signers || [],
             noticePeriodDays: leaseTerms.noticePeriodDays || 30
         };

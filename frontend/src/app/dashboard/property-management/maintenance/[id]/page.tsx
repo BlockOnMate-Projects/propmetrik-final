@@ -61,6 +61,9 @@ export default function WorkOrderDetailsPage({ params }: { params: Promise<{ id:
     // Action states
     const [showAssignModal, setShowAssignModal] = useState(false)
     const [selectedVendorId, setSelectedVendorId] = useState('')
+    const [assignDate, setAssignDate] = useState('')
+    const [assignTimeStart, setAssignTimeStart] = useState('')
+    const [assignTimeEnd, setAssignTimeEnd] = useState('')
     const [showCompleteModal, setShowCompleteModal] = useState(false)
     const [completionNotes, setCompletionNotes] = useState('')
     const [actualCost, setActualCost] = useState('')
@@ -97,10 +100,17 @@ export default function WorkOrderDetailsPage({ params }: { params: Promise<{ id:
         if (!selectedVendorId) return
         setActionLoading(true)
         try {
-            const updated = await propertyManagementApi.assignWorkOrder(id, selectedVendorId)
+            const updated = await propertyManagementApi.assignWorkOrder(id, selectedVendorId, {
+                scheduledDate: assignDate || undefined,
+                scheduledTimeStart: assignTimeStart || undefined,
+                scheduledTimeEnd: assignTimeEnd || undefined,
+            })
             setWorkOrder(updated)
             setShowAssignModal(false)
             setSelectedVendorId('')
+            setAssignDate('')
+            setAssignTimeStart('')
+            setAssignTimeEnd('')
         } catch (err: any) {
             alert(err.message || 'Failed to assign vendor')
         } finally {
@@ -332,6 +342,36 @@ export default function WorkOrderDetailsPage({ params }: { params: Promise<{ id:
                                         )}
                                     </SelectContent>
                                 </Select>
+                                <div className="space-y-2">
+                                    <Label className="text-zinc-400 font-mono text-xs uppercase">Scheduled Visit Date</Label>
+                                    <Input
+                                        type="date"
+                                        value={assignDate}
+                                        onChange={e => setAssignDate(e.target.value)}
+                                        className="bg-black border-zinc-700 text-zinc-200"
+                                    />
+                                </div>
+                                <div className="grid grid-cols-2 gap-3">
+                                    <div className="space-y-2">
+                                        <Label className="text-zinc-400 font-mono text-xs uppercase">From</Label>
+                                        <Input
+                                            type="time"
+                                            value={assignTimeStart}
+                                            onChange={e => setAssignTimeStart(e.target.value)}
+                                            className="bg-black border-zinc-700 text-zinc-200"
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label className="text-zinc-400 font-mono text-xs uppercase">To</Label>
+                                        <Input
+                                            type="time"
+                                            value={assignTimeEnd}
+                                            onChange={e => setAssignTimeEnd(e.target.value)}
+                                            className="bg-black border-zinc-700 text-zinc-200"
+                                        />
+                                    </div>
+                                </div>
+                                <p className="text-xs text-zinc-600 font-mono">The vendor is notified by email/SMS and the tenant sees who is coming and when.</p>
                                 <div className="flex gap-2 justify-end">
                                     <Button variant="ghost" className="text-zinc-400" onClick={() => { setShowAssignModal(false); setSelectedVendorId('') }}>
                                         Cancel

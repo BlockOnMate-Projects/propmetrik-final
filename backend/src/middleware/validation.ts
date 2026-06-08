@@ -367,8 +367,8 @@ export function clampPagination(req: Request, _res: Response, next: NextFunction
 // ==========================================
 
 export const pmCreatePropertySchema = z.object({
-    name: z.string().min(1, 'Property name is required').max(255),
-  title: z.string().min(1, 'Property title is required').max(255).optional(),
+    name: z.string().max(255).optional(),
+  title: z.string().min(1, 'Property title is required').max(255),
     propertyType: z.string().max(100).optional(),
   transactionType: z.string().max(50).optional(),
     status: z.string().max(50).optional(),
@@ -396,6 +396,16 @@ export const pmCreatePropertySchema = z.object({
     amenities: z.array(z.string()).optional(),
     unitNumber: z.string().max(50).optional(),
     monthlyRent: z.number().min(0).optional(),
+    floorNumber: z.number().int().min(0).max(500).optional(),
+    totalUnits: z.number().int().min(0).optional(),
+    units: z.array(z.object({
+        label: z.string().min(1, 'Unit label is required').max(50),
+        floorNumber: z.number().int().min(0).max(500).optional(),
+        bedrooms: z.number().int().min(0).max(100).optional(),
+        bathrooms: z.number().min(0).max(100).optional(),
+        totalAreaSqm: z.number().min(0).optional(),
+        price: z.number().min(0).optional(),
+    })).max(500).optional(),
 }).passthrough();
 
 export const pmCreateTenantSchema = z.object({
@@ -456,6 +466,9 @@ export const pmCreateWorkOrderSchema = z.object({
 
 export const pmAssignWorkOrderSchema = z.object({
     vendorId: uuidSchema,
+    scheduledDate: z.string().optional(),
+    scheduledTimeStart: z.string().optional(),
+    scheduledTimeEnd: z.string().optional(),
 });
 
 export const pmCompleteWorkOrderSchema = z.object({
@@ -514,6 +527,7 @@ export const pmBulkImportSchema = z.object({
 
 export const pmCreateApplicationSchema = z.object({
     propertyId: uuidSchema,
+    unitId: uuidSchema.optional(),
     applicationType: z.enum(['rental', 'purchase']).optional(),
 }).passthrough();
 

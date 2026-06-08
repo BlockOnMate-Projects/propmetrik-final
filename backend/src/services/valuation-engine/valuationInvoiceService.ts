@@ -18,6 +18,7 @@ import { logger } from '../../utils/logger';
 import { config } from '../../config';
 import { feeEngine } from '../../../shared-services/payments/feeEngine';
 import { notificationService } from '../../../shared-services/notifications/unified';
+import { notify, resolveOrgStaff } from '../../../shared-services/notifications/in-mail';
 
 // ============================================================================
 // TYPES
@@ -464,7 +465,7 @@ class ValuationInvoiceService {
                             currency: 'GHS',
                             reference,
                             channels: ['mobile_money', 'card', 'bank_transfer', 'bank', 'ussd', 'qr'],
-                            callback_url: `${process.env.FRONTEND_URL || 'https://app.propmetrik.com'}/payment/invoice?id=${invoice.id}&status=success`,
+                            callback_url: `${process.env.FRONTEND_URL || 'https://propmetrik.com'}/payment/invoice?id=${invoice.id}&status=success`,
                             metadata: {
                                 invoiceId: invoice.id,
                                 invoiceNumber: invoice.invoiceNumber,
@@ -531,7 +532,7 @@ class ValuationInvoiceService {
 
         // Store the inline payment page URL (NOT the Paystack checkout redirect URL).
         // The accessCode is stored separately for resumeTransaction fallback.
-        const inlinePaymentUrl = `${process.env.FRONTEND_URL || 'https://app.propmetrik.com'}/payment/invoice?id=${id}`;
+        const inlinePaymentUrl = `${process.env.FRONTEND_URL || 'https://propmetrik.com'}/payment/invoice?id=${id}`;
 
         const result = await pool.query(
             `UPDATE valuation_invoices SET
@@ -567,7 +568,7 @@ class ValuationInvoiceService {
                     ? new Date(sentInvoice.dueDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })
                     : 'Upon receipt';
 
-                const paymentPageUrl = `${process.env.FRONTEND_URL || 'https://app.propmetrik.com'}/payment/invoice?id=${sentInvoice.id}`;
+                const paymentPageUrl = `${process.env.FRONTEND_URL || 'https://propmetrik.com'}/payment/invoice?id=${sentInvoice.id}`;
                 const paymentSection = paymentLink
                     ? `
                         <div style="text-align: center; margin: 32px 0;">
@@ -764,6 +765,7 @@ class ValuationInvoiceService {
             } catch (emailErr: any) {
                 logger.error('Failed to send receipt email', { invoiceId: invoice.id, error: emailErr.message });
             }
+            await this.notifyInvoicePaid(mappedInvoice, paidAmount);
 
             return mappedInvoice;
         } catch (error) {
@@ -837,6 +839,7 @@ class ValuationInvoiceService {
             } catch (emailErr: any) {
                 logger.error('Failed to send receipt email', { invoiceId: invoice.id, error: emailErr.message });
             }
+            await this.notifyInvoicePaid(mappedInvoice, paidAmount);
 
             return mappedInvoice;
         } catch (error) {
@@ -1070,13 +1073,51 @@ class ValuationInvoiceService {
             );
 
             await client.query('COMMIT');
-            return this.mapInvoice(updated.rows[0]);
+            const mappedInvoice = this.mapInvoice(updated.rows[0]);
+            await this.notifyInvoicePaid(mappedInvoice, paymentDetails.amount);
+            return mappedInvoice;
         } catch (error) {
             await client.query('ROLLBACK');
             throw error;
         } finally {
             client.release();
         }
+    }
+
+    /**
+     * Notify org staff that a valuation invoice has been paid.
+     * Best-effort: the client receipt email is sent elsewhere; this is the staff inbox push.
+     */
+    private async notifyInvoicePaid(invoice: ValuationInvoice, amountPaid: number): Promise<void> {
+        try {
+            if (!invoice.organizationId) return;
+            const staff = await resolveOrgStaff(invoice.organizationId);
+            if (!staff.length) return;
+            await notify({
+                recipients: staff,
+                category: 'finance',
+                type: 'valuation_invoice.paid',
+                title: 'Valuation invoice paid',
+                body: `Invoice ${invoice.invoiceNumber} from ${invoice.clientName} was paid (GHS ${amountPaid}).`,
+                priority: 'normal',
+                organizationId: invoice.organizationId,
+                sourceType: 'valuation_invoice',
+                sourceId: invoice.id,
+                sourceUrl: '/dashboard/valuations/finance',
+                channels: { inApp: true },
+            });
+        } catch (err: any) {
+            logger.warn('notifyInvoicePaid failed', { invoiceId: invoice.id, error: err.message });
+        }
+    }
+
+    /**
+     * Notify staff of a paid valuation invoice by id — used by payment paths that
+     * update the invoice row directly (e.g. crypto settlement) instead of markAsPaid.
+     */
+    async notifyPaidById(invoiceId: string): Promise<void> {
+        const invoice = await this.getById(invoiceId);
+        if (invoice) await this.notifyInvoicePaid(invoice, invoice.paidAmount ?? invoice.totalAmount);
     }
 
     /**

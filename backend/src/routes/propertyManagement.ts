@@ -63,6 +63,9 @@ import {
 import { createCustomRateLimiter } from '../middleware/rateLimiter';
 import { getSignedLeaseDownloadUrl, isS3ObjectRef, storeSignedLeaseDocument } from '../services/property-management/leases/signedLeaseStorage';
 import { buckets, uploadFile } from '../database/minio';
+import { keycloakTenantOnboardingService } from '../services/property-management/auth/keycloakTenantOnboardingService';
+import { notify, resolveTenantByTenancy } from '../../shared-services/notifications/in-mail';
+import { logger } from '../utils/logger';
 
 const router = Router();
 
@@ -78,6 +81,26 @@ const propertyPhotoUpload = multer({
     },
 });
 
+const documentUpload = multer({
+    storage: multer.memoryStorage(),
+    limits: { fileSize: 25 * 1024 * 1024 },
+    fileFilter: (_req, file, cb) => {
+        const allowedMimeTypes = [
+            'application/pdf',
+            'image/jpeg',
+            'image/png',
+            'image/webp',
+            'application/msword',
+            'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        ];
+        if (allowedMimeTypes.includes(file.mimetype)) {
+            cb(null, true);
+            return;
+        }
+        cb(new Error('Only PDF, Word, JPG, PNG, and WebP documents are supported'));
+    },
+});
+
 function isSupportedImageBuffer(file: Express.Multer.File): boolean {
     const buffer = file.buffer;
     if (file.mimetype === 'image/jpeg') return buffer.length > 3 && buffer[0] === 0xff && buffer[1] === 0xd8 && buffer[2] === 0xff;
@@ -87,7 +110,7 @@ function isSupportedImageBuffer(file: Express.Multer.File): boolean {
 }
 
 function safeStorageFilename(filename: string): string {
-    const fallback = `photo.${filename.split('.').pop() || 'jpg'}`;
+    const fallback = `document.${filename.split('.').pop() || 'pdf'}`;
     return (filename || fallback).replace(/[^a-zA-Z0-9._-]/g, '_').slice(0, 120);
 }
 
@@ -231,6 +254,20 @@ router.get('/properties/:id', asyncHandler(async (req: Request, res: Response) =
     res.json(property);
 }));
 
+/**
+ * GET /api/v1/pm/properties/:id/units
+ * List the child units of a multi-unit building
+ */
+router.get('/properties/:id/units', asyncHandler(async (req: Request, res: Response) => {
+    const organizationId = await getOrganizationId(req);
+    if (!organizationId) {
+        return res.status(401).json({ error: 'Organization not found' });
+    }
+
+    const units = await propertyService.getUnits(req.params.id, organizationId);
+    res.json(units);
+}));
+
 // =====================================================
 // TENANT ROUTES
 // =====================================================
@@ -356,6 +393,34 @@ router.post('/tenants/:id/verify', asyncHandler(async (req: Request, res: Respon
         return res.status(404).json({ error: 'Tenant not found' });
     }
     res.json(tenant);
+}));
+
+/**
+ * POST /api/v1/pm/tenants/:id/portal-invite
+ * Invite a tenant to the self-service portal (creates/links a Keycloak account)
+ */
+router.post('/tenants/:id/portal-invite', asyncHandler(async (req: Request, res: Response) => {
+    const organizationId = await getOrganizationId(req);
+    const invitedBy = await getUserId(req);
+    const { redirectUri } = req.body || {};
+
+    try {
+        const result = await keycloakTenantOnboardingService.inviteTenant(
+            req.params.id,
+            organizationId,
+            invitedBy,
+            redirectUri
+        );
+        res.json({
+            success: true,
+            message: result.emailSent
+                ? 'Access invite emailed to the tenant.'
+                : 'Tenant provisioned, but the invite email could not be delivered. Share the setup link manually.',
+            ...result
+        });
+    } catch (error: any) {
+        res.status(400).json({ success: false, error: error.message || 'Failed to invite tenant' });
+    }
 }));
 
 // =====================================================
@@ -550,6 +615,57 @@ router.get('/tenancies/:id/signed-lease', asyncHandler(async (req: Request, res:
     }
 
     return res.status(422).json({ error: 'Signed lease URL format is not supported' });
+}));
+
+/**
+ * GET /api/v1/pm/tenancies/:id/utility-charges
+ * List utility charges for a tenancy
+ */
+router.get('/tenancies/:id/utility-charges', asyncHandler(async (req: Request, res: Response) => {
+    const organizationId = await getOrganizationId(req);
+
+    const result = await db.query(
+        `SELECT uc.id, uc.tenancy_id, uc.organization_id, uc.utility_type,
+                uc.billing_period_start, uc.billing_period_end, uc.amount, uc.currency,
+                uc.description, uc.evidence_document_id, uc.status, uc.applied_to_schedule_id,
+                uc.applied_at, uc.dispute_reason, uc.dispute_resolved_at, uc.dispute_resolution,
+                uc.created_by, uc.created_at, uc.updated_at,
+                d.title AS evidence_title, d.file_url AS evidence_file_url, d.file_name AS evidence_file_name,
+                rs.period_number AS schedule_period_number, rs.period_start_date AS schedule_period_start
+         FROM utility_charges uc
+         LEFT JOIN property_management_documents d ON uc.evidence_document_id = d.id
+         LEFT JOIN rent_schedules rs ON uc.applied_to_schedule_id = rs.id
+         WHERE uc.tenancy_id = $1 AND uc.organization_id = $2
+         ORDER BY uc.billing_period_start DESC`,
+        [req.params.id, organizationId]
+    );
+
+    res.json({ charges: result.rows });
+}));
+
+/**
+ * GET /api/v1/pm/tenancies/:id/rent-schedules
+ * List rent schedule periods for a tenancy
+ */
+router.get('/tenancies/:id/rent-schedules', asyncHandler(async (req: Request, res: Response) => {
+    const organizationId = await getOrganizationId(req);
+
+    const result = await db.query(
+        `SELECT rs.id, rs.period_number, rs.period_start_date, rs.period_end_date,
+                rs.due_date, rs.expected_amount, rs.amount_paid, rs.amount_outstanding,
+                rs.currency, rs.status,
+                COALESCE((
+                    SELECT SUM(uc.amount)
+                    FROM utility_charges uc
+                    WHERE uc.applied_to_schedule_id = rs.id
+                ), 0) AS utility_charges_total
+         FROM rent_schedules rs
+         WHERE rs.tenancy_id = $1 AND rs.organization_id = $2
+         ORDER BY rs.period_number ASC`,
+        [req.params.id, organizationId]
+    );
+
+    res.json({ schedules: result.rows });
 }));
 
 /**
@@ -1111,7 +1227,7 @@ router.patch('/work-orders/:id', validate(pmCreateWorkOrderSchema.partial()), as
 router.post('/work-orders/:id/assign', validate(pmAssignWorkOrderSchema), asyncHandler(async (req: Request, res: Response) => {
     const organizationId = await getOrganizationId(req);
 
-    const { vendorId } = req.body;
+    const { vendorId, scheduledDate, scheduledTimeStart, scheduledTimeEnd } = req.body;
     if (!vendorId) {
         return res.status(400).json({ error: 'vendorId is required' });
     }
@@ -1120,7 +1236,8 @@ router.post('/work-orders/:id/assign', validate(pmAssignWorkOrderSchema), asyncH
         const workOrder = await workOrderService.assignWorkOrder(
             req.params.id,
             vendorId,
-            organizationId
+            organizationId,
+            { scheduledDate, scheduledTimeStart, scheduledTimeEnd }
         );
         if (!workOrder) {
             return res.status(404).json({ error: 'Work order not found' });
@@ -1285,6 +1402,59 @@ router.post('/documents', validate(pmCreateDocumentSchema), asyncHandler(async (
 
     // Assuming body contains file metadata. In real app, middleware handles file upload first.
     const doc = await documentService.createDocument(organizationId, req.body, userId);
+    res.status(201).json(doc);
+}));
+
+/**
+ * POST /api/v1/pm/documents/upload
+ * Upload a document file and record it in the unified PM document vault
+ */
+router.post('/documents/upload', documentUpload.single('file'), asyncHandler(async (req: Request, res: Response) => {
+    const organizationId = await getOrganizationId(req);
+    const userId = await getUserId(req);
+    const file = req.file;
+
+    if (!userId) return res.status(401).json({ error: 'User ID required' });
+    if (!file) return res.status(400).json({ error: 'Document file is required' });
+
+    const tenancyId = req.body.tenancyId as string | undefined;
+    let propertyId = req.body.propertyId as string | undefined;
+
+    if (tenancyId) {
+        const tenancy = await tenancyService.getTenancyById(tenancyId, organizationId);
+        if (!tenancy) return res.status(404).json({ error: 'Tenancy not found' });
+        propertyId = propertyId || tenancy.propertyId;
+    }
+
+    if (!propertyId) return res.status(400).json({ error: 'propertyId is required' });
+
+    const property = await propertyService.getPropertyById(propertyId, organizationId);
+    if (!property) return res.status(404).json({ error: 'Property not found' });
+
+    const fileName = safeStorageFilename(file.originalname);
+    const documentType = (req.body.documentType || 'other') as PropertyDocumentType;
+    const bucket = buckets.documents || 'propmetrik-documents';
+    const objectKey = `property-management/${organizationId}/documents/${Date.now()}_${fileName}`;
+
+    await uploadFile(bucket, objectKey, file.buffer, file.mimetype, {
+        propertyId,
+        tenancyId: tenancyId || '',
+        documentType,
+    });
+
+    const doc = await documentService.createDocument(organizationId, {
+        propertyId,
+        tenancyId,
+        documentType,
+        title: req.body.title || fileName,
+        description: req.body.description || null,
+        fileUrl: `s3://${bucket}/${objectKey}`,
+        fileName,
+        fileSizeBytes: file.size,
+        mimeType: file.mimetype,
+        tags: tenancyId ? ['tenant'] : [],
+    }, userId);
+
     res.status(201).json(doc);
 }));
 
@@ -1640,13 +1810,21 @@ router.delete('/properties/:id', asyncHandler(async (req: Request, res: Response
         return res.status(401).json({ error: 'User authentication required' });
     }
 
-    const result = await propertyService.deleteProperty(
-        req.params.id,
-        organizationId,
-        userId
-    );
+    try {
+        const result = await propertyService.deleteProperty(
+            req.params.id,
+            organizationId,
+            userId
+        );
 
-    res.json(result);
+        if (!result) {
+            return res.status(404).json({ error: 'Property not found' });
+        }
+
+        res.json(result);
+    } catch (error: any) {
+        res.status(400).json({ error: error.message });
+    }
 }));
 
 // =====================================================
@@ -2639,7 +2817,8 @@ router.post('/applications/:id/generate-lease-document', asyncHandler(async (req
         }
         if (error.message.includes('must be approved') || 
             error.message.includes('required') || 
-            error.message.includes('Invalid')) {
+            error.message.includes('Invalid') ||
+            error.message.includes('active tenancy already overlaps')) {
             return res.status(400).json({ error: error.message });
         }
         throw error;
@@ -2813,6 +2992,41 @@ router.get('/application-links/:token/validate', asyncHandler(async (req: Reques
 }));
 
 /**
+ * POST /api/v1/pm/application-links/:token/documents
+ * Upload an ID/supporting document during a tenant application (public, token-scoped).
+ * Returns an S3 object ref the apply step stores in uploaded_documents.
+ */
+router.post('/application-links/:token/documents', documentUpload.single('file'), asyncHandler(async (req: Request, res: Response) => {
+    const file = req.file;
+    if (!file) return res.status(400).json({ error: 'Document file is required' });
+
+    // Only allow uploads against a valid, active application link
+    const validation = await applicationService.validateApplicationLink(req.params.token);
+    if (!validation.valid) {
+        return res.status(400).json({ error: 'Invalid or expired application link' });
+    }
+
+    const docType = (req.body.documentType as string) || 'identification';
+    const side = (req.body.side as string) || '';
+    const fileName = safeStorageFilename(file.originalname);
+    const bucket = buckets.documents || 'propmetrik-documents';
+    const objectKey = `applications/${req.params.token}/${Date.now()}_${side ? `${side}_` : ''}${fileName}`;
+
+    await uploadFile(bucket, objectKey, file.buffer, file.mimetype, {
+        applicationToken: req.params.token,
+        documentType: docType,
+        side,
+    });
+
+    res.status(201).json({
+        url: `s3://${bucket}/${objectKey}`,
+        filename: fileName,
+        type: docType,
+        side,
+    });
+}));
+
+/**
  * POST /api/v1/pm/application-links/:token/apply
  * Submit an application via application link token (public - no auth required)
  * This is the endpoint tenants use when submitting from the Tenant Portal
@@ -2961,7 +3175,7 @@ router.post('/lease-documents/generate', asyncHandler(async (req: Request, res: 
         additionalData,
         format
     });
-    
+
     res.status(201).json(result);
 }));
 
@@ -3277,6 +3491,30 @@ router.post('/tenant-messages/conversations/:conversationId/messages', validate(
          WHERE id = $1`,
         [conversationId]
     );
+
+    // Notify the tenant of the landlord's reply (in-app + email).
+    try {
+        const conv = convCheck.rows[0];
+        const tenantRecipient = await resolveTenantByTenancy(conv.tenancy_id);
+        if (tenantRecipient) {
+            await notify({
+                recipients: tenantRecipient,
+                category: 'property',
+                type: 'message',
+                title: 'New message from your property manager',
+                body: content,
+                summary: content.slice(0, 120),
+                priority: 'normal',
+                sourceType: 'tenant_conversation',
+                sourceId: conversationId,
+                tenantActionUrl: '/dashboard/tenant/messages',
+                organizationId,
+                channels: { inApp: true, email: true },
+            });
+        }
+    } catch (err: any) {
+        logger.warn('notify(landlord->tenant message) failed', { error: err.message });
+    }
 
     const msg = result.rows[0];
     res.json({

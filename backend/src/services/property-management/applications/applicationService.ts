@@ -11,6 +11,8 @@
 import { Pool } from 'pg';
 import { randomBytes } from 'crypto';
 import { pool } from '../../../database';
+import { notify, resolveOrgStaff } from '../../../../shared-services/notifications/in-mail';
+import { logger } from '../../../utils/logger';
 
 // =====================================================
 // TYPES
@@ -43,7 +45,8 @@ export interface PreviousAddress {
 }
 
 export interface UploadedDocument {
-  type: string; // 'ghana_card', 'proof_of_income', 'employment_letter'
+  type: string; // 'ghana_card', 'passport', 'proof_of_income', 'employment_letter'
+  side?: string; // 'front' | 'back' | 'bio' for ID images
   url: string;
   uploadedAt: string;
   filename?: string;
@@ -60,6 +63,7 @@ export interface Application {
   applicantPhone: string;
   applicantPhoneSecondary?: string;
   applicantDateOfBirth?: Date;
+  applicantIdType?: string;
   applicantGhanaCard?: string;
   applicantCurrentAddress?: string;
   applicantDigitalAddress?: string;
@@ -132,12 +136,15 @@ export interface Application {
 
 export interface CreateApplicationDto {
   propertyId: string;
+  // When applying to a multi-unit building, the specific unit (child property) the applicant chose
+  unitId?: string;
   applicantFullName: string;
   applicantEmail: string;
   applicantPhone: string;
   applicantPhoneSecondary?: string;
   applicantDateOfBirth?: string;
-  applicantGhanaCard?: string;
+  applicantIdType?: string; // 'ghana_card' | 'passport' | ... — the selected form of ID
+  applicantGhanaCard?: string; // the ID number (kept name for back-compat)
   applicantCurrentAddress?: string;
   applicantDigitalAddress?: string;
   occupation?: string;
@@ -159,6 +166,7 @@ export interface CreateApplicationDto {
   howDidYouHear?: string;
   characterReferences?: CharacterReference[];
   previousAddresses?: PreviousAddress[];
+  uploadedDocuments?: UploadedDocument[]; // ID images (front/back/bio) etc.
 }
 
 export interface UpdateApplicationDto extends Partial<CreateApplicationDto> {}
@@ -291,6 +299,7 @@ export class ApplicationService {
         applicant_phone,
         applicant_phone_secondary,
         applicant_date_of_birth,
+        applicant_id_type,
         applicant_ghana_card,
         applicant_current_address,
         applicant_digital_address,
@@ -313,13 +322,15 @@ export class ApplicationService {
         how_did_you_hear,
         character_references,
         previous_addresses,
+        uploaded_documents,
         application_token,
         application_token_expires_at,
         status
       ) VALUES (
         $1, $2, $3, $4, $5, $6, $7, $8, $9, $10,
         $11, $12, $13, $14, $15, $16, $17, $18, $19, $20,
-        $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32
+        $21, $22, $23, $24, $25, $26, $27, $28, $29, $30,
+        $31, $32, $33, $34
       )
       RETURNING *
     `;
@@ -332,6 +343,7 @@ export class ApplicationService {
       data.applicantPhone,
       data.applicantPhoneSecondary || null,
       data.applicantDateOfBirth ? new Date(data.applicantDateOfBirth) : null,
+      data.applicantIdType || null,
       data.applicantGhanaCard || null,
       data.applicantCurrentAddress || null,
       data.applicantDigitalAddress || null,
@@ -354,6 +366,7 @@ export class ApplicationService {
       data.howDidYouHear || null,
       JSON.stringify(data.characterReferences || []),
       JSON.stringify(data.previousAddresses || []),
+      JSON.stringify(data.uploadedDocuments || []),
       token,
       tokenExpiry,
       ApplicationStatus.DRAFT
@@ -396,10 +409,25 @@ export class ApplicationService {
       [link.id]
     );
     
-    // Create the application with the property from the link
+    // Resolve the specific unit when applying to a multi-unit building.
+    // The applicant may select a child unit; we record the application against that unit
+    // (a real property row), so the lease/tenancy downstream point at the exact space.
+    let targetPropertyId: string = link.property_id;
+    if (data.unitId && data.unitId !== link.property_id) {
+      const unitCheck = await this.db.query(
+        `SELECT id FROM properties WHERE id = $1 AND parent_property_id = $2`,
+        [data.unitId, link.property_id]
+      );
+      if (unitCheck.rows.length === 0) {
+        throw new Error('Selected unit does not belong to this property');
+      }
+      targetPropertyId = data.unitId;
+    }
+
+    // Create the application against the resolved unit (or the listed property itself)
     const application = await this.createApplication(
       link.organization_id,
-      { ...data, propertyId: link.property_id }
+      { ...data, propertyId: targetPropertyId }
     );
     
     // Automatically submit the application when created via tenant portal link
@@ -785,7 +813,33 @@ export class ApplicationService {
       organizationId
     ]);
 
-    return this.mapRowToApplication(result.rows[0]);
+    const approved = this.mapRowToApplication(result.rows[0]);
+
+    // Email the applicant their approval (they may not be a platform user yet).
+    try {
+      await notify({
+        recipients: {
+          audience: 'tenant',
+          userId: '',
+          email: approved.applicantEmail,
+          name: approved.applicantFullName,
+        },
+        category: 'property',
+        type: 'application.approved',
+        title: 'Your application has been approved',
+        body: `Good news${approved.applicantFullName ? `, ${approved.applicantFullName}` : ''}! Your rental application has been approved.${notes ? ` Notes: ${notes}` : ''}`,
+        summary: 'Application approved',
+        priority: 'high',
+        sourceType: 'application',
+        sourceId: applicationId,
+        organizationId,
+        channels: { email: true },
+      });
+    } catch (err: any) {
+      logger.warn('notify(application.approved) failed', { applicationId, error: err.message });
+    }
+
+    return approved;
   }
 
   async rejectApplication(
@@ -817,7 +871,33 @@ export class ApplicationService {
       organizationId
     ]);
 
-    return this.mapRowToApplication(result.rows[0]);
+    const rejected = this.mapRowToApplication(result.rows[0]);
+
+    // Email the applicant the decision (they may not be a platform user yet).
+    try {
+      await notify({
+        recipients: {
+          audience: 'tenant',
+          userId: '',
+          email: rejected.applicantEmail,
+          name: rejected.applicantFullName,
+        },
+        category: 'property',
+        type: 'application.rejected',
+        title: 'Update on your application',
+        body: `Thank you for your interest. Unfortunately your rental application was not successful.${reason ? ` Reason: ${reason}` : ''}`,
+        summary: 'Application decision',
+        priority: 'normal',
+        sourceType: 'application',
+        sourceId: applicationId,
+        organizationId,
+        channels: { email: true },
+      });
+    } catch (err: any) {
+      logger.warn('notify(application.rejected) failed', { applicationId, error: err.message });
+    }
+
+    return rejected;
   }
 
   async withdrawApplication(
@@ -1017,6 +1097,7 @@ export class ApplicationService {
       startDate: string;
       endDate: string;
       monthlyRent: number;
+      currency?: string;
       securityDeposit?: number;
       advanceMonths?: number;
       noticePeriodDays?: number;
@@ -1066,8 +1147,52 @@ export class ApplicationService {
       throw new Error('Application not found');
     }
     
-    if (application.status !== ApplicationStatus.APPROVED) {
+    // Allow generation when approved, and re-generation when a lease was already generated
+    // (lease_generated) — but never once the lease is signed/active.
+    if (application.status !== ApplicationStatus.APPROVED && application.status !== ApplicationStatus.LEASE_GENERATED) {
       throw new Error('Application must be approved before generating a lease');
+    }
+
+    // Regeneration: cancel any prior lease for this application before generating a fresh one.
+    //  - If it is already fully signed (active tenancy, or a completed envelope), refuse — a
+    //    signed lease must be terminated explicitly, never silently replaced.
+    //  - Otherwise VOID the prior still-open e-sign envelope(s) so signers can no longer sign the
+    //    superseded lease, and terminate the prior unsigned tenancy so no duplicates linger.
+    if (application.tenancyId) {
+      const existing = await this.db.query(
+        `SELECT status FROM tenancies WHERE id = $1 AND organization_id = $2`,
+        [application.tenancyId, organizationId]
+      );
+      const existingStatus = existing.rows[0]?.status;
+      if (existingStatus === 'active') {
+        throw new Error('This lease is already active/signed and cannot be regenerated. Terminate the current lease first.');
+      }
+
+      const completedEnvelope = await this.db.query(
+        `SELECT id FROM esign_envelopes
+          WHERE context_type = 'lease' AND context_entity_id = $1 AND status = 'completed'
+          LIMIT 1`,
+        [application.tenancyId]
+      ).catch(() => ({ rows: [] as any[] }));
+      if (completedEnvelope.rows.length > 0) {
+        throw new Error('This lease has already been signed by all parties and cannot be regenerated. Terminate the current lease first.');
+      }
+
+      // Void any still-open envelopes tied to the prior tenancy (cancels the old lease).
+      await this.db.query(
+        `UPDATE esign_envelopes
+            SET status = 'voided', voided_at = NOW(), void_reason = $2, updated_at = NOW()
+          WHERE context_type = 'lease' AND context_entity_id = $1
+            AND status IN ('draft', 'sent', 'delivered')`,
+        [application.tenancyId, 'Superseded by lease regeneration']
+      ).catch(() => { /* non-fatal */ });
+
+      // Terminate the prior unsigned tenancy.
+      await this.db.query(
+        `UPDATE tenancies SET status = 'terminated', updated_at = NOW()
+          WHERE id = $1 AND organization_id = $2`,
+        [application.tenancyId, organizationId]
+      ).catch(() => { /* ignore cleanup failure */ });
     }
 
     // Import services dynamically to avoid circular dependency
@@ -1085,6 +1210,7 @@ export class ApplicationService {
       leaseStartDate: leaseData.startDate,
       leaseEndDate: leaseData.endDate,
       monthlyRent: leaseData.monthlyRent,
+      rentCurrency: leaseData.currency || 'GHS',
       securityDeposit: leaseData.securityDeposit,
       autoRenew: leaseData.autoRenew || false,
       advancePaymentMonths: leaseData.advanceMonths || 1,
@@ -1261,27 +1387,80 @@ export class ApplicationService {
     return this.mapRowToApplicationLink(result.rows[0]);
   }
 
-  async validateApplicationLink(token: string): Promise<{ valid: boolean; propertyId?: string; organizationId?: string }> {
+  async validateApplicationLink(token: string): Promise<{ valid: boolean; propertyId?: string; organizationId?: string; property?: Record<string, any>; units?: Array<Record<string, any>> }> {
     const query = `
-      SELECT al.*, p.organization_id
+      SELECT al.*,
+             p.organization_id,
+             p.title as property_title,
+             p.description as property_description,
+             p.region as property_region,
+             p.address_city as property_address_city,
+             p.address_street as property_address_street,
+             p.property_type,
+             p.bedrooms as property_bedrooms,
+             p.bathrooms as property_bathrooms,
+             p.price as property_price,
+             p.price_currency as property_price_currency,
+             p.total_units as property_total_units
       FROM application_links al
       JOIN properties p ON p.id = al.property_id
-      WHERE al.token = $1 
-        AND al.is_active = true 
+      WHERE al.token = $1
+        AND al.is_active = true
         AND al.expires_at > NOW()
         AND (al.max_uses IS NULL OR al.current_uses < al.max_uses)
     `;
-    
+
     const result = await this.db.query(query, [token]);
-    
+
     if (result.rows.length === 0) {
       return { valid: false };
     }
-    
+
+    // For a multi-unit building, surface the available units so the applicant can pick one.
+    let units: Array<Record<string, any>> | undefined;
+    if (result.rows[0].property_total_units && Number(result.rows[0].property_total_units) > 0) {
+      const unitRows = await this.db.query(
+        `SELECT id, unit_number, floor_number, bedrooms, bathrooms, total_area_sqm, price, price_currency, status
+         FROM properties
+         WHERE parent_property_id = $1 AND status NOT IN ('withdrawn', 'leased', 'occupied')
+         ORDER BY floor_number NULLS LAST, unit_number`,
+        [result.rows[0].property_id]
+      );
+      units = unitRows.rows.map((u: any) => ({
+        id: u.id,
+        unitNumber: u.unit_number,
+        floorNumber: u.floor_number,
+        bedrooms: u.bedrooms,
+        bathrooms: u.bathrooms,
+        totalAreaSqm: u.total_area_sqm,
+        price: Number(u.price || 0),
+        priceCurrency: u.price_currency || 'GHS',
+        status: u.status,
+      }));
+    }
+
     return {
       valid: true,
       propertyId: result.rows[0].property_id,
-      organizationId: result.rows[0].organization_id
+      organizationId: result.rows[0].organization_id,
+      property: {
+        id: result.rows[0].property_id,
+        title: result.rows[0].property_title,
+        description: result.rows[0].property_description,
+        addressStreet: result.rows[0].property_address_street,
+        addressCity: result.rows[0].property_address_city,
+        addressRegion: result.rows[0].property_region,
+        type: result.rows[0].property_type,
+        propertyType: result.rows[0].property_type,
+        bedrooms: result.rows[0].property_bedrooms,
+        bathrooms: result.rows[0].property_bathrooms,
+        monthlyRent: Number(result.rows[0].property_price || 0),
+        price: Number(result.rows[0].property_price || 0),
+        currency: result.rows[0].property_price_currency || 'GHS',
+        priceCurrency: result.rows[0].property_price_currency || 'GHS',
+        totalUnits: result.rows[0].property_total_units || null
+      },
+      units
     };
   }
 
@@ -1410,12 +1589,13 @@ export class ApplicationService {
       
       const tenantId = tenantResult.rows[0].id;
       
-      // Get property rent information (use price as monthly rent)
+      // Get property rent information (use price as monthly rent) + its currency
       const propertyResult = await client.query(
-        `SELECT price FROM properties WHERE id = $1`,
+        `SELECT price, price_currency FROM properties WHERE id = $1`,
         [application.propertyId]
       );
       const monthlyRent = propertyResult.rows[0]?.price || 0;
+      const rentCurrency = propertyResult.rows[0]?.price_currency || 'GHS';
       
       // Calculate lease dates
       const leaseStartDate = application.desiredMoveInDate ? new Date(application.desiredMoveInDate) : new Date();
@@ -1431,14 +1611,15 @@ export class ApplicationService {
           lease_start_date,
           lease_end_date,
           monthly_rent,
+          rent_currency,
           status,
           application_id,
           lease_status,
           created_by
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
         RETURNING id
       `;
-      
+
       const tenancyResult = await client.query(tenancyQuery, [
         organizationId,
         application.propertyId,
@@ -1446,6 +1627,7 @@ export class ApplicationService {
         leaseStartDate,
         leaseEndDate,
         monthlyRent,
+        rentCurrency,
         'pending',
         applicationId,
         'draft',
@@ -1453,6 +1635,36 @@ export class ApplicationService {
       ]);
       
       const tenancyId = tenancyResult.rows[0].id;
+
+      for (const document of application.uploadedDocuments || []) {
+        const documentType = this.mapApplicationDocumentType(document.type);
+        const fileName = document.filename || document.url.split('/').pop() || `${document.type || 'application-document'}`;
+
+        await client.query(
+          `INSERT INTO property_management_documents (
+            id, property_id, tenancy_id, organization_id,
+            document_type, title, description,
+            file_url, file_name, folder_path, tags, uploaded_by, created_at
+          ) VALUES (
+            gen_random_uuid(), $1, $2, $3,
+            $4, $5, $6,
+            $7, $8, '/', $9, $10, COALESCE($11::timestamptz, CURRENT_TIMESTAMP)
+          )`,
+          [
+            application.propertyId,
+            tenancyId,
+            organizationId,
+            documentType,
+            this.getApplicationDocumentTitle(document.type, fileName),
+            `Uploaded during tenant application ${application.id}`,
+            document.url,
+            fileName,
+            ['tenant', 'application'],
+            userId,
+            document.uploadedAt || null
+          ]
+        );
+      }
       
       // Update application with tenant and tenancy IDs
       await client.query(
@@ -1468,6 +1680,157 @@ export class ApplicationService {
       throw error;
     } finally {
       client.release();
+    }
+  }
+
+  /**
+   * Ensure a freshly-SIGNED tenancy has a tenant attached, creating one from the stored
+   * applicant info if needed. This is what makes e-sign completion produce an active tenant
+   * automatically — no separate "convert applicant to tenant" step (which would otherwise
+   * create a divergent second tenancy). Best-effort: never throws into the completion flow.
+   *
+   * Returns the tenant id linked to the tenancy, or null if nothing could be done.
+   */
+  async ensureTenantForSignedTenancy(
+    tenancyId: string,
+    organizationId: string,
+    userId: string | null
+  ): Promise<string | null> {
+    try {
+      const tRes = await this.db.query(
+        `SELECT id, tenant_id, application_id, property_id, lease_terms
+           FROM tenancies WHERE id = $1 AND organization_id = $2`,
+        [tenancyId, organizationId]
+      );
+      const tenancy = tRes.rows[0];
+      if (!tenancy) return null;
+
+      const leaseTerms = tenancy.lease_terms || {};
+      const appId: string | null = tenancy.application_id || leaseTerms.applicationId || null;
+
+      // Already has a tenant — just make sure the application points at THIS tenancy/tenant.
+      if (tenancy.tenant_id) {
+        if (appId) {
+          await this.db.query(
+            `UPDATE applications
+                SET tenant_id = COALESCE(tenant_id, $1), tenancy_id = $2, updated_at = NOW()
+              WHERE id = $3 AND organization_id = $4`,
+            [tenancy.tenant_id, tenancyId, appId, organizationId]
+          ).catch(() => { /* non-fatal */ });
+        }
+        return tenancy.tenant_id;
+      }
+
+      // Resolve the application (for full applicant detail) if we have one.
+      const application = appId
+        ? await this.getApplicationById(appId, organizationId).catch(() => null)
+        : null;
+
+      // Reuse an existing tenant if the application was already converted; otherwise create one.
+      let tenantId: string | null = application?.tenantId || null;
+
+      if (!tenantId) {
+        const fullName = application?.applicantFullName || leaseTerms.applicantFullName;
+        const email = application?.applicantEmail || leaseTerms.applicantEmail;
+        if (!fullName) return null; // nothing to build a tenant from
+
+        const insert = await this.db.query(
+          `INSERT INTO tenants (
+              organization_id, full_name, ghana_card_number, date_of_birth,
+              phone_primary, phone_secondary, email, current_address, digital_address,
+              occupation, employer_name, employer_address, employer_phone, monthly_income,
+              emergency_contact_name, emergency_contact_phone, emergency_contact_relationship,
+              character_references, previous_addresses, status, created_by
+           ) VALUES (
+              $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21
+           ) RETURNING id`,
+          [
+            organizationId,
+            fullName,
+            application?.applicantGhanaCard || leaseTerms.applicantGhanaCard || null,
+            application?.applicantDateOfBirth || null,
+            application?.applicantPhone || leaseTerms.applicantPhone || null,
+            application?.applicantPhoneSecondary || null,
+            email || null,
+            application?.applicantCurrentAddress || leaseTerms.applicantCurrentAddress || null,
+            application?.applicantDigitalAddress || leaseTerms.applicantDigitalAddress || null,
+            application?.occupation || null,
+            application?.employerName || null,
+            application?.employerAddress || null,
+            application?.employerPhone || null,
+            application?.monthlyIncome || null,
+            application?.emergencyContactName || leaseTerms.emergencyContactName || null,
+            application?.emergencyContactPhone || leaseTerms.emergencyContactPhone || null,
+            application?.emergencyContactRelationship || leaseTerms.emergencyContactRelationship || null,
+            JSON.stringify(application?.characterReferences || []),
+            JSON.stringify(application?.previousAddresses || []),
+            'active',
+            userId,
+          ]
+        );
+        tenantId = insert.rows[0].id;
+      }
+
+      // Link the tenant to the signed tenancy.
+      await this.db.query(
+        `UPDATE tenancies SET tenant_id = $1, updated_at = NOW() WHERE id = $2 AND organization_id = $3`,
+        [tenantId, tenancyId, organizationId]
+      );
+
+      // Point the application at this tenant + signed tenancy so the UI resolves a single record.
+      if (appId) {
+        await this.db.query(
+          `UPDATE applications
+              SET tenant_id = $1, tenancy_id = $2, status = $3, updated_at = NOW()
+            WHERE id = $4 AND organization_id = $5`,
+          [tenantId, tenancyId, ApplicationStatus.LEASE_GENERATED, appId, organizationId]
+        ).catch(() => { /* non-fatal */ });
+      }
+
+      return tenantId;
+    } catch {
+      return null;
+    }
+  }
+
+  private mapApplicationDocumentType(type?: string): string {
+    switch ((type || '').toLowerCase()) {
+      case 'ghana_card':
+      case 'national_id':
+      case 'passport':
+      case 'drivers_license':
+      case 'voters_id':
+        return 'tenant_agreements';
+      case 'proof_of_address':
+        return 'utility_bills';
+      case 'lease_agreement':
+        return 'lease_agreement';
+      case 'employment_letter':
+      case 'proof_of_income':
+      default:
+        return 'other';
+    }
+  }
+
+  private getApplicationDocumentTitle(type: string | undefined, fileName: string): string {
+    switch ((type || '').toLowerCase()) {
+      case 'ghana_card':
+      case 'national_id':
+        return `Tenant ID - ${fileName}`;
+      case 'passport':
+        return `Passport - ${fileName}`;
+      case 'drivers_license':
+        return `Driver's License - ${fileName}`;
+      case 'voters_id':
+        return `Voter ID - ${fileName}`;
+      case 'proof_of_address':
+        return `Proof of Address - ${fileName}`;
+      case 'proof_of_income':
+        return `Proof of Income - ${fileName}`;
+      case 'employment_letter':
+        return `Employment Letter - ${fileName}`;
+      default:
+        return fileName;
     }
   }
 
@@ -1590,6 +1953,7 @@ export class ApplicationService {
       applicantPhone: row.applicant_phone,
       applicantPhoneSecondary: row.applicant_phone_secondary,
       applicantDateOfBirth: row.applicant_date_of_birth,
+      applicantIdType: row.applicant_id_type,
       applicantGhanaCard: row.applicant_ghana_card,
       applicantCurrentAddress: row.applicant_current_address,
       applicantDigitalAddress: row.applicant_digital_address,
