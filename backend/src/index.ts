@@ -552,6 +552,14 @@ app.use('/api/service-team', authenticate, serviceTeamRoutes);  // Also mount fo
 app.use('/api/v1/workspace', authenticate, workspaceRoutes);
 app.use('/api/workspace', authenticate, workspaceRoutes);  // Also mount for frontend compatibility
 
+// Subscription & Billing Routes (plans, subscriptions, invoices, usage).
+// MUST be mounted BEFORE the broad `app.use('/api', authenticate, ...)` catch-alls below:
+// the public pricing page hits GET /subscriptions/plans (optionalAuth) with no token, and the
+// broad authenticate would otherwise 401 it in production (dev is masked by the auth dev-bypass).
+// Per-route middleware inside subscriptionRoutes still protects the authenticated endpoints.
+app.use('/api/v1/subscriptions', subscriptionRoutes);
+app.use('/api/subscriptions', subscriptionRoutes);  // Also mount for frontend compatibility
+
 // ── Catch-all /api/v1 routers (construction, governance, etc.) ───────────────
 app.use('/api/v1', authenticate, requirePMAccess, requireServiceAccess('construction'), constructionRoutes); // Construction Ops (Site Diaries, Petty Cash, Market Prices)
 app.use('/api/v1/rfis', authenticate, requirePMAccess, requireServiceAccess('construction'), rfiRoutes);
@@ -731,9 +739,6 @@ app.use('/api/valuation-org', valuationOrgRoutes);  // Also mount for frontend c
 app.use('/api/v1/enterprise', enterpriseRoutes);
 app.use('/api/enterprise', enterpriseRoutes);  // Also mount for frontend compatibility
 
-// Subscription & Billing Routes (plans, subscriptions, invoices, usage)
-app.use('/api/v1/subscriptions', subscriptionRoutes);
-app.use('/api/subscriptions', subscriptionRoutes);  // Also mount for frontend compatibility
 
 // Valuation Clients Routes
 app.use('/api/v1/valuation-clients', authenticate, valuationClientsRouter);

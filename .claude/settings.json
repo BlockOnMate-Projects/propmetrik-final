@@ -35,7 +35,13 @@
       "Bash(xargs -I{} echo \"tsc errors: {}\")",
       "Bash(sed 's/\\\\\\(SECRET\\\\|PASSWORD\\\\|KEY\\\\\\)=.*/\\\\1=***/')",
       "Bash(curl -sS -m 4 -o /dev/null -w \"localhost:9000 -> HTTP %{http_code}\\\\n\" http://localhost:9000/minio/health/live)",
-      "Bash(xargs -I{} echo \"{} errors\")"
+      "Bash(xargs -I{} echo \"{} errors\")",
+      "Bash(awk '/optionalAuth/,/^};?$/' src/middleware/auth.ts)",
+      "Bash(curl -sS -m 12 -o /dev/null -w \"%{http_code}\\\\n\" \"https://propmetrik.com/api/subscriptions/plans\")",
+      "Bash(curl -sS -m 12 \"https://api.propmetrik.com/api/v1/subscriptions/plans\" -w \"\\\\nHTTP %{http_code}\\\\n\")",
+      "Bash(curl -sS -m 8 \"http://localhost:4000/api/v1/subscriptions/plans\" -w \"\\\\nHTTP %{http_code}\\\\n\")",
+      "Bash(awk '/export async function authenticate|export const authenticate/,/^}/' src/middleware/auth.ts)",
+      "Bash(curl -sS -m 8 \"http://localhost:4000/api/subscriptions/plans\" -w \"\\\\nHTTP %{http_code}\\\\n\")"
     ]
   }
 }
