@@ -19,7 +19,7 @@ const services = [
     },
     {
         title: 'Data Hub',
-        description: 'Real-time dashboards, market comparables, construction cost indices, and land title integrations.',
+        description: 'Real-time dashboards, market comparables, construction cost indices, and land title verification (coming soon).',
         href: '/services/data',
         Visual: DataStreamVisual,
     },

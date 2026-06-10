@@ -1,72 +1,39 @@
 'use client';
 
+import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import Link from 'next/link';
 import { Calendar, User, ArrowRight, TrendingUp } from 'lucide-react';
+import { publicationsApi } from '@/lib/publications-api';
+import type { Publication } from '@/lib/publications-api';
+
+function formatDate(dateStr: string | null): string {
+    if (!dateStr) return '';
+    return new Date(dateStr).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
+}
+
+function humanizeType(type: string): string {
+    return (type || 'Article').replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
+function authorOf(p: Publication): string {
+    return p.author_name || p.author_title || 'PROPMETRIK Research';
+}
 
 export default function BlogPage() {
-    const featuredPost = {
-        title: 'Ghana\'s Real Estate Market: 2026 Outlook and Investment Opportunities',
-        excerpt: 'An in-depth analysis of emerging trends, growth sectors, and key investment opportunities in Ghana\'s evolving real estate landscape.',
-        date: 'January 15, 2026',
-        author: 'PROPMETRIK Research Team',
-        category: 'Market Analysis',
-        readTime: '8 min read',
-        image: 'https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?w=1200&q=80'
-    };
+    const [posts, setPosts] = useState<Publication[]>([]);
+    const [loading, setLoading] = useState(true);
 
-    const posts = [
-        {
-            title: 'Construction Cost Trends: What Developers Need to Know',
-            excerpt: 'Material costs continue to fluctuate. Here\'s how smart developers are managing budgets in 2026.',
-            date: 'January 12, 2026',
-            author: 'Kofi Mensah',
-            category: 'Development',
-            readTime: '5 min read'
-        },
-        {
-            title: 'Understanding Property Valuations in Ghana',
-            excerpt: 'A comprehensive guide to valuation methodologies used in the Ghanaian market.',
-            date: 'January 8, 2026',
-            author: 'Ama Serwaa',
-            category: 'Valuation',
-            readTime: '7 min read'
-        },
-        {
-            title: 'The Rise of Proptech in West Africa',
-            excerpt: 'How technology is transforming real estate transactions across the region.',
-            date: 'January 5, 2026',
-            author: 'PROPMETRIK Research Team',
-            category: 'Technology',
-            readTime: '6 min read'
-        },
-        {
-            title: 'Kumasi Real Estate: An Emerging Market',
-            excerpt: 'Why investors are increasingly looking beyond Accra to Ghana\'s second city.',
-            date: 'December 28, 2025',
-            author: 'Kwame Asante',
-            category: 'Markets',
-            readTime: '6 min read'
-        },
-        {
-            title: 'Navigating Land Title Verification in Ghana',
-            excerpt: 'Essential steps to protect your investment and avoid land disputes.',
-            date: 'December 20, 2025',
-            author: 'Ama Serwaa',
-            category: 'Legal',
-            readTime: '10 min read'
-        },
-        {
-            title: 'Commercial Real Estate Trends Q4 2025',
-            excerpt: 'Office, retail, and industrial market performance across Greater Accra.',
-            date: 'December 15, 2025',
-            author: 'PROPMETRIK Research Team',
-            category: 'Commercial',
-            readTime: '8 min read'
-        },
-    ];
+    useEffect(() => {
+        publicationsApi
+            .getPublished({ limit: 60 })
+            .then((res) => setPosts(res.data || []))
+            .catch(() => setPosts([]))
+            .finally(() => setLoading(false));
+    }, []);
 
-    const categories = ['All', 'Market Analysis', 'Development', 'Valuation', 'Technology', 'Legal', 'Commercial'];
+    const featured = posts[0];
+    const rest = posts.slice(1);
 
     return (
         <main className="pt-32 pb-24 bg-zinc-950">
@@ -91,140 +58,137 @@ export default function BlogPage() {
                 </div>
             </section>
 
-            {/* Category Filter */}
-            <section className="pb-12">
-                <div className="container mx-auto px-4 md:px-6">
-                    <div className="flex flex-wrap gap-3">
-                        {categories.map((category) => (
-                            <button
-                                key={category}
-                                className="px-6 py-2 bg-zinc-900 border border-zinc-800 rounded-full text-sm font-medium text-zinc-300 hover:border-primary hover:text-primary transition-colors"
-                            >
-                                {category}
-                            </button>
-                        ))}
+            {loading ? (
+                <section className="pb-16">
+                    <div className="container mx-auto px-4 md:px-6">
+                        <div className="bg-zinc-900 border border-zinc-800 rounded-lg h-72 animate-pulse" />
                     </div>
-                </div>
-            </section>
-
-            {/* Featured Post */}
-            <section className="pb-16">
-                <div className="container mx-auto px-4 md:px-6">
-                    <motion.div
-                        initial={{ opacity: 0, y: 20 }}
-                        whileInView={{ opacity: 1, y: 0 }}
-                        viewport={{ once: true }}
-                        className="group bg-zinc-900 border border-zinc-800 rounded-lg overflow-hidden hover:border-primary/50 transition-colors"
-                    >
-                        <div className="grid lg:grid-cols-2 gap-0">
-                            <div className="relative aspect-video lg:aspect-auto">
-                                <img
-                                    src={featuredPost.image}
-                                    alt={featuredPost.title}
-                                    className="w-full h-full object-cover"
-                                />
-                                <div className="absolute top-4 left-4">
-                                    <span className="px-3 py-1 bg-primary text-zinc-950 text-xs font-bold rounded">
-                                        FEATURED
-                                    </span>
-                                </div>
-                            </div>
-
-                            <div className="p-8 lg:p-12 flex flex-col justify-center">
-                                <div className="flex items-center gap-3 mb-4">
-                                    <span className="px-3 py-1 bg-primary/10 text-primary text-xs font-bold rounded">
-                                        {featuredPost.category}
-                                    </span>
-                                    <span className="text-sm text-zinc-500">{featuredPost.readTime}</span>
-                                </div>
-
-                                <h2 className="text-3xl md:text-4xl font-bold text-white mb-4 group-hover:text-primary transition-colors">
-                                    {featuredPost.title}
-                                </h2>
-
-                                <p className="text-zinc-400 text-lg mb-6">
-                                    {featuredPost.excerpt}
-                                </p>
-
-                                <div className="flex items-center gap-4 mb-6">
-                                    <div className="flex items-center gap-2 text-sm text-zinc-500">
-                                        <User className="w-4 h-4" />
-                                        {featuredPost.author}
-                                    </div>
-                                    <div className="flex items-center gap-2 text-sm text-zinc-500">
-                                        <Calendar className="w-4 h-4" />
-                                        {featuredPost.date}
-                                    </div>
-                                </div>
-
-                                <Link href="/blog/ghana-2026-outlook">
-                                    <button className="flex items-center gap-2 text-primary font-bold hover:gap-4 transition-all">
-                                        Read Article <ArrowRight className="w-4 h-4" />
-                                    </button>
-                                </Link>
-                            </div>
+                </section>
+            ) : posts.length === 0 ? (
+                <section className="pb-16">
+                    <div className="container mx-auto px-4 md:px-6">
+                        <div className="text-center py-20 border border-zinc-800 rounded-lg bg-zinc-900">
+                            <TrendingUp className="w-12 h-12 text-zinc-600 mx-auto mb-4" />
+                            <h3 className="text-xl font-bold text-white mb-2">Articles coming soon</h3>
+                            <p className="text-zinc-400 max-w-md mx-auto">
+                                We're preparing our first market insights. Subscribe below to be notified when they're published.
+                            </p>
                         </div>
-                    </motion.div>
-                </div>
-            </section>
-
-            {/* Blog Posts Grid */}
-            <section className="pb-16">
-                <div className="container mx-auto px-4 md:px-6">
-                    <h2 className="text-3xl font-bold text-white mb-8">Recent Articles</h2>
-
-                    <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
-                        {posts.map((post, index) => (
-                            <motion.article
-                                key={index}
-                                initial={{ opacity: 0, y: 20 }}
-                                whileInView={{ opacity: 1, y: 0 }}
-                                viewport={{ once: true }}
-                                transition={{ delay: index * 0.1 }}
-                                className="group bg-zinc-900 border border-zinc-800 rounded-lg overflow-hidden hover:border-primary/50 transition-colors"
-                            >
-                                <div className="aspect-video bg-gradient-to-br from-zinc-800 to-zinc-900 flex items-center justify-center">
-                                    <TrendingUp className="w-12 h-12 text-zinc-700" />
-                                </div>
-
-                                <div className="p-6">
-                                    <div className="flex items-center gap-3 mb-3">
-                                        <span className="px-3 py-1 bg-primary/10 text-primary text-xs font-bold rounded">
-                                            {post.category}
-                                        </span>
-                                        <span className="text-xs text-zinc-500">{post.readTime}</span>
-                                    </div>
-
-                                    <h3 className="text-xl font-bold text-white mb-3 group-hover:text-primary transition-colors line-clamp-2">
-                                        {post.title}
-                                    </h3>
-
-                                    <p className="text-zinc-400 text-sm mb-4 line-clamp-2">
-                                        {post.excerpt}
-                                    </p>
-
-                                    <div className="flex items-center gap-3 text-xs text-zinc-500 mb-4">
-                                        <div className="flex items-center gap-1">
-                                            <User className="w-3 h-3" />
-                                            {post.author}
-                                        </div>
-                                        <div className="flex items-center gap-1">
-                                            <Calendar className="w-3 h-3" />
-                                            {post.date}
-                                        </div>
-                                    </div>
-
-                                    <Link href={`/blog/${post.title.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`}>
-                                        <button className="flex items-center gap-2 text-primary text-sm font-bold hover:gap-4 transition-all">
-                                            Read More <ArrowRight className="w-4 h-4" />
-                                        </button>
-                                    </Link>
-                                </div>
-                            </motion.article>
-                        ))}
                     </div>
-                </div>
-            </section>
+                </section>
+            ) : (
+                <>
+                    {/* Featured Post */}
+                    <section className="pb-16">
+                        <div className="container mx-auto px-4 md:px-6">
+                            <Link href={`/insights/${featured.slug}`}>
+                                <motion.div
+                                    initial={{ opacity: 0, y: 20 }}
+                                    whileInView={{ opacity: 1, y: 0 }}
+                                    viewport={{ once: true }}
+                                    className="group bg-zinc-900 border border-zinc-800 rounded-lg overflow-hidden hover:border-primary/50 transition-colors"
+                                >
+                                    <div className="grid lg:grid-cols-2 gap-0">
+                                        <div className="relative aspect-video lg:aspect-auto bg-gradient-to-br from-primary/20 to-yellow-400/20 flex items-center justify-center">
+                                            {featured.cover_image_url ? (
+                                                // eslint-disable-next-line @next/next/no-img-element
+                                                <img src={featured.cover_image_url} alt={featured.title} className="w-full h-full object-cover" />
+                                            ) : (
+                                                <TrendingUp className="w-16 h-16 text-primary" />
+                                            )}
+                                            <div className="absolute top-4 left-4">
+                                                <span className="px-3 py-1 bg-primary text-zinc-950 text-xs font-bold rounded">FEATURED</span>
+                                            </div>
+                                        </div>
+                                        <div className="p-8 lg:p-12 flex flex-col justify-center">
+                                            <div className="flex items-center gap-3 mb-4">
+                                                <span className="px-3 py-1 bg-primary/10 text-primary text-xs font-bold rounded">
+                                                    {humanizeType(featured.type)}
+                                                </span>
+                                                {featured.reading_time_minutes > 0 && (
+                                                    <span className="text-sm text-zinc-500">{featured.reading_time_minutes} min read</span>
+                                                )}
+                                            </div>
+                                            <h2 className="text-3xl md:text-4xl font-bold text-white mb-4 group-hover:text-primary transition-colors">
+                                                {featured.title}
+                                            </h2>
+                                            {featured.excerpt && <p className="text-zinc-400 text-lg mb-6">{featured.excerpt}</p>}
+                                            <div className="flex items-center gap-4 mb-6">
+                                                <div className="flex items-center gap-2 text-sm text-zinc-500">
+                                                    <User className="w-4 h-4" />
+                                                    {authorOf(featured)}
+                                                </div>
+                                                <div className="flex items-center gap-2 text-sm text-zinc-500">
+                                                    <Calendar className="w-4 h-4" />
+                                                    {formatDate(featured.published_at)}
+                                                </div>
+                                            </div>
+                                            <span className="flex items-center gap-2 text-primary font-bold group-hover:gap-4 transition-all">
+                                                Read Article <ArrowRight className="w-4 h-4" />
+                                            </span>
+                                        </div>
+                                    </div>
+                                </motion.div>
+                            </Link>
+                        </div>
+                    </section>
+
+                    {/* Blog Posts Grid */}
+                    {rest.length > 0 && (
+                        <section className="pb-16">
+                            <div className="container mx-auto px-4 md:px-6">
+                                <h2 className="text-3xl font-bold text-white mb-8">Recent Articles</h2>
+                                <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+                                    {rest.map((post, index) => (
+                                        <Link key={post.id} href={`/insights/${post.slug}`}>
+                                            <motion.article
+                                                initial={{ opacity: 0, y: 20 }}
+                                                whileInView={{ opacity: 1, y: 0 }}
+                                                viewport={{ once: true }}
+                                                transition={{ delay: index * 0.05 }}
+                                                className="group bg-zinc-900 border border-zinc-800 rounded-lg overflow-hidden hover:border-primary/50 transition-colors h-full"
+                                            >
+                                                <div className="aspect-video bg-gradient-to-br from-zinc-800 to-zinc-900 flex items-center justify-center">
+                                                    {post.cover_image_url ? (
+                                                        // eslint-disable-next-line @next/next/no-img-element
+                                                        <img src={post.cover_image_url} alt={post.title} className="w-full h-full object-cover" />
+                                                    ) : (
+                                                        <TrendingUp className="w-12 h-12 text-zinc-700" />
+                                                    )}
+                                                </div>
+                                                <div className="p-6">
+                                                    <div className="flex items-center gap-3 mb-3">
+                                                        <span className="px-3 py-1 bg-primary/10 text-primary text-xs font-bold rounded">
+                                                            {humanizeType(post.type)}
+                                                        </span>
+                                                        {post.reading_time_minutes > 0 && (
+                                                            <span className="text-xs text-zinc-500">{post.reading_time_minutes} min read</span>
+                                                        )}
+                                                    </div>
+                                                    <h3 className="text-xl font-bold text-white mb-3 group-hover:text-primary transition-colors line-clamp-2">
+                                                        {post.title}
+                                                    </h3>
+                                                    {post.excerpt && <p className="text-zinc-400 text-sm mb-4 line-clamp-2">{post.excerpt}</p>}
+                                                    <div className="flex items-center gap-3 text-xs text-zinc-500">
+                                                        <div className="flex items-center gap-1">
+                                                            <User className="w-3 h-3" />
+                                                            {authorOf(post)}
+                                                        </div>
+                                                        <div className="flex items-center gap-1">
+                                                            <Calendar className="w-3 h-3" />
+                                                            {formatDate(post.published_at)}
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </motion.article>
+                                        </Link>
+                                    ))}
+                                </div>
+                            </div>
+                        </section>
+                    )}
+                </>
+            )}
 
             {/* Newsletter CTA */}
             <section className="py-16 border-t border-zinc-800">
@@ -234,7 +198,7 @@ export default function BlogPage() {
                             Stay Informed with Our Newsletter
                         </h2>
                         <p className="text-xl text-zinc-400 mb-8">
-                            Get weekly insights, market updates, and exclusive research delivered to your inbox.
+                            Get market insights and research updates delivered to your inbox.
                         </p>
                         <div className="flex flex-col sm:flex-row gap-4 max-w-xl mx-auto">
                             <input

@@ -31,6 +31,7 @@ export default function GhanaMapVisual() {
 
     return (
         <div className="relative w-full aspect-square max-w-xl mx-auto">
+            <div className="absolute top-2 right-2 z-20 text-[10px] font-mono uppercase tracking-wider text-zinc-500 border border-zinc-700 rounded px-2 py-0.5 bg-zinc-950/70">Illustrative</div>
             {/* Ghana Map Outline (SVG) */}
             <svg
                 viewBox="0 0 400 500"

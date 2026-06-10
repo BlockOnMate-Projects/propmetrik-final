@@ -5,7 +5,6 @@ import Link from 'next/link';
 import ValuationScanner from '@/components/marketing/motion/ValuationScanner';
 import ProcessTimeline from '@/components/marketing/motion/ProcessTimeline';
 import PremiumCTASection from '@/components/marketing/motion/PremiumCTASection';
-import StatsCounter from '@/components/marketing/motion/StatsCounter';
 import { TrendingUp, Shield, Zap, CheckCircle2, Brain, Globe, FileCheck } from 'lucide-react';
 
 export default function ValuationServicePage() {
@@ -13,22 +12,22 @@ export default function ValuationServicePage() {
         {
             icon: <Brain className="w-6 h-6" />,
             title: 'AI-Powered Accuracy',
-            description: 'Machine learning models trained on 50,000+ verified Ghanaian property transactions deliver institutional-grade precision.',
+            description: 'Machine learning models trained on verified Ghanaian property transactions deliver institutional-grade precision.',
         },
         {
             icon: <Shield className="w-6 h-6" />,
-            title: 'RICS Certified',
-            description: 'Every valuation reviewed by qualified RICS-accredited professionals — accepted by all major Ghanaian banks.',
+            title: 'Expert-Reviewed',
+            description: 'Every valuation is reviewed by qualified valuation professionals before delivery.',
         },
         {
             icon: <Zap className="w-6 h-6" />,
             title: 'Rapid Turnaround',
-            description: 'Preliminary valuations in minutes, full RICS reports within 24–48 hours. No more 2-week waits.',
+            description: 'Preliminary valuations in minutes, full valuation reports within 24–48 hours. No more 2-week waits.',
         },
         {
             icon: <Globe className="w-6 h-6" />,
             title: 'National Coverage',
-            description: 'Greater Accra, Kumasi, Takoradi, Tamale, Cape Coast — and expanding to 12 cities by Q4.',
+            description: 'Greater Accra, Kumasi, Takoradi, Tamale, Cape Coast — with nationwide rollout planned.',
         },
         {
             icon: <TrendingUp className="w-6 h-6" />,
@@ -82,11 +81,11 @@ export default function ValuationServicePage() {
         },
         {
             title: 'AI-Powered Analysis',
-            description: 'Our algorithms analyse 50,000+ Ghana market data points in seconds.',
+            description: 'Our algorithms analyse Ghana market data in seconds.',
         },
         {
             title: 'Expert Verification',
-            description: 'RICS-certified valuers review and validate the AI assessment.',
+            description: 'Qualified valuers review and validate the AI assessment.',
         },
         {
             title: 'Receive Your Report',
@@ -129,14 +128,14 @@ export default function ValuationServicePage() {
                             </span>
                         </h1>
                         <p className="text-xl md:text-2xl text-zinc-400 leading-relaxed max-w-3xl mb-12">
-                            Leverage AI and 50,000+ verified local data points to deliver instant, high-confidence property valuations trusted by banks, insurers, and developers across Ghana.
+                            Leverage AI and verified local market data — with every valuation reviewed by a qualified valuation professional — built for banks, insurers, and developers across Ghana.
                         </p>
 
-                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-6 mb-12">
-                            <StatsCounter value={5000} label="Properties Valued" suffix="+" />
-                            <StatsCounter value={95} label="Accuracy Rate" suffix="%" />
-                            <StatsCounter value={24} label="Hour Turnaround" suffix="h" />
-                            <StatsCounter value={8} label="Cities Covered" />
+                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-12">
+                            <div className="border border-zinc-800 rounded-lg px-4 py-3 text-sm font-medium text-zinc-300 text-center">Professionally reviewed</div>
+                            <div className="border border-zinc-800 rounded-lg px-4 py-3 text-sm font-medium text-zinc-300 text-center">AI + expert review</div>
+                            <div className="border border-zinc-800 rounded-lg px-4 py-3 text-sm font-medium text-zinc-300 text-center">Mortgage-ready reports</div>
+                            <div className="border border-zinc-800 rounded-lg px-4 py-3 text-sm font-medium text-zinc-300 text-center">API access</div>
                         </div>
 
                         <div className="flex flex-col sm:flex-row gap-4">
@@ -204,7 +203,7 @@ export default function ValuationServicePage() {
                             Why PROPMETRIK Valuations
                         </h2>
                         <p className="text-xl text-zinc-400">
-                            Technology meets expertise — the most trusted valuation platform in Ghana.
+                            Technology meets expertise — an AI-powered valuation platform built for Ghana.
                         </p>
                     </motion.div>
 
@@ -246,7 +245,7 @@ export default function ValuationServicePage() {
                                 </span>
                             </h2>
                             <p className="text-lg text-zinc-400 mb-8 leading-relaxed">
-                                Our AI cross-references 50,000+ verified transactions, construction costs, and neighbourhood trends — then a RICS valuer signs off before the report reaches you.
+                                Our AI cross-references verified transactions, construction costs, and neighbourhood trends — then a qualified valuer signs off before the report reaches you.
                             </p>
                             <div className="space-y-4">
                                 {[
@@ -468,7 +467,7 @@ export default function ValuationServicePage() {
             {/* ====== CTA ====== */}
             <PremiumCTASection
                 title="Ready to Get an Accurate Valuation?"
-                description="Join thousands of satisfied clients across Ghana who trust PROPMETRIK for reliable, AI-powered property valuations."
+                description="Get reliable, AI-powered property valuations built for the Ghanaian market with PROPMETRIK."
                 primaryCTA={{
                     text: 'Request Valuation',
                     href: '/signup?category=valuation',

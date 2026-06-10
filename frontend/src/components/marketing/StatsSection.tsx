@@ -2,11 +2,13 @@
 
 import { motion } from 'framer-motion';
 
+// Capability highlights (NOT traction metrics). Kept deliberately qualitative so nothing
+// here overstates scale before the numbers are real and API-backed.
 const stats = [
-    { value: "500k+", label: "Properties Tracked" },
-    { value: "85%", label: "Valuation Accuracy" },
-    { value: "5", label: "Market Regions" },
-    { value: "24/7", label: "Market Intelligence" },
+    { value: "Ghana", label: "Market Focus" },
+    { value: "AI-Powered", label: "Property Valuations" },
+    { value: "Real-Time", label: "Market Data" },
+    { value: "End-to-End", label: "Property Platform" },
 ];
 
 export default function StatsSection() {

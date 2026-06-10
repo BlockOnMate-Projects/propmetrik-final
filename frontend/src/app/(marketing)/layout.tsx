@@ -1,7 +1,6 @@
 'use client';
 
 import TopNav from '@/components/marketing/TopNav';
-import ServicesFooter from '@/components/marketing/ServicesFooter';
 import Footer from '@/components/marketing/Footer';
 import { usePathname } from 'next/navigation';
 
@@ -18,13 +17,9 @@ export default function MarketingLayout({
     <div className="flex flex-col min-h-screen bg-zinc-950 text-white">
       <TopNav />
       {children}
-      {/* Don't show services footer on marketplace or property detail pages */}
-      {!isMarketplace && !isPropertyDetail && (
-        <>
-          <ServicesFooter />
-          <Footer />
-        </>
-      )}
+      {/* Footer hidden on marketplace / property-detail pages.
+          The services showcase lives on the home page only — not globally. */}
+      {!isMarketplace && !isPropertyDetail && <Footer />}
     </div>
   );
 }

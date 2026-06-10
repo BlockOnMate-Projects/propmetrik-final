@@ -1,12 +1,30 @@
 'use client';
 
 import { motion } from 'framer-motion';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { ChevronDown, Search } from 'lucide-react';
 
 export default function FAQPage() {
     const [openIndex, setOpenIndex] = useState<number | null>(0);
+
+    // Pull the lowest live plan price so the pricing answer never drifts from the real pricing page.
+    const [fromPrice, setFromPrice] = useState<number | null>(null);
+    useEffect(() => {
+        fetch('/api/subscriptions/plans')
+            .then((r) => (r.ok ? r.json() : null))
+            .then((data) => {
+                const prices = (data?.plans || [])
+                    .map((p: any) => Number(p.price_monthly_ghs))
+                    .filter((n: number) => Number.isFinite(n) && n > 0);
+                if (prices.length) setFromPrice(Math.min(...prices));
+            })
+            .catch(() => { /* fall back to generic copy */ });
+    }, []);
+
+    const pricingAnswer = fromPrice
+        ? `Plans start from GHS ${fromPrice.toLocaleString()}/month with a 14-day free trial. Enterprise solutions are custom-priced — visit our pricing page for the full breakdown.`
+        : 'Pricing varies by plan and module, and every plan includes a 14-day free trial. Visit our pricing page for current rates and details.';
 
     const faqCategories = [
         {
@@ -14,7 +32,7 @@ export default function FAQPage() {
             questions: [
                 {
                     question: 'What is PROPMETRIK?',
-                    answer: 'PROPMETRIK is Ghana\'s leading proptech platform providing automated property valuations, real estate data intelligence, deal management tools, and market research. We serve banks, developers, investors, and real estate professionals across Ghana.'
+                    answer: 'PROPMETRIK is a Ghana-focused proptech platform providing automated property valuations, real estate data intelligence, deal management tools, and market research — built for banks, developers, investors, and real estate professionals across Ghana.'
                 },
                 {
                     question: 'Who can use PROPMETRIK?',
@@ -22,7 +40,7 @@ export default function FAQPage() {
                 },
                 {
                     question: 'Which areas in Ghana do you cover?',
-                    answer: 'We cover all major urban centers including Greater Accra (Accra, Tema), Ashanti Region (Kumasi), Western Region (Takoradi), Central Region (Cape Coast), and Northern Region (Tamale). Our database includes over 50,000 verified property transactions.'
+                    answer: 'We cover all major urban centers including Greater Accra (Accra, Tema), Ashanti Region (Kumasi), Western Region (Takoradi), Central Region (Cape Coast), and Northern Region (Tamale). Our database is built to standardise verified property transactions across these markets.'
                 },
             ]
         },
@@ -31,7 +49,7 @@ export default function FAQPage() {
             questions: [
                 {
                     question: 'How accurate are your property valuations?',
-                    answer: 'Our automated valuation models (AVMs) achieve 95%+ accuracy by analyzing 50,000+ verified Ghana property transactions. All valuations are reviewed by RICS-certified professionals for quality assurance.'
+                    answer: 'Our automated valuation models (AVMs) are trained on verified Ghana property transactions, and every valuation is reviewed by qualified valuation professionals for quality assurance.'
                 },
                 {
                     question: 'How long does a valuation take?',
@@ -43,7 +61,7 @@ export default function FAQPage() {
                 },
                 {
                     question: 'Can your valuations be used for mortgage applications?',
-                    answer: 'Our comprehensive valuation reports with RICS verification are suitable for most mortgage and financing purposes. However, we recommend confirming with your specific lender as requirements may vary.'
+                    answer: 'Our comprehensive valuation reports are suitable for most mortgage and financing purposes. However, we recommend confirming with your specific lender as requirements may vary.'
                 },
             ]
         },
@@ -69,7 +87,7 @@ export default function FAQPage() {
             questions: [
                 {
                     question: 'How much do your services cost?',
-                    answer: 'Pricing varies by service: Automated Valuations start from GHS 150, Market Intelligence subscriptions range from GHS 500-1,500/month, and Enterprise solutions are custom-priced. Visit our pricing page for detailed information.'
+                    answer: pricingAnswer
                 },
                 {
                     question: 'Do you offer free trials?',
@@ -90,11 +108,11 @@ export default function FAQPage() {
             questions: [
                 {
                     question: 'Is my data secure?',
-                    answer: 'Absolutely. We use bank-level encryption (AES-256) for data at rest and TLS 1.3 for data in transit. We\'re fully compliant with the Ghana Data Protection Act and implement regular security audits.'
+                    answer: 'Protecting your data is a priority. Access is restricted to authorized users and data is transmitted over secure, encrypted (HTTPS) connections. We are actively working toward formal certification and full compliance with the Ghana Data Protection Act.'
                 },
                 {
                     question: 'Do you have a mobile app?',
-                    answer: 'Our platform is fully responsive and works on mobile browsers. Native iOS and Android apps are currently in development and will be launched in Q2 2026.'
+                    answer: 'Our platform is fully responsive and works on any mobile browser. Native iOS and Android apps are in development — we\'ll announce availability soon.'
                 },
                 {
                     question: 'What support do you offer?',

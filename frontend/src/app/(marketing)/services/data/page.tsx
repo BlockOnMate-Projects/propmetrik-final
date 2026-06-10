@@ -6,15 +6,14 @@ import DataStreamVisual from '@/components/marketing/motion/DataStreamVisual';
 import GhanaMapVisual from '@/components/marketing/motion/GhanaMapVisual';
 import ProcessTimeline from '@/components/marketing/motion/ProcessTimeline';
 import PremiumCTASection from '@/components/marketing/motion/PremiumCTASection';
-import StatsCounter from '@/components/marketing/motion/StatsCounter';
 import { Database, MapPin, TrendingUp, Shield, Code, LineChart, CheckCircle2 } from 'lucide-react';
 
 export default function DataServicePage() {
     const capabilities = [
         {
             icon: <Database className="w-6 h-6" />,
-            title: '50,000+ Data Points',
-            description: 'Verified property transactions across residential, commercial, and land sectors — the largest dataset in West Africa.',
+            title: 'Standardised Data',
+            description: 'Verified property transactions across residential, commercial, and land sectors.',
         },
         {
             icon: <MapPin className="w-6 h-6" />,
@@ -66,7 +65,7 @@ export default function DataServicePage() {
         },
         {
             title: 'Land Title Verification',
-            description: 'Integration with Ghana Lands Commission for ownership checks.',
+            description: 'Coming soon — integration with Ghana Lands Commission for ownership checks.',
             features: [
                 'Ownership verification in real time',
                 'Encumbrance & lien checks',
@@ -87,7 +86,7 @@ export default function DataServicePage() {
         },
         {
             title: 'Query & Analyse',
-            description: 'Filter by location, property type, date range, and 30+ attributes. Export CSV or consume JSON.',
+            description: 'Filter by location, property type, date range, and more. Export CSV or consume JSON.',
         },
         {
             title: 'Integrate & Automate',
@@ -130,14 +129,14 @@ export default function DataServicePage() {
                             </span>
                         </h1>
                         <p className="text-xl md:text-2xl text-zinc-400 leading-relaxed max-w-3xl mb-12">
-                            The single source of truth for West African property data. 50,000+ verified transactions, standardised, and accessible via dashboard or API.
+                            The single source of truth for West African property data — standardised and accessible via dashboard or API.
                         </p>
 
-                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-6 mb-12">
-                            <StatsCounter value={50000} label="Data Points" suffix="+" />
-                            <StatsCounter value={12} label="Cities Covered" />
-                            <StatsCounter value={200} label="Cost Indices" suffix="+" />
-                            <StatsCounter value={99.5} label="Uptime SLA" suffix="%" />
+                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-12">
+                            <div className="border border-zinc-800 rounded-lg px-4 py-3 text-sm font-medium text-zinc-300 text-center">Standardised data</div>
+                            <div className="border border-zinc-800 rounded-lg px-4 py-3 text-sm font-medium text-zinc-300 text-center">RESTful API & SDKs</div>
+                            <div className="border border-zinc-800 rounded-lg px-4 py-3 text-sm font-medium text-zinc-300 text-center">Market comparables</div>
+                            <div className="border border-zinc-800 rounded-lg px-4 py-3 text-sm font-medium text-zinc-300 text-center">Cost indices</div>
                         </div>
 
                         <div className="flex flex-col sm:flex-row gap-4">

@@ -12,7 +12,7 @@ const features = [
     },
     {
         title: "Data Intelligence",
-        description: "The first comprehensive property database in the region with verified title, land, and transaction data.",
+        description: "A comprehensive property database for the region with verified title, land, and transaction data.",
         link: "Explore Data",
         href: "/services/data"
     },

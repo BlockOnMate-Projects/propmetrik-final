@@ -154,7 +154,7 @@ const STAGES: StageData[] = [
         copy: 'Field teams log daily updates. Budgets update automatically. You know before the problem becomes a crisis — whether you\'re on-site in Kumasi or in a boardroom in Accra.',
         anchorMetric: {
             value: 'GHS 22.4M',
-            descriptor: 'actual spend tracked live — GHS 1.7M under budget',
+            descriptor: 'sample spend vs budget — GHS 1.7M under budget',
         },
         ctaLabel: 'Explore Project Management',
         ctaHref: '/services/project-management',
@@ -165,7 +165,7 @@ const STAGES: StageData[] = [
                 sub: 'Variance: -7.0% favourable',
                 color: 'emerald',
                 position: 'top-right',
-                badge: 'Live Budget',
+                badge: 'Sample',
             },
             {
                 value: 'Floor 6/12',

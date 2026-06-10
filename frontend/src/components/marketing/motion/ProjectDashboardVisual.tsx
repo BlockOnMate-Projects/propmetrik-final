@@ -61,7 +61,7 @@ export default function ProjectDashboardVisual() {
             {/* Header */}
             <div className="flex items-center justify-between mb-6">
                 <div>
-                    <div className="text-xs font-mono uppercase tracking-widest text-zinc-500 mb-1">Live Dashboard</div>
+                    <div className="text-xs font-mono uppercase tracking-widest text-zinc-500 mb-1">Illustrative Dashboard</div>
                     <div className="text-lg font-bold text-white">Accra Heights — 24-Unit Residential</div>
                 </div>
                 <div className="flex gap-2">

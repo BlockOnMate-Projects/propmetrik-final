@@ -742,8 +742,8 @@ function SignupForm() {
    ==================================================================== */
 export default function SignupPage() {
     const features = [
-        { icon: <Database className="w-5 h-5" />, text: '50,000+ verified data points' },
-        { icon: <TrendingUp className="w-5 h-5" />, text: 'AI valuations with 95% accuracy' },
+        { icon: <Database className="w-5 h-5" />, text: 'Verified property data' },
+        { icon: <TrendingUp className="w-5 h-5" />, text: 'RICS-reviewed AI valuations' },
         { icon: <Users className="w-5 h-5" />, text: '500+ professionals on the platform' },
         { icon: <Shield className="w-5 h-5" />, text: 'Enterprise-grade security & compliance' },
     ];
