@@ -1,6 +1,7 @@
 import HeroSection from '@/components/marketing/HeroSection';
 import FeatureGrid from '@/components/marketing/FeatureGrid';
 import StatsSection from '@/components/marketing/StatsSection';
+import ServicesFooter from '@/components/marketing/ServicesFooter';
 
 export default function Home() {
   return (
@@ -8,6 +9,7 @@ export default function Home() {
       <HeroSection />
       <StatsSection />
       <FeatureGrid />
+      <ServicesFooter />
     </main>
   );
 }

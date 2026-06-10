@@ -12,7 +12,7 @@ export default function MarketTrendsVisual() {
                     <div className="h-3 w-20 bg-zinc-800/50 rounded" />
                 </div>
                 <div className="flex gap-2">
-                    <span className="text-xs text-primary font-mono bg-primary/10 px-2 py-1 rounded">LIVE</span>
+                    <span className="text-xs text-zinc-400 font-mono bg-zinc-800 px-2 py-1 rounded">ILLUSTRATIVE</span>
                 </div>
             </div>
 

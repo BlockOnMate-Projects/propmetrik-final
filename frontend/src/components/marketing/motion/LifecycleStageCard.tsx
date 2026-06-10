@@ -174,7 +174,7 @@ export default function LifecycleStageCard({ stage, depth, isActive }: Lifecycle
                         transition={{ duration: 1.8, repeat: Infinity }}
                     />
                     <span className="text-[10px] font-mono uppercase tracking-widest text-zinc-400">
-                        Live
+                        Active
                     </span>
                 </motion.div>
             )}

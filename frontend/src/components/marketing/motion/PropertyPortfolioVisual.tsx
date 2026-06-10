@@ -38,7 +38,7 @@ export default function PropertyPortfolioVisual() {
                     <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
                     <span className="text-xs font-mono text-zinc-400">Portfolio Overview</span>
                 </div>
-                <span className="text-[10px] font-mono text-zinc-600">{properties.length} properties</span>
+                <span className="text-[10px] font-mono text-zinc-500 border border-zinc-700 rounded px-1.5 py-0.5">Illustrative</span>
             </div>
 
             {/* Summary Row */}

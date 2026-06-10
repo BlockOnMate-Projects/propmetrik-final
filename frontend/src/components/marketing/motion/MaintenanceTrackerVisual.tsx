@@ -44,6 +44,7 @@ export default function MaintenanceTrackerVisual() {
                     <span className="text-xs font-mono text-zinc-400">Maintenance Queue</span>
                 </div>
                 <div className="flex items-center gap-3 text-[10px] font-mono text-zinc-600">
+                    <span className="text-zinc-500 border border-zinc-700 rounded px-1.5 py-0.5">Illustrative</span>
                     <span className="text-red-400">2 urgent</span>
                     <span>{requests.length} open</span>
                 </div>

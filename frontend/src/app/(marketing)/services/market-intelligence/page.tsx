@@ -6,7 +6,6 @@ import MarketTrendsVisual from '@/components/marketing/motion/MarketTrendsVisual
 import GhanaMapVisual from '@/components/marketing/motion/GhanaMapVisual';
 import ProcessTimeline from '@/components/marketing/motion/ProcessTimeline';
 import PremiumCTASection from '@/components/marketing/motion/PremiumCTASection';
-import StatsCounter from '@/components/marketing/motion/StatsCounter';
 import { TrendingUp, FileText, BarChart, Target, Globe, Lightbulb, CheckCircle2 } from 'lucide-react';
 
 export default function MarketIntelligencePage() {
@@ -14,7 +13,7 @@ export default function MarketIntelligencePage() {
         {
             icon: <TrendingUp className="w-6 h-6" />,
             title: 'Market Trend Analysis',
-            description: 'Identify emerging opportunities and market shifts with quarterly indices measured across 12 cities.',
+            description: 'Identify emerging opportunities and market shifts with quarterly indices across Ghana\'s major cities.',
         },
         {
             icon: <FileText className="w-6 h-6" />,
@@ -83,7 +82,7 @@ export default function MarketIntelligencePage() {
         },
         {
             title: 'Research & Analysis',
-            description: 'Our analysts combine 50K+ data points with on-the-ground intelligence.',
+            description: 'Our analysts combine market data with on-the-ground intelligence.',
         },
         {
             title: 'Review & Deliver',
@@ -133,11 +132,11 @@ export default function MarketIntelligencePage() {
                             Stay ahead of Ghana&apos;s dynamic real estate market with institutional-grade research, analytics, and trend forecasting.
                         </p>
 
-                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-6 mb-12">
-                            <StatsCounter value={48} label="Quarterly Reports" />
-                            <StatsCounter value={12} label="Markets Covered" />
-                            <StatsCounter value={300} label="Subscribers" suffix="+" />
-                            <StatsCounter value={95} label="Accuracy Rate" suffix="%" />
+                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-12">
+                            <div className="border border-zinc-800 rounded-lg px-4 py-3 text-sm font-medium text-zinc-300 text-center">Quarterly reports</div>
+                            <div className="border border-zinc-800 rounded-lg px-4 py-3 text-sm font-medium text-zinc-300 text-center">Price & yield indices</div>
+                            <div className="border border-zinc-800 rounded-lg px-4 py-3 text-sm font-medium text-zinc-300 text-center">Interactive dashboards</div>
+                            <div className="border border-zinc-800 rounded-lg px-4 py-3 text-sm font-medium text-zinc-300 text-center">API data feeds</div>
                         </div>
 
                         <div className="flex flex-col sm:flex-row gap-4">
@@ -247,11 +246,11 @@ export default function MarketIntelligencePage() {
                                 </span>
                             </h2>
                             <p className="text-lg text-zinc-400 mb-8 leading-relaxed">
-                                Our research team combines 50,000+ verified data points with on-the-ground intelligence to deliver insights you won&apos;t find anywhere else.
+                                Our research team combines verified data with on-the-ground intelligence to deliver insights you won&apos;t find anywhere else.
                             </p>
                             <div className="space-y-4">
                                 {[
-                                    'Quarterly price indices across 12 cities',
+                                    'Quarterly price indices across major cities',
                                     'Rental yield benchmarks by neighbourhood',
                                     'Development pipeline and absorption forecasts',
                                     'Macroeconomic impact analysis on real estate',
@@ -375,7 +374,7 @@ export default function MarketIntelligencePage() {
                                 tier: 'Professional',
                                 price: 'GHS 800',
                                 audience: 'Firms & funds',
-                                features: ['All reports + custom briefs', 'All 12 cities', 'Interactive dashboard', 'API data feed', 'Priority support', 'Excel export'],
+                                features: ['All reports + custom briefs', 'All major cities', 'Interactive dashboard', 'API data feed', 'Priority support', 'Excel export'],
                                 featured: true,
                             },
                             {

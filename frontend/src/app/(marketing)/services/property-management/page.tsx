@@ -6,7 +6,6 @@ import { CheckCircle2, Building2, Wrench, Receipt, Users, ShieldCheck, Bell } fr
 import PropertyPortfolioVisual from '@/components/marketing/motion/PropertyPortfolioVisual';
 import MaintenanceTrackerVisual from '@/components/marketing/motion/MaintenanceTrackerVisual';
 import ProcessTimeline from '@/components/marketing/motion/ProcessTimeline';
-import StatsCounter from '@/components/marketing/motion/StatsCounter';
 import PremiumCTASection from '@/components/marketing/motion/PremiumCTASection';
 
 export default function PropertyManagementPage() {
@@ -133,11 +132,11 @@ export default function PropertyManagementPage() {
                             From rent collection to maintenance dispatch — a complete property management platform designed for Ghana&apos;s landlords, facility managers, and institutional investors.
                         </p>
 
-                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-6 mb-12">
-                            <StatsCounter value={2400} label="Units Managed" suffix="+" />
-                            <StatsCounter value={97} label="Rent Collection Rate" suffix="%" />
-                            <StatsCounter value={2.1} label="Avg Maintenance Response" suffix="h" />
-                            <StatsCounter value={45} label="Portfolios Active" suffix="+" />
+                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-12">
+                            <div className="border border-zinc-800 rounded-lg px-4 py-3 text-sm font-medium text-zinc-300 text-center">Mobile Money rent</div>
+                            <div className="border border-zinc-800 rounded-lg px-4 py-3 text-sm font-medium text-zinc-300 text-center">Maintenance & vendors</div>
+                            <div className="border border-zinc-800 rounded-lg px-4 py-3 text-sm font-medium text-zinc-300 text-center">Multi-property view</div>
+                            <div className="border border-zinc-800 rounded-lg px-4 py-3 text-sm font-medium text-zinc-300 text-center">GHS accounting</div>
                         </div>
 
                         <div className="flex flex-col sm:flex-row gap-4">

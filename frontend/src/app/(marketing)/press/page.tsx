@@ -74,8 +74,8 @@ export default function PressPage() {
             </h1>
             <p className="text-xl text-zinc-400 leading-relaxed">
               Official announcements, media resources, and analyst quotes from
-              PROPMETRIK Research — West Africa&apos;s leading real estate
-              intelligence platform.
+              PROPMETRIK Research — a real estate intelligence platform for
+              Ghana and West Africa.
             </p>
           </motion.div>
         </div>

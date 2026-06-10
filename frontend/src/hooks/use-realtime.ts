@@ -269,17 +269,24 @@ export function useRealtime(options: UseRealtimeOptions = {}): UseRealtimeReturn
 
       // Handle error
       eventSource.onerror = () => {
-        // Only log warning once to avoid console spam
-        if (!hasLoggedWarningRef.current) {
-          console.warn('SSE connection error — will retry');
-          hasLoggedWarningRef.current = true;
-        }
-
         setIsConnected(false);
         onConnectionChangeRef.current?.(false);
 
         eventSource.close();
         eventSourceRef.current = null;
+
+        // Tab is backgrounded → the browser suspends the long-lived connection
+        // (net::ERR_NETWORK_IO_SUSPENDED). Don't log or reconnect-loop here; the
+        // visibilitychange handler reconnects cleanly when the tab is visible again.
+        if (typeof document !== 'undefined' && document.hidden) {
+          return;
+        }
+
+        // Only log warning once to avoid console spam
+        if (!hasLoggedWarningRef.current) {
+          console.warn('SSE connection error — will retry');
+          hasLoggedWarningRef.current = true;
+        }
 
         // Attempt reconnect with exponential backoff (capped)
         if (autoReconnect && reconnectAttemptsRef.current < maxReconnectAttempts) {
@@ -431,7 +438,30 @@ export function useRealtime(options: UseRealtimeOptions = {}): UseRealtimeReturn
       connectRef.current?.();
     }
 
+    // Pause the SSE connection while the tab is hidden so the browser doesn't suspend it
+    // (net::ERR_NETWORK_IO_SUSPENDED) and trigger reconnect noise; resume on focus.
+    const handleVisibility = () => {
+      if (document.hidden) {
+        if (reconnectTimeoutRef.current) {
+          clearTimeout(reconnectTimeoutRef.current);
+          reconnectTimeoutRef.current = null;
+        }
+        if (eventSourceRef.current) {
+          eventSourceRef.current.close();
+          eventSourceRef.current = null;
+          setIsConnected(false);
+        }
+      } else if (autoConnect && !eventSourceRef.current) {
+        // Reconnect fresh when the tab becomes visible again.
+        reconnectAttemptsRef.current = 0;
+        hasLoggedWarningRef.current = false;
+        connectRef.current?.();
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibility);
+
     return () => {
+      document.removeEventListener('visibilitychange', handleVisibility);
       disconnect();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps

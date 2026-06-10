@@ -6,7 +6,6 @@ import DashboardDemo from '@/components/marketing/motion/DashboardDemo';
 import DealWorkflow from '@/components/marketing/motion/DealWorkflow';
 import ProcessTimeline from '@/components/marketing/motion/ProcessTimeline';
 import PremiumCTASection from '@/components/marketing/motion/PremiumCTASection';
-import StatsCounter from '@/components/marketing/motion/StatsCounter';
 import { Users, FileText, Calendar, BarChart3, CheckCircle2, Zap, MessageSquare } from 'lucide-react';
 
 export default function DealManagementPage() {
@@ -48,7 +47,7 @@ export default function DealManagementPage() {
             title: 'For Brokers & Agents',
             description: 'Manage your entire sales pipeline from lead capture to commission payout.',
             features: [
-                'Close deals 40% faster',
+                'Close deals faster with a structured pipeline',
                 'Track all client interactions',
                 'Automated follow-ups & reminders',
                 'Mobile app for on-the-go access',
@@ -133,11 +132,11 @@ export default function DealManagementPage() {
                             Complete workflow automation for modern real estate professionals. CRM, document management, and closing tools built specifically for the Ghanaian market.
                         </p>
 
-                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-6 mb-12">
-                            <StatsCounter value={40} label="Faster Closings" suffix="%" />
-                            <StatsCounter value={500} label="Active Users" suffix="+" />
-                            <StatsCounter value={2000} label="Deals Closed" suffix="+" />
-                            <StatsCounter value={15} label="Avg. Days to Close" suffix="d" />
+                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-12">
+                            <div className="border border-zinc-800 rounded-lg px-4 py-3 text-sm font-medium text-zinc-300 text-center">CRM & pipelines</div>
+                            <div className="border border-zinc-800 rounded-lg px-4 py-3 text-sm font-medium text-zinc-300 text-center">Auto-generated agreements</div>
+                            <div className="border border-zinc-800 rounded-lg px-4 py-3 text-sm font-medium text-zinc-300 text-center">E-signatures</div>
+                            <div className="border border-zinc-800 rounded-lg px-4 py-3 text-sm font-medium text-zinc-300 text-center">Commission tracking</div>
                         </div>
 
                         <div className="flex flex-col sm:flex-row gap-4">
@@ -438,7 +437,7 @@ export default function DealManagementPage() {
             {/* ====== CTA ====== */}
             <PremiumCTASection
                 title="Ready to Transform Your Sales Workflow?"
-                description="Join hundreds of Ghanaian real estate professionals who&apos;ve accelerated their closings with PROPMETRIK."
+                description="Built for Ghanaian real estate professionals who want to accelerate their closings with PROPMETRIK."
                 primaryCTA={{
                     text: 'Start Free Trial',
                     href: '/signup?category=deal_management',

@@ -195,7 +195,7 @@ export default function PublicApiDocsPage() {
               <span className="text-red-500">API</span>
             </h1>
             <p className="text-lg text-zinc-400 leading-relaxed max-w-xl mx-auto">
-              Programmatic access to Ghana&apos;s most comprehensive real estate intelligence platform.
+              Programmatic access to PROPMETRIK&apos;s real estate intelligence platform for Ghana.
               Market data, valuations, ML predictions, and construction analytics — all via REST.
             </p>
             <div className="flex flex-col sm:flex-row items-center justify-center gap-3 mt-8">

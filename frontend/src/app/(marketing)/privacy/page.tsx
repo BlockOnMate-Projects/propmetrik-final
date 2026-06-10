@@ -35,7 +35,7 @@ export default function PrivacyPolicyPage() {
                     subtitle: '2.3 Information from Third Parties',
                     content: `We may receive information from:
 • Credit bureaus and identity verification services
-• Ghana Lands Commission (for title verification)
+• Ghana Lands Commission (planned, for title verification)
 • Business partners and service providers`
                 }
             ]

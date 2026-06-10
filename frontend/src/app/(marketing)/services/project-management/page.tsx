@@ -5,7 +5,6 @@ import Link from 'next/link';
 import { CheckCircle2, ClipboardList, BarChart3, Shield, Users, Calendar, DollarSign, Layers } from 'lucide-react';
 import ProjectDashboardVisual from '@/components/marketing/motion/ProjectDashboardVisual';
 import ProcessTimeline from '@/components/marketing/motion/ProcessTimeline';
-import StatsCounter from '@/components/marketing/motion/StatsCounter';
 import PremiumCTASection from '@/components/marketing/motion/PremiumCTASection';
 import ProjectLifecycleSection from '@/components/marketing/motion/ProjectLifecycleSection';
 
@@ -133,11 +132,11 @@ export default function ProjectManagementPage() {
                             End-to-end construction and development project management — from feasibility study to final handover — purpose-built for Ghana&apos;s real estate market.
                         </p>
 
-                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-6 mb-12">
-                            <StatsCounter value={150} label="Projects Managed" suffix="+" />
-                            <StatsCounter value={98} label="On-Time Delivery" suffix="%" />
-                            <StatsCounter value={12} label="Avg. Cost Savings" suffix="%" />
-                            <StatsCounter value={350} label="Contractors On-Platform" suffix="+" />
+                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-12">
+                            <div className="border border-zinc-800 rounded-lg px-4 py-3 text-sm font-medium text-zinc-300 text-center">Feasibility to handover</div>
+                            <div className="border border-zinc-800 rounded-lg px-4 py-3 text-sm font-medium text-zinc-300 text-center">Budgets & change orders</div>
+                            <div className="border border-zinc-800 rounded-lg px-4 py-3 text-sm font-medium text-zinc-300 text-center">Gantt & phase-gate</div>
+                            <div className="border border-zinc-800 rounded-lg px-4 py-3 text-sm font-medium text-zinc-300 text-center">Contractor management</div>
                         </div>
 
                         <div className="flex flex-col sm:flex-row gap-4">
