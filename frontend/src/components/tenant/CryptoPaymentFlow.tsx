@@ -76,7 +76,7 @@ function CoinIcon({ symbol, logoUrl, size = 24 }: { symbol: string; logoUrl?: st
   if (imgError && (!fallbackSrc || useFallback)) {
     return (
       <span
-        className="inline-flex items-center justify-center rounded-full bg-gray-200 text-[10px] font-bold text-gray-600 flex-shrink-0"
+        className="inline-flex items-center justify-center rounded-full bg-gray-200 text-[10px] font-bold text-muted-foreground flex-shrink-0"
         style={{ width: size, height: size }}
       >
         {symbol.toUpperCase().slice(0, 3)}
@@ -397,12 +397,12 @@ export default function CryptoPaymentFlow({
         <h3 className="text-lg font-semibold text-gray-900">
           {step === 'select-coin' ? 'Pay with Crypto' : `Pay with ${selectedCoin?.coin_symbol.toUpperCase() || 'Crypto'}`}
         </h3>
-        <button onClick={onCancel} className="text-sm text-gray-500 hover:text-gray-700">Cancel</button>
+        <button onClick={onCancel} className="text-sm text-muted-foreground hover:text-gray-700">Cancel</button>
       </div>
 
       {step === 'select-coin' && (
         <div className="space-y-3">
-          <p className="text-sm text-gray-600">
+          <p className="text-sm text-muted-foreground">
             Choose which cryptocurrency you&apos;d like to pay GH₵{amountGHS.toLocaleString()} with:
           </p>
 
@@ -414,7 +414,7 @@ export default function CryptoPaymentFlow({
             <div className="space-y-3">
               {onChainCoins.length > 0 && (
                 <div>
-                  <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
                     On-Chain (Polygon) — Direct Settlement
                   </p>
                   <div className="grid grid-cols-2 gap-2">
@@ -422,7 +422,7 @@ export default function CryptoPaymentFlow({
                       <button
                         key={coin.id}
                         onClick={() => handleCoinSelect(coin)}
-                        className="flex items-center gap-2 px-3 py-2.5 border border-gray-200 rounded-xl text-sm font-medium hover:border-cyan-400 hover:bg-cyan-50 transition-all"
+                        className="flex items-center gap-2 px-3 py-2.5 border border-border rounded-xl text-sm font-medium hover:border-cyan-400 hover:bg-cyan-50 transition-all"
                       >
                         <CoinIcon symbol={coin.coin_symbol} logoUrl={coin.logo_url} size={24} />
                         <div className="text-left">
@@ -436,7 +436,7 @@ export default function CryptoPaymentFlow({
 
               {allOffChainCoins.length > 0 && (
                 <div>
-                  <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
                     {allOffChainCoins.length}+ Coins — via NOWPayments
                   </p>
                   <div className="relative mb-2">
@@ -445,9 +445,9 @@ export default function CryptoPaymentFlow({
                       placeholder="Search coins (BTC, ETH, SOL...)"
                       value={coinSearch}
                       onChange={e => setCoinSearch(e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-purple-400 focus:border-purple-400 pl-8"
+                      className="w-full px-3 py-2 border border-border rounded-xl text-sm focus:ring-2 focus:ring-purple-400 focus:border-purple-400 pl-8"
                     />
-                    <svg className="absolute left-2.5 top-2.5 w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
+                    <svg className="absolute left-2.5 top-2.5 w-4 h-4 text-muted-foreground" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
                   </div>
                   <div className="max-h-48 overflow-y-auto rounded-xl border border-gray-100">
                     <div className="grid grid-cols-2 gap-1.5 p-1.5">
@@ -460,17 +460,17 @@ export default function CryptoPaymentFlow({
                           <CoinIcon symbol={coin.coin_symbol} logoUrl={coin.logo_url} size={20} />
                           <div className="text-left min-w-0">
                             <span className="block font-semibold text-gray-900 text-xs">{coin.coin_symbol.toUpperCase()}</span>
-                            <span className="block text-[9px] text-gray-400 truncate">{coin.chain}</span>
+                            <span className="block text-[9px] text-muted-foreground truncate">{coin.chain}</span>
                           </div>
                         </button>
                       ))}
                       {offChainCoins.length === 0 && coinSearch && (
-                        <p className="col-span-2 text-center text-xs text-gray-400 py-3">No coins match &quot;{coinSearch}&quot;</p>
+                        <p className="col-span-2 text-center text-xs text-muted-foreground py-3">No coins match &quot;{coinSearch}&quot;</p>
                       )}
                     </div>
                   </div>
                   {offChainCoins.length > 100 && (
-                    <p className="text-[10px] text-gray-400 mt-1 text-center">Showing first 100 results. Use search to find more.</p>
+                    <p className="text-[10px] text-muted-foreground mt-1 text-center">Showing first 100 results. Use search to find more.</p>
                   )}
                 </div>
               )}
@@ -482,13 +482,13 @@ export default function CryptoPaymentFlow({
       {step === 'estimate' && (
         <div className="flex flex-col items-center gap-3 py-8">
           <div className="animate-spin h-5 w-5 border-2 border-cyan-600 border-t-transparent rounded-full" />
-          <span className="text-sm text-gray-600">Getting {selectedCoin?.coin_symbol.toUpperCase()} conversion rate...</span>
+          <span className="text-sm text-muted-foreground">Getting {selectedCoin?.coin_symbol.toUpperCase()} conversion rate...</span>
         </div>
       )}
 
       {step === 'connect' && !isConnected && (
         <div className="space-y-3">
-          <p className="text-sm text-gray-600">
+          <p className="text-sm text-muted-foreground">
             Connect your wallet to pay with {selectedCoin?.coin_symbol.toUpperCase()} on Polygon.
           </p>
           <div className="grid gap-2">
@@ -496,7 +496,7 @@ export default function CryptoPaymentFlow({
               <button
                 key={connector.uid}
                 onClick={() => connect({ connector })}
-                className="flex items-center gap-3 w-full px-4 py-3 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
+                className="flex items-center gap-3 w-full px-4 py-3 bg-card border border-border rounded-lg hover:bg-muted transition-colors"
               >
                 <span className="text-sm font-medium">{connector.name}</span>
               </button>
@@ -504,7 +504,7 @@ export default function CryptoPaymentFlow({
           </div>
           <button
             onClick={() => { setStep('select-coin'); setSelectedCoin(null); setEstimate(null); }}
-            className="text-xs text-gray-500 hover:text-gray-700"
+            className="text-xs text-muted-foreground hover:text-gray-700"
           >
             ← Pick a different coin
           </button>
@@ -547,12 +547,12 @@ export default function CryptoPaymentFlow({
           </div>
 
           {selectedCoin.is_evm_native && balanceFormatted && (
-            <p className="text-xs text-gray-500">
+            <p className="text-xs text-muted-foreground">
               Your balance: <span className="font-medium">{balanceFormatted} USDT</span>
             </p>
           )}
 
-          <div className="bg-gray-50 rounded-xl p-3 text-xs text-gray-600">
+          <div className="bg-muted rounded-xl p-3 text-xs text-muted-foreground">
             {selectedCoin.is_evm_native ? (
               <p>Settles directly via the PROPMETRIK smart contract on Polygon. Your wallet will prompt you to approve the token spend, then submit the payment.</p>
             ) : (
@@ -563,13 +563,13 @@ export default function CryptoPaymentFlow({
           <div className="flex gap-3">
             <button
               onClick={() => { setStep('select-coin'); setSelectedCoin(null); setEstimate(null); }}
-              className="flex-1 px-4 py-2.5 border border-gray-300 text-gray-700 rounded-xl hover:bg-gray-50"
+              className="flex-1 px-4 py-2.5 border border-gray-300 text-gray-700 rounded-xl hover:bg-muted"
             >
               Back
             </button>
             <button
               onClick={handleInitiate}
-              className="flex-1 px-4 py-2.5 bg-cyan-600 text-white rounded-xl font-medium hover:bg-cyan-700"
+              className="flex-1 px-4 py-2.5 bg-cyan-600 text-foreground rounded-xl font-medium hover:bg-cyan-700"
             >
               {selectedCoin.is_evm_native ? 'Approve & Pay' : 'Get Deposit Address'}
             </button>
@@ -591,9 +591,9 @@ export default function CryptoPaymentFlow({
               <p className="text-xs text-purple-700 mt-1">to this address:</p>
             </div>
 
-            <div className="bg-white rounded-lg p-3 border border-purple-200">
+            <div className="bg-card rounded-lg p-3 border border-purple-200">
               <div className="flex justify-center mb-3">
-                <div className="bg-white p-2 rounded-lg">
+                <div className="bg-card p-2 rounded-lg">
                   <QRCodeSVG
                     value={unifiedResult.nowPaymentsResult.depositAddress}
                     size={160}
@@ -639,7 +639,7 @@ export default function CryptoPaymentFlow({
       {step === 'approve' && (
         <div className="flex flex-col items-center gap-3 py-8">
           <div className="animate-spin h-8 w-8 border-3 border-cyan-600 border-t-transparent rounded-full" />
-          <p className="text-sm text-gray-600">
+          <p className="text-sm text-muted-foreground">
             {isApproving ? 'Confirm approval in your wallet...' :
              isApproveConfirming ? 'Waiting for approval confirmation...' :
              'Preparing payment...'}
@@ -650,7 +650,7 @@ export default function CryptoPaymentFlow({
       {step === 'pay' && (
         <div className="flex flex-col items-center gap-3 py-8">
           <div className="animate-spin h-8 w-8 border-3 border-cyan-600 border-t-transparent rounded-full" />
-          <p className="text-sm text-gray-600">
+          <p className="text-sm text-muted-foreground">
             {isPaying ? 'Confirm payment in your wallet...' :
              isPayConfirming ? 'Waiting for on-chain confirmation...' :
              'Submitting payment...'}
@@ -661,7 +661,7 @@ export default function CryptoPaymentFlow({
       {step === 'confirming' && (
         <div className="flex flex-col items-center gap-3 py-8">
           <div className="animate-spin h-8 w-8 border-3 border-green-600 border-t-transparent rounded-full" />
-          <p className="text-sm text-gray-600">Verifying payment...</p>
+          <p className="text-sm text-muted-foreground">Verifying payment...</p>
         </div>
       )}
 
@@ -673,7 +673,7 @@ export default function CryptoPaymentFlow({
             </svg>
           </div>
           <h4 className="text-lg font-semibold text-emerald-900">Payment Successful!</h4>
-          <p className="text-sm text-gray-600">
+          <p className="text-sm text-muted-foreground">
             {selectedCoin?.coin_symbol.toUpperCase()} payment has been processed.
           </p>
           {txHash && !txHash.startsWith('nowpay-') && (
@@ -705,7 +705,7 @@ export default function CryptoPaymentFlow({
                 setInitData(null);
                 if (pollRef.current) clearInterval(pollRef.current);
               }}
-              className="flex-1 px-4 py-2.5 bg-gray-800 text-white rounded-xl hover:bg-gray-900"
+              className="flex-1 px-4 py-2.5 bg-gray-800 text-foreground rounded-xl hover:bg-gray-900"
             >
               Try Again
             </button>
@@ -714,7 +714,7 @@ export default function CryptoPaymentFlow({
       )}
 
       {isConnected && address && selectedCoin?.is_evm_native && step !== 'select-coin' && step !== 'success' && (
-        <div className="text-xs text-gray-400 text-center">
+        <div className="text-xs text-muted-foreground text-center">
           Connected: {address.slice(0, 6)}...{address.slice(-4)} on {chain?.name || 'Unknown'}
         </div>
       )}

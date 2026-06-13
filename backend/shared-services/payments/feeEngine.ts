@@ -281,7 +281,7 @@ class FeeEngine {
                 paymentType: 'valuation',
                 organizationId: null,
                 feeMode: 'percentage',
-                percentageRate: 0.025,    // 2.5%
+                percentageRate: 0.0025,   // 0.25%
                 flatAmount: 0,
                 currency: 'GHS',
                 minFee: null,

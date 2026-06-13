@@ -99,7 +99,7 @@ export default function TestimonialCarousel() {
                         }}
                         className="absolute w-full"
                     >
-                        <div className="bg-zinc-900 border border-zinc-800 rounded-lg p-8">
+                        <div className="bg-card border border-border rounded-lg p-8">
                             {/* Rating Stars */}
                             <div className="flex gap-1 mb-4">
                                 {Array.from({ length: testimonials[current].rating }, (_, i) => (
@@ -108,18 +108,18 @@ export default function TestimonialCarousel() {
                             </div>
 
                             {/* Content */}
-                            <blockquote className="text-lg md:text-xl text-zinc-300 leading-relaxed mb-6">
+                            <blockquote className="text-lg md:text-xl text-muted-foreground leading-relaxed mb-6">
                                 "{testimonials[current].content}"
                             </blockquote>
 
                             {/* Author */}
                             <div className="flex items-center gap-4">
-                                <div className="w-12 h-12 rounded-full bg-gradient-to-br from-primary to-yellow-400 flex items-center justify-center text-white font-bold">
+                                <div className="w-12 h-12 rounded-full bg-gradient-to-br from-primary to-yellow-400 flex items-center justify-center text-zinc-950 font-bold">
                                     {testimonials[current].name.charAt(0)}
                                 </div>
                                 <div>
-                                    <div className="font-bold text-white">{testimonials[current].name}</div>
-                                    <div className="text-sm text-zinc-400">
+                                    <div className="font-bold text-foreground">{testimonials[current].name}</div>
+                                    <div className="text-sm text-muted-foreground">
                                         {testimonials[current].role}, {testimonials[current].company}
                                     </div>
                                 </div>
@@ -133,10 +133,10 @@ export default function TestimonialCarousel() {
             <div className="flex items-center justify-between mt-8">
                 <button
                     onClick={previous}
-                    className="p-3 rounded-full bg-zinc-900 border border-zinc-800 hover:border-primary transition-colors"
+                    className="p-3 rounded-full bg-card border border-border hover:border-primary transition-colors"
                     aria-label="Previous testimonial"
                 >
-                    <ChevronLeft className="w-5 h-5 text-white" />
+                    <ChevronLeft className="w-5 h-5 text-foreground" />
                 </button>
 
                 {/* Dots */}
@@ -159,10 +159,10 @@ export default function TestimonialCarousel() {
 
                 <button
                     onClick={next}
-                    className="p-3 rounded-full bg-zinc-900 border border-zinc-800 hover:border-primary transition-colors"
+                    className="p-3 rounded-full bg-card border border-border hover:border-primary transition-colors"
                     aria-label="Next testimonial"
                 >
-                    <ChevronRight className="w-5 h-5 text-white" />
+                    <ChevronRight className="w-5 h-5 text-foreground" />
                 </button>
             </div>
         </div>

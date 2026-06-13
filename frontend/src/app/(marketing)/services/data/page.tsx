@@ -97,7 +97,7 @@ export default function DataServicePage() {
     return (
         <main>
             {/* ====== Hero ====== */}
-            <section className="relative pt-32 pb-24 overflow-hidden bg-zinc-950">
+            <section className="relative pt-32 pb-24 overflow-hidden dark bg-background">
                 <div className="absolute inset-0">
                     <motion.div
                         animate={{ scale: [1, 1.06, 1] }}
@@ -122,21 +122,21 @@ export default function DataServicePage() {
                         <div className="inline-block px-3 py-1 mb-6 border border-primary/50 rounded-full text-xs font-medium tracking-wider uppercase bg-primary/10 text-primary">
                             Data Intelligence
                         </div>
-                        <h1 className="text-5xl md:text-7xl font-bold tracking-tighter mb-8 text-white">
+                        <h1 className="text-5xl md:text-7xl font-bold tracking-tighter mb-8 text-foreground">
                             Ghana&apos;s Most Comprehensive{' '}
                             <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary to-yellow-400">
                                 Real Estate Data
                             </span>
                         </h1>
-                        <p className="text-xl md:text-2xl text-zinc-400 leading-relaxed max-w-3xl mb-12">
+                        <p className="text-xl md:text-2xl text-muted-foreground leading-relaxed max-w-3xl mb-12">
                             The single source of truth for West African property data — standardised and accessible via dashboard or API.
                         </p>
 
                         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-12">
-                            <div className="border border-zinc-800 rounded-lg px-4 py-3 text-sm font-medium text-zinc-300 text-center">Standardised data</div>
-                            <div className="border border-zinc-800 rounded-lg px-4 py-3 text-sm font-medium text-zinc-300 text-center">RESTful API & SDKs</div>
-                            <div className="border border-zinc-800 rounded-lg px-4 py-3 text-sm font-medium text-zinc-300 text-center">Market comparables</div>
-                            <div className="border border-zinc-800 rounded-lg px-4 py-3 text-sm font-medium text-zinc-300 text-center">Cost indices</div>
+                            <div className="border border-border rounded-lg px-4 py-3 text-sm font-medium text-muted-foreground text-center">Standardised data</div>
+                            <div className="border border-border rounded-lg px-4 py-3 text-sm font-medium text-muted-foreground text-center">RESTful API & SDKs</div>
+                            <div className="border border-border rounded-lg px-4 py-3 text-sm font-medium text-muted-foreground text-center">Market comparables</div>
+                            <div className="border border-border rounded-lg px-4 py-3 text-sm font-medium text-muted-foreground text-center">Cost indices</div>
                         </div>
 
                         <div className="flex flex-col sm:flex-row gap-4">
@@ -153,7 +153,7 @@ export default function DataServicePage() {
                                 <motion.button
                                     whileHover={{ scale: 1.02 }}
                                     whileTap={{ scale: 0.98 }}
-                                    className="px-8 py-4 border-2 border-zinc-700 text-white font-bold tracking-wider uppercase hover:border-primary hover:text-primary transition-colors"
+                                    className="px-8 py-4 border-2 border-border text-foreground font-bold tracking-wider uppercase hover:border-primary hover:text-primary transition-colors"
                                 >
                                     View Pricing
                                 </motion.button>
@@ -164,7 +164,7 @@ export default function DataServicePage() {
             </section>
 
             {/* ====== Data Stream Visual ====== */}
-            <section className="py-24 bg-zinc-900">
+            <section className="py-24 bg-card">
                 <div className="container mx-auto px-4 md:px-6">
                     <motion.div
                         initial={{ opacity: 0, y: 20 }}
@@ -172,10 +172,10 @@ export default function DataServicePage() {
                         viewport={{ once: true }}
                         className="text-center max-w-3xl mx-auto mb-12"
                     >
-                        <h2 className="text-3xl md:text-5xl font-bold text-white mb-4">
+                        <h2 className="text-3xl md:text-5xl font-bold text-foreground mb-4">
                             Live Data Pipeline
                         </h2>
-                        <p className="text-lg text-zinc-400">
+                        <p className="text-lg text-muted-foreground">
                             Watch real-time market data flow through our verification and standardisation engine.
                         </p>
                     </motion.div>
@@ -192,7 +192,7 @@ export default function DataServicePage() {
             </section>
 
             {/* ====== Capabilities ====== */}
-            <section className="py-24 bg-zinc-950">
+            <section className="py-24 bg-background">
                 <div className="container mx-auto px-4 md:px-6">
                     <motion.div
                         initial={{ opacity: 0, y: 20 }}
@@ -200,10 +200,10 @@ export default function DataServicePage() {
                         viewport={{ once: true }}
                         className="text-center max-w-3xl mx-auto mb-16"
                     >
-                        <h2 className="text-4xl md:text-5xl font-bold text-white mb-6">
+                        <h2 className="text-4xl md:text-5xl font-bold text-foreground mb-6">
                             Why PROPMETRIK Data
                         </h2>
-                        <p className="text-xl text-zinc-400">
+                        <p className="text-xl text-muted-foreground">
                             The most reliable, comprehensive, and accessible real estate data for Ghana.
                         </p>
                     </motion.div>
@@ -217,13 +217,13 @@ export default function DataServicePage() {
                                 viewport={{ once: true }}
                                 transition={{ delay: index * 0.08 }}
                                 whileHover={{ y: -5 }}
-                                className="bg-zinc-900 border border-zinc-800 rounded-lg p-8 hover:border-primary/50 transition-colors group"
+                                className="bg-card border border-border rounded-lg p-8 hover:border-primary/50 transition-colors group"
                             >
                                 <div className="w-12 h-12 rounded bg-primary/10 flex items-center justify-center text-primary mb-4 group-hover:bg-primary/20 transition-colors">
                                     {cap.icon}
                                 </div>
-                                <h3 className="text-xl font-bold text-white mb-3">{cap.title}</h3>
-                                <p className="text-zinc-400 text-sm leading-relaxed">{cap.description}</p>
+                                <h3 className="text-xl font-bold text-foreground mb-3">{cap.title}</h3>
+                                <p className="text-muted-foreground text-sm leading-relaxed">{cap.description}</p>
                             </motion.div>
                         ))}
                     </div>
@@ -231,7 +231,7 @@ export default function DataServicePage() {
             </section>
 
             {/* ====== Split — API Access ====== */}
-            <section className="py-24 bg-zinc-900">
+            <section className="py-24 bg-card">
                 <div className="container mx-auto px-4 md:px-6">
                     <div className="grid lg:grid-cols-2 gap-12 items-center">
                         <motion.div
@@ -239,13 +239,13 @@ export default function DataServicePage() {
                             whileInView={{ opacity: 1, x: 0 }}
                             viewport={{ once: true }}
                         >
-                            <h2 className="text-4xl md:text-5xl font-bold text-white mb-6">
+                            <h2 className="text-4xl md:text-5xl font-bold text-foreground mb-6">
                                 Powerful API for{' '}
                                 <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary to-yellow-400">
                                     Developers
                                 </span>
                             </h2>
-                            <p className="text-lg text-zinc-400 mb-8 leading-relaxed">
+                            <p className="text-lg text-muted-foreground mb-8 leading-relaxed">
                                 Integrate Ghana&apos;s best real estate data into your applications in minutes. RESTful endpoints, comprehensive docs, and webhooks for real-time updates.
                             </p>
                             <div className="space-y-4">
@@ -264,7 +264,7 @@ export default function DataServicePage() {
                                         className="flex items-start gap-3"
                                     >
                                         <CheckCircle2 className="w-5 h-5 text-primary shrink-0 mt-0.5" />
-                                        <span className="text-zinc-300 text-sm">{item}</span>
+                                        <span className="text-muted-foreground text-sm">{item}</span>
                                     </motion.div>
                                 ))}
                             </div>
@@ -276,24 +276,24 @@ export default function DataServicePage() {
                             viewport={{ once: true }}
                             transition={{ delay: 0.2 }}
                         >
-                            <div className="bg-zinc-950 border border-zinc-800 rounded-xl p-6">
+                            <div className="bg-background border border-border rounded-xl p-6">
                                 <div className="flex items-center gap-2 mb-4">
                                     <div className="w-3 h-3 rounded-full bg-red-500/80" />
                                     <div className="w-3 h-3 rounded-full bg-yellow-500/80" />
                                     <div className="w-3 h-3 rounded-full bg-green-500/80" />
-                                    <span className="ml-2 text-[10px] font-mono text-zinc-600">api-request.sh</span>
+                                    <span className="ml-2 text-[10px] font-mono text-muted-foreground">api-request.sh</span>
                                 </div>
-                                <div className="bg-zinc-900 rounded-lg p-5 font-mono text-sm space-y-1 overflow-x-auto">
-                                    <div className="text-green-400">GET <span className="text-zinc-300">/api/v1/properties/comparables</span></div>
-                                    <div className="text-zinc-600 mt-3">// Response</div>
-                                    <div className="text-zinc-400">{'{'}</div>
-                                    <div className="pl-4"><span className="text-blue-400">&quot;location&quot;</span>: <span className="text-yellow-400">&quot;East Legon, Accra&quot;</span>,</div>
-                                    <div className="pl-4"><span className="text-blue-400">&quot;property_type&quot;</span>: <span className="text-yellow-400">&quot;Residential&quot;</span>,</div>
-                                    <div className="pl-4"><span className="text-blue-400">&quot;bedrooms&quot;</span>: <span className="text-purple-400">4</span>,</div>
-                                    <div className="pl-4"><span className="text-blue-400">&quot;avg_price_per_sqm&quot;</span>: <span className="text-purple-400">3500</span>,</div>
-                                    <div className="pl-4"><span className="text-blue-400">&quot;currency&quot;</span>: <span className="text-yellow-400">&quot;GHS&quot;</span>,</div>
-                                    <div className="pl-4"><span className="text-blue-400">&quot;confidence&quot;</span>: <span className="text-purple-400">0.94</span></div>
-                                    <div className="text-zinc-400">{'}'}</div>
+                                <div className="bg-card rounded-lg p-5 font-mono text-sm space-y-1 overflow-x-auto">
+                                    <div className="text-green-600 dark:text-green-400">GET <span className="text-muted-foreground">/api/v1/properties/comparables</span></div>
+                                    <div className="text-muted-foreground mt-3">// Response</div>
+                                    <div className="text-muted-foreground">{'{'}</div>
+                                    <div className="pl-4"><span className="text-blue-600 dark:text-blue-400">&quot;location&quot;</span>: <span className="text-yellow-600 dark:text-yellow-400">&quot;East Legon, Accra&quot;</span>,</div>
+                                    <div className="pl-4"><span className="text-blue-600 dark:text-blue-400">&quot;property_type&quot;</span>: <span className="text-yellow-600 dark:text-yellow-400">&quot;Residential&quot;</span>,</div>
+                                    <div className="pl-4"><span className="text-blue-600 dark:text-blue-400">&quot;bedrooms&quot;</span>: <span className="text-purple-600 dark:text-purple-400">4</span>,</div>
+                                    <div className="pl-4"><span className="text-blue-600 dark:text-blue-400">&quot;avg_price_per_sqm&quot;</span>: <span className="text-purple-600 dark:text-purple-400">3500</span>,</div>
+                                    <div className="pl-4"><span className="text-blue-600 dark:text-blue-400">&quot;currency&quot;</span>: <span className="text-yellow-600 dark:text-yellow-400">&quot;GHS&quot;</span>,</div>
+                                    <div className="pl-4"><span className="text-blue-600 dark:text-blue-400">&quot;confidence&quot;</span>: <span className="text-purple-600 dark:text-purple-400">0.94</span></div>
+                                    <div className="text-muted-foreground">{'}'}</div>
                                 </div>
                             </div>
                         </motion.div>
@@ -302,7 +302,7 @@ export default function DataServicePage() {
             </section>
 
             {/* ====== Ghana Map Coverage ====== */}
-            <section className="py-24 bg-zinc-950">
+            <section className="py-24 bg-background">
                 <div className="container mx-auto px-4 md:px-6">
                     <motion.div
                         initial={{ opacity: 0, y: 20 }}
@@ -310,10 +310,10 @@ export default function DataServicePage() {
                         viewport={{ once: true }}
                         className="text-center max-w-3xl mx-auto mb-16"
                     >
-                        <h2 className="text-4xl md:text-5xl font-bold text-white mb-6">
+                        <h2 className="text-4xl md:text-5xl font-bold text-foreground mb-6">
                             National Coverage
                         </h2>
-                        <p className="text-xl text-zinc-400">
+                        <p className="text-xl text-muted-foreground">
                             Comprehensive data across Ghana&apos;s major real estate markets.
                         </p>
                     </motion.div>
@@ -322,7 +322,7 @@ export default function DataServicePage() {
             </section>
 
             {/* ====== Datasets / Use Cases ====== */}
-            <section className="py-24 bg-zinc-900">
+            <section className="py-24 bg-card">
                 <div className="container mx-auto px-4 md:px-6">
                     <motion.div
                         initial={{ opacity: 0, y: 20 }}
@@ -330,10 +330,10 @@ export default function DataServicePage() {
                         viewport={{ once: true }}
                         className="text-center max-w-3xl mx-auto mb-16"
                     >
-                        <h2 className="text-4xl md:text-5xl font-bold text-white mb-6">
+                        <h2 className="text-4xl md:text-5xl font-bold text-foreground mb-6">
                             Our Datasets
                         </h2>
-                        <p className="text-xl text-zinc-400">
+                        <p className="text-xl text-muted-foreground">
                             Comprehensive coverage for every real estate data need.
                         </p>
                     </motion.div>
@@ -346,13 +346,13 @@ export default function DataServicePage() {
                                 whileInView={{ opacity: 1, y: 0 }}
                                 viewport={{ once: true }}
                                 transition={{ delay: index * 0.1 }}
-                                className="bg-zinc-950 border border-zinc-800 rounded-lg p-8 hover:border-primary/50 transition-colors"
+                                className="bg-background border border-border rounded-lg p-8 hover:border-primary/50 transition-colors"
                             >
-                                <h3 className="text-2xl font-bold text-white mb-3">{ds.title}</h3>
-                                <p className="text-zinc-400 mb-6 text-sm">{ds.description}</p>
+                                <h3 className="text-2xl font-bold text-foreground mb-3">{ds.title}</h3>
+                                <p className="text-muted-foreground mb-6 text-sm">{ds.description}</p>
                                 <ul className="space-y-3">
                                     {ds.features.map((feat, fi) => (
-                                        <li key={fi} className="flex items-start gap-2 text-sm text-zinc-300">
+                                        <li key={fi} className="flex items-start gap-2 text-sm text-muted-foreground">
                                             <CheckCircle2 className="w-5 h-5 text-primary shrink-0 mt-0.5" />
                                             <span>{feat}</span>
                                         </li>
@@ -365,7 +365,7 @@ export default function DataServicePage() {
             </section>
 
             {/* ====== How It Works ====== */}
-            <section className="py-24 bg-zinc-950">
+            <section className="py-24 bg-background">
                 <div className="container mx-auto px-4 md:px-6">
                     <motion.div
                         initial={{ opacity: 0, y: 20 }}
@@ -373,10 +373,10 @@ export default function DataServicePage() {
                         viewport={{ once: true }}
                         className="text-center max-w-3xl mx-auto mb-16"
                     >
-                        <h2 className="text-4xl md:text-5xl font-bold text-white mb-6">
+                        <h2 className="text-4xl md:text-5xl font-bold text-foreground mb-6">
                             How It Works
                         </h2>
-                        <p className="text-xl text-zinc-400">
+                        <p className="text-xl text-muted-foreground">
                             From dataset selection to live integration in four steps.
                         </p>
                     </motion.div>
@@ -385,7 +385,7 @@ export default function DataServicePage() {
             </section>
 
             {/* ====== Pricing Teaser ====== */}
-            <section className="py-24 bg-zinc-900">
+            <section className="py-24 bg-card">
                 <div className="container mx-auto px-4 md:px-6">
                     <motion.div
                         initial={{ opacity: 0, y: 20 }}
@@ -393,10 +393,10 @@ export default function DataServicePage() {
                         viewport={{ once: true }}
                         className="text-center max-w-3xl mx-auto mb-12"
                     >
-                        <h2 className="text-4xl md:text-5xl font-bold text-white mb-6">
+                        <h2 className="text-4xl md:text-5xl font-bold text-foreground mb-6">
                             Data Plans for Every Scale
                         </h2>
-                        <p className="text-xl text-zinc-400">
+                        <p className="text-xl text-muted-foreground">
                             From individual researchers to enterprise pipelines.
                         </p>
                     </motion.div>
@@ -431,8 +431,8 @@ export default function DataServicePage() {
                                 transition={{ delay: i * 0.1 }}
                                 className={`relative rounded-xl p-8 border transition-colors ${
                                     plan.featured
-                                        ? 'bg-zinc-950 border-primary/50 ring-1 ring-primary/20'
-                                        : 'bg-zinc-950 border-zinc-800 hover:border-zinc-700'
+                                        ? 'bg-background border-primary/50 ring-1 ring-primary/20'
+                                        : 'bg-background border-border hover:border-border'
                                 }`}
                             >
                                 {plan.featured && (
@@ -440,15 +440,15 @@ export default function DataServicePage() {
                                         Most Popular
                                     </div>
                                 )}
-                                <div className="text-xs text-zinc-500 uppercase tracking-wider mb-2">{plan.audience}</div>
-                                <h3 className="text-2xl font-bold text-white mb-1">{plan.tier}</h3>
-                                <div className="text-3xl font-bold text-white mb-1">
+                                <div className="text-xs text-muted-foreground uppercase tracking-wider mb-2">{plan.audience}</div>
+                                <h3 className="text-2xl font-bold text-foreground mb-1">{plan.tier}</h3>
+                                <div className="text-3xl font-bold text-foreground mb-1">
                                     {plan.price}
-                                    <span className="text-sm text-zinc-500 font-normal"> /month</span>
+                                    <span className="text-sm text-muted-foreground font-normal"> /month</span>
                                 </div>
                                 <ul className="mt-6 space-y-3">
                                     {plan.features.map((f, fi) => (
-                                        <li key={fi} className="flex items-start gap-2 text-sm text-zinc-300">
+                                        <li key={fi} className="flex items-start gap-2 text-sm text-muted-foreground">
                                             <CheckCircle2 className="w-4 h-4 text-primary shrink-0 mt-0.5" />
                                             <span>{f}</span>
                                         </li>
@@ -461,7 +461,7 @@ export default function DataServicePage() {
                                         className={`w-full mt-8 py-3 font-bold uppercase tracking-wider text-sm transition-colors ${
                                             plan.featured
                                                 ? 'bg-gradient-to-r from-primary to-yellow-400 text-zinc-950'
-                                                : 'border border-zinc-700 text-white hover:border-primary hover:text-primary'
+                                                : 'border border-border text-foreground hover:border-primary hover:text-primary'
                                         }`}
                                     >
                                         Get Started

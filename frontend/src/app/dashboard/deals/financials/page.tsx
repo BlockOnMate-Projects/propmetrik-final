@@ -105,7 +105,7 @@ export default function DealsFinancialsPage() {
                                     </div>
                                 </div>
                                 <div className="flex items-center mt-2 text-xs text-muted-foreground">
-                                    <TrendingUp className="h-3 w-3 mr-1 text-emerald-400" />
+                                    <TrendingUp className="h-3 w-3 mr-1 text-emerald-600 dark:text-emerald-400" />
                                     <span>This period</span>
                                 </div>
                             </CardContent>
@@ -123,7 +123,7 @@ export default function DealsFinancialsPage() {
                                     </div>
                                 </div>
                                 <div className="flex items-center mt-2 text-xs text-muted-foreground">
-                                    <ArrowUpRight className="h-3 w-3 mr-1 text-emerald-400" />
+                                    <ArrowUpRight className="h-3 w-3 mr-1 text-emerald-600 dark:text-emerald-400" />
                                     <span>Approved &amp; paid</span>
                                 </div>
                             </CardContent>

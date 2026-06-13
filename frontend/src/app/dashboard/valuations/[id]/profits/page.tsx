@@ -395,28 +395,28 @@ export default function ProfitsMethodPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-black text-white flex items-center justify-center">
+      <div className="min-h-screen bg-background text-foreground flex items-center justify-center">
         <Loader2 className="w-8 h-8 text-amber-500 animate-spin" />
-        <span className="ml-3 font-mono text-sm text-zinc-400">Loading profits method...</span>
+        <span className="ml-3 font-mono text-sm text-muted-foreground">Loading profits method...</span>
       </div>
     )
   }
 
   return (
     <TooltipProvider>
-    <div className="min-h-screen bg-black text-white p-4 pb-10">
+    <div className="min-h-screen bg-background text-foreground p-4 pb-10">
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-4">
-          <Link href={getBackPath()} className="p-2 hover:bg-zinc-800 transition-colors">
-            <ArrowLeft className="w-4 h-4 text-zinc-400" />
+          <Link href={getBackPath()} className="p-2 hover:bg-muted transition-colors">
+            <ArrowLeft className="w-4 h-4 text-muted-foreground" />
           </Link>
           <div>
             <div className="flex items-center gap-3">
-              <h1 className="font-mono text-xl text-white">PROFITS METHOD</h1>
+              <h1 className="font-mono text-xl text-foreground">PROFITS METHOD</h1>
               <MethodBadge method="PROFITS" />
             </div>
-            <p className="font-mono text-xs text-zinc-500">Trading Property Valuation</p>
+            <p className="font-mono text-xs text-muted-foreground">Trading Property Valuation</p>
           </div>
         </div>
         <div className="flex items-center gap-3">
@@ -435,13 +435,13 @@ export default function ProfitsMethodPage() {
             <div className="flex items-center gap-2 px-4 pt-3 pb-0">
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <HelpCircle className="w-3 h-3 text-zinc-500 hover:text-amber-400 cursor-help" />
+                  <HelpCircle className="w-3 h-3 text-muted-foreground hover:text-amber-400 cursor-help" />
                 </TooltipTrigger>
-                <TooltipContent className="max-w-xs bg-zinc-900 border border-zinc-700">
+                <TooltipContent className="max-w-xs bg-card border border-border">
                   <p className="text-xs font-mono">{PROFITS_TOOLTIPS.propertyType}</p>
                 </TooltipContent>
               </Tooltip>
-              <span className="font-mono text-[10px] text-zinc-500">Select property type for appropriate cost ratios</span>
+              <span className="font-mono text-[10px] text-muted-foreground">Select property type for appropriate cost ratios</span>
             </div>
             <div className="grid grid-cols-3 md:grid-cols-6 gap-2 p-4">
               {PROPERTY_TYPES.map(type => {
@@ -452,8 +452,8 @@ export default function ProfitsMethodPage() {
                     onClick={() => setPropertyType(type.id)}
                     className={`p-3 border text-center transition-colors ${
                       propertyType === type.id
-                        ? 'bg-amber-500/20 border-amber-500 text-amber-400'
-                        : 'bg-zinc-900 border-zinc-700 text-zinc-400 hover:border-zinc-500'
+                        ? 'bg-amber-500/20 border-amber-500 text-amber-600 dark:text-amber-400'
+                        : 'bg-card border-border text-muted-foreground hover:border-zinc-500'
                     }`}
                   >
                     <Icon className="w-5 h-5 mx-auto mb-1" />
@@ -470,14 +470,14 @@ export default function ProfitsMethodPage() {
               <div className="grid grid-cols-3 gap-4">
                 <div>
                   <div className="flex items-center gap-1 mb-1">
-                    <label className="font-mono text-[10px] text-zinc-500">
+                    <label className="font-mono text-[10px] text-muted-foreground">
                       NUMBER OF {currentTypeInfo?.metric?.toUpperCase() || 'UNITS'}
                     </label>
                     <Tooltip>
                       <TooltipTrigger asChild>
-                        <HelpCircle className="w-3 h-3 text-zinc-500 hover:text-amber-400 cursor-help" />
+                        <HelpCircle className="w-3 h-3 text-muted-foreground hover:text-amber-400 cursor-help" />
                       </TooltipTrigger>
-                      <TooltipContent className="max-w-xs bg-zinc-900 border border-zinc-700">
+                      <TooltipContent className="max-w-xs bg-card border border-border">
                         <p className="text-xs font-mono">{PROFITS_TOOLTIPS.unitCount}</p>
                       </TooltipContent>
                     </Tooltip>
@@ -486,19 +486,19 @@ export default function ProfitsMethodPage() {
                     type="number"
                     value={unitCount}
                     onChange={(e) => setUnitCount(Number(e.target.value))}
-                    className="w-full bg-black border border-zinc-700 p-2 font-mono text-sm text-white"
+                    className="w-full bg-background border border-border p-2 font-mono text-sm text-foreground"
                   />
                 </div>
                 <div>
                   <div className="flex items-center gap-1 mb-1">
-                    <label className="font-mono text-[10px] text-zinc-500">
+                    <label className="font-mono text-[10px] text-muted-foreground">
                       REVENUE PER {currentTypeInfo?.metric?.toUpperCase() || 'UNIT'}/YEAR (GH₵)
                     </label>
                     <Tooltip>
                       <TooltipTrigger asChild>
-                        <HelpCircle className="w-3 h-3 text-zinc-500 hover:text-amber-400 cursor-help" />
+                        <HelpCircle className="w-3 h-3 text-muted-foreground hover:text-amber-400 cursor-help" />
                       </TooltipTrigger>
-                      <TooltipContent className="max-w-xs bg-zinc-900 border border-zinc-700">
+                      <TooltipContent className="max-w-xs bg-card border border-border">
                         <p className="text-xs font-mono">{PROFITS_TOOLTIPS.revenuePerUnit}</p>
                       </TooltipContent>
                     </Tooltip>
@@ -510,17 +510,17 @@ export default function ProfitsMethodPage() {
                       setUseCustomRevenue(true)
                       setRevenuePerUnit(Number(e.target.value))
                     }}
-                    className="w-full bg-black border border-zinc-700 p-2 font-mono text-sm text-white"
+                    className="w-full bg-background border border-border p-2 font-mono text-sm text-foreground"
                   />
                 </div>
                 <div>
                   <div className="flex items-center gap-1 mb-1">
-                    <label className="font-mono text-[10px] text-zinc-500">OCCUPANCY RATE %</label>
+                    <label className="font-mono text-[10px] text-muted-foreground">OCCUPANCY RATE %</label>
                     <Tooltip>
                       <TooltipTrigger asChild>
-                        <HelpCircle className="w-3 h-3 text-zinc-500 hover:text-amber-400 cursor-help" />
+                        <HelpCircle className="w-3 h-3 text-muted-foreground hover:text-amber-400 cursor-help" />
                       </TooltipTrigger>
-                      <TooltipContent className="max-w-xs bg-zinc-900 border border-zinc-700">
+                      <TooltipContent className="max-w-xs bg-card border border-border">
                         <p className="text-xs font-mono">{PROFITS_TOOLTIPS.occupancyRate}</p>
                       </TooltipContent>
                     </Tooltip>
@@ -529,41 +529,41 @@ export default function ProfitsMethodPage() {
                     type="number"
                     value={occupancyRate}
                     onChange={(e) => setOccupancyRate(Number(e.target.value))}
-                    className="w-full bg-black border border-zinc-700 p-2 font-mono text-sm text-white"
+                    className="w-full bg-background border border-border p-2 font-mono text-sm text-foreground"
                   />
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4 p-3 bg-zinc-900 border border-zinc-700">
+              <div className="grid grid-cols-2 gap-4 p-3 bg-card border border-border">
                 <div>
                   <div className="flex items-center gap-1">
-                    <span className="font-mono text-xs text-zinc-500">Potential Gross Revenue</span>
+                    <span className="font-mono text-xs text-muted-foreground">Potential Gross Revenue</span>
                     <Tooltip>
                       <TooltipTrigger asChild>
-                        <HelpCircle className="w-3 h-3 text-zinc-500 hover:text-amber-400 cursor-help" />
+                        <HelpCircle className="w-3 h-3 text-muted-foreground hover:text-amber-400 cursor-help" />
                       </TooltipTrigger>
-                      <TooltipContent className="max-w-xs bg-zinc-900 border border-zinc-700">
+                      <TooltipContent className="max-w-xs bg-card border border-border">
                         <p className="text-xs font-mono">{PROFITS_TOOLTIPS.pgr}</p>
                       </TooltipContent>
                     </Tooltip>
                   </div>
-                  <div className="font-mono text-lg text-white">
+                  <div className="font-mono text-lg text-foreground">
                     GH₵ {potentialGrossRevenue.toLocaleString()}
                   </div>
                 </div>
                 <div>
                   <div className="flex items-center gap-1">
-                    <span className="font-mono text-xs text-zinc-500">Effective Gross Revenue</span>
+                    <span className="font-mono text-xs text-muted-foreground">Effective Gross Revenue</span>
                     <Tooltip>
                       <TooltipTrigger asChild>
-                        <HelpCircle className="w-3 h-3 text-zinc-500 hover:text-amber-400 cursor-help" />
+                        <HelpCircle className="w-3 h-3 text-muted-foreground hover:text-amber-400 cursor-help" />
                       </TooltipTrigger>
-                      <TooltipContent className="max-w-xs bg-zinc-900 border border-zinc-700">
+                      <TooltipContent className="max-w-xs bg-card border border-border">
                         <p className="text-xs font-mono">{PROFITS_TOOLTIPS.egr}</p>
                       </TooltipContent>
                     </Tooltip>
                   </div>
-                  <div className="font-mono text-lg text-green-400">
+                  <div className="font-mono text-lg text-green-600 dark:text-green-400">
                     GH₵ {effectiveGrossRevenue.toLocaleString()}
                   </div>
                 </div>
@@ -576,18 +576,18 @@ export default function ProfitsMethodPage() {
             <div className="flex items-center gap-2 px-4 pt-3 pb-0">
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <HelpCircle className="w-3 h-3 text-zinc-500 hover:text-amber-400 cursor-help" />
+                  <HelpCircle className="w-3 h-3 text-muted-foreground hover:text-amber-400 cursor-help" />
                 </TooltipTrigger>
-                <TooltipContent className="max-w-xs bg-zinc-900 border border-zinc-700">
+                <TooltipContent className="max-w-xs bg-card border border-border">
                   <p className="text-xs font-mono">{PROFITS_TOOLTIPS.operatingCosts}</p>
                 </TooltipContent>
               </Tooltip>
-              <span className="font-mono text-[10px] text-zinc-500">Adjust cost percentages based on actual property operations</span>
+              <span className="font-mono text-[10px] text-muted-foreground">Adjust cost percentages based on actual property operations</span>
             </div>
             <div className="p-4 space-y-3">
               {operatingCosts.map(cost => (
                 <div key={cost.label} className="flex items-center gap-4">
-                  <span className="font-mono text-xs text-zinc-400 w-40">{cost.label}</span>
+                  <span className="font-mono text-xs text-muted-foreground w-40">{cost.label}</span>
                   <input
                     type="range"
                     min="0"
@@ -599,18 +599,18 @@ export default function ProfitsMethodPage() {
                     })}
                     className="flex-1"
                   />
-                  <span className="font-mono text-sm text-amber-400 w-12 text-right">
+                  <span className="font-mono text-sm text-amber-600 dark:text-amber-400 w-12 text-right">
                     {operatingCostOverrides[cost.label] ?? cost.value}%
                   </span>
-                  <span className="font-mono text-xs text-zinc-500 w-32 text-right">
+                  <span className="font-mono text-xs text-muted-foreground w-32 text-right">
                     GH₵ {(effectiveGrossRevenue * ((operatingCostOverrides[cost.label] ?? cost.value) / 100)).toLocaleString()}
                   </span>
                 </div>
               ))}
 
               <div className="flex items-center justify-between p-3 bg-red-500/10 border border-red-500/30 mt-4">
-                <span className="font-mono text-sm text-red-400">Total Operating Costs</span>
-                <span className="font-mono text-lg text-red-400 font-bold">
+                <span className="font-mono text-sm text-red-600 dark:text-red-400">Total Operating Costs</span>
+                <span className="font-mono text-lg text-red-600 dark:text-red-400 font-bold">
                   {totalOperatingCostPercent.toFixed(1)}% (GH₵ {totalOperatingCostAmount.toLocaleString()})
                 </span>
               </div>
@@ -625,23 +625,23 @@ export default function ProfitsMethodPage() {
             <div className="p-4">
               <div className="flex items-center justify-between p-4 bg-green-500/20 border border-green-500/30 mb-4">
                 <div className="flex items-center gap-2">
-                  <span className="font-mono text-sm text-green-400">Annual MOP</span>
+                  <span className="font-mono text-sm text-green-600 dark:text-green-400">Annual MOP</span>
                   <Tooltip>
                     <TooltipTrigger asChild>
-                      <HelpCircle className="w-3 h-3 text-green-400/60 hover:text-green-400 cursor-help" />
+                      <HelpCircle className="w-3 h-3 text-green-600 dark:text-green-400/60 hover:text-green-400 cursor-help" />
                     </TooltipTrigger>
-                    <TooltipContent className="max-w-xs bg-zinc-900 border border-zinc-700">
+                    <TooltipContent className="max-w-xs bg-card border border-border">
                       <p className="text-xs font-mono">{PROFITS_TOOLTIPS.mop}</p>
                     </TooltipContent>
                   </Tooltip>
                 </div>
-                <span className="font-mono text-2xl text-green-400 font-bold">
+                <span className="font-mono text-2xl text-green-600 dark:text-green-400 font-bold">
                   GH₵ {mop.toLocaleString()}
                 </span>
               </div>
               <div className="flex items-start gap-3 p-3 bg-blue-500/10 border border-blue-500/30">
-                <Info className="w-4 h-4 text-blue-400 mt-0.5" />
-                <div className="font-mono text-xs text-blue-300">
+                <Info className="w-4 h-4 text-blue-600 dark:text-blue-400 mt-0.5" />
+                <div className="font-mono text-xs text-blue-600 dark:text-blue-300">
                   MOP represents the sustainable annual profit that a reasonably efficient operator would achieve
                 </div>
               </div>
@@ -653,12 +653,12 @@ export default function ProfitsMethodPage() {
             <div className="p-4 space-y-4">
               <div className="flex items-center gap-4">
                 <div className="flex items-center gap-1">
-                  <label className="font-mono text-xs text-zinc-400">Cap Rate:</label>
+                  <label className="font-mono text-xs text-muted-foreground">Cap Rate:</label>
                   <Tooltip>
                     <TooltipTrigger asChild>
-                      <HelpCircle className="w-3 h-3 text-zinc-500 hover:text-amber-400 cursor-help" />
+                      <HelpCircle className="w-3 h-3 text-muted-foreground hover:text-amber-400 cursor-help" />
                     </TooltipTrigger>
-                    <TooltipContent className="max-w-xs bg-zinc-900 border border-zinc-700">
+                    <TooltipContent className="max-w-xs bg-card border border-border">
                       <p className="text-xs font-mono">{PROFITS_TOOLTIPS.capRate}</p>
                     </TooltipContent>
                   </Tooltip>
@@ -675,7 +675,7 @@ export default function ProfitsMethodPage() {
                   }}
                   className="flex-1"
                 />
-                <span className="font-mono text-sm text-amber-400 w-12 text-right">
+                <span className="font-mono text-sm text-amber-600 dark:text-amber-400 w-12 text-right">
                   {capRate}%
                 </span>
               </div>
@@ -683,29 +683,29 @@ export default function ProfitsMethodPage() {
                 <div className="space-y-1">
                   <div className="flex items-center gap-2">
                     <span className={`font-mono text-[9px] px-1.5 py-0.5 ${
-                      capRateConfidence === 'high' ? 'bg-green-500/20 text-green-400' :
-                      capRateConfidence === 'moderate' ? 'bg-amber-500/20 text-amber-400' :
-                      'bg-red-500/20 text-red-400'
+                      capRateConfidence === 'high' ? 'bg-green-500/20 text-green-600 dark:text-green-400' :
+                      capRateConfidence === 'moderate' ? 'bg-amber-500/20 text-amber-600 dark:text-amber-400' :
+                      'bg-red-500/20 text-red-600 dark:text-red-400'
                     }`}>
                       {capRateMethodology.replace(/_/g, ' ').toUpperCase()}
                     </span>
                     {useCustomCapRate && (
                       <button
                         onClick={() => { setUseCustomCapRate(false); if (systemCapRate !== null) setCapRate(systemCapRate) }}
-                        className="font-mono text-[9px] text-blue-400 hover:text-blue-300 underline"
+                        className="font-mono text-[9px] text-blue-600 dark:text-blue-400 hover:text-blue-300 underline"
                       >
                         Reset to system
                       </button>
                     )}
                   </div>
                   {capRateRange && (
-                    <div className="font-mono text-[10px] text-zinc-500">
+                    <div className="font-mono text-[10px] text-muted-foreground">
                       Market range: {capRateRange.low.toFixed(1)}% – {capRateRange.high.toFixed(1)}%
                     </div>
                   )}
                 </div>
               ) : (
-                <div className="font-mono text-xs text-zinc-500">
+                <div className="font-mono text-xs text-muted-foreground">
                   Loading market cap rate...
                 </div>
               )}
@@ -715,47 +715,47 @@ export default function ProfitsMethodPage() {
           {/* Capital Value */}
           <TerminalPanel title="CAPITAL VALUE">
             <div className="p-4 space-y-3">
-              <div className="flex justify-between py-2 border-b border-zinc-800">
-                <span className="font-mono text-xs text-zinc-500">Maintainable Operating Profit</span>
-                <span className="font-mono text-sm text-green-400">
+              <div className="flex justify-between py-2 border-b border-border">
+                <span className="font-mono text-xs text-muted-foreground">Maintainable Operating Profit</span>
+                <span className="font-mono text-sm text-green-600 dark:text-green-400">
                   GH₵ {mop.toLocaleString()}
                 </span>
               </div>
-              <div className="flex justify-between py-2 border-b border-zinc-800">
-                <span className="font-mono text-xs text-zinc-500">Capitalization Rate</span>
-                <span className="font-mono text-sm text-white">
+              <div className="flex justify-between py-2 border-b border-border">
+                <span className="font-mono text-xs text-muted-foreground">Capitalization Rate</span>
+                <span className="font-mono text-sm text-foreground">
                   {capRate}%
                 </span>
               </div>
-              <div className="flex justify-between py-2 border-b border-zinc-800">
+              <div className="flex justify-between py-2 border-b border-border">
                 <div className="flex items-center gap-1">
-                  <span className="font-mono text-xs text-zinc-500">Years Purchase (1/cap rate)</span>
+                  <span className="font-mono text-xs text-muted-foreground">Years Purchase (1/cap rate)</span>
                   <Tooltip>
                     <TooltipTrigger asChild>
-                      <HelpCircle className="w-3 h-3 text-zinc-500 hover:text-amber-400 cursor-help" />
+                      <HelpCircle className="w-3 h-3 text-muted-foreground hover:text-amber-400 cursor-help" />
                     </TooltipTrigger>
-                    <TooltipContent className="max-w-xs bg-zinc-900 border border-zinc-700">
+                    <TooltipContent className="max-w-xs bg-card border border-border">
                       <p className="text-xs font-mono">{PROFITS_TOOLTIPS.yearssPurchase}</p>
                     </TooltipContent>
                   </Tooltip>
                 </div>
-                <span className="font-mono text-sm text-white">
+                <span className="font-mono text-sm text-foreground">
                   {(100 / capRate).toFixed(2)} YP
                 </span>
               </div>
               <div className="flex justify-between py-3 bg-amber-500/20 -mx-4 px-4">
                 <div className="flex items-center gap-2">
-                  <span className="font-mono text-sm text-amber-400 font-bold">CAPITAL VALUE</span>
+                  <span className="font-mono text-sm text-amber-600 dark:text-amber-400 font-bold">CAPITAL VALUE</span>
                   <Tooltip>
                     <TooltipTrigger asChild>
-                      <HelpCircle className="w-3 h-3 text-amber-400/60 hover:text-amber-400 cursor-help" />
+                      <HelpCircle className="w-3 h-3 text-amber-600 dark:text-amber-400/60 hover:text-amber-400 cursor-help" />
                     </TooltipTrigger>
-                    <TooltipContent className="max-w-xs bg-zinc-900 border border-zinc-700">
+                    <TooltipContent className="max-w-xs bg-card border border-border">
                       <p className="text-xs font-mono">{PROFITS_TOOLTIPS.capitalValue}</p>
                     </TooltipContent>
                   </Tooltip>
                 </div>
-                <span className="font-mono text-xl text-amber-400 font-bold">
+                <span className="font-mono text-xl text-amber-600 dark:text-amber-400 font-bold">
                   GH₵ {capitalValue.toLocaleString()}
                 </span>
               </div>
@@ -766,20 +766,20 @@ export default function ProfitsMethodPage() {
           <TerminalPanel title="PROFITS METHOD NOTES">
             <div className="p-4 space-y-2">
               <div className="flex items-start gap-2 text-xs">
-                <TrendingUp className="w-3 h-3 text-green-400 mt-0.5" />
-                <span className="font-mono text-zinc-400">
+                <TrendingUp className="w-3 h-3 text-green-600 dark:text-green-400 mt-0.5" />
+                <span className="font-mono text-muted-foreground">
                   Value based on trading potential, not just property
                 </span>
               </div>
               <div className="flex items-start gap-2 text-xs">
-                <Users className="w-3 h-3 text-blue-400 mt-0.5" />
-                <span className="font-mono text-zinc-400">
+                <Users className="w-3 h-3 text-blue-600 dark:text-blue-400 mt-0.5" />
+                <span className="font-mono text-muted-foreground">
                   Assumes reasonably efficient operator (REO)
                 </span>
               </div>
               <div className="flex items-start gap-2 text-xs">
-                <DollarSign className="w-3 h-3 text-amber-400 mt-0.5" />
-                <span className="font-mono text-zinc-400">
+                <DollarSign className="w-3 h-3 text-amber-600 dark:text-amber-400 mt-0.5" />
+                <span className="font-mono text-muted-foreground">
                   MOP should reflect normalized, sustainable profits
                 </span>
               </div>
@@ -792,14 +792,14 @@ export default function ProfitsMethodPage() {
       <div className="mt-6 flex justify-between">
         <Link
           href={getBackPath()}
-          className="px-6 py-3 bg-zinc-800 text-zinc-400 font-mono text-sm hover:text-white transition-colors"
+          className="px-6 py-3 bg-muted text-muted-foreground font-mono text-sm hover:text-foreground transition-colors"
         >
           ← BACK
         </Link>
         <button
           onClick={handleSave}
           disabled={saving || capitalValue <= 0}
-          className="px-6 py-3 bg-amber-500 text-white font-mono text-sm font-bold hover:bg-amber-400 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-2"
+          className="px-6 py-3 bg-amber-500 text-foreground font-mono text-sm font-bold hover:bg-amber-400 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-2"
         >
           {saving && <Loader2 className="w-4 h-4 animate-spin" />}
           {(() => {

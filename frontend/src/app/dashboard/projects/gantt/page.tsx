@@ -38,13 +38,13 @@ export default function PMGanttPage() {
     <div className="space-y-6">
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-white tracking-tight">Gantt Schedule</h1>
-          <p className="text-zinc-400 text-sm mt-1">
+          <h1 className="text-2xl font-bold text-foreground tracking-tight">Gantt Schedule</h1>
+          <p className="text-muted-foreground text-sm mt-1">
             Interactive timeline — drag phase bars to reschedule, with critical path and milestones.
           </p>
         </div>
         <Select value={selected} onValueChange={setSelected}>
-          <SelectTrigger className="w-72 bg-zinc-900 border-zinc-700 text-zinc-200 font-mono text-xs">
+          <SelectTrigger className="w-72 bg-card border-border text-zinc-200 font-mono text-xs">
             <SelectValue placeholder="Select a project" />
           </SelectTrigger>
           <SelectContent>
@@ -55,10 +55,10 @@ export default function PMGanttPage() {
         </Select>
       </div>
 
-      <Card className="bg-zinc-900 border-zinc-800">
+      <Card className="bg-card border-border">
         <CardHeader>
-          <CardTitle className="text-white">Master Schedule</CardTitle>
-          <CardDescription className="text-zinc-400">
+          <CardTitle className="text-foreground">Master Schedule</CardTitle>
+          <CardDescription className="text-muted-foreground">
             {selected ? 'Drag bars to reschedule phases — changes save automatically.' : 'Pick a project to view its Gantt.'}
           </CardDescription>
         </CardHeader>
@@ -69,8 +69,8 @@ export default function PMGanttPage() {
             </div>
           ) : !selected ? (
             <div className="flex flex-col items-center justify-center py-20 text-center">
-              <GanttChartSquare className="h-10 w-10 text-zinc-600 mb-3" />
-              <p className="text-zinc-400 text-sm">No projects found. Create a project to build its schedule.</p>
+              <GanttChartSquare className="h-10 w-10 text-muted-foreground mb-3" />
+              <p className="text-muted-foreground text-sm">No projects found. Create a project to build its schedule.</p>
             </div>
           ) : (
             <ProjectGantt key={selected} projectId={selected} />

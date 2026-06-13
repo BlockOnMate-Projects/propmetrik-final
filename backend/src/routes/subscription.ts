@@ -32,6 +32,11 @@ import {
   // Types
   PlanCategory, PlanSegment, PlanTier,
 } from '../../shared-services/payments/subscriptions/subscriptionService';
+import {
+  reconcileSubscriptionPayment,
+  chargeRenewal,
+  processDueRenewals,
+} from '../../shared-services/payments/subscriptions/subscriptionBillingService';
 
 const router = Router();
 
@@ -81,6 +86,22 @@ router.get('/plans/:slug', optionalAuth, async (req: Request, res: Response) => 
   }
 });
 
+/**
+ * GET /subscriptions/verify/:reference
+ * Reconcile a subscription payment after the Paystack redirect. Public
+ * (optionalAuth) so the post-checkout page can confirm immediately rather than
+ * waiting for the webhook. Idempotent — the webhook may also fire.
+ */
+router.get('/verify/:reference', optionalAuth, async (req: Request, res: Response) => {
+  try {
+    const result = await reconcileSubscriptionPayment(req.params.reference);
+    return res.json(result);
+  } catch (err: any) {
+    logger.error('Subscription payment verify failed', { reference: req.params.reference, error: err?.message });
+    return res.status(500).json({ status: 'failed', message: 'Verification error' });
+  }
+});
+
 // ============================================================
 // AUTHENTICATED ENDPOINTS — Subscription management
 // ============================================================
@@ -104,7 +125,9 @@ router.get('/subscription', authenticate, async (req: Request, res: Response) =>
     // Get active modules
     const modules = await getActiveModules(orgId, userId);
 
-    res.json({ subscription, usage, modules });
+    // Never expose the reusable Paystack card token to the client.
+    const { payment_authorization_code, ...safeSubscription } = subscription as any;
+    res.json({ subscription: safeSubscription, usage, modules });
   } catch (err: any) {
     logger.error('Failed to get subscription', err);
     res.status(500).json({ error: 'Failed to fetch subscription' });
@@ -126,13 +149,21 @@ router.post('/subscription', authenticate, async (req: Request, res: Response) =
       return res.status(400).json({ error: 'plan_slug is required' });
     }
 
+    // Charge-immediately model (no free trial): when real payment is required,
+    // the subscription starts 'incomplete' and is activated by
+    // reconcileSubscriptionPayment once Paystack confirms the first charge.
+    // PAYMENT_BYPASS (local/demo) activates immediately with no charge.
+    const requiresPayment = !config.app.paymentBypass
+      && (payment_provider === 'paystack' || payment_provider === 'bank_transfer');
+
     const subscription = await createSubscription({
       organization_id: orgId || undefined,
       user_id: userId,
       plan_slug,
       billing_interval,
       payment_provider,
-      start_trial,
+      start_trial: false,
+      payment_pending: requiresPayment,
       metadata,
       actor_id: userId,
     });
@@ -185,8 +216,12 @@ router.post('/subscription', authenticate, async (req: Request, res: Response) =
           amount: Math.round(chargeGhs * 100), // GHS → pesewas
           currency: 'GHS',
           reference: `sub_${subscription.id}_inv_${invoice.id}`,
-          callback_url: `${config.app.frontendUrl}/dashboard?welcome=true&payment=success`,
+          // Land on the billing page, which reconciles the payment via the verify
+          // endpoint (a reliable fallback when the webhook can't reach us, e.g. dev)
+          // and shows the now-active subscription.
+          callback_url: `${config.app.frontendUrl}/dashboard/billing?welcome=true&ref=sub_${subscription.id}_inv_${invoice.id}`,
           metadata: {
+            payment_type: 'subscription',
             subscription_id: subscription.id,
             invoice_id: invoice.id,
             plan_slug,
@@ -513,6 +548,87 @@ router.get('/invoices/:id', authenticate, authorize('invoice', 'read'), async (r
 });
 
 /**
+ * POST /invoices/:id/pay
+ * Initialize a Paystack payment for an existing pending/past_due invoice.
+ * Used by the billing UI to settle an outstanding invoice (e.g. after a failed
+ * renewal) and to (re)capture the card authorization. Returns a payment_url to
+ * redirect to; the return trip is reconciled by GET /subscriptions/verify/:ref
+ * and the webhook (idempotent).
+ */
+router.post('/invoices/:id/pay', authenticate, authorize('invoice', 'read'), async (req: Request, res: Response) => {
+  try {
+    const orgId = (req as any).user?.organizationId;
+    const userId = (req as any).user?.id;
+    let email = (req as any).user?.email as string | undefined;
+
+    const invoice = await getInvoice(req.params.id);
+    if (!invoice) return res.status(404).json({ error: 'Invoice not found' });
+
+    // Ownership check (same as GET /invoices/:id)
+    const roles = (req as any).user?.realmRoles || [];
+    if (!roles.includes('super_admin') &&
+        invoice.organization_id !== orgId &&
+        invoice.user_id !== userId) {
+      return res.status(403).json({ error: 'Access denied' });
+    }
+    if (invoice.status === 'paid') {
+      return res.status(400).json({ error: 'Invoice is already paid' });
+    }
+    if (!invoice.subscription_id) {
+      return res.status(400).json({ error: 'Invoice is not linked to a subscription' });
+    }
+
+    const { PaystackService } = await import('../services/property-management/payment/paystackService');
+    const paystack = new PaystackService();
+
+    if (!email) {
+      const { pool: dbPool } = await import('../database');
+      const userRow = await dbPool.query('SELECT email FROM users WHERE id = $1', [userId]);
+      email = userRow.rows[0]?.email;
+    }
+    if (!email) return res.status(400).json({ error: 'No email on file for payment' });
+
+    // Settle in GHS at a live, locked rate for foreign-priced invoices.
+    const { exchangeRateService } = await import('../../shared-services/payments/crypto/exchangeRateService');
+    const obligationCurrency = (invoice.currency || 'GHS').toUpperCase();
+    const isForeign = obligationCurrency !== 'GHS';
+    const fxConv = await exchangeRateService.normalizeToGhs(invoice.total, obligationCurrency);
+
+    const paystackRes = await paystack.initializeTransaction({
+      email,
+      amount: Math.round(fxConv.ghsAmount * 100),
+      currency: 'GHS',
+      reference: `sub_${invoice.subscription_id}_inv_${invoice.id}`,
+      callback_url: `${config.app.frontendUrl}/dashboard/billing?payment=success&ref=sub_${invoice.subscription_id}_inv_${invoice.id}`,
+      metadata: {
+        payment_type: 'subscription',
+        subscription_id: invoice.subscription_id,
+        invoice_id: invoice.id,
+        ...(isForeign ? {
+          obligation_currency: obligationCurrency,
+          obligation_amount: invoice.total,
+          fx_rate: fxConv.rate,
+          fx_source: fxConv.source,
+          fx_locked_at: fxConv.fetchedAt.toISOString(),
+        } : {}),
+      },
+      channels: ['card', 'mobile_money'],
+    });
+
+    if (paystackRes.status && paystackRes.data?.authorization_url) {
+      return res.json({
+        payment_url: paystackRes.data.authorization_url,
+        reference: paystackRes.data.reference,
+      });
+    }
+    return res.status(502).json({ error: 'Could not initialize payment' });
+  } catch (err: any) {
+    logger.error('Failed to initialize invoice payment', { id: req.params.id, error: err?.message });
+    res.status(500).json({ error: 'Failed to initialize payment' });
+  }
+});
+
+/**
  * GET /subscription/history
  * Get subscription event history
  */
@@ -682,6 +798,35 @@ router.get('/admin/metrics', authenticate, requireSuperAdmin, async (req: Reques
   } catch (err: any) {
     logger.error('Failed to get metrics', err);
     res.status(500).json({ error: 'Failed to fetch metrics' });
+  }
+});
+
+/**
+ * POST /admin/subscriptions/:id/run-renewal
+ * Force a renewal charge for one subscription now (super_admin) — for testing
+ * the recurring loop without waiting for the period to end.
+ */
+router.post('/admin/subscriptions/:id/run-renewal', authenticate, requireSuperAdmin, async (req: Request, res: Response) => {
+  try {
+    const result = await chargeRenewal(req.params.id);
+    res.json(result);
+  } catch (err: any) {
+    logger.error('Manual renewal failed', { id: req.params.id, error: err?.message });
+    res.status(500).json({ error: 'Renewal failed' });
+  }
+});
+
+/**
+ * POST /admin/run-renewals
+ * Run the full due-renewals sweep now (super_admin) — same work the daily cron does.
+ */
+router.post('/admin/run-renewals', authenticate, requireSuperAdmin, async (_req: Request, res: Response) => {
+  try {
+    const summary = await processDueRenewals();
+    res.json(summary);
+  } catch (err: any) {
+    logger.error('Manual renewal sweep failed', { error: err?.message });
+    res.status(500).json({ error: 'Renewal sweep failed' });
   }
 });
 

@@ -72,9 +72,9 @@ export function RealTimeDataFeed({
     }, [filteredItems, isPaused])
 
     return (
-        <div className="border border-zinc-800 bg-zinc-900/50">
+        <div className="border border-border bg-card/50">
             {/* Header */}
-            <div className="flex items-center justify-between px-3 py-2 border-b border-zinc-800">
+            <div className="flex items-center justify-between px-3 py-2 border-b border-border">
                 <div className="flex items-center gap-2">
                     <span className="font-mono text-[10px] text-amber-500 uppercase tracking-wider">
                         Live Activity Feed
@@ -88,7 +88,7 @@ export function RealTimeDataFeed({
                 </div>
 
                 <div className="flex items-center gap-2">
-                    <span className="font-mono text-[9px] text-zinc-500">
+                    <span className="font-mono text-[9px] text-muted-foreground">
                         {filteredItems.length} events
                     </span>
 
@@ -97,8 +97,8 @@ export function RealTimeDataFeed({
                         className={cn(
                             'px-2 py-1 font-mono text-[10px] transition-colors',
                             isPaused
-                                ? 'bg-amber-500 text-white'
-                                : 'bg-zinc-800 text-zinc-400 hover:text-white'
+                                ? 'bg-amber-500 text-foreground'
+                                : 'bg-muted text-muted-foreground hover:text-foreground'
                         )}
                     >
                         {isPaused ? 'RESUME' : 'PAUSE'}
@@ -112,7 +112,7 @@ export function RealTimeDataFeed({
                 className="p-3 h-96 overflow-y-auto scrollbar-thin scrollbar-thumb-zinc-700 scrollbar-track-zinc-900"
             >
                 {filteredItems.length === 0 ? (
-                    <div className="flex items-center justify-center h-full text-zinc-500 font-mono text-xs">
+                    <div className="flex items-center justify-center h-full text-muted-foreground font-mono text-xs">
                         No activity to display
                     </div>
                 ) : (
@@ -121,31 +121,31 @@ export function RealTimeDataFeed({
             </div>
 
             {/* Footer */}
-            <div className="px-3 py-2 border-t border-zinc-800 flex items-center justify-between">
+            <div className="px-3 py-2 border-t border-border flex items-center justify-between">
                 <div className="flex items-center gap-2">
                     <div className="flex items-center gap-1">
                         <span className="w-2 h-2 bg-green-500 rounded-full" />
-                        <span className="font-mono text-[9px] text-zinc-500">Success</span>
+                        <span className="font-mono text-[9px] text-muted-foreground">Success</span>
                     </div>
                     <div className="flex items-center gap-1">
                         <span className="w-2 h-2 bg-red-500 rounded-full" />
-                        <span className="font-mono text-[9px] text-zinc-500">Error</span>
+                        <span className="font-mono text-[9px] text-muted-foreground">Error</span>
                     </div>
                     <div className="flex items-center gap-1">
                         <span className="w-2 h-2 bg-yellow-500 rounded-full" />
-                        <span className="font-mono text-[9px] text-zinc-500">Warning</span>
+                        <span className="font-mono text-[9px] text-muted-foreground">Warning</span>
                     </div>
                     <div className="flex items-center gap-1">
                         <span className="w-2 h-2 bg-blue-500 rounded-full" />
-                        <span className="font-mono text-[9px] text-zinc-500">Ingestion</span>
+                        <span className="font-mono text-[9px] text-muted-foreground">Ingestion</span>
                     </div>
                     <div className="flex items-center gap-1">
                         <span className="w-2 h-2 bg-purple-500 rounded-full" />
-                        <span className="font-mono text-[9px] text-zinc-500">Job</span>
+                        <span className="font-mono text-[9px] text-muted-foreground">Job</span>
                     </div>
                 </div>
 
-                <span className="font-mono text-[9px] text-zinc-500">
+                <span className="font-mono text-[9px] text-muted-foreground">
                     Updates every {refreshInterval / 1000}s
                 </span>
             </div>

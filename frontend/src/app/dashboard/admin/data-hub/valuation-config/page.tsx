@@ -78,7 +78,7 @@ function TabButton({
         "flex items-center gap-2 px-4 py-2 text-sm font-medium border-b-2 transition-colors",
         active 
           ? "border-amber-500 text-amber-500" 
-          : "border-transparent text-zinc-400 hover:text-zinc-200 hover:border-zinc-600"
+          : "border-transparent text-muted-foreground hover:text-zinc-200 hover:border-zinc-600"
       )}
     >
       <Icon className="w-4 h-4" />
@@ -136,7 +136,7 @@ function EditableCell({
           min={min}
           max={max}
           autoFocus
-          className="w-24 px-2 py-1 bg-zinc-800 border border-amber-500 rounded text-right font-mono text-sm text-white focus:outline-none"
+          className="w-24 px-2 py-1 bg-muted border border-amber-500 rounded text-right font-mono text-sm text-foreground focus:outline-none"
         />
         <button
           onClick={handleSave}
@@ -167,7 +167,7 @@ function EditableCell({
         onClick={() => setIsEditing(true)}
         className="opacity-0 group-hover:opacity-100 p-1 hover:bg-zinc-700 rounded transition-opacity"
       >
-        <Edit2 className="w-3 h-3 text-zinc-400" />
+        <Edit2 className="w-3 h-3 text-muted-foreground" />
       </button>
     </div>
   )
@@ -252,7 +252,7 @@ function MaterialWeightsTab() {
     return (
       <div className="flex items-center justify-center py-12">
         <Loader2 className="w-6 h-6 animate-spin text-amber-500" />
-        <span className="ml-2 text-zinc-400">Loading material weights...</span>
+        <span className="ml-2 text-muted-foreground">Loading material weights...</span>
       </div>
     )
   }
@@ -273,8 +273,8 @@ function MaterialWeightsTab() {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <div>
-          <h3 className="font-semibold text-white">Material Category Weights</h3>
-          <p className="text-xs text-zinc-500 mt-1">
+          <h3 className="font-semibold text-foreground">Material Category Weights</h3>
+          <p className="text-xs text-muted-foreground mt-1">
             Weights used to calculate the weighted average Construction Cost Index. Total must equal 1.0 (100%)
           </p>
         </div>
@@ -291,24 +291,24 @@ function MaterialWeightsTab() {
       <div className="overflow-x-auto">
         <table className="w-full">
           <thead>
-            <tr className="border-b border-zinc-800">
-              <th className="text-left py-2 text-xs font-medium text-zinc-500 uppercase">Category</th>
-              <th className="text-left py-2 text-xs font-medium text-zinc-500 uppercase">Display Name</th>
-              <th className="text-right py-2 text-xs font-medium text-zinc-500 uppercase">Weight</th>
-              <th className="text-center py-2 text-xs font-medium text-zinc-500 uppercase">Status</th>
+            <tr className="border-b border-border">
+              <th className="text-left py-2 text-xs font-medium text-muted-foreground uppercase">Category</th>
+              <th className="text-left py-2 text-xs font-medium text-muted-foreground uppercase">Display Name</th>
+              <th className="text-right py-2 text-xs font-medium text-muted-foreground uppercase">Weight</th>
+              <th className="text-center py-2 text-xs font-medium text-muted-foreground uppercase">Status</th>
             </tr>
           </thead>
           <tbody>
             {weights.map((weight) => (
               <tr 
                 key={weight.category} 
-                className="border-b border-zinc-800/50 hover:bg-zinc-800/30"
+                className="border-b border-border/50 hover:bg-amber-50 dark:hover:bg-amber-500/10"
               >
                 <td className="py-3">
-                  <span className="font-mono text-sm text-zinc-300">{weight.category}</span>
+                  <span className="font-mono text-sm text-muted-foreground">{weight.category}</span>
                 </td>
                 <td className="py-3">
-                  <span className="text-sm text-zinc-400">{weight.display_name}</span>
+                  <span className="text-sm text-muted-foreground">{weight.display_name}</span>
                 </td>
                 <td className="py-3 text-right">
                   <EditableCell
@@ -391,7 +391,7 @@ function RegionalFactorsTab() {
     return (
       <div className="flex items-center justify-center py-12">
         <Loader2 className="w-6 h-6 animate-spin text-amber-500" />
-        <span className="ml-2 text-zinc-400">Loading regional factors...</span>
+        <span className="ml-2 text-muted-foreground">Loading regional factors...</span>
       </div>
     )
   }
@@ -411,8 +411,8 @@ function RegionalFactorsTab() {
   return (
     <div className="space-y-4">
       <div>
-        <h3 className="font-semibold text-white">Regional Location Factors</h3>
-        <p className="text-xs text-zinc-500 mt-1">
+        <h3 className="font-semibold text-foreground">Regional Location Factors</h3>
+        <p className="text-xs text-muted-foreground mt-1">
           Location multipliers for construction costs. 1.0 = baseline, &gt;1.0 = higher cost region, &lt;1.0 = lower cost region
         </p>
       </div>
@@ -421,12 +421,12 @@ function RegionalFactorsTab() {
         {factors.map((factor) => (
           <div 
             key={factor.region_code}
-            className="p-4 bg-zinc-800/50 rounded-lg border border-zinc-700/50"
+            className="p-4 bg-muted/50 rounded-lg border border-border/50"
           >
             <div className="flex items-start justify-between mb-2">
               <div>
-                <div className="font-medium text-white">{factor.region_name}</div>
-                <div className="text-xs text-zinc-500 font-mono">{factor.region_code}</div>
+                <div className="font-medium text-foreground">{factor.region_name}</div>
+                <div className="text-xs text-muted-foreground font-mono">{factor.region_code}</div>
               </div>
               <StatusBadge status={saveStatus[factor.region_code]} />
             </div>
@@ -515,7 +515,7 @@ function BaseCostsTab() {
     return (
       <div className="flex items-center justify-center py-12">
         <Loader2 className="w-6 h-6 animate-spin text-amber-500" />
-        <span className="ml-2 text-zinc-400">Loading base costs...</span>
+        <span className="ml-2 text-muted-foreground">Loading base costs...</span>
       </div>
     )
   }
@@ -535,8 +535,8 @@ function BaseCostsTab() {
   return (
     <div className="space-y-4">
       <div>
-        <h3 className="font-semibold text-white">Base Construction Costs (2020)</h3>
-        <p className="text-xs text-zinc-500 mt-1">
+        <h3 className="font-semibold text-foreground">Base Construction Costs (2020)</h3>
+        <p className="text-xs text-muted-foreground mt-1">
           Reference costs per square meter by quality tier. These are indexed forward using the Construction Cost Index.
         </p>
       </div>
@@ -545,13 +545,13 @@ function BaseCostsTab() {
         {costs.map((cost) => (
           <div 
             key={cost.quality_tier}
-            className="flex items-center justify-between p-4 bg-zinc-800/50 rounded-lg border border-zinc-700/50"
+            className="flex items-center justify-between p-4 bg-muted/50 rounded-lg border border-border/50"
           >
             <div className="flex items-center gap-3">
               <div className={cn("w-3 h-3 rounded-full", tierColors[cost.quality_tier] || 'bg-zinc-500')} />
               <div>
-                <div className="font-medium text-white">{cost.display_name}</div>
-                <div className="text-xs text-zinc-500">
+                <div className="font-medium text-foreground">{cost.display_name}</div>
+                <div className="text-xs text-muted-foreground">
                   Base Year: {cost.base_year} | Tier: {cost.quality_tier}
                 </div>
               </div>
@@ -559,7 +559,7 @@ function BaseCostsTab() {
             <div className="flex items-center gap-4">
               <div className="flex items-center gap-2">
                 <Building2 className="w-4 h-4 text-amber-500" />
-                <span className="text-zinc-400 text-sm">GHS</span>
+                <span className="text-muted-foreground text-sm">GHS</span>
                 <EditableCell
                   value={cost.base_cost_per_sqm}
                   onChange={(val) => handleUpdate(cost.quality_tier, val)}
@@ -621,7 +621,7 @@ function HistoryTab() {
     return (
       <div className="flex items-center justify-center py-12">
         <Loader2 className="w-6 h-6 animate-spin text-amber-500" />
-        <span className="ml-2 text-zinc-400">Loading history...</span>
+        <span className="ml-2 text-muted-foreground">Loading history...</span>
       </div>
     )
   }
@@ -642,15 +642,15 @@ function HistoryTab() {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <div>
-          <h3 className="font-semibold text-white">Configuration Change History</h3>
-          <p className="text-xs text-zinc-500 mt-1">
+          <h3 className="font-semibold text-foreground">Configuration Change History</h3>
+          <p className="text-xs text-muted-foreground mt-1">
             Audit trail of all valuation configuration changes
           </p>
         </div>
         <select
           value={tableFilter}
           onChange={(e) => setTableFilter(e.target.value)}
-          className="px-3 py-1.5 bg-zinc-800 border border-zinc-700 rounded text-sm text-white focus:border-amber-500 focus:outline-none"
+          className="px-3 py-1.5 bg-muted border border-border rounded text-sm text-foreground focus:border-amber-500 focus:outline-none"
         >
           {tableNames.map((t) => (
             <option key={t.value} value={t.value}>{t.label}</option>
@@ -659,32 +659,32 @@ function HistoryTab() {
       </div>
 
       {history.length === 0 ? (
-        <div className="text-center py-12 text-zinc-500">
+        <div className="text-center py-12 text-muted-foreground">
           No configuration changes recorded yet
         </div>
       ) : (
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead>
-              <tr className="border-b border-zinc-800">
-                <th className="text-left py-2 text-xs font-medium text-zinc-500 uppercase">Time</th>
-                <th className="text-left py-2 text-xs font-medium text-zinc-500 uppercase">Table</th>
-                <th className="text-left py-2 text-xs font-medium text-zinc-500 uppercase">Field</th>
-                <th className="text-left py-2 text-xs font-medium text-zinc-500 uppercase">Old Value</th>
-                <th className="text-left py-2 text-xs font-medium text-zinc-500 uppercase">New Value</th>
-                <th className="text-left py-2 text-xs font-medium text-zinc-500 uppercase">Changed By</th>
+              <tr className="border-b border-border">
+                <th className="text-left py-2 text-xs font-medium text-muted-foreground uppercase">Time</th>
+                <th className="text-left py-2 text-xs font-medium text-muted-foreground uppercase">Table</th>
+                <th className="text-left py-2 text-xs font-medium text-muted-foreground uppercase">Field</th>
+                <th className="text-left py-2 text-xs font-medium text-muted-foreground uppercase">Old Value</th>
+                <th className="text-left py-2 text-xs font-medium text-muted-foreground uppercase">New Value</th>
+                <th className="text-left py-2 text-xs font-medium text-muted-foreground uppercase">Changed By</th>
               </tr>
             </thead>
             <tbody>
               {history.map((item) => (
-                <tr key={item.id} className="border-b border-zinc-800/50 hover:bg-zinc-800/30">
+                <tr key={item.id} className="border-b border-border/50 hover:bg-amber-50 dark:hover:bg-amber-500/10">
                   <td className="py-3">
-                    <span className="text-xs text-zinc-400">
+                    <span className="text-xs text-muted-foreground">
                       {new Date(item.changed_at).toLocaleString()}
                     </span>
                   </td>
                   <td className="py-3">
-                    <span className="font-mono text-xs text-zinc-300">
+                    <span className="font-mono text-xs text-muted-foreground">
                       {item.table_name.replace('_', ' ')}
                     </span>
                   </td>
@@ -692,13 +692,13 @@ function HistoryTab() {
                     <span className="font-mono text-xs text-amber-500">{item.field_name}</span>
                   </td>
                   <td className="py-3">
-                    <span className="font-mono text-xs text-red-400">{item.old_value || '—'}</span>
+                    <span className="font-mono text-xs text-red-600 dark:text-red-400">{item.old_value || '—'}</span>
                   </td>
                   <td className="py-3">
-                    <span className="font-mono text-xs text-green-400">{item.new_value}</span>
+                    <span className="font-mono text-xs text-green-600 dark:text-green-400">{item.new_value}</span>
                   </td>
                   <td className="py-3">
-                    <span className="text-xs text-zinc-500">{item.changed_by}</span>
+                    <span className="text-xs text-muted-foreground">{item.changed_by}</span>
                   </td>
                 </tr>
               ))}
@@ -722,18 +722,18 @@ export default function ValuationConfigPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-white flex items-center gap-2">
+          <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
             <Scale className="w-7 h-7 text-amber-500" />
             Valuation Configuration
           </h1>
-          <p className="text-zinc-400 mt-1">
+          <p className="text-muted-foreground mt-1">
             Manage material weights, regional factors, and base construction costs
           </p>
         </div>
       </div>
 
       {/* Tabs */}
-      <div className="border-b border-zinc-800">
+      <div className="border-b border-border">
         <div className="flex gap-2">
           <TabButton
             active={activeTab === 'weights'}
@@ -763,7 +763,7 @@ export default function ValuationConfigPage() {
       </div>
 
       {/* Tab Content */}
-      <div className="bg-zinc-900/50 rounded-lg border border-zinc-800 p-6">
+      <div className="bg-card/50 rounded-lg border border-border p-6">
         {activeTab === 'weights' && <MaterialWeightsTab />}
         {activeTab === 'regions' && <RegionalFactorsTab />}
         {activeTab === 'costs' && <BaseCostsTab />}

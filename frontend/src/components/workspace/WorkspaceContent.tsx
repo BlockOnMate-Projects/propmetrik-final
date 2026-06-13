@@ -412,12 +412,12 @@ export function WorkspaceContent({
     const messageMap = new Map(messages.map((m) => [m.id, m]));
 
     return (
-        <div className="flex flex-col h-full bg-zinc-950">
+        <div className="flex flex-col h-full bg-background">
             {/* Error banner */}
             {error && (
-                <div className="flex-shrink-0 px-4 py-2 bg-red-950/60 border-b border-red-800/40 text-xs text-red-300 flex items-center justify-between">
+                <div className="flex-shrink-0 px-4 py-2 bg-red-950/60 border-b border-red-800/40 text-xs text-red-600 dark:text-red-300 flex items-center justify-between">
                     <span>{error}</span>
-                    <button onClick={() => setError(null)} className="text-red-400 hover:text-red-200 ml-2">
+                    <button onClick={() => setError(null)} className="text-red-600 dark:text-red-400 hover:text-red-200 ml-2">
                         <X className="w-3 h-3" />
                     </button>
                 </div>
@@ -425,14 +425,14 @@ export function WorkspaceContent({
 
             {/* Connection status bar */}
             {!connected && (
-                <div className="flex-shrink-0 px-4 py-1.5 bg-amber-950/40 border-b border-amber-800/30 text-[11px] text-amber-400 flex items-center gap-2">
+                <div className="flex-shrink-0 px-4 py-1.5 bg-amber-950/40 border-b border-amber-800/30 text-[11px] text-amber-600 dark:text-amber-400 flex items-center gap-2">
                     <WifiOff className="w-3 h-3" />
                     <span className="animate-pulse">Reconnecting...</span>
                 </div>
             )}
 
             {/* Tabs */}
-            <div className="flex-shrink-0 flex gap-1 px-4 py-2 bg-zinc-900/30">
+            <div className="flex-shrink-0 flex gap-1 px-4 py-2 bg-card/30">
                 {(['chat', 'members', 'kobby'] as ActiveTab[]).map((tab) => (
                     <button
                         key={tab}
@@ -440,8 +440,8 @@ export function WorkspaceContent({
                         className={cn(
                             'flex items-center gap-1.5 px-3 py-1 rounded-md text-[10px] font-medium transition-all',
                             activeTab === tab
-                                ? 'bg-zinc-800 text-zinc-100 shadow-sm'
-                                : 'text-zinc-500 hover:text-zinc-300'
+                                ? 'bg-muted text-zinc-100 shadow-sm'
+                                : 'text-muted-foreground hover:text-muted-foreground'
                         )}
                     >
                         {tab === 'chat' ? (
@@ -469,7 +469,7 @@ export function WorkspaceContent({
                     <div className="flex-1 flex min-h-0">
                         <div className="flex-1 flex flex-col min-w-0">
                             {activeTab === 'chat' && (
-                                <div className="px-4 py-2 border-b border-zinc-800/60 bg-zinc-900/20 text-[11px] text-zinc-400 flex items-center justify-between">
+                                <div className="px-4 py-2 border-b border-border/60 bg-card/20 text-[11px] text-muted-foreground flex items-center justify-between">
                                     <span>
                                         {activeConversation
                                             ? getConversationLabel(activeConversation)
@@ -479,7 +479,7 @@ export function WorkspaceContent({
                                         <select
                                             value={activeConversationId || ''}
                                             onChange={(e) => setActiveConversationId(e.target.value || null)}
-                                            className="bg-zinc-950 border border-zinc-800 rounded px-2 py-1 text-[11px]"
+                                            className="bg-background border border-border rounded px-2 py-1 text-[11px]"
                                         >
                                             {conversations.map((c) => (
                                                 <option key={c.id} value={c.id}>
@@ -492,16 +492,16 @@ export function WorkspaceContent({
                                 </div>
                             )}
                             {activeTab === 'chat' && activeConversation?.conversation_type === 'group' && (
-                                <div className="px-4 py-2 border-b border-zinc-800/60 bg-zinc-900/40 text-[11px] text-zinc-400 flex items-center gap-2">
-                                    <button type="button" onClick={handleRenameConversation} className="text-emerald-400 hover:text-emerald-300">Rename</button>
-                                    <button type="button" onClick={handleOpenAddMemberPicker} className="flex items-center gap-1 text-emerald-400 hover:text-emerald-300">
+                                <div className="px-4 py-2 border-b border-border/60 bg-card/40 text-[11px] text-muted-foreground flex items-center gap-2">
+                                    <button type="button" onClick={handleRenameConversation} className="text-emerald-600 dark:text-emerald-400 hover:text-emerald-300">Rename</button>
+                                    <button type="button" onClick={handleOpenAddMemberPicker} className="flex items-center gap-1 text-emerald-600 dark:text-emerald-400 hover:text-emerald-300">
                                         <UserPlus className="w-3 h-3" /> Add
                                     </button>
-                                    <button type="button" onClick={handleOpenRemoveMemberPicker} className="flex items-center gap-1 text-amber-400 hover:text-amber-300">
+                                    <button type="button" onClick={handleOpenRemoveMemberPicker} className="flex items-center gap-1 text-amber-600 dark:text-amber-400 hover:text-amber-300">
                                         <UserMinus className="w-3 h-3" /> Remove
                                     </button>
-                                    <button type="button" onClick={handleLeaveConversation} className="text-zinc-400 hover:text-zinc-200">Leave</button>
-                                    <button type="button" onClick={handleArchiveConversation} className="text-red-400 hover:text-red-300">Archive</button>
+                                    <button type="button" onClick={handleLeaveConversation} className="text-muted-foreground hover:text-zinc-200">Leave</button>
+                                    <button type="button" onClick={handleArchiveConversation} className="text-red-600 dark:text-red-400 hover:text-red-300">Archive</button>
                                 </div>
                             )}
 
@@ -595,16 +595,16 @@ function MemberPickerOverlay({
     variant?: 'default' | 'danger';
 }) {
     return (
-        <div className="border-b border-zinc-800/60 bg-zinc-900/80 backdrop-blur-sm">
+        <div className="border-b border-border/60 bg-card/80 backdrop-blur-sm">
             <div className="px-4 py-3">
                 <div className="flex items-center justify-between mb-2">
                     <h4 className="text-[11px] font-semibold text-zinc-200 uppercase tracking-wider">{title}</h4>
-                    <button onClick={onClose} className="text-zinc-500 hover:text-zinc-300">
+                    <button onClick={onClose} className="text-muted-foreground hover:text-muted-foreground">
                         <X className="w-3.5 h-3.5" />
                     </button>
                 </div>
                 {members.length === 0 ? (
-                    <p className="text-[11px] text-zinc-500 italic py-2">{emptyText}</p>
+                    <p className="text-[11px] text-muted-foreground italic py-2">{emptyText}</p>
                 ) : (
                     <div className="max-h-40 overflow-y-auto space-y-1">
                         {members.map((m) => (
@@ -616,22 +616,22 @@ function MemberPickerOverlay({
                                     'w-full text-left flex items-center gap-2 px-3 py-2 rounded-lg text-xs transition-colors',
                                     variant === 'danger'
                                         ? 'hover:bg-red-950/40 hover:text-red-300'
-                                        : 'hover:bg-zinc-800 hover:text-zinc-100',
-                                    'text-zinc-300'
+                                        : 'hover:bg-muted hover:text-zinc-100',
+                                    'text-muted-foreground'
                                 )}
                             >
-                                <div className="w-6 h-6 rounded-full bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center text-white text-[10px] font-bold flex-shrink-0">
+                                <div className="w-6 h-6 rounded-full bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center text-foreground text-[10px] font-bold flex-shrink-0">
                                     {(m.display_name || m.email || 'U')[0].toUpperCase()}
                                 </div>
                                 <div className="flex-1 min-w-0">
                                     <p className="truncate font-medium">{m.display_name || m.email || 'Unknown'}</p>
                                     {m.email && m.display_name && (
-                                        <p className="text-[10px] text-zinc-500 truncate">{m.email}</p>
+                                        <p className="text-[10px] text-muted-foreground truncate">{m.email}</p>
                                     )}
                                 </div>
                                 <span className={cn(
                                     'text-[10px] font-medium',
-                                    variant === 'danger' ? 'text-red-400' : 'text-emerald-400'
+                                    variant === 'danger' ? 'text-red-600 dark:text-red-400' : 'text-emerald-600 dark:text-emerald-400'
                                 )}>
                                     {variant === 'danger' ? 'Remove' : 'Add'}
                                 </span>

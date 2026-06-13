@@ -88,14 +88,14 @@ export default function ServicesPage() {
                             whileInView={{ opacity: 1, y: 0 }}
                             viewport={{ once: true }}
                             transition={{ delay: idx * 0.1 }}
-                            className="grid md:grid-cols-12 gap-12 border-t border-zinc-800 pt-12"
+                            className="grid md:grid-cols-12 gap-12 border-t border-border pt-12"
                         >
                             <div className="md:col-span-4">
                                 <Link href={section.href} className="group">
                                     <h2 className="text-3xl font-bold tracking-tight group-hover:text-amber-500 transition-colors">
                                         {section.category}
                                     </h2>
-                                    <span className="inline-flex items-center gap-1 text-sm text-zinc-500 mt-2 group-hover:text-amber-500 transition-colors">
+                                    <span className="inline-flex items-center gap-1 text-sm text-muted-foreground mt-2 group-hover:text-amber-500 transition-colors">
                                         Learn more <ArrowRight className="w-4 h-4" />
                                     </span>
                                 </Link>
@@ -103,8 +103,8 @@ export default function ServicesPage() {
                             <div className="md:col-span-8 grid sm:grid-cols-2 gap-12">
                                 {section.items.map((item, i) => (
                                     <div key={i} className="space-y-3">
-                                        <h3 className="text-xl font-semibold text-white">{item.title}</h3>
-                                        <p className="text-zinc-400 leading-relaxed">{item.desc}</p>
+                                        <h3 className="text-xl font-semibold text-foreground">{item.title}</h3>
+                                        <p className="text-muted-foreground leading-relaxed">{item.desc}</p>
                                     </div>
                                 ))}
                             </div>

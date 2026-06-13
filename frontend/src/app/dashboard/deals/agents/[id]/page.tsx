@@ -90,7 +90,7 @@ function StatCard({ label, value, icon: Icon, trend, trendUp }: {
                 {trend && (
                     <span className={cn(
                         "font-mono text-[10px]",
-                        trendUp ? "text-green-400" : "text-red-400"
+                        trendUp ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"
                     )}>
                         {trend}
                     </span>
@@ -168,10 +168,10 @@ export default function AgentProfilePage() {
     }
 
     const statusColors: Record<string, string> = {
-        active: 'bg-green-500/20 text-green-400 border-green-500/30',
+        active: 'bg-green-500/20 text-green-600 dark:text-green-400 border-green-500/30',
         inactive: 'bg-zinc-500/20 text-muted-foreground border-zinc-500/30',
-        suspended: 'bg-red-500/20 text-red-400 border-red-500/30',
-        pending_approval: 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30',
+        suspended: 'bg-red-500/20 text-red-600 dark:text-red-400 border-red-500/30',
+        pending_approval: 'bg-yellow-500/20 text-yellow-600 dark:text-yellow-400 border-yellow-500/30',
     }
 
     return (
@@ -189,7 +189,7 @@ export default function AgentProfilePage() {
                     </Button>
                     <div className="flex items-center gap-4">
                         {/* Avatar */}
-                        <div className="w-16 h-16 rounded-full bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center text-white font-mono text-xl font-bold">
+                        <div className="w-16 h-16 rounded-full bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center text-foreground font-mono text-xl font-bold">
                             {agent.first_name?.[0]}{agent.last_name?.[0]}
                         </div>
                         <div>
@@ -242,7 +242,7 @@ export default function AgentProfilePage() {
                             }
                         }}
                         disabled={isDeleting}
-                        className="border-red-500/30 text-red-400 hover:bg-red-500/10 font-mono text-xs"
+                        className="border-red-500/30 text-red-600 dark:text-red-400 hover:bg-red-500/10 font-mono text-xs"
                     >
                         {isDeleting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Trash2 className="h-4 w-4 mr-2" />}
                         DELETE

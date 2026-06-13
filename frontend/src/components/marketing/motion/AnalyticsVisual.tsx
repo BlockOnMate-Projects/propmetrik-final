@@ -7,10 +7,10 @@ export default function AnalyticsVisual() {
         <div className="relative w-full h-[400px] bg-card rounded-xl border border-border p-6 overflow-hidden flex flex-col gap-6 shadow-2xl">
             {/* Header UI */}
             <div className="flex justify-between items-center mb-2">
-                <div className="h-4 w-32 bg-zinc-800 rounded animate-pulse" />
+                <div className="h-4 w-32 bg-muted rounded animate-pulse" />
                 <div className="flex gap-2">
                     <div className="h-8 w-24 bg-primary/20 rounded" />
-                    <div className="h-8 w-8 bg-zinc-800 rounded" />
+                    <div className="h-8 w-8 bg-muted rounded" />
                 </div>
             </div>
 
@@ -61,10 +61,10 @@ export default function AnalyticsVisual() {
             <motion.div
                 animate={{ y: [0, -10, 0] }}
                 transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
-                className="absolute top-12 right-12 w-48 bg-zinc-900/90 backdrop-blur border border-primary/30 p-4 rounded-lg shadow-xl"
+                className="absolute top-12 right-12 w-48 bg-card/90 backdrop-blur border border-primary/30 p-4 rounded-lg shadow-xl"
             >
                 <div className="text-xs text-muted-foreground mb-1">Market Trend</div>
-                <div className="text-2xl font-bold text-white flex items-center gap-2">
+                <div className="text-2xl font-bold text-foreground flex items-center gap-2">
                     +12.5%
                     <span className="text-emerald-500 text-sm">▲</span>
                 </div>
@@ -73,10 +73,10 @@ export default function AnalyticsVisual() {
             <motion.div
                 animate={{ y: [0, 10, 0] }}
                 transition={{ duration: 5, delay: 1, repeat: Infinity, ease: "easeInOut" }}
-                className="absolute bottom-24 left-12 w-48 bg-zinc-900/90 backdrop-blur border border-primary/30 p-4 rounded-lg shadow-xl"
+                className="absolute bottom-24 left-12 w-48 bg-card/90 backdrop-blur border border-primary/30 p-4 rounded-lg shadow-xl"
             >
                 <div className="text-xs text-muted-foreground mb-1">Avg. Yield</div>
-                <div className="text-2xl font-bold text-white">
+                <div className="text-2xl font-bold text-foreground">
                     8.4%
                 </div>
             </motion.div>

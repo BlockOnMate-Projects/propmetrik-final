@@ -107,13 +107,13 @@ export default function RegionalHeatmap({
     <div className={cn('', className)}>
       {/* Legend */}
       <div className="flex items-center justify-between mb-2 px-1">
-        <span className="font-mono text-[9px] text-zinc-500 uppercase">{metric} by Region</span>
+        <span className="font-mono text-[9px] text-muted-foreground uppercase">{metric} by Region</span>
         <div className="flex items-center gap-2">
-          <span className="font-mono text-[9px] text-zinc-600">{min.toFixed(1)}</span>
+          <span className="font-mono text-[9px] text-muted-foreground">{min.toFixed(1)}</span>
           <div className="w-20 h-2 rounded-sm" style={{
             background: `linear-gradient(to right, ${getColor(min, min, max, colorScale)}, ${getColor((min + max) / 2, min, max, colorScale)}, ${getColor(max, min, max, colorScale)})`,
           }} />
-          <span className="font-mono text-[9px] text-zinc-600">{max.toFixed(1)}</span>
+          <span className="font-mono text-[9px] text-muted-foreground">{max.toFixed(1)}</span>
         </div>
       </div>
 

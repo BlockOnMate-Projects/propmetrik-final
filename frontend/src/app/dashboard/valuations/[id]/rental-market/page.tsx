@@ -101,17 +101,17 @@ function StatCard({
   return (
     <div className={cn(
       'p-3 border',
-      highlight ? 'border-amber-500/50 bg-amber-900/10' : 'border-zinc-800 bg-zinc-900/50'
+      highlight ? 'border-amber-500/50 bg-amber-100 dark:bg-amber-900/10' : 'border-border bg-card/50'
     )}>
-      <div className="font-mono text-[10px] text-zinc-500 uppercase mb-1">{label}</div>
+      <div className="font-mono text-[10px] text-muted-foreground uppercase mb-1">{label}</div>
       <div className={cn(
         'font-mono text-lg',
-        highlight ? 'text-amber-400' : 'text-white'
+        highlight ? 'text-amber-600 dark:text-amber-400' : 'text-foreground'
       )}>
-        {value}{unit && <span className="text-xs text-zinc-500 ml-1">{unit}</span>}
+        {value}{unit && <span className="text-xs text-muted-foreground ml-1">{unit}</span>}
       </div>
       {subtext && (
-        <div className="font-mono text-[10px] text-zinc-600 mt-1">{subtext}</div>
+        <div className="font-mono text-[10px] text-muted-foreground mt-1">{subtext}</div>
       )}
     </div>
   )
@@ -119,9 +119,9 @@ function StatCard({
 
 function ConfidenceBadge({ confidence }: { confidence: number }) {
   const getColor = (c: number) => {
-    if (c >= 80) return 'bg-green-900/50 text-green-400 border-green-800'
-    if (c >= 60) return 'bg-amber-900/50 text-amber-400 border-amber-800'
-    return 'bg-red-900/50 text-red-400 border-red-800'
+    if (c >= 80) return 'bg-green-100 dark:bg-green-900/50 text-green-600 dark:text-green-400 border-green-800'
+    if (c >= 60) return 'bg-amber-100 dark:bg-amber-900/50 text-amber-600 dark:text-amber-400 border-amber-800'
+    return 'bg-red-100 dark:bg-red-900/50 text-red-600 dark:text-red-400 border-red-800'
   }
 
   const getLabel = (c: number) => {
@@ -764,34 +764,34 @@ export default function RentalMarketPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-black text-white flex items-center justify-center">
+      <div className="min-h-screen bg-background text-foreground flex items-center justify-center">
         <Loader2 className="w-8 h-8 text-amber-500 animate-spin" />
-        <span className="ml-3 font-mono text-sm text-zinc-400">Loading rental market data...</span>
+        <span className="ml-3 font-mono text-sm text-muted-foreground">Loading rental market data...</span>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-black text-white p-6">
+    <div className="min-h-screen bg-background text-foreground p-6">
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-4">
           <Link
             href={getBackPath()}
-            className="p-2 hover:bg-zinc-800 transition-colors"
+            className="p-2 hover:bg-muted transition-colors"
           >
-            <ArrowLeft className="w-5 h-5 text-zinc-400" />
+            <ArrowLeft className="w-5 h-5 text-muted-foreground" />
           </Link>
           <div>
             <div className="flex items-center gap-2">
-              <span className="font-mono text-sm text-zinc-500">VALUATION:</span>
+              <span className="font-mono text-sm text-muted-foreground">VALUATION:</span>
               <span className="font-mono text-sm text-amber-500">{valuationId.slice(0, 8).toUpperCase()}</span>
               <MethodBadge method="Rental Analysis" />
             </div>
-            <h1 className="text-xl font-mono text-white mt-1">
+            <h1 className="text-xl font-mono text-foreground mt-1">
               RENTAL MARKET ANALYSIS
             </h1>
-            <p className="font-mono text-xs text-zinc-500 mt-0.5">
+            <p className="font-mono text-xs text-muted-foreground mt-0.5">
               Select rental comparables to estimate market rent for Income Approach
             </p>
           </div>
@@ -801,7 +801,7 @@ export default function RentalMarketPage() {
           <button
             onClick={handleSave}
             disabled={saving || selectedComparables.length === 0}
-            className="flex items-center gap-2 px-4 py-2 bg-amber-500 text-white font-mono text-xs font-bold hover:bg-amber-400 transition-colors disabled:opacity-50"
+            className="flex items-center gap-2 px-4 py-2 bg-amber-500 text-foreground font-mono text-xs font-bold hover:bg-amber-400 transition-colors disabled:opacity-50"
           >
             {saving ? (
               <>
@@ -828,24 +828,24 @@ export default function RentalMarketPage() {
       <TerminalPanel title="SUBJECT PROPERTY REFERENCE">
         <div className="grid grid-cols-6 gap-4">
           <div className="col-span-2">
-            <div className="font-mono text-[10px] text-zinc-500">ADDRESS</div>
-            <div className="font-mono text-sm text-white">{property?.address_street || property?.address || '—'}</div>
+            <div className="font-mono text-[10px] text-muted-foreground">ADDRESS</div>
+            <div className="font-mono text-sm text-foreground">{property?.address_street || property?.address || '—'}</div>
           </div>
           <div>
-            <div className="font-mono text-[10px] text-zinc-500">TYPE</div>
+            <div className="font-mono text-[10px] text-muted-foreground">TYPE</div>
             <PropertyTypeBadge type={property?.property_type || 'residential'} />
           </div>
           <div>
-            <div className="font-mono text-[10px] text-zinc-500">SIZE</div>
-            <div className="font-mono text-sm text-white">{property?.gfa_sqm || property?.built_area_sqm || property?.plot_size || '—'} sqm</div>
+            <div className="font-mono text-[10px] text-muted-foreground">SIZE</div>
+            <div className="font-mono text-sm text-foreground">{property?.gfa_sqm || property?.built_area_sqm || property?.plot_size || '—'} sqm</div>
           </div>
           <div>
-            <div className="font-mono text-[10px] text-zinc-500">BEDROOMS</div>
-            <div className="font-mono text-sm text-white">{property?.bedrooms || '—'}</div>
+            <div className="font-mono text-[10px] text-muted-foreground">BEDROOMS</div>
+            <div className="font-mono text-sm text-foreground">{property?.bedrooms || '—'}</div>
           </div>
           <div>
-            <div className="font-mono text-[10px] text-zinc-500">BATHROOMS</div>
-            <div className="font-mono text-sm text-white">{property?.bathrooms || '—'}</div>
+            <div className="font-mono text-[10px] text-muted-foreground">BATHROOMS</div>
+            <div className="font-mono text-sm text-foreground">{property?.bathrooms || '—'}</div>
           </div>
         </div>
       </TerminalPanel>
@@ -875,14 +875,14 @@ export default function RentalMarketPage() {
                 />
               </div>
               {aggregates.suggestedRentForSubject && (
-                <div className="mt-3 p-2 border border-amber-500/30 bg-amber-900/10">
+                <div className="mt-3 p-2 border border-amber-500/30 bg-amber-100 dark:bg-amber-900/10">
                   <div className="flex items-center justify-between">
-                    <span className="font-mono text-[10px] text-amber-400">SUGGESTED FOR SUBJECT</span>
-                    <span className="font-mono text-lg text-amber-400">{formatCurrency(aggregates.suggestedRentForSubject)}</span>
+                    <span className="font-mono text-[10px] text-amber-600 dark:text-amber-400">SUGGESTED FOR SUBJECT</span>
+                    <span className="font-mono text-lg text-amber-600 dark:text-amber-400">{formatCurrency(aggregates.suggestedRentForSubject)}</span>
                   </div>
                   <div className="flex items-center gap-2 mt-1">
                     <ConfidenceBadge confidence={aggregates.confidence || 0} />
-                    <span className="font-mono text-[10px] text-zinc-500">Based on {searchResults.length + selectedComparables.length} listings</span>
+                    <span className="font-mono text-[10px] text-muted-foreground">Based on {searchResults.length + selectedComparables.length} listings</span>
                   </div>
                 </div>
               )}
@@ -895,44 +895,44 @@ export default function RentalMarketPage() {
               {/* Search Filters */}
               <div className="grid grid-cols-3 gap-3">
                 <div>
-                  <label className="block font-mono text-[10px] text-zinc-500 mb-1">RADIUS (KM)</label>
+                  <label className="block font-mono text-[10px] text-muted-foreground mb-1">RADIUS (KM)</label>
                   <input
                     type="number"
                     value={searchRadius}
                     onChange={(e) => setSearchRadius(Number(e.target.value))}
-                    className="w-full px-2 py-1.5 bg-zinc-900 border border-zinc-700 text-white font-mono text-sm focus:border-amber-500 outline-none"
+                    className="w-full px-2 py-1.5 bg-card border border-border text-foreground font-mono text-sm focus:border-amber-500 outline-none"
                     min={1}
                     max={20}
                   />
                 </div>
                 <div>
-                  <label className="block font-mono text-[10px] text-zinc-500 mb-1">MAX AGE (MONTHS)</label>
+                  <label className="block font-mono text-[10px] text-muted-foreground mb-1">MAX AGE (MONTHS)</label>
                   <input
                     type="number"
                     value={maxAge}
                     onChange={(e) => setMaxAge(Number(e.target.value))}
-                    className="w-full px-2 py-1.5 bg-zinc-900 border border-zinc-700 text-white font-mono text-sm focus:border-amber-500 outline-none"
+                    className="w-full px-2 py-1.5 bg-card border border-border text-foreground font-mono text-sm focus:border-amber-500 outline-none"
                     min={1}
                     max={24}
                   />
                 </div>
                 <div>
-                  <label className="block font-mono text-[10px] text-zinc-500 mb-1">BEDROOMS</label>
+                  <label className="block font-mono text-[10px] text-muted-foreground mb-1">BEDROOMS</label>
                   <div className="flex items-center gap-1">
                     <input
                       type="number"
                       value={bedroomRange.min}
                       onChange={(e) => setBedroomRange({ ...bedroomRange, min: Number(e.target.value) })}
-                      className="w-12 px-1 py-1.5 bg-zinc-900 border border-zinc-700 text-white font-mono text-sm focus:border-amber-500 outline-none text-center"
+                      className="w-12 px-1 py-1.5 bg-card border border-border text-foreground font-mono text-sm focus:border-amber-500 outline-none text-center"
                       min={0}
                       max={10}
                     />
-                    <span className="text-zinc-500">-</span>
+                    <span className="text-muted-foreground">-</span>
                     <input
                       type="number"
                       value={bedroomRange.max}
                       onChange={(e) => setBedroomRange({ ...bedroomRange, max: Number(e.target.value) })}
-                      className="w-12 px-1 py-1.5 bg-zinc-900 border border-zinc-700 text-white font-mono text-sm focus:border-amber-500 outline-none text-center"
+                      className="w-12 px-1 py-1.5 bg-card border border-border text-foreground font-mono text-sm focus:border-amber-500 outline-none text-center"
                       min={0}
                       max={10}
                     />
@@ -943,7 +943,7 @@ export default function RentalMarketPage() {
               <button
                 onClick={handleSearch}
                 disabled={searching}
-                className="w-full flex items-center justify-center gap-2 py-2 bg-zinc-800 text-white font-mono text-xs hover:bg-zinc-700 transition-colors disabled:opacity-50"
+                className="w-full flex items-center justify-center gap-2 py-2 bg-muted text-foreground font-mono text-xs hover:bg-zinc-700 transition-colors disabled:opacity-50"
               >
                 {searching ? (
                   <>
@@ -963,19 +963,19 @@ export default function RentalMarketPage() {
           {/* Benchmark Fallback */}
           {benchmark && searchResults.length < 5 && (
             <TerminalPanel title="AREA BENCHMARK (FALLBACK)">
-              <div className="p-2 border border-blue-500/30 bg-blue-900/10">
+              <div className="p-2 border border-blue-500/30 bg-blue-100 dark:bg-blue-900/10">
                 <div className="flex items-center gap-2 mb-2">
-                  <Info className="w-4 h-4 text-blue-400" />
-                  <span className="font-mono text-xs text-blue-400">{benchmark.areaName}</span>
+                  <Info className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+                  <span className="font-mono text-xs text-blue-600 dark:text-blue-400">{benchmark.areaName}</span>
                 </div>
                 <div className="grid grid-cols-2 gap-2 text-sm">
                   <div>
-                    <span className="font-mono text-[10px] text-zinc-500">AVG RENT:</span>
-                    <span className="font-mono text-white ml-2">{formatCurrency(benchmark.avgRentMonthly)}</span>
+                    <span className="font-mono text-[10px] text-muted-foreground">AVG RENT:</span>
+                    <span className="font-mono text-foreground ml-2">{formatCurrency(benchmark.avgRentMonthly)}</span>
                   </div>
                   <div>
-                    <span className="font-mono text-[10px] text-zinc-500">LISTINGS:</span>
-                    <span className="font-mono text-white ml-2">{benchmark.listingCount}</span>
+                    <span className="font-mono text-[10px] text-muted-foreground">LISTINGS:</span>
+                    <span className="font-mono text-foreground ml-2">{benchmark.listingCount}</span>
                   </div>
                 </div>
               </div>
@@ -986,19 +986,19 @@ export default function RentalMarketPage() {
           <TerminalPanel title={`AVAILABLE RENTALS (${searchResults.length})`}>
             <div className="max-h-[400px] overflow-y-auto space-y-2">
               {searchResults.length === 0 ? (
-                <div className="text-center py-6 text-zinc-500 font-mono text-sm">
+                <div className="text-center py-6 text-muted-foreground font-mono text-sm">
                   {searching ? 'Searching...' : 'No rental listings found. Try expanding search radius.'}
                 </div>
               ) : (
                 searchResults.map(comp => (
                   <div
                     key={comp.id}
-                    className="p-3 border border-zinc-800 bg-zinc-900/50 hover:border-zinc-600 transition-colors"
+                    className="p-3 border border-border bg-card/50 hover:border-zinc-600 transition-colors"
                   >
                     <div className="flex items-start justify-between">
                       <div className="flex-1">
-                        <div className="font-mono text-sm text-white">{comp.title || comp.address_street}</div>
-                        <div className="flex items-center gap-3 mt-1 font-mono text-[10px] text-zinc-500">
+                        <div className="font-mono text-sm text-foreground">{comp.title || comp.address_street}</div>
+                        <div className="flex items-center gap-3 mt-1 font-mono text-[10px] text-muted-foreground">
                           {comp.neighborhood && (
                             <span className="flex items-center gap-1">
                               <MapPin className="w-3 h-3" />
@@ -1024,12 +1024,12 @@ export default function RentalMarketPage() {
                       </div>
                       <div className="flex items-center gap-3">
                         <div className="text-right">
-                          <div className="font-mono text-sm text-amber-400">{formatCurrency(comp.asking_rent_monthly)}</div>
-                          <div className="font-mono text-[10px] text-zinc-500">/month</div>
+                          <div className="font-mono text-sm text-amber-600 dark:text-amber-400">{formatCurrency(comp.asking_rent_monthly)}</div>
+                          <div className="font-mono text-[10px] text-muted-foreground">/month</div>
                         </div>
                         <button
                           onClick={() => addComparable(comp)}
-                          className="p-1.5 bg-green-900/50 border border-green-800 text-green-400 hover:bg-green-800/50 transition-colors"
+                          className="p-1.5 bg-green-100 dark:bg-green-900/50 border border-green-800 text-green-600 dark:text-green-400 hover:bg-green-800/50 transition-colors"
                         >
                           <Plus className="w-4 h-4" />
                         </button>
@@ -1050,7 +1050,7 @@ export default function RentalMarketPage() {
               <div className="space-y-4">
                 {/* Weighting Method */}
                 <div>
-                  <label className="block font-mono text-[10px] text-zinc-500 mb-2">WEIGHTING METHOD</label>
+                  <label className="block font-mono text-[10px] text-muted-foreground mb-2">WEIGHTING METHOD</label>
                   <div className="flex items-center gap-2">
                     {(['quality_weighted', 'simple_average', 'median'] as WeightingMethod[]).map(method => (
                       <button
@@ -1059,8 +1059,8 @@ export default function RentalMarketPage() {
                         className={cn(
                           'px-3 py-1.5 font-mono text-[10px] border transition-colors',
                           weightingMethod === method
-                            ? 'border-amber-500 bg-amber-900/20 text-amber-400'
-                            : 'border-zinc-700 text-zinc-400 hover:border-zinc-500'
+                            ? 'border-amber-500 bg-amber-100 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400'
+                            : 'border-border text-muted-foreground hover:border-zinc-500'
                         )}
                       >
                         {method.replace('_', ' ').toUpperCase()}
@@ -1071,8 +1071,8 @@ export default function RentalMarketPage() {
 
                 {/* Quality Weights Display (when quality_weighted selected) */}
                 {weightingMethod === 'quality_weighted' && (
-                  <div className="p-2 border border-blue-800/50 bg-blue-900/10">
-                    <div className="font-mono text-[10px] text-blue-400 mb-2">QUALITY WEIGHTS</div>
+                  <div className="p-2 border border-blue-800/50 bg-blue-100 dark:bg-blue-900/10">
+                    <div className="font-mono text-[10px] text-blue-600 dark:text-blue-400 mb-2">QUALITY WEIGHTS</div>
                     <div className="flex flex-wrap gap-3">
                       {selectedComparables.map((comp, idx) => {
                         const score = calculateQualityScore(comp)
@@ -1080,9 +1080,9 @@ export default function RentalMarketPage() {
                         const weight = totalScore > 0 ? (score / totalScore * 100).toFixed(1) : '0'
                         return (
                           <div key={comp.id} className="flex items-center gap-2 text-xs">
-                            <span className="font-mono text-zinc-400">Comp {idx + 1}:</span>
-                            <span className="font-mono text-zinc-500">Score {score.toFixed(0)}</span>
-                            <span className="font-mono text-amber-400 font-bold">{weight}%</span>
+                            <span className="font-mono text-muted-foreground">Comp {idx + 1}:</span>
+                            <span className="font-mono text-muted-foreground">Score {score.toFixed(0)}</span>
+                            <span className="font-mono text-amber-600 dark:text-amber-400 font-bold">{weight}%</span>
                           </div>
                         )
                       })}
@@ -1102,19 +1102,19 @@ export default function RentalMarketPage() {
                     value={`₵${calculateIndicatedRent?.perSqm?.toFixed(2) || '0'}`}
                     unit="/sqm/mo"
                   />
-                  <div className="p-3 border border-zinc-800 bg-zinc-900/50">
-                    <div className="font-mono text-[10px] text-zinc-500 uppercase mb-1">Confidence</div>
+                  <div className="p-3 border border-border bg-card/50">
+                    <div className="font-mono text-[10px] text-muted-foreground uppercase mb-1">Confidence</div>
                     <ConfidenceBadge confidence={calculateConfidence()} />
-                    <div className="font-mono text-[10px] text-zinc-600 mt-1">
+                    <div className="font-mono text-[10px] text-muted-foreground mt-1">
                       Based on {comparablesCount} comp{comparablesCount !== 1 ? 's' : ''}
                     </div>
                   </div>
-                  <div className="p-3 border border-zinc-800 bg-zinc-900/50">
-                    <div className="font-mono text-[10px] text-zinc-500 uppercase mb-1">Range</div>
-                    <div className="font-mono text-sm text-white">
+                  <div className="p-3 border border-border bg-card/50">
+                    <div className="font-mono text-[10px] text-muted-foreground uppercase mb-1">Range</div>
+                    <div className="font-mono text-sm text-foreground">
                       {formatCurrency(Math.min(...selectedComparables.map(c => c.adjustedRent)))} - {formatCurrency(Math.max(...selectedComparables.map(c => c.adjustedRent)))}
                     </div>
-                    <div className="font-mono text-[10px] text-zinc-600 mt-1">
+                    <div className="font-mono text-[10px] text-muted-foreground mt-1">
                       Avg Adj: {(selectedComparables.reduce((sum, c) => sum + Math.abs(c.totalAdjustment), 0) / comparablesCount).toFixed(1)}%
                     </div>
                   </div>
@@ -1130,7 +1130,7 @@ export default function RentalMarketPage() {
               comparablesCount > 0 && (
                 <button
                   onClick={handleAutoCalculateAll}
-                  className="flex items-center gap-1 px-2 py-1 bg-zinc-800 text-zinc-300 font-mono text-[10px] hover:bg-zinc-700"
+                  className="flex items-center gap-1 px-2 py-1 bg-muted text-muted-foreground font-mono text-[10px] hover:bg-zinc-700"
                 >
                   <Calculator className="w-3 h-3" />
                   AUTO-CALCULATE ALL
@@ -1139,7 +1139,7 @@ export default function RentalMarketPage() {
             }
           >
             {comparablesCount === 0 ? (
-              <div className="text-center py-8 text-zinc-500 font-mono text-sm">
+              <div className="text-center py-8 text-muted-foreground font-mono text-sm">
                 Select rental comparables from the search results to begin analysis
               </div>
             ) : (
@@ -1149,19 +1149,19 @@ export default function RentalMarketPage() {
                     key={comp.id}
                     className={cn(
                       'p-3 border transition-colors',
-                      comp.isLocked ? 'border-blue-800 bg-blue-900/10' : 'border-zinc-800 bg-zinc-900/50'
+                      comp.isLocked ? 'border-blue-800 bg-blue-100 dark:bg-blue-900/10' : 'border-border bg-card/50'
                     )}
                   >
                     <div className="flex items-start justify-between mb-3">
                       <div className="flex-1">
                         <div className="flex items-center gap-2">
-                          <span className="font-mono text-[10px] text-zinc-500">COMP {idx + 1}</span>
+                          <span className="font-mono text-[10px] text-muted-foreground">COMP {idx + 1}</span>
                           {comp.isLocked && (
-                            <span className="px-1 py-0.5 bg-blue-900/50 text-blue-400 font-mono text-[8px]">LOCKED</span>
+                            <span className="px-1 py-0.5 bg-blue-100 dark:bg-blue-900/50 text-blue-600 dark:text-blue-400 font-mono text-[8px]">LOCKED</span>
                           )}
                         </div>
-                        <div className="font-mono text-sm text-white mt-1">{comp.title || comp.address_street}</div>
-                        <div className="flex items-center gap-3 mt-1 font-mono text-[10px] text-zinc-500">
+                        <div className="font-mono text-sm text-foreground mt-1">{comp.title || comp.address_street}</div>
+                        <div className="flex items-center gap-3 mt-1 font-mono text-[10px] text-muted-foreground">
                           {comp.bedrooms && <span>{comp.bedrooms} bed</span>}
                           {comp.bathrooms && <span>{comp.bathrooms} bath</span>}
                           {comp.gfa_sqm && <span>{comp.gfa_sqm}m²</span>}
@@ -1173,7 +1173,7 @@ export default function RentalMarketPage() {
                           onClick={() => handleLockToggle(comp.id)}
                           className={cn(
                             'p-1 transition-colors',
-                            comp.isLocked ? 'text-blue-400' : 'text-zinc-500 hover:text-white'
+                            comp.isLocked ? 'text-blue-600 dark:text-blue-400' : 'text-muted-foreground hover:text-foreground'
                           )}
                         >
                           {comp.isLocked ? <Lock className="w-4 h-4" /> : <Unlock className="w-4 h-4" />}
@@ -1181,13 +1181,13 @@ export default function RentalMarketPage() {
                         <button
                           onClick={() => handleAutoCalculate(comp.id)}
                           disabled={comp.isLocked}
-                          className="p-1 text-zinc-500 hover:text-amber-400 transition-colors disabled:opacity-50"
+                          className="p-1 text-muted-foreground hover:text-amber-400 transition-colors disabled:opacity-50"
                         >
                           <Calculator className="w-4 h-4" />
                         </button>
                         <button
                           onClick={() => removeComparable(comp.id)}
-                          className="p-1 text-zinc-500 hover:text-red-400 transition-colors"
+                          className="p-1 text-muted-foreground hover:text-red-400 transition-colors"
                         >
                           <X className="w-4 h-4" />
                         </button>
@@ -1197,38 +1197,38 @@ export default function RentalMarketPage() {
                     {/* Adjustment Summary */}
                     <div className="grid grid-cols-4 gap-3 text-sm">
                       <div>
-                        <div className="font-mono text-[10px] text-zinc-500">ASKING</div>
-                        <div className="font-mono text-white">{formatCurrency(comp.asking_rent_monthly)}</div>
+                        <div className="font-mono text-[10px] text-muted-foreground">ASKING</div>
+                        <div className="font-mono text-foreground">{formatCurrency(comp.asking_rent_monthly)}</div>
                       </div>
                       <div>
-                        <div className="font-mono text-[10px] text-zinc-500">ADJUSTMENT</div>
+                        <div className="font-mono text-[10px] text-muted-foreground">ADJUSTMENT</div>
                         <div className={cn(
                           'font-mono',
-                          comp.totalAdjustment > 0 ? 'text-green-400' : comp.totalAdjustment < 0 ? 'text-red-400' : 'text-white'
+                          comp.totalAdjustment > 0 ? 'text-green-600 dark:text-green-400' : comp.totalAdjustment < 0 ? 'text-red-600 dark:text-red-400' : 'text-foreground'
                         )}>
                           {comp.totalAdjustment > 0 ? '+' : ''}{(comp.totalAdjustment || 0).toFixed(1)}%
                         </div>
                       </div>
                       <div>
-                        <div className="font-mono text-[10px] text-zinc-500">ADJUSTED</div>
-                        <div className="font-mono text-amber-400">{formatCurrency(comp.adjustedRent)}</div>
+                        <div className="font-mono text-[10px] text-muted-foreground">ADJUSTED</div>
+                        <div className="font-mono text-amber-600 dark:text-amber-400">{formatCurrency(comp.adjustedRent)}</div>
                       </div>
                       <div>
-                        <div className="font-mono text-[10px] text-zinc-500">₵/SQM/MO</div>
-                        <div className="font-mono text-white">{comp.adjustedRentPerSqm?.toFixed(1) || '-'}</div>
+                        <div className="font-mono text-[10px] text-muted-foreground">₵/SQM/MO</div>
+                        <div className="font-mono text-foreground">{comp.adjustedRentPerSqm?.toFixed(1) || '-'}</div>
                       </div>
                     </div>
 
                     {/* Individual Adjustments */}
                     {Object.keys(comp.adjustments).length > 0 && (
-                      <div className="mt-2 pt-2 border-t border-zinc-800">
+                      <div className="mt-2 pt-2 border-t border-border">
                         <div className="flex flex-wrap gap-2">
                           {Object.entries(comp.adjustments).map(([key, value]) => (
                             <span
                               key={key}
                               className={cn(
                                 'px-2 py-0.5 font-mono text-[10px] border',
-                                value > 0 ? 'border-green-800 text-green-400' : value < 0 ? 'border-red-800 text-red-400' : 'border-zinc-700 text-zinc-400'
+                                value > 0 ? 'border-green-800 text-green-600 dark:text-green-400' : value < 0 ? 'border-red-800 text-red-600 dark:text-red-400' : 'border-border text-muted-foreground'
                               )}
                             >
                               {key}: {value > 0 ? '+' : ''}{value.toFixed(1)}%
@@ -1247,11 +1247,11 @@ export default function RentalMarketPage() {
       </div>
 
       {/* Fixed Footer Navigation */}
-      <div className="fixed bottom-0 left-0 right-0 border-t border-zinc-800 bg-black/95 backdrop-blur p-4">
+      <div className="fixed bottom-0 left-0 right-0 border-t border-border bg-background/95 backdrop-blur p-4">
         <div className="max-w-7xl mx-auto flex items-center justify-between">
           <Link
             href={getBackPath()}
-            className="flex items-center gap-2 px-4 py-2 border border-zinc-700 text-zinc-400 hover:bg-zinc-900 font-mono text-sm transition-colors"
+            className="flex items-center gap-2 px-4 py-2 border border-border text-muted-foreground hover:bg-card font-mono text-sm transition-colors"
           >
             <ArrowLeft className="w-4 h-4" />
             BACK TO METHODS
@@ -1259,11 +1259,11 @@ export default function RentalMarketPage() {
 
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-3 text-sm font-mono">
-              <span className="text-zinc-500">
+              <span className="text-muted-foreground">
                 {comparablesCount} comparable{comparablesCount !== 1 ? 's' : ''} selected
               </span>
               {calculateIndicatedRent && (
-                <span className="text-amber-400">
+                <span className="text-amber-600 dark:text-amber-400">
                   Indicated Rent: {formatCurrency(calculateIndicatedRent.monthly)}/mo
                 </span>
               )}
@@ -1275,8 +1275,8 @@ export default function RentalMarketPage() {
               className={cn(
                 'flex items-center gap-2 px-6 py-2 font-mono text-sm transition-colors',
                 comparablesCount > 0
-                  ? 'bg-amber-600 hover:bg-amber-700 text-white'
-                  : 'bg-zinc-800 text-zinc-500 cursor-not-allowed'
+                  ? 'bg-amber-600 hover:bg-amber-700 text-foreground'
+                  : 'bg-muted text-muted-foreground cursor-not-allowed'
               )}
             >
               {saving ? (

@@ -142,12 +142,12 @@ function PropertyPipeline({ deals, stages }: { deals: PropertyDeal[], stages: Pi
                             >
                                 <span className={cn(
                                     "font-mono text-[9px] font-bold text-center",
-                                    hasDeals ? 'text-white' : 'text-muted-foreground'
+                                    hasDeals ? 'text-foreground' : 'text-muted-foreground'
                                 )}>
                                     {stage.stage_name}
                                 </span>
                                 {hasDeals && (
-                                    <span className="font-mono text-xs font-bold text-white mt-1">
+                                    <span className="font-mono text-xs font-bold text-foreground mt-1">
                                         {stageDeals.length} deal{stageDeals.length !== 1 ? 's' : ''}
                                     </span>
                                 )}
@@ -177,9 +177,9 @@ function PropertyPipeline({ deals, stages }: { deals: PropertyDeal[], stages: Pi
                                     <Badge 
                                         className={cn(
                                             "font-mono text-[9px]",
-                                            deal.deal_status === 'active' ? 'bg-blue-500/20 text-blue-400' :
-                                            deal.deal_status === 'won' ? 'bg-green-500/20 text-green-400' :
-                                            deal.deal_status === 'lost' ? 'bg-red-500/20 text-red-400' :
+                                            deal.deal_status === 'active' ? 'bg-blue-500/20 text-blue-600 dark:text-blue-400' :
+                                            deal.deal_status === 'won' ? 'bg-green-500/20 text-green-600 dark:text-green-400' :
+                                            deal.deal_status === 'lost' ? 'bg-red-500/20 text-red-600 dark:text-red-400' :
                                             'bg-zinc-500/20 text-muted-foreground'
                                         )}
                                     >
@@ -404,8 +404,8 @@ export default function PropertyDetailPage() {
     if (error || !property) {
         return (
             <div className="flex flex-col items-center justify-center min-h-[400px]">
-                <AlertCircle className="h-12 w-12 text-red-400 mb-4" />
-                <p className="font-mono text-sm text-red-400 mb-4">{error || 'Property not found'}</p>
+                <AlertCircle className="h-12 w-12 text-red-600 dark:text-red-400 mb-4" />
+                <p className="font-mono text-sm text-red-600 dark:text-red-400 mb-4">{error || 'Property not found'}</p>
                 <Button onClick={() => router.back()} variant="outline" className="border-border">
                     Go Back
                 </Button>
@@ -415,13 +415,13 @@ export default function PropertyDetailPage() {
 
     const statusColors: Record<string, string> = {
         'pending': 'bg-zinc-500/20 text-muted-foreground border-zinc-500/30',
-        'active': 'bg-green-500/20 text-green-400 border-green-500/30',
-        'available': 'bg-green-500/20 text-green-400 border-green-500/30',
-        'under_offer': 'bg-primary/20 text-amber-400 border-primary/30',
-        'reserved': 'bg-blue-500/20 text-blue-400 border-blue-500/30',
-        'sold': 'bg-purple-500/20 text-purple-400 border-purple-500/30',
-        'rented': 'bg-purple-500/20 text-purple-400 border-purple-500/30',
-        'withdrawn': 'bg-red-500/20 text-red-400 border-red-500/30',
+        'active': 'bg-green-500/20 text-green-600 dark:text-green-400 border-green-500/30',
+        'available': 'bg-green-500/20 text-green-600 dark:text-green-400 border-green-500/30',
+        'under_offer': 'bg-primary/20 text-amber-600 dark:text-amber-400 border-primary/30',
+        'reserved': 'bg-blue-500/20 text-blue-600 dark:text-blue-400 border-blue-500/30',
+        'sold': 'bg-purple-500/20 text-purple-600 dark:text-purple-400 border-purple-500/30',
+        'rented': 'bg-purple-500/20 text-purple-600 dark:text-purple-400 border-purple-500/30',
+        'withdrawn': 'bg-red-500/20 text-red-600 dark:text-red-400 border-red-500/30',
     }
 
     const typeIcons: Record<string, React.ComponentType<{ className?: string }>> = {
@@ -484,7 +484,7 @@ export default function PropertyDetailPage() {
                             {/* Status Changes */}
                             {property.status !== 'active' && (
                                 <DropdownMenuItem
-                                    className="text-green-400 cursor-pointer"
+                                    className="text-green-600 dark:text-green-400 cursor-pointer"
                                     onClick={async () => {
                                         try {
                                             const res = await authedFetch(`${API_BASE}/crm/properties/${property.id}`, {
@@ -501,7 +501,7 @@ export default function PropertyDetailPage() {
                             )}
                             {property.status !== 'under_offer' && (
                                 <DropdownMenuItem
-                                    className="text-amber-400 cursor-pointer"
+                                    className="text-amber-600 dark:text-amber-400 cursor-pointer"
                                     onClick={async () => {
                                         try {
                                             const res = await authedFetch(`${API_BASE}/crm/properties/${property.id}`, {
@@ -518,7 +518,7 @@ export default function PropertyDetailPage() {
                             )}
                             {property.status !== 'sold' && property.listing_type === 'sale' && (
                                 <DropdownMenuItem
-                                    className="text-purple-400 cursor-pointer"
+                                    className="text-purple-600 dark:text-purple-400 cursor-pointer"
                                     onClick={async () => {
                                         try {
                                             const res = await authedFetch(`${API_BASE}/crm/properties/${property.id}`, {
@@ -552,7 +552,7 @@ export default function PropertyDetailPage() {
                             )}
                             <DropdownMenuSeparator className="bg-border" />
                             <DropdownMenuItem
-                                className="text-red-400 cursor-pointer"
+                                className="text-red-600 dark:text-red-400 cursor-pointer"
                                 onClick={async () => {
                                     if (!confirm('Are you sure you want to delete this property?')) return
                                     try {
@@ -626,7 +626,7 @@ export default function PropertyDetailPage() {
                             )}
                             {/* Upload overlay on hover if images exist */}
                             {property.images && property.images.length > 0 && (
-                                <label className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-all flex items-center justify-center cursor-pointer">
+                                <label className="absolute inset-0 bg-background/0 group-hover:bg-background/30 transition-all flex items-center justify-center cursor-pointer">
                                     <input
                                         type="file"
                                         multiple
@@ -647,7 +647,7 @@ export default function PropertyDetailPage() {
                                             }
                                         }}
                                     />
-                                    <div className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-2 px-3 py-2 bg-white/90 rounded text-sm font-medium text-white">
+                                    <div className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-2 px-3 py-2 bg-card/90 rounded text-sm font-medium text-foreground">
                                         <Camera className="h-4 w-4" />
                                         Add More Photos
                                     </div>
@@ -678,7 +678,7 @@ export default function PropertyDetailPage() {
                                                         console.error('Delete failed:', err)
                                                     }
                                                 }}
-                                                className="absolute top-0 right-0 w-5 h-5 bg-black/60 text-white flex items-center justify-center opacity-0 group-hover/thumb:opacity-100 transition-opacity text-xs hover:bg-destructive"
+                                                className="absolute top-0 right-0 w-5 h-5 bg-background/60 text-foreground flex items-center justify-center opacity-0 group-hover/thumb:opacity-100 transition-opacity text-xs hover:bg-destructive"
                                             >
                                                 <X className="h-3 w-3" />
                                             </button>
@@ -779,7 +779,7 @@ export default function PropertyDetailPage() {
                             <div className="flex items-center justify-between">
                                 <div className="flex items-center gap-3">
                                     <div className="w-10 h-10 bg-emerald-500/20 rounded-full flex items-center justify-center">
-                                        <Users className="h-5 w-5 text-emerald-400" />
+                                        <Users className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
                                     </div>
                                     <div>
                                         <div className="font-mono text-sm text-foreground">{property.assigned_agent_name}</div>
@@ -984,13 +984,13 @@ export default function PropertyDetailPage() {
                         </div>
                         <div className="border border-border bg-card p-4">
                             <div className="font-mono text-[10px] text-muted-foreground mb-1">ACTIVE DEALS</div>
-                            <div className="font-mono text-2xl text-blue-400">
+                            <div className="font-mono text-2xl text-blue-600 dark:text-blue-400">
                                 {deals.filter(d => d.deal_status === 'active').length}
                             </div>
                         </div>
                         <div className="border border-border bg-card p-4">
                             <div className="font-mono text-[10px] text-muted-foreground mb-1">WON DEALS</div>
-                            <div className="font-mono text-2xl text-green-400">
+                            <div className="font-mono text-2xl text-green-600 dark:text-green-400">
                                 {deals.filter(d => d.deal_status === 'won').length}
                             </div>
                         </div>

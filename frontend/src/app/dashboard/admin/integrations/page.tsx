@@ -43,10 +43,10 @@ interface Integration {
 
 /* ────────────── Status helpers ────────────── */
 const STATUS_MAP: Record<IntStatus, { color: string; bg: string; border: string; icon: typeof Check; label: string }> = {
-  connected:    { color: 'text-green-400', bg: 'bg-green-900/30', border: 'border-green-800', icon: Check, label: 'Connected' },
-  configured:   { color: 'text-cyan-400',  bg: 'bg-cyan-900/30',  border: 'border-cyan-800',  icon: Wifi, label: 'Configured' },
-  degraded:     { color: 'text-amber-400', bg: 'bg-amber-900/30', border: 'border-amber-800', icon: AlertTriangle, label: 'Degraded' },
-  disconnected: { color: 'text-zinc-500',  bg: 'bg-zinc-800/30',  border: 'border-zinc-700',  icon: WifiOff, label: 'Not Configured' },
+  connected:    { color: 'text-green-600 dark:text-green-400', bg: 'bg-green-100 dark:bg-green-900/30', border: 'border-green-800', icon: Check, label: 'Connected' },
+  configured:   { color: 'text-cyan-600 dark:text-cyan-400',  bg: 'bg-cyan-100 dark:bg-cyan-900/30',  border: 'border-cyan-800',  icon: Wifi, label: 'Configured' },
+  degraded:     { color: 'text-amber-600 dark:text-amber-400', bg: 'bg-amber-100 dark:bg-amber-900/30', border: 'border-amber-800', icon: AlertTriangle, label: 'Degraded' },
+  disconnected: { color: 'text-muted-foreground',  bg: 'bg-muted/30',  border: 'border-border',  icon: WifiOff, label: 'Not Configured' },
 }
 
 const CATEGORY_ICONS: Record<string, typeof Globe> = {
@@ -135,56 +135,56 @@ function IntegrationCard({ int }: { int: Integration }) {
   const [expanded, setExpanded] = useState(false)
 
   return (
-    <div className="bg-zinc-900 border border-zinc-800 rounded hover:border-zinc-700 transition-colors">
+    <div className="bg-card border border-border rounded hover:border-border transition-colors">
       <button
         onClick={() => setExpanded(!expanded)}
         className="w-full flex items-center gap-3 p-4 text-left"
       >
         <div className={`w-8 h-8 rounded flex items-center justify-center shrink-0 ${
-          int.status === 'connected' ? 'bg-green-900/40' :
-          int.status === 'configured' ? 'bg-cyan-900/40' :
-          int.status === 'degraded' ? 'bg-amber-900/40' : 'bg-zinc-800'
+          int.status === 'connected' ? 'bg-green-100 dark:bg-green-900/40' :
+          int.status === 'configured' ? 'bg-cyan-100 dark:bg-cyan-900/40' :
+          int.status === 'degraded' ? 'bg-amber-100 dark:bg-amber-900/40' : 'bg-muted'
         }`}>
           {(() => {
             const CatIcon = CATEGORY_ICONS[int.category] || Globe
             return <CatIcon className={`w-4 h-4 ${
-              int.status === 'connected' ? 'text-green-400' :
-              int.status === 'configured' ? 'text-cyan-400' :
-              int.status === 'degraded' ? 'text-amber-400' : 'text-zinc-500'
+              int.status === 'connected' ? 'text-green-600 dark:text-green-400' :
+              int.status === 'configured' ? 'text-cyan-600 dark:text-cyan-400' :
+              int.status === 'degraded' ? 'text-amber-600 dark:text-amber-400' : 'text-muted-foreground'
             }`} />
           })()}
         </div>
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2">
-            <h3 className="text-sm font-bold text-white truncate">{int.name}</h3>
+            <h3 className="text-sm font-bold text-foreground truncate">{int.name}</h3>
             <StatusBadge status={int.status} />
           </div>
-          <p className="text-[11px] text-zinc-500 mt-0.5 truncate">{int.description}</p>
+          <p className="text-[11px] text-muted-foreground mt-0.5 truncate">{int.description}</p>
         </div>
-        <ChevronRight className={`w-4 h-4 text-zinc-600 shrink-0 transition-transform ${expanded ? 'rotate-90' : ''}`} />
+        <ChevronRight className={`w-4 h-4 text-muted-foreground shrink-0 transition-transform ${expanded ? 'rotate-90' : ''}`} />
       </button>
       {expanded && (
-        <div className="px-4 pb-4 pt-0 ml-11 space-y-2 border-t border-zinc-800/50">
+        <div className="px-4 pb-4 pt-0 ml-11 space-y-2 border-t border-border/50">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-3">
             <div>
-              <p className="text-[10px] font-mono text-zinc-600 uppercase mb-0.5">Provider</p>
-              <p className="text-xs text-zinc-300">{int.provider}</p>
+              <p className="text-[10px] font-mono text-muted-foreground uppercase mb-0.5">Provider</p>
+              <p className="text-xs text-muted-foreground">{int.provider}</p>
             </div>
             <div>
-              <p className="text-[10px] font-mono text-zinc-600 uppercase mb-0.5">Configuration</p>
-              <p className="text-xs text-zinc-300">{int.configuredVia}</p>
+              <p className="text-[10px] font-mono text-muted-foreground uppercase mb-0.5">Configuration</p>
+              <p className="text-xs text-muted-foreground">{int.configuredVia}</p>
             </div>
           </div>
           {int.details && (
             <div>
-              <p className="text-[10px] font-mono text-zinc-600 uppercase mb-0.5">Capabilities</p>
-              <p className="text-xs text-zinc-400">{int.details}</p>
+              <p className="text-[10px] font-mono text-muted-foreground uppercase mb-0.5">Capabilities</p>
+              <p className="text-xs text-muted-foreground">{int.details}</p>
             </div>
           )}
           {int.docsUrl && (
             <a
               href={int.docsUrl}
-              className="inline-flex items-center gap-1.5 text-[11px] text-red-400 hover:text-red-300 mt-1"
+              className="inline-flex items-center gap-1.5 text-[11px] text-red-600 dark:text-red-400 hover:text-red-300 mt-1"
             >
               <ExternalLink className="w-3 h-3" /> Manage Integration
             </a>
@@ -270,16 +270,16 @@ export default function IntegrationsPage() {
         <div>
           <div className="flex items-center gap-3">
             <Globe className="w-6 h-6 text-red-500" />
-            <h1 className="text-xl font-bold text-white font-mono">INTEGRATIONS</h1>
+            <h1 className="text-xl font-bold text-foreground font-mono">INTEGRATIONS</h1>
           </div>
-          <p className="text-xs text-zinc-500 mt-1 ml-9">
+          <p className="text-xs text-muted-foreground mt-1 ml-9">
             Third-party services, data feeds, and infrastructure connections
           </p>
         </div>
         <button
           onClick={loadHealth}
           disabled={healthLoading}
-          className="flex items-center gap-2 px-4 py-2 bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 text-white text-xs font-mono rounded transition-colors"
+          className="flex items-center gap-2 px-4 py-2 bg-muted hover:bg-zinc-700 border border-border text-foreground text-xs font-mono rounded transition-colors"
         >
           {healthLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5" />}
           Check Health
@@ -289,15 +289,15 @@ export default function IntegrationsPage() {
       {/* Stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {[
-          { label: 'Total Integrations', value: String(integrations.length), color: 'text-white', icon: Globe },
-          { label: 'Connected', value: String(connected), color: 'text-green-400', icon: Check },
-          { label: 'Configured', value: String(configured), color: 'text-cyan-400', icon: Settings },
-          { label: 'Degraded', value: String(degraded), color: degraded > 0 ? 'text-amber-400' : 'text-green-400', icon: degraded > 0 ? AlertTriangle : Zap },
+          { label: 'Total Integrations', value: String(integrations.length), color: 'text-foreground', icon: Globe },
+          { label: 'Connected', value: String(connected), color: 'text-green-600 dark:text-green-400', icon: Check },
+          { label: 'Configured', value: String(configured), color: 'text-cyan-600 dark:text-cyan-400', icon: Settings },
+          { label: 'Degraded', value: String(degraded), color: degraded > 0 ? 'text-amber-600 dark:text-amber-400' : 'text-green-600 dark:text-green-400', icon: degraded > 0 ? AlertTriangle : Zap },
         ].map((c) => (
-          <div key={c.label} className="bg-zinc-900 border border-zinc-800 p-4">
+          <div key={c.label} className="bg-card border border-border p-4">
             <div className="flex items-center gap-2 mb-2">
               <c.icon className={`w-4 h-4 ${c.color}`} />
-              <span className="text-[10px] font-mono text-zinc-500 uppercase tracking-wider">{c.label}</span>
+              <span className="text-[10px] font-mono text-muted-foreground uppercase tracking-wider">{c.label}</span>
             </div>
             <p className={`text-lg font-bold font-mono ${c.color}`}>{c.value}</p>
           </div>
@@ -307,20 +307,20 @@ export default function IntegrationsPage() {
       {/* Search + Category filter */}
       <div className="flex flex-col md:flex-row items-stretch md:items-center gap-4">
         <div className="flex-1 relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <input
             type="text"
             placeholder="Search integrations..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 bg-zinc-900 border border-zinc-800 text-xs font-mono text-white placeholder-zinc-600 focus:border-red-600 focus:outline-none rounded"
+            className="w-full pl-10 pr-4 py-2 bg-card border border-border text-xs font-mono text-foreground placeholder-zinc-600 focus:border-red-600 focus:outline-none rounded"
           />
         </div>
         <div className="flex gap-1 overflow-x-auto pb-1 md:pb-0">
           <button
             onClick={() => setActiveCategory(null)}
             className={`px-3 py-1.5 text-[10px] font-mono whitespace-nowrap rounded transition-colors ${
-              !activeCategory ? 'bg-red-600 text-white' : 'text-zinc-400 hover:text-white hover:bg-zinc-800'
+              !activeCategory ? 'bg-red-600 text-foreground' : 'text-muted-foreground hover:text-foreground hover:bg-muted'
             }`}
           >ALL ({integrations.length})</button>
           {CATEGORIES.map((cat) => {
@@ -330,7 +330,7 @@ export default function IntegrationsPage() {
                 key={cat}
                 onClick={() => setActiveCategory(cat === activeCategory ? null : cat)}
                 className={`px-3 py-1.5 text-[10px] font-mono whitespace-nowrap rounded transition-colors ${
-                  activeCategory === cat ? 'bg-red-600 text-white' : 'text-zinc-400 hover:text-white hover:bg-zinc-800'
+                  activeCategory === cat ? 'bg-red-600 text-foreground' : 'text-muted-foreground hover:text-foreground hover:bg-muted'
                 }`}
               >{cat.split(' ')[0].toUpperCase()} ({count})</button>
             )
@@ -346,10 +346,10 @@ export default function IntegrationsPage() {
             <div key={group.category}>
               <div className="flex items-center gap-2 mb-3">
                 <CatIcon className="w-4 h-4 text-red-500" />
-                <h2 className="text-xs font-mono text-zinc-400 uppercase tracking-wider font-bold">
+                <h2 className="text-xs font-mono text-muted-foreground uppercase tracking-wider font-bold">
                   {group.category}
                 </h2>
-                <span className="text-[10px] font-mono text-zinc-600">{group.items.length}</span>
+                <span className="text-[10px] font-mono text-muted-foreground">{group.items.length}</span>
               </div>
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
                 {group.items.map((int) => (
@@ -362,9 +362,9 @@ export default function IntegrationsPage() {
       </div>
 
       {filtered.length === 0 && (
-        <div className="text-center py-16 bg-zinc-900 border border-zinc-800 rounded">
-          <Search className="w-8 h-8 text-zinc-600 mx-auto mb-3" />
-          <p className="text-sm text-zinc-400 font-mono">No integrations match &quot;{search}&quot;</p>
+        <div className="text-center py-16 bg-card border border-border rounded">
+          <Search className="w-8 h-8 text-muted-foreground mx-auto mb-3" />
+          <p className="text-sm text-muted-foreground font-mono">No integrations match &quot;{search}&quot;</p>
         </div>
       )}
     </div>

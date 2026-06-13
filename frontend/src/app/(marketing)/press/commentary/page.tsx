@@ -24,13 +24,13 @@ export default function ExpertCommentaryPage() {
   };
 
   return (
-    <main className="pt-32 pb-24 bg-zinc-950">
+    <main className="pt-32 pb-24 bg-background">
       <section className="pb-10">
         <div className="container mx-auto px-4 md:px-6">
           <div className="max-w-3xl">
             <div className="text-sm font-bold text-primary uppercase tracking-[0.2em] mb-4">Analyst Access</div>
-            <h1 className="text-5xl md:text-7xl font-bold tracking-tight text-white mb-5">Expert Commentary</h1>
-            <p className="text-zinc-400 text-lg">
+            <h1 className="text-5xl md:text-7xl font-bold tracking-tight text-foreground mb-5">Expert Commentary</h1>
+            <p className="text-muted-foreground text-lg">
               Book PROPMETRIK analysts for interviews, op-eds, and panel discussions. Or generate
               instant, data-driven market quotes for your publication.
             </p>
@@ -42,8 +42,8 @@ export default function ExpertCommentaryPage() {
       <section className="pb-16">
         <div className="container mx-auto px-4 md:px-6">
           <div className="max-w-2xl">
-            <h2 className="text-3xl font-bold text-white mb-4">Instant Market Quotes</h2>
-            <p className="text-zinc-400 mb-8">
+            <h2 className="text-3xl font-bold text-foreground mb-4">Instant Market Quotes</h2>
+            <p className="text-muted-foreground mb-8">
               Need a data-driven market quote for your article? Our AI generates
               publication-ready quotes based on the latest PROPMETRIK data.
               Attribution: PROPMETRIK Research.
@@ -55,7 +55,7 @@ export default function ExpertCommentaryPage() {
                 value={quoteTopic}
                 onChange={(e) => setQuoteTopic(e.target.value)}
                 placeholder='e.g., "Current state of Accra residential market"'
-                className="w-full px-4 py-3 bg-zinc-900 border border-zinc-800 rounded-lg text-white placeholder-zinc-500 focus:outline-none focus:border-primary transition-colors"
+                className="w-full px-4 py-3 bg-card border border-border rounded-lg text-foreground placeholder-zinc-500 focus:outline-none focus:border-primary transition-colors"
                 onKeyDown={(e) => {
                   if (e.key === 'Enter') handleGenerateQuote();
                 }}
@@ -74,12 +74,12 @@ export default function ExpertCommentaryPage() {
                 <motion.div
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
-                  className="bg-zinc-900 border border-zinc-800 rounded-lg p-6 mt-4"
+                  className="bg-card border border-border rounded-lg p-6 mt-4"
                 >
-                  <blockquote className="text-zinc-300 italic leading-relaxed mb-4">
+                  <blockquote className="text-muted-foreground italic leading-relaxed mb-4">
                     &ldquo;{generatedQuote}&rdquo;
                   </blockquote>
-                  <div className="text-sm text-zinc-500">
+                  <div className="text-sm text-muted-foreground">
                     — PROPMETRIK Research,{' '}
                     {new Date().toLocaleDateString('en-GB', {
                       day: 'numeric',
@@ -87,7 +87,7 @@ export default function ExpertCommentaryPage() {
                       year: 'numeric',
                     })}
                   </div>
-                  <div className="text-xs text-zinc-600 mt-2">
+                  <div className="text-xs text-muted-foreground mt-2">
                     Attribution: PROPMETRIK Ghana Real Estate Intelligence
                   </div>
                 </motion.div>
@@ -98,19 +98,19 @@ export default function ExpertCommentaryPage() {
       </section>
 
       {/* Book an Analyst */}
-      <section className="border-t border-zinc-800 pt-16">
+      <section className="border-t border-border pt-16">
         <div className="container mx-auto px-4 md:px-6">
           <div className="max-w-2xl">
-            <h2 className="text-3xl font-bold text-white mb-4">Book an Analyst</h2>
-            <p className="text-zinc-400 mb-8">
+            <h2 className="text-3xl font-bold text-foreground mb-4">Book an Analyst</h2>
+            <p className="text-muted-foreground mb-8">
               Request a PROPMETRIK analyst for interviews, op-eds, conference panels, or
               bespoke market commentary.
             </p>
-            <div className="bg-zinc-900 border border-zinc-800 rounded-lg p-6">
-              <div className="space-y-3 text-zinc-300">
-                <p><span className="text-zinc-500">Email:</span> press@propmetrik.com</p>
-                <p><span className="text-zinc-500">Phone:</span> +233 XX XXX XXXX</p>
-                <p><span className="text-zinc-500">Response Time:</span> Within 24 hours</p>
+            <div className="bg-card border border-border rounded-lg p-6">
+              <div className="space-y-3 text-muted-foreground">
+                <p><span className="text-muted-foreground">Email:</span> press@propmetrik.com</p>
+                <p><span className="text-muted-foreground">Phone:</span> +233 XX XXX XXXX</p>
+                <p><span className="text-muted-foreground">Response Time:</span> Within 24 hours</p>
               </div>
             </div>
           </div>

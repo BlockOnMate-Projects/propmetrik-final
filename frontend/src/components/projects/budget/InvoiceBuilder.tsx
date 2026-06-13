@@ -213,12 +213,12 @@ const TERMS_LABELS: Record<PaymentTerms, string> = {
 }
 
 const STATUS_COLORS: Record<InvoiceStatus, string> = {
-  DRAFT: 'bg-zinc-700 text-zinc-300',
-  SENT: 'bg-blue-900/60 text-blue-400',
-  VIEWED: 'bg-amber-900/60 text-amber-400',
-  PAID: 'bg-green-900/60 text-green-400',
-  SETTLED: 'bg-emerald-900/60 text-emerald-300',
-  VOID: 'bg-red-900/60 text-red-400',
+  DRAFT: 'bg-zinc-700 text-muted-foreground',
+  SENT: 'bg-blue-100 dark:bg-blue-900/60 text-blue-600 dark:text-blue-400',
+  VIEWED: 'bg-amber-100 dark:bg-amber-900/60 text-amber-600 dark:text-amber-400',
+  PAID: 'bg-green-100 dark:bg-green-900/60 text-green-600 dark:text-green-400',
+  SETTLED: 'bg-emerald-100 dark:bg-emerald-900/60 text-emerald-600 dark:text-emerald-300',
+  VOID: 'bg-red-100 dark:bg-red-900/60 text-red-600 dark:text-red-400',
 }
 
 const CURRENCY_SYMBOLS: Record<CurrencyCode, string> = {
@@ -833,9 +833,9 @@ export default function InvoiceBuilder() {
   // =====================================================
 
   const inputCls =
-    'w-full bg-[#0D1117] border border-[#30363D] rounded px-3 py-2 text-sm text-white placeholder:text-[#484F58] focus:outline-none focus:border-[#C9A84C] font-mono transition-colors'
+    'w-full bg-[#0D1117] border border-[#30363D] rounded px-3 py-2 text-sm text-foreground placeholder:text-[#484F58] focus:outline-none focus:border-[#C9A84C] font-mono transition-colors'
   const selectCls =
-    'w-full bg-[#0D1117] border border-[#30363D] rounded px-3 py-2 text-sm text-white focus:outline-none focus:border-[#C9A84C] font-mono transition-colors appearance-none'
+    'w-full bg-[#0D1117] border border-[#30363D] rounded px-3 py-2 text-sm text-foreground focus:outline-none focus:border-[#C9A84C] font-mono transition-colors appearance-none'
   const labelCls = 'block text-xs font-medium text-[#8B949E] mb-1 tracking-wide uppercase'
   const cardCls = 'bg-[#161B22] border border-[#30363D] rounded-sm p-4'
   const sectionTitleCls = 'text-xs font-bold text-[#8B949E] tracking-widest uppercase mb-3'
@@ -982,19 +982,19 @@ export default function InvoiceBuilder() {
             <div className="mt-3 grid grid-cols-4 gap-2">
               <div className="bg-[#0D1117] border border-[#30363D] rounded p-2">
                 <div className="text-[9px] text-[#484F58] uppercase tracking-wider">Budget</div>
-                <div className="text-xs font-mono text-white">{fmtMoney(budget, cur)}</div>
+                <div className="text-xs font-mono text-foreground">{fmtMoney(budget, cur)}</div>
               </div>
               <div className="bg-[#0D1117] border border-[#30363D] rounded p-2">
                 <div className="text-[9px] text-[#484F58] uppercase tracking-wider">Spent</div>
-                <div className="text-xs font-mono text-white">{fmtMoney(spent, cur)}</div>
+                <div className="text-xs font-mono text-foreground">{fmtMoney(spent, cur)}</div>
               </div>
               <div className="bg-[#0D1117] border border-[#30363D] rounded p-2">
                 <div className="text-[9px] text-[#484F58] uppercase tracking-wider">Balance</div>
-                <div className={`text-xs font-mono ${balance >= 0 ? 'text-green-400' : 'text-red-400'}`}>{fmtMoney(balance, cur)}</div>
+                <div className={`text-xs font-mono ${balance >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>{fmtMoney(balance, cur)}</div>
               </div>
               <div className="bg-[#0D1117] border border-[#30363D] rounded p-2">
                 <div className="text-[9px] text-[#484F58] uppercase tracking-wider">Utilization</div>
-                <div className={`text-xs font-mono ${util > 100 ? 'text-red-400' : util > 80 ? 'text-amber-400' : 'text-white'}`}>{util}%</div>
+                <div className={`text-xs font-mono ${util > 100 ? 'text-red-600 dark:text-red-400' : util > 80 ? 'text-amber-600 dark:text-amber-400' : 'text-foreground'}`}>{util}%</div>
               </div>
             </div>
           )
@@ -1046,7 +1046,7 @@ export default function InvoiceBuilder() {
             if (row.type === 'section') {
               return (
                 <div key={row.id} className="flex items-center gap-2 py-1.5 group">
-                  <button onClick={() => moveRow(idx, -1)} className="text-[#484F58] hover:text-white"><GripVertical className="h-3.5 w-3.5" /></button>
+                  <button onClick={() => moveRow(idx, -1)} className="text-[#484F58] hover:text-foreground"><GripVertical className="h-3.5 w-3.5" /></button>
                   <input
                     className="flex-1 bg-transparent border-none text-xs font-bold text-[#C9A84C] uppercase tracking-wide placeholder:text-[#484F58] focus:outline-none"
                     placeholder="Section header..."
@@ -1069,11 +1069,11 @@ export default function InvoiceBuilder() {
                 className="grid gap-2 items-center py-1 group border-b border-[#30363D]/50 hover:bg-[#0D1117]/50"
                 style={{ gridTemplateColumns: '28px 1fr 120px 60px 70px 90px 100px 28px' }}
               >
-                <button onClick={() => moveRow(idx, -1)} className="text-[#484F58] hover:text-white">
+                <button onClick={() => moveRow(idx, -1)} className="text-[#484F58] hover:text-foreground">
                   <GripVertical className="h-3.5 w-3.5" />
                 </button>
                 <input
-                  className="bg-transparent border-none text-xs text-white placeholder:text-[#484F58] focus:outline-none"
+                  className="bg-transparent border-none text-xs text-foreground placeholder:text-[#484F58] focus:outline-none"
                   placeholder="Description..."
                   value={li.description}
                   onChange={e => updateRow(li.id, { description: e.target.value })}
@@ -1089,7 +1089,7 @@ export default function InvoiceBuilder() {
                 </select>
                 <input
                   type="number"
-                  className="bg-transparent border-none text-xs text-white text-right font-mono focus:outline-none w-full"
+                  className="bg-transparent border-none text-xs text-foreground text-right font-mono focus:outline-none w-full"
                   value={li.qty}
                   onChange={e => updateRow(li.id, { qty: parseFloat(e.target.value) || 0 })}
                 />
@@ -1104,11 +1104,11 @@ export default function InvoiceBuilder() {
                 </select>
                 <input
                   type="number"
-                  className="bg-transparent border-none text-xs text-white text-right font-mono focus:outline-none w-full"
+                  className="bg-transparent border-none text-xs text-foreground text-right font-mono focus:outline-none w-full"
                   value={li.unitRate}
                   onChange={e => updateRow(li.id, { unitRate: parseFloat(e.target.value) || 0 })}
                 />
-                <div className="text-xs font-mono text-white text-right">
+                <div className="text-xs font-mono text-foreground text-right">
                   {fmtMoney(lineTotal, inv.currency)}
                 </div>
                 <button onClick={() => removeRow(li.id)} className="text-[#484F58] hover:text-red-400 opacity-0 group-hover:opacity-100">
@@ -1120,13 +1120,13 @@ export default function InvoiceBuilder() {
         </div>
 
         <div className="flex gap-2 mt-3">
-          <button onClick={addLineItem} className="flex items-center gap-1 text-xs text-[#C9A84C] hover:text-white transition-colors">
+          <button onClick={addLineItem} className="flex items-center gap-1 text-xs text-[#C9A84C] hover:text-foreground transition-colors">
             <Plus className="h-3.5 w-3.5" /> Add Line Item
           </button>
-          <button onClick={addSectionHeader} className="flex items-center gap-1 text-xs text-[#8B949E] hover:text-white transition-colors">
+          <button onClick={addSectionHeader} className="flex items-center gap-1 text-xs text-[#8B949E] hover:text-foreground transition-colors">
             <Plus className="h-3.5 w-3.5" /> Add Section Header
           </button>
-          <button onClick={openMilestoneImport} className="flex items-center gap-1 text-xs text-emerald-400 hover:text-white transition-colors ml-auto">
+          <button onClick={openMilestoneImport} className="flex items-center gap-1 text-xs text-emerald-600 dark:text-emerald-400 hover:text-foreground transition-colors ml-auto">
             <Milestone className="h-3.5 w-3.5" /> Import from Milestones
           </button>
         </div>
@@ -1138,7 +1138,7 @@ export default function InvoiceBuilder() {
         <div className="space-y-2 font-mono text-xs">
           <div className="flex justify-between">
             <span className="text-[#8B949E]">Subtotal</span>
-            <span className="text-white">{fmtMoney(calculations.subtotal, inv.currency)}</span>
+            <span className="text-foreground">{fmtMoney(calculations.subtotal, inv.currency)}</span>
           </div>
           <div className="border-t border-[#30363D]" />
 
@@ -1157,14 +1157,14 @@ export default function InvoiceBuilder() {
                 <span className="text-[10px] text-[#484F58]">{tax.description}</span>
               </label>
               {inv.taxes[tax.key] && (
-                <span className="text-white">{fmtMoney(calculations.subtotal * (tax.rate / 100), inv.currency)}</span>
+                <span className="text-foreground">{fmtMoney(calculations.subtotal * (tax.rate / 100), inv.currency)}</span>
               )}
             </div>
           ))}
           {calculations.compositeRate > 0 && (
             <div className="flex justify-between text-[#8B949E] text-[10px] pt-1">
               <span>Composite Tax Rate: {calculations.compositeRate}%</span>
-              <span className="text-white">{fmtMoney(calculations.totalTax, inv.currency)}</span>
+              <span className="text-foreground">{fmtMoney(calculations.totalTax, inv.currency)}</span>
             </div>
           )}
           {calculations.enabledTaxes.length > 0 && <div className="border-t border-[#30363D]" />}
@@ -1182,7 +1182,7 @@ export default function InvoiceBuilder() {
               {inv.discountEnabled && (
                 <input
                   type="number"
-                  className="w-12 bg-transparent border-b border-[#30363D] text-white text-right focus:outline-none focus:border-[#C9A84C]"
+                  className="w-12 bg-transparent border-b border-[#30363D] text-foreground text-right focus:outline-none focus:border-[#C9A84C]"
                   value={inv.discountPercent}
                   onChange={e => update({ discountPercent: parseFloat(e.target.value) || 0 })}
                 />
@@ -1190,7 +1190,7 @@ export default function InvoiceBuilder() {
               {inv.discountEnabled && <span>%</span>}
             </label>
             {inv.discountEnabled && (
-              <span className="text-red-400">{fmtMoney(-calculations.discount, inv.currency)}</span>
+              <span className="text-red-600 dark:text-red-400">{fmtMoney(-calculations.discount, inv.currency)}</span>
             )}
           </div>
 
@@ -1207,7 +1207,7 @@ export default function InvoiceBuilder() {
               {inv.retentionEnabled && (
                 <input
                   type="number"
-                  className="w-12 bg-transparent border-b border-[#30363D] text-white text-right focus:outline-none focus:border-[#C9A84C]"
+                  className="w-12 bg-transparent border-b border-[#30363D] text-foreground text-right focus:outline-none focus:border-[#C9A84C]"
                   value={inv.retentionPercent}
                   onChange={e => update({ retentionPercent: parseFloat(e.target.value) || 0 })}
                 />
@@ -1215,14 +1215,14 @@ export default function InvoiceBuilder() {
               {inv.retentionEnabled && <span>%</span>}
             </label>
             {inv.retentionEnabled && (
-              <span className="text-red-400">{fmtMoney(-calculations.retention, inv.currency)}</span>
+              <span className="text-red-600 dark:text-red-400">{fmtMoney(-calculations.retention, inv.currency)}</span>
             )}
           </div>
 
           <div className="border-t border-[#30363D]" />
           <div className="flex justify-between">
             <span className="text-[#8B949E]">Subtotal After Adjustments</span>
-            <span className="text-white">{fmtMoney(calculations.invoiceTotal, inv.currency)}</span>
+            <span className="text-foreground">{fmtMoney(calculations.invoiceTotal, inv.currency)}</span>
           </div>
 
           {/* Platform Fee — added on top, client pays */}
@@ -1236,7 +1236,7 @@ export default function InvoiceBuilder() {
                 </div>
               </div>
             </span>
-            <span className="text-white">{fmtMoney(calculations.platformFee, inv.currency)}</span>
+            <span className="text-foreground">{fmtMoney(calculations.platformFee, inv.currency)}</span>
           </div>
 
           <div className="border-t-2 border-[#C9A84C]" />
@@ -1327,7 +1327,7 @@ export default function InvoiceBuilder() {
                 <input
                   type="number"
                   step="0.1"
-                  className="w-12 bg-transparent border-b border-[#30363D] text-white text-right focus:outline-none"
+                  className="w-12 bg-transparent border-b border-[#30363D] text-foreground text-right focus:outline-none"
                   value={inv.latePaymentPercent}
                   onChange={e => update({ latePaymentPercent: parseFloat(e.target.value) || 0 })}
                 />
@@ -1356,7 +1356,7 @@ export default function InvoiceBuilder() {
                 {inv.attachments.map((f, i) => (
                   <div key={i} className="flex items-center justify-between text-xs text-[#8B949E] bg-[#0D1117] px-3 py-1.5 rounded">
                     <span>{f}</span>
-                    <button onClick={() => update({ attachments: inv.attachments.filter((_, j) => j !== i) })} className="text-red-400">
+                    <button onClick={() => update({ attachments: inv.attachments.filter((_, j) => j !== i) })} className="text-red-600 dark:text-red-400">
                       <X className="h-3 w-3" />
                     </button>
                   </div>
@@ -1377,23 +1377,23 @@ export default function InvoiceBuilder() {
     <div className="overflow-y-auto" style={{ maxHeight: 'calc(100vh - 140px)' }}>
       <div
         ref={previewRef}
-        className="bg-white text-gray-900 rounded shadow-lg mx-auto"
+        className="bg-card text-gray-900 rounded shadow-lg mx-auto"
         style={{ width: '595px', minHeight: '842px', padding: '40px', fontFamily: "'Inter', sans-serif", fontSize: '11px' }}
       >
         {/* Letterhead */}
         <div className="flex justify-between items-start border-b-2 border-gray-900 pb-4 mb-6">
           <div>
             <div className="text-xl font-bold tracking-tight" style={{ fontFamily: "'JetBrains Mono', monospace" }}>PROPMETRIK</div>
-            <div className="text-[9px] text-gray-500 mt-0.5 tracking-widest uppercase">Real Estate Intelligence Platform</div>
+            <div className="text-[9px] text-muted-foreground mt-0.5 tracking-widest uppercase">Real Estate Intelligence Platform</div>
           </div>
           <div className="text-right">
             <div className="text-[22px] font-bold tracking-tight text-gray-900">INVOICE</div>
             <span className={`inline-block mt-1 px-2 py-0.5 text-[9px] font-bold rounded-sm uppercase tracking-wider ${
-              inv.status === 'DRAFT' ? 'bg-gray-200 text-gray-600' :
+              inv.status === 'DRAFT' ? 'bg-gray-200 text-muted-foreground' :
               inv.status === 'SENT' ? 'bg-blue-100 text-blue-700' :
               inv.status === 'PAID' ? 'bg-green-100 text-green-700' :
               inv.status === 'VOID' ? 'bg-red-100 text-red-700' :
-              'bg-gray-100 text-gray-600'
+              'bg-muted text-muted-foreground'
             }`}>{inv.status}</span>
           </div>
         </div>
@@ -1401,19 +1401,19 @@ export default function InvoiceBuilder() {
         {/* Invoice meta */}
         <div className="flex justify-between mb-6">
           <div>
-            <div className="text-[9px] text-gray-500 uppercase tracking-wider mb-1">Invoice Number</div>
+            <div className="text-[9px] text-muted-foreground uppercase tracking-wider mb-1">Invoice Number</div>
             <div className="font-bold" style={{ fontFamily: "'JetBrains Mono', monospace" }}>{inv.invoiceNumber}</div>
           </div>
           <div className="text-center">
-            <div className="text-[9px] text-gray-500 uppercase tracking-wider mb-1">Date</div>
+            <div className="text-[9px] text-muted-foreground uppercase tracking-wider mb-1">Date</div>
             <div>{fmtDate(inv.invoiceDate)}</div>
           </div>
           <div className="text-right">
-            <div className="text-[9px] text-gray-500 uppercase tracking-wider mb-1">Due Date</div>
+            <div className="text-[9px] text-muted-foreground uppercase tracking-wider mb-1">Due Date</div>
             <div className="font-bold">{fmtDate(inv.dueDate)}</div>
           </div>
           <div className="text-right">
-            <div className="text-[9px] text-gray-500 uppercase tracking-wider mb-1">Terms</div>
+            <div className="text-[9px] text-muted-foreground uppercase tracking-wider mb-1">Terms</div>
             <div>{TERMS_LABELS[inv.paymentTerms]}</div>
           </div>
         </div>
@@ -1421,29 +1421,29 @@ export default function InvoiceBuilder() {
         {/* Bill From / Bill To */}
         <div className="grid grid-cols-2 gap-8 mb-6">
           <div>
-            <div className="text-[9px] text-gray-500 uppercase tracking-wider mb-2 font-bold">From</div>
+            <div className="text-[9px] text-muted-foreground uppercase tracking-wider mb-2 font-bold">From</div>
             <div className="font-bold text-sm">{inv.billFrom.companyName || '—'}</div>
-            {inv.billFrom.address && <div className="text-gray-600">{inv.billFrom.address}</div>}
-            {inv.billFrom.email && <div className="text-gray-600">{inv.billFrom.email}</div>}
-            {inv.billFrom.phone && <div className="text-gray-600">{inv.billFrom.phone}</div>}
-            {inv.billFrom.taxId && <div className="text-gray-600">VAT: {inv.billFrom.taxId}</div>}
+            {inv.billFrom.address && <div className="text-muted-foreground">{inv.billFrom.address}</div>}
+            {inv.billFrom.email && <div className="text-muted-foreground">{inv.billFrom.email}</div>}
+            {inv.billFrom.phone && <div className="text-muted-foreground">{inv.billFrom.phone}</div>}
+            {inv.billFrom.taxId && <div className="text-muted-foreground">VAT: {inv.billFrom.taxId}</div>}
           </div>
           <div>
-            <div className="text-[9px] text-gray-500 uppercase tracking-wider mb-2 font-bold">Bill To</div>
+            <div className="text-[9px] text-muted-foreground uppercase tracking-wider mb-2 font-bold">Bill To</div>
             <div className="font-bold text-sm">{inv.billTo.companyName || '—'}</div>
-            {inv.billTo.address && <div className="text-gray-600">{inv.billTo.address}</div>}
-            {inv.billTo.email && <div className="text-gray-600">{inv.billTo.email}</div>}
-            {inv.billTo.phone && <div className="text-gray-600">{inv.billTo.phone}</div>}
-            {inv.billTo.poReference && <div className="text-gray-600">PO: {inv.billTo.poReference}</div>}
+            {inv.billTo.address && <div className="text-muted-foreground">{inv.billTo.address}</div>}
+            {inv.billTo.email && <div className="text-muted-foreground">{inv.billTo.email}</div>}
+            {inv.billTo.phone && <div className="text-muted-foreground">{inv.billTo.phone}</div>}
+            {inv.billTo.poReference && <div className="text-muted-foreground">PO: {inv.billTo.poReference}</div>}
           </div>
         </div>
 
         {/* Project */}
         {inv.projectName && (
-          <div className="bg-gray-50 px-3 py-2 rounded mb-6 flex gap-6 text-[10px]">
-            <div><span className="text-gray-500">Project:</span> <strong>{inv.projectName}</strong></div>
-            <div><span className="text-gray-500">Phase:</span> {PHASE_LABELS[inv.projectPhase]}</div>
-            <div><span className="text-gray-500">Contract:</span> {CONTRACT_LABELS[inv.contractType]}</div>
+          <div className="bg-muted px-3 py-2 rounded mb-6 flex gap-6 text-[10px]">
+            <div><span className="text-muted-foreground">Project:</span> <strong>{inv.projectName}</strong></div>
+            <div><span className="text-muted-foreground">Phase:</span> {PHASE_LABELS[inv.projectPhase]}</div>
+            <div><span className="text-muted-foreground">Contract:</span> {CONTRACT_LABELS[inv.contractType]}</div>
           </div>
         )}
 
@@ -1451,12 +1451,12 @@ export default function InvoiceBuilder() {
         <table className="w-full mb-4" style={{ borderCollapse: 'collapse' }}>
           <thead>
             <tr className="border-b-2 border-gray-900">
-              <th className="text-left py-2 text-[9px] text-gray-500 uppercase tracking-wider w-6">#</th>
-              <th className="text-left py-2 text-[9px] text-gray-500 uppercase tracking-wider">Description</th>
-              <th className="text-right py-2 text-[9px] text-gray-500 uppercase tracking-wider w-12">Qty</th>
-              <th className="text-left py-2 text-[9px] text-gray-500 uppercase tracking-wider w-12 pl-2">Unit</th>
-              <th className="text-right py-2 text-[9px] text-gray-500 uppercase tracking-wider w-20">Rate</th>
-              <th className="text-right py-2 text-[9px] text-gray-500 uppercase tracking-wider w-24">Amount</th>
+              <th className="text-left py-2 text-[9px] text-muted-foreground uppercase tracking-wider w-6">#</th>
+              <th className="text-left py-2 text-[9px] text-muted-foreground uppercase tracking-wider">Description</th>
+              <th className="text-right py-2 text-[9px] text-muted-foreground uppercase tracking-wider w-12">Qty</th>
+              <th className="text-left py-2 text-[9px] text-muted-foreground uppercase tracking-wider w-12 pl-2">Unit</th>
+              <th className="text-right py-2 text-[9px] text-muted-foreground uppercase tracking-wider w-20">Rate</th>
+              <th className="text-right py-2 text-[9px] text-muted-foreground uppercase tracking-wider w-24">Amount</th>
             </tr>
           </thead>
           <tbody>
@@ -1478,14 +1478,14 @@ export default function InvoiceBuilder() {
                 const li = row as LineItem
                 const total = li.qty * li.unitRate
                 return (
-                  <tr key={li.id} className="border-b border-gray-200">
-                    <td className="py-2 text-gray-400">{itemNum}</td>
+                  <tr key={li.id} className="border-b border-border">
+                    <td className="py-2 text-muted-foreground">{itemNum}</td>
                     <td className="py-2">
                       <div>{li.description || '—'}</div>
-                      <div className="text-[9px] text-gray-400">{CATEGORY_LABELS[li.category]}</div>
+                      <div className="text-[9px] text-muted-foreground">{CATEGORY_LABELS[li.category]}</div>
                     </td>
                     <td className="py-2 text-right" style={{ fontFamily: "'JetBrains Mono', monospace" }}>{li.qty}</td>
-                    <td className="py-2 pl-2 text-gray-500">{UNIT_LABELS[li.unit]}</td>
+                    <td className="py-2 pl-2 text-muted-foreground">{UNIT_LABELS[li.unit]}</td>
                     <td className="py-2 text-right" style={{ fontFamily: "'JetBrains Mono', monospace" }}>{fmtMoney(li.unitRate, inv.currency)}</td>
                     <td className="py-2 text-right font-medium" style={{ fontFamily: "'JetBrains Mono', monospace" }}>{fmtMoney(total, inv.currency)}</td>
                   </tr>
@@ -1499,36 +1499,36 @@ export default function InvoiceBuilder() {
         <div className="flex justify-end mb-6">
           <div className="w-72">
             <div className="flex justify-between py-1">
-              <span className="text-gray-500">Subtotal</span>
+              <span className="text-muted-foreground">Subtotal</span>
               <span style={{ fontFamily: "'JetBrains Mono', monospace" }}>{fmtMoney(calculations.subtotal, inv.currency)}</span>
             </div>
             {calculations.enabledTaxes.map(tax => (
               <div key={tax.key} className="flex justify-between py-1">
-                <span className="text-gray-500">{tax.label} @ {tax.rate}%</span>
+                <span className="text-muted-foreground">{tax.label} @ {tax.rate}%</span>
                 <span style={{ fontFamily: "'JetBrains Mono', monospace" }}>{fmtMoney(tax.amount, inv.currency)}</span>
               </div>
             ))}
             {calculations.discount > 0 && (
               <div className="flex justify-between py-1">
-                <span className="text-gray-500">Discount ({inv.discountPercent}%)</span>
+                <span className="text-muted-foreground">Discount ({inv.discountPercent}%)</span>
                 <span className="text-red-600" style={{ fontFamily: "'JetBrains Mono', monospace" }}>{fmtMoney(-calculations.discount, inv.currency)}</span>
               </div>
             )}
             {calculations.retention > 0 && (
               <div className="flex justify-between py-1">
-                <span className="text-gray-500">Retention ({inv.retentionPercent}%)</span>
+                <span className="text-muted-foreground">Retention ({inv.retentionPercent}%)</span>
                 <span className="text-red-600" style={{ fontFamily: "'JetBrains Mono', monospace" }}>{fmtMoney(-calculations.retention, inv.currency)}</span>
               </div>
             )}
             <div className="flex justify-between py-1">
-              <span className="text-gray-500">PROPMETRIK Fee ({inv.platformFees.platformFeePercent}%)</span>
+              <span className="text-muted-foreground">PROPMETRIK Fee ({inv.platformFees.platformFeePercent}%)</span>
               <span style={{ fontFamily: "'JetBrains Mono', monospace" }}>{fmtMoney(calculations.platformFee, inv.currency)}</span>
             </div>
             <div className="flex justify-between py-2 border-t-2 border-gray-900 font-bold text-sm mt-1">
               <span>TOTAL DUE</span>
               <span style={{ fontFamily: "'JetBrains Mono', monospace" }}>{fmtMoney(calculations.totalDue, inv.currency)}</span>
             </div>
-            <div className="text-[8px] text-gray-400 mt-1">Paystack processing fees charged separately at checkout</div>
+            <div className="text-[8px] text-muted-foreground mt-1">Paystack processing fees charged separately at checkout</div>
           </div>
         </div>
 
@@ -1539,7 +1539,7 @@ export default function InvoiceBuilder() {
               href={inv.paymentInfo.paystackUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-block px-6 py-2.5 text-white text-sm font-bold rounded"
+              className="inline-block px-6 py-2.5 text-foreground text-sm font-bold rounded"
               style={{ backgroundColor: '#0A7C43' }}
             >
               Pay Now with Paystack →
@@ -1549,15 +1549,15 @@ export default function InvoiceBuilder() {
 
         {/* Payment info */}
         {(inv.paymentInfo.bankName || inv.paymentInfo.momoNetwork) && (
-          <div className="bg-gray-50 rounded p-3 mb-6 text-[10px]">
+          <div className="bg-muted rounded p-3 mb-6 text-[10px]">
             <div className="font-bold text-gray-700 mb-1 uppercase tracking-wider text-[9px]">Payment Instructions</div>
             {inv.paymentInfo.bankName && (
-              <div className="text-gray-600">
+              <div className="text-muted-foreground">
                 Bank: {inv.paymentInfo.bankName} · Acct: {inv.paymentInfo.accountNumber} · Name: {inv.paymentInfo.accountName}
               </div>
             )}
             {inv.paymentInfo.momoNetwork && (
-              <div className="text-gray-600">
+              <div className="text-muted-foreground">
                 Mobile Money: {inv.paymentInfo.momoNetwork} · {inv.paymentInfo.momoNumber}
               </div>
             )}
@@ -1567,32 +1567,32 @@ export default function InvoiceBuilder() {
         {/* Notes */}
         {inv.notes && (
           <div className="mb-4">
-            <div className="font-bold text-[9px] text-gray-500 uppercase tracking-wider mb-1">Notes</div>
-            <div className="text-gray-600 text-[10px]">{inv.notes}</div>
+            <div className="font-bold text-[9px] text-muted-foreground uppercase tracking-wider mb-1">Notes</div>
+            <div className="text-muted-foreground text-[10px]">{inv.notes}</div>
           </div>
         )}
 
         {/* Terms */}
         {inv.terms && (
           <div className="mb-4">
-            <div className="font-bold text-[9px] text-gray-500 uppercase tracking-wider mb-1">Terms & Conditions</div>
-            <div className="text-gray-500 text-[10px]">{inv.terms}</div>
+            <div className="font-bold text-[9px] text-muted-foreground uppercase tracking-wider mb-1">Terms & Conditions</div>
+            <div className="text-muted-foreground text-[10px]">{inv.terms}</div>
           </div>
         )}
 
         {inv.latePaymentEnabled && (
-          <div className="text-[9px] text-gray-400 mb-4">
+          <div className="text-[9px] text-muted-foreground mb-4">
             Late payment penalty: {inv.latePaymentPercent}% per month on overdue amounts.
           </div>
         )}
 
         {/* Footer */}
         <div className="border-t border-gray-300 pt-3 mt-6 flex justify-between items-center">
-          <div className="text-[9px] text-gray-400">
+          <div className="text-[9px] text-muted-foreground">
             Secured by PROPMETRIK Smart Contract · propmetrik.com
           </div>
           {inv.blockchainTxHash && (
-            <div className="text-[8px] text-gray-400 font-mono">
+            <div className="text-[8px] text-muted-foreground font-mono">
               TX: {inv.blockchainTxHash.slice(0, 16)}...
             </div>
           )}
@@ -1608,9 +1608,9 @@ export default function InvoiceBuilder() {
   const renderSendModal = () => {
     if (!showSendModal) return null
     return (
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70">
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/70">
         <div className="bg-[#161B22] border border-[#30363D] rounded-sm w-[440px] p-6">
-          <div className="text-sm font-bold text-white mb-4 flex items-center gap-2">
+          <div className="text-sm font-bold text-foreground mb-4 flex items-center gap-2">
             <Send className="h-4 w-4 text-[#C9A84C]" />
             Sending Invoice {inv.invoiceNumber}
           </div>
@@ -1627,8 +1627,8 @@ export default function InvoiceBuilder() {
                 <div>
                   <div className={`text-xs font-medium ${
                     step.status === 'active' ? 'text-[#C9A84C]' :
-                    step.status === 'done' ? 'text-green-400' :
-                    step.status === 'error' ? 'text-red-400' :
+                    step.status === 'done' ? 'text-green-600 dark:text-green-400' :
+                    step.status === 'error' ? 'text-red-600 dark:text-red-400' :
                     'text-[#484F58]'
                   }`}>{step.label}</div>
                   {step.detail && <div className="text-[10px] text-[#8B949E] mt-0.5 font-mono">{step.detail}</div>}
@@ -1659,7 +1659,7 @@ export default function InvoiceBuilder() {
       {/* Top bar */}
       <div className="flex items-center justify-between mb-4">
         <div>
-          <h1 className="text-lg font-mono font-bold text-white tracking-tight flex items-center gap-2">
+          <h1 className="text-lg font-mono font-bold text-foreground tracking-tight flex items-center gap-2">
             <FileText className="h-5 w-5 text-[#C9A84C]" />
             INVOICE BUILDER
           </h1>
@@ -1707,7 +1707,7 @@ export default function InvoiceBuilder() {
           {inv.status !== 'VOID' && (
             <button
               onClick={handleVoid}
-              className="flex items-center gap-1.5 px-4 py-2 text-xs font-medium text-red-400 border border-red-900/50 rounded-sm hover:bg-red-900/20 transition-colors"
+              className="flex items-center gap-1.5 px-4 py-2 text-xs font-medium text-red-600 dark:text-red-400 border border-red-900/50 rounded-sm hover:bg-red-900/20 transition-colors"
             >
               <Ban className="h-3.5 w-3.5" /> Void
             </button>
@@ -1728,20 +1728,20 @@ export default function InvoiceBuilder() {
 
       {/* ── Milestone Import Modal ──────────────────────────── */}
       {showMilestoneModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/60 backdrop-blur-sm">
           <div className="bg-[#161B22] border border-[#30363D] rounded-xl shadow-2xl w-full max-w-lg mx-4 max-h-[80vh] flex flex-col">
             {/* Header */}
             <div className="flex items-center justify-between px-5 py-4 border-b border-[#30363D]">
               <div>
-                <h3 className="text-sm font-semibold text-white flex items-center gap-2">
-                  <Milestone className="h-4 w-4 text-emerald-400" />
+                <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
+                  <Milestone className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
                   Import Payment Milestones
                 </h3>
                 <p className="text-[10px] text-[#8B949E] mt-0.5">
                   Select milestones to add as invoice line items
                 </p>
               </div>
-              <button onClick={() => setShowMilestoneModal(false)} className="text-[#484F58] hover:text-white">
+              <button onClick={() => setShowMilestoneModal(false)} className="text-[#484F58] hover:text-foreground">
                 <X className="h-4 w-4" />
               </button>
             </div>
@@ -1794,18 +1794,18 @@ export default function InvoiceBuilder() {
                         onChange={() => toggleMilestone(m.id)}
                       />
                       <div className="flex-1 min-w-0">
-                        <div className="text-xs font-medium text-white truncate">{m.name}</div>
+                        <div className="text-xs font-medium text-foreground truncate">{m.name}</div>
                         {m.description && (
                           <div className="text-[10px] text-[#8B949E] mt-0.5 line-clamp-2">{m.description}</div>
                         )}
                         <div className="flex items-center gap-3 mt-1">
-                          <span className="text-[10px] font-mono text-emerald-400">
+                          <span className="text-[10px] font-mono text-emerald-600 dark:text-emerald-400">
                             {fmtMoney(m.amount || 0, inv.currency)}
                           </span>
                           <span className={`text-[9px] px-1.5 py-0.5 rounded-full ${
-                            m.status === 'paid' ? 'bg-emerald-900/60 text-emerald-400' :
-                            m.status === 'overdue' ? 'bg-red-900/60 text-red-400' :
-                            'bg-zinc-700 text-zinc-400'
+                            m.status === 'paid' ? 'bg-emerald-100 dark:bg-emerald-900/60 text-emerald-600 dark:text-emerald-400' :
+                            m.status === 'overdue' ? 'bg-red-100 dark:bg-red-900/60 text-red-600 dark:text-red-400' :
+                            'bg-zinc-700 text-muted-foreground'
                           }`}>
                             {m.status}
                           </span>
@@ -1833,14 +1833,14 @@ export default function InvoiceBuilder() {
               <div className="flex gap-2">
                 <button
                   onClick={() => setShowMilestoneModal(false)}
-                  className="px-3 py-1.5 text-xs text-[#8B949E] hover:text-white transition-colors"
+                  className="px-3 py-1.5 text-xs text-[#8B949E] hover:text-foreground transition-colors"
                 >
                   Cancel
                 </button>
                 <button
                   onClick={importSelectedMilestones}
                   disabled={selectedMilestones.size === 0}
-                  className="px-4 py-1.5 text-xs font-medium bg-emerald-600 text-white rounded-lg hover:bg-emerald-500 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                  className="px-4 py-1.5 text-xs font-medium bg-emerald-600 text-foreground rounded-lg hover:bg-emerald-500 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
                 >
                   Import {selectedMilestones.size > 0 ? `(${selectedMilestones.size})` : ''}
                 </button>

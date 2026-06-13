@@ -91,24 +91,24 @@ interface Risk {
 }
 
 const issueStatusConfig: Record<IssueStatus, { label: string; color: string }> = {
-  open: { label: 'Open', color: 'bg-blue-500/20 text-blue-400' },
-  in_progress: { label: 'In Progress', color: 'bg-yellow-500/20 text-yellow-400' },
-  resolved: { label: 'Resolved', color: 'bg-green-500/20 text-green-400' },
-  closed: { label: 'Closed', color: 'bg-zinc-500/20 text-zinc-400' }
+  open: { label: 'Open', color: 'bg-blue-500/20 text-blue-600 dark:text-blue-400' },
+  in_progress: { label: 'In Progress', color: 'bg-yellow-500/20 text-yellow-600 dark:text-yellow-400' },
+  resolved: { label: 'Resolved', color: 'bg-green-500/20 text-green-600 dark:text-green-400' },
+  closed: { label: 'Closed', color: 'bg-zinc-500/20 text-muted-foreground' }
 };
 
 const priorityConfig: Record<IssuePriority, { label: string; color: string }> = {
-  low: { label: 'Low', color: 'bg-zinc-500/20 text-zinc-400' },
-  medium: { label: 'Medium', color: 'bg-blue-500/20 text-blue-400' },
-  high: { label: 'High', color: 'bg-orange-500/20 text-orange-400' },
-  critical: { label: 'Critical', color: 'bg-red-500/20 text-red-400' }
+  low: { label: 'Low', color: 'bg-zinc-500/20 text-muted-foreground' },
+  medium: { label: 'Medium', color: 'bg-blue-500/20 text-blue-600 dark:text-blue-400' },
+  high: { label: 'High', color: 'bg-orange-500/20 text-orange-600 dark:text-orange-400' },
+  critical: { label: 'Critical', color: 'bg-red-500/20 text-red-600 dark:text-red-400' }
 };
 
 const riskLevelConfig: Record<RiskLevel, { label: string; color: string }> = {
-  low: { label: 'Low', color: 'bg-green-500/20 text-green-400' },
-  medium: { label: 'Medium', color: 'bg-yellow-500/20 text-yellow-400' },
-  high: { label: 'High', color: 'bg-orange-500/20 text-orange-400' },
-  critical: { label: 'Critical', color: 'bg-red-500/20 text-red-400' }
+  low: { label: 'Low', color: 'bg-green-500/20 text-green-600 dark:text-green-400' },
+  medium: { label: 'Medium', color: 'bg-yellow-500/20 text-yellow-600 dark:text-yellow-400' },
+  high: { label: 'High', color: 'bg-orange-500/20 text-orange-600 dark:text-orange-400' },
+  critical: { label: 'Critical', color: 'bg-red-500/20 text-red-600 dark:text-red-400' }
 };
 
 export default function ProjectIssuesRisksPage() {
@@ -161,16 +161,16 @@ export default function ProjectIssuesRisksPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-white tracking-tight">Issues / Risks</h1>
-          <p className="text-zinc-400 text-sm mt-1">Log and track project issues and risks.</p>
+          <h1 className="text-2xl font-bold text-foreground tracking-tight">Issues / Risks</h1>
+          <p className="text-muted-foreground text-sm mt-1">Log and track project issues and risks.</p>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" className="border-zinc-700 text-zinc-300" onClick={() => fetchData()}>
+          <Button variant="outline" className="border-border text-muted-foreground" onClick={() => fetchData()}>
             <RefreshCw className="h-4 w-4 mr-2" />
             Refresh
           </Button>
           <Button 
-            className="bg-amber-600 hover:bg-amber-700 text-white border-0" 
+            className="bg-amber-600 hover:bg-amber-700 text-foreground border-0" 
             onClick={() => activeTab === 'issues' ? setShowCreateIssueDialog(true) : setShowCreateRiskDialog(true)}
           >
             <Plus className="h-4 w-4 mr-2" />
@@ -189,57 +189,57 @@ export default function ProjectIssuesRisksPage() {
         <>
           {/* Summary Cards */}
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <Card className="bg-zinc-900 border-zinc-800">
+            <Card className="bg-card border-border">
               <CardContent className="pt-6">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-xs uppercase tracking-wider text-zinc-500">Open Issues</p>
-                    <p className="text-2xl font-bold text-white mt-1">{openIssues}</p>
+                    <p className="text-xs uppercase tracking-wider text-muted-foreground">Open Issues</p>
+                    <p className="text-2xl font-bold text-foreground mt-1">{openIssues}</p>
                   </div>
                   <div className="h-12 w-12 rounded-lg bg-blue-500/10 flex items-center justify-center">
-                    <AlertCircle className="h-6 w-6 text-blue-400" />
+                    <AlertCircle className="h-6 w-6 text-blue-600 dark:text-blue-400" />
                   </div>
                 </div>
               </CardContent>
             </Card>
 
-            <Card className={`bg-zinc-900 border-zinc-800 ${criticalIssues > 0 ? 'border-red-500/50' : ''}`}>
+            <Card className={`bg-card border-border ${criticalIssues > 0 ? 'border-red-500/50' : ''}`}>
               <CardContent className="pt-6">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-xs uppercase tracking-wider text-zinc-500">Critical Issues</p>
-                    <p className={`text-2xl font-bold mt-1 ${criticalIssues > 0 ? 'text-red-400' : 'text-white'}`}>{criticalIssues}</p>
+                    <p className="text-xs uppercase tracking-wider text-muted-foreground">Critical Issues</p>
+                    <p className={`text-2xl font-bold mt-1 ${criticalIssues > 0 ? 'text-red-600 dark:text-red-400' : 'text-foreground'}`}>{criticalIssues}</p>
                   </div>
                   <div className="h-12 w-12 rounded-lg bg-red-500/10 flex items-center justify-center">
-                    <AlertTriangle className="h-6 w-6 text-red-400" />
+                    <AlertTriangle className="h-6 w-6 text-red-600 dark:text-red-400" />
                   </div>
                 </div>
               </CardContent>
             </Card>
 
-            <Card className="bg-zinc-900 border-zinc-800">
+            <Card className="bg-card border-border">
               <CardContent className="pt-6">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-xs uppercase tracking-wider text-zinc-500">Active Risks</p>
-                    <p className="text-2xl font-bold text-white mt-1">{risks.filter(r => r.status !== 'closed').length}</p>
+                    <p className="text-xs uppercase tracking-wider text-muted-foreground">Active Risks</p>
+                    <p className="text-2xl font-bold text-foreground mt-1">{risks.filter(r => r.status !== 'closed').length}</p>
                   </div>
                   <div className="h-12 w-12 rounded-lg bg-yellow-500/10 flex items-center justify-center">
-                    <Shield className="h-6 w-6 text-yellow-400" />
+                    <Shield className="h-6 w-6 text-yellow-600 dark:text-yellow-400" />
                   </div>
                 </div>
               </CardContent>
             </Card>
 
-            <Card className={`bg-zinc-900 border-zinc-800 ${highRisks > 0 ? 'border-orange-500/50' : ''}`}>
+            <Card className={`bg-card border-border ${highRisks > 0 ? 'border-orange-500/50' : ''}`}>
               <CardContent className="pt-6">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-xs uppercase tracking-wider text-zinc-500">High/Critical Risks</p>
-                    <p className={`text-2xl font-bold mt-1 ${highRisks > 0 ? 'text-orange-400' : 'text-white'}`}>{highRisks}</p>
+                    <p className="text-xs uppercase tracking-wider text-muted-foreground">High/Critical Risks</p>
+                    <p className={`text-2xl font-bold mt-1 ${highRisks > 0 ? 'text-orange-600 dark:text-orange-400' : 'text-foreground'}`}>{highRisks}</p>
                   </div>
                   <div className="h-12 w-12 rounded-lg bg-orange-500/10 flex items-center justify-center">
-                    <Flag className="h-6 w-6 text-orange-400" />
+                    <Flag className="h-6 w-6 text-orange-600 dark:text-orange-400" />
                   </div>
                 </div>
               </CardContent>
@@ -247,7 +247,7 @@ export default function ProjectIssuesRisksPage() {
           </div>
 
           <Tabs value={activeTab} onValueChange={setActiveTab}>
-            <TabsList className="bg-zinc-800 border-zinc-700">
+            <TabsList className="bg-muted border-border">
               <TabsTrigger value="issues">Issues ({issues.length})</TabsTrigger>
               <TabsTrigger value="risks">Risk Register ({risks.length})</TabsTrigger>
             </TabsList>
@@ -255,11 +255,11 @@ export default function ProjectIssuesRisksPage() {
             <TabsContent value="issues" className="mt-6">
               <div className="flex gap-3 mb-4">
                 <div className="relative flex-1 max-w-sm">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-500" />
-                  <Input placeholder="Search issues..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="pl-10 bg-zinc-900 border-zinc-800" />
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input placeholder="Search issues..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="pl-10 bg-card border-border" />
                 </div>
                 <Select value={statusFilter} onValueChange={setStatusFilter}>
-                  <SelectTrigger className="w-[150px] bg-zinc-900 border-zinc-800"><SelectValue placeholder="Status" /></SelectTrigger>
+                  <SelectTrigger className="w-[150px] bg-card border-border"><SelectValue placeholder="Status" /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">All Status</SelectItem>
                     {Object.entries(issueStatusConfig).map(([value, { label }]) => (<SelectItem key={value} value={value}>{label}</SelectItem>))}
@@ -267,31 +267,31 @@ export default function ProjectIssuesRisksPage() {
                 </Select>
               </div>
 
-              <Card className="bg-zinc-900 border-zinc-800">
+              <Card className="bg-card border-border">
                 <CardContent className="p-0">
                   <Table>
                     <TableHeader>
-                      <TableRow className="border-zinc-800 hover:bg-transparent">
-                        <TableHead className="text-zinc-400">Issue #</TableHead>
-                        <TableHead className="text-zinc-400">Title</TableHead>
-                        <TableHead className="text-zinc-400">Priority</TableHead>
-                        <TableHead className="text-zinc-400">Status</TableHead>
-                        <TableHead className="text-zinc-400">Assigned To</TableHead>
-                        <TableHead className="text-zinc-400">Created</TableHead>
+                      <TableRow className="border-border hover:bg-transparent">
+                        <TableHead className="text-muted-foreground">Issue #</TableHead>
+                        <TableHead className="text-muted-foreground">Title</TableHead>
+                        <TableHead className="text-muted-foreground">Priority</TableHead>
+                        <TableHead className="text-muted-foreground">Status</TableHead>
+                        <TableHead className="text-muted-foreground">Assigned To</TableHead>
+                        <TableHead className="text-muted-foreground">Created</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
                       {issues.map((issue) => (
-                        <TableRow key={issue.id} className="border-zinc-800 hover:bg-zinc-800/50 cursor-pointer">
+                        <TableRow key={issue.id} className="border-border hover:bg-muted/50 cursor-pointer">
                           <TableCell className="font-mono text-amber-500">{issue.issue_number}</TableCell>
-                          <TableCell className="font-medium text-white">{issue.title}</TableCell>
+                          <TableCell className="font-medium text-foreground">{issue.title}</TableCell>
                           <TableCell><Badge className={priorityConfig[issue.priority]?.color}>{priorityConfig[issue.priority]?.label}</Badge></TableCell>
                           <TableCell><Badge className={issueStatusConfig[issue.status]?.color}>{issueStatusConfig[issue.status]?.label}</Badge></TableCell>
-                          <TableCell className="text-zinc-300">{issue.assigned_to_name || '—'}</TableCell>
-                          <TableCell className="text-zinc-400 text-sm">{formatDate(issue.created_at)}</TableCell>
+                          <TableCell className="text-muted-foreground">{issue.assigned_to_name || '—'}</TableCell>
+                          <TableCell className="text-muted-foreground text-sm">{formatDate(issue.created_at)}</TableCell>
                         </TableRow>
                       ))}
-                      {issues.length === 0 && (<TableRow><TableCell colSpan={6} className="text-center py-8 text-zinc-500">No issues logged yet.</TableCell></TableRow>)}
+                      {issues.length === 0 && (<TableRow><TableCell colSpan={6} className="text-center py-8 text-muted-foreground">No issues logged yet.</TableCell></TableRow>)}
                     </TableBody>
                   </Table>
                 </CardContent>
@@ -299,31 +299,31 @@ export default function ProjectIssuesRisksPage() {
             </TabsContent>
 
             <TabsContent value="risks" className="mt-6">
-              <Card className="bg-zinc-900 border-zinc-800">
+              <Card className="bg-card border-border">
                 <CardContent className="p-0">
                   <Table>
                     <TableHeader>
-                      <TableRow className="border-zinc-800 hover:bg-transparent">
-                        <TableHead className="text-zinc-400">Risk #</TableHead>
-                        <TableHead className="text-zinc-400">Title</TableHead>
-                        <TableHead className="text-zinc-400">Risk Level</TableHead>
-                        <TableHead className="text-zinc-400">Status</TableHead>
-                        <TableHead className="text-zinc-400">Owner</TableHead>
-                        <TableHead className="text-zinc-400">Identified</TableHead>
+                      <TableRow className="border-border hover:bg-transparent">
+                        <TableHead className="text-muted-foreground">Risk #</TableHead>
+                        <TableHead className="text-muted-foreground">Title</TableHead>
+                        <TableHead className="text-muted-foreground">Risk Level</TableHead>
+                        <TableHead className="text-muted-foreground">Status</TableHead>
+                        <TableHead className="text-muted-foreground">Owner</TableHead>
+                        <TableHead className="text-muted-foreground">Identified</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
                       {risks.map((risk) => (
-                        <TableRow key={risk.id} className="border-zinc-800 hover:bg-zinc-800/50 cursor-pointer">
+                        <TableRow key={risk.id} className="border-border hover:bg-muted/50 cursor-pointer">
                           <TableCell className="font-mono text-amber-500">{risk.risk_number}</TableCell>
-                          <TableCell className="font-medium text-white">{risk.title}</TableCell>
+                          <TableCell className="font-medium text-foreground">{risk.title}</TableCell>
                           <TableCell><Badge className={riskLevelConfig[risk.risk_level]?.color}>{riskLevelConfig[risk.risk_level]?.label}</Badge></TableCell>
-                          <TableCell className="text-zinc-300 capitalize">{risk.status.replace('_', ' ')}</TableCell>
-                          <TableCell className="text-zinc-300">{risk.owner_name || '—'}</TableCell>
-                          <TableCell className="text-zinc-400 text-sm">{formatDate(risk.identified_date)}</TableCell>
+                          <TableCell className="text-muted-foreground capitalize">{risk.status.replace('_', ' ')}</TableCell>
+                          <TableCell className="text-muted-foreground">{risk.owner_name || '—'}</TableCell>
+                          <TableCell className="text-muted-foreground text-sm">{formatDate(risk.identified_date)}</TableCell>
                         </TableRow>
                       ))}
-                      {risks.length === 0 && (<TableRow><TableCell colSpan={6} className="text-center py-8 text-zinc-500">No risks identified yet.</TableCell></TableRow>)}
+                      {risks.length === 0 && (<TableRow><TableCell colSpan={6} className="text-center py-8 text-muted-foreground">No risks identified yet.</TableCell></TableRow>)}
                     </TableBody>
                   </Table>
                 </CardContent>
@@ -335,32 +335,32 @@ export default function ProjectIssuesRisksPage() {
 
       {/* Create Issue Dialog */}
       <Dialog open={showCreateIssueDialog} onOpenChange={setShowCreateIssueDialog}>
-        <DialogContent className="bg-zinc-900 border-zinc-800">
+        <DialogContent className="bg-card border-border">
           <DialogHeader>
-            <DialogTitle className="text-white">Log Issue</DialogTitle>
-            <DialogDescription className="text-zinc-400">Log a new project issue.</DialogDescription>
+            <DialogTitle className="text-foreground">Log Issue</DialogTitle>
+            <DialogDescription className="text-muted-foreground">Log a new project issue.</DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <Label className="text-zinc-300">Title</Label>
-              <Input placeholder="Issue title" className="bg-zinc-800 border-zinc-700" />
+              <Label className="text-muted-foreground">Title</Label>
+              <Input placeholder="Issue title" className="bg-muted border-border" />
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label className="text-zinc-300">Priority</Label>
+                <Label className="text-muted-foreground">Priority</Label>
                 <Select>
-                  <SelectTrigger className="bg-zinc-800 border-zinc-700"><SelectValue placeholder="Select priority" /></SelectTrigger>
+                  <SelectTrigger className="bg-muted border-border"><SelectValue placeholder="Select priority" /></SelectTrigger>
                   <SelectContent>{Object.entries(priorityConfig).map(([value, { label }]) => (<SelectItem key={value} value={value}>{label}</SelectItem>))}</SelectContent>
                 </Select>
               </div>
               <div className="space-y-2">
-                <Label className="text-zinc-300">Due Date</Label>
-                <Input type="date" className="bg-zinc-800 border-zinc-700" />
+                <Label className="text-muted-foreground">Due Date</Label>
+                <Input type="date" className="bg-muted border-border" />
               </div>
             </div>
             <div className="space-y-2">
-              <Label className="text-zinc-300">Description</Label>
-              <Textarea placeholder="Describe the issue..." className="bg-zinc-800 border-zinc-700" rows={4} />
+              <Label className="text-muted-foreground">Description</Label>
+              <Textarea placeholder="Describe the issue..." className="bg-muted border-border" rows={4} />
             </div>
           </div>
           <DialogFooter>
@@ -372,33 +372,33 @@ export default function ProjectIssuesRisksPage() {
 
       {/* Create Risk Dialog */}
       <Dialog open={showCreateRiskDialog} onOpenChange={setShowCreateRiskDialog}>
-        <DialogContent className="bg-zinc-900 border-zinc-800">
+        <DialogContent className="bg-card border-border">
           <DialogHeader>
-            <DialogTitle className="text-white">Add Risk</DialogTitle>
-            <DialogDescription className="text-zinc-400">Add a new risk to the register.</DialogDescription>
+            <DialogTitle className="text-foreground">Add Risk</DialogTitle>
+            <DialogDescription className="text-muted-foreground">Add a new risk to the register.</DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <Label className="text-zinc-300">Title</Label>
-              <Input placeholder="Risk title" className="bg-zinc-800 border-zinc-700" />
+              <Label className="text-muted-foreground">Title</Label>
+              <Input placeholder="Risk title" className="bg-muted border-border" />
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label className="text-zinc-300">Probability (1-5)</Label>
-                <Input type="number" min="1" max="5" placeholder="3" className="bg-zinc-800 border-zinc-700" />
+                <Label className="text-muted-foreground">Probability (1-5)</Label>
+                <Input type="number" min="1" max="5" placeholder="3" className="bg-muted border-border" />
               </div>
               <div className="space-y-2">
-                <Label className="text-zinc-300">Impact (1-5)</Label>
-                <Input type="number" min="1" max="5" placeholder="3" className="bg-zinc-800 border-zinc-700" />
+                <Label className="text-muted-foreground">Impact (1-5)</Label>
+                <Input type="number" min="1" max="5" placeholder="3" className="bg-muted border-border" />
               </div>
             </div>
             <div className="space-y-2">
-              <Label className="text-zinc-300">Description</Label>
-              <Textarea placeholder="Describe the risk..." className="bg-zinc-800 border-zinc-700" rows={3} />
+              <Label className="text-muted-foreground">Description</Label>
+              <Textarea placeholder="Describe the risk..." className="bg-muted border-border" rows={3} />
             </div>
             <div className="space-y-2">
-              <Label className="text-zinc-300">Mitigation Plan</Label>
-              <Textarea placeholder="How will this risk be mitigated?" className="bg-zinc-800 border-zinc-700" rows={3} />
+              <Label className="text-muted-foreground">Mitigation Plan</Label>
+              <Textarea placeholder="How will this risk be mitigated?" className="bg-muted border-border" rows={3} />
             </div>
           </div>
           <DialogFooter>

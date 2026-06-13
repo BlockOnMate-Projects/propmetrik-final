@@ -334,13 +334,13 @@ export function DailyLogCapture() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 pb-24">
+    <div className="min-h-screen bg-muted pb-24">
       {/* Header */}
-      <header className="sticky top-0 z-50 bg-white border-b border-gray-200 px-4 py-3">
+      <header className="sticky top-0 z-50 bg-card border-b border-border px-4 py-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center">
             <button onClick={() => router.back()} className="p-2 -ml-2 mr-2">
-              <ArrowLeft className="h-5 w-5 text-gray-600" />
+              <ArrowLeft className="h-5 w-5 text-muted-foreground" />
             </button>
             <h1 className="text-lg font-semibold text-gray-900">Daily Log</h1>
           </div>
@@ -355,11 +355,11 @@ export function DailyLogCapture() {
 
       {/* Success overlay */}
       {saved && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-          <div className="bg-white rounded-xl p-8 mx-4 text-center">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/50">
+          <div className="bg-card rounded-xl p-8 mx-4 text-center">
             <CheckCircle className="h-16 w-16 text-green-500 mx-auto mb-4" />
             <h2 className="text-xl font-bold text-gray-900 mb-2">Log Saved!</h2>
-            <p className="text-gray-500">
+            <p className="text-muted-foreground">
               {isOnline ? 'Daily log has been submitted.' : 'Will sync when online.'}
             </p>
           </div>
@@ -368,10 +368,10 @@ export function DailyLogCapture() {
 
       {/* Camera overlay */}
       {showCamera && (
-        <div className="fixed inset-0 z-50 bg-black flex flex-col">
+        <div className="fixed inset-0 z-50 bg-background flex flex-col">
           <div className="flex items-center justify-between p-4 absolute top-0 left-0 right-0 z-10">
-            <button onClick={closeCamera} className="p-2 bg-black/50 rounded-full">
-              <X className="h-6 w-6 text-white" />
+            <button onClick={closeCamera} className="p-2 bg-background/50 rounded-full">
+              <X className="h-6 w-6 text-foreground" />
             </button>
           </div>
           <video
@@ -380,10 +380,10 @@ export function DailyLogCapture() {
             playsInline
             className="flex-1 object-cover"
           />
-          <div className="p-6 flex justify-center bg-black">
+          <div className="p-6 flex justify-center bg-background">
             <button
               onClick={capturePhoto}
-              className="w-16 h-16 rounded-full bg-white border-4 border-gray-300 active:scale-95"
+              className="w-16 h-16 rounded-full bg-card border-4 border-gray-300 active:scale-95"
             />
           </div>
           <canvas ref={canvasRef} className="hidden" />
@@ -407,7 +407,7 @@ export function DailyLogCapture() {
           <select
             value={formData.projectId}
             onChange={(e) => handleInput('projectId', e.target.value)}
-            className="w-full px-4 py-3 border border-gray-300 rounded-lg bg-white text-gray-900 focus:ring-2 focus:ring-amber-500 focus:border-transparent"
+            className="w-full px-4 py-3 border border-gray-300 rounded-lg bg-card text-gray-900 focus:ring-2 focus:ring-amber-500 focus:border-transparent"
           >
             <option value="">Select project</option>
             {projects.map((project) => (
@@ -427,7 +427,7 @@ export function DailyLogCapture() {
             type="date"
             value={formData.logDate}
             onChange={(e) => handleInput('logDate', e.target.value)}
-            className="w-full px-4 py-3 border border-gray-300 rounded-lg bg-white text-gray-900 focus:ring-2 focus:ring-amber-500 focus:border-transparent"
+            className="w-full px-4 py-3 border border-gray-300 rounded-lg bg-card text-gray-900 focus:ring-2 focus:ring-amber-500 focus:border-transparent"
           />
         </div>
 
@@ -448,11 +448,11 @@ export function DailyLogCapture() {
                   className={`flex-shrink-0 flex flex-col items-center px-4 py-3 rounded-lg border-2 transition-colors ${
                     isSelected
                       ? 'border-amber-500 bg-amber-50'
-                      : 'border-gray-200 bg-white'
+                      : 'border-border bg-card'
                   }`}
                 >
-                  <Icon className={`h-6 w-6 ${isSelected ? 'text-amber-600' : 'text-gray-400'}`} />
-                  <span className={`text-xs mt-1 ${isSelected ? 'text-amber-700 font-medium' : 'text-gray-500'}`}>
+                  <Icon className={`h-6 w-6 ${isSelected ? 'text-amber-600' : 'text-muted-foreground'}`} />
+                  <span className={`text-xs mt-1 ${isSelected ? 'text-amber-700 font-medium' : 'text-muted-foreground'}`}>
                     {option.label}
                   </span>
                 </button>
@@ -473,7 +473,7 @@ export function DailyLogCapture() {
               value={formData.temperature || ''}
               onChange={(e) => handleInput('temperature', e.target.value ? Number(e.target.value) : undefined)}
               placeholder="28"
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg bg-white text-gray-900 focus:ring-2 focus:ring-amber-500 focus:border-transparent"
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg bg-card text-gray-900 focus:ring-2 focus:ring-amber-500 focus:border-transparent"
             />
           </div>
           <div>
@@ -486,7 +486,7 @@ export function DailyLogCapture() {
               value={formData.workersOnSite}
               onChange={(e) => handleInput('workersOnSite', Number(e.target.value) || 0)}
               min="0"
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg bg-white text-gray-900 focus:ring-2 focus:ring-amber-500 focus:border-transparent"
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg bg-card text-gray-900 focus:ring-2 focus:ring-amber-500 focus:border-transparent"
             />
           </div>
         </div>
@@ -501,7 +501,7 @@ export function DailyLogCapture() {
             onChange={(e) => handleInput('workDescription', e.target.value)}
             rows={4}
             placeholder="Describe the work completed today..."
-            className="w-full px-4 py-3 border border-gray-300 rounded-lg bg-white text-gray-900 focus:ring-2 focus:ring-amber-500 focus:border-transparent resize-none"
+            className="w-full px-4 py-3 border border-gray-300 rounded-lg bg-card text-gray-900 focus:ring-2 focus:ring-amber-500 focus:border-transparent resize-none"
           />
         </div>
 
@@ -515,7 +515,7 @@ export function DailyLogCapture() {
             onChange={(e) => handleInput('materialsUsed', e.target.value)}
             rows={2}
             placeholder="List materials used today..."
-            className="w-full px-4 py-3 border border-gray-300 rounded-lg bg-white text-gray-900 focus:ring-2 focus:ring-amber-500 focus:border-transparent resize-none"
+            className="w-full px-4 py-3 border border-gray-300 rounded-lg bg-card text-gray-900 focus:ring-2 focus:ring-amber-500 focus:border-transparent resize-none"
           />
         </div>
 
@@ -530,7 +530,7 @@ export function DailyLogCapture() {
               onChange={(e) => handleInput('issues', e.target.value)}
               rows={2}
               placeholder="Any issues or delays..."
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg bg-white text-gray-900 focus:ring-2 focus:ring-amber-500 focus:border-transparent resize-none"
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg bg-card text-gray-900 focus:ring-2 focus:ring-amber-500 focus:border-transparent resize-none"
             />
           </div>
           <div>
@@ -542,7 +542,7 @@ export function DailyLogCapture() {
               onChange={(e) => handleInput('safetyObservations', e.target.value)}
               rows={2}
               placeholder="Safety notes..."
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg bg-white text-gray-900 focus:ring-2 focus:ring-amber-500 focus:border-transparent resize-none"
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg bg-card text-gray-900 focus:ring-2 focus:ring-amber-500 focus:border-transparent resize-none"
             />
           </div>
         </div>
@@ -557,7 +557,7 @@ export function DailyLogCapture() {
             <button
               type="button"
               onClick={openCamera}
-              className="flex-shrink-0 w-24 h-24 border-2 border-dashed border-gray-300 rounded-lg flex flex-col items-center justify-center text-gray-400 hover:border-amber-500 hover:text-amber-500 transition-colors"
+              className="flex-shrink-0 w-24 h-24 border-2 border-dashed border-gray-300 rounded-lg flex flex-col items-center justify-center text-muted-foreground hover:border-amber-500 hover:text-amber-500 transition-colors"
             >
               <Camera className="h-6 w-6" />
               <span className="text-xs mt-1">Add Photo</span>
@@ -576,7 +576,7 @@ export function DailyLogCapture() {
                   onClick={() => removePhoto(photo.id)}
                   className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 rounded-full flex items-center justify-center"
                 >
-                  <X className="h-4 w-4 text-white" />
+                  <X className="h-4 w-4 text-foreground" />
                 </button>
               </div>
             ))}
@@ -594,8 +594,8 @@ export function DailyLogCapture() {
               onClick={isRecording ? stopRecording : startRecording}
               className={`flex items-center px-4 py-3 rounded-lg font-medium ${
                 isRecording
-                  ? 'bg-red-500 text-white'
-                  : 'bg-gray-100 text-gray-700'
+                  ? 'bg-red-500 text-foreground'
+                  : 'bg-muted text-gray-700'
               }`}
             >
               {isRecording ? (
@@ -629,7 +629,7 @@ export function DailyLogCapture() {
             type="button"
             onClick={getLocation}
             disabled={gettingLocation}
-            className="flex items-center px-4 py-3 bg-gray-100 rounded-lg text-gray-700"
+            className="flex items-center px-4 py-3 bg-muted rounded-lg text-gray-700"
           >
             {gettingLocation ? (
               <Loader2 className="h-5 w-5 mr-2 animate-spin" />
@@ -651,7 +651,7 @@ export function DailyLogCapture() {
           type="button"
           onClick={handleSubmit}
           disabled={saving}
-          className="w-full py-4 bg-amber-500 text-white font-semibold rounded-lg flex items-center justify-center disabled:opacity-50 active:bg-amber-600 transition-colors"
+          className="w-full py-4 bg-amber-500 text-foreground font-semibold rounded-lg flex items-center justify-center disabled:opacity-50 active:bg-amber-600 transition-colors"
         >
           {saving ? (
             <>

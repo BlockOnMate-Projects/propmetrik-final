@@ -86,12 +86,12 @@ interface DrawSummary {
 // Status badge component
 function StatusBadge({ status }: { status: DrawRequest['status'] }) {
   const config = {
-    draft: { label: 'Draft', className: 'bg-zinc-800 text-zinc-300' },
-    submitted: { label: 'Submitted', className: 'bg-blue-900/50 text-blue-400' },
-    under_review: { label: 'Under Review', className: 'bg-yellow-900/50 text-yellow-400' },
-    approved: { label: 'Approved', className: 'bg-green-900/50 text-green-400' },
-    rejected: { label: 'Rejected', className: 'bg-red-900/50 text-red-400' },
-    funded: { label: 'Funded', className: 'bg-emerald-900/50 text-emerald-400' },
+    draft: { label: 'Draft', className: 'bg-muted text-muted-foreground' },
+    submitted: { label: 'Submitted', className: 'bg-blue-100 dark:bg-blue-900/50 text-blue-600 dark:text-blue-400' },
+    under_review: { label: 'Under Review', className: 'bg-yellow-100 dark:bg-yellow-900/50 text-yellow-600 dark:text-yellow-400' },
+    approved: { label: 'Approved', className: 'bg-green-100 dark:bg-green-900/50 text-green-600 dark:text-green-400' },
+    rejected: { label: 'Rejected', className: 'bg-red-100 dark:bg-red-900/50 text-red-600 dark:text-red-400' },
+    funded: { label: 'Funded', className: 'bg-emerald-100 dark:bg-emerald-900/50 text-emerald-600 dark:text-emerald-400' },
   };
   
   const { label, className } = config[status];
@@ -126,31 +126,31 @@ function formatDate(date: Date | string): string {
 function DrawSummaryCards({ summary }: { summary: DrawSummary }) {
   return (
     <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
-      <div className="bg-zinc-900 border border-zinc-800 rounded-lg p-4">
-        <div className="flex items-center gap-2 text-zinc-400 text-sm mb-1">
+      <div className="bg-card border border-border rounded-lg p-4">
+        <div className="flex items-center gap-2 text-muted-foreground text-sm mb-1">
           <DollarSign className="w-4 h-4" />
           Total Budget
         </div>
-        <div className="text-xl font-bold text-white">
+        <div className="text-xl font-bold text-foreground">
           {formatCurrency(summary.total_budget)}
         </div>
       </div>
       
-      <div className="bg-zinc-900 border border-zinc-800 rounded-lg p-4">
-        <div className="flex items-center gap-2 text-zinc-400 text-sm mb-1">
+      <div className="bg-card border border-border rounded-lg p-4">
+        <div className="flex items-center gap-2 text-muted-foreground text-sm mb-1">
           <TrendingUp className="w-4 h-4" />
           Total Drawn
         </div>
         <div className="text-xl font-bold text-amber-500">
           {formatCurrency(summary.total_drawn)}
         </div>
-        <div className="text-xs text-zinc-500 mt-1">
+        <div className="text-xs text-muted-foreground mt-1">
           {summary.percent_drawn.toFixed(1)}% of budget
         </div>
       </div>
       
-      <div className="bg-zinc-900 border border-zinc-800 rounded-lg p-4">
-        <div className="flex items-center gap-2 text-zinc-400 text-sm mb-1">
+      <div className="bg-card border border-border rounded-lg p-4">
+        <div className="flex items-center gap-2 text-muted-foreground text-sm mb-1">
           <Landmark className="w-4 h-4" />
           Total Funded
         </div>
@@ -159,8 +159,8 @@ function DrawSummaryCards({ summary }: { summary: DrawSummary }) {
         </div>
       </div>
       
-      <div className="bg-zinc-900 border border-zinc-800 rounded-lg p-4">
-        <div className="flex items-center gap-2 text-zinc-400 text-sm mb-1">
+      <div className="bg-card border border-border rounded-lg p-4">
+        <div className="flex items-center gap-2 text-muted-foreground text-sm mb-1">
           <Percent className="w-4 h-4" />
           Retention Held
         </div>
@@ -169,15 +169,15 @@ function DrawSummaryCards({ summary }: { summary: DrawSummary }) {
         </div>
       </div>
       
-      <div className="bg-zinc-900 border border-zinc-800 rounded-lg p-4">
-        <div className="flex items-center gap-2 text-zinc-400 text-sm mb-1">
+      <div className="bg-card border border-border rounded-lg p-4">
+        <div className="flex items-center gap-2 text-muted-foreground text-sm mb-1">
           <Clock className="w-4 h-4" />
           Pending
         </div>
         <div className="text-xl font-bold text-blue-500">
           {formatCurrency(summary.pending_amount)}
         </div>
-        <div className="text-xs text-zinc-500 mt-1">
+        <div className="text-xs text-muted-foreground mt-1">
           {summary.pending_draws} request(s)
         </div>
       </div>
@@ -195,47 +195,47 @@ function DrawListItem({
 }) {
   return (
     <div 
-      className="bg-zinc-900 border border-zinc-800 rounded-lg p-4 hover:border-amber-500/50 cursor-pointer transition-colors"
+      className="bg-card border border-border rounded-lg p-4 hover:border-amber-500/50 cursor-pointer transition-colors"
       onClick={() => onView(draw.id)}
     >
       <div className="flex items-start justify-between mb-3">
         <div>
           <div className="flex items-center gap-2">
-            <span className="text-white font-medium">Draw #{draw.draw_number}</span>
+            <span className="text-foreground font-medium">Draw #{draw.draw_number}</span>
             <StatusBadge status={draw.status} />
           </div>
-          <p className="text-zinc-400 text-sm mt-1">{draw.title}</p>
+          <p className="text-muted-foreground text-sm mt-1">{draw.title}</p>
         </div>
         <div className="text-right">
           <div className="text-amber-500 font-bold">{formatCurrency(draw.net_amount)}</div>
-          <div className="text-zinc-500 text-xs">Net after retention</div>
+          <div className="text-muted-foreground text-xs">Net after retention</div>
         </div>
       </div>
       
       <div className="grid grid-cols-3 gap-4 text-sm">
         <div>
-          <span className="text-zinc-500">Request Date</span>
-          <div className="text-white">{formatDate(draw.request_date)}</div>
+          <span className="text-muted-foreground">Request Date</span>
+          <div className="text-foreground">{formatDate(draw.request_date)}</div>
         </div>
         <div>
-          <span className="text-zinc-500">Gross Amount</span>
-          <div className="text-white">{formatCurrency(draw.total_amount)}</div>
+          <span className="text-muted-foreground">Gross Amount</span>
+          <div className="text-foreground">{formatCurrency(draw.total_amount)}</div>
         </div>
         <div>
-          <span className="text-zinc-500">Retention ({draw.retention_rate}%)</span>
+          <span className="text-muted-foreground">Retention ({draw.retention_rate}%)</span>
           <div className="text-yellow-500">{formatCurrency(draw.retention_amount)}</div>
         </div>
       </div>
       
       {draw.status === 'funded' && draw.funded_date && (
-        <div className="mt-3 pt-3 border-t border-zinc-800 flex items-center gap-2 text-green-400 text-sm">
+        <div className="mt-3 pt-3 border-t border-border flex items-center gap-2 text-green-600 dark:text-green-400 text-sm">
           <CheckCircle className="w-4 h-4" />
           Funded on {formatDate(draw.funded_date)} - {formatCurrency(draw.amount_funded)}
         </div>
       )}
       
       {draw.status === 'rejected' && draw.rejection_reason && (
-        <div className="mt-3 pt-3 border-t border-zinc-800 flex items-start gap-2 text-red-400 text-sm">
+        <div className="mt-3 pt-3 border-t border-border flex items-start gap-2 text-red-600 dark:text-red-400 text-sm">
           <XCircle className="w-4 h-4 mt-0.5" />
           <span>{draw.rejection_reason}</span>
         </div>
@@ -321,49 +321,49 @@ function CreateDrawModal({
   };
   
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70">
-      <div className="bg-zinc-900 border border-zinc-800 rounded-lg w-full max-w-3xl max-h-[90vh] overflow-y-auto">
-        <div className="p-6 border-b border-zinc-800">
-          <h2 className="text-xl font-bold text-white">Create Draw Request</h2>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/70">
+      <div className="bg-card border border-border rounded-lg w-full max-w-3xl max-h-[90vh] overflow-y-auto">
+        <div className="p-6 border-b border-border">
+          <h2 className="text-xl font-bold text-foreground">Create Draw Request</h2>
         </div>
         
         <form onSubmit={handleSubmit} className="p-6 space-y-6">
           {/* Basic Info */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="md:col-span-2">
-              <label className="block text-sm text-zinc-400 mb-1">Title</label>
+              <label className="block text-sm text-muted-foreground mb-1">Title</label>
               <input
                 type="text"
                 value={formData.title}
                 onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-amber-500"
+                className="w-full px-3 py-2 bg-muted border border-border rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-amber-500"
                 placeholder="Draw Request for March 2024"
                 required
               />
             </div>
             
             <div>
-              <label className="block text-sm text-zinc-400 mb-1">Period Start</label>
+              <label className="block text-sm text-muted-foreground mb-1">Period Start</label>
               <input
                 type="date"
                 value={formData.period_start}
                 onChange={(e) => setFormData({ ...formData, period_start: e.target.value })}
-                className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-amber-500"
+                className="w-full px-3 py-2 bg-muted border border-border rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-amber-500"
               />
             </div>
             
             <div>
-              <label className="block text-sm text-zinc-400 mb-1">Period End</label>
+              <label className="block text-sm text-muted-foreground mb-1">Period End</label>
               <input
                 type="date"
                 value={formData.period_end}
                 onChange={(e) => setFormData({ ...formData, period_end: e.target.value })}
-                className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-amber-500"
+                className="w-full px-3 py-2 bg-muted border border-border rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-amber-500"
               />
             </div>
             
             <div>
-              <label className="block text-sm text-zinc-400 mb-1">Retention Rate (%)</label>
+              <label className="block text-sm text-muted-foreground mb-1">Retention Rate (%)</label>
               <input
                 type="number"
                 min="0"
@@ -371,17 +371,17 @@ function CreateDrawModal({
                 step="0.5"
                 value={formData.retention_rate}
                 onChange={(e) => setFormData({ ...formData, retention_rate: parseFloat(e.target.value) })}
-                className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-amber-500"
+                className="w-full px-3 py-2 bg-muted border border-border rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-amber-500"
               />
             </div>
             
             <div className="md:col-span-2">
-              <label className="block text-sm text-zinc-400 mb-1">Description</label>
+              <label className="block text-sm text-muted-foreground mb-1">Description</label>
               <textarea
                 value={formData.description}
                 onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                 rows={2}
-                className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-amber-500"
+                className="w-full px-3 py-2 bg-muted border border-border rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-amber-500"
                 placeholder="Description of work completed..."
               />
             </div>
@@ -390,7 +390,7 @@ function CreateDrawModal({
           {/* Line Items */}
           <div>
             <div className="flex items-center justify-between mb-3">
-              <label className="text-sm text-zinc-400">Line Items</label>
+              <label className="text-sm text-muted-foreground">Line Items</label>
               <button
                 type="button"
                 onClick={addLineItem}
@@ -408,21 +408,21 @@ function CreateDrawModal({
                     value={item.cost_code}
                     onChange={(e) => updateLineItem(index, 'cost_code', e.target.value)}
                     placeholder="Cost Code"
-                    className="col-span-2 px-2 py-1.5 bg-zinc-800 border border-zinc-700 rounded text-white text-sm focus:outline-none focus:ring-1 focus:ring-amber-500"
+                    className="col-span-2 px-2 py-1.5 bg-muted border border-border rounded text-foreground text-sm focus:outline-none focus:ring-1 focus:ring-amber-500"
                   />
                   <input
                     type="text"
                     value={item.description}
                     onChange={(e) => updateLineItem(index, 'description', e.target.value)}
                     placeholder="Description"
-                    className="col-span-6 px-2 py-1.5 bg-zinc-800 border border-zinc-700 rounded text-white text-sm focus:outline-none focus:ring-1 focus:ring-amber-500"
+                    className="col-span-6 px-2 py-1.5 bg-muted border border-border rounded text-foreground text-sm focus:outline-none focus:ring-1 focus:ring-amber-500"
                   />
                   <input
                     type="number"
                     value={item.current_request || ''}
                     onChange={(e) => updateLineItem(index, 'current_request', parseFloat(e.target.value) || 0)}
                     placeholder="Amount"
-                    className="col-span-3 px-2 py-1.5 bg-zinc-800 border border-zinc-700 rounded text-white text-sm focus:outline-none focus:ring-1 focus:ring-amber-500"
+                    className="col-span-3 px-2 py-1.5 bg-muted border border-border rounded text-foreground text-sm focus:outline-none focus:ring-1 focus:ring-amber-500"
                   />
                   {formData.line_items.length > 1 && (
                     <button
@@ -439,34 +439,34 @@ function CreateDrawModal({
           </div>
           
           {/* Summary */}
-          <div className="bg-zinc-800 rounded-lg p-4 grid grid-cols-3 gap-4">
+          <div className="bg-muted rounded-lg p-4 grid grid-cols-3 gap-4">
             <div>
-              <span className="text-zinc-400 text-sm">Gross Amount</span>
-              <div className="text-white font-bold">{formatCurrency(totalAmount)}</div>
+              <span className="text-muted-foreground text-sm">Gross Amount</span>
+              <div className="text-foreground font-bold">{formatCurrency(totalAmount)}</div>
             </div>
             <div>
-              <span className="text-zinc-400 text-sm">Retention ({formData.retention_rate}%)</span>
+              <span className="text-muted-foreground text-sm">Retention ({formData.retention_rate}%)</span>
               <div className="text-yellow-500 font-bold">-{formatCurrency(retentionAmount)}</div>
             </div>
             <div>
-              <span className="text-zinc-400 text-sm">Net Amount</span>
+              <span className="text-muted-foreground text-sm">Net Amount</span>
               <div className="text-amber-500 font-bold">{formatCurrency(netAmount)}</div>
             </div>
           </div>
           
           {/* Actions */}
-          <div className="flex justify-end gap-3 pt-4 border-t border-zinc-800">
+          <div className="flex justify-end gap-3 pt-4 border-t border-border">
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 text-zinc-400 hover:text-white transition-colors"
+              className="px-4 py-2 text-muted-foreground hover:text-foreground transition-colors"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={isSubmitting || totalAmount === 0}
-              className="px-4 py-2 bg-amber-500 text-white rounded-lg hover:bg-amber-400 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              className="px-4 py-2 bg-amber-500 text-foreground rounded-lg hover:bg-amber-400 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
               {isSubmitting ? 'Creating...' : 'Create Draw Request'}
             </button>
@@ -495,12 +495,12 @@ function DrawDetailModal({
   if (!draw) return null;
   
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70">
-      <div className="bg-zinc-900 border border-zinc-800 rounded-lg w-full max-w-4xl max-h-[90vh] overflow-y-auto">
-        <div className="p-6 border-b border-zinc-800 flex items-center justify-between">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/70">
+      <div className="bg-card border border-border rounded-lg w-full max-w-4xl max-h-[90vh] overflow-y-auto">
+        <div className="p-6 border-b border-border flex items-center justify-between">
           <div>
-            <h2 className="text-xl font-bold text-white">Draw #{draw.draw_number}</h2>
-            <p className="text-zinc-400 text-sm">{draw.title}</p>
+            <h2 className="text-xl font-bold text-foreground">Draw #{draw.draw_number}</h2>
+            <p className="text-muted-foreground text-sm">{draw.title}</p>
           </div>
           <StatusBadge status={draw.status} />
         </div>
@@ -508,50 +508,50 @@ function DrawDetailModal({
         <div className="p-6 space-y-6">
           {/* Summary */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <div className="bg-zinc-800 rounded-lg p-3">
-              <span className="text-zinc-400 text-sm">Gross Amount</span>
-              <div className="text-white font-bold">{formatCurrency(draw.total_amount)}</div>
+            <div className="bg-muted rounded-lg p-3">
+              <span className="text-muted-foreground text-sm">Gross Amount</span>
+              <div className="text-foreground font-bold">{formatCurrency(draw.total_amount)}</div>
             </div>
-            <div className="bg-zinc-800 rounded-lg p-3">
-              <span className="text-zinc-400 text-sm">Retention ({draw.retention_rate}%)</span>
+            <div className="bg-muted rounded-lg p-3">
+              <span className="text-muted-foreground text-sm">Retention ({draw.retention_rate}%)</span>
               <div className="text-yellow-500 font-bold">{formatCurrency(draw.retention_amount)}</div>
             </div>
-            <div className="bg-zinc-800 rounded-lg p-3">
-              <span className="text-zinc-400 text-sm">Net Amount</span>
+            <div className="bg-muted rounded-lg p-3">
+              <span className="text-muted-foreground text-sm">Net Amount</span>
               <div className="text-amber-500 font-bold">{formatCurrency(draw.net_amount)}</div>
             </div>
-            <div className="bg-zinc-800 rounded-lg p-3">
-              <span className="text-zinc-400 text-sm">Amount Funded</span>
+            <div className="bg-muted rounded-lg p-3">
+              <span className="text-muted-foreground text-sm">Amount Funded</span>
               <div className="text-green-500 font-bold">{formatCurrency(draw.amount_funded)}</div>
             </div>
           </div>
           
           {/* Line Items */}
           <div>
-            <h3 className="text-white font-medium mb-3">Line Items</h3>
-            <div className="bg-zinc-800 rounded-lg overflow-hidden">
+            <h3 className="text-foreground font-medium mb-3">Line Items</h3>
+            <div className="bg-muted rounded-lg overflow-hidden">
               <table className="w-full text-sm">
                 <thead className="bg-zinc-700">
                   <tr>
-                    <th className="text-left px-4 py-2 text-zinc-300">Code</th>
-                    <th className="text-left px-4 py-2 text-zinc-300">Description</th>
-                    <th className="text-right px-4 py-2 text-zinc-300">Budget</th>
-                    <th className="text-right px-4 py-2 text-zinc-300">Previous</th>
-                    <th className="text-right px-4 py-2 text-zinc-300">Current</th>
-                    <th className="text-right px-4 py-2 text-zinc-300">Balance</th>
-                    <th className="text-right px-4 py-2 text-zinc-300">%</th>
+                    <th className="text-left px-4 py-2 text-muted-foreground">Code</th>
+                    <th className="text-left px-4 py-2 text-muted-foreground">Description</th>
+                    <th className="text-right px-4 py-2 text-muted-foreground">Budget</th>
+                    <th className="text-right px-4 py-2 text-muted-foreground">Previous</th>
+                    <th className="text-right px-4 py-2 text-muted-foreground">Current</th>
+                    <th className="text-right px-4 py-2 text-muted-foreground">Balance</th>
+                    <th className="text-right px-4 py-2 text-muted-foreground">%</th>
                   </tr>
                 </thead>
                 <tbody>
                   {draw.line_items.map((item, index) => (
-                    <tr key={index} className="border-t border-zinc-700">
-                      <td className="px-4 py-2 text-zinc-400 font-mono">{item.cost_code}</td>
-                      <td className="px-4 py-2 text-white">{item.description}</td>
-                      <td className="px-4 py-2 text-right text-zinc-300">{formatCurrency(item.budget_amount)}</td>
-                      <td className="px-4 py-2 text-right text-zinc-400">{formatCurrency(item.previous_draws)}</td>
+                    <tr key={index} className="border-t border-border">
+                      <td className="px-4 py-2 text-muted-foreground font-mono">{item.cost_code}</td>
+                      <td className="px-4 py-2 text-foreground">{item.description}</td>
+                      <td className="px-4 py-2 text-right text-muted-foreground">{formatCurrency(item.budget_amount)}</td>
+                      <td className="px-4 py-2 text-right text-muted-foreground">{formatCurrency(item.previous_draws)}</td>
                       <td className="px-4 py-2 text-right text-amber-500 font-medium">{formatCurrency(item.current_request)}</td>
-                      <td className="px-4 py-2 text-right text-zinc-300">{formatCurrency(item.balance_remaining)}</td>
-                      <td className="px-4 py-2 text-right text-zinc-400">{item.percent_complete}%</td>
+                      <td className="px-4 py-2 text-right text-muted-foreground">{formatCurrency(item.balance_remaining)}</td>
+                      <td className="px-4 py-2 text-right text-muted-foreground">{item.percent_complete}%</td>
                     </tr>
                   ))}
                 </tbody>
@@ -562,7 +562,7 @@ function DrawDetailModal({
           {/* Documents */}
           {draw.supporting_documents.length > 0 && (
             <div>
-              <h3 className="text-white font-medium mb-3">Supporting Documents</h3>
+              <h3 className="text-foreground font-medium mb-3">Supporting Documents</h3>
               <div className="flex flex-wrap gap-2">
                 {draw.supporting_documents.map((doc, index) => (
                   <a
@@ -570,7 +570,7 @@ function DrawDetailModal({
                     href={doc.url}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="flex items-center gap-2 px-3 py-2 bg-zinc-800 rounded-lg text-sm text-zinc-300 hover:bg-zinc-700"
+                    className="flex items-center gap-2 px-3 py-2 bg-muted rounded-lg text-sm text-muted-foreground hover:bg-zinc-700"
                   >
                     <FileText className="w-4 h-4" />
                     {doc.name}
@@ -582,34 +582,34 @@ function DrawDetailModal({
           
           {/* Status History */}
           <div>
-            <h3 className="text-white font-medium mb-3">History</h3>
+            <h3 className="text-foreground font-medium mb-3">History</h3>
             <div className="space-y-2 text-sm">
-              <div className="flex items-center gap-3 text-zinc-400">
+              <div className="flex items-center gap-3 text-muted-foreground">
                 <Calendar className="w-4 h-4" />
                 Created on {formatDate(draw.created_at)}
               </div>
               {draw.submitted_at && (
-                <div className="flex items-center gap-3 text-blue-400">
+                <div className="flex items-center gap-3 text-blue-600 dark:text-blue-400">
                   <Send className="w-4 h-4" />
                   Submitted on {formatDate(draw.submitted_at)} by {draw.submitted_by}
                 </div>
               )}
               {draw.approved_at && (
-                <div className="flex items-center gap-3 text-green-400">
+                <div className="flex items-center gap-3 text-green-600 dark:text-green-400">
                   <CheckCircle className="w-4 h-4" />
                   Approved on {formatDate(draw.approved_at)} by {draw.approved_by}
-                  {draw.approval_notes && <span className="text-zinc-400">- {draw.approval_notes}</span>}
+                  {draw.approval_notes && <span className="text-muted-foreground">- {draw.approval_notes}</span>}
                 </div>
               )}
               {draw.rejected_at && (
-                <div className="flex items-center gap-3 text-red-400">
+                <div className="flex items-center gap-3 text-red-600 dark:text-red-400">
                   <XCircle className="w-4 h-4" />
                   Rejected on {formatDate(draw.rejected_at)} by {draw.rejected_by}
-                  {draw.rejection_reason && <span className="text-zinc-400">- {draw.rejection_reason}</span>}
+                  {draw.rejection_reason && <span className="text-muted-foreground">- {draw.rejection_reason}</span>}
                 </div>
               )}
               {draw.funded_date && (
-                <div className="flex items-center gap-3 text-emerald-400">
+                <div className="flex items-center gap-3 text-emerald-600 dark:text-emerald-400">
                   <Landmark className="w-4 h-4" />
                   Funded {formatCurrency(draw.amount_funded)} on {formatDate(draw.funded_date)}
                 </div>
@@ -619,26 +619,26 @@ function DrawDetailModal({
           
           {/* Funding Form */}
           {showFundingForm && draw.status === 'approved' && (
-            <div className="bg-zinc-800 rounded-lg p-4 space-y-4">
-              <h3 className="text-white font-medium">Record Funding</h3>
+            <div className="bg-muted rounded-lg p-4 space-y-4">
+              <h3 className="text-foreground font-medium">Record Funding</h3>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm text-zinc-400 mb-1">Amount</label>
+                  <label className="block text-sm text-muted-foreground mb-1">Amount</label>
                   <input
                     type="number"
                     value={fundingAmount || ''}
                     onChange={(e) => setFundingAmount(parseFloat(e.target.value) || 0)}
-                    className="w-full px-3 py-2 bg-zinc-700 border border-zinc-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-amber-500"
+                    className="w-full px-3 py-2 bg-zinc-700 border border-zinc-600 rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-amber-500"
                     placeholder={draw.net_amount.toString()}
                   />
                 </div>
                 <div>
-                  <label className="block text-sm text-zinc-400 mb-1">Reference Number</label>
+                  <label className="block text-sm text-muted-foreground mb-1">Reference Number</label>
                   <input
                     type="text"
                     value={fundingRef}
                     onChange={(e) => setFundingRef(e.target.value)}
-                    className="w-full px-3 py-2 bg-zinc-700 border border-zinc-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-amber-500"
+                    className="w-full px-3 py-2 bg-zinc-700 border border-zinc-600 rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-amber-500"
                     placeholder="Transfer reference..."
                   />
                 </div>
@@ -646,7 +646,7 @@ function DrawDetailModal({
               <div className="flex justify-end gap-2">
                 <button
                   onClick={() => setShowFundingForm(false)}
-                  className="px-3 py-1.5 text-zinc-400 hover:text-white text-sm"
+                  className="px-3 py-1.5 text-muted-foreground hover:text-foreground text-sm"
                 >
                   Cancel
                 </button>
@@ -655,7 +655,7 @@ function DrawDetailModal({
                     onAction('fund', { amount: fundingAmount || draw.net_amount, referenceNumber: fundingRef });
                     setShowFundingForm(false);
                   }}
-                  className="px-3 py-1.5 bg-green-600 text-white rounded text-sm hover:bg-green-500"
+                  className="px-3 py-1.5 bg-green-600 text-foreground rounded text-sm hover:bg-green-500"
                 >
                   Record Funding
                 </button>
@@ -666,12 +666,12 @@ function DrawDetailModal({
           {/* Action Input */}
           {(draw.status === 'submitted' || draw.status === 'under_review') && (
             <div>
-              <label className="block text-sm text-zinc-400 mb-1">Notes (for approval/rejection)</label>
+              <label className="block text-sm text-muted-foreground mb-1">Notes (for approval/rejection)</label>
               <textarea
                 value={actionNote}
                 onChange={(e) => setActionNote(e.target.value)}
                 rows={2}
-                className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-amber-500"
+                className="w-full px-3 py-2 bg-muted border border-border rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-amber-500"
                 placeholder="Add notes..."
               />
             </div>
@@ -679,10 +679,10 @@ function DrawDetailModal({
         </div>
         
         {/* Actions Footer */}
-        <div className="p-6 border-t border-zinc-800 flex justify-between">
+        <div className="p-6 border-t border-border flex justify-between">
           <button
             onClick={onClose}
-            className="px-4 py-2 text-zinc-400 hover:text-white transition-colors"
+            className="px-4 py-2 text-muted-foreground hover:text-foreground transition-colors"
           >
             Close
           </button>
@@ -692,7 +692,7 @@ function DrawDetailModal({
               <>
                 <button
                   onClick={() => onAction('submit')}
-                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-500 flex items-center gap-2"
+                  className="px-4 py-2 bg-blue-600 text-foreground rounded-lg hover:bg-blue-500 flex items-center gap-2"
                 >
                   <Send className="w-4 h-4" />
                   Submit for Approval
@@ -704,14 +704,14 @@ function DrawDetailModal({
               <>
                 <button
                   onClick={() => onAction('reject', { reason: actionNote })}
-                  className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-500 flex items-center gap-2"
+                  className="px-4 py-2 bg-red-600 text-foreground rounded-lg hover:bg-red-500 flex items-center gap-2"
                 >
                   <XCircle className="w-4 h-4" />
                   Reject
                 </button>
                 <button
                   onClick={() => onAction('approve', { notes: actionNote })}
-                  className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-500 flex items-center gap-2"
+                  className="px-4 py-2 bg-green-600 text-foreground rounded-lg hover:bg-green-500 flex items-center gap-2"
                 >
                   <CheckCircle className="w-4 h-4" />
                   Approve
@@ -720,17 +720,17 @@ function DrawDetailModal({
             )}
 
             {draw.esign_status === 'completed' ? (
-              <span className="px-3 py-2 rounded-lg bg-green-600/15 text-green-400 border border-green-600/30 text-sm flex items-center gap-2">
+              <span className="px-3 py-2 rounded-lg bg-green-600/15 text-green-600 dark:text-green-400 border border-green-600/30 text-sm flex items-center gap-2">
                 <CheckCircle className="w-4 h-4" /> E-signed
               </span>
             ) : draw.esign_status === 'sent' ? (
-              <span className="px-3 py-2 rounded-lg bg-blue-600/15 text-blue-400 border border-blue-600/30 text-sm flex items-center gap-2">
+              <span className="px-3 py-2 rounded-lg bg-blue-600/15 text-blue-600 dark:text-blue-400 border border-blue-600/30 text-sm flex items-center gap-2">
                 <Send className="w-4 h-4" /> Out for signature
               </span>
             ) : (draw.status === 'submitted' || draw.status === 'under_review' || draw.status === 'approved') ? (
               <button
                 onClick={() => onAction('request-esign')}
-                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-500 flex items-center gap-2"
+                className="px-4 py-2 bg-blue-600 text-foreground rounded-lg hover:bg-blue-500 flex items-center gap-2"
               >
                 <Send className="w-4 h-4" /> Request E-Signature
               </button>
@@ -739,7 +739,7 @@ function DrawDetailModal({
             {draw.status === 'approved' && (
               <button
                 onClick={() => setShowFundingForm(true)}
-                className="px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-500 flex items-center gap-2"
+                className="px-4 py-2 bg-emerald-600 text-foreground rounded-lg hover:bg-emerald-500 flex items-center gap-2"
               >
                 <Landmark className="w-4 h-4" />
                 Record Funding
@@ -837,19 +837,19 @@ export default function ProjectDrawsPage() {
         <div className="flex items-center gap-4">
           <Link
             href={`/dashboard/projects/${projectId}`}
-            className="p-2 rounded-lg hover:bg-zinc-800 text-zinc-400 hover:text-white transition-colors"
+            className="p-2 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
           >
             <ArrowLeft className="w-5 h-5" />
           </Link>
           <div>
-            <h1 className="text-2xl font-bold text-white">Draw Requests</h1>
-            <p className="text-zinc-400">{projectName}</p>
+            <h1 className="text-2xl font-bold text-foreground">Draw Requests</h1>
+            <p className="text-muted-foreground">{projectName}</p>
           </div>
         </div>
         
         <button
           onClick={() => setIsCreateModalOpen(true)}
-          className="px-4 py-2 bg-amber-500 text-white rounded-lg hover:bg-amber-400 flex items-center gap-2 font-medium"
+          className="px-4 py-2 bg-amber-500 text-foreground rounded-lg hover:bg-amber-400 flex items-center gap-2 font-medium"
         >
           <Plus className="w-4 h-4" />
           New Draw
@@ -861,7 +861,7 @@ export default function ProjectDrawsPage() {
       
       {/* Filter */}
       <div className="flex items-center gap-4">
-        <span className="text-zinc-400 text-sm">Filter:</span>
+        <span className="text-muted-foreground text-sm">Filter:</span>
         <div className="flex gap-2">
           {['all', 'draft', 'submitted', 'approved', 'funded', 'rejected'].map((status) => (
             <button
@@ -869,8 +869,8 @@ export default function ProjectDrawsPage() {
               onClick={() => setStatusFilter(status)}
               className={`px-3 py-1 rounded-full text-sm ${
                 statusFilter === status
-                  ? 'bg-amber-500 text-white'
-                  : 'bg-zinc-800 text-zinc-400 hover:bg-zinc-700'
+                  ? 'bg-amber-500 text-foreground'
+                  : 'bg-muted text-muted-foreground hover:bg-zinc-700'
               }`}
             >
               {status.charAt(0).toUpperCase() + status.slice(1)}
@@ -885,15 +885,15 @@ export default function ProjectDrawsPage() {
           <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-amber-500" />
         </div>
       ) : draws.length === 0 ? (
-        <div className="text-center py-12 bg-zinc-900 border border-zinc-800 rounded-lg">
-          <FileText className="w-12 h-12 text-zinc-600 mx-auto mb-4" />
-          <h3 className="text-white font-medium mb-2">No Draw Requests</h3>
-          <p className="text-zinc-400 text-sm mb-4">
+        <div className="text-center py-12 bg-card border border-border rounded-lg">
+          <FileText className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+          <h3 className="text-foreground font-medium mb-2">No Draw Requests</h3>
+          <p className="text-muted-foreground text-sm mb-4">
             Create your first draw request to track construction financing.
           </p>
           <button
             onClick={() => setIsCreateModalOpen(true)}
-            className="px-4 py-2 bg-amber-500 text-white rounded-lg hover:bg-amber-400 inline-flex items-center gap-2"
+            className="px-4 py-2 bg-amber-500 text-foreground rounded-lg hover:bg-amber-400 inline-flex items-center gap-2"
           >
             <Plus className="w-4 h-4" />
             Create Draw Request

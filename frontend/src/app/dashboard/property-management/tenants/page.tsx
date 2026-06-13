@@ -235,11 +235,11 @@ export default function TenantsPage() {
 
     const getStatusColor = (status: string) => {
         switch (status) {
-            case 'active': return 'border-green-900 text-green-500 bg-green-900/10'
-            case 'inactive': return 'border-zinc-700 text-zinc-400 bg-zinc-800/20'
-            case 'pending_verification': return 'border-amber-900 text-amber-500 bg-amber-900/10'
-            case 'blacklisted': return 'border-red-900 text-red-500 bg-red-900/10'
-            default: return 'border-zinc-700 text-zinc-400'
+            case 'active': return 'border-green-900 text-green-500 bg-green-100 dark:bg-green-900/10'
+            case 'inactive': return 'border-border text-muted-foreground bg-muted/20'
+            case 'pending_verification': return 'border-amber-900 text-amber-500 bg-amber-100 dark:bg-amber-900/10'
+            case 'blacklisted': return 'border-red-900 text-red-500 bg-red-100 dark:bg-red-900/10'
+            default: return 'border-border text-muted-foreground'
         }
     }
 
@@ -617,8 +617,8 @@ export default function TenantsPage() {
                                                             <p className="text-sm text-foreground font-mono">{tenancy.property?.title || 'Property'}</p>
                                                             <p className="text-[10px] text-muted-foreground font-mono mt-1">REF: {tenancy.referenceNumber}</p>
                                                         </div>
-                                                        <Badge className={`text-[9px] font-mono uppercase ${tenancy.status === 'active' ? 'bg-green-900/20 text-green-500 border-green-900' :
-                                                                tenancy.status === 'expired' ? 'bg-red-900/20 text-red-500 border-red-900' :
+                                                        <Badge className={`text-[9px] font-mono uppercase ${tenancy.status === 'active' ? 'bg-green-100 dark:bg-green-900/20 text-green-500 border-green-900' :
+                                                                tenancy.status === 'expired' ? 'bg-red-100 dark:bg-red-900/20 text-red-500 border-red-900' :
                                                                     'bg-secondary text-muted-foreground border-border'
                                                             }`}>
                                                             {tenancy.status}
@@ -646,20 +646,20 @@ export default function TenantsPage() {
                                             ))}
                                         </div>
                                     ) : (
-                                        <div className="text-center py-8 border border-dashed border-zinc-800 rounded-lg">
+                                        <div className="text-center py-8 border border-dashed border-border rounded-lg">
                                             <FileText className="h-8 w-8 text-zinc-800 mx-auto mb-2" />
-                                            <p className="text-zinc-500 font-mono text-xs">No lease history</p>
+                                            <p className="text-muted-foreground font-mono text-xs">No lease history</p>
                                         </div>
                                     )}
                                 </div>
 
                                 {/* Quick Actions */}
-                                <div className="space-y-3 pt-4 border-t border-zinc-800">
+                                <div className="space-y-3 pt-4 border-t border-border">
                                     <h3 className="text-xs font-mono text-amber-500 uppercase">Quick Actions</h3>
                                     <div className="grid grid-cols-2 gap-3">
                                         <Button
                                             variant="outline"
-                                            className="border-zinc-800 text-zinc-400 hover:text-white font-mono text-xs"
+                                            className="border-border text-muted-foreground hover:text-foreground font-mono text-xs"
                                             onClick={() => {
                                                 setIsDetailsOpen(false)
                                                 openMessageDialog(selectedTenant)
@@ -670,14 +670,14 @@ export default function TenantsPage() {
                                         </Button>
                                         <Button
                                             variant="outline"
-                                            className="border-zinc-800 text-zinc-400 hover:text-white font-mono text-xs"
+                                            className="border-border text-muted-foreground hover:text-foreground font-mono text-xs"
                                         >
                                             <FileText className="h-3 w-3 mr-2" />
                                             New Lease
                                         </Button>
                                         <Button
                                             variant="outline"
-                                            className="border-zinc-800 text-zinc-400 hover:text-white font-mono text-xs"
+                                            className="border-border text-muted-foreground hover:text-foreground font-mono text-xs"
                                         >
                                             <CreditCard className="h-3 w-3 mr-2" />
                                             Payments
@@ -703,30 +703,30 @@ export default function TenantsPage() {
 
             {/* Send Message Dialog */}
             <Dialog open={isMessageDialogOpen} onOpenChange={setIsMessageDialogOpen}>
-                <DialogContent className="bg-zinc-950 border-zinc-800">
+                <DialogContent className="bg-background border-border">
                     <DialogHeader>
                         <DialogTitle className="text-amber-500 font-mono uppercase">Send Message</DialogTitle>
-                        <DialogDescription className="text-zinc-500 font-mono text-xs">
+                        <DialogDescription className="text-muted-foreground font-mono text-xs">
                             Send a message to {messageRecipient?.fullName}
                         </DialogDescription>
                     </DialogHeader>
                     <div className="space-y-4 py-4">
-                        <div className="flex items-center gap-3 p-3 bg-zinc-900 rounded-lg border border-zinc-800">
-                            <Avatar className="h-10 w-10 border border-zinc-700">
-                                <AvatarFallback className="bg-zinc-800 text-amber-500 font-mono text-sm">
+                        <div className="flex items-center gap-3 p-3 bg-card rounded-lg border border-border">
+                            <Avatar className="h-10 w-10 border border-border">
+                                <AvatarFallback className="bg-muted text-amber-500 font-mono text-sm">
                                     {messageRecipient ? getInitials(messageRecipient.fullName) : ''}
                                 </AvatarFallback>
                             </Avatar>
                             <div>
-                                <p className="text-sm text-white font-mono">{messageRecipient?.fullName}</p>
-                                <p className="text-[10px] text-zinc-500 font-mono">{messageRecipient?.email || messageRecipient?.phonePrimary}</p>
+                                <p className="text-sm text-foreground font-mono">{messageRecipient?.fullName}</p>
+                                <p className="text-[10px] text-muted-foreground font-mono">{messageRecipient?.email || messageRecipient?.phonePrimary}</p>
                             </div>
                         </div>
                         <div className="space-y-2">
-                            <Label className="text-[10px] font-mono uppercase text-zinc-500">Message</Label>
+                            <Label className="text-[10px] font-mono uppercase text-muted-foreground">Message</Label>
                             <Textarea
                                 placeholder="Type your message..."
-                                className="bg-black border-zinc-800 text-white font-mono text-sm resize-none min-h-[120px]"
+                                className="bg-background border-border text-foreground font-mono text-sm resize-none min-h-[120px]"
                                 value={messageContent}
                                 onChange={(e) => setMessageContent(e.target.value)}
                             />
@@ -735,13 +735,13 @@ export default function TenantsPage() {
                     <DialogFooter>
                         <Button
                             variant="outline"
-                            className="border-zinc-800 text-zinc-400 font-mono text-xs"
+                            className="border-border text-muted-foreground font-mono text-xs"
                             onClick={() => setIsMessageDialogOpen(false)}
                         >
                             Cancel
                         </Button>
                         <Button
-                            className="bg-amber-600 hover:bg-amber-500 text-white font-mono text-xs"
+                            className="bg-amber-600 hover:bg-amber-500 text-foreground font-mono text-xs"
                             disabled={isSendingMessage || !messageContent.trim()}
                             onClick={handleSendMessage}
                         >
@@ -758,25 +758,25 @@ export default function TenantsPage() {
 
             {/* Delete Confirmation Dialog */}
             <AlertDialog open={!!tenantToDelete} onOpenChange={() => setTenantToDelete(null)}>
-                <AlertDialogContent className="bg-zinc-950 border-zinc-800">
+                <AlertDialogContent className="bg-background border-border">
                     <AlertDialogHeader>
-                        <AlertDialogTitle className="text-white font-mono uppercase flex items-center gap-2">
+                        <AlertDialogTitle className="text-foreground font-mono uppercase flex items-center gap-2">
                             <AlertTriangle className="h-5 w-5 text-red-500" />
                             Remove Tenant
                         </AlertDialogTitle>
-                        <AlertDialogDescription className="text-zinc-400 font-mono text-xs">
+                        <AlertDialogDescription className="text-muted-foreground font-mono text-xs">
                             Are you sure you want to remove <span className="text-amber-500">{tenantToDelete?.fullName}</span> from your tenant directory?
                             This action will also terminate any active leases associated with this tenant.
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
-                        <AlertDialogCancel className="bg-zinc-900 border-zinc-800 text-zinc-400 hover:bg-zinc-800 hover:text-white font-mono text-xs uppercase">
+                        <AlertDialogCancel className="bg-card border-border text-muted-foreground hover:bg-muted hover:text-foreground font-mono text-xs uppercase">
                             Cancel
                         </AlertDialogCancel>
                         <AlertDialogAction
                             onClick={handleDeleteTenant}
                             disabled={isDeleting}
-                            className="bg-red-600 hover:bg-red-500 text-white font-mono text-xs uppercase"
+                            className="bg-red-600 hover:bg-red-500 text-foreground font-mono text-xs uppercase"
                         >
                             {isDeleting ? (
                                 <>

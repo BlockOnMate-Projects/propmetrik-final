@@ -682,32 +682,32 @@ export default function CostApproachPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-black text-white flex items-center justify-center">
+      <div className="min-h-screen bg-background text-foreground flex items-center justify-center">
         <Loader2 className="w-8 h-8 text-amber-500 animate-spin" />
-        <span className="ml-3 font-mono text-sm text-zinc-400">Loading cost approach...</span>
+        <span className="ml-3 font-mono text-sm text-muted-foreground">Loading cost approach...</span>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-black text-white p-4 pb-10">
+    <div className="min-h-screen bg-background text-foreground p-4 pb-10">
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-4">
           <Link
             href={getBackPath()}
-            className="p-2 hover:bg-zinc-800 transition-colors"
+            className="p-2 hover:bg-muted transition-colors"
           >
-            <ArrowLeft className="w-4 h-4 text-zinc-400" />
+            <ArrowLeft className="w-4 h-4 text-muted-foreground" />
           </Link>
           <div>
             <div className="flex items-center gap-3">
-              <h1 className="font-mono text-xl text-white">COST APPROACH</h1>
-              <span className="px-2 py-0.5 bg-orange-900/50 text-orange-400 font-mono text-[10px]">
+              <h1 className="font-mono text-xl text-foreground">COST APPROACH</h1>
+              <span className="px-2 py-0.5 bg-orange-100 dark:bg-orange-900/50 text-orange-600 dark:text-orange-400 font-mono text-[10px]">
                 STEP 5
               </span>
             </div>
-            <p className="font-mono text-[10px] text-zinc-500">
+            <p className="font-mono text-[10px] text-muted-foreground">
               Land value + Depreciated reproduction cost = Value indication
             </p>
           </div>
@@ -726,7 +726,7 @@ export default function CostApproachPage() {
           <TerminalPanel title="LAND VALUE">
             {/* Land Value Mode Selector */}
             <div className="mb-4 flex items-center gap-4">
-              <span className="font-mono text-[10px] text-zinc-500">MODE:</span>
+              <span className="font-mono text-[10px] text-muted-foreground">MODE:</span>
               <div className="flex gap-2">
                 <button
                   onClick={() => {
@@ -735,8 +735,8 @@ export default function CostApproachPage() {
                   }}
                   className={`px-3 py-1 font-mono text-[10px] border transition-colors ${
                     landValueMode === 'system'
-                      ? 'bg-amber-500/20 border-amber-500 text-amber-400'
-                      : 'bg-zinc-800 border-zinc-700 text-zinc-400 hover:border-zinc-600'
+                      ? 'bg-amber-500/20 border-amber-500 text-amber-600 dark:text-amber-400'
+                      : 'bg-muted border-border text-muted-foreground hover:border-zinc-600'
                   }`}
                 >
                   ◉ System-Estimated
@@ -745,8 +745,8 @@ export default function CostApproachPage() {
                   onClick={() => setLandValueMode('user')}
                   className={`px-3 py-1 font-mono text-[10px] border transition-colors ${
                     landValueMode === 'user'
-                      ? 'bg-amber-500/20 border-amber-500 text-amber-400'
-                      : 'bg-zinc-800 border-zinc-700 text-zinc-400 hover:border-zinc-600'
+                      ? 'bg-amber-500/20 border-amber-500 text-amber-600 dark:text-amber-400'
+                      : 'bg-muted border-border text-muted-foreground hover:border-zinc-600'
                   }`}
                 >
                   ◯ User-Entered
@@ -757,20 +757,20 @@ export default function CostApproachPage() {
                   <TooltipTrigger asChild>
                     <HelpCircle className="w-3.5 h-3.5 text-amber-500 cursor-help" />
                   </TooltipTrigger>
-                  <TooltipContent side="right" className="max-w-sm bg-zinc-900 border border-amber-500/30 text-zinc-200 p-3">
+                  <TooltipContent side="right" className="max-w-sm bg-card border border-amber-500/30 text-zinc-200 p-3">
                     <p className="font-mono text-xs mb-2">
                       <strong className="text-amber-500">Land Value Input Mode</strong>
                     </p>
-                    <p className="text-[10px] text-zinc-400 mb-2">
+                    <p className="text-[10px] text-muted-foreground mb-2">
                       Choose how land value is determined.
                     </p>
-                    <p className="text-[10px] text-zinc-400 mb-1">
+                    <p className="text-[10px] text-muted-foreground mb-1">
                       <strong className="text-amber-500">System-Estimated:</strong> Uses modeled market evidence and development feasibility.
                     </p>
-                    <p className="text-[10px] text-zinc-400 mb-2">
+                    <p className="text-[10px] text-muted-foreground mb-2">
                       <strong className="text-amber-500">User-Entered:</strong> Manual override based on specific transaction knowledge.
                     </p>
-                    <p className="text-[9px] text-zinc-500 italic">
+                    <p className="text-[9px] text-muted-foreground italic">
                       User-entered values override system estimates in all calculations.
                     </p>
                   </TooltipContent>
@@ -780,24 +780,24 @@ export default function CostApproachPage() {
 
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="font-mono text-[10px] text-zinc-500 mb-2 flex items-center gap-1">
+                <label className="font-mono text-[10px] text-muted-foreground mb-2 flex items-center gap-1">
                   LAND / SITE VALUE (₵)
                   <TooltipProvider>
                     <Tooltip>
                       <TooltipTrigger asChild>
                         <HelpCircle className="w-3 h-3 text-amber-500/70 cursor-help" />
                       </TooltipTrigger>
-                      <TooltipContent side="top" className="max-w-xs bg-zinc-900 border border-amber-500/30 text-zinc-200 p-3">
+                      <TooltipContent side="top" className="max-w-xs bg-card border border-amber-500/30 text-zinc-200 p-3">
                         <p className="font-mono text-xs mb-2">
                           <strong className="text-amber-500">Land Value (₵)</strong>
                         </p>
-                        <p className="text-[10px] text-zinc-400 mb-2">
+                        <p className="text-[10px] text-muted-foreground mb-2">
                           Estimated value of the land as at the valuation date.
                         </p>
-                        <p className="text-[10px] text-zinc-400 mb-2">
+                        <p className="text-[10px] text-muted-foreground mb-2">
                           System estimates are derived from development feasibility and adjusted market listings in accordance with GhIS practice and RICS guidance for thin markets.
                         </p>
-                        <p className="text-[9px] text-zinc-500 italic">
+                        <p className="text-[9px] text-muted-foreground italic">
                           This is an indicative land value, not a verified transaction price.
                         </p>
                       </TooltipContent>
@@ -808,8 +808,8 @@ export default function CostApproachPage() {
                   type="number"
                   value={landValue}
                   onChange={(e) => setLandValue(parseFloat(e.target.value) || 0)}
-                  className={`w-full px-3 py-2 bg-black border text-white font-mono text-lg focus:border-amber-500 ${
-                    landValueMode === 'system' ? 'border-zinc-600 opacity-70' : 'border-zinc-700'
+                  className={`w-full px-3 py-2 bg-background border text-foreground font-mono text-lg focus:border-amber-500 ${
+                    landValueMode === 'system' ? 'border-zinc-600 opacity-70' : 'border-border'
                   }`}
                   placeholder="Enter land value..."
                   disabled={landValueMode === 'system'}
@@ -817,14 +817,14 @@ export default function CostApproachPage() {
                 {/* Show system estimate and variance when in user mode */}
                 {landValueMode === 'user' && systemLandValue !== null && systemLandValue > 0 && (
                   <div className="flex items-center gap-2 mt-1">
-                    <span className="font-mono text-[10px] text-zinc-500">
+                    <span className="font-mono text-[10px] text-muted-foreground">
                       System: ₵{systemLandValue.toLocaleString()}
                     </span>
                     {landValue > 0 && (
                       <span className={`font-mono text-[10px] ${
                         Math.abs((landValue - systemLandValue) / systemLandValue) > 0.2
-                          ? 'text-red-400'
-                          : 'text-green-400'
+                          ? 'text-red-600 dark:text-red-400'
+                          : 'text-green-600 dark:text-green-400'
                       }`}>
                         {landValue > systemLandValue ? '+' : ''}{Math.round(((landValue - systemLandValue) / systemLandValue) * 100)}%
                       </span>
@@ -833,9 +833,9 @@ export default function CostApproachPage() {
                       <TooltipProvider>
                         <Tooltip>
                           <TooltipTrigger asChild>
-                            <AlertTriangle className="w-3 h-3 text-red-400" />
+                            <AlertTriangle className="w-3 h-3 text-red-600 dark:text-red-400" />
                           </TooltipTrigger>
-                          <TooltipContent className="bg-red-900/90 border-red-500/50 text-red-200 p-2">
+                          <TooltipContent className="bg-red-100 dark:bg-red-900/90 border-red-500/50 text-red-200 p-2">
                             <span className="text-[10px]">Variance exceeds ±20% — justification required</span>
                           </TooltipContent>
                         </Tooltip>
@@ -844,40 +844,40 @@ export default function CostApproachPage() {
                   </div>
                 )}
                 {landValueMode === 'system' ? (
-                  <p className="font-mono text-[10px] text-zinc-500 mt-1">
+                  <p className="font-mono text-[10px] text-muted-foreground mt-1">
                     Based on comparable land sales / benchmark
                   </p>
                 ) : (
-                  <p className="font-mono text-[10px] text-zinc-500 mt-1">
+                  <p className="font-mono text-[10px] text-muted-foreground mt-1">
                     Use comparable land sales or residual land value
                   </p>
                 )}
               </div>
               <div className="flex items-end">
-                <div className="w-full p-3 bg-zinc-800/30">
-                  <div className="font-mono text-[10px] text-zinc-500 flex items-center gap-1">
+                <div className="w-full p-3 bg-muted/30">
+                  <div className="font-mono text-[10px] text-muted-foreground flex items-center gap-1">
                     PLOT SIZE
                     <TooltipProvider>
                       <Tooltip>
                         <TooltipTrigger asChild>
                           <HelpCircle className="w-3 h-3 text-amber-500/70 cursor-help" />
                         </TooltipTrigger>
-                        <TooltipContent side="top" className="max-w-xs bg-zinc-900 border border-amber-500/30 text-zinc-200 p-3">
+                        <TooltipContent side="top" className="max-w-xs bg-card border border-amber-500/30 text-zinc-200 p-3">
                           <p className="font-mono text-xs mb-1">
                             <strong className="text-amber-500">Plot Size</strong>
                           </p>
-                          <p className="text-[10px] text-zinc-400">
+                          <p className="text-[10px] text-muted-foreground">
                             Total site area measured in square meters. Used to derive implied land value per sqm and assess development density assumptions.
                           </p>
                         </TooltipContent>
                       </Tooltip>
                     </TooltipProvider>
                   </div>
-                  <div className="font-mono text-lg text-white">
+                  <div className="font-mono text-lg text-foreground">
                     {plotSize > 0 ? plotSize.toLocaleString() : '—'} sqm
                   </div>
                   {landValue > 0 && plotSize > 0 && (
-                    <div className="font-mono text-xs text-zinc-400 mt-1">
+                    <div className="font-mono text-xs text-muted-foreground mt-1">
                       ₵{Math.round(landValue / plotSize).toLocaleString()}/sqm
                     </div>
                   )}
@@ -890,10 +890,10 @@ export default function CostApproachPage() {
           <TerminalPanel title="CONSTRUCTION COSTS">
             {/* Data Source Info */}
             {dataSourceInfo && (
-              <div className="mb-4 p-2 bg-zinc-800/30 border border-zinc-700 flex items-center justify-between">
+              <div className="mb-4 p-2 bg-muted/30 border border-border flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <Info className="w-3 h-3 text-amber-500" />
-                  <span className="font-mono text-[10px] text-zinc-400">
+                  <span className="font-mono text-[10px] text-muted-foreground">
                     Data from PROPMETRIK Data Hub • Base Year: {dataSourceInfo.baseYear}
                     {regionalFactor.factor !== 1.0 && ` • ${regionalFactor.name} Factor: ${regionalFactor.factor}x`}
                   </span>
@@ -903,28 +903,28 @@ export default function CostApproachPage() {
                   className="p-1 hover:bg-zinc-700 rounded transition-colors"
                   title="Refresh data"
                 >
-                  <RefreshCw className={`w-3 h-3 text-zinc-400 ${loadingCosts ? 'animate-spin' : ''}`} />
+                  <RefreshCw className={`w-3 h-3 text-muted-foreground ${loadingCosts ? 'animate-spin' : ''}`} />
                 </button>
               </div>
             )}
 
             {/* Quality Selection */}
             <div className="mb-4">
-              <label className="font-mono text-[10px] text-zinc-500 mb-2 flex items-center gap-1">
+              <label className="font-mono text-[10px] text-muted-foreground mb-2 flex items-center gap-1">
                 CONSTRUCTION QUALITY
                 <TooltipProvider>
                   <Tooltip>
                     <TooltipTrigger asChild>
                       <HelpCircle className="w-3 h-3 text-amber-500/70 cursor-help" />
                     </TooltipTrigger>
-                    <TooltipContent side="right" className="max-w-xs bg-zinc-900 border border-amber-500/30 text-zinc-200 p-3">
+                    <TooltipContent side="right" className="max-w-xs bg-card border border-amber-500/30 text-zinc-200 p-3">
                       <p className="font-mono text-xs mb-2">
                         <strong className="text-amber-500">Construction Quality Assumption</strong>
                       </p>
-                      <p className="text-[10px] text-zinc-400 mb-2">
+                      <p className="text-[10px] text-muted-foreground mb-2">
                         Select the expected build quality level. Rates reflect prevailing construction costs for similar projects in the selected region and base year.
                       </p>
-                      <p className="text-[9px] text-zinc-500 italic">
+                      <p className="text-[9px] text-muted-foreground italic">
                         Actual project costs may vary depending on design complexity, procurement strategy, and market conditions.
                       </p>
                     </TooltipContent>
@@ -932,9 +932,9 @@ export default function CostApproachPage() {
                 </TooltipProvider>
               </label>
               {loadingCosts ? (
-                <div className="flex items-center justify-center p-8 border border-zinc-800">
+                <div className="flex items-center justify-center p-8 border border-border">
                   <Loader2 className="w-5 h-5 text-amber-500 animate-spin" />
-                  <span className="ml-2 font-mono text-xs text-zinc-400">Loading construction costs...</span>
+                  <span className="ml-2 font-mono text-xs text-muted-foreground">Loading construction costs...</span>
                 </div>
               ) : Object.keys(baseCosts).length > 0 ? (
                 <div className="grid grid-cols-6 gap-2">
@@ -946,12 +946,12 @@ export default function CostApproachPage() {
                         onClick={() => handleQualityChange(key)}
                         className={`p-3 text-left border transition-colors ${
                           constructionQuality === key
-                            ? 'border-amber-500 bg-amber-900/20'
-                            : 'border-zinc-800 hover:border-zinc-700'
+                            ? 'border-amber-500 bg-amber-100 dark:bg-amber-900/20'
+                            : 'border-border hover:border-border'
                         }`}
                       >
-                        <div className="font-mono text-xs text-white">{config.label}</div>
-                        <div className="font-mono text-[10px] text-zinc-500">
+                        <div className="font-mono text-xs text-foreground">{config.label}</div>
+                        <div className="font-mono text-[10px] text-muted-foreground">
                           ₵{Math.round(data.cost * regionalFactor.factor).toLocaleString()}/sqm
                         </div>
                       </button>
@@ -963,23 +963,23 @@ export default function CostApproachPage() {
                     onClick={() => handleQualityChange('custom')}
                     className={`p-3 text-left border transition-colors ${
                       constructionQuality === 'custom'
-                        ? 'border-amber-500 bg-amber-900/20'
-                        : 'border-zinc-800 hover:border-zinc-700'
+                        ? 'border-amber-500 bg-amber-100 dark:bg-amber-900/20'
+                        : 'border-border hover:border-border'
                     }`}
                   >
-                    <div className="font-mono text-xs text-white">Custom</div>
-                    <div className="font-mono text-[10px] text-zinc-500">
+                    <div className="font-mono text-xs text-foreground">Custom</div>
+                    <div className="font-mono text-[10px] text-muted-foreground">
                       User-defined
                     </div>
                   </button>
                 </div>
               ) : (
-                <div className="p-4 border border-amber-500/30 bg-amber-900/10">
+                <div className="p-4 border border-amber-500/30 bg-amber-100 dark:bg-amber-900/10">
                   <div className="flex items-center gap-2 text-amber-500 mb-2">
                     <AlertTriangle className="w-4 h-4" />
                     <span className="font-mono text-xs">No construction cost data available</span>
                   </div>
-                  <p className="font-mono text-[10px] text-zinc-400">
+                  <p className="font-mono text-[10px] text-muted-foreground">
                     Enter construction rate manually below or contact admin to update Data Hub.
                   </p>
                 </div>
@@ -989,18 +989,18 @@ export default function CostApproachPage() {
             {/* Rate and GFA */}
             <div className="grid grid-cols-3 gap-4 mb-4">
               <div>
-                <label className="font-mono text-[10px] text-zinc-500 mb-2 flex items-center gap-1">
+                <label className="font-mono text-[10px] text-muted-foreground mb-2 flex items-center gap-1">
                   RATE PER SQM (₵)
                   <TooltipProvider>
                     <Tooltip>
                       <TooltipTrigger asChild>
                         <HelpCircle className="w-3 h-3 text-amber-500/70 cursor-help" />
                       </TooltipTrigger>
-                      <TooltipContent side="top" className="max-w-xs bg-zinc-900 border border-amber-500/30 text-zinc-200 p-3">
+                      <TooltipContent side="top" className="max-w-xs bg-card border border-amber-500/30 text-zinc-200 p-3">
                         <p className="font-mono text-xs mb-2">
                           <strong className="text-amber-500">Construction Rate per sqm</strong>
                         </p>
-                        <p className="text-[10px] text-zinc-400">
+                        <p className="text-[10px] text-muted-foreground">
                           Average all-in construction cost per square meter, excluding land. Includes materials, labor, preliminaries, and contractor overheads based on regional cost indices.
                         </p>
                       </TooltipContent>
@@ -1015,8 +1015,8 @@ export default function CostApproachPage() {
                     type="number"
                     value={constructionRate}
                     onChange={(e) => handleRateChange(parseFloat(e.target.value) || 0)}
-                    className={`w-full px-3 py-2 bg-black border text-white font-mono focus:border-amber-500 ${
-                      constructionQuality === 'custom' && hasOverride ? 'border-amber-500' : 'border-zinc-700'
+                    className={`w-full px-3 py-2 bg-background border text-foreground font-mono focus:border-amber-500 ${
+                      constructionQuality === 'custom' && hasOverride ? 'border-amber-500' : 'border-border'
                     }`}
                   />
                   {constructionQuality === 'custom' && hasOverride && systemRate !== null && (
@@ -1036,18 +1036,18 @@ export default function CostApproachPage() {
                 )}
               </div>
               <div>
-                <label className="font-mono text-[10px] text-zinc-500 mb-2 flex items-center gap-1">
+                <label className="font-mono text-[10px] text-muted-foreground mb-2 flex items-center gap-1">
                   GROSS FLOOR AREA (SQM)
                   <TooltipProvider>
                     <Tooltip>
                       <TooltipTrigger asChild>
                         <HelpCircle className="w-3 h-3 text-amber-500/70 cursor-help" />
                       </TooltipTrigger>
-                      <TooltipContent side="top" className="max-w-xs bg-zinc-900 border border-amber-500/30 text-zinc-200 p-3">
+                      <TooltipContent side="top" className="max-w-xs bg-card border border-amber-500/30 text-zinc-200 p-3">
                         <p className="font-mono text-xs mb-2">
                           <strong className="text-amber-500">Gross Floor Area (GFA)</strong>
                         </p>
-                        <p className="text-[10px] text-zinc-400">
+                        <p className="text-[10px] text-muted-foreground">
                           Total constructed floor area used for cost estimation. Includes all usable floors but excludes external works unless explicitly stated.
                         </p>
                       </TooltipContent>
@@ -1058,37 +1058,37 @@ export default function CostApproachPage() {
                   type="number"
                   value={gfa}
                   readOnly
-                  className="w-full px-3 py-2 bg-black border border-zinc-700 text-white font-mono cursor-not-allowed opacity-80"
+                  className="w-full px-3 py-2 bg-background border border-border text-foreground font-mono cursor-not-allowed opacity-80"
                 />
               </div>
               <div className="flex items-end">
-                <div className="w-full p-3 bg-zinc-800/30">
-                  <div className="font-mono text-[10px] text-zinc-500 flex items-center gap-1">
+                <div className="w-full p-3 bg-muted/30">
+                  <div className="font-mono text-[10px] text-muted-foreground flex items-center gap-1">
                     HARD COSTS
                     <TooltipProvider>
                       <Tooltip>
                         <TooltipTrigger asChild>
                           <HelpCircle className="w-3 h-3 text-amber-500/70 cursor-help" />
                         </TooltipTrigger>
-                        <TooltipContent side="top" className="max-w-xs bg-zinc-900 border border-amber-500/30 text-zinc-200 p-3">
+                        <TooltipContent side="top" className="max-w-xs bg-card border border-amber-500/30 text-zinc-200 p-3">
                           <p className="font-mono text-xs mb-2">
                             <strong className="text-amber-500">Hard Construction Costs</strong>
                           </p>
-                          <p className="text-[10px] text-zinc-400">
+                          <p className="text-[10px] text-muted-foreground">
                             Direct costs associated with building the structure, calculated as: Rate per sqm × Gross Floor Area.
                           </p>
                         </TooltipContent>
                       </Tooltip>
                     </TooltipProvider>
                   </div>
-                  <div className="font-mono text-lg text-white">₵{hardCosts.toLocaleString()}</div>
+                  <div className="font-mono text-lg text-foreground">₵{hardCosts.toLocaleString()}</div>
                 </div>
               </div>
             </div>
 
             {/* Override Reason (shown when user overrides in custom mode) */}
             {hasOverride && constructionQuality === 'custom' && (
-              <div className="mb-4 p-3 border border-amber-500/30 bg-amber-900/10">
+              <div className="mb-4 p-3 border border-amber-500/30 bg-amber-100 dark:bg-amber-900/10">
                 <div className="flex items-center gap-2 mb-2">
                   <MessageSquare className="w-4 h-4 text-amber-500" />
                   <span className="font-mono text-xs text-amber-500">OVERRIDE JUSTIFICATION REQUIRED</span>
@@ -1097,21 +1097,21 @@ export default function CostApproachPage() {
                   value={overrideReason}
                   onChange={(e) => setOverrideReason(e.target.value)}
                   placeholder="Explain why you're using a custom rate (e.g., recent contractor quotes, specific material requirements)..."
-                  className="w-full px-3 py-2 bg-black border border-amber-500/50 text-white font-mono text-xs focus:border-amber-500 min-h-[60px]"
+                  className="w-full px-3 py-2 bg-background border border-amber-500/50 text-foreground font-mono text-xs focus:border-amber-500 min-h-[60px]"
                 />
-                <p className="font-mono text-[10px] text-zinc-500 mt-1">
+                <p className="font-mono text-[10px] text-muted-foreground mt-1">
                   This justification will be included in the valuation report as a disclaimer.
                 </p>
               </div>
             )}
 
             {/* Component Breakdown (Optional) */}
-            <div className="border-t border-zinc-800 pt-4">
+            <div className="border-t border-border pt-4">
               <div className="flex items-center justify-between mb-3">
-                <span className="font-mono text-[10px] text-zinc-500">COMPONENT BREAKDOWN (OPTIONAL)</span>
+                <span className="font-mono text-[10px] text-muted-foreground">COMPONENT BREAKDOWN (OPTIONAL)</span>
                 <button
                   onClick={addComponent}
-                  className="flex items-center gap-1 px-2 py-1 bg-zinc-800 text-zinc-400 font-mono text-[10px] hover:text-white"
+                  className="flex items-center gap-1 px-2 py-1 bg-muted text-muted-foreground font-mono text-[10px] hover:text-foreground"
                 >
                   <Plus className="w-3 h-3" /> ADD
                 </button>
@@ -1125,26 +1125,26 @@ export default function CostApproachPage() {
                         value={comp.name}
                         onChange={(e) => updateComponent(comp.id, 'name', e.target.value)}
                         placeholder="Component name"
-                        className="flex-1 px-2 py-1 bg-black border border-zinc-700 text-white font-mono text-xs"
+                        className="flex-1 px-2 py-1 bg-background border border-border text-foreground font-mono text-xs"
                       />
                       <input
                         type="number"
                         value={comp.area}
                         onChange={(e) => updateComponent(comp.id, 'area', parseFloat(e.target.value) || 0)}
                         placeholder="Area"
-                        className="w-24 px-2 py-1 bg-black border border-zinc-700 text-white font-mono text-xs"
+                        className="w-24 px-2 py-1 bg-background border border-border text-foreground font-mono text-xs"
                       />
                       <input
                         type="number"
                         value={comp.ratePerSqm}
                         onChange={(e) => updateComponent(comp.id, 'ratePerSqm', parseFloat(e.target.value) || 0)}
                         placeholder="Rate"
-                        className="w-24 px-2 py-1 bg-black border border-zinc-700 text-white font-mono text-xs"
+                        className="w-24 px-2 py-1 bg-background border border-border text-foreground font-mono text-xs"
                       />
-                      <span className="w-28 font-mono text-xs text-green-400 text-right">
+                      <span className="w-28 font-mono text-xs text-green-600 dark:text-green-400 text-right">
                         ₵{comp.total.toLocaleString()}
                       </span>
-                      <button onClick={() => removeComponent(comp.id)} className="text-zinc-500 hover:text-red-400">
+                      <button onClick={() => removeComponent(comp.id)} className="text-muted-foreground hover:text-red-400">
                         <X className="w-3 h-3" />
                       </button>
                     </div>
@@ -1154,23 +1154,23 @@ export default function CostApproachPage() {
             </div>
 
             {/* Additional Costs */}
-            <div className="grid grid-cols-3 gap-4 mt-4 pt-4 border-t border-zinc-800">
+            <div className="grid grid-cols-3 gap-4 mt-4 pt-4 border-t border-border">
               <div>
-                <label className="font-mono text-[10px] text-zinc-500 mb-2 flex items-center gap-1">
+                <label className="font-mono text-[10px] text-muted-foreground mb-2 flex items-center gap-1">
                   SOFT COSTS (% OF HARD)
                   <TooltipProvider>
                     <Tooltip>
                       <TooltipTrigger asChild>
                         <HelpCircle className="w-3 h-3 text-amber-500/70 cursor-help" />
                       </TooltipTrigger>
-                      <TooltipContent side="top" className="max-w-xs bg-zinc-900 border border-amber-500/30 text-zinc-200 p-3">
+                      <TooltipContent side="top" className="max-w-xs bg-card border border-amber-500/30 text-zinc-200 p-3">
                         <p className="font-mono text-xs mb-2">
                           <strong className="text-amber-500">Soft Costs</strong>
                         </p>
-                        <p className="text-[10px] text-zinc-400 mb-2">
+                        <p className="text-[10px] text-muted-foreground mb-2">
                           Allowance for professional fees, permits, approvals, supervision, and project management.
                         </p>
-                        <p className="text-[9px] text-zinc-500 italic">
+                        <p className="text-[9px] text-muted-foreground italic">
                           Typically ranges between 8–15% of hard construction costs depending on project complexity.
                         </p>
                       </TooltipContent>
@@ -1181,30 +1181,30 @@ export default function CostApproachPage() {
                   type="number"
                   value={softCosts}
                   onChange={(e) => setSoftCosts(parseFloat(e.target.value) || 0)}
-                  className="w-full px-3 py-2 bg-black border border-zinc-700 text-white font-mono focus:border-amber-500"
+                  className="w-full px-3 py-2 bg-background border border-border text-foreground font-mono focus:border-amber-500"
                   min="0"
                   max="30"
                 />
-                <p className="font-mono text-[10px] text-zinc-500 mt-1">
+                <p className="font-mono text-[10px] text-muted-foreground mt-1">
                   Design, permits, supervision
                 </p>
               </div>
               <div>
-                <label className="font-mono text-[10px] text-zinc-500 mb-2 flex items-center gap-1">
+                <label className="font-mono text-[10px] text-muted-foreground mb-2 flex items-center gap-1">
                   SITEWORKS (₵)
                   <TooltipProvider>
                     <Tooltip>
                       <TooltipTrigger asChild>
                         <HelpCircle className="w-3 h-3 text-amber-500/70 cursor-help" />
                       </TooltipTrigger>
-                      <TooltipContent side="top" className="max-w-xs bg-zinc-900 border border-amber-500/30 text-zinc-200 p-3">
+                      <TooltipContent side="top" className="max-w-xs bg-card border border-amber-500/30 text-zinc-200 p-3">
                         <p className="font-mono text-xs mb-2">
                           <strong className="text-amber-500">Siteworks</strong>
                         </p>
-                        <p className="text-[10px] text-zinc-400 mb-2">
+                        <p className="text-[10px] text-muted-foreground mb-2">
                           Costs related to land preparation and external works, including drainage, utilities, landscaping, and access roads.
                         </p>
-                        <p className="text-[9px] text-zinc-500 italic">
+                        <p className="text-[9px] text-muted-foreground italic">
                           Enter zero if siteworks are already included in construction rates.
                         </p>
                       </TooltipContent>
@@ -1215,36 +1215,36 @@ export default function CostApproachPage() {
                   type="number"
                   value={siteworks}
                   onChange={(e) => setSiteworks(parseFloat(e.target.value) || 0)}
-                  className="w-full px-3 py-2 bg-black border border-zinc-700 text-white font-mono focus:border-amber-500"
+                  className="w-full px-3 py-2 bg-background border border-border text-foreground font-mono focus:border-amber-500"
                 />
-                <p className="font-mono text-[10px] text-zinc-500 mt-1">
+                <p className="font-mono text-[10px] text-muted-foreground mt-1">
                   Drainage, landscaping, utilities
                 </p>
               </div>
               <div>
-                <label className="font-mono text-[10px] text-zinc-500 mb-2 flex items-center gap-1">
+                <label className="font-mono text-[10px] text-muted-foreground mb-2 flex items-center gap-1">
                   ENTREPRENEURIAL PROFIT (%)
                   <TooltipProvider>
                     <Tooltip>
                       <TooltipTrigger asChild>
                         <HelpCircle className="w-3 h-3 text-amber-500/70 cursor-help" />
                       </TooltipTrigger>
-                      <TooltipContent side="top" className="max-w-sm bg-zinc-900 border border-amber-500/30 text-zinc-200 p-3">
+                      <TooltipContent side="top" className="max-w-sm bg-card border border-amber-500/30 text-zinc-200 p-3">
                         <p className="font-mono text-xs mb-2">
                           <strong className="text-amber-500">Entrepreneurial Profit</strong>
                         </p>
-                        <p className="text-[10px] text-zinc-400 mb-2">
+                        <p className="text-[10px] text-muted-foreground mb-2">
                           Allowance for developer risk and return. This reflects market-required compensation for construction, financing, planning, and market risk — it is not a guaranteed margin.
                         </p>
-                        <p className="text-[10px] text-zinc-400 mb-1">
+                        <p className="text-[10px] text-muted-foreground mb-1">
                           <strong>Typical ranges (Ghana):</strong>
                         </p>
-                        <ul className="text-[10px] text-zinc-400 list-disc list-inside mb-2">
+                        <ul className="text-[10px] text-muted-foreground list-disc list-inside mb-2">
                           <li>Residential: 15–20%</li>
                           <li>Commercial: 18–25%</li>
                           <li>High-risk projects: 25–30%</li>
                         </ul>
-                        <p className="text-[9px] text-zinc-500 italic">
+                        <p className="text-[9px] text-muted-foreground italic">
                           Aligned with GhIS and RICS cost approach guidelines.
                         </p>
                       </TooltipContent>
@@ -1255,11 +1255,11 @@ export default function CostApproachPage() {
                   type="number"
                   value={entrepreneurialProfit}
                   onChange={(e) => setEntrepreneurialProfit(parseFloat(e.target.value) || 0)}
-                  className="w-full px-3 py-2 bg-black border border-zinc-700 text-white font-mono focus:border-amber-500"
+                  className="w-full px-3 py-2 bg-background border border-border text-foreground font-mono focus:border-amber-500"
                   min="0"
                   max="30"
                 />
-                <p className="font-mono text-[10px] text-zinc-500 mt-1">
+                <p className="font-mono text-[10px] text-muted-foreground mt-1">
                   Developer profit margin
                 </p>
               </div>
@@ -1292,13 +1292,13 @@ export default function CostApproachPage() {
           {/* Depreciation */}
           <TerminalPanel title="DEPRECIATION">
             <div className="flex justify-between items-center mb-3">
-              <span className="text-[10px] text-zinc-500 font-mono">
+              <span className="text-[10px] text-muted-foreground font-mono">
                 {calculatingDepreciation ? 'Calculating...' : 'Auto-calculated from property data'}
               </span>
               <button
                 onClick={calculateAgeDepreciation}
                 disabled={calculatingDepreciation}
-                className="flex items-center gap-1 px-2 py-1 bg-zinc-800 text-zinc-400 font-mono text-[10px] hover:text-white disabled:opacity-50"
+                className="flex items-center gap-1 px-2 py-1 bg-muted text-muted-foreground font-mono text-[10px] hover:text-foreground disabled:opacity-50"
               >
                 {calculatingDepreciation ? (
                   <><Loader2 className="w-3 h-3 animate-spin" /> CALCULATING...</>
@@ -1320,20 +1320,20 @@ export default function CostApproachPage() {
                   setExternalObsolescence
 
                 return (
-                  <div key={key} className="p-4 bg-zinc-800/30 border border-zinc-800">
+                  <div key={key} className="p-4 bg-muted/30 border border-border">
                     <div className="flex items-center gap-2 mb-3">
-                      <Icon className="w-4 h-4 text-zinc-500" />
-                      <span className="font-mono text-xs text-white">{type.label}</span>
+                      <Icon className="w-4 h-4 text-muted-foreground" />
+                      <span className="font-mono text-xs text-foreground">{type.label}</span>
                       <TooltipProvider>
                         <Tooltip>
                           <TooltipTrigger asChild>
                             <HelpCircle className="w-3 h-3 text-amber-500/70 cursor-help" />
                           </TooltipTrigger>
-                          <TooltipContent side="top" className="max-w-xs bg-zinc-900 border border-amber-500/30 text-zinc-200 p-3">
+                          <TooltipContent side="top" className="max-w-xs bg-card border border-amber-500/30 text-zinc-200 p-3">
                             <p className="font-mono text-xs mb-1">
                               <strong className="text-amber-500">{type.label}</strong>
                             </p>
-                            <p className="text-[10px] text-zinc-400">{type.tooltip}</p>
+                            <p className="text-[10px] text-muted-foreground">{type.tooltip}</p>
                           </TooltipContent>
                         </Tooltip>
                       </TooltipProvider>
@@ -1347,8 +1347,8 @@ export default function CostApproachPage() {
                       className="w-full accent-amber-500 mb-2"
                     />
                     <div className="flex items-center justify-between">
-                      <span className="font-mono text-[10px] text-zinc-500">{type.description}</span>
-                      <span className={`font-mono text-lg ${value > 0 ? 'text-red-400' : 'text-zinc-500'}`}>
+                      <span className="font-mono text-[10px] text-muted-foreground">{type.description}</span>
+                      <span className={`font-mono text-lg ${value > 0 ? 'text-red-600 dark:text-red-400' : 'text-muted-foreground'}`}>
                         {value}%
                       </span>
                     </div>
@@ -1358,20 +1358,20 @@ export default function CostApproachPage() {
             </div>
 
             {/* Depreciation Summary Inline */}
-            <div className="mt-4 p-3 bg-zinc-900/50 border border-zinc-800">
+            <div className="mt-4 p-3 bg-card/50 border border-border">
               <div className="flex items-center justify-between mb-2">
                 <div className="flex items-center gap-2">
-                  <span className="font-mono text-xs text-zinc-400">DEPRECIATION IMPACT</span>
+                  <span className="font-mono text-xs text-muted-foreground">DEPRECIATION IMPACT</span>
                   <TooltipProvider>
                     <Tooltip>
                       <TooltipTrigger asChild>
                         <HelpCircle className="w-3 h-3 text-amber-500/70 cursor-help" />
                       </TooltipTrigger>
-                      <TooltipContent side="top" className="max-w-xs bg-zinc-900 border border-amber-500/30 text-zinc-200 p-3">
+                      <TooltipContent side="top" className="max-w-xs bg-card border border-amber-500/30 text-zinc-200 p-3">
                         <p className="font-mono text-xs mb-1">
                           <strong className="text-amber-500">Total Depreciation</strong>
                         </p>
-                        <p className="text-[10px] text-zinc-400">
+                        <p className="text-[10px] text-muted-foreground">
                           Combined effect of physical, functional, and external depreciation applied to reproduction cost new. 
                           The total percentage deducted from RCN to arrive at the depreciated building value.
                         </p>
@@ -1379,14 +1379,14 @@ export default function CostApproachPage() {
                     </Tooltip>
                   </TooltipProvider>
                 </div>
-                <span className="font-mono text-xl text-red-400">−{totalDepreciation}%</span>
+                <span className="font-mono text-xl text-red-600 dark:text-red-400">−{totalDepreciation}%</span>
               </div>
               <div className="flex items-center gap-4 text-[10px] font-mono">
-                <span className="text-zinc-500">
-                  Loss: <span className="text-red-400">₵{Math.round(depreciationAmount).toLocaleString()}</span>
+                <span className="text-muted-foreground">
+                  Loss: <span className="text-red-600 dark:text-red-400">₵{Math.round(depreciationAmount).toLocaleString()}</span>
                 </span>
                 {totalDepreciation > 0 && (
-                  <span className="text-zinc-500">
+                  <span className="text-muted-foreground">
                     Primary driver: <span className="text-amber-500">
                       {physicalDepreciation >= functionalObsolescence && physicalDepreciation >= externalObsolescence
                         ? `Physical (${physicalDepreciation}%)`
@@ -1400,7 +1400,7 @@ export default function CostApproachPage() {
             </div>
 
             {valuation?.property?.year_built && (
-              <div className="mt-2 flex items-center gap-2 text-zinc-500">
+              <div className="mt-2 flex items-center gap-2 text-muted-foreground">
                 <Info className="w-3 h-3" />
                 <span className="font-mono text-[10px]">
                   Property age: {new Date().getFullYear() - valuation.property.year_built} years (built {valuation.property.year_built})
@@ -1415,35 +1415,35 @@ export default function CostApproachPage() {
           <TerminalPanel title="COST APPROACH SUMMARY">
             <div className="space-y-3">
               <div className="flex justify-between text-xs font-mono">
-                <span className="text-zinc-500">Hard Costs</span>
-                <span className="text-white">₵{hardCosts.toLocaleString()}</span>
+                <span className="text-muted-foreground">Hard Costs</span>
+                <span className="text-foreground">₵{hardCosts.toLocaleString()}</span>
               </div>
               <div className="flex justify-between text-xs font-mono">
-                <span className="text-zinc-500">+ Soft Costs ({softCosts}%)</span>
-                <span className="text-white">₵{Math.round(softCostsAmount).toLocaleString()}</span>
+                <span className="text-muted-foreground">+ Soft Costs ({softCosts}%)</span>
+                <span className="text-foreground">₵{Math.round(softCostsAmount).toLocaleString()}</span>
               </div>
               <div className="flex justify-between text-xs font-mono">
-                <span className="text-zinc-500">+ Siteworks</span>
-                <span className="text-white">₵{siteworks.toLocaleString()}</span>
+                <span className="text-muted-foreground">+ Siteworks</span>
+                <span className="text-foreground">₵{siteworks.toLocaleString()}</span>
               </div>
               <div className="flex justify-between text-xs font-mono">
-                <span className="text-zinc-500">+ Entrepreneur Profit ({entrepreneurialProfit}%)</span>
-                <span className="text-white">₵{Math.round(entrepreneurialProfitAmount).toLocaleString()}</span>
+                <span className="text-muted-foreground">+ Entrepreneur Profit ({entrepreneurialProfit}%)</span>
+                <span className="text-foreground">₵{Math.round(entrepreneurialProfitAmount).toLocaleString()}</span>
               </div>
 
-              <div className="border-t border-zinc-800 pt-3 flex justify-between text-sm font-mono">
+              <div className="border-t border-border pt-3 flex justify-between text-sm font-mono">
                 <div className="flex items-center gap-2">
-                  <span className="text-zinc-400">Reproduction Cost New</span>
+                  <span className="text-muted-foreground">Reproduction Cost New</span>
                   <TooltipProvider>
                     <Tooltip>
                       <TooltipTrigger asChild>
                         <HelpCircle className="w-3 h-3 text-amber-500/70 cursor-help" />
                       </TooltipTrigger>
-                      <TooltipContent side="left" className="max-w-xs bg-zinc-900 border border-amber-500/30 text-zinc-200 p-3">
+                      <TooltipContent side="left" className="max-w-xs bg-card border border-amber-500/30 text-zinc-200 p-3">
                         <p className="font-mono text-xs mb-1">
                           <strong className="text-amber-500">Reproduction Cost New (RCN)</strong>
                         </p>
-                        <p className="text-[10px] text-zinc-400">
+                        <p className="text-[10px] text-muted-foreground">
                           Estimated cost to construct an equivalent building with similar utility and quality at current prices, excluding land. 
                           Includes hard costs, soft costs, siteworks, and entrepreneurial profit.
                         </p>
@@ -1451,27 +1451,27 @@ export default function CostApproachPage() {
                     </Tooltip>
                   </TooltipProvider>
                 </div>
-                <span className="text-white font-bold">₵{Math.round(reproductionCostNew).toLocaleString()}</span>
+                <span className="text-foreground font-bold">₵{Math.round(reproductionCostNew).toLocaleString()}</span>
               </div>
 
-              <div className="flex justify-between text-xs font-mono text-red-400">
+              <div className="flex justify-between text-xs font-mono text-red-600 dark:text-red-400">
                 <span>− Depreciation ({totalDepreciation}%)</span>
                 <span>(₵{Math.round(depreciationAmount).toLocaleString()})</span>
               </div>
 
-              <div className="border-t border-zinc-800 pt-3 flex justify-between text-sm font-mono">
+              <div className="border-t border-border pt-3 flex justify-between text-sm font-mono">
                 <div className="flex items-center gap-2">
-                  <span className="text-zinc-400">Depreciated Building Value</span>
+                  <span className="text-muted-foreground">Depreciated Building Value</span>
                   <TooltipProvider>
                     <Tooltip>
                       <TooltipTrigger asChild>
                         <HelpCircle className="w-3 h-3 text-amber-500/70 cursor-help" />
                       </TooltipTrigger>
-                      <TooltipContent side="left" className="max-w-xs bg-zinc-900 border border-amber-500/30 text-zinc-200 p-3">
+                      <TooltipContent side="left" className="max-w-xs bg-card border border-amber-500/30 text-zinc-200 p-3">
                         <p className="font-mono text-xs mb-1">
                           <strong className="text-amber-500">Depreciated Building Value</strong>
                         </p>
-                        <p className="text-[10px] text-zinc-400">
+                        <p className="text-[10px] text-muted-foreground">
                           Reproduction cost new less total depreciation. Represents the current contributory value of 
                           the improvements after accounting for physical wear, functional obsolescence, and external factors.
                         </p>
@@ -1479,29 +1479,29 @@ export default function CostApproachPage() {
                     </Tooltip>
                   </TooltipProvider>
                 </div>
-                <span className="text-white font-bold">₵{Math.round(depreciatedBuildingValue).toLocaleString()}</span>
+                <span className="text-foreground font-bold">₵{Math.round(depreciatedBuildingValue).toLocaleString()}</span>
               </div>
 
               <div className="flex justify-between text-xs font-mono">
-                <span className="text-zinc-500">+ Land Value</span>
-                <span className="text-white">₵{landValue.toLocaleString()}</span>
+                <span className="text-muted-foreground">+ Land Value</span>
+                <span className="text-foreground">₵{landValue.toLocaleString()}</span>
               </div>
             </div>
 
-            <div className="mt-4 pt-4 border-t-2 border-zinc-700">
-              <div className="text-center p-4 bg-green-900/20 border border-green-800">
+            <div className="mt-4 pt-4 border-t-2 border-border">
+              <div className="text-center p-4 bg-green-100 dark:bg-green-900/20 border border-green-800">
                 <div className="flex items-center justify-center gap-2">
-                  <div className="font-mono text-[10px] text-green-400 mb-1">INDICATED VALUE (COST)</div>
+                  <div className="font-mono text-[10px] text-green-600 dark:text-green-400 mb-1">INDICATED VALUE (COST)</div>
                   <TooltipProvider>
                     <Tooltip>
                       <TooltipTrigger asChild>
-                        <HelpCircle className="w-3 h-3 text-green-400/70 cursor-help mb-1" />
+                        <HelpCircle className="w-3 h-3 text-green-600 dark:text-green-400/70 cursor-help mb-1" />
                       </TooltipTrigger>
-                      <TooltipContent side="left" className="max-w-xs bg-zinc-900 border border-green-500/30 text-zinc-200 p-3">
+                      <TooltipContent side="left" className="max-w-xs bg-card border border-green-500/30 text-zinc-200 p-3">
                         <p className="font-mono text-xs mb-1">
-                          <strong className="text-green-400">Indicated Value (Cost Approach)</strong>
+                          <strong className="text-green-600 dark:text-green-400">Indicated Value (Cost Approach)</strong>
                         </p>
-                        <p className="text-[10px] text-zinc-400">
+                        <p className="text-[10px] text-muted-foreground">
                           Value indication derived from the cost approach: Depreciated Building Value + Land Value. 
                           This method is most reliable for newer or specialized properties where comparable sales may be limited.
                         </p>
@@ -1509,7 +1509,7 @@ export default function CostApproachPage() {
                     </Tooltip>
                   </TooltipProvider>
                 </div>
-                <div className="font-mono text-3xl text-green-400 font-bold">
+                <div className="font-mono text-3xl text-green-600 dark:text-green-400 font-bold">
                   ₵{Math.round(indicatedValue).toLocaleString()}
                 </div>
               </div>
@@ -1518,21 +1518,21 @@ export default function CostApproachPage() {
             <div className="mt-4">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <span className="font-mono text-[10px] text-zinc-500">CONFIDENCE</span>
+                  <span className="font-mono text-[10px] text-muted-foreground">CONFIDENCE</span>
                   <TooltipProvider>
                     <Tooltip>
                       <TooltipTrigger asChild>
                         <HelpCircle className="w-3 h-3 text-amber-500/70 cursor-help" />
                       </TooltipTrigger>
-                      <TooltipContent side="left" className="max-w-xs bg-zinc-900 border border-amber-500/30 text-zinc-200 p-3">
+                      <TooltipContent side="left" className="max-w-xs bg-card border border-amber-500/30 text-zinc-200 p-3">
                         <p className="font-mono text-xs mb-1">
                           <strong className="text-amber-500">Confidence Level</strong>
                         </p>
-                        <p className="text-[10px] text-zinc-400">
+                        <p className="text-[10px] text-muted-foreground">
                           Qualitative indicator reflecting data completeness, assumption reliability, and method suitability. 
                           Higher confidence indicates stronger supporting evidence; it does not imply certainty.
                         </p>
-                        <p className="text-[10px] text-zinc-500 mt-1 italic">
+                        <p className="text-[10px] text-muted-foreground mt-1 italic">
                           Per RICS Valuation Standards, confidence levels should be disclosed in valuation reports.
                         </p>
                       </TooltipContent>
@@ -1550,16 +1550,16 @@ export default function CostApproachPage() {
               <TooltipProvider>
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <span className="flex items-center gap-1 text-zinc-500 cursor-help">
+                    <span className="flex items-center gap-1 text-muted-foreground cursor-help">
                       <HelpCircle className="w-3 h-3 text-amber-500/70" />
                       <span className="font-mono text-[10px]">What is this?</span>
                     </span>
                   </TooltipTrigger>
-                  <TooltipContent side="left" className="max-w-xs bg-zinc-900 border border-amber-500/30 text-zinc-200 p-3">
+                  <TooltipContent side="left" className="max-w-xs bg-card border border-amber-500/30 text-zinc-200 p-3">
                     <p className="font-mono text-xs mb-1">
                       <strong className="text-amber-500">Value Composition</strong>
                     </p>
-                    <p className="text-[10px] text-zinc-400">
+                    <p className="text-[10px] text-muted-foreground">
                       Visual breakdown of the indicated value showing the proportional contribution of land and depreciated 
                       building value. A healthy composition typically shows building value exceeding land value for improved properties.
                     </p>
@@ -1571,10 +1571,10 @@ export default function CostApproachPage() {
               {/* Land */}
               <div>
                 <div className="flex justify-between font-mono text-[10px] mb-1">
-                  <span className="text-zinc-500">Land</span>
-                  <span className="text-white">{indicatedValue > 0 ? Math.round((landValue / indicatedValue) * 100) : 0}%</span>
+                  <span className="text-muted-foreground">Land</span>
+                  <span className="text-foreground">{indicatedValue > 0 ? Math.round((landValue / indicatedValue) * 100) : 0}%</span>
                 </div>
-                <div className="h-2 bg-zinc-800">
+                <div className="h-2 bg-muted">
                   <div
                     className="h-full bg-blue-500"
                     style={{ width: `${indicatedValue > 0 ? (landValue / indicatedValue) * 100 : 0}%` }}
@@ -1585,10 +1585,10 @@ export default function CostApproachPage() {
               {/* Building */}
               <div>
                 <div className="flex justify-between font-mono text-[10px] mb-1">
-                  <span className="text-zinc-500">Building</span>
-                  <span className="text-white">{indicatedValue > 0 ? Math.round((depreciatedBuildingValue / indicatedValue) * 100) : 0}%</span>
+                  <span className="text-muted-foreground">Building</span>
+                  <span className="text-foreground">{indicatedValue > 0 ? Math.round((depreciatedBuildingValue / indicatedValue) * 100) : 0}%</span>
                 </div>
-                <div className="h-2 bg-zinc-800">
+                <div className="h-2 bg-muted">
                   <div
                     className="h-full bg-amber-500"
                     style={{ width: `${indicatedValue > 0 ? (depreciatedBuildingValue / indicatedValue) * 100 : 0}%` }}
@@ -1597,12 +1597,12 @@ export default function CostApproachPage() {
               </div>
 
               {/* Depreciation (as negative) */}
-              <div className="pt-2 border-t border-zinc-800">
+              <div className="pt-2 border-t border-border">
                 <div className="flex justify-between font-mono text-[10px] mb-1">
-                  <span className="text-zinc-500">Depreciation Lost</span>
-                  <span className="text-red-400">−{totalDepreciation}%</span>
+                  <span className="text-muted-foreground">Depreciation Lost</span>
+                  <span className="text-red-600 dark:text-red-400">−{totalDepreciation}%</span>
                 </div>
-                <div className="h-2 bg-zinc-800">
+                <div className="h-2 bg-muted">
                   <div
                     className="h-full bg-red-500"
                     style={{ width: `${Math.min(totalDepreciation, 100)}%` }}
@@ -1615,18 +1615,18 @@ export default function CostApproachPage() {
       </div>
 
       {/* Global Disclaimer */}
-      <div className="mt-6 p-4 bg-zinc-900/50 border border-zinc-800 rounded">
+      <div className="mt-6 p-4 bg-card/50 border border-border rounded">
         <div className="flex items-start gap-3">
           <AlertTriangle className="w-4 h-4 text-amber-500 mt-0.5 flex-shrink-0" />
           <div>
             <p className="font-mono text-xs text-amber-500 font-bold mb-2">VALUATION DISCLAIMER</p>
-            <p className="font-mono text-[10px] text-zinc-400 leading-relaxed">
+            <p className="font-mono text-[10px] text-muted-foreground leading-relaxed">
               All values presented are indicative estimates based on market data and professional judgment. 
               They do not constitute formal appraisals and should not be relied upon for legal, lending, or transactional purposes 
               without independent verification by a registered valuer. Construction rates are sourced from GhIS/GREDA benchmarks and 
               may vary based on specifications, location, and market conditions. Adjustments may be required following physical inspection.
             </p>
-            <p className="font-mono text-[10px] text-zinc-500 mt-2 italic">
+            <p className="font-mono text-[10px] text-muted-foreground mt-2 italic">
               Prepared in accordance with RICS Valuation – Global Standards and Ghana Institution of Surveyors guidance.
             </p>
           </div>
@@ -1637,14 +1637,14 @@ export default function CostApproachPage() {
       <div className="mt-6 flex justify-between">
         <Link
           href={getBackPath()}
-          className="px-6 py-3 bg-zinc-800 text-zinc-400 font-mono text-sm hover:text-white transition-colors"
+          className="px-6 py-3 bg-muted text-muted-foreground font-mono text-sm hover:text-foreground transition-colors"
         >
           {getBackLabel()}
         </Link>
         <button
           onClick={handleSave}
           disabled={saving}
-          className="px-6 py-3 bg-amber-500 text-white font-mono text-sm font-bold hover:bg-amber-400 disabled:opacity-50 transition-colors flex items-center gap-2"
+          className="px-6 py-3 bg-amber-500 text-foreground font-mono text-sm font-bold hover:bg-amber-400 disabled:opacity-50 transition-colors flex items-center gap-2"
         >
           {saving && <Loader2 className="w-4 h-4 animate-spin" />}
           {(() => {

@@ -24,26 +24,26 @@ export function Pagination({ page, totalPages, total, limit, onPageChange }: Pag
   const end = Math.min(page * limit, total)
 
   return (
-    <div className="flex items-center justify-between mt-4 pt-3 border-t border-zinc-800">
-      <span className="text-[10px] font-mono text-zinc-600 uppercase tracking-wider">
+    <div className="flex items-center justify-between mt-4 pt-3 border-t border-border">
+      <span className="text-[10px] font-mono text-muted-foreground uppercase tracking-wider">
         Showing {start}–{end} of {total}
       </span>
       <div className="flex items-center gap-1">
         <button
           disabled={page === 1}
           onClick={() => onPageChange(page - 1)}
-          className="flex items-center gap-1 px-2.5 py-1 text-[10px] font-mono uppercase tracking-wider border border-zinc-800 rounded text-zinc-500 hover:text-zinc-300 hover:bg-zinc-800 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+          className="flex items-center gap-1 px-2.5 py-1 text-[10px] font-mono uppercase tracking-wider border border-border rounded text-muted-foreground hover:text-muted-foreground hover:bg-muted transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
         >
           <ChevronLeft className="h-3 w-3" />
           Prev
         </button>
-        <span className="px-2 text-[10px] font-mono text-zinc-600">
+        <span className="px-2 text-[10px] font-mono text-muted-foreground">
           {page}/{totalPages}
         </span>
         <button
           disabled={page >= totalPages}
           onClick={() => onPageChange(page + 1)}
-          className="flex items-center gap-1 px-2.5 py-1 text-[10px] font-mono uppercase tracking-wider border border-zinc-800 rounded text-zinc-500 hover:text-zinc-300 hover:bg-zinc-800 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+          className="flex items-center gap-1 px-2.5 py-1 text-[10px] font-mono uppercase tracking-wider border border-border rounded text-muted-foreground hover:text-muted-foreground hover:bg-muted transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
         >
           Next
           <ChevronRight className="h-3 w-3" />

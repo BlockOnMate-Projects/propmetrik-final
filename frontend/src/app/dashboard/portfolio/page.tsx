@@ -86,8 +86,8 @@ function Panel({
   className?: string
 }) {
   return (
-    <div className={cn('border border-zinc-800 bg-zinc-900/50', className)}>
-      <div className="flex items-center justify-between px-4 py-2 bg-zinc-800/50 border-b border-zinc-800">
+    <div className={cn('border border-border bg-card/50', className)}>
+      <div className="flex items-center justify-between px-4 py-2 bg-muted/50 border-b border-border">
         <div className="flex items-center gap-2">
           {Icon && <Icon className="h-4 w-4 text-amber-500" />}
           <span className="font-mono text-xs text-amber-500 tracking-wider">{title}</span>
@@ -146,19 +146,19 @@ export default function PortfolioDashboardPage() {
   const criticalAlerts = (alerts || []).filter((a: any) => a.severity === 'critical').length
 
   return (
-    <div className="min-h-screen bg-zinc-950 text-white">
+    <div className="min-h-screen bg-background text-foreground">
       {/* Header */}
-      <div className="border-b border-zinc-800 bg-zinc-900/50 px-6 py-4">
+      <div className="border-b border-border bg-card/50 px-6 py-4">
         <div className="flex items-center justify-between">
           <div>
             <h1 className="font-mono text-xl tracking-tight">PORTFOLIO DASHBOARD</h1>
-            <p className="font-mono text-xs text-zinc-500 mt-0.5">
+            <p className="font-mono text-xs text-muted-foreground mt-0.5">
               Real-time overview of all development projects
             </p>
           </div>
           <div className="flex items-center gap-3">
             <Link href="/dashboard/projects/new">
-              <Button className="bg-amber-600 hover:bg-amber-700 text-white font-mono text-xs">
+              <Button className="bg-amber-600 hover:bg-amber-700 text-foreground font-mono text-xs">
                 <Plus className="h-4 w-4 mr-2" />
                 NEW PROJECT
               </Button>
@@ -181,13 +181,13 @@ export default function PortfolioDashboardPage() {
                   value={tab.value}
                   className={cn(
                     "font-mono text-xs px-4 py-2 rounded-none border-b-2 data-[state=active]:border-amber-500 data-[state=active]:text-amber-500",
-                    "data-[state=inactive]:border-transparent data-[state=inactive]:text-zinc-500"
+                    "data-[state=inactive]:border-transparent data-[state=inactive]:text-muted-foreground"
                   )}
                 >
                   <tab.icon className="h-3 w-3 mr-1.5" />
                   {tab.label}
                   {tab.badge && tab.badge > 0 && (
-                    <span className="ml-1.5 bg-red-500 text-white text-[9px] font-bold px-1 py-0.5 rounded">
+                    <span className="ml-1.5 bg-red-500 text-foreground text-[9px] font-bold px-1 py-0.5 rounded">
                       {tab.badge}
                     </span>
                   )}
@@ -243,7 +243,7 @@ export default function PortfolioDashboardPage() {
                     icon={Building2}
                     action={
                       <Link href="/dashboard/projects">
-                        <Button variant="ghost" size="sm" className="h-6 font-mono text-[10px] text-zinc-400 hover:text-amber-500">
+                        <Button variant="ghost" size="sm" className="h-6 font-mono text-[10px] text-muted-foreground hover:text-amber-500">
                           View All
                           <ArrowRight className="h-3 w-3 ml-1" />
                         </Button>
@@ -291,8 +291,8 @@ export default function PortfolioDashboardPage() {
               <Panel title="PORTFOLIO TIMELINE" icon={Clock}>
                 <div className="text-center py-12">
                   <Clock className="h-12 w-12 text-zinc-700 mx-auto mb-4" />
-                  <h3 className="font-mono text-sm text-white mb-2">Portfolio Gantt View</h3>
-                  <p className="font-mono text-xs text-zinc-500 mb-4">
+                  <h3 className="font-mono text-sm text-foreground mb-2">Portfolio Gantt View</h3>
+                  <p className="font-mono text-xs text-muted-foreground mb-4">
                     Select a project to view its detailed timeline
                   </p>
                   <Link href="/dashboard/projects">

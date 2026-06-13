@@ -55,14 +55,14 @@ function KPICard({ title, value, sub, icon: Icon, color }: {
   title: string; value: string | number; sub?: string; icon: React.ElementType; color: string
 }) {
   return (
-    <div className="bg-zinc-900 border border-zinc-800 p-4">
+    <div className="bg-card border border-border p-4">
       <div className="flex items-start justify-between">
         <div>
-          <p className="text-[10px] font-mono text-zinc-500 uppercase tracking-wider">{title}</p>
-          <p className="text-2xl font-bold text-white mt-1 font-mono">{value}</p>
-          {sub && <p className="text-[10px] text-zinc-500 mt-1">{sub}</p>}
+          <p className="text-[10px] font-mono text-muted-foreground uppercase tracking-wider">{title}</p>
+          <p className="text-2xl font-bold text-foreground mt-1 font-mono">{value}</p>
+          {sub && <p className="text-[10px] text-muted-foreground mt-1">{sub}</p>}
         </div>
-        <div className="p-2 bg-zinc-800 rounded">
+        <div className="p-2 bg-muted rounded">
           <Icon className={`w-5 h-5 ${color}`} />
         </div>
       </div>
@@ -73,7 +73,7 @@ function KPICard({ title, value, sub, icon: Icon, color }: {
 function MiniBar({ value, max }: { value: number; max: number }) {
   const pct = max > 0 ? Math.min((value / max) * 100, 100) : 0
   return (
-    <div className="w-24 h-2 bg-zinc-800 rounded-full overflow-hidden">
+    <div className="w-24 h-2 bg-muted rounded-full overflow-hidden">
       <div className="h-full bg-red-500 rounded-full transition-all" style={{ width: `${pct}%` }} />
     </div>
   )
@@ -136,9 +136,9 @@ export default function UsageAnalyticsPage() {
         <div>
           <div className="flex items-center gap-3">
             <Zap className="w-6 h-6 text-red-500" />
-            <h1 className="text-xl font-bold text-white font-mono">USAGE ANALYTICS</h1>
+            <h1 className="text-xl font-bold text-foreground font-mono">USAGE ANALYTICS</h1>
           </div>
-          <p className="text-xs text-zinc-500 mt-1 ml-9">API consumption, platform metrics, and organization activity</p>
+          <p className="text-xs text-muted-foreground mt-1 ml-9">API consumption, platform metrics, and organization activity</p>
         </div>
         <div className="flex items-center gap-2">
           {[7, 14, 30, 60].map((d) => (
@@ -146,7 +146,7 @@ export default function UsageAnalyticsPage() {
               key={d}
               onClick={() => setDays(d)}
               className={`px-2 py-1 text-[10px] font-mono transition-colors ${
-                days === d ? 'bg-red-600 text-white' : 'text-zinc-400 hover:text-white hover:bg-zinc-800 border border-zinc-800'
+                days === d ? 'bg-red-600 text-foreground' : 'text-muted-foreground hover:text-foreground hover:bg-muted border border-border'
               }`}
             >
               {d}D
@@ -155,7 +155,7 @@ export default function UsageAnalyticsPage() {
           <button
             onClick={load}
             disabled={loading}
-            className="px-3 py-1 text-[10px] font-mono text-zinc-400 hover:text-white border border-zinc-800 hover:border-red-600 transition-colors disabled:opacity-50 ml-2"
+            className="px-3 py-1 text-[10px] font-mono text-muted-foreground hover:text-foreground border border-border hover:border-red-600 transition-colors disabled:opacity-50 ml-2"
           >
             {loading ? <RefreshCw className="w-3 h-3 animate-spin inline" /> : 'REFRESH'}
           </button>
@@ -164,24 +164,24 @@ export default function UsageAnalyticsPage() {
 
       {/* KPI Grid */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <KPICard title="API Calls (30d)" value={s.api_calls_30d.toLocaleString()} sub={`${errorRate}% error rate`} icon={Globe} color="text-cyan-400" />
-        <KPICard title="Active Orgs" value={s.active_organizations} sub="With content or activity" icon={Building2} color="text-amber-400" />
-        <KPICard title="Active Subscriptions" value={s.active_subscriptions} icon={Activity} color="text-green-400" />
-        <KPICard title="Total Users" value={s.total_users.toLocaleString()} icon={Users} color="text-purple-400" />
+        <KPICard title="API Calls (30d)" value={s.api_calls_30d.toLocaleString()} sub={`${errorRate}% error rate`} icon={Globe} color="text-cyan-600 dark:text-cyan-400" />
+        <KPICard title="Active Orgs" value={s.active_organizations} sub="With content or activity" icon={Building2} color="text-amber-600 dark:text-amber-400" />
+        <KPICard title="Active Subscriptions" value={s.active_subscriptions} icon={Activity} color="text-green-600 dark:text-green-400" />
+        <KPICard title="Total Users" value={s.total_users.toLocaleString()} icon={Users} color="text-purple-600 dark:text-purple-400" />
       </div>
 
       {/* Platform Content Stats */}
       <div className="grid grid-cols-3 gap-4">
-        <KPICard title="Properties" value={s.total_properties.toLocaleString()} icon={Database} color="text-green-400" />
-        <KPICard title="Valuations" value={s.total_valuations.toLocaleString()} icon={FileText} color="text-amber-400" />
-        <KPICard title="Deals" value={s.total_deals.toLocaleString()} icon={ArrowUpRight} color="text-cyan-400" />
+        <KPICard title="Properties" value={s.total_properties.toLocaleString()} icon={Database} color="text-green-600 dark:text-green-400" />
+        <KPICard title="Valuations" value={s.total_valuations.toLocaleString()} icon={FileText} color="text-amber-600 dark:text-amber-400" />
+        <KPICard title="Deals" value={s.total_deals.toLocaleString()} icon={ArrowUpRight} color="text-cyan-600 dark:text-cyan-400" />
       </div>
 
       {/* Daily Usage Chart (ASCII bar chart style) */}
-      <div className="bg-zinc-900 border border-zinc-800 p-4">
+      <div className="bg-card border border-border p-4">
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-sm font-bold text-white font-mono">DAILY API VOLUME</h2>
-          <span className="text-[10px] font-mono text-zinc-500">Last {days} days</span>
+          <h2 className="text-sm font-bold text-foreground font-mono">DAILY API VOLUME</h2>
+          <span className="text-[10px] font-mono text-muted-foreground">Last {days} days</span>
         </div>
         {daily.length > 0 ? (
           <div className="flex items-end gap-[2px] h-32">
@@ -195,7 +195,7 @@ export default function UsageAnalyticsPage() {
                     <div className="bg-amber-500/60 rounded-b-sm" style={{ height: `${errPct}%` }} />
                   )}
                   {/* Tooltip on hover */}
-                  <div className="absolute -top-12 left-1/2 -translate-x-1/2 bg-zinc-800 border border-zinc-700 px-2 py-1 rounded text-[9px] font-mono text-white whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10">
+                  <div className="absolute -top-12 left-1/2 -translate-x-1/2 bg-muted border border-border px-2 py-1 rounded text-[9px] font-mono text-foreground whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10">
                     {d.date.slice(5)}: {d.requests}
                   </div>
                 </div>
@@ -203,11 +203,11 @@ export default function UsageAnalyticsPage() {
             })}
           </div>
         ) : (
-          <div className="flex items-center justify-center h-32 text-xs text-zinc-500 font-mono">
+          <div className="flex items-center justify-center h-32 text-xs text-muted-foreground font-mono">
             No API usage data available
           </div>
         )}
-        <div className="flex items-center gap-4 mt-3 text-[10px] font-mono text-zinc-500">
+        <div className="flex items-center gap-4 mt-3 text-[10px] font-mono text-muted-foreground">
           <span className="flex items-center gap-1"><span className="w-2 h-2 bg-red-500 rounded-sm" /> Requests</span>
           <span className="flex items-center gap-1"><span className="w-2 h-2 bg-amber-500 rounded-sm" /> Errors</span>
         </div>
@@ -216,53 +216,53 @@ export default function UsageAnalyticsPage() {
       {/* Endpoint + Org breakdown side by side */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Top Endpoints */}
-        <div className="bg-zinc-900 border border-zinc-800 p-4">
+        <div className="bg-card border border-border p-4">
           <div className="flex items-center justify-between mb-3">
-            <h2 className="text-sm font-bold text-white font-mono">TOP ENDPOINTS</h2>
-            <span className="text-[10px] font-mono text-zinc-500">{endpoints.length} tracked</span>
+            <h2 className="text-sm font-bold text-foreground font-mono">TOP ENDPOINTS</h2>
+            <span className="text-[10px] font-mono text-muted-foreground">{endpoints.length} tracked</span>
           </div>
           {endpoints.length > 0 ? (
             <div className="space-y-2">
               {endpoints.slice(0, 15).map((ep, i) => (
-                <div key={i} className="flex items-center gap-3 py-1.5 border-b border-zinc-800/50 last:border-0">
-                  <span className="text-[10px] font-mono text-zinc-600 w-5 text-right">{i + 1}</span>
-                  <code className="text-[10px] font-mono text-zinc-300 flex-1 truncate">{ep.endpoint}</code>
+                <div key={i} className="flex items-center gap-3 py-1.5 border-b border-border/50 last:border-0">
+                  <span className="text-[10px] font-mono text-muted-foreground w-5 text-right">{i + 1}</span>
+                  <code className="text-[10px] font-mono text-muted-foreground flex-1 truncate">{ep.endpoint}</code>
                   <MiniBar value={parseInt(String(ep.calls))} max={maxEp} />
-                  <span className="text-[10px] font-mono text-amber-400 w-12 text-right">{parseInt(String(ep.calls)).toLocaleString()}</span>
+                  <span className="text-[10px] font-mono text-amber-600 dark:text-amber-400 w-12 text-right">{parseInt(String(ep.calls)).toLocaleString()}</span>
                 </div>
               ))}
             </div>
           ) : (
-            <p className="text-xs text-zinc-500 text-center py-8 font-mono">No endpoint data available</p>
+            <p className="text-xs text-muted-foreground text-center py-8 font-mono">No endpoint data available</p>
           )}
         </div>
 
         {/* Top Organizations */}
-        <div className="bg-zinc-900 border border-zinc-800 p-4">
+        <div className="bg-card border border-border p-4">
           <div className="flex items-center justify-between mb-3">
-            <h2 className="text-sm font-bold text-white font-mono">TOP ORGANIZATIONS</h2>
-            <span className="text-[10px] font-mono text-zinc-500">By API volume</span>
+            <h2 className="text-sm font-bold text-foreground font-mono">TOP ORGANIZATIONS</h2>
+            <span className="text-[10px] font-mono text-muted-foreground">By API volume</span>
           </div>
           {orgBreakdown.length > 0 ? (
             <div className="space-y-2">
               {orgBreakdown.slice(0, 10).map((org, i) => (
-                <div key={i} className="flex items-center gap-3 py-2 border-b border-zinc-800/50 last:border-0">
-                  <Building2 className="w-3.5 h-3.5 text-zinc-600 flex-shrink-0" />
+                <div key={i} className="flex items-center gap-3 py-2 border-b border-border/50 last:border-0">
+                  <Building2 className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0" />
                   <div className="flex-1 min-w-0">
-                    <p className="text-xs font-mono text-white truncate">{org.org_name}</p>
-                    <p className="text-[9px] text-zinc-500">{org.api_keys} key{org.api_keys !== 1 ? 's' : ''} • Last active: {org.last_active?.slice(0, 10) || '—'}</p>
+                    <p className="text-xs font-mono text-foreground truncate">{org.org_name}</p>
+                    <p className="text-[9px] text-muted-foreground">{org.api_keys} key{org.api_keys !== 1 ? 's' : ''} • Last active: {org.last_active?.slice(0, 10) || '—'}</p>
                   </div>
                   <div className="text-right flex-shrink-0">
-                    <p className="text-xs font-mono text-amber-400">{parseInt(String(org.total_requests)).toLocaleString()}</p>
+                    <p className="text-xs font-mono text-amber-600 dark:text-amber-400">{parseInt(String(org.total_requests)).toLocaleString()}</p>
                     {parseInt(String(org.total_errors)) > 0 && (
-                      <p className="text-[9px] font-mono text-red-400">{parseInt(String(org.total_errors))} errors</p>
+                      <p className="text-[9px] font-mono text-red-600 dark:text-red-400">{parseInt(String(org.total_errors))} errors</p>
                     )}
                   </div>
                 </div>
               ))}
             </div>
           ) : (
-            <p className="text-xs text-zinc-500 text-center py-8 font-mono">No organization usage data</p>
+            <p className="text-xs text-muted-foreground text-center py-8 font-mono">No organization usage data</p>
           )}
         </div>
       </div>
@@ -270,10 +270,10 @@ export default function UsageAnalyticsPage() {
       {/* Error Rate Alert */}
       {parseFloat(errorRate) > 5 && (
         <div className="bg-red-950/30 border border-red-900/50 p-4 flex items-center gap-3">
-          <AlertTriangle className="w-5 h-5 text-red-400" />
+          <AlertTriangle className="w-5 h-5 text-red-600 dark:text-red-400" />
           <div>
-            <p className="text-xs font-bold text-red-300 font-mono">HIGH ERROR RATE DETECTED</p>
-            <p className="text-[10px] text-zinc-400">
+            <p className="text-xs font-bold text-red-600 dark:text-red-300 font-mono">HIGH ERROR RATE DETECTED</p>
+            <p className="text-[10px] text-muted-foreground">
               Error rate of {errorRate}% exceeds the 5% threshold. Check API logs for failing endpoints.
             </p>
           </div>

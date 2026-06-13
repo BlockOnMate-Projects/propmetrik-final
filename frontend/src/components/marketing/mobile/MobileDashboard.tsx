@@ -179,7 +179,7 @@ export function MobileDashboard() {
 
   return (
     <div
-      className="min-h-screen bg-gray-50 pb-20"
+      className="min-h-screen bg-muted pb-20"
       onTouchStart={handleTouchStart}
       onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}
@@ -187,7 +187,7 @@ export function MobileDashboard() {
       {/* Pull to refresh indicator */}
       {pullDistance > 0 && (
         <div
-          className="flex items-center justify-center bg-amber-500 text-white transition-all"
+          className="flex items-center justify-center bg-amber-500 text-foreground transition-all"
           style={{ height: pullDistance }}
         >
           <RefreshCw className={`h-6 w-6 ${refreshing ? 'animate-spin' : ''}`} />
@@ -198,11 +198,11 @@ export function MobileDashboard() {
       )}
 
       {/* Header */}
-      <header className="sticky top-0 z-50 bg-white border-b border-gray-200 px-4 py-3">
+      <header className="sticky top-0 z-50 bg-card border-b border-border px-4 py-3">
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-xl font-bold text-gray-900">PROPMETRIK</h1>
-            <p className="text-xs text-gray-500">Construction Management</p>
+            <p className="text-xs text-muted-foreground">Construction Management</p>
           </div>
           <div className="flex items-center space-x-3">
             {/* Online/Offline indicator */}
@@ -226,11 +226,11 @@ export function MobileDashboard() {
             {/* Notifications */}
             <button
               onClick={() => setShowNotifications(!showNotifications)}
-              className="relative p-2 rounded-full hover:bg-gray-100"
+              className="relative p-2 rounded-full hover:bg-muted"
             >
-              <Bell className="h-5 w-5 text-gray-600" />
+              <Bell className="h-5 w-5 text-muted-foreground" />
               {notifications.length > 0 && (
-                <span className="absolute top-0 right-0 h-4 w-4 bg-red-500 rounded-full text-[10px] text-white flex items-center justify-center">
+                <span className="absolute top-0 right-0 h-4 w-4 bg-red-500 rounded-full text-[10px] text-foreground flex items-center justify-center">
                   {notifications.length}
                 </span>
               )}
@@ -241,28 +241,28 @@ export function MobileDashboard() {
 
       {/* Notifications dropdown */}
       {showNotifications && (
-        <div className="absolute top-16 right-4 left-4 z-50 bg-white rounded-lg shadow-lg border border-gray-200 max-h-80 overflow-y-auto">
-          <div className="p-3 border-b border-gray-200 flex justify-between items-center">
+        <div className="absolute top-16 right-4 left-4 z-50 bg-card rounded-lg shadow-lg border border-border max-h-80 overflow-y-auto">
+          <div className="p-3 border-b border-border flex justify-between items-center">
             <h3 className="font-semibold text-gray-900">Notifications</h3>
             <button onClick={() => setShowNotifications(false)}>
-              <X className="h-4 w-4 text-gray-500" />
+              <X className="h-4 w-4 text-muted-foreground" />
             </button>
           </div>
           {notifications.length === 0 ? (
-            <div className="p-4 text-center text-gray-500 text-sm">
+            <div className="p-4 text-center text-muted-foreground text-sm">
               No new notifications
             </div>
           ) : (
             <div className="divide-y divide-gray-100">
               {notifications.map((notification) => (
-                <div key={notification.id} className="p-3 hover:bg-gray-50">
+                <div key={notification.id} className="p-3 hover:bg-muted">
                   <div className="flex items-start">
                     {notification.type === 'warning' && <AlertTriangle className="h-4 w-4 text-amber-500 mt-0.5 mr-2 flex-shrink-0" />}
                     {notification.type === 'success' && <CheckCircle className="h-4 w-4 text-green-500 mt-0.5 mr-2 flex-shrink-0" />}
                     {notification.type === 'info' && <Clock className="h-4 w-4 text-blue-500 mt-0.5 mr-2 flex-shrink-0" />}
                     <div className="flex-1 min-w-0">
                       <p className="text-sm text-gray-900">{notification.message}</p>
-                      <p className="text-xs text-gray-500 mt-1">{formatRelativeTime(notification.timestamp)}</p>
+                      <p className="text-xs text-muted-foreground mt-1">{formatRelativeTime(notification.timestamp)}</p>
                     </div>
                   </div>
                 </div>
@@ -276,7 +276,7 @@ export function MobileDashboard() {
       <main className="p-4 space-y-6">
         {/* Quick Actions Grid */}
         <section>
-          <h2 className="text-sm font-medium text-gray-500 mb-3">Quick Actions</h2>
+          <h2 className="text-sm font-medium text-muted-foreground mb-3">Quick Actions</h2>
           <div className="grid grid-cols-4 gap-3">
             {quickActions.map((action) => (
               <Link
@@ -284,10 +284,10 @@ export function MobileDashboard() {
                 href={action.href}
                 className="flex flex-col items-center"
               >
-                <div className={`${action.color} w-14 h-14 rounded-xl flex items-center justify-center text-white shadow-sm active:scale-95 transition-transform`}>
+                <div className={`${action.color} w-14 h-14 rounded-xl flex items-center justify-center text-foreground shadow-sm active:scale-95 transition-transform`}>
                   {action.icon}
                 </div>
-                <span className="text-xs text-gray-600 mt-1.5 text-center">{action.label}</span>
+                <span className="text-xs text-muted-foreground mt-1.5 text-center">{action.label}</span>
               </Link>
             ))}
           </div>
@@ -309,7 +309,7 @@ export function MobileDashboard() {
               <button
                 onClick={() => sync()}
                 disabled={isSyncing || !isOnline}
-                className="px-3 py-1.5 bg-amber-500 text-white text-sm rounded-lg disabled:opacity-50"
+                className="px-3 py-1.5 bg-amber-500 text-foreground text-sm rounded-lg disabled:opacity-50"
               >
                 {isSyncing ? 'Syncing...' : 'Sync'}
               </button>
@@ -320,16 +320,16 @@ export function MobileDashboard() {
         {/* Active Projects */}
         <section>
           <div className="flex items-center justify-between mb-3">
-            <h2 className="text-sm font-medium text-gray-500">Active Projects</h2>
+            <h2 className="text-sm font-medium text-muted-foreground">Active Projects</h2>
             <Link href="/projects" className="text-sm text-amber-600 font-medium">
               View all
             </Link>
           </div>
           <div className="space-y-3">
             {projects.length === 0 ? (
-              <div className="bg-white rounded-lg border border-gray-200 p-6 text-center">
+              <div className="bg-card rounded-lg border border-border p-6 text-center">
                 <FolderOpen className="h-8 w-8 text-gray-300 mx-auto mb-2" />
-                <p className="text-sm text-gray-500">No active projects</p>
+                <p className="text-sm text-muted-foreground">No active projects</p>
                 <Link
                   href="/projects/new"
                   className="inline-flex items-center mt-3 text-sm text-amber-600 font-medium"
@@ -343,23 +343,23 @@ export function MobileDashboard() {
                 <Link
                   key={project.id}
                   href={`/projects/${project.id}`}
-                  className="block bg-white rounded-lg border border-gray-200 p-4 active:bg-gray-50 transition-colors"
+                  className="block bg-card rounded-lg border border-border p-4 active:bg-muted transition-colors"
                 >
                   <div className="flex items-start justify-between mb-2">
                     <div className="flex-1 min-w-0">
                       <h3 className="font-medium text-gray-900 truncate">{project.name}</h3>
-                      <p className="text-sm text-gray-500">{project.clientName}</p>
+                      <p className="text-sm text-muted-foreground">{project.clientName}</p>
                     </div>
-                    <ChevronRight className="h-5 w-5 text-gray-400 flex-shrink-0" />
+                    <ChevronRight className="h-5 w-5 text-muted-foreground flex-shrink-0" />
                   </div>
                   
                   {/* Progress bar */}
                   <div className="mb-2">
                     <div className="flex items-center justify-between text-xs mb-1">
-                      <span className="text-gray-500">Progress</span>
+                      <span className="text-muted-foreground">Progress</span>
                       <span className="font-medium text-gray-700">{project.progress}%</span>
                     </div>
-                    <div className="w-full h-2 bg-gray-100 rounded-full overflow-hidden">
+                    <div className="w-full h-2 bg-muted rounded-full overflow-hidden">
                       <div
                         className="h-full bg-amber-500 rounded-full transition-all"
                         style={{ width: `${project.progress}%` }}
@@ -369,7 +369,7 @@ export function MobileDashboard() {
 
                   {/* Budget info */}
                   <div className="flex items-center justify-between text-xs">
-                    <span className="text-gray-500">
+                    <span className="text-muted-foreground">
                       Budget: GH₵{project.budgetUsed.toLocaleString()} / GH₵{project.budgetTotal.toLocaleString()}
                     </span>
                     {project.nextMilestone && (
@@ -386,23 +386,23 @@ export function MobileDashboard() {
 
         {/* Summary Stats */}
         <section>
-          <h2 className="text-sm font-medium text-gray-500 mb-3">This Week</h2>
+          <h2 className="text-sm font-medium text-muted-foreground mb-3">This Week</h2>
           <div className="grid grid-cols-2 gap-3">
-            <div className="bg-white rounded-lg border border-gray-200 p-4">
+            <div className="bg-card rounded-lg border border-border p-4">
               <div className="flex items-center justify-between mb-2">
                 <DollarSign className="h-5 w-5 text-green-500" />
                 <TrendingUp className="h-4 w-4 text-green-500" />
               </div>
               <p className="text-2xl font-bold text-gray-900">GH₵45.2K</p>
-              <p className="text-xs text-gray-500">Expenses logged</p>
+              <p className="text-xs text-muted-foreground">Expenses logged</p>
             </div>
-            <div className="bg-white rounded-lg border border-gray-200 p-4">
+            <div className="bg-card rounded-lg border border-border p-4">
               <div className="flex items-center justify-between mb-2">
                 <ClipboardList className="h-5 w-5 text-blue-500" />
                 <span className="text-xs text-green-500 font-medium">+12%</span>
               </div>
               <p className="text-2xl font-bold text-gray-900">24</p>
-              <p className="text-xs text-gray-500">Daily logs</p>
+              <p className="text-xs text-muted-foreground">Daily logs</p>
             </div>
           </div>
         </section>
@@ -430,7 +430,7 @@ export function BottomNavigation() {
   ]
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 z-50 safe-area-inset-bottom">
+    <nav className="fixed bottom-0 left-0 right-0 bg-card border-t border-border z-50 safe-area-inset-bottom">
       <div className="flex items-center justify-around h-16">
         {tabs.map((tab) => {
           const Icon = tab.icon
@@ -442,7 +442,7 @@ export function BottomNavigation() {
               href={tab.href}
               onClick={() => setActiveTab(tab.id)}
               className={`flex flex-col items-center justify-center flex-1 h-full transition-colors ${
-                isActive ? 'text-amber-600' : 'text-gray-400'
+                isActive ? 'text-amber-600' : 'text-muted-foreground'
               }`}
             >
               <Icon className={`h-6 w-6 ${isActive ? 'stroke-2' : ''}`} />
@@ -470,7 +470,7 @@ export function OfflineIndicator() {
 
   return (
     <div className={`fixed top-0 left-0 right-0 z-50 px-4 py-2 text-center text-sm font-medium ${
-      isOnline ? 'bg-amber-500 text-white' : 'bg-red-500 text-white'
+      isOnline ? 'bg-amber-500 text-foreground' : 'bg-red-500 text-foreground'
     }`}>
       {!isOnline ? (
         <div className="flex items-center justify-center">

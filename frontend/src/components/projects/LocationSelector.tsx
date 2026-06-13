@@ -104,9 +104,9 @@ function GPSCodeInput({
 
   return (
     <div className="space-y-2">
-      <Label className="font-mono text-xs text-zinc-400">
+      <Label className="font-mono text-xs text-muted-foreground">
         Ghana PostGPS Code
-        <span className="text-zinc-600 ml-2">(e.g., GA-XXX-XXXX)</span>
+        <span className="text-muted-foreground ml-2">(e.g., GA-XXX-XXXX)</span>
       </Label>
       <div className="flex gap-2">
         <div className="relative flex-1">
@@ -115,7 +115,7 @@ function GPSCodeInput({
             onChange={handleChange}
             placeholder="GA-XXX-XXXX"
             className={cn(
-              "font-mono uppercase bg-zinc-900 border-zinc-700 text-zinc-100",
+              "font-mono uppercase bg-card border-border text-zinc-100",
               validationResult?.valid && "border-green-600 focus:ring-green-600",
               validationResult?.valid === false && "border-red-600 focus:ring-red-600"
             )}
@@ -133,7 +133,7 @@ function GPSCodeInput({
           variant="outline"
           onClick={onValidate}
           disabled={isValidating || !value || value.length < 9}
-          className="border-zinc-700 hover:bg-zinc-800"
+          className="border-border hover:bg-muted"
         >
           {isValidating ? (
             <Loader2 className="h-4 w-4 animate-spin" />
@@ -145,13 +145,13 @@ function GPSCodeInput({
       {validationResult && (
         <div className={cn(
           "text-xs font-mono px-2 py-1",
-          validationResult.valid ? "text-green-400 bg-green-900/20" : "text-red-400 bg-red-900/20"
+          validationResult.valid ? "text-green-600 dark:text-green-400 bg-green-100 dark:bg-green-900/20" : "text-red-600 dark:text-red-400 bg-red-100 dark:bg-red-900/20"
         )}>
           {validationResult.valid ? (
             <>
               ✓ Valid: {validationResult.district}, {validationResult.region}
               {validationResult.confidence && (
-                <span className="ml-2 text-zinc-500">
+                <span className="ml-2 text-muted-foreground">
                   ({Math.round(validationResult.confidence * 100)}% confidence)
                 </span>
               )}
@@ -189,7 +189,7 @@ function CoordinatePicker({
 
   return (
     <div className="space-y-2">
-      <Label className="font-mono text-xs text-zinc-400">GPS Coordinates</Label>
+      <Label className="font-mono text-xs text-muted-foreground">GPS Coordinates</Label>
       <div className="grid grid-cols-2 gap-2">
         <div>
           <Input
@@ -199,7 +199,7 @@ function CoordinatePicker({
             value={latitude || ''}
             onChange={(e) => onChange(parseFloat(e.target.value), longitude || 0)}
             className={cn(
-              "font-mono text-sm bg-zinc-900 border-zinc-700 text-zinc-100",
+              "font-mono text-sm bg-card border-border text-zinc-100",
               latitude && !isInGhana && "border-amber-600"
             )}
           />
@@ -212,7 +212,7 @@ function CoordinatePicker({
             value={longitude || ''}
             onChange={(e) => onChange(latitude || 0, parseFloat(e.target.value))}
             className={cn(
-              "font-mono text-sm bg-zinc-900 border-zinc-700 text-zinc-100",
+              "font-mono text-sm bg-card border-border text-zinc-100",
               longitude && !isInGhana && "border-amber-600"
             )}
           />
@@ -225,7 +225,7 @@ function CoordinatePicker({
           size="sm"
           onClick={onGetLocation}
           disabled={isGettingLocation}
-          className="text-xs text-zinc-400 hover:text-zinc-100"
+          className="text-xs text-muted-foreground hover:text-zinc-100"
         >
           {isGettingLocation ? (
             <>
@@ -242,7 +242,7 @@ function CoordinatePicker({
         {latitude && longitude && (
           <span className={cn(
             "text-xs font-mono",
-            isInGhana ? "text-green-400" : "text-amber-400"
+            isInGhana ? "text-green-600 dark:text-green-400" : "text-amber-600 dark:text-amber-400"
           )}>
             {isInGhana ? '✓ Within Ghana bounds' : '⚠ Outside Ghana bounds'}
           </span>
@@ -378,7 +378,7 @@ export function LocationSelector({
         <span className="font-mono text-xs text-amber-500 tracking-wider">
           PROJECT LOCATION
         </span>
-        {required && <span className="text-red-400 text-xs">*</span>}
+        {required && <span className="text-red-600 dark:text-red-400 text-xs">*</span>}
       </div>
 
       {/* GPS Code Input */}
@@ -393,20 +393,20 @@ export function LocationSelector({
       {/* Region & District Selectors */}
       <div className="grid grid-cols-2 gap-3">
         <div className="space-y-1.5">
-          <Label className="font-mono text-xs text-zinc-400">Region</Label>
+          <Label className="font-mono text-xs text-muted-foreground">Region</Label>
           <Select
             value={location.region || ''}
             onValueChange={(region) => onChange({ ...location, region, district: '' })}
           >
-            <SelectTrigger className="bg-zinc-900 border-zinc-700 text-zinc-100">
+            <SelectTrigger className="bg-card border-border text-zinc-100">
               <SelectValue placeholder="Select region" />
             </SelectTrigger>
-            <SelectContent className="bg-zinc-900 border-zinc-700">
+            <SelectContent className="bg-card border-border">
               {GHANA_REGIONS.map((region) => (
                 <SelectItem 
                   key={region} 
                   value={region}
-                  className="text-zinc-100 focus:bg-zinc-800"
+                  className="text-zinc-100 focus:bg-muted"
                 >
                   {region}
                 </SelectItem>
@@ -416,25 +416,25 @@ export function LocationSelector({
         </div>
         
         <div className="space-y-1.5">
-          <Label className="font-mono text-xs text-zinc-400">District/Assembly</Label>
+          <Label className="font-mono text-xs text-muted-foreground">District/Assembly</Label>
           <Select
             value={location.district || ''}
             onValueChange={(district) => onChange({ ...location, district })}
             disabled={!location.region || isLoadingDistricts}
           >
-            <SelectTrigger className="bg-zinc-900 border-zinc-700 text-zinc-100">
+            <SelectTrigger className="bg-card border-border text-zinc-100">
               {isLoadingDistricts ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
               ) : (
                 <SelectValue placeholder="Select district" />
               )}
             </SelectTrigger>
-            <SelectContent className="bg-zinc-900 border-zinc-700 max-h-60">
+            <SelectContent className="bg-card border-border max-h-60">
               {districts.map((district) => (
                 <SelectItem 
                   key={district} 
                   value={district}
-                  className="text-zinc-100 focus:bg-zinc-800"
+                  className="text-zinc-100 focus:bg-muted"
                 >
                   {district}
                 </SelectItem>
@@ -446,23 +446,23 @@ export function LocationSelector({
 
       {/* Area/Locality */}
       <div className="space-y-1.5">
-        <Label className="font-mono text-xs text-zinc-400">Area/Locality</Label>
+        <Label className="font-mono text-xs text-muted-foreground">Area/Locality</Label>
         <Input
           value={location.area || ''}
           onChange={(e) => onChange({ ...location, area: e.target.value })}
           placeholder="e.g., Airport Residential, Cantonments"
-          className="bg-zinc-900 border-zinc-700 text-zinc-100"
+          className="bg-card border-border text-zinc-100"
         />
       </div>
 
       {/* Full Address */}
       <div className="space-y-1.5">
-        <Label className="font-mono text-xs text-zinc-400">Full Address</Label>
+        <Label className="font-mono text-xs text-muted-foreground">Full Address</Label>
         <Input
           value={location.address || ''}
           onChange={(e) => onChange({ ...location, address: e.target.value })}
           placeholder="Street address or landmark"
-          className="bg-zinc-900 border-zinc-700 text-zinc-100"
+          className="bg-card border-border text-zinc-100"
         />
       </div>
 
@@ -477,7 +477,7 @@ export function LocationSelector({
 
       {/* Error message */}
       {error && (
-        <p className="font-mono text-[10px] text-red-400 flex items-center gap-1">
+        <p className="font-mono text-[10px] text-red-600 dark:text-red-400 flex items-center gap-1">
           <AlertCircle className="h-3 w-3" />
           {error}
         </p>
@@ -485,7 +485,7 @@ export function LocationSelector({
 
       {/* Confidence indicator */}
       {location.confidence && (
-        <div className="flex items-center gap-2 px-2 py-1 bg-zinc-800/50 rounded">
+        <div className="flex items-center gap-2 px-2 py-1 bg-muted/50 rounded">
           <div className="flex-1 h-1.5 bg-zinc-700 rounded-full overflow-hidden">
             <div 
               className={cn(
@@ -496,7 +496,7 @@ export function LocationSelector({
               style={{ width: `${location.confidence * 100}%` }}
             />
           </div>
-          <span className="font-mono text-[10px] text-zinc-400">
+          <span className="font-mono text-[10px] text-muted-foreground">
             {Math.round(location.confidence * 100)}% confidence
           </span>
         </div>

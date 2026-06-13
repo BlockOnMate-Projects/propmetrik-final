@@ -96,7 +96,7 @@ export function CrmSidebar() {
             'flex items-center gap-2.5 rounded px-2.5 py-2 text-xs font-mono tracking-wide transition-colors',
             active
               ? 'bg-amber-500/10 text-amber-500 font-bold'
-              : 'text-zinc-500 hover:bg-zinc-800/80 hover:text-zinc-300'
+              : 'text-muted-foreground hover:bg-muted/80 hover:text-muted-foreground'
           )}
         >
           <Icon className={cn('h-4 w-4 shrink-0', active && 'text-amber-500')} />
@@ -122,7 +122,7 @@ export function CrmSidebar() {
     <TooltipProvider delayDuration={0}>
       {/* Mobile toggle button — fixed at top-left of content area */}
       <button
-        className="md:hidden fixed top-[6.5rem] left-2 z-40 p-1.5 rounded bg-zinc-900 border border-zinc-700 text-zinc-400 hover:text-white"
+        className="md:hidden fixed top-[6.5rem] left-2 z-40 p-1.5 rounded bg-card border border-border text-muted-foreground hover:text-foreground"
         onClick={() => setMobileOpen(o => !o)}
         aria-label="Toggle CRM navigation"
       >
@@ -132,17 +132,17 @@ export function CrmSidebar() {
       {/* Mobile overlay */}
       {mobileOpen && (
         <div
-          className="md:hidden fixed inset-0 bg-black/50 z-30"
+          className="md:hidden fixed inset-0 bg-background/50 z-30"
           onClick={() => setMobileOpen(false)}
         />
       )}
 
       {/* Mobile drawer */}
       {mobileOpen && (
-        <div className="md:hidden fixed inset-y-0 left-0 top-[6rem] w-56 bg-zinc-950 border-r border-zinc-800 z-40 overflow-y-auto animate-in slide-in-from-left duration-200">
-          <div className="flex items-center gap-2 px-3 h-10 border-b border-zinc-800">
+        <div className="md:hidden fixed inset-y-0 left-0 top-[6rem] w-56 bg-background border-r border-border z-40 overflow-y-auto animate-in slide-in-from-left duration-200">
+          <div className="flex items-center gap-2 px-3 h-10 border-b border-border">
             <LayoutGrid className="h-4 w-4 text-amber-500 shrink-0" />
-            <span className="font-mono text-xs text-zinc-300 font-semibold tracking-wide">CRM</span>
+            <span className="font-mono text-xs text-muted-foreground font-semibold tracking-wide">CRM</span>
           </div>
           <nav className="py-2 px-1.5 space-y-0.5">
             {visibleNavItems.map((item) => {
@@ -157,7 +157,7 @@ export function CrmSidebar() {
                     'flex items-center gap-2.5 rounded px-2.5 py-2 text-xs font-mono tracking-wide transition-colors',
                     active
                       ? 'bg-amber-500/10 text-amber-500 font-bold'
-                      : 'text-zinc-500 hover:bg-zinc-800/80 hover:text-zinc-300'
+                      : 'text-muted-foreground hover:bg-muted/80 hover:text-muted-foreground'
                   )}
                 >
                   <Icon className={cn('h-4 w-4 shrink-0', active && 'text-amber-500')} />
@@ -172,19 +172,19 @@ export function CrmSidebar() {
       {/* Desktop sidebar */}
       <div
         className={cn(
-          'hidden md:flex flex-col border-r border-zinc-800 bg-zinc-950 transition-all duration-200 shrink-0',
+          'hidden md:flex flex-col border-r border-border bg-background transition-all duration-200 shrink-0',
           collapsed ? 'w-14' : 'w-56'
         )}
       >
         {/* Header */}
         <div className={cn(
-          'flex items-center border-b border-zinc-800 h-12',
+          'flex items-center border-b border-border h-12',
           collapsed ? 'justify-center px-2' : 'px-3'
         )}>
           {!collapsed && (
             <div className="flex items-center gap-2 flex-1 min-w-0">
               <LayoutGrid className="h-4 w-4 text-amber-500 shrink-0" />
-              <span className="font-mono text-xs text-zinc-300 font-semibold tracking-wide truncate">
+              <span className="font-mono text-xs text-muted-foreground font-semibold tracking-wide truncate">
                 DEAL MANAGEMENT
               </span>
             </div>
@@ -200,7 +200,7 @@ export function CrmSidebar() {
         </nav>
 
         {/* Bottom actions */}
-        <div className="border-t border-zinc-800 p-1.5 space-y-1">
+        <div className="border-t border-border p-1.5 space-y-1">
           {!collapsed && (
             <div className="px-1 pb-1">
               <CommandPalette />
@@ -209,7 +209,7 @@ export function CrmSidebar() {
           <Button
             variant="ghost"
             size="sm"
-            className="w-full justify-center text-zinc-600 hover:text-zinc-400 hover:bg-zinc-800/50 h-8"
+            className="w-full justify-center text-muted-foreground hover:text-muted-foreground hover:bg-muted/50 h-8"
             onClick={() => setCollapsed(!collapsed)}
           >
             {collapsed ? (

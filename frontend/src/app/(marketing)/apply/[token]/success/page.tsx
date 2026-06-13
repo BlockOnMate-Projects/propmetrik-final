@@ -17,29 +17,29 @@ export default async function ApplySuccessPage({
   const id = sp.token || sp.id || routeToken;
 
   return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-muted flex items-center justify-center p-4">
       <Card className="max-w-md w-full">
         <CardContent className="text-center py-10">
           <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
             <CheckCircle2 className="w-8 h-8 text-green-600" />
           </div>
           <h2 className="text-xl font-bold text-gray-900 mb-2">Application Submitted!</h2>
-          <p className="text-sm text-gray-500 mb-6">
+          <p className="text-sm text-muted-foreground mb-6">
             Your application has been received and is being reviewed. You&apos;ll receive an email notification when there&apos;s an update.
           </p>
 
-          <div className="bg-gray-50 rounded-xl p-4 mb-6 text-left space-y-3">
+          <div className="bg-muted rounded-xl p-4 mb-6 text-left space-y-3">
             <div className="flex items-center gap-3">
-              <Clock className="w-4 h-4 text-gray-400 flex-shrink-0" />
+              <Clock className="w-4 h-4 text-muted-foreground flex-shrink-0" />
               <div>
-                <p className="text-xs text-gray-400">Estimated Review Time</p>
+                <p className="text-xs text-muted-foreground">Estimated Review Time</p>
                 <p className="text-sm font-medium text-gray-900">2-5 business days</p>
               </div>
             </div>
             <div className="flex items-center gap-3">
-              <FileText className="w-4 h-4 text-gray-400 flex-shrink-0" />
+              <FileText className="w-4 h-4 text-muted-foreground flex-shrink-0" />
               <div>
-                <p className="text-xs text-gray-400">Tracking Token</p>
+                <p className="text-xs text-muted-foreground">Tracking Token</p>
                 <p className="text-sm font-medium text-gray-900 font-mono">{id}</p>
               </div>
             </div>
@@ -54,7 +54,7 @@ export default async function ApplySuccessPage({
           </div>
 
           <div className="mt-6 pt-4 border-t border-gray-100">
-            <div className="flex items-center justify-center gap-2 text-gray-400">
+            <div className="flex items-center justify-center gap-2 text-muted-foreground">
               <Building2 className="w-4 h-4" />
               <span className="text-xs">Propmetrik Tenant Portal</span>
             </div>

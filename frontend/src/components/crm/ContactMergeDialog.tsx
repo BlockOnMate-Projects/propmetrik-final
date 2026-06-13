@@ -146,7 +146,7 @@ export function ContactMergeDialog({ open, onOpenChange, onMergeComplete }: Cont
     }
 
     const confidenceColor = (conf: number) =>
-        conf >= 0.9 ? 'text-red-400' : conf >= 0.7 ? 'text-amber-400' : 'text-muted-foreground'
+        conf >= 0.9 ? 'text-red-600 dark:text-red-400' : conf >= 0.7 ? 'text-amber-600 dark:text-amber-400' : 'text-muted-foreground'
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>

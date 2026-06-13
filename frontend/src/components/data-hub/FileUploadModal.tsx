@@ -215,9 +215,9 @@ export function FileUploadModal({
 
     const getFileIcon = (fileName: string) => {
         const ext = fileName.toLowerCase()
-        if (ext.endsWith('.csv')) return <FileText className="h-5 w-5 text-green-400" />
-        if (ext.endsWith('.xlsx') || ext.endsWith('.xls')) return <FileSpreadsheet className="h-5 w-5 text-blue-400" />
-        if (ext.endsWith('.pdf')) return <FileIcon className="h-5 w-5 text-red-400" />
+        if (ext.endsWith('.csv')) return <FileText className="h-5 w-5 text-green-600 dark:text-green-400" />
+        if (ext.endsWith('.xlsx') || ext.endsWith('.xls')) return <FileSpreadsheet className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+        if (ext.endsWith('.pdf')) return <FileIcon className="h-5 w-5 text-red-600 dark:text-red-400" />
         return <FileIcon className="h-5 w-5 text-muted-foreground" />
     }
 
@@ -289,7 +289,7 @@ export function FileUploadModal({
 
                             {/* Success State */}
                             {uploadStatus === 'success' && (
-                                <div className="flex items-center gap-2 text-green-400">
+                                <div className="flex items-center gap-2 text-green-600 dark:text-green-400">
                                     <CheckCircle className="h-5 w-5" />
                                     <span className="text-sm font-medium">
                                         Upload received{serverUploadStatus ? ` • ${serverUploadStatus}` : ''}
@@ -299,7 +299,7 @@ export function FileUploadModal({
 
                             {/* Error State */}
                             {uploadStatus === 'error' && (
-                                <div className="flex items-center gap-2 text-red-400">
+                                <div className="flex items-center gap-2 text-red-600 dark:text-red-400">
                                     <AlertCircle className="h-5 w-5" />
                                     <span className="text-sm font-medium">{errorMessage}</span>
                                 </div>
@@ -351,14 +351,14 @@ export function FileUploadModal({
                                 </Badge>
                             </div>
                             {Array.isArray(validationReport.errors) && validationReport.errors.length > 0 && (
-                                <div className="text-sm text-red-400">
+                                <div className="text-sm text-red-600 dark:text-red-400">
                                     {validationReport.errors.slice(0, 5).map((e, idx) => (
                                         <div key={idx}>{e}</div>
                                     ))}
                                 </div>
                             )}
                             {Array.isArray(validationReport.warnings) && validationReport.warnings.length > 0 && (
-                                <div className="text-sm text-yellow-400">
+                                <div className="text-sm text-yellow-600 dark:text-yellow-400">
                                     {validationReport.warnings.slice(0, 5).map((w, idx) => (
                                         <div key={idx}>{w}</div>
                                     ))}

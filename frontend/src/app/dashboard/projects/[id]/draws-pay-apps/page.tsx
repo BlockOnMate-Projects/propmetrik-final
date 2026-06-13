@@ -55,14 +55,14 @@ import { formatCurrency as formatCurrencyUtil } from '@/lib/utils';
 import { format } from 'date-fns';
 
 const statusConfig: Record<string, { label: string; color: string; icon: any }> = {
-  draft: { label: 'Draft', color: 'bg-zinc-500/20 text-zinc-400', icon: FileText },
-  submitted: { label: 'Submitted', color: 'bg-blue-500/20 text-blue-400', icon: Send },
-  under_review: { label: 'Under Review', color: 'bg-yellow-500/20 text-yellow-400', icon: Clock },
-  approved: { label: 'Approved', color: 'bg-emerald-500/20 text-emerald-400', icon: CheckCircle2 },
-  partially_funded: { label: 'Partially Funded', color: 'bg-orange-500/20 text-orange-400', icon: DollarSign },
-  funded: { label: 'Funded', color: 'bg-green-500/20 text-green-400', icon: CheckCircle2 },
-  rejected: { label: 'Rejected', color: 'bg-red-500/20 text-red-400', icon: AlertCircle },
-  cancelled: { label: 'Cancelled', color: 'bg-zinc-700/20 text-zinc-500', icon: AlertCircle }
+  draft: { label: 'Draft', color: 'bg-zinc-500/20 text-muted-foreground', icon: FileText },
+  submitted: { label: 'Submitted', color: 'bg-blue-500/20 text-blue-600 dark:text-blue-400', icon: Send },
+  under_review: { label: 'Under Review', color: 'bg-yellow-500/20 text-yellow-600 dark:text-yellow-400', icon: Clock },
+  approved: { label: 'Approved', color: 'bg-emerald-500/20 text-emerald-600 dark:text-emerald-400', icon: CheckCircle2 },
+  partially_funded: { label: 'Partially Funded', color: 'bg-orange-500/20 text-orange-600 dark:text-orange-400', icon: DollarSign },
+  funded: { label: 'Funded', color: 'bg-green-500/20 text-green-600 dark:text-green-400', icon: CheckCircle2 },
+  rejected: { label: 'Rejected', color: 'bg-red-500/20 text-red-600 dark:text-red-400', icon: AlertCircle },
+  cancelled: { label: 'Cancelled', color: 'bg-zinc-700/20 text-muted-foreground', icon: AlertCircle }
 };
 
 export default function ProjectDrawsPayAppsPage() {
@@ -138,15 +138,15 @@ export default function ProjectDrawsPayAppsPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-white tracking-tight">Draws / Pay Apps</h1>
-          <p className="text-zinc-400 text-sm mt-1">Manage draw requests and payment applications.</p>
+          <h1 className="text-2xl font-bold text-foreground tracking-tight">Draws / Pay Apps</h1>
+          <p className="text-muted-foreground text-sm mt-1">Manage draw requests and payment applications.</p>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" className="border-zinc-700 text-zinc-300" onClick={() => fetchData()}>
+          <Button variant="outline" className="border-border text-muted-foreground" onClick={() => fetchData()}>
             <RefreshCw className="h-4 w-4 mr-2" />
             Refresh
           </Button>
-          <Button className="bg-amber-600 hover:bg-amber-700 text-white border-0" onClick={() => setShowCreateDialog(true)}>
+          <Button className="bg-amber-600 hover:bg-amber-700 text-foreground border-0" onClick={() => setShowCreateDialog(true)}>
             <Plus className="h-4 w-4 mr-2" />
             New Draw Request
           </Button>
@@ -163,60 +163,60 @@ export default function ProjectDrawsPayAppsPage() {
         <>
           {/* Summary Cards */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            <Card className="bg-zinc-900 border-zinc-800">
+            <Card className="bg-card border-border">
               <CardContent className="pt-6">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-xs uppercase tracking-wider text-zinc-500">Total Requested</p>
-                    <p className="text-2xl font-bold text-white mt-1">{formatCurrency(summary?.total_requested || 0)}</p>
+                    <p className="text-xs uppercase tracking-wider text-muted-foreground">Total Requested</p>
+                    <p className="text-2xl font-bold text-foreground mt-1">{formatCurrency(summary?.total_requested || 0)}</p>
                   </div>
                   <div className="h-12 w-12 rounded-lg bg-blue-500/10 flex items-center justify-center">
-                    <Building2 className="h-6 w-6 text-blue-400" />
+                    <Building2 className="h-6 w-6 text-blue-600 dark:text-blue-400" />
                   </div>
                 </div>
               </CardContent>
             </Card>
 
-            <Card className="bg-zinc-900 border-zinc-800">
+            <Card className="bg-card border-border">
               <CardContent className="pt-6">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-xs uppercase tracking-wider text-zinc-500">Total Approved</p>
-                    <p className="text-2xl font-bold text-white mt-1">{formatCurrency(summary?.total_approved || 0)}</p>
+                    <p className="text-xs uppercase tracking-wider text-muted-foreground">Total Approved</p>
+                    <p className="text-2xl font-bold text-foreground mt-1">{formatCurrency(summary?.total_approved || 0)}</p>
                   </div>
                   <div className="h-12 w-12 rounded-lg bg-purple-500/10 flex items-center justify-center">
-                    <FileText className="h-6 w-6 text-purple-400" />
+                    <FileText className="h-6 w-6 text-purple-600 dark:text-purple-400" />
                   </div>
                 </div>
               </CardContent>
             </Card>
 
-            <Card className="bg-zinc-900 border-zinc-800">
+            <Card className="bg-card border-border">
               <CardContent className="pt-6">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-xs uppercase tracking-wider text-zinc-500">Total Paid</p>
-                    <p className="text-2xl font-bold text-white mt-1">{formatCurrency(summary?.total_paid || 0)}</p>
-                    <p className="text-xs text-zinc-500 mt-1">
+                    <p className="text-xs uppercase tracking-wider text-muted-foreground">Total Paid</p>
+                    <p className="text-2xl font-bold text-foreground mt-1">{formatCurrency(summary?.total_paid || 0)}</p>
+                    <p className="text-xs text-muted-foreground mt-1">
                       {summary?.total_requested ? Math.round((summary.total_paid / summary.total_requested) * 100) : 0}% funded
                     </p>
                   </div>
                   <div className="h-12 w-12 rounded-lg bg-green-500/10 flex items-center justify-center">
-                    <DollarSign className="h-6 w-6 text-green-400" />
+                    <DollarSign className="h-6 w-6 text-green-600 dark:text-green-400" />
                   </div>
                 </div>
               </CardContent>
             </Card>
 
-            <Card className="bg-zinc-900 border-zinc-800">
+            <Card className="bg-card border-border">
               <CardContent className="pt-6">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-xs uppercase tracking-wider text-zinc-500">Pending</p>
-                    <p className="text-2xl font-bold text-white mt-1">{formatCurrency(summary?.pending || 0)}</p>
+                    <p className="text-xs uppercase tracking-wider text-muted-foreground">Pending</p>
+                    <p className="text-2xl font-bold text-foreground mt-1">{formatCurrency(summary?.pending || 0)}</p>
                   </div>
                   <div className="h-12 w-12 rounded-lg bg-yellow-500/10 flex items-center justify-center">
-                    <Clock className="h-6 w-6 text-yellow-400" />
+                    <Clock className="h-6 w-6 text-yellow-600 dark:text-yellow-400" />
                   </div>
                 </div>
               </CardContent>
@@ -226,16 +226,16 @@ export default function ProjectDrawsPayAppsPage() {
           {/* Filters */}
           <div className="flex gap-3">
             <div className="relative flex-1 max-w-sm">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-500" />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
                 placeholder="Search draws..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-10 bg-zinc-900 border-zinc-800"
+                className="pl-10 bg-card border-border"
               />
             </div>
             <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="w-[180px] bg-zinc-900 border-zinc-800">
+              <SelectTrigger className="w-[180px] bg-card border-border">
                 <SelectValue placeholder="Status" />
               </SelectTrigger>
               <SelectContent>
@@ -248,50 +248,50 @@ export default function ProjectDrawsPayAppsPage() {
           </div>
 
           {/* Draws Table */}
-          <Card className="bg-zinc-900 border-zinc-800">
+          <Card className="bg-card border-border">
             <CardContent className="p-0">
               <Table>
                 <TableHeader>
-                  <TableRow className="border-zinc-800 hover:bg-transparent">
-                    <TableHead className="text-zinc-400">Draw #</TableHead>
-                    <TableHead className="text-zinc-400">Description</TableHead>
-                    <TableHead className="text-zinc-400">Status</TableHead>
-                    <TableHead className="text-zinc-400">Submitted</TableHead>
-                    <TableHead className="text-zinc-400 text-right">Requested</TableHead>
-                    <TableHead className="text-zinc-400 text-right">Approved</TableHead>
-                    <TableHead className="text-zinc-400 text-right">Funded</TableHead>
-                    <TableHead className="text-zinc-400"></TableHead>
+                  <TableRow className="border-border hover:bg-transparent">
+                    <TableHead className="text-muted-foreground">Draw #</TableHead>
+                    <TableHead className="text-muted-foreground">Description</TableHead>
+                    <TableHead className="text-muted-foreground">Status</TableHead>
+                    <TableHead className="text-muted-foreground">Submitted</TableHead>
+                    <TableHead className="text-muted-foreground text-right">Requested</TableHead>
+                    <TableHead className="text-muted-foreground text-right">Approved</TableHead>
+                    <TableHead className="text-muted-foreground text-right">Funded</TableHead>
+                    <TableHead className="text-muted-foreground"></TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {filteredDraws.map((draw) => {
                     const StatusIcon = statusConfig[draw.status]?.icon || FileText;
                     return (
-                      <TableRow key={draw.id} className="border-zinc-800 hover:bg-zinc-800/50">
+                      <TableRow key={draw.id} className="border-border hover:bg-muted/50">
                         <TableCell className="font-mono text-amber-500">{draw.draw_number}</TableCell>
-                        <TableCell className="font-medium text-white max-w-[200px] truncate">
+                        <TableCell className="font-medium text-foreground max-w-[200px] truncate">
                           {draw.title || draw.description || 'Draw Request'}
                         </TableCell>
                         <TableCell>
-                          <Badge className={statusConfig[draw.status]?.color || 'bg-zinc-500/20 text-zinc-400'}>
+                          <Badge className={statusConfig[draw.status]?.color || 'bg-zinc-500/20 text-muted-foreground'}>
                             <StatusIcon className="h-3 w-3 mr-1" />
                             {statusConfig[draw.status]?.label || draw.status}
                           </Badge>
                         </TableCell>
-                        <TableCell className="text-zinc-400 text-sm">
+                        <TableCell className="text-muted-foreground text-sm">
                           {draw.submitted_at ? formatDate(draw.submitted_at) : '—'}
                         </TableCell>
-                        <TableCell className="text-right text-zinc-300">
+                        <TableCell className="text-right text-muted-foreground">
                           {formatCurrency(draw.amount || 0)}
                         </TableCell>
-                        <TableCell className="text-right text-zinc-300">
+                        <TableCell className="text-right text-muted-foreground">
                           {draw.approved_amount ? formatCurrency(draw.approved_amount) : '—'}
                         </TableCell>
-                        <TableCell className="text-right text-green-400">
+                        <TableCell className="text-right text-green-600 dark:text-green-400">
                           {draw.paid_at ? formatCurrency(draw.approved_amount || draw.amount) : '—'}
                         </TableCell>
                         <TableCell>
-                          <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-zinc-400 hover:text-white">
+                          <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-muted-foreground hover:text-foreground">
                             <Eye className="h-4 w-4" />
                           </Button>
                         </TableCell>
@@ -301,7 +301,7 @@ export default function ProjectDrawsPayAppsPage() {
 
                   {filteredDraws.length === 0 && (
                     <TableRow>
-                      <TableCell colSpan={8} className="text-center py-8 text-zinc-500">
+                      <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
                         No draw requests found.
                       </TableCell>
                     </TableRow>
@@ -315,29 +315,29 @@ export default function ProjectDrawsPayAppsPage() {
 
       {/* Create Dialog */}
       <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
-        <DialogContent className="bg-zinc-900 border-zinc-800">
+        <DialogContent className="bg-card border-border">
           <DialogHeader>
-            <DialogTitle className="text-white">New Draw Request</DialogTitle>
-            <DialogDescription className="text-zinc-400">Create a new draw request for this project.</DialogDescription>
+            <DialogTitle className="text-foreground">New Draw Request</DialogTitle>
+            <DialogDescription className="text-muted-foreground">Create a new draw request for this project.</DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <Label className="text-zinc-300">Description</Label>
-              <Textarea placeholder="Enter description..." className="bg-zinc-800 border-zinc-700" />
+              <Label className="text-muted-foreground">Description</Label>
+              <Textarea placeholder="Enter description..." className="bg-muted border-border" />
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label className="text-zinc-300">Requested Amount</Label>
-                <Input type="number" placeholder="0.00" className="bg-zinc-800 border-zinc-700" />
+                <Label className="text-muted-foreground">Requested Amount</Label>
+                <Input type="number" placeholder="0.00" className="bg-muted border-border" />
               </div>
               <div className="space-y-2">
-                <Label className="text-zinc-300">Period Ending</Label>
-                <Input type="date" className="bg-zinc-800 border-zinc-700" />
+                <Label className="text-muted-foreground">Period Ending</Label>
+                <Input type="date" className="bg-muted border-border" />
               </div>
             </div>
             <div className="space-y-2">
-              <Label className="text-zinc-300">Notes</Label>
-              <Textarea placeholder="Additional notes..." className="bg-zinc-800 border-zinc-700" />
+              <Label className="text-muted-foreground">Notes</Label>
+              <Textarea placeholder="Additional notes..." className="bg-muted border-border" />
             </div>
           </div>
           <DialogFooter>

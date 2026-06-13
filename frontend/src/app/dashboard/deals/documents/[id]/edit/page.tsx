@@ -172,7 +172,7 @@ export default function TemplateEditorPage() {
     if (error || !template) {
         return (
             <div className="text-center py-20">
-                <p className="font-mono text-sm text-red-400">{error || 'Template not found'}</p>
+                <p className="font-mono text-sm text-red-600 dark:text-red-400">{error || 'Template not found'}</p>
                 <Button variant="link" onClick={() => router.back()} className="text-primary mt-4">
                     Go Back
                 </Button>
@@ -261,7 +261,7 @@ export default function TemplateEditorPage() {
                                 <div className="px-3 py-2 bg-muted/50 border-b border-border">
                                     <span className="font-mono text-[10px] text-primary">PREVIEW</span>
                                 </div>
-                                <ScrollArea className="bg-white h-[500px]">
+                                <ScrollArea className="bg-card h-[500px]">
                                     <div 
                                         className="p-8 prose prose-sm max-w-none"
                                         dangerouslySetInnerHTML={{ __html: formData.html_content }}
@@ -452,7 +452,7 @@ export default function TemplateEditorPage() {
                                                         }}
                                                     >
                                                         {copiedField === field.field_key ? (
-                                                            <Check className="h-3 w-3 text-green-400" />
+                                                            <Check className="h-3 w-3 text-green-600 dark:text-green-400" />
                                                         ) : (
                                                             <Copy className="h-3 w-3 text-muted-foreground" />
                                                         )}

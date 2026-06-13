@@ -231,34 +231,34 @@ function RateComparison({
   const amountDiff = overrideAmount - autoAmount;
   
   return (
-    <div className="grid grid-cols-3 gap-4 p-4 bg-zinc-900 rounded-lg border border-zinc-800">
+    <div className="grid grid-cols-3 gap-4 p-4 bg-card rounded-lg border border-border">
       <div>
-        <div className="text-[10px] text-zinc-500 uppercase mb-1">Auto-Calculated</div>
-        <div className="text-xl font-mono text-zinc-400">{autoRate.toFixed(1)}%</div>
-        <div className="text-xs text-zinc-600 font-mono">₵{autoAmount.toLocaleString()}</div>
+        <div className="text-[10px] text-muted-foreground uppercase mb-1">Auto-Calculated</div>
+        <div className="text-xl font-mono text-muted-foreground">{autoRate.toFixed(1)}%</div>
+        <div className="text-xs text-muted-foreground font-mono">₵{autoAmount.toLocaleString()}</div>
       </div>
       <div>
-        <div className="text-[10px] text-zinc-500 uppercase mb-1">Your Override</div>
+        <div className="text-[10px] text-muted-foreground uppercase mb-1">Your Override</div>
         <div className={cn(
           'text-xl font-mono font-bold',
-          color === 'blue' ? 'text-blue-400' : 
-          color === 'orange' ? 'text-orange-400' : 'text-purple-400'
+          color === 'blue' ? 'text-blue-600 dark:text-blue-400' : 
+          color === 'orange' ? 'text-orange-600 dark:text-orange-400' : 'text-purple-600 dark:text-purple-400'
         )}>
           {overrideRate.toFixed(1)}%
         </div>
-        <div className="text-xs text-zinc-400 font-mono">₵{overrideAmount.toLocaleString()}</div>
+        <div className="text-xs text-muted-foreground font-mono">₵{overrideAmount.toLocaleString()}</div>
       </div>
       <div>
-        <div className="text-[10px] text-zinc-500 uppercase mb-1">Difference</div>
+        <div className="text-[10px] text-muted-foreground uppercase mb-1">Difference</div>
         <div className={cn(
           'text-xl font-mono font-bold',
-          difference > 0 ? 'text-red-400' : difference < 0 ? 'text-green-400' : 'text-zinc-400'
+          difference > 0 ? 'text-red-600 dark:text-red-400' : difference < 0 ? 'text-green-600 dark:text-green-400' : 'text-muted-foreground'
         )}>
           {difference > 0 ? '+' : ''}{difference.toFixed(1)}%
         </div>
         <div className={cn(
           'text-xs font-mono',
-          amountDiff > 0 ? 'text-red-400' : amountDiff < 0 ? 'text-green-400' : 'text-zinc-600'
+          amountDiff > 0 ? 'text-red-600 dark:text-red-400' : amountDiff < 0 ? 'text-green-600 dark:text-green-400' : 'text-muted-foreground'
         )}>
           {amountDiff > 0 ? '+' : ''}₵{amountDiff.toLocaleString()}
         </div>
@@ -290,23 +290,23 @@ function EvidenceTypeSelector({
             'flex items-start gap-3 p-3 rounded-lg border transition-all text-left',
             value === option.value
               ? 'border-blue-500 bg-blue-500/10'
-              : 'border-zinc-800 bg-zinc-900/50 hover:border-zinc-700'
+              : 'border-border bg-card/50 hover:border-border'
           )}
         >
           <div className={cn(
             'mt-0.5',
-            value === option.value ? 'text-blue-400' : 'text-zinc-500'
+            value === option.value ? 'text-blue-600 dark:text-blue-400' : 'text-muted-foreground'
           )}>
             {option.icon}
           </div>
           <div>
             <div className={cn(
               'text-sm font-medium',
-              value === option.value ? 'text-white' : 'text-zinc-300'
+              value === option.value ? 'text-foreground' : 'text-muted-foreground'
             )}>
               {option.label}
             </div>
-            <div className="text-[10px] text-zinc-500">{option.description}</div>
+            <div className="text-[10px] text-muted-foreground">{option.description}</div>
           </div>
         </button>
       ))}
@@ -317,17 +317,17 @@ function EvidenceTypeSelector({
 function ApprovalWarning({ variancePercent }: { variancePercent: number }) {
   return (
     <div className="flex items-start gap-3 p-4 bg-yellow-500/10 border border-yellow-500/30 rounded-lg">
-      <AlertTriangle className="w-5 h-5 text-yellow-400 flex-shrink-0 mt-0.5" />
+      <AlertTriangle className="w-5 h-5 text-yellow-600 dark:text-yellow-400 flex-shrink-0 mt-0.5" />
       <div>
-        <div className="text-sm font-medium text-yellow-400">
+        <div className="text-sm font-medium text-yellow-600 dark:text-yellow-400">
           Supervisor Approval Required
         </div>
-        <div className="text-xs text-zinc-400 mt-1">
+        <div className="text-xs text-muted-foreground mt-1">
           Your override has a variance of {variancePercent.toFixed(1)}% from the auto-calculated value.
           Per GhIS standards, variances exceeding {APPROVAL_THRESHOLD_PERCENT}% require supervisor approval
           before the override can be finalized.
         </div>
-        <div className="text-xs text-zinc-500 mt-2">
+        <div className="text-xs text-muted-foreground mt-2">
           The override will be submitted for review and you will be notified once approved.
         </div>
       </div>
@@ -429,27 +429,27 @@ export function DepreciationOverrideDialog({
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       {/* Backdrop */}
       <div 
-        className="absolute inset-0 bg-black/80 backdrop-blur-sm"
+        className="absolute inset-0 bg-background/80 backdrop-blur-sm"
         onClick={onClose}
       />
       
       {/* Dialog */}
       <div className={cn(
         'relative w-full max-w-2xl max-h-[90vh] overflow-y-auto',
-        'bg-zinc-950 border border-zinc-800 rounded-xl shadow-2xl',
+        'bg-background border border-border rounded-xl shadow-2xl',
         className
       )}>
         {/* Header */}
-        <div className="sticky top-0 z-10 flex items-center justify-between p-4 border-b border-zinc-800 bg-zinc-950">
+        <div className="sticky top-0 z-10 flex items-center justify-between p-4 border-b border-border bg-background">
           <div>
-            <h2 className="text-lg font-medium text-white">
+            <h2 className="text-lg font-medium text-foreground">
               Override {config.title}
             </h2>
-            <p className="text-xs text-zinc-500">{config.description}</p>
+            <p className="text-xs text-muted-foreground">{config.description}</p>
           </div>
           <button
             onClick={onClose}
-            className="p-2 text-zinc-400 hover:text-white transition-colors"
+            className="p-2 text-muted-foreground hover:text-foreground transition-colors"
           >
             <X className="w-5 h-5" />
           </button>
@@ -459,7 +459,7 @@ export function DepreciationOverrideDialog({
         <div className="p-4 space-y-6">
           {/* Rate Comparison */}
           <div>
-            <label className="block text-xs text-zinc-400 mb-2">
+            <label className="block text-xs text-muted-foreground mb-2">
               Rate Comparison
             </label>
             <RateComparison
@@ -472,7 +472,7 @@ export function DepreciationOverrideDialog({
           
           {/* Override Rate Input */}
           <div>
-            <label className="block text-xs text-zinc-400 mb-2">
+            <label className="block text-xs text-muted-foreground mb-2">
               Override Rate (%)
             </label>
             <div className="relative">
@@ -484,15 +484,15 @@ export function DepreciationOverrideDialog({
                 value={overrideRate}
                 onChange={(e) => setOverrideRate(parseFloat(e.target.value) || 0)}
                 className={cn(
-                  'w-full px-4 py-3 bg-zinc-900 border rounded-lg',
-                  'text-white font-mono text-lg',
+                  'w-full px-4 py-3 bg-card border rounded-lg',
+                  'text-foreground font-mono text-lg',
                   'focus:outline-none focus:ring-2',
                   config.color === 'blue' ? 'border-blue-500/30 focus:ring-blue-500/50' :
                   config.color === 'orange' ? 'border-orange-500/30 focus:ring-orange-500/50' :
                   'border-purple-500/30 focus:ring-purple-500/50'
                 )}
               />
-              <span className="absolute right-4 top-1/2 -translate-y-1/2 text-zinc-500">
+              <span className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground">
                 %
               </span>
             </div>
@@ -505,9 +505,9 @@ export function DepreciationOverrideDialog({
           
           {/* Justification */}
           <div>
-            <label className="block text-xs text-zinc-400 mb-2">
-              Justification <span className="text-red-400">*</span>
-              <span className="text-zinc-600 ml-2">
+            <label className="block text-xs text-muted-foreground mb-2">
+              Justification <span className="text-red-600 dark:text-red-400">*</span>
+              <span className="text-muted-foreground ml-2">
                 (min {MIN_JUSTIFICATION_LENGTH} characters, currently {justification.trim().length})
               </span>
             </label>
@@ -517,17 +517,17 @@ export function DepreciationOverrideDialog({
               placeholder="Explain why you are overriding the auto-calculated value. Include specific observations, market conditions, or property characteristics that justify this adjustment..."
               rows={4}
               className={cn(
-                'w-full px-4 py-3 bg-zinc-900 border rounded-lg',
-                'text-white text-sm',
+                'w-full px-4 py-3 bg-card border rounded-lg',
+                'text-foreground text-sm',
                 'focus:outline-none focus:ring-2 focus:ring-blue-500/50',
-                'placeholder:text-zinc-600',
+                'placeholder:text-muted-foreground',
                 justification.trim().length < MIN_JUSTIFICATION_LENGTH && justification.length > 0
                   ? 'border-yellow-500/50'
-                  : 'border-zinc-800'
+                  : 'border-border'
               )}
             />
             {justification.length > 0 && justification.trim().length < MIN_JUSTIFICATION_LENGTH && (
-              <p className="mt-1 text-xs text-yellow-400">
+              <p className="mt-1 text-xs text-yellow-600 dark:text-yellow-400">
                 {MIN_JUSTIFICATION_LENGTH - justification.trim().length} more characters needed
               </p>
             )}
@@ -535,8 +535,8 @@ export function DepreciationOverrideDialog({
           
           {/* Evidence Type */}
           <div>
-            <label className="block text-xs text-zinc-400 mb-2">
-              Evidence Type <span className="text-red-400">*</span>
+            <label className="block text-xs text-muted-foreground mb-2">
+              Evidence Type <span className="text-red-600 dark:text-red-400">*</span>
             </label>
             <EvidenceTypeSelector
               value={evidenceType}
@@ -548,8 +548,8 @@ export function DepreciationOverrideDialog({
           {/* Evidence Reference */}
           {evidenceType && evidenceType !== 'expert_opinion' && (
             <div>
-              <label className="block text-xs text-zinc-400 mb-2">
-                Evidence Reference <span className="text-red-400">*</span>
+              <label className="block text-xs text-muted-foreground mb-2">
+                Evidence Reference <span className="text-red-600 dark:text-red-400">*</span>
               </label>
               <div className="flex gap-2">
                 <input
@@ -558,16 +558,16 @@ export function DepreciationOverrideDialog({
                   onChange={(e) => setEvidenceReference(e.target.value)}
                   placeholder="File path, URL, report number, or document reference..."
                   className={cn(
-                    'flex-1 px-4 py-3 bg-zinc-900 border rounded-lg',
-                    'text-white text-sm',
+                    'flex-1 px-4 py-3 bg-card border rounded-lg',
+                    'text-foreground text-sm',
                     'focus:outline-none focus:ring-2 focus:ring-blue-500/50',
-                    'placeholder:text-zinc-600',
-                    'border-zinc-800'
+                    'placeholder:text-muted-foreground',
+                    'border-border'
                   )}
                 />
                 <button
                   type="button"
-                  className="px-4 py-3 bg-zinc-800 border border-zinc-700 rounded-lg text-zinc-400 hover:text-white hover:bg-zinc-700 transition-colors"
+                  className="px-4 py-3 bg-muted border border-border rounded-lg text-muted-foreground hover:text-foreground hover:bg-zinc-700 transition-colors"
                 >
                   <Upload className="w-4 h-4" />
                 </button>
@@ -578,10 +578,10 @@ export function DepreciationOverrideDialog({
           {/* Expert Opinion Note */}
           {evidenceType === 'expert_opinion' && (
             <div className="flex items-start gap-3 p-4 bg-blue-500/10 border border-blue-500/30 rounded-lg">
-              <Info className="w-5 h-5 text-blue-400 flex-shrink-0 mt-0.5" />
+              <Info className="w-5 h-5 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" />
               <div>
-                <div className="text-sm text-blue-400">Expert Opinion Selected</div>
-                <div className="text-xs text-zinc-400 mt-1">
+                <div className="text-sm text-blue-600 dark:text-blue-400">Expert Opinion Selected</div>
+                <div className="text-xs text-muted-foreground mt-1">
                   No external evidence reference is required. Your professional judgment and 
                   experience-based justification will be recorded.
                 </div>
@@ -592,13 +592,13 @@ export function DepreciationOverrideDialog({
           {/* Validation Errors */}
           {validation.errors.length > 0 && (
             <div className="p-4 bg-red-500/10 border border-red-500/30 rounded-lg">
-              <div className="text-sm font-medium text-red-400 mb-2">
+              <div className="text-sm font-medium text-red-600 dark:text-red-400 mb-2">
                 Please fix the following issues:
               </div>
               <ul className="space-y-1">
                 {validation.errors.map((error, i) => (
-                  <li key={i} className="text-xs text-zinc-400 flex items-start gap-2">
-                    <span className="text-red-400">•</span>
+                  <li key={i} className="text-xs text-muted-foreground flex items-start gap-2">
+                    <span className="text-red-600 dark:text-red-400">•</span>
                     {error}
                   </li>
                 ))}
@@ -609,22 +609,22 @@ export function DepreciationOverrideDialog({
           {/* Submit Error */}
           {submitError && (
             <div className="p-4 bg-red-500/10 border border-red-500/30 rounded-lg">
-              <div className="text-sm text-red-400">{submitError}</div>
+              <div className="text-sm text-red-600 dark:text-red-400">{submitError}</div>
             </div>
           )}
         </div>
         
         {/* Footer */}
-        <div className="sticky bottom-0 flex items-center justify-between p-4 border-t border-zinc-800 bg-zinc-950">
+        <div className="sticky bottom-0 flex items-center justify-between p-4 border-t border-border bg-background">
           <button
             onClick={onClose}
-            className="px-4 py-2 text-sm text-zinc-400 hover:text-white transition-colors"
+            className="px-4 py-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
           >
             Cancel
           </button>
           <div className="flex items-center gap-3">
             {validation.requiresApproval && (
-              <span className="text-xs text-yellow-400 flex items-center gap-1">
+              <span className="text-xs text-yellow-600 dark:text-yellow-400 flex items-center gap-1">
                 <AlertTriangle className="w-3 h-3" />
                 Requires Approval
               </span>
@@ -636,8 +636,8 @@ export function DepreciationOverrideDialog({
                 'px-6 py-2 rounded-lg font-medium text-sm transition-all',
                 'flex items-center gap-2',
                 validation.isValid && !isSubmitting
-                  ? 'bg-blue-600 text-white hover:bg-blue-500'
-                  : 'bg-zinc-800 text-zinc-500 cursor-not-allowed'
+                  ? 'bg-blue-600 text-foreground hover:bg-blue-500'
+                  : 'bg-muted text-muted-foreground cursor-not-allowed'
               )}
             >
               {isSubmitting ? (

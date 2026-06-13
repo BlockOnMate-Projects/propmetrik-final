@@ -83,7 +83,7 @@ const getServiceIcon = (categories: MaintenanceCategory[] | undefined | null) =>
         case MaintenanceCategory.ELECTRICAL: return <Zap className="h-4 w-4 text-yellow-500" />;
         case MaintenanceCategory.SECURITY: return <ShieldCheck className="h-4 w-4 text-green-500" />;
         case MaintenanceCategory.PAINTING: return <Paintbrush className="h-4 w-4 text-pink-500" />;
-        default: return <Wrench className="h-4 w-4 text-zinc-500" />;
+        default: return <Wrench className="h-4 w-4 text-muted-foreground" />;
     }
 }
 
@@ -261,28 +261,28 @@ export default function VendorsPage() {
             {successMessage && (
                 <div className="bg-emerald-500/10 border border-emerald-500/30 rounded-lg p-4 flex items-center gap-3">
                     <CheckCircle className="h-5 w-5 text-emerald-500" />
-                    <span className="text-emerald-400 font-mono text-sm">{successMessage}</span>
+                    <span className="text-emerald-600 dark:text-emerald-400 font-mono text-sm">{successMessage}</span>
                 </div>
             )}
             
             {/* Page Header */}
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                 <div>
-                    <h1 className="text-2xl font-bold tracking-tight text-white font-mono">VENDOR DIRECTORY</h1>
-                    <p className="text-sm text-zinc-500 font-mono">Manage service providers and contractors</p>
+                    <h1 className="text-2xl font-bold tracking-tight text-foreground font-mono">VENDOR DIRECTORY</h1>
+                    <p className="text-sm text-muted-foreground font-mono">Manage service providers and contractors</p>
                 </div>
                 <div className="flex items-center gap-2">
                     <Button 
                         variant="outline" 
-                        className={`border-zinc-800 hover:text-amber-500 hover:border-amber-900 bg-zinc-900 font-mono text-xs uppercase ${hasActiveFilters ? 'text-amber-500 border-amber-900' : 'text-zinc-400'}`}
+                        className={`border-border hover:text-amber-500 hover:border-amber-900 bg-card font-mono text-xs uppercase ${hasActiveFilters ? 'text-amber-500 border-amber-900' : 'text-muted-foreground'}`}
                         onClick={() => setShowFilterSheet(true)}
                     >
                         <Filter className="mr-2 h-3 w-3" />
                         Filter
-                        {hasActiveFilters && <Badge className="ml-2 bg-amber-600 text-white text-[9px] h-4 px-1">Active</Badge>}
+                        {hasActiveFilters && <Badge className="ml-2 bg-amber-600 text-foreground text-[9px] h-4 px-1">Active</Badge>}
                     </Button>
                     <Button 
-                        className="bg-amber-600 hover:bg-amber-500 text-white font-bold font-mono text-xs uppercase"
+                        className="bg-amber-600 hover:bg-amber-500 text-foreground font-bold font-mono text-xs uppercase"
                         onClick={() => setShowAddDialog(true)}
                     >
                         <Plus className="mr-2 h-3 w-3" />
@@ -293,46 +293,46 @@ export default function VendorsPage() {
 
             {/* Stats Overview */}
             <div className="grid gap-4 md:grid-cols-4">
-                <Card className="bg-black border border-zinc-800">
+                <Card className="bg-background border border-border">
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                         <CardTitle className="text-xs font-mono uppercase tracking-wider text-amber-500">Total Vendors</CardTitle>
                         <Users className="h-4 w-4 text-amber-600" />
                     </CardHeader>
                     <CardContent>
-                        <div className="text-2xl font-bold text-white font-mono">{isLoading ? '-' : totalVendors}</div>
+                        <div className="text-2xl font-bold text-foreground font-mono">{isLoading ? '-' : totalVendors}</div>
                     </CardContent>
                 </Card>
-                <Card className="bg-black border border-zinc-800">
+                <Card className="bg-background border border-border">
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                         <CardTitle className="text-xs font-mono uppercase tracking-wider text-amber-500">Active</CardTitle>
                         <Star className="h-4 w-4 text-amber-600" />
                     </CardHeader>
                     <CardContent>
-                        <div className="text-2xl font-bold text-white font-mono">{isLoading ? '-' : preferredVendors}</div>
+                        <div className="text-2xl font-bold text-foreground font-mono">{isLoading ? '-' : preferredVendors}</div>
                     </CardContent>
                 </Card>
-                <Card className="bg-black border border-zinc-800">
+                <Card className="bg-background border border-border">
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                         <CardTitle className="text-xs font-mono uppercase tracking-wider text-amber-500">Jobs Completed</CardTitle>
                         <Hammer className="h-4 w-4 text-amber-600" />
                     </CardHeader>
                     <CardContent>
-                        <div className="text-2xl font-bold text-white font-mono">{isLoading ? '-' : totalJobs}</div>
+                        <div className="text-2xl font-bold text-foreground font-mono">{isLoading ? '-' : totalJobs}</div>
                     </CardContent>
                 </Card>
-                <Card className="bg-black border border-zinc-800">
+                <Card className="bg-background border border-border">
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                         <CardTitle className="text-xs font-mono uppercase tracking-wider text-amber-500">Avg Rating</CardTitle>
                         <Star className="h-4 w-4 text-amber-600" />
                     </CardHeader>
                     <CardContent>
-                        <div className="text-2xl font-bold text-white font-mono">{isLoading ? '-' : avgRating}</div>
+                        <div className="text-2xl font-bold text-foreground font-mono">{isLoading ? '-' : avgRating}</div>
                     </CardContent>
                 </Card>
             </div>
 
             {/* Main Table Card */}
-            <Card className="bg-zinc-900 border-zinc-800">
+            <Card className="bg-card border-border">
                 <CardHeader>
                     <div className="flex items-center justify-between">
                         <div className="flex items-center gap-3">
@@ -341,7 +341,7 @@ export default function VendorsPage() {
                                 <Button 
                                     variant="ghost" 
                                     size="sm" 
-                                    className="text-xs text-zinc-500 hover:text-amber-500 h-6 px-2"
+                                    className="text-xs text-muted-foreground hover:text-amber-500 h-6 px-2"
                                     onClick={clearFilters}
                                 >
                                     <X className="h-3 w-3 mr-1" />
@@ -350,16 +350,16 @@ export default function VendorsPage() {
                             )}
                         </div>
                         <div className="relative w-64">
-                            <Search className="absolute left-2 top-2.5 h-3 w-3 text-zinc-500" />
+                            <Search className="absolute left-2 top-2.5 h-3 w-3 text-muted-foreground" />
                             <Input 
                                 placeholder="SEARCH VENDORS..." 
-                                className="pl-8 bg-black border-zinc-800 text-zinc-300 focus:border-amber-500 font-mono text-xs uppercase h-8"
+                                className="pl-8 bg-background border-border text-muted-foreground focus:border-amber-500 font-mono text-xs uppercase h-8"
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
                             />
                             {searchTerm && (
                                 <button 
-                                    className="absolute right-2 top-2.5 text-zinc-500 hover:text-white"
+                                    className="absolute right-2 top-2.5 text-muted-foreground hover:text-foreground"
                                     onClick={() => setSearchTerm('')}
                                 >
                                     <X className="h-3 w-3" />
@@ -368,7 +368,7 @@ export default function VendorsPage() {
                         </div>
                     </div>
                     {(searchTerm || hasActiveFilters) && (
-                        <p className="text-[10px] text-zinc-500 font-mono mt-2">
+                        <p className="text-[10px] text-muted-foreground font-mono mt-2">
                             Showing {filteredVendors.length} of {vendors.length} vendors
                         </p>
                     )}
@@ -385,30 +385,30 @@ export default function VendorsPage() {
                     ) : (
                         <Table>
                             <TableHeader>
-                                <TableRow className="border-zinc-800 hover:bg-zinc-900/50">
-                                    <TableHead className="text-zinc-500 font-mono text-[10px] uppercase">Business</TableHead>
-                                    <TableHead className="text-zinc-500 font-mono text-[10px] uppercase">Contact</TableHead>
-                                    <TableHead className="text-zinc-500 font-mono text-[10px] uppercase">Categories</TableHead>
-                                    <TableHead className="text-zinc-500 font-mono text-[10px] uppercase">Status</TableHead>
-                                    <TableHead className="text-zinc-500 font-mono text-[10px] uppercase text-right">Rating</TableHead>
-                                    <TableHead className="text-zinc-500 font-mono text-[10px] uppercase text-right">Total Jobs</TableHead>
-                                    <TableHead className="text-zinc-500 font-mono text-[10px] uppercase text-right">Actions</TableHead>
+                                <TableRow className="border-border hover:bg-card/50">
+                                    <TableHead className="text-muted-foreground font-mono text-[10px] uppercase">Business</TableHead>
+                                    <TableHead className="text-muted-foreground font-mono text-[10px] uppercase">Contact</TableHead>
+                                    <TableHead className="text-muted-foreground font-mono text-[10px] uppercase">Categories</TableHead>
+                                    <TableHead className="text-muted-foreground font-mono text-[10px] uppercase">Status</TableHead>
+                                    <TableHead className="text-muted-foreground font-mono text-[10px] uppercase text-right">Rating</TableHead>
+                                    <TableHead className="text-muted-foreground font-mono text-[10px] uppercase text-right">Total Jobs</TableHead>
+                                    <TableHead className="text-muted-foreground font-mono text-[10px] uppercase text-right">Actions</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
                                 {filteredVendors.length === 0 ? (
-                                    <TableRow className="border-zinc-800">
+                                    <TableRow className="border-border">
                                         <TableCell colSpan={7} className="text-center py-8">
                                             <div className="flex flex-col items-center gap-3">
                                                 <Users className="h-8 w-8 text-zinc-700" />
-                                                <p className="text-zinc-500 font-mono text-sm">
+                                                <p className="text-muted-foreground font-mono text-sm">
                                                     {searchTerm || hasActiveFilters ? 'No vendors match your search criteria' : 'No vendors found'}
                                                 </p>
                                                 {(searchTerm || hasActiveFilters) && (
                                                     <Button 
                                                         variant="outline" 
                                                         size="sm" 
-                                                        className="border-zinc-700 text-zinc-400 hover:text-amber-500 font-mono text-xs"
+                                                        className="border-border text-muted-foreground hover:text-amber-500 font-mono text-xs"
                                                         onClick={clearFilters}
                                                     >
                                                         Clear filters
@@ -419,24 +419,24 @@ export default function VendorsPage() {
                                     </TableRow>
                                 ) : (
                                     filteredVendors.map((vendor) => (
-                                        <TableRow key={vendor.id} className="border-zinc-800 hover:bg-zinc-900/50 group">
+                                        <TableRow key={vendor.id} className="border-border hover:bg-card/50 group">
                                             <TableCell>
                                                 <div className="flex items-center gap-2">
-                                                    <div className="h-8 w-8 rounded bg-zinc-950 border border-zinc-800 flex items-center justify-center shrink-0">
+                                                    <div className="h-8 w-8 rounded bg-background border border-border flex items-center justify-center shrink-0">
                                                         {getServiceIcon(vendor.serviceCategories)}
                                                     </div>
                                                     <div>
                                                         <div className="font-medium text-zinc-200 text-xs font-mono uppercase">{vendor.businessName}</div>
-                                                        <div className="text-[10px] text-zinc-500 font-mono">{vendor.id}</div>
+                                                        <div className="text-[10px] text-muted-foreground font-mono">{vendor.id}</div>
                                                     </div>
                                                 </div>
                                             </TableCell>
                                             <TableCell>
                                                 <div className="space-y-1">
-                                                    <div className="flex items-center gap-1 text-[10px] text-zinc-300 font-mono">
+                                                    <div className="flex items-center gap-1 text-[10px] text-muted-foreground font-mono">
                                                         <Users className="h-3 w-3" /> {vendor.contactPerson}
                                                     </div>
-                                                    <div className="flex items-center gap-1 text-[10px] text-zinc-400 font-mono">
+                                                    <div className="flex items-center gap-1 text-[10px] text-muted-foreground font-mono">
                                                         <Phone className="h-3 w-3" /> {vendor.phonePrimary}
                                                     </div>
                                                 </div>
@@ -444,7 +444,7 @@ export default function VendorsPage() {
                                             <TableCell>
                                                 <div className="flex flex-wrap gap-1">
                                                     {(Array.isArray(vendor.serviceCategories) ? vendor.serviceCategories : []).map((cat, i) => (
-                                                        <Badge key={i} variant="outline" className="border-zinc-800 text-zinc-400 text-[10px] font-mono">
+                                                        <Badge key={i} variant="outline" className="border-border text-muted-foreground text-[10px] font-mono">
                                                             {cat}
                                                         </Badge>
                                                     ))}
@@ -455,10 +455,10 @@ export default function VendorsPage() {
                                                     variant="outline"
                                                     className={`
                             text-[10px] font-mono
-                            ${vendor.status === 'active' ? 'border-green-900 text-green-500 bg-green-900/10' : ''}
-                            ${vendor.status === 'inactive' ? 'border-zinc-700 text-zinc-400 bg-zinc-800/20' : ''}
-                            ${vendor.status === 'suspended' ? 'border-red-900 text-red-500 bg-red-900/10' : ''}
-                            ${vendor.status === 'pending_verification' ? 'border-amber-900 text-amber-500 bg-amber-900/10' : ''}
+                            ${vendor.status === 'active' ? 'border-green-900 text-green-500 bg-green-100 dark:bg-green-900/10' : ''}
+                            ${vendor.status === 'inactive' ? 'border-border text-muted-foreground bg-muted/20' : ''}
+                            ${vendor.status === 'suspended' ? 'border-red-900 text-red-500 bg-red-100 dark:bg-red-900/10' : ''}
+                            ${vendor.status === 'pending_verification' ? 'border-amber-900 text-amber-500 bg-amber-100 dark:bg-amber-900/10' : ''}
                           `}
                                                 >
                                                     {vendor.status}
@@ -471,35 +471,35 @@ export default function VendorsPage() {
                                                 </div>
                                             </TableCell>
                                             <TableCell className="text-right">
-                                                <div className="text-xs text-zinc-300 font-mono">{vendor.totalJobsCompleted}</div>
+                                                <div className="text-xs text-muted-foreground font-mono">{vendor.totalJobsCompleted}</div>
                                             </TableCell>
                                             <TableCell className="text-right">
                                                 <DropdownMenu>
                                                     <DropdownMenuTrigger asChild>
-                                                        <Button variant="ghost" className="h-6 w-6 p-0 text-zinc-500 hover:text-white">
+                                                        <Button variant="ghost" className="h-6 w-6 p-0 text-muted-foreground hover:text-foreground">
                                                             <span className="sr-only">Open menu</span>
                                                             <MoreVertical className="h-3 w-3" />
                                                         </Button>
                                                     </DropdownMenuTrigger>
-                                                    <DropdownMenuContent align="end" className="bg-black border-zinc-800 text-zinc-300">
-                                                        <DropdownMenuLabel className="text-xs font-mono uppercase text-zinc-500">Actions</DropdownMenuLabel>
+                                                    <DropdownMenuContent align="end" className="bg-background border-border text-muted-foreground">
+                                                        <DropdownMenuLabel className="text-xs font-mono uppercase text-muted-foreground">Actions</DropdownMenuLabel>
                                                         <DropdownMenuItem 
-                                                            className="hover:bg-zinc-900 focus:bg-zinc-900 cursor-pointer text-xs font-mono"
+                                                            className="hover:bg-card focus:bg-card cursor-pointer text-xs font-mono"
                                                             onClick={() => handleViewDetails(vendor)}
                                                         >
                                                             <Eye className="h-3 w-3 mr-2" />
                                                             View details
                                                         </DropdownMenuItem>
                                                         <DropdownMenuItem 
-                                                            className="hover:bg-zinc-900 focus:bg-zinc-900 cursor-pointer text-xs font-mono"
+                                                            className="hover:bg-card focus:bg-card cursor-pointer text-xs font-mono"
                                                             onClick={() => handleViewDetails(vendor)}
                                                         >
                                                             <FileText className="h-3 w-3 mr-2" />
                                                             View Invoices
                                                         </DropdownMenuItem>
-                                                        <DropdownMenuSeparator className="bg-zinc-800" />
+                                                        <DropdownMenuSeparator className="bg-muted" />
                                                         <DropdownMenuItem 
-                                                            className="text-red-500 hover:bg-zinc-900 focus:bg-zinc-900 cursor-pointer text-xs font-mono"
+                                                            className="text-red-500 hover:bg-card focus:bg-card cursor-pointer text-xs font-mono"
                                                             onClick={() => {
                                                                 setVendorToDelete(vendor)
                                                                 setShowDeleteDialog(true)
@@ -522,10 +522,10 @@ export default function VendorsPage() {
             
             {/* Add Vendor Dialog */}
             <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
-                <DialogContent className="bg-zinc-900 border-zinc-800 text-white max-w-lg">
+                <DialogContent className="bg-card border-border text-foreground max-w-lg">
                     <DialogHeader>
                         <DialogTitle className="font-mono uppercase text-amber-500">Add New Vendor</DialogTitle>
-                        <DialogDescription className="text-zinc-500 font-mono text-xs">
+                        <DialogDescription className="text-muted-foreground font-mono text-xs">
                             Add a new service provider or contractor to your vendor directory.
                         </DialogDescription>
                     </DialogHeader>
@@ -533,19 +533,19 @@ export default function VendorsPage() {
                     <div className="space-y-4 py-4">
                         <div className="grid grid-cols-2 gap-4">
                             <div className="space-y-2">
-                                <Label className="text-xs font-mono text-zinc-400">Business Name *</Label>
+                                <Label className="text-xs font-mono text-muted-foreground">Business Name *</Label>
                                 <Input
                                     placeholder="Enter business name"
-                                    className="bg-black border-zinc-800 text-white font-mono text-xs"
+                                    className="bg-background border-border text-foreground font-mono text-xs"
                                     value={newVendor.businessName}
                                     onChange={(e) => setNewVendor({ ...newVendor, businessName: e.target.value })}
                                 />
                             </div>
                             <div className="space-y-2">
-                                <Label className="text-xs font-mono text-zinc-400">Contact Person *</Label>
+                                <Label className="text-xs font-mono text-muted-foreground">Contact Person *</Label>
                                 <Input
                                     placeholder="Full name"
-                                    className="bg-black border-zinc-800 text-white font-mono text-xs"
+                                    className="bg-background border-border text-foreground font-mono text-xs"
                                     value={newVendor.contactPerson}
                                     onChange={(e) => setNewVendor({ ...newVendor, contactPerson: e.target.value })}
                                 />
@@ -554,20 +554,20 @@ export default function VendorsPage() {
                         
                         <div className="grid grid-cols-2 gap-4">
                             <div className="space-y-2">
-                                <Label className="text-xs font-mono text-zinc-400">Email</Label>
+                                <Label className="text-xs font-mono text-muted-foreground">Email</Label>
                                 <Input
                                     type="email"
                                     placeholder="email@example.com"
-                                    className="bg-black border-zinc-800 text-white font-mono text-xs"
+                                    className="bg-background border-border text-foreground font-mono text-xs"
                                     value={newVendor.email}
                                     onChange={(e) => setNewVendor({ ...newVendor, email: e.target.value })}
                                 />
                             </div>
                             <div className="space-y-2">
-                                <Label className="text-xs font-mono text-zinc-400">Phone Number *</Label>
+                                <Label className="text-xs font-mono text-muted-foreground">Phone Number *</Label>
                                 <Input
                                     placeholder="+233 XX XXX XXXX"
-                                    className="bg-black border-zinc-800 text-white font-mono text-xs"
+                                    className="bg-background border-border text-foreground font-mono text-xs"
                                     value={newVendor.phonePrimary}
                                     onChange={(e) => setNewVendor({ ...newVendor, phonePrimary: e.target.value })}
                                 />
@@ -575,17 +575,17 @@ export default function VendorsPage() {
                         </div>
                         
                         <div className="space-y-2">
-                            <Label className="text-xs font-mono text-zinc-400">Address</Label>
+                            <Label className="text-xs font-mono text-muted-foreground">Address</Label>
                             <Input
                                 placeholder="Business address"
-                                className="bg-black border-zinc-800 text-white font-mono text-xs"
+                                className="bg-background border-border text-foreground font-mono text-xs"
                                 value={newVendor.address}
                                 onChange={(e) => setNewVendor({ ...newVendor, address: e.target.value })}
                             />
                         </div>
                         
                         <div className="space-y-2">
-                            <Label className="text-xs font-mono text-zinc-400">Service Categories</Label>
+                            <Label className="text-xs font-mono text-muted-foreground">Service Categories</Label>
                             <div className="flex flex-wrap gap-2">
                                 {Object.values(MaintenanceCategory).map((cat) => (
                                     <Badge
@@ -593,8 +593,8 @@ export default function VendorsPage() {
                                         variant="outline"
                                         className={`cursor-pointer text-[10px] font-mono transition-colors ${
                                             newVendor.serviceCategories.includes(cat)
-                                                ? 'bg-amber-600 border-amber-600 text-white'
-                                                : 'border-zinc-700 text-zinc-400 hover:border-amber-600'
+                                                ? 'bg-amber-600 border-amber-600 text-foreground'
+                                                : 'border-border text-muted-foreground hover:border-amber-600'
                                         }`}
                                         onClick={() => {
                                             const cats = newVendor.serviceCategories.includes(cat)
@@ -610,10 +610,10 @@ export default function VendorsPage() {
                         </div>
                         
                         <div className="space-y-2">
-                            <Label className="text-xs font-mono text-zinc-400">Notes</Label>
+                            <Label className="text-xs font-mono text-muted-foreground">Notes</Label>
                             <Textarea
                                 placeholder="Additional notes about this vendor..."
-                                className="bg-black border-zinc-800 text-white font-mono text-xs min-h-[80px]"
+                                className="bg-background border-border text-foreground font-mono text-xs min-h-[80px]"
                                 value={newVendor.notes}
                                 onChange={(e) => setNewVendor({ ...newVendor, notes: e.target.value })}
                             />
@@ -623,13 +623,13 @@ export default function VendorsPage() {
                     <DialogFooter>
                         <Button
                             variant="outline"
-                            className="border-zinc-700 text-zinc-400 hover:text-white font-mono text-xs"
+                            className="border-border text-muted-foreground hover:text-foreground font-mono text-xs"
                             onClick={() => setShowAddDialog(false)}
                         >
                             Cancel
                         </Button>
                         <Button
-                            className="bg-amber-600 hover:bg-amber-500 text-white font-bold font-mono text-xs"
+                            className="bg-amber-600 hover:bg-amber-500 text-foreground font-bold font-mono text-xs"
                             onClick={handleAddVendor}
                             disabled={isSubmitting}
                         >
@@ -651,21 +651,21 @@ export default function VendorsPage() {
             
             {/* Delete Confirmation Dialog */}
             <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
-                <DialogContent className="bg-zinc-900 border-zinc-800 text-white max-w-md">
+                <DialogContent className="bg-card border-border text-foreground max-w-md">
                     <DialogHeader>
                         <DialogTitle className="font-mono uppercase text-red-500 flex items-center gap-2">
                             <AlertCircle className="h-5 w-5" />
                             Remove Vendor
                         </DialogTitle>
-                        <DialogDescription className="text-zinc-400 font-mono text-xs">
-                            Are you sure you want to remove <span className="text-white font-bold">{vendorToDelete?.businessName}</span> from your vendor directory? This action cannot be undone.
+                        <DialogDescription className="text-muted-foreground font-mono text-xs">
+                            Are you sure you want to remove <span className="text-foreground font-bold">{vendorToDelete?.businessName}</span> from your vendor directory? This action cannot be undone.
                         </DialogDescription>
                     </DialogHeader>
                     
                     <DialogFooter className="mt-4">
                         <Button
                             variant="outline"
-                            className="border-zinc-700 text-zinc-400 hover:text-white font-mono text-xs"
+                            className="border-border text-muted-foreground hover:text-foreground font-mono text-xs"
                             onClick={() => {
                                 setShowDeleteDialog(false)
                                 setVendorToDelete(null)
@@ -697,41 +697,41 @@ export default function VendorsPage() {
             
             {/* Filter Sheet */}
             <Sheet open={showFilterSheet} onOpenChange={setShowFilterSheet}>
-                <SheetContent className="bg-zinc-900 border-zinc-800 text-white">
+                <SheetContent className="bg-card border-border text-foreground">
                     <SheetHeader>
                         <SheetTitle className="font-mono uppercase text-amber-500">Filter Vendors</SheetTitle>
-                        <SheetDescription className="text-zinc-500 font-mono text-xs">
+                        <SheetDescription className="text-muted-foreground font-mono text-xs">
                             Narrow down your vendor list by status or service category.
                         </SheetDescription>
                     </SheetHeader>
                     
                     <div className="space-y-6 py-6">
                         <div className="space-y-2">
-                            <Label className="text-xs font-mono text-zinc-400">Status</Label>
+                            <Label className="text-xs font-mono text-muted-foreground">Status</Label>
                             <Select value={statusFilter} onValueChange={setStatusFilter}>
-                                <SelectTrigger className="bg-black border-zinc-800 text-white font-mono text-xs">
+                                <SelectTrigger className="bg-background border-border text-foreground font-mono text-xs">
                                     <SelectValue placeholder="All statuses" />
                                 </SelectTrigger>
-                                <SelectContent className="bg-black border-zinc-800">
-                                    <SelectItem value="all" className="text-zinc-300 font-mono text-xs">All statuses</SelectItem>
-                                    <SelectItem value="active" className="text-zinc-300 font-mono text-xs">Active</SelectItem>
-                                    <SelectItem value="inactive" className="text-zinc-300 font-mono text-xs">Inactive</SelectItem>
-                                    <SelectItem value="suspended" className="text-zinc-300 font-mono text-xs">Suspended</SelectItem>
-                                    <SelectItem value="pending_verification" className="text-zinc-300 font-mono text-xs">Pending Verification</SelectItem>
+                                <SelectContent className="bg-background border-border">
+                                    <SelectItem value="all" className="text-muted-foreground font-mono text-xs">All statuses</SelectItem>
+                                    <SelectItem value="active" className="text-muted-foreground font-mono text-xs">Active</SelectItem>
+                                    <SelectItem value="inactive" className="text-muted-foreground font-mono text-xs">Inactive</SelectItem>
+                                    <SelectItem value="suspended" className="text-muted-foreground font-mono text-xs">Suspended</SelectItem>
+                                    <SelectItem value="pending_verification" className="text-muted-foreground font-mono text-xs">Pending Verification</SelectItem>
                                 </SelectContent>
                             </Select>
                         </div>
                         
                         <div className="space-y-2">
-                            <Label className="text-xs font-mono text-zinc-400">Service Category</Label>
+                            <Label className="text-xs font-mono text-muted-foreground">Service Category</Label>
                             <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-                                <SelectTrigger className="bg-black border-zinc-800 text-white font-mono text-xs">
+                                <SelectTrigger className="bg-background border-border text-foreground font-mono text-xs">
                                     <SelectValue placeholder="All categories" />
                                 </SelectTrigger>
-                                <SelectContent className="bg-black border-zinc-800">
-                                    <SelectItem value="all" className="text-zinc-300 font-mono text-xs">All categories</SelectItem>
+                                <SelectContent className="bg-background border-border">
+                                    <SelectItem value="all" className="text-muted-foreground font-mono text-xs">All categories</SelectItem>
                                     {Object.values(MaintenanceCategory).map((cat) => (
-                                        <SelectItem key={cat} value={cat} className="text-zinc-300 font-mono text-xs">
+                                        <SelectItem key={cat} value={cat} className="text-muted-foreground font-mono text-xs">
                                             {cat}
                                         </SelectItem>
                                     ))}
@@ -742,7 +742,7 @@ export default function VendorsPage() {
                         <div className="pt-4 flex gap-2">
                             <Button
                                 variant="outline"
-                                className="flex-1 border-zinc-700 text-zinc-400 hover:text-white font-mono text-xs"
+                                className="flex-1 border-border text-muted-foreground hover:text-foreground font-mono text-xs"
                                 onClick={() => {
                                     clearFilters()
                                     setShowFilterSheet(false)
@@ -751,7 +751,7 @@ export default function VendorsPage() {
                                 Clear Filters
                             </Button>
                             <Button
-                                className="flex-1 bg-amber-600 hover:bg-amber-500 text-white font-bold font-mono text-xs"
+                                className="flex-1 bg-amber-600 hover:bg-amber-500 text-foreground font-bold font-mono text-xs"
                                 onClick={() => setShowFilterSheet(false)}
                             >
                                 Apply Filters
@@ -763,13 +763,13 @@ export default function VendorsPage() {
             
             {/* Vendor Details Sheet */}
             <Sheet open={showDetailsSheet} onOpenChange={setShowDetailsSheet}>
-                <SheetContent className="bg-zinc-900 border-zinc-800 text-white w-[500px] sm:max-w-[500px]">
+                <SheetContent className="bg-card border-border text-foreground w-[500px] sm:max-w-[500px]">
                     <SheetHeader>
                         <SheetTitle className="font-mono uppercase text-amber-500 flex items-center gap-2">
                             {selectedVendor && getServiceIcon(selectedVendor.serviceCategories)}
                             {selectedVendor?.businessName}
                         </SheetTitle>
-                        <SheetDescription className="text-zinc-500 font-mono text-xs">
+                        <SheetDescription className="text-muted-foreground font-mono text-xs">
                             Vendor details and performance metrics
                         </SheetDescription>
                     </SheetHeader>
@@ -781,39 +781,39 @@ export default function VendorsPage() {
                                 <Badge
                                     variant="outline"
                                     className={`text-xs font-mono ${
-                                        selectedVendor.status === 'active' ? 'border-green-900 text-green-500 bg-green-900/10' :
-                                        selectedVendor.status === 'inactive' ? 'border-zinc-700 text-zinc-400 bg-zinc-800/20' :
-                                        selectedVendor.status === 'suspended' ? 'border-red-900 text-red-500 bg-red-900/10' :
-                                        'border-amber-900 text-amber-500 bg-amber-900/10'
+                                        selectedVendor.status === 'active' ? 'border-green-900 text-green-500 bg-green-100 dark:bg-green-900/10' :
+                                        selectedVendor.status === 'inactive' ? 'border-border text-muted-foreground bg-muted/20' :
+                                        selectedVendor.status === 'suspended' ? 'border-red-900 text-red-500 bg-red-100 dark:bg-red-900/10' :
+                                        'border-amber-900 text-amber-500 bg-amber-100 dark:bg-amber-900/10'
                                     }`}
                                 >
                                     {selectedVendor.status}
                                 </Badge>
-                                <span className="text-[10px] text-zinc-500 font-mono">ID: {selectedVendor.id}</span>
+                                <span className="text-[10px] text-muted-foreground font-mono">ID: {selectedVendor.id}</span>
                             </div>
                             
                             {/* Contact Information */}
-                            <div className="space-y-3 p-4 bg-black/40 rounded-lg border border-zinc-800">
-                                <h4 className="text-xs font-mono uppercase text-zinc-500">Contact Information</h4>
+                            <div className="space-y-3 p-4 bg-background/40 rounded-lg border border-border">
+                                <h4 className="text-xs font-mono uppercase text-muted-foreground">Contact Information</h4>
                                 <div className="space-y-2">
                                     <div className="flex items-center gap-2 text-sm">
-                                        <Users className="h-4 w-4 text-zinc-500" />
-                                        <span className="text-zinc-300">{selectedVendor.contactPerson}</span>
+                                        <Users className="h-4 w-4 text-muted-foreground" />
+                                        <span className="text-muted-foreground">{selectedVendor.contactPerson}</span>
                                     </div>
                                     <div className="flex items-center gap-2 text-sm">
-                                        <Phone className="h-4 w-4 text-zinc-500" />
-                                        <span className="text-zinc-300">{selectedVendor.phonePrimary}</span>
+                                        <Phone className="h-4 w-4 text-muted-foreground" />
+                                        <span className="text-muted-foreground">{selectedVendor.phonePrimary}</span>
                                     </div>
                                     {selectedVendor.email && (
                                         <div className="flex items-center gap-2 text-sm">
-                                            <Mail className="h-4 w-4 text-zinc-500" />
-                                            <span className="text-zinc-300">{selectedVendor.email}</span>
+                                            <Mail className="h-4 w-4 text-muted-foreground" />
+                                            <span className="text-muted-foreground">{selectedVendor.email}</span>
                                         </div>
                                     )}
                                     {selectedVendor.address && (
                                         <div className="flex items-center gap-2 text-sm">
-                                            <MapPin className="h-4 w-4 text-zinc-500" />
-                                            <span className="text-zinc-300">{selectedVendor.address}</span>
+                                            <MapPin className="h-4 w-4 text-muted-foreground" />
+                                            <span className="text-muted-foreground">{selectedVendor.address}</span>
                                         </div>
                                     )}
                                 </div>
@@ -821,7 +821,7 @@ export default function VendorsPage() {
                             
                             {/* Service Categories */}
                             <div className="space-y-3">
-                                <h4 className="text-xs font-mono uppercase text-zinc-500">Service Categories</h4>
+                                <h4 className="text-xs font-mono uppercase text-muted-foreground">Service Categories</h4>
                                 <div className="flex flex-wrap gap-2">
                                     {(Array.isArray(selectedVendor.serviceCategories) ? selectedVendor.serviceCategories : []).map((cat, i) => (
                                         <Badge key={i} variant="outline" className="border-amber-900/50 text-amber-500 text-xs font-mono">
@@ -833,24 +833,24 @@ export default function VendorsPage() {
                             
                             {/* Performance Metrics */}
                             <div className="grid grid-cols-2 gap-4">
-                                <div className="p-4 bg-black/40 rounded-lg border border-zinc-800 text-center">
+                                <div className="p-4 bg-background/40 rounded-lg border border-border text-center">
                                     <div className="flex items-center justify-center gap-1 text-amber-500 mb-1">
                                         <Star className="h-4 w-4 fill-amber-500" />
                                         <span className="text-xl font-bold font-mono">{selectedVendor.averageRating || 0}</span>
                                     </div>
-                                    <p className="text-[10px] text-zinc-500 font-mono uppercase">Avg Rating</p>
+                                    <p className="text-[10px] text-muted-foreground font-mono uppercase">Avg Rating</p>
                                 </div>
-                                <div className="p-4 bg-black/40 rounded-lg border border-zinc-800 text-center">
-                                    <span className="text-xl font-bold font-mono text-white">{selectedVendor.totalJobsCompleted || 0}</span>
-                                    <p className="text-[10px] text-zinc-500 font-mono uppercase">Jobs Completed</p>
+                                <div className="p-4 bg-background/40 rounded-lg border border-border text-center">
+                                    <span className="text-xl font-bold font-mono text-foreground">{selectedVendor.totalJobsCompleted || 0}</span>
+                                    <p className="text-[10px] text-muted-foreground font-mono uppercase">Jobs Completed</p>
                                 </div>
                             </div>
                             
                             {/* Notes */}
                             {selectedVendor.notes && (
                                 <div className="space-y-2">
-                                    <h4 className="text-xs font-mono uppercase text-zinc-500">Notes</h4>
-                                    <p className="text-sm text-zinc-400 font-mono">{selectedVendor.notes}</p>
+                                    <h4 className="text-xs font-mono uppercase text-muted-foreground">Notes</h4>
+                                    <p className="text-sm text-muted-foreground font-mono">{selectedVendor.notes}</p>
                                 </div>
                             )}
                             
@@ -858,14 +858,14 @@ export default function VendorsPage() {
                             <div className="pt-4 flex gap-2">
                                 <Button
                                     variant="outline"
-                                    className="flex-1 border-zinc-700 text-zinc-400 hover:text-white font-mono text-xs"
+                                    className="flex-1 border-border text-muted-foreground hover:text-foreground font-mono text-xs"
                                     onClick={() => setShowDetailsSheet(false)}
                                 >
                                     Close
                                 </Button>
                                 <Button
                                     variant="destructive"
-                                    className="bg-red-600/20 hover:bg-red-600 text-red-500 hover:text-white border border-red-900 font-mono text-xs"
+                                    className="bg-red-600/20 hover:bg-red-600 text-red-500 hover:text-foreground border border-red-900 font-mono text-xs"
                                     onClick={() => {
                                         setShowDetailsSheet(false)
                                         setVendorToDelete(selectedVendor)

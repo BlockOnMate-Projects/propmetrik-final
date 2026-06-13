@@ -54,11 +54,11 @@ import {
 // =====================================================
 
 const statusConfig: Record<MilestoneStatus, { bg: string; text: string; label: string; icon: React.ElementType }> = {
-  not_started: { bg: 'bg-zinc-700/50', text: 'text-zinc-400', label: 'Not Started', icon: Clock },
-  in_progress: { bg: 'bg-blue-900/50', text: 'text-blue-400', label: 'In Progress', icon: Target },
-  completed: { bg: 'bg-green-900/50', text: 'text-green-400', label: 'Completed', icon: CheckCircle2 },
-  blocked: { bg: 'bg-red-900/50', text: 'text-red-400', label: 'Blocked', icon: Lock },
-  overdue: { bg: 'bg-orange-900/50', text: 'text-orange-400', label: 'Overdue', icon: AlertCircle },
+  not_started: { bg: 'bg-zinc-700/50', text: 'text-muted-foreground', label: 'Not Started', icon: Clock },
+  in_progress: { bg: 'bg-blue-100 dark:bg-blue-900/50', text: 'text-blue-600 dark:text-blue-400', label: 'In Progress', icon: Target },
+  completed: { bg: 'bg-green-100 dark:bg-green-900/50', text: 'text-green-600 dark:text-green-400', label: 'Completed', icon: CheckCircle2 },
+  blocked: { bg: 'bg-red-100 dark:bg-red-900/50', text: 'text-red-600 dark:text-red-400', label: 'Blocked', icon: Lock },
+  overdue: { bg: 'bg-orange-100 dark:bg-orange-900/50', text: 'text-orange-600 dark:text-orange-400', label: 'Overdue', icon: AlertCircle },
 }
 
 // =====================================================
@@ -249,7 +249,7 @@ export function MilestonesTab({ projectId, organizationId, frameworkId, onRefres
         {canManage && (
           <Button
             onClick={() => setShowAddMilestoneDialog(true)}
-            className="h-10 font-mono text-xs bg-amber-600 hover:bg-amber-700 text-white shrink-0"
+            className="h-10 font-mono text-xs bg-amber-600 hover:bg-amber-700 text-foreground shrink-0"
           >
             <Plus className="h-3 w-3 mr-1" />
             Add Milestone
@@ -258,12 +258,12 @@ export function MilestonesTab({ projectId, organizationId, frameworkId, onRefres
       </div>
       
       {/* Overall Progress */}
-      <div className="border border-zinc-800 bg-zinc-900/50 p-4">
+      <div className="border border-border bg-card/50 p-4">
         <div className="flex items-center justify-between mb-2">
-          <span className="font-mono text-xs text-zinc-400">Overall Progress</span>
+          <span className="font-mono text-xs text-muted-foreground">Overall Progress</span>
           <span className="font-mono text-sm text-amber-500">{overallProgress}%</span>
         </div>
-        <div className="h-3 bg-zinc-800 rounded-full overflow-hidden">
+        <div className="h-3 bg-muted rounded-full overflow-hidden">
           <div 
             className="h-full bg-gradient-to-r from-amber-600 to-amber-400 transition-all duration-500"
             style={{ width: `${overallProgress}%` }}
@@ -272,13 +272,13 @@ export function MilestonesTab({ projectId, organizationId, frameworkId, onRefres
         
         {/* Framework Info */}
         {framework && (
-          <div className="flex items-center gap-2 mt-3 pt-3 border-t border-zinc-800">
+          <div className="flex items-center gap-2 mt-3 pt-3 border-t border-border">
             <Shield className="h-4 w-4 text-amber-500" />
-            <span className="font-mono text-xs text-zinc-400">
-              Framework: <span className="text-white">{framework.name}</span>
+            <span className="font-mono text-xs text-muted-foreground">
+              Framework: <span className="text-foreground">{framework.name}</span>
             </span>
             {framework.is_locked && (
-              <Badge variant="outline" className="font-mono text-[10px] bg-amber-900/50 text-amber-400 border-amber-800/50">
+              <Badge variant="outline" className="font-mono text-[10px] bg-amber-100 dark:bg-amber-900/50 text-amber-600 dark:text-amber-400 border-amber-800/50">
                 <Lock className="h-2 w-2 mr-1" />
                 Locked
               </Badge>
@@ -289,18 +289,18 @@ export function MilestonesTab({ projectId, organizationId, frameworkId, onRefres
       
       {/* Error Message */}
       {error && (
-        <div className="border border-red-800 bg-red-900/20 p-4 text-center">
-          <AlertCircle className="h-6 w-6 text-red-400 mx-auto mb-2" />
-          <p className="font-mono text-sm text-red-400">{error}</p>
+        <div className="border border-red-800 bg-red-100 dark:bg-red-900/20 p-4 text-center">
+          <AlertCircle className="h-6 w-6 text-red-600 dark:text-red-400 mx-auto mb-2" />
+          <p className="font-mono text-sm text-red-600 dark:text-red-400">{error}</p>
         </div>
       )}
       
       {/* Milestones by Phase */}
       {milestones.length === 0 ? (
-        <div className="text-center py-12 border border-zinc-800 bg-zinc-900/50">
+        <div className="text-center py-12 border border-border bg-card/50">
           <Flag className="h-12 w-12 text-zinc-700 mx-auto mb-4" />
-          <h3 className="font-mono text-sm text-white mb-2">No Milestones Found</h3>
-          <p className="font-mono text-xs text-zinc-500">
+          <h3 className="font-mono text-sm text-foreground mb-2">No Milestones Found</h3>
+          <p className="font-mono text-xs text-muted-foreground">
             Project milestones will appear here as they are created
           </p>
         </div>
@@ -315,27 +315,27 @@ export function MilestonesTab({ projectId, organizationId, frameworkId, onRefres
               : 0
             
             return (
-              <div key={phase.id} className="border border-zinc-800 bg-zinc-900/50">
+              <div key={phase.id} className="border border-border bg-card/50">
                 {/* Phase Header */}
                 <div 
-                  className="flex items-center gap-4 p-4 cursor-pointer hover:bg-zinc-800/50 transition-colors"
+                  className="flex items-center gap-4 p-4 cursor-pointer hover:bg-muted/50 transition-colors"
                   onClick={() => togglePhase(phase.id)}
                 >
-                  <div className="flex-shrink-0 w-8 h-8 flex items-center justify-center bg-amber-900/50 text-amber-400 font-mono text-sm">
+                  <div className="flex-shrink-0 w-8 h-8 flex items-center justify-center bg-amber-100 dark:bg-amber-900/50 text-amber-600 dark:text-amber-400 font-mono text-sm">
                     {phaseIndex + 1}
                   </div>
                   
                   <div className="flex-1 min-w-0">
-                    <h4 className="font-mono text-sm text-white">
+                    <h4 className="font-mono text-sm text-foreground">
                       {phase.name}
                     </h4>
-                    <p className="font-mono text-xs text-zinc-500">
+                    <p className="font-mono text-xs text-muted-foreground">
                       {phaseMilestones.length} milestones • {phaseProgress}% complete
                     </p>
                   </div>
                   
                   <div className="w-24">
-                    <div className="h-2 bg-zinc-800 rounded-full overflow-hidden">
+                    <div className="h-2 bg-muted rounded-full overflow-hidden">
                       <div 
                         className="h-full bg-amber-500 transition-all"
                         style={{ width: `${phaseProgress}%` }}
@@ -344,15 +344,15 @@ export function MilestonesTab({ projectId, organizationId, frameworkId, onRefres
                   </div>
                   
                   {isExpanded ? (
-                    <ChevronUp className="h-4 w-4 text-zinc-500" />
+                    <ChevronUp className="h-4 w-4 text-muted-foreground" />
                   ) : (
-                    <ChevronDown className="h-4 w-4 text-zinc-500" />
+                    <ChevronDown className="h-4 w-4 text-muted-foreground" />
                   )}
                 </div>
                 
                 {/* Phase Milestones */}
                 {isExpanded && phaseMilestones.length > 0 && (
-                  <div className="border-t border-zinc-800">
+                  <div className="border-t border-border">
                     {phaseMilestones.map((milestone) => (
                       <MilestoneRow 
                         key={milestone.id}
@@ -365,8 +365,8 @@ export function MilestonesTab({ projectId, organizationId, frameworkId, onRefres
                 )}
                 
                 {isExpanded && phaseMilestones.length === 0 && (
-                  <div className="border-t border-zinc-800 p-4 text-center">
-                    <p className="font-mono text-xs text-zinc-500">No milestones in this phase yet</p>
+                  <div className="border-t border-border p-4 text-center">
+                    <p className="font-mono text-xs text-muted-foreground">No milestones in this phase yet</p>
                   </div>
                 )}
               </div>
@@ -375,13 +375,13 @@ export function MilestonesTab({ projectId, organizationId, frameworkId, onRefres
           
           {/* Unassigned milestones */}
           {milestonesByPhase['unassigned']?.length > 0 && (
-            <div className="border border-zinc-800 bg-zinc-900/50">
-              <div className="flex items-center gap-4 p-4 border-b border-zinc-800">
-                <div className="flex-shrink-0 w-8 h-8 flex items-center justify-center bg-zinc-700/50 text-zinc-400 font-mono text-sm">
+            <div className="border border-border bg-card/50">
+              <div className="flex items-center gap-4 p-4 border-b border-border">
+                <div className="flex-shrink-0 w-8 h-8 flex items-center justify-center bg-zinc-700/50 text-muted-foreground font-mono text-sm">
                   -
                 </div>
                 <div className="flex-1">
-                  <h4 className="font-mono text-sm text-zinc-400">Unassigned Milestones</h4>
+                  <h4 className="font-mono text-sm text-muted-foreground">Unassigned Milestones</h4>
                 </div>
               </div>
               {milestonesByPhase['unassigned'].map((milestone) => (
@@ -397,7 +397,7 @@ export function MilestonesTab({ projectId, organizationId, frameworkId, onRefres
         </div>
       ) : (
         // Simple list (no framework)
-        <div className="border border-zinc-800 bg-zinc-900/50">
+        <div className="border border-border bg-card/50">
           {milestones.map((milestone) => (
             <MilestoneRow 
               key={milestone.id}
@@ -412,39 +412,39 @@ export function MilestonesTab({ projectId, organizationId, frameworkId, onRefres
       {/* Add Milestone Dialog (PM only) */}
       {canManage && (
         <Dialog open={showAddMilestoneDialog} onOpenChange={setShowAddMilestoneDialog}>
-          <DialogContent className="bg-zinc-900 border-zinc-700 max-w-lg">
+          <DialogContent className="bg-card border-border max-w-lg">
             <DialogHeader>
-              <DialogTitle className="font-mono text-white">Add Milestone</DialogTitle>
-              <DialogDescription className="font-mono text-zinc-400">
+              <DialogTitle className="font-mono text-foreground">Add Milestone</DialogTitle>
+              <DialogDescription className="font-mono text-muted-foreground">
                 Create a new project milestone
               </DialogDescription>
             </DialogHeader>
             <div className="space-y-4">
               <div>
-                <Label className="font-mono text-xs text-zinc-400">Name *</Label>
+                <Label className="font-mono text-xs text-muted-foreground">Name *</Label>
                 <Input
                   value={milestoneForm.name}
                   onChange={e => setMilestoneForm(f => ({ ...f, name: e.target.value }))}
                   placeholder="Milestone name"
-                  className="mt-1 font-mono text-sm bg-zinc-800 border-zinc-700 text-white"
+                  className="mt-1 font-mono text-sm bg-muted border-border text-foreground"
                 />
               </div>
               <div>
-                <Label className="font-mono text-xs text-zinc-400">Description</Label>
+                <Label className="font-mono text-xs text-muted-foreground">Description</Label>
                 <Input
                   value={milestoneForm.description}
                   onChange={e => setMilestoneForm(f => ({ ...f, description: e.target.value }))}
                   placeholder="Optional description"
-                  className="mt-1 font-mono text-sm bg-zinc-800 border-zinc-700 text-white"
+                  className="mt-1 font-mono text-sm bg-muted border-border text-foreground"
                 />
               </div>
               <div>
-                <Label className="font-mono text-xs text-zinc-400">Target Date</Label>
+                <Label className="font-mono text-xs text-muted-foreground">Target Date</Label>
                 <Input
                   type="date"
                   value={milestoneForm.target_date}
                   onChange={e => setMilestoneForm(f => ({ ...f, target_date: e.target.value }))}
-                  className="mt-1 font-mono text-sm bg-zinc-800 border-zinc-700 text-white"
+                  className="mt-1 font-mono text-sm bg-muted border-border text-foreground"
                 />
               </div>
             </div>
@@ -460,7 +460,7 @@ export function MilestonesTab({ projectId, organizationId, frameworkId, onRefres
               <Button
                 onClick={handleAddMilestone}
                 disabled={isAddingMilestone || !milestoneForm.name.trim()}
-                className="font-mono text-xs bg-amber-600 hover:bg-amber-700 text-white"
+                className="font-mono text-xs bg-amber-600 hover:bg-amber-700 text-foreground"
               >
                 {isAddingMilestone ? (
                   <><Loader2 className="h-3 w-3 mr-2 animate-spin" />Creating...</>
@@ -475,34 +475,34 @@ export function MilestonesTab({ projectId, organizationId, frameworkId, onRefres
 
       {/* Approval Dialog */}
       <Dialog open={showApprovalDialog} onOpenChange={setShowApprovalDialog}>
-        <DialogContent className="bg-zinc-900 border-zinc-700 max-w-lg">
+        <DialogContent className="bg-card border-border max-w-lg">
           <DialogHeader>
-            <DialogTitle className="font-mono text-white">
+            <DialogTitle className="font-mono text-foreground">
               Approve Milestone
             </DialogTitle>
-            <DialogDescription className="font-mono text-zinc-400">
+            <DialogDescription className="font-mono text-muted-foreground">
               {selectedMilestone?.name}
             </DialogDescription>
           </DialogHeader>
           
           <div className="space-y-4">
-            <div className="bg-zinc-800/50 border border-zinc-700 p-4">
-              <p className="font-mono text-sm text-zinc-300">
+            <div className="bg-muted/50 border border-border p-4">
+              <p className="font-mono text-sm text-muted-foreground">
                 {selectedMilestone?.description || 'No description provided.'}
               </p>
               
-              <div className="grid grid-cols-2 gap-4 mt-4 pt-4 border-t border-zinc-700">
+              <div className="grid grid-cols-2 gap-4 mt-4 pt-4 border-t border-border">
                 <div>
-                  <span className="font-mono text-[10px] text-zinc-500">Target Date</span>
-                  <p className="font-mono text-sm text-white">
+                  <span className="font-mono text-[10px] text-muted-foreground">Target Date</span>
+                  <p className="font-mono text-sm text-foreground">
                     {selectedMilestone?.target_date 
                       ? new Date(selectedMilestone.target_date).toLocaleDateString('en-GB') 
                       : 'Not set'}
                   </p>
                 </div>
                 <div>
-                  <span className="font-mono text-[10px] text-zinc-500">Completed Date</span>
-                  <p className="font-mono text-sm text-green-400">
+                  <span className="font-mono text-[10px] text-muted-foreground">Completed Date</span>
+                  <p className="font-mono text-sm text-green-600 dark:text-green-400">
                     {selectedMilestone?.completed_date 
                       ? new Date(selectedMilestone.completed_date).toLocaleDateString('en-GB') 
                       : 'Not completed'}
@@ -511,8 +511,8 @@ export function MilestonesTab({ projectId, organizationId, frameworkId, onRefres
               </div>
             </div>
             
-            <div className="bg-amber-900/20 border border-amber-800/50 p-4">
-              <p className="font-mono text-xs text-amber-400">
+            <div className="bg-amber-100 dark:bg-amber-900/20 border border-amber-800/50 p-4">
+              <p className="font-mono text-xs text-amber-600 dark:text-amber-400">
                 By approving this milestone, you confirm that the work meets your requirements and standards.
               </p>
             </div>
@@ -530,7 +530,7 @@ export function MilestonesTab({ projectId, organizationId, frameworkId, onRefres
             <Button
               onClick={submitApproval}
               disabled={isSubmitting}
-              className="font-mono text-xs bg-green-600 hover:bg-green-700 text-white"
+              className="font-mono text-xs bg-green-600 hover:bg-green-700 text-foreground"
             >
               {isSubmitting ? (
                 <>
@@ -570,26 +570,26 @@ function MilestoneRow({ milestone, projectId, onApprove }: MilestoneRowProps) {
                         milestone.status === 'completed'
   
   return (
-    <div className="flex items-center gap-4 p-4 border-b border-zinc-800 last:border-b-0 hover:bg-zinc-800/30 transition-colors">
+    <div className="flex items-center gap-4 p-4 border-b border-border last:border-b-0 hover:bg-amber-50 dark:hover:bg-amber-500/10 transition-colors">
       <div className="flex-shrink-0">
         <StatusIcon className={cn("h-5 w-5", status.text)} />
       </div>
       
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2">
-          <h5 className="font-mono text-sm text-white line-clamp-1">
+          <h5 className="font-mono text-sm text-foreground line-clamp-1">
             {milestone.name}
           </h5>
           <Badge variant="outline" className={cn("font-mono text-[10px] border-0", status.bg, status.text)}>
             {status.label}
           </Badge>
           {milestone.is_required && (
-            <Badge variant="outline" className="font-mono text-[10px] bg-red-900/30 text-red-400 border border-red-800/50">
+            <Badge variant="outline" className="font-mono text-[10px] bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 border border-red-800/50">
               Required
             </Badge>
           )}
           {milestone.requires_client_approval && (
-            <Badge variant="outline" className="font-mono text-[10px] bg-amber-900/30 text-amber-400 border border-amber-800/50">
+            <Badge variant="outline" className="font-mono text-[10px] bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 border border-amber-800/50">
               {milestone.approved_by_client ? (
                 <>
                   <CheckCircle2 className="h-2 w-2 mr-1" />
@@ -604,7 +604,7 @@ function MilestoneRow({ milestone, projectId, onApprove }: MilestoneRowProps) {
             </Badge>
           )}
         </div>
-        <p className="font-mono text-xs text-zinc-500 mt-1">
+        <p className="font-mono text-xs text-muted-foreground mt-1">
           {milestone.target_date && (
             <>Target: {new Date(milestone.target_date).toLocaleDateString('en-GB')}</>
           )}
@@ -617,8 +617,8 @@ function MilestoneRow({ milestone, projectId, onApprove }: MilestoneRowProps) {
       {/* Progress */}
       {milestone.progress !== undefined && (
         <div className="w-20 text-right">
-          <span className="font-mono text-xs text-zinc-400">{milestone.progress}%</span>
-          <div className="h-1.5 bg-zinc-800 rounded-full overflow-hidden mt-1">
+          <span className="font-mono text-xs text-muted-foreground">{milestone.progress}%</span>
+          <div className="h-1.5 bg-muted rounded-full overflow-hidden mt-1">
             <div 
               className="h-full bg-amber-500 transition-all"
               style={{ width: `${milestone.progress}%` }}
@@ -631,7 +631,7 @@ function MilestoneRow({ milestone, projectId, onApprove }: MilestoneRowProps) {
       {needsApproval && (
         <Button
           size="sm"
-          className="h-8 font-mono text-xs bg-green-600 hover:bg-green-700 text-white"
+          className="h-8 font-mono text-xs bg-green-600 hover:bg-green-700 text-foreground"
           onClick={(e) => {
             e.stopPropagation()
             onApprove()
@@ -659,16 +659,16 @@ function StatCard({
   color?: 'zinc' | 'blue' | 'amber' | 'red' | 'green'
 }) {
   const colorClasses = {
-    zinc: 'text-white',
-    blue: 'text-blue-400',
-    amber: 'text-amber-400',
-    red: 'text-red-400',
-    green: 'text-green-400',
+    zinc: 'text-foreground',
+    blue: 'text-blue-600 dark:text-blue-400',
+    amber: 'text-amber-600 dark:text-amber-400',
+    red: 'text-red-600 dark:text-red-400',
+    green: 'text-green-600 dark:text-green-400',
   }
   
   return (
-    <div className="border border-zinc-800 bg-zinc-900/50 p-4">
-      <div className="font-mono text-[10px] text-zinc-500 uppercase tracking-wider mb-1">
+    <div className="border border-border bg-card/50 p-4">
+      <div className="font-mono text-[10px] text-muted-foreground uppercase tracking-wider mb-1">
         {label}
       </div>
       <div className={cn("font-mono text-2xl", colorClasses[color])}>

@@ -108,6 +108,7 @@ import { initKobbyMonitor } from './jobs/kobbyAIMonitor';
 import { initWhatsAppDigest } from './jobs/whatsappDigest';
 import { initRentReminderJob } from './jobs/rentReminderJob';
 import { initCrmTaskReminderJob } from './jobs/crmTaskReminderJob';
+import { initSubscriptionRenewalJob } from './jobs/subscriptionRenewalJob';
 
 // Import shared services
 import { realtimeEmitter } from '../shared-services/realtime';
@@ -975,6 +976,8 @@ const server = app.listen(config.port, async () => {
   initRentReminderJob();
   // Start daily CRM task due / overdue reminder job
   initCrmTaskReminderJob();
+  // Start daily subscription renewal / dunning sweep
+  initSubscriptionRenewalJob();
   // Attach WebSocket server for workspace real-time collaboration
   workspaceWebSocketServer.attach(server);
   logger.info(`Propmetrik API server running on port ${config.port}`, {

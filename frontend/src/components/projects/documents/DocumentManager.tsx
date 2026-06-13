@@ -410,8 +410,8 @@ export function DocumentManager({ projectId }: DocumentManagerProps) {
             <>
               {/* Grid view */}
               <div className="flex items-start justify-between mb-3">
-                <div className="h-12 w-12 rounded-lg bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
-                  <FileIcon className="h-6 w-6 text-gray-500" />
+                <div className="h-12 w-12 rounded-lg bg-muted dark:bg-gray-800 flex items-center justify-center">
+                  <FileIcon className="h-6 w-6 text-muted-foreground" />
                 </div>
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
@@ -476,7 +476,7 @@ export function DocumentManager({ projectId }: DocumentManagerProps) {
               <h4 className="font-medium text-sm truncate mb-1">
                 {doc.name}{doc.file_extension}
               </h4>
-              <div className="flex items-center gap-2 text-xs text-gray-500 mb-2">
+              <div className="flex items-center gap-2 text-xs text-muted-foreground mb-2">
                 <span>{formatFileSize(doc.file_size)}</span>
                 <span>•</span>
                 <span>v{doc.current_version}</span>
@@ -485,7 +485,7 @@ export function DocumentManager({ projectId }: DocumentManagerProps) {
                 <Badge variant="outline" className="text-xs">
                   {doc.document_type?.replace(/_/g, ' ') || 'Other'}
                 </Badge>
-                <span className="text-xs text-gray-500">
+                <span className="text-xs text-muted-foreground">
                   {formatDistanceToNow(new Date(doc.updated_at), { addSuffix: true })}
                 </span>
               </div>
@@ -493,14 +493,14 @@ export function DocumentManager({ projectId }: DocumentManagerProps) {
           ) : (
             <>
               {/* List view */}
-              <div className="h-10 w-10 rounded-lg bg-gray-100 dark:bg-gray-800 flex items-center justify-center flex-shrink-0">
-                <FileIcon className="h-5 w-5 text-gray-500" />
+              <div className="h-10 w-10 rounded-lg bg-muted dark:bg-gray-800 flex items-center justify-center flex-shrink-0">
+                <FileIcon className="h-5 w-5 text-muted-foreground" />
               </div>
               <div className="flex-1 min-w-0">
                 <h4 className="font-medium text-sm truncate">
                   {doc.name}{doc.file_extension}
                 </h4>
-                <div className="flex items-center gap-2 text-xs text-gray-500">
+                <div className="flex items-center gap-2 text-xs text-muted-foreground">
                   <Badge variant="outline" className="text-xs">
                     {doc.document_type?.replace(/_/g, ' ') || 'Other'}
                   </Badge>
@@ -509,7 +509,7 @@ export function DocumentManager({ projectId }: DocumentManagerProps) {
                   <span>v{doc.current_version}</span>
                 </div>
               </div>
-              <div className="text-xs text-gray-500 text-right">
+              <div className="text-xs text-muted-foreground text-right">
                 <div className="flex items-center gap-1">
                   <Clock className="h-3 w-3" />
                   {formatDistanceToNow(new Date(doc.updated_at), { addSuffix: true })}
@@ -596,7 +596,7 @@ export function DocumentManager({ projectId }: DocumentManagerProps) {
       />
 
       {/* Sidebar - Folder Tree */}
-      <div className="w-64 border-r bg-white dark:bg-gray-950 flex-shrink-0">
+      <div className="w-64 border-r bg-card dark:bg-gray-950 flex-shrink-0">
         <FolderTree
           projectId={projectId}
           selectedFolderId={selectedFolderId}
@@ -613,7 +613,7 @@ export function DocumentManager({ projectId }: DocumentManagerProps) {
         {/* Header */}
         <div className="p-4 border-b flex items-center justify-between gap-4">
           <div className="flex items-center gap-3">
-            <FolderOpen className="h-5 w-5 text-gray-500" />
+            <FolderOpen className="h-5 w-5 text-muted-foreground" />
             <h2 className="font-semibold">
               {selectedFolderId ? 'Folder' : 'All Documents'}
             </h2>
@@ -627,7 +627,7 @@ export function DocumentManager({ projectId }: DocumentManagerProps) {
           <div className="flex items-center gap-2">
             {/* Search */}
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
                 placeholder="Search documents..."
                 value={searchQuery}
@@ -695,7 +695,7 @@ export function DocumentManager({ projectId }: DocumentManagerProps) {
                 <div
                   key={i}
                   className={cn(
-                    'bg-gray-100 dark:bg-gray-800 rounded-lg animate-pulse',
+                    'bg-muted dark:bg-gray-800 rounded-lg animate-pulse',
                     viewMode === 'grid' ? 'h-40' : 'h-16'
                   )}
                 />
@@ -725,13 +725,13 @@ export function DocumentManager({ projectId }: DocumentManagerProps) {
             </div>
           ) : (
             <div className="flex flex-col items-center justify-center h-full text-center">
-              <div className="h-16 w-16 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center mb-4">
-                <FileText className="h-8 w-8 text-gray-400" />
+              <div className="h-16 w-16 rounded-full bg-muted dark:bg-gray-800 flex items-center justify-center mb-4">
+                <FileText className="h-8 w-8 text-muted-foreground" />
               </div>
               <h3 className="font-medium text-gray-700 dark:text-gray-300 mb-2">
                 No documents yet
               </h3>
-              <p className="text-gray-500 text-sm mb-4">
+              <p className="text-muted-foreground text-sm mb-4">
                 Upload your first document or drag and drop files here.
               </p>
               <Button onClick={() => fileInputRef.current?.click()}>
@@ -754,11 +754,11 @@ export function DocumentManager({ projectId }: DocumentManagerProps) {
           </DialogHeader>
           <div className="space-y-4 py-4">
             {uploadFile && (
-              <div className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-900 rounded-lg">
-                <File className="h-8 w-8 text-gray-500" />
+              <div className="flex items-center gap-3 p-3 bg-muted dark:bg-gray-900 rounded-lg">
+                <File className="h-8 w-8 text-muted-foreground" />
                 <div className="flex-1 min-w-0">
                   <p className="font-medium text-sm truncate">{uploadFile.name}</p>
-                  <p className="text-xs text-gray-500">{formatFileSize(uploadFile.size)}</p>
+                  <p className="text-xs text-muted-foreground">{formatFileSize(uploadFile.size)}</p>
                 </div>
                 <Button
                   variant="ghost"
@@ -925,7 +925,7 @@ export function DocumentManager({ projectId }: DocumentManagerProps) {
                     <ExternalLink className="h-4 w-4" />
                   </Button>
                 </div>
-                <p className="text-xs text-gray-500">
+                <p className="text-xs text-muted-foreground">
                   This link will expire in {shareData.expires_in_days} days
                 </p>
               </div>

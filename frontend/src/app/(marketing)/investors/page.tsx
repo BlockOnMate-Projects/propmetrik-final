@@ -62,25 +62,25 @@ function DocumentCard({
     const inner = (
         <motion.div
             {...fade}
-            className="h-full bg-zinc-900 border border-zinc-800 border-l-2 border-l-amber-500 rounded-lg p-7 flex flex-col group-hover:border-zinc-600 group-hover:bg-zinc-900/80 transition-colors"
+            className="h-full bg-card border border-border border-l-2 border-l-amber-500 rounded-lg p-7 flex flex-col group-hover:border-zinc-600 group-hover:bg-card/80 transition-colors"
         >
             <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-2 text-amber-500">
                     {icon}
                     <span className="text-xs font-bold tracking-[0.15em] uppercase">{eyebrow}</span>
                 </div>
-                <span className="text-[10px] font-mono uppercase tracking-wider text-zinc-500 border border-zinc-700 rounded px-2 py-0.5">
+                <span className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground border border-border rounded px-2 py-0.5">
                     {tag}
                 </span>
             </div>
-            <h3 className="text-2xl font-bold text-white mb-2 group-hover:text-amber-500 transition-colors">{title}</h3>
-            <p className="text-zinc-400 text-sm leading-relaxed mb-6 flex-1">{description}</p>
+            <h3 className="text-2xl font-bold text-foreground mb-2 group-hover:text-amber-500 transition-colors">{title}</h3>
+            <p className="text-muted-foreground text-sm leading-relaxed mb-6 flex-1">{description}</p>
             {url ? (
                 <span className="inline-flex items-center gap-2 text-amber-500 font-semibold text-sm group-hover:gap-3 transition-all">
                     Open in Google Drive <ArrowUpRight className="w-4 h-4" />
                 </span>
             ) : (
-                <span className="inline-flex items-center gap-2 text-zinc-500 font-semibold text-sm group-hover:text-amber-500 transition-colors">
+                <span className="inline-flex items-center gap-2 text-muted-foreground font-semibold text-sm group-hover:text-amber-500 transition-colors">
                     Available on request <Mail className="w-4 h-4" />
                 </span>
             )}
@@ -107,27 +107,27 @@ export default function InvestorsPage() {
     ].filter((s) => s.value);
 
     return (
-        <main className="bg-zinc-950 text-white">
+        <main className="bg-background text-foreground">
             {/* Hero */}
-            <section className="pt-40 pb-24 border-b border-zinc-900">
+            <section className="pt-40 pb-24 border-b border-border">
                 <div className="container mx-auto px-6 max-w-5xl">
                     <motion.div {...fade}>
                         <Eyebrow>Investor materials</Eyebrow>
                         <h1 className="text-5xl md:text-7xl font-bold tracking-tight leading-[1.05] mb-8 max-w-4xl">
                             {INVESTOR.raiseHeadline || 'The data and trust layer for African real estate.'}
                         </h1>
-                        <p className="text-xl text-zinc-400 leading-relaxed max-w-2xl">{INVESTOR.summary}</p>
+                        <p className="text-xl text-muted-foreground leading-relaxed max-w-2xl">{INVESTOR.summary}</p>
                     </motion.div>
                 </div>
             </section>
 
             {/* Documents */}
-            <section className="py-24 border-b border-zinc-900">
+            <section className="py-24 border-b border-border">
                 <div className="container mx-auto px-6 max-w-5xl">
                     <motion.div {...fade}>
                         <Eyebrow>Documents</Eyebrow>
                         <h2 className="text-3xl md:text-5xl font-bold tracking-tight mb-4">Access our materials directly.</h2>
-                        <p className="text-lg text-zinc-400 mb-12 max-w-2xl">
+                        <p className="text-lg text-muted-foreground mb-12 max-w-2xl">
                             {INVESTOR.pitchDeckUrl && INVESTOR.financialModelUrl
                                 ? 'Both documents open in Google Drive. No sign-in required.'
                                 : INVESTOR.pitchDeckUrl || INVESTOR.financialModelUrl
@@ -158,7 +158,7 @@ export default function InvestorsPage() {
 
             {/* The raise — only renders if you've filled in at least one value */}
             {raiseStats.length > 0 && (
-                <section className="py-24 border-b border-zinc-900">
+                <section className="py-24 border-b border-border">
                     <div className="container mx-auto px-6 max-w-5xl">
                         <motion.div {...fade}>
                             <Eyebrow>The raise</Eyebrow>
@@ -168,10 +168,10 @@ export default function InvestorsPage() {
                                 <motion.div
                                     key={s.label}
                                     {...fade}
-                                    className="bg-zinc-900 border border-zinc-800 rounded-lg p-8"
+                                    className="bg-card border border-border rounded-lg p-8"
                                 >
-                                    <div className="text-4xl font-bold text-white mb-2">{s.value}</div>
-                                    <div className="text-sm text-zinc-400">{s.label}</div>
+                                    <div className="text-4xl font-bold text-foreground mb-2">{s.value}</div>
+                                    <div className="text-sm text-muted-foreground">{s.label}</div>
                                 </motion.div>
                             ))}
                         </div>
@@ -184,7 +184,7 @@ export default function InvestorsPage() {
                 <div className="container mx-auto px-6 max-w-5xl text-center">
                     <motion.div {...fade}>
                         <h2 className="text-3xl md:text-5xl font-bold tracking-tight mb-5">Ready to talk?</h2>
-                        <p className="text-lg text-zinc-400 mb-10 max-w-xl mx-auto">
+                        <p className="text-lg text-muted-foreground mb-10 max-w-xl mx-auto">
                             Reach out directly to the founders. We respond to every serious inquiry.
                         </p>
                         <div className="flex flex-col sm:flex-row gap-4 justify-center">
@@ -196,7 +196,7 @@ export default function InvestorsPage() {
                             </a>
                             <Link
                                 href="/contact"
-                                className="inline-flex items-center justify-center gap-2 px-8 py-4 border border-zinc-700 text-white font-semibold rounded-md hover:border-amber-500 hover:text-amber-500 transition-colors"
+                                className="inline-flex items-center justify-center gap-2 px-8 py-4 border border-border text-foreground font-semibold rounded-md hover:border-amber-500 hover:text-amber-500 transition-colors"
                             >
                                 Contact Us
                             </Link>

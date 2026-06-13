@@ -102,15 +102,15 @@ interface TeamManagerProps {
 // =====================================================
 
 const ROLE_CATEGORY_LABELS: Record<RoleCategory, { label: string; color: string }> = {
-  construction: { label: 'Construction', color: 'bg-amber-900/40 text-amber-400 border border-amber-700/50' },
-  professional: { label: 'Professional', color: 'bg-blue-900/40 text-blue-400 border border-blue-700/50' },
-  government: { label: 'Government', color: 'bg-purple-900/40 text-purple-400 border border-purple-700/50' },
-  stakeholder: { label: 'Stakeholder', color: 'bg-green-900/40 text-green-400 border border-green-700/50' },
-  internal: { label: 'Internal', color: 'bg-zinc-800 text-zinc-300 border border-zinc-700' },
-  contractor: { label: 'Contractor', color: 'bg-orange-900/40 text-orange-400 border border-orange-700/50' },
-  consultant: { label: 'Consultant', color: 'bg-cyan-900/40 text-cyan-400 border border-cyan-700/50' },
-  vendor: { label: 'Vendor', color: 'bg-rose-900/40 text-rose-400 border border-rose-700/50' },
-  other: { label: 'Other', color: 'bg-zinc-800 text-zinc-400 border border-zinc-700' },
+  construction: { label: 'Construction', color: 'bg-amber-100 dark:bg-amber-900/40 text-amber-600 dark:text-amber-400 border border-amber-700/50' },
+  professional: { label: 'Professional', color: 'bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400 border border-blue-700/50' },
+  government: { label: 'Government', color: 'bg-purple-100 dark:bg-purple-900/40 text-purple-600 dark:text-purple-400 border border-purple-700/50' },
+  stakeholder: { label: 'Stakeholder', color: 'bg-green-100 dark:bg-green-900/40 text-green-600 dark:text-green-400 border border-green-700/50' },
+  internal: { label: 'Internal', color: 'bg-muted text-muted-foreground border border-border' },
+  contractor: { label: 'Contractor', color: 'bg-orange-100 dark:bg-orange-900/40 text-orange-600 dark:text-orange-400 border border-orange-700/50' },
+  consultant: { label: 'Consultant', color: 'bg-cyan-100 dark:bg-cyan-900/40 text-cyan-600 dark:text-cyan-400 border border-cyan-700/50' },
+  vendor: { label: 'Vendor', color: 'bg-rose-100 dark:bg-rose-900/40 text-rose-600 dark:text-rose-400 border border-rose-700/50' },
+  other: { label: 'Other', color: 'bg-muted text-muted-foreground border border-border' },
 }
 
 const DEFAULT_PERMISSIONS: TeamMemberPermissions = {
@@ -179,7 +179,7 @@ function RoleSelector({
                   onClick={() => onSelect(role.role)}
                   className={cn(
                     'flex w-full items-center justify-between rounded-md px-3 py-2 text-left text-sm hover:bg-muted',
-                    selectedRole === role.role && 'bg-amber-900/30 ring-1 ring-amber-600'
+                    selectedRole === role.role && 'bg-amber-100 dark:bg-amber-900/30 ring-1 ring-amber-600'
                   )}
                 >
                   <div>
@@ -206,9 +206,11 @@ function RoleSelector({
 function PermissionsEditor({
   permissions,
   onChange,
+  disabled,
 }: {
   permissions: TeamMemberPermissions
   onChange: (permissions: TeamMemberPermissions) => void
+  disabled?: boolean
 }) {
   return (
     <div className="grid gap-3 sm:grid-cols-2">
@@ -216,6 +218,7 @@ function PermissionsEditor({
         <div key={key} className="flex items-center space-x-2">
           <Checkbox
             id={key}
+            disabled={disabled}
             checked={permissions[key as keyof TeamMemberPermissions]}
             onCheckedChange={(checked) =>
               onChange({
@@ -241,10 +244,12 @@ function TeamMemberCard({
   member,
   onClick,
   onAction,
+  canManage,
 }: {
   member: TeamMember
   onClick: () => void
   onAction: (action: string) => void
+  canManage: boolean
 }) {
   const roleCategory = ROLE_CATEGORY_LABELS[member.roleCategory]
   const initials = member.userName
@@ -276,40 +281,42 @@ function TeamMemberCard({
                   {member.title || member.role.replace(/_/g, ' ')}
                 </p>
               </div>
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
-                  <Button variant="ghost" size="icon">
-                    <MoreHorizontal className="h-4 w-4" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onAction('permissions'); }}>
-                    <Shield className="mr-2 h-4 w-4" />
-                    Edit Permissions
-                  </DropdownMenuItem>
-                  {member.isActive ? (
-                    <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onAction('deactivate'); }}>
-                      <UserMinus className="mr-2 h-4 w-4" />
-                      Deactivate
+              {canManage && (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+                    <Button variant="ghost" size="icon">
+                      <MoreHorizontal className="h-4 w-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onAction('permissions'); }}>
+                      <Shield className="mr-2 h-4 w-4" />
+                      Edit Permissions
                     </DropdownMenuItem>
-                  ) : (
-                    <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onAction('reactivate'); }}>
-                      <UserPlus className="mr-2 h-4 w-4" />
-                      Reactivate
+                    {member.isActive ? (
+                      <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onAction('deactivate'); }}>
+                        <UserMinus className="mr-2 h-4 w-4" />
+                        Deactivate
+                      </DropdownMenuItem>
+                    ) : (
+                      <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onAction('reactivate'); }}>
+                        <UserPlus className="mr-2 h-4 w-4" />
+                        Reactivate
+                      </DropdownMenuItem>
+                    )}
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem
+                      className="text-red-600"
+                      onClick={(e) => { e.stopPropagation(); onAction('remove'); }}
+                    >
+                      <XCircle className="mr-2 h-4 w-4" />
+                      Remove
                     </DropdownMenuItem>
-                  )}
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem
-                    className="text-red-600"
-                    onClick={(e) => { e.stopPropagation(); onAction('remove'); }}
-                  >
-                    <XCircle className="mr-2 h-4 w-4" />
-                    Remove
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              )}
             </div>
 
             <div className="mt-2 flex flex-wrap items-center gap-2">
@@ -411,8 +418,8 @@ function AddMemberForm({
                 </button>
               </TooltipTrigger>
               <TooltipContent side="right" className="max-w-xs text-xs leading-relaxed">
-                <p className="mb-1"><span className="font-semibold text-amber-400">Internal staff</span> — an employee of your firm. Gets a full staff login, scoped to the projects they're on.</p>
-                <p><span className="font-semibold text-cyan-400">External collaborator</span> — an outside party (contractor, architect, consultant). Gets a limited, invite-based login that shows only their assigned project(s) and the items awaiting them.</p>
+                <p className="mb-1"><span className="font-semibold text-amber-600 dark:text-amber-400">Internal staff</span> — an employee of your firm. Gets a full staff login, scoped to the projects they're on.</p>
+                <p><span className="font-semibold text-cyan-600 dark:text-cyan-400">External collaborator</span> — an outside party (contractor, architect, consultant). Gets a limited, invite-based login that shows only their assigned project(s) and the items awaiting them.</p>
               </TooltipContent>
             </Tooltip>
           </TooltipProvider>
@@ -423,10 +430,10 @@ function AddMemberForm({
             onClick={() => setMemberType('staff')}
             className={cn(
               'flex items-center gap-2 rounded-lg border p-3 text-left transition-colors',
-              memberType === 'staff' ? 'border-amber-500 bg-amber-500/10' : 'border-zinc-700 hover:border-zinc-500'
+              memberType === 'staff' ? 'border-amber-500 bg-amber-500/10' : 'border-border hover:border-zinc-500'
             )}
           >
-            <UserCheck className={cn('h-4 w-4', memberType === 'staff' ? 'text-amber-400' : 'text-zinc-400')} />
+            <UserCheck className={cn('h-4 w-4', memberType === 'staff' ? 'text-amber-600 dark:text-amber-400' : 'text-muted-foreground')} />
             <div>
               <div className="text-sm font-medium">Internal staff</div>
               <div className="text-[11px] text-muted-foreground">Employee · full access</div>
@@ -437,10 +444,10 @@ function AddMemberForm({
             onClick={() => setMemberType('external')}
             className={cn(
               'flex items-center gap-2 rounded-lg border p-3 text-left transition-colors',
-              memberType === 'external' ? 'border-cyan-500 bg-cyan-500/10' : 'border-zinc-700 hover:border-zinc-500'
+              memberType === 'external' ? 'border-cyan-500 bg-cyan-500/10' : 'border-border hover:border-zinc-500'
             )}
           >
-            <Globe className={cn('h-4 w-4', memberType === 'external' ? 'text-cyan-400' : 'text-zinc-400')} />
+            <Globe className={cn('h-4 w-4', memberType === 'external' ? 'text-cyan-600 dark:text-cyan-400' : 'text-muted-foreground')} />
             <div>
               <div className="text-sm font-medium">External collaborator</div>
               <div className="text-[11px] text-muted-foreground">Invited · scoped view</div>
@@ -570,10 +577,12 @@ function MemberDetail({
   member,
   onClose,
   onUpdatePermissions,
+  canManage,
 }: {
   member: TeamMember
   onClose: () => void
   onUpdatePermissions: (permissions: TeamMemberPermissions) => void
+  canManage: boolean
 }) {
   const [permissions, setPermissions] = useState(member.permissions)
   const [hasChanges, setHasChanges] = useState(false)
@@ -690,13 +699,14 @@ function MemberDetail({
           <div className="rounded-lg border p-3">
             <PermissionsEditor
               permissions={permissions}
+              disabled={!canManage}
               onChange={(newPerms) => {
                 setPermissions(newPerms)
                 setHasChanges(true)
               }}
             />
           </div>
-          {hasChanges && (
+          {canManage && hasChanges && (
             <Button
               size="sm"
               onClick={() => {
@@ -989,6 +999,7 @@ export function TeamManager({
                     <TeamMemberCard
                       key={member.id}
                       member={member}
+                      canManage={canManageTeam}
                       onClick={() => setSelectedMember(member)}
                       onAction={(action) => handleMemberAction(member.id, action)}
                     />
@@ -1005,6 +1016,7 @@ export function TeamManager({
         {selectedMember && (
           <MemberDetail
             member={selectedMember}
+            canManage={canManageTeam}
             onClose={() => setSelectedMember(null)}
             onUpdatePermissions={handleUpdatePermissions}
           />

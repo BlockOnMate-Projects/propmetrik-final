@@ -59,10 +59,10 @@ export default function TopNav() {
                 "fixed top-0 left-0 right-0 z-50 transition-all duration-300 border-b",
                 isWhiteBackground
                     ? isScrolled
-                        ? "bg-white/95 backdrop-blur-md border-gray-200 py-3 md:py-4 shadow-sm"
-                        : "bg-white border-gray-100 py-4 md:py-6"
+                        ? "bg-card/95 backdrop-blur-md border-border py-3 md:py-4 shadow-sm"
+                        : "bg-card border-gray-100 py-4 md:py-6"
                     : isScrolled
-                        ? "bg-zinc-950/80 backdrop-blur-md border-zinc-800 py-3 md:py-4"
+                        ? "bg-background/80 backdrop-blur-md border-border py-3 md:py-4"
                         : "bg-transparent border-transparent py-4 md:py-6"
             )}
         >
@@ -86,8 +86,8 @@ export default function TopNav() {
                                 className={cn(
                                     "text-sm font-medium tracking-wide transition-colors uppercase",
                                     isWhiteBackground
-                                        ? isLinkActive(link.href) ? "text-indigo-600" : "text-gray-600 hover:text-indigo-600"
-                                        : isLinkActive(link.href) ? "text-amber-500" : "text-zinc-400 hover:text-amber-500"
+                                        ? isLinkActive(link.href) ? "text-indigo-600" : "text-muted-foreground hover:text-indigo-600"
+                                        : isLinkActive(link.href) ? "text-amber-500" : "text-muted-foreground hover:text-amber-500"
                                 )}
                             >
                                 {link.name}
@@ -97,8 +97,8 @@ export default function TopNav() {
                                 <div className={cn(
                                     "absolute left-0 top-full mt-3 w-56 rounded-lg border opacity-0 invisible translate-y-1 group-hover:opacity-100 group-hover:visible group-hover:translate-y-0 transition-all duration-150",
                                     isWhiteBackground
-                                        ? "bg-white border-gray-200 shadow-lg"
-                                        : "bg-zinc-950/95 border-zinc-800 backdrop-blur-md"
+                                        ? "bg-card border-border shadow-lg"
+                                        : "bg-background/95 border-border backdrop-blur-md"
                                 )}>
                                     <div className="py-2">
                                         {link.children.map((child) => (
@@ -108,8 +108,8 @@ export default function TopNav() {
                                                 className={cn(
                                                     "block px-4 py-2 text-xs uppercase tracking-wide transition-colors",
                                                     isWhiteBackground
-                                                        ? pathname === child.href ? "text-indigo-600 bg-indigo-50" : "text-gray-600 hover:text-indigo-600 hover:bg-gray-50"
-                                                        : pathname === child.href ? "text-amber-500 bg-zinc-900" : "text-zinc-400 hover:text-white hover:bg-zinc-900/70"
+                                                        ? pathname === child.href ? "text-indigo-600 bg-indigo-50" : "text-muted-foreground hover:text-indigo-600 hover:bg-muted"
+                                                        : pathname === child.href ? "text-amber-500 bg-card" : "text-muted-foreground hover:text-foreground hover:bg-card/70"
                                                 )}
                                             >
                                                 {child.name}
@@ -128,8 +128,8 @@ export default function TopNav() {
                         className={cn(
                             "text-xs font-bold uppercase tracking-widest transition-colors hidden sm:inline",
                             isWhiteBackground
-                                ? "text-gray-600 hover:text-indigo-600"
-                                : "text-zinc-400 hover:text-amber-500"
+                                ? "text-muted-foreground hover:text-indigo-600"
+                                : "text-muted-foreground hover:text-amber-500"
                         )}
                     >
                         Login
@@ -139,8 +139,8 @@ export default function TopNav() {
                         className={cn(
                             "px-4 sm:px-6 py-2 sm:py-2.5 text-[10px] sm:text-xs font-bold uppercase tracking-widest rounded-sm transition-all",
                             isWhiteBackground
-                                ? "bg-indigo-600 text-white hover:bg-indigo-700"
-                                : "bg-amber-600 text-white hover:bg-amber-700"
+                                ? "bg-indigo-600 text-foreground hover:bg-indigo-700"
+                                : "bg-amber-600 text-foreground hover:bg-amber-700"
                         )}
                     >
                         Get Started
@@ -152,8 +152,8 @@ export default function TopNav() {
                         className={cn(
                             "md:hidden p-1.5 transition-colors",
                             isWhiteBackground
-                                ? "text-gray-600 hover:text-indigo-600"
-                                : "text-zinc-400 hover:text-white"
+                                ? "text-muted-foreground hover:text-indigo-600"
+                                : "text-muted-foreground hover:text-foreground"
                         )}
                         aria-label="Toggle menu"
                     >
@@ -176,21 +176,21 @@ export default function TopNav() {
                         className={cn(
                             "md:hidden overflow-hidden backdrop-blur-md border-t",
                             isWhiteBackground
-                                ? "bg-white/95 border-gray-200"
-                                : "bg-zinc-950/95 border-zinc-800"
+                                ? "bg-card/95 border-border"
+                                : "bg-background/95 border-border"
                         )}
                     >
                         <nav className="flex flex-col py-2 px-4">
                             {navLinks.map((link) => (
-                                <div key={link.name} className={cn("border-b", isWhiteBackground ? "border-gray-100" : "border-zinc-800/50")}>
+                                <div key={link.name} className={cn("border-b", isWhiteBackground ? "border-gray-100" : "border-border/50")}>
                                     <Link
                                         href={link.href}
                                         onClick={() => setMobileOpen(false)}
                                         className={cn(
                                             "py-3 text-sm font-medium tracking-wide uppercase transition-colors block",
                                             isWhiteBackground
-                                                ? isLinkActive(link.href) ? "text-indigo-600" : "text-gray-600 hover:text-indigo-600"
-                                                : isLinkActive(link.href) ? "text-amber-500" : "text-zinc-400 hover:text-white"
+                                                ? isLinkActive(link.href) ? "text-indigo-600" : "text-muted-foreground hover:text-indigo-600"
+                                                : isLinkActive(link.href) ? "text-amber-500" : "text-muted-foreground hover:text-foreground"
                                         )}
                                     >
                                         {link.name}
@@ -206,8 +206,8 @@ export default function TopNav() {
                                                     className={cn(
                                                         "block py-2 text-xs uppercase tracking-wide transition-colors",
                                                         isWhiteBackground
-                                                            ? pathname === child.href ? "text-indigo-600" : "text-gray-500 hover:text-indigo-600"
-                                                            : pathname === child.href ? "text-amber-500" : "text-zinc-500 hover:text-zinc-200"
+                                                            ? pathname === child.href ? "text-indigo-600" : "text-muted-foreground hover:text-indigo-600"
+                                                            : pathname === child.href ? "text-amber-500" : "text-muted-foreground hover:text-zinc-200"
                                                     )}
                                                 >
                                                     {child.name}
@@ -223,8 +223,8 @@ export default function TopNav() {
                                 className={cn(
                                     "py-3 text-sm font-medium tracking-wide uppercase transition-colors sm:hidden",
                                     isWhiteBackground
-                                        ? "text-gray-600 hover:text-indigo-600"
-                                        : "text-zinc-400 hover:text-amber-500"
+                                        ? "text-muted-foreground hover:text-indigo-600"
+                                        : "text-muted-foreground hover:text-amber-500"
                                 )}
                             >
                                 Login

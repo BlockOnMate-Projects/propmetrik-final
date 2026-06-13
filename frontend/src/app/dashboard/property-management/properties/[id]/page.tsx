@@ -356,7 +356,7 @@ export default function PropertyDetailPage() {
         return (
             <div className="flex flex-col items-center justify-center min-h-[400px] space-y-4">
                 <Loader2 className="h-10 w-10 text-amber-600 animate-spin" />
-                <p className="text-zinc-500 font-mono text-xs uppercase animate-pulse">Establishing Secure Uplink...</p>
+                <p className="text-muted-foreground font-mono text-xs uppercase animate-pulse">Establishing Secure Uplink...</p>
             </div>
         )
     }
@@ -378,7 +378,7 @@ export default function PropertyDetailPage() {
                     <Button
                         variant="ghost"
                         size="sm"
-                        className="text-zinc-400 hover:text-white"
+                        className="text-muted-foreground hover:text-foreground"
                         onClick={() => router.back()}
                     >
                         <ArrowLeft className="h-4 w-4 mr-2" />
@@ -522,14 +522,14 @@ export default function PropertyDetailPage() {
                     <Button
                         variant="ghost"
                         size="sm"
-                        className="text-zinc-400 hover:text-white"
+                        className="text-muted-foreground hover:text-foreground"
                         onClick={handleShareProperty}
                     >
                         <Share2 className="h-3 w-3 mr-2" />
                         SHARE
                     </Button>
                     <Link href={`/dashboard/property-management/properties/${propertyId}/edit`}>
-                        <Button variant="outline" size="sm" className="border-zinc-800 text-zinc-400 hover:text-white hover:bg-zinc-800">
+                        <Button variant="outline" size="sm" className="border-border text-muted-foreground hover:text-foreground hover:bg-muted">
                             <Pencil className="h-3 w-3 mr-2" />
                             EDIT
                         </Button>
@@ -629,8 +629,8 @@ export default function PropertyDetailPage() {
                                 variant="outline"
                                 className={`
                                     w-full justify-center py-1 font-mono uppercase
-                                    ${property.status === 'active' ? 'border-green-900 text-green-500 bg-green-900/10' : ''}
-                                    ${property.status === 'vacant' ? 'border-amber-900 text-amber-500 bg-amber-900/10' : ''}
+                                    ${property.status === 'active' ? 'border-green-900 text-green-500 bg-green-100 dark:bg-green-900/10' : ''}
+                                    ${property.status === 'vacant' ? 'border-amber-900 text-amber-500 bg-amber-100 dark:bg-amber-900/10' : ''}
                                 `}
                             >
                                 {property.status}
@@ -1106,15 +1106,15 @@ export default function PropertyDetailPage() {
                                                 </Select>
                                             </div>
                                             <div className="space-y-2">
-                                                <Label className="text-[10px] font-mono uppercase text-zinc-500">Category</Label>
+                                                <Label className="text-[10px] font-mono uppercase text-muted-foreground">Category</Label>
                                                 <Select
                                                     value={newFinancial.category}
                                                     onValueChange={(v) => setNewFinancial(prev => ({ ...prev, category: v }))}
                                                 >
-                                                    <SelectTrigger className="bg-black border-zinc-800 text-white font-mono text-sm">
+                                                    <SelectTrigger className="bg-background border-border text-foreground font-mono text-sm">
                                                         <SelectValue />
                                                     </SelectTrigger>
-                                                    <SelectContent className="bg-zinc-950 border-zinc-800">
+                                                    <SelectContent className="bg-background border-border">
                                                         {/* Income Categories */}
                                                         <SelectItem value="rent">Rent Income</SelectItem>
                                                         <SelectItem value="service_charge">Service Charge</SelectItem>
@@ -1138,25 +1138,25 @@ export default function PropertyDetailPage() {
                                         </div>
                                         <div className="grid grid-cols-2 gap-4">
                                             <div className="space-y-2">
-                                                <Label className="text-[10px] font-mono uppercase text-zinc-500">Amount</Label>
+                                                <Label className="text-[10px] font-mono uppercase text-muted-foreground">Amount</Label>
                                                 <Input
                                                     type="number"
                                                     placeholder="0.00"
-                                                    className="bg-black border-zinc-800 text-white font-mono text-sm"
+                                                    className="bg-background border-border text-foreground font-mono text-sm"
                                                     value={newFinancial.amount}
                                                     onChange={(e) => setNewFinancial(prev => ({ ...prev, amount: e.target.value }))}
                                                 />
                                             </div>
                                             <div className="space-y-2">
-                                                <Label className="text-[10px] font-mono uppercase text-zinc-500">Currency</Label>
+                                                <Label className="text-[10px] font-mono uppercase text-muted-foreground">Currency</Label>
                                                 <Select
                                                     value={newFinancial.currency}
                                                     onValueChange={(v) => setNewFinancial(prev => ({ ...prev, currency: v }))}
                                                 >
-                                                    <SelectTrigger className="bg-black border-zinc-800 text-white font-mono text-sm">
+                                                    <SelectTrigger className="bg-background border-border text-foreground font-mono text-sm">
                                                         <SelectValue />
                                                     </SelectTrigger>
-                                                    <SelectContent className="bg-zinc-950 border-zinc-800">
+                                                    <SelectContent className="bg-background border-border">
                                                         <SelectItem value="GHS">GHS</SelectItem>
                                                         <SelectItem value="USD">USD</SelectItem>
                                                         <SelectItem value="EUR">EUR</SelectItem>
@@ -1166,10 +1166,10 @@ export default function PropertyDetailPage() {
                                             </div>
                                         </div>
                                         <div className="space-y-2">
-                                            <Label className="text-[10px] font-mono uppercase text-zinc-500">Description</Label>
+                                            <Label className="text-[10px] font-mono uppercase text-muted-foreground">Description</Label>
                                             <Textarea
                                                 placeholder="Enter description..."
-                                                className="bg-black border-zinc-800 text-white font-mono text-sm resize-none"
+                                                className="bg-background border-border text-foreground font-mono text-sm resize-none"
                                                 value={newFinancial.description}
                                                 onChange={(e) => setNewFinancial(prev => ({ ...prev, description: e.target.value }))}
                                             />
@@ -1179,7 +1179,7 @@ export default function PropertyDetailPage() {
                                         <Button
                                             onClick={handleCreateFinancialEntry}
                                             disabled={isCreatingFinancial || !newFinancial.amount}
-                                            className="bg-amber-600 hover:bg-amber-500 text-white font-bold font-mono text-[10px] uppercase w-full"
+                                            className="bg-amber-600 hover:bg-amber-500 text-foreground font-bold font-mono text-[10px] uppercase w-full"
                                         >
                                             {isCreatingFinancial ? <Loader2 className="h-3 w-3 animate-spin mr-2" /> : <Plus className="h-3 w-3 mr-2" />}
                                             RECORD ENTRY
@@ -1191,14 +1191,14 @@ export default function PropertyDetailPage() {
                         <CardContent>
                             <div className="space-y-2">
                                 {financials.length > 0 ? financials.map((record) => (
-                                    <div key={record.id} className="flex items-center justify-between p-3 border border-zinc-900 bg-black/40 rounded hover:bg-zinc-900/50 transition-colors">
+                                    <div key={record.id} className="flex items-center justify-between p-3 border border-border bg-background/40 rounded hover:bg-card/50 transition-colors">
                                         <div className="flex gap-4 items-center">
                                             <div className={`p-2 rounded ${record.recordType === 'income' ? 'bg-green-950/30' : 'bg-red-950/30'}`}>
                                                 <DollarSign className={`h-4 w-4 ${record.recordType === 'income' ? 'text-green-500' : 'text-red-500'}`} />
                                             </div>
                                             <div>
-                                                <p className="text-xs text-white font-mono uppercase">{(record.category || 'uncategorized').replace(/_/g, ' ')}</p>
-                                                <p className="text-[10px] text-zinc-500 font-mono">{record.transactionDate ? format(new Date(record.transactionDate), 'dd MMM yyyy') : '—'}</p>
+                                                <p className="text-xs text-foreground font-mono uppercase">{(record.category || 'uncategorized').replace(/_/g, ' ')}</p>
+                                                <p className="text-[10px] text-muted-foreground font-mono">{record.transactionDate ? format(new Date(record.transactionDate), 'dd MMM yyyy') : '—'}</p>
                                             </div>
                                         </div>
                                         <div className="text-right">
@@ -1211,8 +1211,8 @@ export default function PropertyDetailPage() {
                                         </div>
                                     </div>
                                 )) : (
-                                    <div className="text-center py-8 border border-dashed border-zinc-900 rounded-lg">
-                                        <p className="text-zinc-500 font-mono text-xs uppercase italic">No financial telemetry detected for this asset.</p>
+                                    <div className="text-center py-8 border border-dashed border-border rounded-lg">
+                                        <p className="text-muted-foreground font-mono text-xs uppercase italic">No financial telemetry detected for this asset.</p>
                                     </div>
                                 )}
                             </div>
@@ -1243,8 +1243,8 @@ export default function PropertyDetailPage() {
                                                         <Users className="h-5 w-5 text-muted-foreground" />
                                                     </div>
                                                     <div>
-                                                        <p className="text-sm font-bold text-white font-mono uppercase">{tenancy.tenant?.fullName || 'Occupant'}</p>
-                                                        <p className="text-[10px] text-zinc-500 font-mono uppercase">LEASE EXP: {format(new Date(tenancy.leaseEndDate), 'dd MMM yyyy')}</p>
+                                                        <p className="text-sm font-bold text-foreground font-mono uppercase">{tenancy.tenant?.fullName || 'Occupant'}</p>
+                                                        <p className="text-[10px] text-muted-foreground font-mono uppercase">LEASE EXP: {format(new Date(tenancy.leaseEndDate), 'dd MMM yyyy')}</p>
                                                     </div>
                                                 </div>
                                                 <Badge className="bg-green-950/20 text-green-500 border-green-900 text-[10px] uppercase font-mono">
@@ -1254,14 +1254,14 @@ export default function PropertyDetailPage() {
                                         ))}
                                     </div>
                                 ) : (
-                                    <div className="p-8 text-center bg-zinc-900/10 italic text-zinc-600 font-mono text-xs">
+                                    <div className="p-8 text-center bg-card/10 italic text-muted-foreground font-mono text-xs">
                                         No active personnel stationed at this asset.
                                     </div>
                                 )}
                             </CardContent>
                         </Card>
 
-                        <Card className="bg-zinc-950 border-zinc-800">
+                        <Card className="bg-background border-border">
                             <CardHeader>
                                 <CardTitle className="text-sm font-mono text-amber-500 uppercase">Personnel Requests & Logs</CardTitle>
                             </CardHeader>
@@ -1275,20 +1275,20 @@ export default function PropertyDetailPage() {
 
                                     if (renewals.length === 0) {
                                         return (
-                                            <div className="p-8 text-center bg-zinc-900/10 italic text-zinc-600 font-mono text-xs">
+                                            <div className="p-8 text-center bg-card/10 italic text-muted-foreground font-mono text-xs">
                                                 No personnel requests or upcoming renewals.
                                             </div>
                                         )
                                     }
 
                                     return renewals.map(({ t, days }) => (
-                                        <div key={t.id} className="p-3 border border-zinc-900 rounded bg-black/40 flex items-start gap-3">
+                                        <div key={t.id} className="p-3 border border-border rounded bg-background/40 flex items-start gap-3">
                                             <div className="p-2 bg-blue-950/20 rounded">
                                                 <Calendar className="h-4 w-4 text-blue-500" />
                                             </div>
                                             <div>
-                                                <p className="text-xs text-white font-mono uppercase italic">Lease Renewal Incoming</p>
-                                                <p className="text-[9px] text-zinc-500 font-mono mt-1">
+                                                <p className="text-xs text-foreground font-mono uppercase italic">Lease Renewal Incoming</p>
+                                                <p className="text-[9px] text-muted-foreground font-mono mt-1">
                                                     {(t.tenant?.fullName || 'Tenant')} lease expires in {days} day{days !== 1 ? 's' : ''} ({format(new Date(t.leaseEndDate), 'dd MMM yyyy')}).
                                                 </p>
                                             </div>
@@ -1302,44 +1302,44 @@ export default function PropertyDetailPage() {
 
                 {/* MAINTENANCE TAB */}
                 <TabsContent value="maintenance" className="mt-6">
-                    <Card className="bg-zinc-950 border-zinc-800">
+                    <Card className="bg-background border-border">
                         <CardHeader className="flex flex-row items-center justify-between">
                             <CardTitle className="text-sm font-mono text-amber-500 uppercase">Asset Integrity Status</CardTitle>
                             <Dialog open={isWorkOrderDialogOpen} onOpenChange={setIsWorkOrderDialogOpen}>
                                 <DialogTrigger asChild>
-                                    <Button size="sm" className="bg-amber-600 hover:bg-amber-500 text-white font-bold font-mono text-[10px] uppercase">
+                                    <Button size="sm" className="bg-amber-600 hover:bg-amber-500 text-foreground font-bold font-mono text-[10px] uppercase">
                                         <Plus className="h-3 w-3 mr-2" />
                                         New Work Order
                                     </Button>
                                 </DialogTrigger>
-                                <DialogContent className="bg-zinc-950 border-zinc-800 text-white">
+                                <DialogContent className="bg-background border-border text-foreground">
                                     <DialogHeader>
                                         <DialogTitle className="font-mono uppercase text-amber-500">Create Work Order</DialogTitle>
-                                        <DialogDescription className="text-zinc-500 font-mono text-xs">
+                                        <DialogDescription className="text-muted-foreground font-mono text-xs">
                                             Log a new maintenance request or work order
                                         </DialogDescription>
                                     </DialogHeader>
                                     <div className="space-y-4 py-4">
                                         <div className="space-y-2">
-                                            <Label className="text-[10px] font-mono uppercase text-zinc-500">Title</Label>
+                                            <Label className="text-[10px] font-mono uppercase text-muted-foreground">Title</Label>
                                             <Input
                                                 placeholder="Ex: Plumbing repair in master bathroom"
-                                                className="bg-black border-zinc-800 text-white font-mono text-sm"
+                                                className="bg-background border-border text-foreground font-mono text-sm"
                                                 value={newWorkOrder.title}
                                                 onChange={(e) => setNewWorkOrder(prev => ({ ...prev, title: e.target.value }))}
                                             />
                                         </div>
                                         <div className="grid grid-cols-2 gap-4">
                                             <div className="space-y-2">
-                                                <Label className="text-[10px] font-mono uppercase text-zinc-500">Category</Label>
+                                                <Label className="text-[10px] font-mono uppercase text-muted-foreground">Category</Label>
                                                 <Select
                                                     value={newWorkOrder.category}
                                                     onValueChange={(v) => setNewWorkOrder(prev => ({ ...prev, category: v }))}
                                                 >
-                                                    <SelectTrigger className="bg-black border-zinc-800 text-white font-mono text-sm">
+                                                    <SelectTrigger className="bg-background border-border text-foreground font-mono text-sm">
                                                         <SelectValue />
                                                     </SelectTrigger>
-                                                    <SelectContent className="bg-zinc-950 border-zinc-800">
+                                                    <SelectContent className="bg-background border-border">
                                                         <SelectItem value="general_maintenance">General Maintenance</SelectItem>
                                                         <SelectItem value="plumbing">Plumbing</SelectItem>
                                                         <SelectItem value="electrical">Electrical</SelectItem>
@@ -1351,15 +1351,15 @@ export default function PropertyDetailPage() {
                                                 </Select>
                                             </div>
                                             <div className="space-y-2">
-                                                <Label className="text-[10px] font-mono uppercase text-zinc-500">Priority</Label>
+                                                <Label className="text-[10px] font-mono uppercase text-muted-foreground">Priority</Label>
                                                 <Select
                                                     value={newWorkOrder.priority}
                                                     onValueChange={(v) => setNewWorkOrder(prev => ({ ...prev, priority: v }))}
                                                 >
-                                                    <SelectTrigger className="bg-black border-zinc-800 text-white font-mono text-sm">
+                                                    <SelectTrigger className="bg-background border-border text-foreground font-mono text-sm">
                                                         <SelectValue />
                                                     </SelectTrigger>
-                                                    <SelectContent className="bg-zinc-950 border-zinc-800">
+                                                    <SelectContent className="bg-background border-border">
                                                         <SelectItem value="low">Low</SelectItem>
                                                         <SelectItem value="medium">Medium</SelectItem>
                                                         <SelectItem value="high">High</SelectItem>
@@ -1369,10 +1369,10 @@ export default function PropertyDetailPage() {
                                             </div>
                                         </div>
                                         <div className="space-y-2">
-                                            <Label className="text-[10px] font-mono uppercase text-zinc-500">Description</Label>
+                                            <Label className="text-[10px] font-mono uppercase text-muted-foreground">Description</Label>
                                             <Textarea
                                                 placeholder="Describe the issue in detail..."
-                                                className="bg-black border-zinc-800 text-white font-mono text-sm resize-none"
+                                                className="bg-background border-border text-foreground font-mono text-sm resize-none"
                                                 rows={3}
                                                 value={newWorkOrder.description}
                                                 onChange={(e) => setNewWorkOrder(prev => ({ ...prev, description: e.target.value }))}
@@ -1383,7 +1383,7 @@ export default function PropertyDetailPage() {
                                         <Button
                                             onClick={handleCreateWorkOrder}
                                             disabled={isCreatingWorkOrder || !newWorkOrder.title}
-                                            className="bg-amber-600 hover:bg-amber-500 text-white font-bold font-mono text-[10px] uppercase w-full"
+                                            className="bg-amber-600 hover:bg-amber-500 text-foreground font-bold font-mono text-[10px] uppercase w-full"
                                         >
                                             {isCreatingWorkOrder ? <Loader2 className="h-3 w-3 animate-spin mr-2" /> : <Plus className="h-3 w-3 mr-2" />}
                                             CREATE WORK ORDER
@@ -1395,16 +1395,16 @@ export default function PropertyDetailPage() {
                         <CardContent>
                             <div className="space-y-4">
                                 {workOrders.length > 0 ? workOrders.map((order) => (
-                                    <div key={order.id} className="p-4 border border-zinc-900 bg-black/40 rounded flex items-center justify-between group hover:bg-zinc-900 transition-colors">
+                                    <div key={order.id} className="p-4 border border-border bg-background/40 rounded flex items-center justify-between group hover:bg-card transition-colors">
                                         <div className="flex gap-4 items-start">
-                                            <div className="p-2 bg-zinc-900 border border-zinc-800 rounded">
-                                                <Wrench className="h-4 w-4 text-zinc-400 group-hover:text-amber-500 transition-colors" />
+                                            <div className="p-2 bg-card border border-border rounded">
+                                                <Wrench className="h-4 w-4 text-muted-foreground group-hover:text-amber-500 transition-colors" />
                                             </div>
                                             <div>
-                                                <p className="text-sm text-white font-mono uppercase">{order.title}</p>
+                                                <p className="text-sm text-foreground font-mono uppercase">{order.title}</p>
                                                 <div className="flex items-center gap-3 mt-1">
-                                                    <Badge variant="outline" className="text-[9px] font-mono border-zinc-800 text-zinc-500 uppercase">{order.category}</Badge>
-                                                    <span className="text-[10px] text-zinc-600 font-mono">Assigned: {order.assignedTo || 'Unassigned'}</span>
+                                                    <Badge variant="outline" className="text-[9px] font-mono border-border text-muted-foreground uppercase">{order.category}</Badge>
+                                                    <span className="text-[10px] text-muted-foreground font-mono">Assigned: {order.assignedTo || 'Unassigned'}</span>
                                                 </div>
                                             </div>
                                         </div>
@@ -1418,13 +1418,13 @@ export default function PropertyDetailPage() {
                                             >
                                                 {order.status}
                                             </Badge>
-                                            <p className="text-[9px] text-zinc-600 font-mono mt-1">REF: {order.referenceNumber}</p>
+                                            <p className="text-[9px] text-muted-foreground font-mono mt-1">REF: {order.referenceNumber}</p>
                                         </div>
                                     </div>
                                 )) : (
-                                    <div className="text-center py-12 border border-dashed border-zinc-900 rounded-lg">
+                                    <div className="text-center py-12 border border-dashed border-border rounded-lg">
                                         <Wrench className="h-10 w-10 text-zinc-800 mx-auto mb-4" />
-                                        <p className="text-zinc-500 font-mono text-xs uppercase italic">No structural breaches or maintenance requests reported.</p>
+                                        <p className="text-muted-foreground font-mono text-xs uppercase italic">No structural breaches or maintenance requests reported.</p>
                                     </div>
                                 )}
                             </div>
@@ -1436,22 +1436,22 @@ export default function PropertyDetailPage() {
                 <TabsContent value="documents" className="mt-6">
                     <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4">
                         <div
-                            className="aspect-square bg-zinc-950 border border-dashed border-zinc-800 rounded-lg flex flex-col items-center justify-center gap-2 hover:bg-zinc-900 hover:border-amber-600/50 cursor-pointer transition-all group"
+                            className="aspect-square bg-background border border-dashed border-border rounded-lg flex flex-col items-center justify-center gap-2 hover:bg-card hover:border-amber-600/50 cursor-pointer transition-all group"
                         >
                             <Plus className="h-8 w-8 text-zinc-700 group-hover:text-amber-500 transition-colors" />
-                            <span className="text-[10px] font-mono text-zinc-600 group-hover:text-zinc-400">UPLOAD ARCHIVE</span>
+                            <span className="text-[10px] font-mono text-muted-foreground group-hover:text-muted-foreground">UPLOAD ARCHIVE</span>
                         </div>
 
                         {documents.map((doc) => (
-                            <Card key={doc.id} className="bg-zinc-950 border-zinc-800 overflow-hidden group">
+                            <Card key={doc.id} className="bg-background border-border overflow-hidden group">
                                 <CardContent className="p-0 flex flex-col items-center justify-center gap-4 relative aspect-square">
                                     <FileText className="h-12 w-12 text-zinc-800 group-hover:text-amber-600/50 transition-colors" />
                                     <div className="text-center px-2">
-                                        <p className="text-[10px] font-mono text-white truncate max-w-full uppercase">{doc.title}</p>
-                                        <p className="text-[9px] font-mono text-zinc-600 uppercase">{doc.documentType}</p>
+                                        <p className="text-[10px] font-mono text-foreground truncate max-w-full uppercase">{doc.title}</p>
+                                        <p className="text-[9px] font-mono text-muted-foreground uppercase">{doc.documentType}</p>
                                     </div>
-                                    <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
-                                        <Button size="icon" variant="ghost" className="h-8 w-8 text-white hover:bg-amber-600 transition-colors">
+                                    <div className="absolute inset-0 bg-background/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                                        <Button size="icon" variant="ghost" className="h-8 w-8 text-foreground hover:bg-amber-600 transition-colors">
                                             <Download className="h-4 w-4" />
                                         </Button>
                                     </div>
@@ -1466,47 +1466,47 @@ export default function PropertyDetailPage() {
                     <div className="flex justify-between items-center mb-6">
                         <div>
                             <h3 className="text-sm font-mono text-amber-500 uppercase">Visual Asset Registry</h3>
-                            <p className="text-[10px] text-zinc-500 font-mono uppercase mt-1">Managed media for brochure integration</p>
+                            <p className="text-[10px] text-muted-foreground font-mono uppercase mt-1">Managed media for brochure integration</p>
                         </div>
                         <Dialog open={isUploadDialogOpen} onOpenChange={setIsUploadDialogOpen}>
                             <DialogTrigger asChild>
-                                <Button size="sm" className="bg-amber-600 hover:bg-amber-500 text-white font-bold font-mono text-[10px] uppercase">
+                                <Button size="sm" className="bg-amber-600 hover:bg-amber-500 text-foreground font-bold font-mono text-[10px] uppercase">
                                     <Plus className="h-3 w-3 mr-2" />
                                     ADD VISUAL ASSET
                                 </Button>
                             </DialogTrigger>
-                            <DialogContent className="bg-zinc-950 border-zinc-800 text-white">
+                            <DialogContent className="bg-background border-border text-foreground">
                                 <DialogHeader>
                                     <DialogTitle className="font-mono uppercase text-amber-500">Register New Visual Asset</DialogTitle>
                                 </DialogHeader>
                                 <div className="space-y-4 py-4">
                                     <div className="space-y-2">
-                                        <Label htmlFor="title" className="text-[10px] font-mono uppercase text-zinc-500">Asset Title</Label>
+                                        <Label htmlFor="title" className="text-[10px] font-mono uppercase text-muted-foreground">Asset Title</Label>
                                         <Input
                                             id="title"
                                             placeholder="Ex: Main Exterior Perspective"
-                                            className="bg-black border-zinc-800 text-white font-mono text-sm"
+                                            className="bg-background border-border text-foreground font-mono text-sm"
                                             value={newPhotoTitle}
                                             onChange={(e) => setNewPhotoTitle(e.target.value)}
                                         />
                                     </div>
                                     <div className="space-y-2">
-                                        <Label htmlFor="photo-file" className="text-[10px] font-mono uppercase text-zinc-500">Image File</Label>
+                                        <Label htmlFor="photo-file" className="text-[10px] font-mono uppercase text-muted-foreground">Image File</Label>
                                         <Input
                                             id="photo-file"
                                             type="file"
                                             accept="image/jpeg,image/png,image/webp"
-                                            className="bg-black border-zinc-800 text-white font-mono text-sm"
+                                            className="bg-background border-border text-foreground font-mono text-sm"
                                             onChange={(e) => setNewPhotoFile(e.target.files?.[0] || null)}
                                         />
-                                        <p className="text-[9px] text-zinc-600 font-mono uppercase">JPG, PNG, or WebP up to 10MB</p>
+                                        <p className="text-[9px] text-muted-foreground font-mono uppercase">JPG, PNG, or WebP up to 10MB</p>
                                     </div>
                                 </div>
                                 <DialogFooter>
                                     <Button
                                         onClick={handleUploadPhoto}
                                         disabled={isUploading || !newPhotoFile}
-                                        className="bg-amber-600 hover:bg-amber-500 text-white font-bold font-mono text-[10px] uppercase w-full"
+                                        className="bg-amber-600 hover:bg-amber-500 text-foreground font-bold font-mono text-[10px] uppercase w-full"
                                     >
                                         {isUploading ? <Loader2 className="h-3 w-3 animate-spin mr-2" /> : <Plus className="h-3 w-3 mr-2" />}
                                         UPLOAD TO TERMINAL
@@ -1518,19 +1518,19 @@ export default function PropertyDetailPage() {
 
                     <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-4 gap-6">
                         {assetPhotos.map((photo) => (
-                            <Card key={photo.id} className="bg-zinc-950 border-zinc-800 overflow-hidden group relative aspect-[4/3]">
+                            <Card key={photo.id} className="bg-background border-border overflow-hidden group relative aspect-[4/3]">
                                 <img
                                     src={photo.fileUrl}
                                     alt={photo.title}
                                     className="absolute inset-0 w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
                                 />
                                 <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex flex-col justify-end p-4">
-                                    <p className="text-[10px] font-mono text-white uppercase mb-2 truncate">{photo.title}</p>
+                                    <p className="text-[10px] font-mono text-foreground uppercase mb-2 truncate">{photo.title}</p>
                                     <div className="flex gap-2">
                                         <Button
                                             size="sm"
                                             variant="ghost"
-                                            className="h-7 px-2 text-[9px] font-mono text-white bg-zinc-900/50 hover:bg-red-600"
+                                            className="h-7 px-2 text-[9px] font-mono text-foreground bg-card/50 hover:bg-red-600"
                                             onClick={() => handleDeletePhoto(photo.id)}
                                         >
                                             DELETE
@@ -1541,7 +1541,7 @@ export default function PropertyDetailPage() {
                         ))}
 
                         {assetPhotos.length === 0 && (
-                            <div className="col-span-full py-20 text-center border border-dashed border-zinc-900 rounded-lg">
+                            <div className="col-span-full py-20 text-center border border-dashed border-border rounded-lg">
                                 <ImageIcon className="h-10 w-10 text-zinc-900 mx-auto mb-4" />
                                 <p className="text-zinc-700 font-mono text-xs uppercase">No visual assets registered in this secure archive.</p>
                                 <p className="text-zinc-800 font-mono text-[9px] uppercase mt-2">Upload images to enhance digital and physical brochures.</p>

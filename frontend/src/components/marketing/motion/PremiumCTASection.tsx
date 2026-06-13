@@ -57,7 +57,7 @@ export default function PremiumCTASection({
                         whileInView={{ opacity: 1, y: 0 }}
                         viewport={{ once: true }}
                         transition={{ duration: 0.6 }}
-                        className="text-4xl md:text-6xl font-bold tracking-tight text-white mb-6"
+                        className="text-4xl md:text-6xl font-bold tracking-tight text-foreground mb-6"
                     >
                         {title}
                     </motion.h2>
@@ -67,7 +67,7 @@ export default function PremiumCTASection({
                         whileInView={{ opacity: 1, y: 0 }}
                         viewport={{ once: true }}
                         transition={{ duration: 0.6, delay: 0.1 }}
-                        className="text-xl text-zinc-400 mb-8 leading-relaxed"
+                        className="text-xl text-muted-foreground mb-8 leading-relaxed"
                     >
                         {description}
                     </motion.p>
@@ -95,7 +95,7 @@ export default function PremiumCTASection({
                                 <motion.button
                                     whileHover={{ scale: 1.02 }}
                                     whileTap={{ scale: 0.98 }}
-                                    className="px-8 py-4 border-2 border-zinc-700 text-white font-bold tracking-wider uppercase hover:border-primary hover:text-primary transition-colors"
+                                    className="px-8 py-4 border-2 border-border text-foreground font-bold tracking-wider uppercase hover:border-primary hover:text-primary transition-colors"
                                 >
                                     {secondaryCTA.text}
                                 </motion.button>

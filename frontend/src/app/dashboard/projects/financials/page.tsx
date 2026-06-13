@@ -41,20 +41,20 @@ function formatDate(dateStr: string | null): string {
 
 function getStatusBadge(status: string) {
     const config: Record<string, { label: string; className: string }> = {
-        paid: { label: 'Paid', className: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' },
-        sent: { label: 'Sent', className: 'bg-blue-500/10 text-blue-400 border-blue-500/20' },
-        pending: { label: 'Pending', className: 'bg-amber-500/10 text-amber-400 border-amber-500/20' },
-        overdue: { label: 'Overdue', className: 'bg-red-500/10 text-red-400 border-red-500/20' },
-        viewed: { label: 'Viewed', className: 'bg-purple-500/10 text-purple-400 border-purple-500/20' },
-        approved: { label: 'Approved', className: 'bg-teal-500/10 text-teal-400 border-teal-500/20' },
-        partially_paid: { label: 'Partial', className: 'bg-orange-500/10 text-orange-400 border-orange-500/20' },
-        settled: { label: 'Settled', className: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' },
-        cancelled: { label: 'Cancelled', className: 'bg-zinc-500/10 text-zinc-400 border-zinc-500/20' },
-        rejected: { label: 'Rejected', className: 'bg-red-500/10 text-red-400 border-red-500/20' },
-        void: { label: 'Void', className: 'bg-zinc-500/10 text-zinc-400 border-zinc-500/20' },
-        draft: { label: 'Draft', className: 'bg-zinc-500/10 text-zinc-400 border-zinc-500/20' },
+        paid: { label: 'Paid', className: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20' },
+        sent: { label: 'Sent', className: 'bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20' },
+        pending: { label: 'Pending', className: 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20' },
+        overdue: { label: 'Overdue', className: 'bg-red-500/10 text-red-600 dark:text-red-400 border-red-500/20' },
+        viewed: { label: 'Viewed', className: 'bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/20' },
+        approved: { label: 'Approved', className: 'bg-teal-500/10 text-teal-600 dark:text-teal-400 border-teal-500/20' },
+        partially_paid: { label: 'Partial', className: 'bg-orange-500/10 text-orange-600 dark:text-orange-400 border-orange-500/20' },
+        settled: { label: 'Settled', className: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20' },
+        cancelled: { label: 'Cancelled', className: 'bg-zinc-500/10 text-muted-foreground border-zinc-500/20' },
+        rejected: { label: 'Rejected', className: 'bg-red-500/10 text-red-600 dark:text-red-400 border-red-500/20' },
+        void: { label: 'Void', className: 'bg-zinc-500/10 text-muted-foreground border-zinc-500/20' },
+        draft: { label: 'Draft', className: 'bg-zinc-500/10 text-muted-foreground border-zinc-500/20' },
     }
-    const c = config[status] || { label: status, className: 'bg-zinc-500/10 text-zinc-400 border-zinc-500/20' }
+    const c = config[status] || { label: status, className: 'bg-zinc-500/10 text-muted-foreground border-zinc-500/20' }
     return <Badge variant="outline" className={`text-[10px] font-mono ${c.className}`}>{c.label}</Badge>
 }
 
@@ -100,10 +100,10 @@ export default function ProjectsFinancialsPage() {
             {/* Page header */}
             <div className="flex items-center justify-between">
                 <div>
-                    <h1 className="text-2xl font-mono font-bold text-white tracking-tight">
+                    <h1 className="text-2xl font-mono font-bold text-foreground tracking-tight">
                         PROJECT FINANCIAL CENTER
                     </h1>
-                    <p className="text-zinc-500 font-mono text-xs mt-1">
+                    <p className="text-muted-foreground font-mono text-xs mt-1">
                         Revenue tracking, invoice payments &amp; payment configuration
                     </p>
                 </div>
@@ -111,8 +111,8 @@ export default function ProjectsFinancialsPage() {
                     <div className="flex items-center gap-3">
                         {/* Project Selector */}
                         <Select value={selectedProject} onValueChange={setSelectedProject}>
-                            <SelectTrigger className="w-56 bg-zinc-900 border-zinc-700 text-zinc-300 font-mono text-xs">
-                                <Building2 className="h-3.5 w-3.5 mr-1.5 text-zinc-500" />
+                            <SelectTrigger className="w-56 bg-card border-border text-muted-foreground font-mono text-xs">
+                                <Building2 className="h-3.5 w-3.5 mr-1.5 text-muted-foreground" />
                                 <SelectValue placeholder="All Projects" />
                             </SelectTrigger>
                             <SelectContent>
@@ -131,7 +131,7 @@ export default function ProjectsFinancialsPage() {
                             size="sm"
                             onClick={fetchRevenue}
                             disabled={isLoading}
-                            className="border-zinc-700 text-zinc-400 hover:text-white"
+                            className="border-border text-muted-foreground hover:text-foreground"
                         >
                             <RefreshCw className={`h-3.5 w-3.5 mr-1.5 ${isLoading ? 'animate-spin' : ''}`} />
                             Refresh
@@ -141,13 +141,13 @@ export default function ProjectsFinancialsPage() {
             </div>
 
             {/* Tab bar */}
-            <div className="flex gap-1 border-b border-zinc-800">
+            <div className="flex gap-1 border-b border-border">
                 <button
                     onClick={() => setActiveTab('overview')}
                     className={`px-4 py-2.5 font-mono text-[11px] tracking-wider border-b-2 transition-colors ${
                         activeTab === 'overview'
                             ? 'border-amber-500 text-amber-500'
-                            : 'border-transparent text-zinc-500 hover:text-zinc-300'
+                            : 'border-transparent text-muted-foreground hover:text-muted-foreground'
                     }`}
                 >
                     <DollarSign className="inline h-3.5 w-3.5 mr-1.5 -mt-0.5" />
@@ -158,7 +158,7 @@ export default function ProjectsFinancialsPage() {
                     className={`px-4 py-2.5 font-mono text-[11px] tracking-wider border-b-2 transition-colors ${
                         activeTab === 'payment-schedule'
                             ? 'border-amber-500 text-amber-500'
-                            : 'border-transparent text-zinc-500 hover:text-zinc-300'
+                            : 'border-transparent text-muted-foreground hover:text-muted-foreground'
                     }`}
                 >
                     <Calendar className="inline h-3.5 w-3.5 mr-1.5 -mt-0.5" />
@@ -181,10 +181,10 @@ export default function ProjectsFinancialsPage() {
                             <Loader2 className="h-8 w-8 animate-spin text-amber-500" />
                         </div>
                     ) : error ? (
-                        <Card className="bg-zinc-900/80 border-zinc-800">
+                        <Card className="bg-card/80 border-border">
                             <CardContent className="flex flex-col items-center py-12">
-                                <AlertTriangle className="h-10 w-10 text-red-400 mb-3" />
-                                <p className="text-sm font-mono text-zinc-400">{error}</p>
+                                <AlertTriangle className="h-10 w-10 text-red-600 dark:text-red-400 mb-3" />
+                                <p className="text-sm font-mono text-muted-foreground">{error}</p>
                                 <Button variant="outline" size="sm" className="mt-4" onClick={fetchRevenue}>
                                     Try Again
                                 </Button>
@@ -195,12 +195,12 @@ export default function ProjectsFinancialsPage() {
                             {/* KPI Cards */}
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                                 {/* Total Invoiced */}
-                                <Card className="bg-zinc-900/80 border-zinc-800">
+                                <Card className="bg-card/80 border-border">
                                     <CardContent className="p-4">
                                         <div className="flex items-center justify-between">
                                             <div>
-                                                <p className="text-[10px] font-mono text-zinc-500 tracking-wider">TOTAL INVOICED</p>
-                                                <p className="text-2xl font-mono font-bold text-white mt-1">
+                                                <p className="text-[10px] font-mono text-muted-foreground tracking-wider">TOTAL INVOICED</p>
+                                                <p className="text-2xl font-mono font-bold text-foreground mt-1">
                                                     {formatCurrency(data.totalInvoiced, ccy)}
                                                 </p>
                                             </div>
@@ -208,20 +208,20 @@ export default function ProjectsFinancialsPage() {
                                                 <FileText className="h-5 w-5 text-amber-500" />
                                             </div>
                                         </div>
-                                        <div className="flex items-center mt-2 text-[10px] font-mono text-zinc-500">
-                                            <Send className="h-3 w-3 mr-1 text-blue-400" />
+                                        <div className="flex items-center mt-2 text-[10px] font-mono text-muted-foreground">
+                                            <Send className="h-3 w-3 mr-1 text-blue-600 dark:text-blue-400" />
                                             <span>{data.totalCount} invoices &bull; {selectedProjectName}</span>
                                         </div>
                                     </CardContent>
                                 </Card>
 
                                 {/* Revenue Collected */}
-                                <Card className="bg-zinc-900/80 border-zinc-800">
+                                <Card className="bg-card/80 border-border">
                                     <CardContent className="p-4">
                                         <div className="flex items-center justify-between">
                                             <div>
-                                                <p className="text-[10px] font-mono text-zinc-500 tracking-wider">REVENUE COLLECTED</p>
-                                                <p className="text-2xl font-mono font-bold text-emerald-400 mt-1">
+                                                <p className="text-[10px] font-mono text-muted-foreground tracking-wider">REVENUE COLLECTED</p>
+                                                <p className="text-2xl font-mono font-bold text-emerald-600 dark:text-emerald-400 mt-1">
                                                     {formatCurrency(data.totalPaid, ccy)}
                                                 </p>
                                             </div>
@@ -229,20 +229,20 @@ export default function ProjectsFinancialsPage() {
                                                 <Wallet className="h-5 w-5 text-emerald-500" />
                                             </div>
                                         </div>
-                                        <div className="flex items-center mt-2 text-[10px] font-mono text-zinc-500">
-                                            <CheckCircle2 className="h-3 w-3 mr-1 text-emerald-400" />
+                                        <div className="flex items-center mt-2 text-[10px] font-mono text-muted-foreground">
+                                            <CheckCircle2 className="h-3 w-3 mr-1 text-emerald-600 dark:text-emerald-400" />
                                             <span>{data.paidCount} paid &bull; {collectionRate}% collection rate</span>
                                         </div>
                                     </CardContent>
                                 </Card>
 
                                 {/* Outstanding / Pending */}
-                                <Card className="bg-zinc-900/80 border-zinc-800">
+                                <Card className="bg-card/80 border-border">
                                     <CardContent className="p-4">
                                         <div className="flex items-center justify-between">
                                             <div>
-                                                <p className="text-[10px] font-mono text-zinc-500 tracking-wider">OUTSTANDING</p>
-                                                <p className="text-2xl font-mono font-bold text-amber-400 mt-1">
+                                                <p className="text-[10px] font-mono text-muted-foreground tracking-wider">OUTSTANDING</p>
+                                                <p className="text-2xl font-mono font-bold text-amber-600 dark:text-amber-400 mt-1">
                                                     {formatCurrency(data.totalPending, ccy)}
                                                 </p>
                                             </div>
@@ -250,20 +250,20 @@ export default function ProjectsFinancialsPage() {
                                                 <Clock className="h-5 w-5 text-amber-500" />
                                             </div>
                                         </div>
-                                        <div className="flex items-center mt-2 text-[10px] font-mono text-zinc-500">
-                                            <Send className="h-3 w-3 mr-1 text-blue-400" />
+                                        <div className="flex items-center mt-2 text-[10px] font-mono text-muted-foreground">
+                                            <Send className="h-3 w-3 mr-1 text-blue-600 dark:text-blue-400" />
                                             <span>{data.sentCount} sent &bull; awaiting payment</span>
                                         </div>
                                     </CardContent>
                                 </Card>
 
                                 {/* Project Budget */}
-                                <Card className="bg-zinc-900/80 border-zinc-800">
+                                <Card className="bg-card/80 border-border">
                                     <CardContent className="p-4">
                                         <div className="flex items-center justify-between">
                                             <div>
-                                                <p className="text-[10px] font-mono text-zinc-500 tracking-wider">PROJECT BUDGET</p>
-                                                <p className="text-2xl font-mono font-bold text-white mt-1">
+                                                <p className="text-[10px] font-mono text-muted-foreground tracking-wider">PROJECT BUDGET</p>
+                                                <p className="text-2xl font-mono font-bold text-foreground mt-1">
                                                     {formatCurrency(data.totalBudget, ccy)}
                                                 </p>
                                             </div>
@@ -271,8 +271,8 @@ export default function ProjectsFinancialsPage() {
                                                 <Building2 className="h-5 w-5 text-blue-500" />
                                             </div>
                                         </div>
-                                        <div className="flex items-center mt-2 text-[10px] font-mono text-zinc-500">
-                                            <TrendingUp className="h-3 w-3 mr-1 text-emerald-400" />
+                                        <div className="flex items-center mt-2 text-[10px] font-mono text-muted-foreground">
+                                            <TrendingUp className="h-3 w-3 mr-1 text-emerald-600 dark:text-emerald-400" />
                                             <span>{data.activeProjectCount} active project{data.activeProjectCount !== 1 ? 's' : ''}</span>
                                         </div>
                                     </CardContent>
@@ -283,12 +283,12 @@ export default function ProjectsFinancialsPage() {
                             {data.overdueCount > 0 && (
                                 <Card className="bg-red-950/30 border-red-900/40">
                                     <CardContent className="p-4 flex items-center gap-3">
-                                        <AlertTriangle className="h-5 w-5 text-red-400 flex-shrink-0" />
+                                        <AlertTriangle className="h-5 w-5 text-red-600 dark:text-red-400 flex-shrink-0" />
                                         <div>
-                                            <p className="text-sm font-mono text-red-300 font-medium">
+                                            <p className="text-sm font-mono text-red-600 dark:text-red-300 font-medium">
                                                 {data.overdueCount} Overdue Invoice{data.overdueCount > 1 ? 's' : ''}
                                             </p>
-                                            <p className="text-[10px] font-mono text-red-400/70">
+                                            <p className="text-[10px] font-mono text-red-600 dark:text-red-400/70">
                                                 {formatCurrency(data.totalOverdue, ccy)} past due — follow up with clients
                                             </p>
                                         </div>
@@ -297,47 +297,47 @@ export default function ProjectsFinancialsPage() {
                             )}
 
                             {/* Collection Progress */}
-                            <Card className="bg-zinc-900/80 border-zinc-800">
+                            <Card className="bg-card/80 border-border">
                                 <CardHeader className="pb-2">
-                                    <CardTitle className="text-sm font-mono text-white">COLLECTION PROGRESS</CardTitle>
-                                    <CardDescription className="text-[10px] font-mono text-zinc-500">
+                                    <CardTitle className="text-sm font-mono text-foreground">COLLECTION PROGRESS</CardTitle>
+                                    <CardDescription className="text-[10px] font-mono text-muted-foreground">
                                         Revenue collected vs total invoiced
                                     </CardDescription>
                                 </CardHeader>
                                 <CardContent>
                                     <div className="space-y-4">
                                         <div className="flex items-center justify-between text-sm font-mono">
-                                            <span className="text-zinc-400">
+                                            <span className="text-muted-foreground">
                                                 {formatCurrency(data.totalPaid, ccy)} of {formatCurrency(data.totalInvoiced, ccy)}
                                             </span>
-                                            <span className="text-emerald-400 font-bold">{collectionRate}%</span>
+                                            <span className="text-emerald-600 dark:text-emerald-400 font-bold">{collectionRate}%</span>
                                         </div>
                                         <Progress value={collectionRate} className="h-3" />
                                         <div className="grid grid-cols-3 gap-4 pt-2">
                                             <div className="text-center">
                                                 <div className="flex items-center justify-center gap-1.5 mb-1">
                                                     <div className="h-2 w-2 rounded-full bg-emerald-400" />
-                                                    <span className="text-[10px] font-mono text-zinc-500">COLLECTED</span>
+                                                    <span className="text-[10px] font-mono text-muted-foreground">COLLECTED</span>
                                                 </div>
-                                                <p className="text-sm font-mono font-bold text-emerald-400">
+                                                <p className="text-sm font-mono font-bold text-emerald-600 dark:text-emerald-400">
                                                     {formatCurrency(data.totalPaid, ccy)}
                                                 </p>
                                             </div>
                                             <div className="text-center">
                                                 <div className="flex items-center justify-center gap-1.5 mb-1">
                                                     <div className="h-2 w-2 rounded-full bg-amber-400" />
-                                                    <span className="text-[10px] font-mono text-zinc-500">PENDING</span>
+                                                    <span className="text-[10px] font-mono text-muted-foreground">PENDING</span>
                                                 </div>
-                                                <p className="text-sm font-mono font-bold text-amber-400">
+                                                <p className="text-sm font-mono font-bold text-amber-600 dark:text-amber-400">
                                                     {formatCurrency(data.totalPending, ccy)}
                                                 </p>
                                             </div>
                                             <div className="text-center">
                                                 <div className="flex items-center justify-center gap-1.5 mb-1">
                                                     <div className="h-2 w-2 rounded-full bg-red-400" />
-                                                    <span className="text-[10px] font-mono text-zinc-500">OVERDUE</span>
+                                                    <span className="text-[10px] font-mono text-muted-foreground">OVERDUE</span>
                                                 </div>
-                                                <p className="text-sm font-mono font-bold text-red-400">
+                                                <p className="text-sm font-mono font-bold text-red-600 dark:text-red-400">
                                                     {formatCurrency(data.totalOverdue, ccy)}
                                                 </p>
                                             </div>
@@ -348,10 +348,10 @@ export default function ProjectsFinancialsPage() {
 
                             {/* Monthly Revenue Chart (simple bar representation) */}
                             {data.monthlyRevenue.length > 0 && (
-                                <Card className="bg-zinc-900/80 border-zinc-800">
+                                <Card className="bg-card/80 border-border">
                                     <CardHeader className="pb-2">
-                                        <CardTitle className="text-sm font-mono text-white">MONTHLY REVENUE (12M)</CardTitle>
-                                        <CardDescription className="text-[10px] font-mono text-zinc-500">
+                                        <CardTitle className="text-sm font-mono text-foreground">MONTHLY REVENUE (12M)</CardTitle>
+                                        <CardDescription className="text-[10px] font-mono text-muted-foreground">
                                             Invoiced vs collected by month
                                         </CardDescription>
                                     </CardHeader>
@@ -364,7 +364,7 @@ export default function ProjectsFinancialsPage() {
                                                 const monthLabel = new Date(m.month + '-01').toLocaleDateString('en-GB', { month: 'short', year: '2-digit' })
                                                 return (
                                                     <div key={m.month} className="flex items-center gap-3">
-                                                        <span className="text-[10px] font-mono text-zinc-500 w-14 text-right flex-shrink-0">
+                                                        <span className="text-[10px] font-mono text-muted-foreground w-14 text-right flex-shrink-0">
                                                             {monthLabel}
                                                         </span>
                                                         <div className="flex-1 space-y-1">
@@ -373,7 +373,7 @@ export default function ProjectsFinancialsPage() {
                                                                     className="h-2 rounded-full bg-amber-500/40"
                                                                     style={{ width: `${Math.max(invoicedPct, 2)}%` }}
                                                                 />
-                                                                <span className="text-[9px] font-mono text-zinc-600 flex-shrink-0">
+                                                                <span className="text-[9px] font-mono text-muted-foreground flex-shrink-0">
                                                                     {formatCurrency(m.invoiced, ccy)}
                                                                 </span>
                                                             </div>
@@ -382,7 +382,7 @@ export default function ProjectsFinancialsPage() {
                                                                     className="h-2 rounded-full bg-emerald-500"
                                                                     style={{ width: `${Math.max(paidPct, 2)}%` }}
                                                                 />
-                                                                <span className="text-[9px] font-mono text-zinc-600 flex-shrink-0">
+                                                                <span className="text-[9px] font-mono text-muted-foreground flex-shrink-0">
                                                                     {formatCurrency(m.paid, ccy)}
                                                                 </span>
                                                             </div>
@@ -390,14 +390,14 @@ export default function ProjectsFinancialsPage() {
                                                     </div>
                                                 )
                                             })}
-                                            <div className="flex items-center gap-4 pt-2 border-t border-zinc-800">
+                                            <div className="flex items-center gap-4 pt-2 border-t border-border">
                                                 <div className="flex items-center gap-1.5">
                                                     <div className="h-2 w-6 rounded-full bg-amber-500/40" />
-                                                    <span className="text-[9px] font-mono text-zinc-500">Invoiced</span>
+                                                    <span className="text-[9px] font-mono text-muted-foreground">Invoiced</span>
                                                 </div>
                                                 <div className="flex items-center gap-1.5">
                                                     <div className="h-2 w-6 rounded-full bg-emerald-500" />
-                                                    <span className="text-[9px] font-mono text-zinc-500">Collected</span>
+                                                    <span className="text-[9px] font-mono text-muted-foreground">Collected</span>
                                                 </div>
                                             </div>
                                         </div>
@@ -406,10 +406,10 @@ export default function ProjectsFinancialsPage() {
                             )}
 
                             {/* Recent Transactions */}
-                            <Card className="bg-zinc-900/80 border-zinc-800">
+                            <Card className="bg-card/80 border-border">
                                 <CardHeader className="pb-2">
-                                    <CardTitle className="text-sm font-mono text-white">RECENT TRANSACTIONS</CardTitle>
-                                    <CardDescription className="text-[10px] font-mono text-zinc-500">
+                                    <CardTitle className="text-sm font-mono text-foreground">RECENT TRANSACTIONS</CardTitle>
+                                    <CardDescription className="text-[10px] font-mono text-muted-foreground">
                                         Latest invoice payments &amp; activity
                                     </CardDescription>
                                 </CardHeader>
@@ -417,7 +417,7 @@ export default function ProjectsFinancialsPage() {
                                     {data.recentTransactions.length === 0 ? (
                                         <div className="py-8 text-center">
                                             <FileText className="h-8 w-8 mx-auto text-zinc-700 mb-2" />
-                                            <p className="text-xs font-mono text-zinc-600">No transactions yet</p>
+                                            <p className="text-xs font-mono text-muted-foreground">No transactions yet</p>
                                             <p className="text-[10px] font-mono text-zinc-700 mt-1">
                                                 Send invoices to clients to start tracking payments
                                             </p>
@@ -425,7 +425,7 @@ export default function ProjectsFinancialsPage() {
                                     ) : (
                                         <div className="space-y-1">
                                             {/* Table header */}
-                                            <div className="grid grid-cols-[1fr_1fr_auto_auto_auto] gap-3 px-3 py-2 text-[10px] font-mono text-zinc-600 border-b border-zinc-800">
+                                            <div className="grid grid-cols-[1fr_1fr_auto_auto_auto] gap-3 px-3 py-2 text-[10px] font-mono text-muted-foreground border-b border-border">
                                                 <span>INVOICE</span>
                                                 <span>CLIENT</span>
                                                 <span className="text-right">AMOUNT</span>
@@ -435,26 +435,26 @@ export default function ProjectsFinancialsPage() {
                                             {data.recentTransactions.map((tx) => (
                                                 <div
                                                     key={tx.id}
-                                                    className="grid grid-cols-[1fr_1fr_auto_auto_auto] gap-3 px-3 py-2.5 rounded-md hover:bg-zinc-800/50 transition-colors items-center"
+                                                    className="grid grid-cols-[1fr_1fr_auto_auto_auto] gap-3 px-3 py-2.5 rounded-md hover:bg-muted/50 transition-colors items-center"
                                                 >
                                                     <div>
-                                                        <p className="text-xs font-mono text-white font-medium">
+                                                        <p className="text-xs font-mono text-foreground font-medium">
                                                             {tx.invoiceNumber}
                                                         </p>
                                                     </div>
                                                     <div>
-                                                        <p className="text-xs font-mono text-zinc-400 truncate">
+                                                        <p className="text-xs font-mono text-muted-foreground truncate">
                                                             {tx.clientName || tx.vendorCompany || '—'}
                                                         </p>
                                                     </div>
                                                     <div className="text-right">
                                                         <p className={`text-xs font-mono font-medium ${
-                                                            tx.status === 'paid' ? 'text-emerald-400' : 'text-white'
+                                                            tx.status === 'paid' ? 'text-emerald-600 dark:text-emerald-400' : 'text-foreground'
                                                         }`}>
                                                             {formatCurrency(tx.totalAmount, tx.currency)}
                                                         </p>
                                                         {tx.projectName && (
-                                                            <p className="text-[9px] font-mono text-zinc-600">
+                                                            <p className="text-[9px] font-mono text-muted-foreground">
                                                                 {tx.projectName}
                                                             </p>
                                                         )}
@@ -463,7 +463,7 @@ export default function ProjectsFinancialsPage() {
                                                         {getStatusBadge(tx.status)}
                                                     </div>
                                                     <div className="text-right">
-                                                        <p className="text-[10px] font-mono text-zinc-500">
+                                                        <p className="text-[10px] font-mono text-muted-foreground">
                                                             {formatDate(tx.paidDate || tx.sentAt || tx.createdAt)}
                                                         </p>
                                                     </div>

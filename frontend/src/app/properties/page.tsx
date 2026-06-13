@@ -87,25 +87,25 @@ export default async function PropertiesListPage({ searchParams }: PageProps) {
   };
 
   return (
-    <main className="min-h-screen bg-gray-50 dark:bg-gray-900 pb-20">
+    <main className="min-h-screen bg-muted dark:bg-gray-900 pb-20">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         
         {/* Header */}
         <div className="mb-6">
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Ghana Real Estate</h1>
-          <p className="text-gray-500 mt-1">
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-foreground">Ghana Real Estate</h1>
+          <p className="text-muted-foreground mt-1">
             {properties.length} listings found
           </p>
         </div>
 
         {/* Filter Tabs */}
-        <div className="flex space-x-1 mb-6 bg-gray-100 dark:bg-gray-800 p-1 rounded-lg w-fit">
+        <div className="flex space-x-1 mb-6 bg-muted dark:bg-gray-800 p-1 rounded-lg w-fit">
           <Link 
             href="/properties"
             className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
               activeType === 'all' 
-                ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm' 
-                : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
+                ? 'bg-card dark:bg-gray-700 text-gray-900 dark:text-foreground shadow-sm' 
+                : 'text-muted-foreground dark:text-muted-foreground hover:text-gray-900 dark:hover:text-foreground'
             }`}
           >
             All ({(total.sale || 0) + (total.rental || 0)})
@@ -114,8 +114,8 @@ export default async function PropertiesListPage({ searchParams }: PageProps) {
             href="/properties?type=sale"
             className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
               activeType === 'sale' 
-                ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm' 
-                : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
+                ? 'bg-card dark:bg-gray-700 text-gray-900 dark:text-foreground shadow-sm' 
+                : 'text-muted-foreground dark:text-muted-foreground hover:text-gray-900 dark:hover:text-foreground'
             }`}
           >
             For Sale ({total.sale || 0})
@@ -124,8 +124,8 @@ export default async function PropertiesListPage({ searchParams }: PageProps) {
             href="/properties?type=rental"
             className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
               activeType === 'rental' 
-                ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm' 
-                : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
+                ? 'bg-card dark:bg-gray-700 text-gray-900 dark:text-foreground shadow-sm' 
+                : 'text-muted-foreground dark:text-muted-foreground hover:text-gray-900 dark:hover:text-foreground'
             }`}
           >
             For Rent ({total.rental || 0})
@@ -144,8 +144,8 @@ export default async function PropertiesListPage({ searchParams }: PageProps) {
         {/* Empty State */}
         {!error && properties.length === 0 && (
           <div className="text-center py-20">
-            <h3 className="text-lg font-medium text-gray-900 dark:text-white">No properties found</h3>
-            <p className="text-gray-500">Try checking back later.</p>
+            <h3 className="text-lg font-medium text-gray-900 dark:text-foreground">No properties found</h3>
+            <p className="text-muted-foreground">Try checking back later.</p>
           </div>
         )}
 
@@ -156,7 +156,7 @@ export default async function PropertiesListPage({ searchParams }: PageProps) {
               <Link 
                 key={property.id} 
                 href={`/properties/${property.id}`}
-                className="group block bg-white dark:bg-gray-800 rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-shadow duration-200 border border-gray-200 dark:border-gray-700"
+                className="group block bg-card dark:bg-gray-800 rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-shadow duration-200 border border-border dark:border-gray-700"
               >
                 <div className="relative aspect-[4/3] w-full overflow-hidden bg-gray-200">
                   {property.images && property.images.length > 0 ? (
@@ -168,7 +168,7 @@ export default async function PropertiesListPage({ searchParams }: PageProps) {
                       sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
                     />
                   ) : (
-                    <div className="w-full h-full flex items-center justify-center text-gray-400">
+                    <div className="w-full h-full flex items-center justify-center text-muted-foreground">
                       No Image
                     </div>
                   )}
@@ -176,8 +176,8 @@ export default async function PropertiesListPage({ searchParams }: PageProps) {
                   {/* Transaction Type Badge */}
                   <div className={`absolute top-2 right-2 text-xs font-bold px-2 py-1 rounded ${
                     property.transaction_type === 'sale'
-                      ? 'bg-blue-500 text-white'
-                      : 'bg-purple-500 text-white'
+                      ? 'bg-blue-500 text-foreground'
+                      : 'bg-purple-500 text-foreground'
                   }`}>
                     {property.transaction_type === 'sale' ? 'FOR SALE' : 'FOR RENT'}
                   </div>
@@ -190,23 +190,23 @@ export default async function PropertiesListPage({ searchParams }: PageProps) {
                 
                 <div className="p-4">
                   <div className="flex justify-between items-start mb-2">
-                    <h3 className="text-xl font-bold text-gray-900 dark:text-white truncate">
+                    <h3 className="text-xl font-bold text-gray-900 dark:text-foreground truncate">
                       {formatPrice(property)}
                     </h3>
                     <span className={`text-xs px-2 py-1 rounded-full ${
                       property.status === 'active' 
                         ? 'bg-green-100 text-green-800' 
-                        : 'bg-gray-100 text-gray-800'
+                        : 'bg-muted text-gray-800'
                     }`}>
                       {property.status}
                     </span>
                   </div>
                   
-                  <p className="text-sm text-gray-600 dark:text-gray-300 line-clamp-2 mb-3 h-10">
+                  <p className="text-sm text-muted-foreground dark:text-gray-300 line-clamp-2 mb-3 h-10">
                     {property.title}
                   </p>
                   
-                  <div className="flex items-center text-sm text-gray-500 dark:text-gray-400 space-x-4 border-t border-gray-100 dark:border-gray-700 pt-3">
+                  <div className="flex items-center text-sm text-muted-foreground dark:text-muted-foreground space-x-4 border-t border-gray-100 dark:border-gray-700 pt-3">
                     <div className="flex items-center">
                       <span className="font-bold mr-1">{property.bedrooms || 0}</span> bds
                     </div>
@@ -225,7 +225,7 @@ export default async function PropertiesListPage({ searchParams }: PageProps) {
                         <path fillRule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clipRule="evenodd" />
                       </svg>
                     )}
-                    <div className="text-xs text-gray-400 truncate">
+                    <div className="text-xs text-muted-foreground truncate">
                       {property.address_street || property.landmark || property.address_city || property.region?.replace(/_/g, ' ')}
                     </div>
                   </div>

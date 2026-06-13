@@ -112,8 +112,8 @@ function Panel({
   actions?: React.ReactNode
 }) {
   return (
-    <div className={cn('border border-zinc-800 bg-zinc-900/50', className)}>
-      <div className="flex items-center justify-between px-3 py-1.5 bg-zinc-800/50 border-b border-zinc-800">
+    <div className={cn('border border-border bg-card/50', className)}>
+      <div className="flex items-center justify-between px-3 py-1.5 bg-muted/50 border-b border-border">
         <span className="font-mono text-[10px] text-amber-500 tracking-wider">{title}</span>
         {actions}
       </div>
@@ -140,7 +140,7 @@ function ImpactBar({ magnitude, direction }: { magnitude: number; direction: str
   const pct = Math.min(Math.abs(magnitude) * 100, 100)
   return (
     <div className="flex items-center gap-2">
-      <div className="flex-1 h-1.5 bg-zinc-800 rounded overflow-hidden">
+      <div className="flex-1 h-1.5 bg-muted rounded overflow-hidden">
         <div
           className={cn(
             'h-full rounded',
@@ -152,7 +152,7 @@ function ImpactBar({ magnitude, direction }: { magnitude: number; direction: str
       <span
         className={cn(
           'font-mono text-[10px] w-8 text-right tabular-nums',
-          isPositive ? 'text-green-400' : 'text-red-400'
+          isPositive ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'
         )}
       >
         {(magnitude * 100).toFixed(0)}%
@@ -177,21 +177,21 @@ function ScenarioBar({
 
   return (
     <div className="space-y-2">
-      <div className="relative h-4 bg-zinc-800 rounded overflow-hidden">
+      <div className="relative h-4 bg-muted rounded overflow-hidden">
         {/* Pessimistic → Optimistic gradient bar */}
         <div className="absolute inset-0 flex">
           <div className="flex-1 bg-gradient-to-r from-red-500/40 via-amber-500/40 to-green-500/40" />
         </div>
         {/* Base marker */}
         <div
-          className="absolute top-0 h-full w-0.5 bg-white"
+          className="absolute top-0 h-full w-0.5 bg-card"
           style={{ left: `${basePct}%` }}
         />
       </div>
       <div className="flex justify-between font-mono text-[9px]">
-        <span className="text-red-400">PESSIMISTIC: {pessimistic.toFixed(1)}%</span>
-        <span className="text-amber-400">BASE: {base.toFixed(1)}%</span>
-        <span className="text-green-400">OPTIMISTIC: {optimistic.toFixed(1)}%</span>
+        <span className="text-red-600 dark:text-red-400">PESSIMISTIC: {pessimistic.toFixed(1)}%</span>
+        <span className="text-amber-600 dark:text-amber-400">BASE: {base.toFixed(1)}%</span>
+        <span className="text-green-600 dark:text-green-400">OPTIMISTIC: {optimistic.toFixed(1)}%</span>
       </div>
     </div>
   )
@@ -237,17 +237,17 @@ export default function PriceForecastingPage() {
 
   if (loading && !forecast) {
     return (
-      <div className="min-h-screen bg-black text-white p-4">
+      <div className="min-h-screen bg-background text-foreground p-4">
         <div className="animate-pulse space-y-4">
-          <div className="h-8 bg-zinc-800 rounded w-72" />
+          <div className="h-8 bg-muted rounded w-72" />
           <div className="grid grid-cols-3 gap-3">
             {[...Array(3)].map((_, i) => (
-              <div key={i} className="h-8 bg-zinc-800/50 rounded border border-zinc-800" />
+              <div key={i} className="h-8 bg-muted/50 rounded border border-border" />
             ))}
           </div>
           <div className="grid grid-cols-12 gap-3">
-            <div className="col-span-8 h-64 bg-zinc-800/50 rounded border border-zinc-800" />
-            <div className="col-span-4 h-64 bg-zinc-800/50 rounded border border-zinc-800" />
+            <div className="col-span-8 h-64 bg-muted/50 rounded border border-border" />
+            <div className="col-span-4 h-64 bg-muted/50 rounded border border-border" />
           </div>
         </div>
       </div>
@@ -257,22 +257,22 @@ export default function PriceForecastingPage() {
   const isPositiveChange = (forecast?.short_term.expected_change_pct ?? 0) >= 0
 
   return (
-    <div className="min-h-screen bg-black text-white p-4 pb-10">
+    <div className="min-h-screen bg-background text-foreground p-4 pb-10">
       {/* Header */}
       <div className="flex items-center justify-between mb-4">
         <div>
-          <h1 className="font-mono text-xl text-white flex items-center gap-2">
+          <h1 className="font-mono text-xl text-foreground flex items-center gap-2">
             <TrendingUp className="w-5 h-5 text-amber-500" />
             PRICE FORECASTING
           </h1>
-          <p className="font-mono text-[10px] text-zinc-500">
+          <p className="font-mono text-[10px] text-muted-foreground">
             Regional price forecasts with confidence intervals & scenario analysis — Section 8.5
           </p>
         </div>
         <button
           onClick={loadForecast}
           disabled={loading}
-          className="flex items-center gap-1.5 px-3 py-1.5 font-mono text-[10px] text-zinc-400 border border-zinc-700 hover:border-amber-500/50 hover:text-amber-500 transition-colors"
+          className="flex items-center gap-1.5 px-3 py-1.5 font-mono text-[10px] text-muted-foreground border border-border hover:border-amber-500/50 hover:text-amber-500 transition-colors"
         >
           <RefreshCw className={cn('w-3 h-3', loading && 'animate-spin')} />
           REFRESH
@@ -282,50 +282,50 @@ export default function PriceForecastingPage() {
       {/* Filter Controls */}
       <div className="grid grid-cols-3 gap-3 mb-4">
         {/* Region */}
-        <div className="border border-zinc-800 bg-zinc-900/50 px-3 py-2">
-          <div className="font-mono text-[9px] text-zinc-500 mb-1 flex items-center gap-1">
+        <div className="border border-border bg-card/50 px-3 py-2">
+          <div className="font-mono text-[9px] text-muted-foreground mb-1 flex items-center gap-1">
             <MapPin className="w-3 h-3" /> REGION
           </div>
           <div className="relative">
             <select
               value={region}
               onChange={(e) => setRegion(e.target.value)}
-              className="w-full bg-transparent font-mono text-[10px] text-white appearance-none focus:outline-none cursor-pointer pr-5"
+              className="w-full bg-transparent font-mono text-[10px] text-foreground appearance-none focus:outline-none cursor-pointer pr-5"
             >
               {REGIONS.map((r) => (
-                <option key={r} value={r} className="bg-zinc-900">
+                <option key={r} value={r} className="bg-card">
                   {formatRegion(r)}
                 </option>
               ))}
             </select>
-            <ChevronDown className="absolute right-0 top-1/2 -translate-y-1/2 w-3 h-3 text-zinc-600 pointer-events-none" />
+            <ChevronDown className="absolute right-0 top-1/2 -translate-y-1/2 w-3 h-3 text-muted-foreground pointer-events-none" />
           </div>
         </div>
 
         {/* Property Type */}
-        <div className="border border-zinc-800 bg-zinc-900/50 px-3 py-2">
-          <div className="font-mono text-[9px] text-zinc-500 mb-1 flex items-center gap-1">
+        <div className="border border-border bg-card/50 px-3 py-2">
+          <div className="font-mono text-[9px] text-muted-foreground mb-1 flex items-center gap-1">
             <Home className="w-3 h-3" /> PROPERTY TYPE
           </div>
           <div className="relative">
             <select
               value={propertyType}
               onChange={(e) => setPropertyType(e.target.value)}
-              className="w-full bg-transparent font-mono text-[10px] text-white appearance-none focus:outline-none cursor-pointer pr-5"
+              className="w-full bg-transparent font-mono text-[10px] text-foreground appearance-none focus:outline-none cursor-pointer pr-5"
             >
               {PROPERTY_TYPES.map((pt) => (
-                <option key={pt.value} value={pt.value} className="bg-zinc-900">
+                <option key={pt.value} value={pt.value} className="bg-card">
                   {pt.label}
                 </option>
               ))}
             </select>
-            <ChevronDown className="absolute right-0 top-1/2 -translate-y-1/2 w-3 h-3 text-zinc-600 pointer-events-none" />
+            <ChevronDown className="absolute right-0 top-1/2 -translate-y-1/2 w-3 h-3 text-muted-foreground pointer-events-none" />
           </div>
         </div>
 
         {/* Horizon */}
-        <div className="border border-zinc-800 bg-zinc-900/50 px-3 py-2">
-          <div className="font-mono text-[9px] text-zinc-500 mb-1 flex items-center gap-1">
+        <div className="border border-border bg-card/50 px-3 py-2">
+          <div className="font-mono text-[9px] text-muted-foreground mb-1 flex items-center gap-1">
             <Calendar className="w-3 h-3" /> FORECAST HORIZON
           </div>
           <div className="flex gap-2">
@@ -336,8 +336,8 @@ export default function PriceForecastingPage() {
                 className={cn(
                   'flex-1 py-0.5 font-mono text-[10px] border rounded transition-colors',
                   horizon === h
-                    ? 'text-amber-400 border-amber-500/50 bg-amber-500/10'
-                    : 'text-zinc-500 border-zinc-700 hover:border-zinc-600'
+                    ? 'text-amber-600 dark:text-amber-400 border-amber-500/50 bg-amber-500/10'
+                    : 'text-muted-foreground border-border hover:border-zinc-600'
                 )}
               >
                 {h}M
@@ -353,11 +353,11 @@ export default function PriceForecastingPage() {
           <div className="grid grid-cols-5 gap-3 mb-4">
             <Panel title="EXPECTED CHANGE">
               <div className="text-center py-1">
-                <div className={cn('font-mono text-3xl', isPositiveChange ? 'text-green-400' : 'text-red-400')}>
+                <div className={cn('font-mono text-3xl', isPositiveChange ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400')}>
                   {isPositiveChange ? '+' : ''}
                   {forecast.short_term.expected_change_pct.toFixed(2)}%
                 </div>
-                <div className="font-mono text-[10px] text-zinc-500 mt-0.5">
+                <div className="font-mono text-[10px] text-muted-foreground mt-0.5">
                   {forecast.short_term.horizon_months} MONTH HORIZON
                 </div>
               </div>
@@ -365,10 +365,10 @@ export default function PriceForecastingPage() {
 
             <Panel title="DIRECTION PROBABILITY">
               <div className="text-center py-1">
-                <div className="font-mono text-3xl text-white">
+                <div className="font-mono text-3xl text-foreground">
                   {(forecast.short_term.direction_probability * 100).toFixed(0)}%
                 </div>
-                <div className="font-mono text-[10px] text-zinc-500 mt-0.5">
+                <div className="font-mono text-[10px] text-muted-foreground mt-0.5">
                   CONFIDENCE IN DIRECTION
                 </div>
               </div>
@@ -376,12 +376,12 @@ export default function PriceForecastingPage() {
 
             <Panel title="CURRENT AVG PRICE">
               <div className="text-center py-1">
-                <div className="font-mono text-2xl text-white">
+                <div className="font-mono text-2xl text-foreground">
                   {forecast.short_term.current_avg_price
                     ? formatCurrency(forecast.short_term.current_avg_price)
                     : '—'}
                 </div>
-                <div className="font-mono text-[10px] text-zinc-500 mt-0.5">
+                <div className="font-mono text-[10px] text-muted-foreground mt-0.5">
                   {formatRegion(forecast.region)}
                 </div>
               </div>
@@ -389,12 +389,12 @@ export default function PriceForecastingPage() {
 
             <Panel title="FORECAST AVG PRICE">
               <div className="text-center py-1">
-                <div className={cn('font-mono text-2xl', isPositiveChange ? 'text-green-400' : 'text-red-400')}>
+                <div className={cn('font-mono text-2xl', isPositiveChange ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400')}>
                   {forecast.short_term.forecast_avg_price
                     ? formatCurrency(forecast.short_term.forecast_avg_price)
                     : '—'}
                 </div>
-                <div className="font-mono text-[10px] text-zinc-500 mt-0.5">
+                <div className="font-mono text-[10px] text-muted-foreground mt-0.5">
                   IN {forecast.short_term.horizon_months} MONTHS
                 </div>
               </div>
@@ -402,10 +402,10 @@ export default function PriceForecastingPage() {
 
             <Panel title="CONFIDENCE INTERVAL">
               <div className="text-center py-1">
-                <div className="font-mono text-sm text-white">
+                <div className="font-mono text-sm text-foreground">
                   {forecast.short_term.confidence_interval.low.toFixed(1)}% — {forecast.short_term.confidence_interval.high.toFixed(1)}%
                 </div>
-                <div className="mt-1.5 h-2 bg-zinc-800 rounded overflow-hidden relative">
+                <div className="mt-1.5 h-2 bg-muted rounded overflow-hidden relative">
                   {/* Range bar */}
                   <div
                     className="absolute top-0 h-full bg-amber-500/50 rounded"
@@ -425,7 +425,7 @@ export default function PriceForecastingPage() {
                     }}
                   />
                 </div>
-                <div className="font-mono text-[10px] text-zinc-500 mt-0.5">95% CI</div>
+                <div className="font-mono text-[10px] text-muted-foreground mt-0.5">95% CI</div>
               </div>
             </Panel>
           </div>
@@ -435,7 +435,7 @@ export default function PriceForecastingPage() {
             {/* Long-term Scenarios */}
             <Panel title="LONG-TERM SCENARIOS" className="col-span-5">
               <div className="space-y-4">
-                <div className="font-mono text-[10px] text-zinc-400 mb-2">
+                <div className="font-mono text-[10px] text-muted-foreground mb-2">
                   {forecast.long_term.horizon_years}-YEAR PRICE CHANGE SCENARIOS
                 </div>
                 <ScenarioBar
@@ -447,22 +447,22 @@ export default function PriceForecastingPage() {
                 {/* Scenario details */}
                 <div className="grid grid-cols-3 gap-2">
                   <div className="border border-red-500/20 bg-red-500/5 p-2 text-center">
-                    <div className="font-mono text-[9px] text-red-400 mb-0.5">PESSIMISTIC</div>
-                    <div className="font-mono text-lg text-red-400">
+                    <div className="font-mono text-[9px] text-red-600 dark:text-red-400 mb-0.5">PESSIMISTIC</div>
+                    <div className="font-mono text-lg text-red-600 dark:text-red-400">
                       {forecast.long_term.scenarios.pessimistic > 0 ? '+' : ''}
                       {forecast.long_term.scenarios.pessimistic.toFixed(1)}%
                     </div>
                   </div>
                   <div className="border border-amber-500/20 bg-amber-500/5 p-2 text-center">
-                    <div className="font-mono text-[9px] text-amber-400 mb-0.5">BASE CASE</div>
-                    <div className="font-mono text-lg text-amber-400">
+                    <div className="font-mono text-[9px] text-amber-600 dark:text-amber-400 mb-0.5">BASE CASE</div>
+                    <div className="font-mono text-lg text-amber-600 dark:text-amber-400">
                       {forecast.long_term.scenarios.base > 0 ? '+' : ''}
                       {forecast.long_term.scenarios.base.toFixed(1)}%
                     </div>
                   </div>
                   <div className="border border-green-500/20 bg-green-500/5 p-2 text-center">
-                    <div className="font-mono text-[9px] text-green-400 mb-0.5">OPTIMISTIC</div>
-                    <div className="font-mono text-lg text-green-400">
+                    <div className="font-mono text-[9px] text-green-600 dark:text-green-400 mb-0.5">OPTIMISTIC</div>
+                    <div className="font-mono text-lg text-green-600 dark:text-green-400">
                       {forecast.long_term.scenarios.optimistic > 0 ? '+' : ''}
                       {forecast.long_term.scenarios.optimistic.toFixed(1)}%
                     </div>
@@ -471,13 +471,13 @@ export default function PriceForecastingPage() {
 
                 {/* Key Assumptions */}
                 {forecast.long_term.key_assumptions.length > 0 && (
-                  <div className="border-t border-zinc-800 pt-2">
-                    <div className="font-mono text-[9px] text-zinc-500 mb-1">KEY ASSUMPTIONS</div>
+                  <div className="border-t border-border pt-2">
+                    <div className="font-mono text-[9px] text-muted-foreground mb-1">KEY ASSUMPTIONS</div>
                     <div className="space-y-1">
                       {forecast.long_term.key_assumptions.map((a, i) => (
                         <div key={i} className="flex items-start gap-1.5">
                           <span className="font-mono text-[9px] text-amber-500 mt-0.5">•</span>
-                          <span className="font-mono text-[10px] text-zinc-400 leading-relaxed">{a}</span>
+                          <span className="font-mono text-[10px] text-muted-foreground leading-relaxed">{a}</span>
                         </div>
                       ))}
                     </div>
@@ -497,23 +497,23 @@ export default function PriceForecastingPage() {
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-1.5">
                             {d.direction === 'positive' || d.direction === 'up' ? (
-                              <ArrowUpRight className="w-3 h-3 text-green-400" />
+                              <ArrowUpRight className="w-3 h-3 text-green-600 dark:text-green-400" />
                             ) : (
-                              <ArrowDownRight className="w-3 h-3 text-red-400" />
+                              <ArrowDownRight className="w-3 h-3 text-red-600 dark:text-red-400" />
                             )}
-                            <span className="font-mono text-[10px] text-zinc-300">
+                            <span className="font-mono text-[10px] text-muted-foreground">
                               {d.factor.replace(/_/g, ' ')}
                             </span>
                           </div>
                         </div>
                         <ImpactBar magnitude={d.impact_magnitude} direction={d.direction} />
-                        <div className="font-mono text-[9px] text-zinc-600 ml-4 leading-relaxed">
+                        <div className="font-mono text-[9px] text-muted-foreground ml-4 leading-relaxed">
                           {d.detail}
                         </div>
                       </div>
                     ))
                 ) : (
-                  <div className="font-mono text-[10px] text-zinc-600 text-center py-6">No driver data</div>
+                  <div className="font-mono text-[10px] text-muted-foreground text-center py-6">No driver data</div>
                 )}
               </div>
             </Panel>
@@ -524,7 +524,7 @@ export default function PriceForecastingPage() {
                 {comparisonLoading ? (
                   <div className="animate-pulse space-y-2">
                     {[...Array(5)].map((_, i) => (
-                      <div key={i} className="h-4 bg-zinc-800 rounded" />
+                      <div key={i} className="h-4 bg-muted rounded" />
                     ))}
                   </div>
                 ) : regionComparison.length > 0 ? (
@@ -541,13 +541,13 @@ export default function PriceForecastingPage() {
                             'w-full flex items-center justify-between py-1 px-1.5 transition-colors text-left',
                             isSelected
                               ? 'bg-amber-500/10 border border-amber-500/30'
-                              : 'hover:bg-zinc-800/50 border border-transparent'
+                              : 'hover:bg-muted/50 border border-transparent'
                           )}
                         >
                           <span
                             className={cn(
                               'font-mono text-[10px]',
-                              isSelected ? 'text-amber-400' : 'text-zinc-400'
+                              isSelected ? 'text-amber-600 dark:text-amber-400' : 'text-muted-foreground'
                             )}
                           >
                             {formatRegion(rc.region)}
@@ -555,7 +555,7 @@ export default function PriceForecastingPage() {
                           <span
                             className={cn(
                               'font-mono text-[10px] tabular-nums',
-                              isPos ? 'text-green-400' : 'text-red-400'
+                              isPos ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'
                             )}
                           >
                             {isPos ? '+' : ''}{rc.short_term.expected_change_pct.toFixed(1)}%
@@ -564,7 +564,7 @@ export default function PriceForecastingPage() {
                       )
                     })
                 ) : (
-                  <div className="font-mono text-[10px] text-zinc-600 text-center py-4">
+                  <div className="font-mono text-[10px] text-muted-foreground text-center py-4">
                     No comparison data
                   </div>
                 )}
@@ -576,7 +576,7 @@ export default function PriceForecastingPage() {
         <Panel title="FORECAST UNAVAILABLE">
           <div className="text-center py-8">
             <AlertTriangle className="w-8 h-8 text-zinc-700 mx-auto mb-2" />
-            <div className="font-mono text-[10px] text-zinc-500">
+            <div className="font-mono text-[10px] text-muted-foreground">
               No forecast data available for {formatRegion(region)}.
               <br />
               The ML service may be offline or no data exists for this region.

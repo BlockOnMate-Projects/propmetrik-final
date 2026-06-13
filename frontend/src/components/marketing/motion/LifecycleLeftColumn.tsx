@@ -46,7 +46,7 @@ export default function LifecycleLeftColumn({
                             />
                         ))}
                     </div>
-                    <span className="text-xs font-mono text-zinc-500 uppercase tracking-widest">
+                    <span className="text-xs font-mono text-muted-foreground uppercase tracking-widest">
                         Stage {stageIndex + 1} of {totalStages}
                     </span>
                 </div>
@@ -59,7 +59,7 @@ export default function LifecycleLeftColumn({
                     className="inline-flex items-center gap-2 px-3 py-1.5 mb-5 rounded-full border border-amber-500/30 bg-amber-500/5 w-fit"
                 >
                     <div className="w-1.5 h-1.5 rounded-full bg-amber-400" />
-                    <span className="text-xs font-bold uppercase tracking-widest text-amber-400">
+                    <span className="text-xs font-bold uppercase tracking-widest text-amber-600 dark:text-amber-400">
                         {stage.label}
                     </span>
                 </motion.div>
@@ -69,7 +69,7 @@ export default function LifecycleLeftColumn({
                     initial={{ opacity: 0, y: 12 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.15 }}
-                    className="text-3xl md:text-4xl xl:text-5xl font-bold text-white leading-tight tracking-tight mb-5"
+                    className="text-3xl md:text-4xl xl:text-5xl font-bold text-foreground leading-tight tracking-tight mb-5"
                 >
                     {stage.headline}
                 </motion.h2>
@@ -79,7 +79,7 @@ export default function LifecycleLeftColumn({
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.22 }}
-                    className="text-base text-zinc-400 leading-relaxed mb-8 max-w-md"
+                    className="text-base text-muted-foreground leading-relaxed mb-8 max-w-md"
                 >
                     {stage.copy}
                 </motion.p>
@@ -91,10 +91,10 @@ export default function LifecycleLeftColumn({
                     transition={{ delay: 0.3 }}
                     className="mb-8 p-5 rounded-xl border border-amber-500/15 bg-amber-500/5"
                 >
-                    <div className="text-4xl font-bold font-mono text-amber-400 leading-none mb-1">
+                    <div className="text-4xl font-bold font-mono text-amber-600 dark:text-amber-400 leading-none mb-1">
                         {stage.anchorMetric.value}
                     </div>
-                    <div className="text-sm text-zinc-400">
+                    <div className="text-sm text-muted-foreground">
                         {stage.anchorMetric.descriptor}
                     </div>
                 </motion.div>
@@ -109,7 +109,7 @@ export default function LifecycleLeftColumn({
                         <motion.button
                             whileHover={{ x: 4 }}
                             whileTap={{ scale: 0.97 }}
-                            className="flex items-center gap-2 text-sm font-bold uppercase tracking-wider text-amber-400 hover:text-amber-300 transition-colors group"
+                            className="flex items-center gap-2 text-sm font-bold uppercase tracking-wider text-amber-600 dark:text-amber-400 hover:text-amber-300 transition-colors group"
                         >
                             {stage.ctaLabel}
                             <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />

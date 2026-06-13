@@ -184,7 +184,7 @@ function StatusIcon({ status }: { status: string }) {
     case 'failed':
       return <XCircle className="h-4 w-4 text-red-500" />
     default:
-      return <AlertTriangle className="h-4 w-4 text-gray-400" />
+      return <AlertTriangle className="h-4 w-4 text-muted-foreground" />
   }
 }
 
@@ -197,7 +197,7 @@ function FrequencyBadge({ frequency }: { frequency: string }) {
   }
 
   return (
-    <Badge className={cn('text-xs', colors[frequency as keyof typeof colors] || 'bg-gray-100 text-gray-700')}>
+    <Badge className={cn('text-xs', colors[frequency as keyof typeof colors] || 'bg-muted text-gray-700')}>
       {frequency}
     </Badge>
   )

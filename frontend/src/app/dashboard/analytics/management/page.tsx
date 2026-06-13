@@ -111,8 +111,8 @@ function Panel({
   className?: string;
 }) {
   return (
-    <div className={cn('border border-zinc-800 bg-zinc-900/50', className)}>
-      <div className="flex items-center justify-between px-3 py-1.5 bg-zinc-800/50 border-b border-zinc-800">
+    <div className={cn('border border-border bg-card/50', className)}>
+      <div className="flex items-center justify-between px-3 py-1.5 bg-muted/50 border-b border-border">
         <span className="font-mono text-[10px] text-amber-500 tracking-wider">{title}</span>
       </div>
       <div className="p-3">{children}</div>
@@ -135,15 +135,15 @@ function KPICard({
 }) {
   return (
     <div className={cn(
-      'border bg-zinc-900/50 p-4',
-      highlight ? 'border-amber-500/50' : 'border-zinc-800'
+      'border bg-card/50 p-4',
+      highlight ? 'border-amber-500/50' : 'border-border'
     )}>
       <div className="flex items-center gap-2 mb-2">
         {Icon && <Icon className="w-4 h-4 text-amber-500" />}
-        <span className="font-mono text-[10px] text-zinc-500 tracking-wider">{label}</span>
+        <span className="font-mono text-[10px] text-muted-foreground tracking-wider">{label}</span>
       </div>
-      <div className="font-mono text-2xl text-white">{value}</div>
-      {sub && <div className="font-mono text-[10px] text-zinc-500 mt-1">{sub}</div>}
+      <div className="font-mono text-2xl text-foreground">{value}</div>
+      {sub && <div className="font-mono text-[10px] text-muted-foreground mt-1">{sub}</div>}
     </div>
   );
 }
@@ -152,7 +152,7 @@ function KPICard({
 function CapRateBar({ min, max, median, mean }: { min: number; max: number; median: number; mean: number }) {
   const scale = 20; // max 20% scale
   return (
-    <div className="relative h-4 bg-zinc-800 overflow-hidden">
+    <div className="relative h-4 bg-muted overflow-hidden">
       {/* Range bar */}
       <div
         className="absolute h-full bg-amber-600/40"
@@ -222,11 +222,11 @@ export default function ManagementMetricsPage() {
         <div>
           <div className="flex items-center gap-2">
             <Landmark className="w-4 h-4 text-amber-500" />
-            <h1 className="font-mono text-sm text-white tracking-wider">
+            <h1 className="font-mono text-sm text-foreground tracking-wider">
               PROPERTY MANAGEMENT METRICS
             </h1>
           </div>
-          <p className="font-mono text-[10px] text-zinc-500 mt-0.5">
+          <p className="font-mono text-[10px] text-muted-foreground mt-0.5">
             Cap Rate, NOI, Average Rent, Rental Yields & Returns
           </p>
         </div>
@@ -235,7 +235,7 @@ export default function ManagementMetricsPage() {
           <select
             value={selectedRegion}
             onChange={(e) => setSelectedRegion(e.target.value)}
-            className="font-mono text-[10px] bg-zinc-900 border border-zinc-700 text-zinc-300 px-2 py-1 focus:border-amber-500 focus:outline-none"
+            className="font-mono text-[10px] bg-card border border-border text-muted-foreground px-2 py-1 focus:border-amber-500 focus:outline-none"
           >
             <option value="all">ALL REGIONS</option>
             {regions.map((r) => (
@@ -253,8 +253,8 @@ export default function ManagementMetricsPage() {
             className={cn(
               'flex items-center gap-1.5 px-3 py-1.5 font-mono text-[10px] border transition-colors',
               isLoading
-                ? 'border-zinc-700 text-zinc-500 cursor-not-allowed'
-                : 'border-zinc-700 text-zinc-300 hover:border-amber-500 hover:text-amber-500'
+                ? 'border-border text-muted-foreground cursor-not-allowed'
+                : 'border-border text-muted-foreground hover:border-amber-500 hover:text-amber-500'
             )}
           >
             <RefreshCw className={cn('w-3 h-3', isLoading && 'animate-spin')} />
@@ -268,7 +268,7 @@ export default function ManagementMetricsPage() {
         <div className="flex items-center justify-center py-20">
           <div className="flex items-center gap-3">
             <RefreshCw className="w-4 h-4 text-amber-500 animate-spin" />
-            <span className="font-mono text-xs text-zinc-400">Loading management metrics...</span>
+            <span className="font-mono text-xs text-muted-foreground">Loading management metrics...</span>
           </div>
         </div>
       )}
@@ -321,22 +321,22 @@ export default function ManagementMetricsPage() {
             {data.cap_rates.length > 0 ? (
               <div className="space-y-3">
                 {data.cap_rates.map((cr, i) => (
-                  <div key={i} className="border border-zinc-800 p-2 hover:bg-zinc-800/20">
+                  <div key={i} className="border border-border p-2 hover:bg-amber-50 dark:hover:bg-amber-500/10">
                     <div className="flex items-center justify-between mb-1.5">
                       <div className="flex items-center gap-2">
-                        <span className="font-mono text-xs text-white">
+                        <span className="font-mono text-xs text-foreground">
                           {formatRegion(cr.region)}
                         </span>
-                        <span className="font-mono text-[10px] text-zinc-500">
+                        <span className="font-mono text-[10px] text-muted-foreground">
                           {formatRegion(cr.property_type)}
                         </span>
                       </div>
                       <div className="flex items-center gap-3 font-mono text-[10px]">
-                        <span className="text-zinc-500">n={cr.sample_size}</span>
-                        <span className="text-amber-400">
+                        <span className="text-muted-foreground">n={cr.sample_size}</span>
+                        <span className="text-amber-600 dark:text-amber-400">
                           median {(cr.cap_rate_median * 100).toFixed(1)}%
                         </span>
-                        <span className="text-green-400">
+                        <span className="text-green-600 dark:text-green-400">
                           mean {(cr.cap_rate_mean * 100).toFixed(1)}%
                         </span>
                       </div>
@@ -347,29 +347,29 @@ export default function ManagementMetricsPage() {
                       median={cr.cap_rate_median * 100}
                       mean={cr.cap_rate_mean * 100}
                     />
-                    <div className="flex justify-between font-mono text-[8px] text-zinc-600 mt-0.5">
+                    <div className="flex justify-between font-mono text-[8px] text-muted-foreground mt-0.5">
                       <span>{(cr.cap_rate_min * 100).toFixed(1)}%</span>
                       <span>{(cr.cap_rate_max * 100).toFixed(1)}%</span>
                     </div>
                   </div>
                 ))}
-                <div className="flex items-center gap-4 pt-2 border-t border-zinc-800 font-mono text-[10px]">
+                <div className="flex items-center gap-4 pt-2 border-t border-border font-mono text-[10px]">
                   <div className="flex items-center gap-1.5">
                     <div className="w-3 h-0.5 bg-amber-400" />
-                    <span className="text-zinc-500">Median</span>
+                    <span className="text-muted-foreground">Median</span>
                   </div>
                   <div className="flex items-center gap-1.5">
                     <div className="w-3 h-0.5 bg-green-400" />
-                    <span className="text-zinc-500">Mean</span>
+                    <span className="text-muted-foreground">Mean</span>
                   </div>
                   <div className="flex items-center gap-1.5">
                     <div className="w-6 h-3 bg-amber-600/40" />
-                    <span className="text-zinc-500">Range (Min-Max)</span>
+                    <span className="text-muted-foreground">Range (Min-Max)</span>
                   </div>
                 </div>
               </div>
             ) : (
-              <div className="font-mono text-xs text-zinc-600 text-center py-6">No cap rate data</div>
+              <div className="font-mono text-xs text-muted-foreground text-center py-6">No cap rate data</div>
             )}
           </Panel>
 
@@ -381,7 +381,7 @@ export default function ManagementMetricsPage() {
                 <div className="overflow-x-auto">
                   <table className="w-full font-mono text-[10px]">
                     <thead>
-                      <tr className="text-zinc-500 border-b border-zinc-800">
+                      <tr className="text-muted-foreground border-b border-border">
                         <th className="text-left py-1.5 pr-2">REGION</th>
                         <th className="text-left py-1.5 pr-2">TYPE</th>
                         <th className="text-right py-1.5 pr-2">AVG RENT/MO</th>
@@ -391,26 +391,26 @@ export default function ManagementMetricsPage() {
                     </thead>
                     <tbody>
                       {data.noi_breakdown.map((noi, i) => (
-                        <tr key={i} className="border-b border-zinc-800/50 hover:bg-zinc-800/30">
-                          <td className="py-1.5 pr-2 text-white">{formatRegion(noi.region)}</td>
-                          <td className="py-1.5 pr-2 text-zinc-400">{formatRegion(noi.property_type)}</td>
-                          <td className="py-1.5 pr-2 text-right text-zinc-300">
+                        <tr key={i} className="border-b border-border/50 hover:bg-amber-50 dark:hover:bg-amber-500/10">
+                          <td className="py-1.5 pr-2 text-foreground">{formatRegion(noi.region)}</td>
+                          <td className="py-1.5 pr-2 text-muted-foreground">{formatRegion(noi.property_type)}</td>
+                          <td className="py-1.5 pr-2 text-right text-muted-foreground">
                             {formatCurrency(noi.avg_monthly_rent)}
                           </td>
-                          <td className="py-1.5 pr-2 text-right text-zinc-300">
+                          <td className="py-1.5 pr-2 text-right text-muted-foreground">
                             {formatCurrency(noi.annual_gross_income)}
                           </td>
-                          <td className="py-1.5 text-right text-green-400">{formatCurrency(noi.estimated_noi)}</td>
+                          <td className="py-1.5 text-right text-green-600 dark:text-green-400">{formatCurrency(noi.estimated_noi)}</td>
                         </tr>
                       ))}
                     </tbody>
                   </table>
-                  <div className="font-mono text-[8px] text-zinc-600 mt-2">
+                  <div className="font-mono text-[8px] text-muted-foreground mt-2">
                     * NOI = Annual Gross Income × (1 - 30% operating expenses)
                   </div>
                 </div>
               ) : (
-                <div className="font-mono text-xs text-zinc-600 text-center py-6">No NOI data</div>
+                <div className="font-mono text-xs text-muted-foreground text-center py-6">No NOI data</div>
               )}
             </Panel>
 
@@ -419,13 +419,13 @@ export default function ManagementMetricsPage() {
               {data.yields.length > 0 ? (
                 <div className="space-y-3">
                   {data.yields.map((y, i) => {
-                    const colors = y.gross_rental_yield >= 10 ? 'text-green-400' : y.gross_rental_yield >= 6 ? 'text-amber-400' : 'text-red-400';
+                    const colors = y.gross_rental_yield >= 10 ? 'text-green-600 dark:text-green-400' : y.gross_rental_yield >= 6 ? 'text-amber-600 dark:text-amber-400' : 'text-red-600 dark:text-red-400';
                     return (
-                      <div key={i} className="border border-zinc-800 p-2 hover:bg-zinc-800/20">
+                      <div key={i} className="border border-border p-2 hover:bg-amber-50 dark:hover:bg-amber-500/10">
                         <div className="flex items-center justify-between mb-1">
-                          <span className="font-mono text-xs text-white">
+                          <span className="font-mono text-xs text-foreground">
                             {formatRegion(y.region)}{' '}
-                            <span className="text-zinc-500">{formatRegion(y.property_type)}</span>
+                            <span className="text-muted-foreground">{formatRegion(y.property_type)}</span>
                           </span>
                           <div className="flex items-center gap-1">
                             <ArrowUpRight className={cn('w-3 h-3', colors)} />
@@ -436,24 +436,24 @@ export default function ManagementMetricsPage() {
                         </div>
                         <div className="grid grid-cols-4 gap-2 font-mono text-[10px]">
                           <div>
-                            <span className="text-zinc-500">RENT/MO</span>
-                            <div className="text-zinc-300">{formatCurrency(y.avg_monthly_rent)}</div>
+                            <span className="text-muted-foreground">RENT/MO</span>
+                            <div className="text-muted-foreground">{formatCurrency(y.avg_monthly_rent)}</div>
                           </div>
                           <div>
-                            <span className="text-zinc-500">SALE PRICE</span>
-                            <div className="text-zinc-300">{formatCurrency(y.avg_sale_price)}</div>
+                            <span className="text-muted-foreground">SALE PRICE</span>
+                            <div className="text-muted-foreground">{formatCurrency(y.avg_sale_price)}</div>
                           </div>
                           <div>
-                            <span className="text-zinc-500">GROSS YIELD</span>
+                            <span className="text-muted-foreground">GROSS YIELD</span>
                             <div className={colors}>{y.gross_rental_yield.toFixed(2)}%</div>
                           </div>
                           <div>
-                            <span className="text-zinc-500">NET YIELD</span>
-                            <div className="text-zinc-300">{y.net_rental_yield.toFixed(2)}%</div>
+                            <span className="text-muted-foreground">NET YIELD</span>
+                            <div className="text-muted-foreground">{y.net_rental_yield.toFixed(2)}%</div>
                           </div>
                         </div>
                         {/* Yield bar */}
-                        <div className="mt-1.5 h-2 bg-zinc-800 overflow-hidden">
+                        <div className="mt-1.5 h-2 bg-muted overflow-hidden">
                           <div
                             className={cn(
                               'h-full transition-all duration-500',
@@ -471,7 +471,7 @@ export default function ManagementMetricsPage() {
                   })}
                 </div>
               ) : (
-                <div className="font-mono text-xs text-zinc-600 text-center py-6">
+                <div className="font-mono text-xs text-muted-foreground text-center py-6">
                   No yield data (need both rental & sale properties in same region+type)
                 </div>
               )}
@@ -484,7 +484,7 @@ export default function ManagementMetricsPage() {
               <div className="overflow-x-auto">
                 <table className="w-full font-mono text-[10px]">
                   <thead>
-                    <tr className="text-zinc-500 border-b border-zinc-800">
+                    <tr className="text-muted-foreground border-b border-border">
                       <th className="text-left py-1.5 pr-2">REGION</th>
                       <th className="text-left py-1.5 pr-2">TYPE</th>
                       <th className="text-right py-1.5 pr-2">COUNT</th>
@@ -496,20 +496,20 @@ export default function ManagementMetricsPage() {
                   </thead>
                   <tbody>
                     {data.rental_summary.map((r, i) => (
-                      <tr key={i} className="border-b border-zinc-800/50 hover:bg-zinc-800/30">
-                        <td className="py-1.5 pr-2 text-white">{formatRegion(r.region)}</td>
-                        <td className="py-1.5 pr-2 text-zinc-400">{formatRegion(r.property_type)}</td>
-                        <td className="py-1.5 pr-2 text-right text-zinc-400">{r.listing_count}</td>
-                        <td className="py-1.5 pr-2 text-right text-green-400">
+                      <tr key={i} className="border-b border-border/50 hover:bg-amber-50 dark:hover:bg-amber-500/10">
+                        <td className="py-1.5 pr-2 text-foreground">{formatRegion(r.region)}</td>
+                        <td className="py-1.5 pr-2 text-muted-foreground">{formatRegion(r.property_type)}</td>
+                        <td className="py-1.5 pr-2 text-right text-muted-foreground">{r.listing_count}</td>
+                        <td className="py-1.5 pr-2 text-right text-green-600 dark:text-green-400">
                           {formatCurrency(parseFloat(r.avg_rent))}
                         </td>
-                        <td className="py-1.5 pr-2 text-right text-zinc-300">
+                        <td className="py-1.5 pr-2 text-right text-muted-foreground">
                           {formatCurrency(parseFloat(r.median_rent))}
                         </td>
-                        <td className="py-1.5 pr-2 text-right text-zinc-500">
+                        <td className="py-1.5 pr-2 text-right text-muted-foreground">
                           {formatCurrency(parseFloat(r.min_rent))}
                         </td>
-                        <td className="py-1.5 text-right text-zinc-500">
+                        <td className="py-1.5 text-right text-muted-foreground">
                           {formatCurrency(parseFloat(r.max_rent))}
                         </td>
                       </tr>
@@ -518,7 +518,7 @@ export default function ManagementMetricsPage() {
                 </table>
               </div>
             ) : (
-              <div className="font-mono text-xs text-zinc-600 text-center py-6">No rental data</div>
+              <div className="font-mono text-xs text-muted-foreground text-center py-6">No rental data</div>
             )}
           </Panel>
         </>
@@ -526,7 +526,7 @@ export default function ManagementMetricsPage() {
 
       {!isLoading && !data && (
         <div className="flex items-center justify-center py-20">
-          <span className="font-mono text-xs text-zinc-500">No management data available</span>
+          <span className="font-mono text-xs text-muted-foreground">No management data available</span>
         </div>
       )}
     </div>

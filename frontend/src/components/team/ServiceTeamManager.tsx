@@ -46,25 +46,25 @@ const SERVICE_LABELS: Record<string, string> = {
 }
 
 const ROLE_COLORS: Record<string, string> = {
-  service_admin: 'bg-red-500/20 text-red-400 border-red-500/30',
-  senior_associate: 'bg-blue-500/20 text-blue-400 border-blue-500/30',
-  associate: 'bg-cyan-500/20 text-cyan-400 border-cyan-500/30',
-  finance_officer: 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30',
-  sales_manager: 'bg-blue-500/20 text-blue-400 border-blue-500/30',
-  sales_agent: 'bg-cyan-500/20 text-cyan-400 border-cyan-500/30',
-  project_manager: 'bg-blue-500/20 text-blue-400 border-blue-500/30',
-  site_supervisor: 'bg-amber-500/20 text-amber-400 border-amber-500/30',
-  quantity_surveyor: 'bg-purple-500/20 text-purple-400 border-purple-500/30',
-  property_manager: 'bg-blue-500/20 text-blue-400 border-blue-500/30',
-  leasing_agent: 'bg-cyan-500/20 text-cyan-400 border-cyan-500/30',
-  maintenance_coordinator: 'bg-amber-500/20 text-amber-400 border-amber-500/30',
-  accounts_officer: 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30',
-  analyst: 'bg-purple-500/20 text-purple-400 border-purple-500/30',
-  viewer: 'bg-zinc-500/20 text-zinc-400 border-zinc-500/30',
+  service_admin: 'bg-red-500/20 text-red-600 dark:text-red-400 border-red-500/30',
+  senior_associate: 'bg-blue-500/20 text-blue-600 dark:text-blue-400 border-blue-500/30',
+  associate: 'bg-cyan-500/20 text-cyan-600 dark:text-cyan-400 border-cyan-500/30',
+  finance_officer: 'bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border-emerald-500/30',
+  sales_manager: 'bg-blue-500/20 text-blue-600 dark:text-blue-400 border-blue-500/30',
+  sales_agent: 'bg-cyan-500/20 text-cyan-600 dark:text-cyan-400 border-cyan-500/30',
+  project_manager: 'bg-blue-500/20 text-blue-600 dark:text-blue-400 border-blue-500/30',
+  site_supervisor: 'bg-amber-500/20 text-amber-600 dark:text-amber-400 border-amber-500/30',
+  quantity_surveyor: 'bg-purple-500/20 text-purple-600 dark:text-purple-400 border-purple-500/30',
+  property_manager: 'bg-blue-500/20 text-blue-600 dark:text-blue-400 border-blue-500/30',
+  leasing_agent: 'bg-cyan-500/20 text-cyan-600 dark:text-cyan-400 border-cyan-500/30',
+  maintenance_coordinator: 'bg-amber-500/20 text-amber-600 dark:text-amber-400 border-amber-500/30',
+  accounts_officer: 'bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border-emerald-500/30',
+  analyst: 'bg-purple-500/20 text-purple-600 dark:text-purple-400 border-purple-500/30',
+  viewer: 'bg-zinc-500/20 text-muted-foreground border-zinc-500/30',
 }
 
 function getRoleColor(role: string): string {
-  return ROLE_COLORS[role] || 'bg-zinc-500/20 text-zinc-400 border-zinc-500/30'
+  return ROLE_COLORS[role] || 'bg-zinc-500/20 text-muted-foreground border-zinc-500/30'
 }
 
 function formatRoleName(role: string): string {
@@ -188,22 +188,22 @@ export default function ServiceTeamManager({ serviceKey }: Props) {
   // ── Render ───────────────────────────────────────────────────────────
 
   return (
-    <div className="min-h-screen bg-black text-zinc-100 font-mono">
+    <div className="min-h-screen bg-background text-zinc-100 font-mono">
       {/* Header */}
-      <div className="border-b border-zinc-800 px-6 py-4">
+      <div className="border-b border-border px-6 py-4">
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-xl font-bold text-amber-500">
               {SERVICE_LABELS[serviceKey] || serviceKey} — Team
             </h1>
-            <p className="text-sm text-zinc-500 mt-1">
+            <p className="text-sm text-muted-foreground mt-1">
               Manage team members, invitations, and role permissions
             </p>
           </div>
           {isAdmin && (
             <button
               onClick={() => setShowInviteModal(true)}
-              className="flex items-center gap-2 px-4 py-2 bg-amber-600 hover:bg-amber-500 text-black font-semibold rounded-md transition-colors"
+              className="flex items-center gap-2 px-4 py-2 bg-amber-600 hover:bg-amber-500 text-foreground font-semibold rounded-md transition-colors"
             >
               <UserPlus className="w-4 h-4" />
               Invite Member
@@ -213,7 +213,7 @@ export default function ServiceTeamManager({ serviceKey }: Props) {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-3 gap-4 px-6 py-4 border-b border-zinc-800">
+      <div className="grid grid-cols-3 gap-4 px-6 py-4 border-b border-border">
         <StatCard label="Total Members" value={members.length} icon={Users} />
         <StatCard
           label="Pending Invites"
@@ -225,7 +225,7 @@ export default function ServiceTeamManager({ serviceKey }: Props) {
 
       {/* Error banner */}
       {error && (
-        <div className="mx-6 mt-4 p-3 bg-red-900/30 border border-red-700 rounded-md flex items-center gap-2 text-red-400 text-sm">
+        <div className="mx-6 mt-4 p-3 bg-red-100 dark:bg-red-900/30 border border-red-700 rounded-md flex items-center gap-2 text-red-600 dark:text-red-400 text-sm">
           <AlertCircle className="w-4 h-4 flex-shrink-0" />
           {error}
           <button onClick={() => setError(null)} className="ml-auto">
@@ -235,7 +235,7 @@ export default function ServiceTeamManager({ serviceKey }: Props) {
       )}
 
       {/* Tabs */}
-      <div className="flex border-b border-zinc-800 px-6">
+      <div className="flex border-b border-border px-6">
         {(['members', 'invitations', 'privileges'] as Tab[]).map((t) => (
           <button
             key={t}
@@ -243,7 +243,7 @@ export default function ServiceTeamManager({ serviceKey }: Props) {
             className={`px-4 py-3 text-sm font-medium capitalize border-b-2 transition-colors ${
               tab === t
                 ? 'border-amber-500 text-amber-500'
-                : 'border-transparent text-zinc-500 hover:text-zinc-300'
+                : 'border-transparent text-muted-foreground hover:text-muted-foreground'
             }`}
           >
             {t === 'privileges' ? 'Roles & Privileges' : t}
@@ -254,7 +254,7 @@ export default function ServiceTeamManager({ serviceKey }: Props) {
       {/* Tab content */}
       <div className="px-6 py-4">
         {loading ? (
-          <div className="flex items-center justify-center py-20 text-zinc-500">
+          <div className="flex items-center justify-center py-20 text-muted-foreground">
             <RefreshCw className="w-5 h-5 animate-spin mr-2" />
             Loading...
           </div>
@@ -310,8 +310,8 @@ function StatCard({
   icon: React.ElementType
 }) {
   return (
-    <div className="bg-zinc-900 border border-zinc-800 rounded-lg p-4">
-      <div className="flex items-center gap-2 text-zinc-500 text-xs mb-1">
+    <div className="bg-card border border-border rounded-lg p-4">
+      <div className="flex items-center gap-2 text-muted-foreground text-xs mb-1">
         <Icon className="w-3.5 h-3.5" />
         {label}
       </div>
@@ -347,13 +347,13 @@ function MembersTab({
     <div>
       {/* Search */}
       <div className="relative mb-4">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
         <input
           type="text"
           placeholder="Search members..."
           value={search}
           onChange={(e) => onSearchChange(e.target.value)}
-          className="w-full pl-10 pr-4 py-2 bg-zinc-900 border border-zinc-800 rounded-md text-zinc-100 placeholder:text-zinc-600 focus:outline-none focus:border-amber-500/50 font-mono text-sm"
+          className="w-full pl-10 pr-4 py-2 bg-card border border-border rounded-md text-zinc-100 placeholder:text-muted-foreground focus:outline-none focus:border-amber-500/50 font-mono text-sm"
         />
       </div>
 
@@ -362,7 +362,7 @@ function MembersTab({
       ) : (
         <div className="space-y-1">
           {/* Header */}
-          <div className="grid grid-cols-12 gap-4 px-4 py-2 text-xs text-zinc-500 uppercase tracking-wider">
+          <div className="grid grid-cols-12 gap-4 px-4 py-2 text-xs text-muted-foreground uppercase tracking-wider">
             <div className="col-span-4">Member</div>
             <div className="col-span-3">Role</div>
             <div className="col-span-2">Status</div>
@@ -373,19 +373,19 @@ function MembersTab({
           {members.map((m) => (
             <div
               key={m.id}
-              className="grid grid-cols-12 gap-4 items-center px-4 py-3 bg-zinc-900 border border-zinc-800 rounded-md hover:border-zinc-700 transition-colors"
+              className="grid grid-cols-12 gap-4 items-center px-4 py-3 bg-card border border-border rounded-md hover:border-border transition-colors"
             >
               {/* Name + email */}
               <div className="col-span-4">
                 <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-full bg-zinc-800 flex items-center justify-center text-amber-500 font-bold text-sm">
+                  <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center text-amber-500 font-bold text-sm">
                     {(m.firstName?.[0] || m.email?.[0] || '?').toUpperCase()}
                   </div>
                   <div>
                     <div className="text-sm font-medium text-zinc-100">
                       {m.firstName} {m.lastName}
                     </div>
-                    <div className="text-xs text-zinc-500">{m.email}</div>
+                    <div className="text-xs text-muted-foreground">{m.email}</div>
                   </div>
                 </div>
               </div>
@@ -394,7 +394,7 @@ function MembersTab({
               <div className="col-span-3 relative">
                 {editingRoleFor === m.id ? (
                   <select
-                    className="bg-zinc-800 border border-zinc-700 rounded px-2 py-1 text-xs text-zinc-100 font-mono focus:outline-none focus:border-amber-500"
+                    className="bg-muted border border-border rounded px-2 py-1 text-xs text-zinc-100 font-mono focus:outline-none focus:border-amber-500"
                     defaultValue={m.serviceRole}
                     onChange={(e) => onRoleChange(m.id, e.target.value)}
                     onBlur={() => onEditRole(null)}
@@ -427,8 +427,8 @@ function MembersTab({
                 <span
                   className={`text-xs px-2 py-0.5 rounded-full ${
                     m.status === 'active'
-                      ? 'bg-emerald-500/20 text-emerald-400'
-                      : 'bg-zinc-700/30 text-zinc-500'
+                      ? 'bg-emerald-500/20 text-emerald-600 dark:text-emerald-400'
+                      : 'bg-zinc-700/30 text-muted-foreground'
                   }`}
                 >
                   {m.status}
@@ -436,7 +436,7 @@ function MembersTab({
               </div>
 
               {/* Joined */}
-              <div className="col-span-2 text-xs text-zinc-500">
+              <div className="col-span-2 text-xs text-muted-foreground">
                 {m.joinedAt
                   ? new Date(m.joinedAt).toLocaleDateString('en-GB')
                   : '—'}
@@ -447,7 +447,7 @@ function MembersTab({
                 {isAdmin && m.serviceRole !== 'service_admin' && (
                   <button
                     onClick={() => onRemove(m.id)}
-                    className="p-1 text-zinc-600 hover:text-red-400 transition-colors"
+                    className="p-1 text-muted-foreground hover:text-red-400 transition-colors"
                     title="Remove member"
                   >
                     <X className="w-4 h-4" />
@@ -482,7 +482,7 @@ function InvitationsTab({
   return (
     <div className="space-y-1">
       {/* Header */}
-      <div className="grid grid-cols-12 gap-4 px-4 py-2 text-xs text-zinc-500 uppercase tracking-wider">
+      <div className="grid grid-cols-12 gap-4 px-4 py-2 text-xs text-muted-foreground uppercase tracking-wider">
         <div className="col-span-4">Email</div>
         <div className="col-span-2">Role</div>
         <div className="col-span-2">Status</div>
@@ -493,11 +493,11 @@ function InvitationsTab({
       {invitations.map((inv) => (
         <div
           key={inv.id}
-          className="grid grid-cols-12 gap-4 items-center px-4 py-3 bg-zinc-900 border border-zinc-800 rounded-md"
+          className="grid grid-cols-12 gap-4 items-center px-4 py-3 bg-card border border-border rounded-md"
         >
           <div className="col-span-4">
             <div className="text-sm text-zinc-100">{inv.email}</div>
-            <div className="text-xs text-zinc-500">
+            <div className="text-xs text-muted-foreground">
               {inv.firstName} {inv.lastName}
             </div>
           </div>
@@ -516,17 +516,17 @@ function InvitationsTab({
             <span
               className={`text-xs px-2 py-0.5 rounded-full ${
                 inv.status === 'pending'
-                  ? 'bg-amber-500/20 text-amber-400'
+                  ? 'bg-amber-500/20 text-amber-600 dark:text-amber-400'
                   : inv.status === 'accepted'
-                    ? 'bg-emerald-500/20 text-emerald-400'
-                    : 'bg-zinc-700/30 text-zinc-500'
+                    ? 'bg-emerald-500/20 text-emerald-600 dark:text-emerald-400'
+                    : 'bg-zinc-700/30 text-muted-foreground'
               }`}
             >
               {inv.status}
             </span>
           </div>
 
-          <div className="col-span-2 text-xs text-zinc-500">
+          <div className="col-span-2 text-xs text-muted-foreground">
             {new Date(inv.createdAt).toLocaleDateString('en-GB')}
           </div>
 
@@ -535,14 +535,14 @@ function InvitationsTab({
               <>
                 <button
                   onClick={() => onResend(inv.id)}
-                  className="p-1.5 text-zinc-500 hover:text-amber-400 transition-colors"
+                  className="p-1.5 text-muted-foreground hover:text-amber-400 transition-colors"
                   title="Resend"
                 >
                   <RefreshCw className="w-3.5 h-3.5" />
                 </button>
                 <button
                   onClick={() => onCancel(inv.id)}
-                  className="p-1.5 text-zinc-500 hover:text-red-400 transition-colors"
+                  className="p-1.5 text-muted-foreground hover:text-red-400 transition-colors"
                   title="Cancel"
                 >
                   <X className="w-3.5 h-3.5" />
@@ -582,7 +582,7 @@ function PrivilegesTab({
         return (
           <div
             key={role.serviceRole}
-            className="bg-zinc-900 border border-zinc-800 rounded-lg p-4"
+            className="bg-card border border-border rounded-lg p-4"
           >
             <div className="flex items-center gap-2 mb-2">
               <span
@@ -593,30 +593,30 @@ function PrivilegesTab({
                 {role.displayName}
               </span>
             </div>
-            <p className="text-xs text-zinc-500 mb-3">{role.description}</p>
+            <p className="text-xs text-muted-foreground mb-3">{role.description}</p>
 
             {actions.length > 0 ? (
               <div className="space-y-1">
-                <div className="text-xs text-zinc-600 uppercase tracking-wider mb-1">
+                <div className="text-xs text-muted-foreground uppercase tracking-wider mb-1">
                   Permissions
                 </div>
                 {actions.map((a, i) => (
                   <div
                     key={i}
-                    className="flex items-center gap-2 text-xs text-zinc-400"
+                    className="flex items-center gap-2 text-xs text-muted-foreground"
                   >
                     <Check className="w-3 h-3 text-emerald-500 flex-shrink-0" />
                     <span className="truncate">{a}</span>
                   </div>
                 ))}
                 {Object.values(rolePrivs).flat().length > 12 && (
-                  <div className="text-xs text-zinc-600 mt-1">
+                  <div className="text-xs text-muted-foreground mt-1">
                     +{Object.values(rolePrivs).flat().length - 12} more
                   </div>
                 )}
               </div>
             ) : (
-              <div className="text-xs text-zinc-600 italic">
+              <div className="text-xs text-muted-foreground italic">
                 {role.serviceRole === 'service_admin'
                   ? 'Full access to all features'
                   : 'No specific privileges defined'}
@@ -677,15 +677,15 @@ function InviteModal({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
-      <div className="bg-zinc-900 border border-zinc-800 rounded-lg w-full max-w-md mx-4 shadow-2xl">
-        <div className="flex items-center justify-between px-6 py-4 border-b border-zinc-800">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/60 backdrop-blur-sm">
+      <div className="bg-card border border-border rounded-lg w-full max-w-md mx-4 shadow-2xl">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-border">
           <h2 className="text-lg font-bold text-amber-500 font-mono">
             Invite Team Member
           </h2>
           <button
             onClick={onClose}
-            className="text-zinc-500 hover:text-zinc-300"
+            className="text-muted-foreground hover:text-muted-foreground"
           >
             <X className="w-5 h-5" />
           </button>
@@ -693,60 +693,60 @@ function InviteModal({
 
         <form onSubmit={handleSubmit} className="p-6 space-y-4">
           {error && (
-            <div className="p-3 bg-red-900/30 border border-red-700 rounded text-red-400 text-sm">
+            <div className="p-3 bg-red-100 dark:bg-red-900/30 border border-red-700 rounded text-red-600 dark:text-red-400 text-sm">
               {error}
             </div>
           )}
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs text-zinc-500 mb-1 uppercase tracking-wider">
+              <label className="block text-xs text-muted-foreground mb-1 uppercase tracking-wider">
                 First Name
               </label>
               <input
                 type="text"
                 value={firstName}
                 onChange={(e) => setFirstName(e.target.value)}
-                className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-md text-zinc-100 font-mono text-sm focus:outline-none focus:border-amber-500/50"
+                className="w-full px-3 py-2 bg-muted border border-border rounded-md text-zinc-100 font-mono text-sm focus:outline-none focus:border-amber-500/50"
                 required
               />
             </div>
             <div>
-              <label className="block text-xs text-zinc-500 mb-1 uppercase tracking-wider">
+              <label className="block text-xs text-muted-foreground mb-1 uppercase tracking-wider">
                 Last Name
               </label>
               <input
                 type="text"
                 value={lastName}
                 onChange={(e) => setLastName(e.target.value)}
-                className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-md text-zinc-100 font-mono text-sm focus:outline-none focus:border-amber-500/50"
+                className="w-full px-3 py-2 bg-muted border border-border rounded-md text-zinc-100 font-mono text-sm focus:outline-none focus:border-amber-500/50"
                 required
               />
             </div>
           </div>
 
           <div>
-            <label className="block text-xs text-zinc-500 mb-1 uppercase tracking-wider">
+            <label className="block text-xs text-muted-foreground mb-1 uppercase tracking-wider">
               Email
             </label>
             <input
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-md text-zinc-100 font-mono text-sm focus:outline-none focus:border-amber-500/50"
+              className="w-full px-3 py-2 bg-muted border border-border rounded-md text-zinc-100 font-mono text-sm focus:outline-none focus:border-amber-500/50"
               placeholder="member@company.com"
               required
             />
           </div>
 
           <div>
-            <label className="block text-xs text-zinc-500 mb-1 uppercase tracking-wider">
+            <label className="block text-xs text-muted-foreground mb-1 uppercase tracking-wider">
               Role
             </label>
             <select
               value={role}
               onChange={(e) => setRole(e.target.value)}
-              className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-md text-zinc-100 font-mono text-sm focus:outline-none focus:border-amber-500/50"
+              className="w-full px-3 py-2 bg-muted border border-border rounded-md text-zinc-100 font-mono text-sm focus:outline-none focus:border-amber-500/50"
             >
               {roles.map((r) => (
                 <option key={r.key} value={r.key}>
@@ -757,14 +757,14 @@ function InviteModal({
           </div>
 
           <div>
-            <label className="block text-xs text-zinc-500 mb-1 uppercase tracking-wider">
+            <label className="block text-xs text-muted-foreground mb-1 uppercase tracking-wider">
               Personal Message (optional)
             </label>
             <textarea
               value={message}
               onChange={(e) => setMessage(e.target.value)}
               rows={3}
-              className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-md text-zinc-100 font-mono text-sm focus:outline-none focus:border-amber-500/50 resize-none"
+              className="w-full px-3 py-2 bg-muted border border-border rounded-md text-zinc-100 font-mono text-sm focus:outline-none focus:border-amber-500/50 resize-none"
               placeholder="Welcome to the team..."
             />
           </div>
@@ -773,14 +773,14 @@ function InviteModal({
             <button
               type="button"
               onClick={onClose}
-              className="flex-1 px-4 py-2 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 rounded-md text-sm font-mono transition-colors"
+              className="flex-1 px-4 py-2 bg-muted hover:bg-zinc-700 text-muted-foreground rounded-md text-sm font-mono transition-colors"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={submitting}
-              className="flex-1 px-4 py-2 bg-amber-600 hover:bg-amber-500 text-black font-semibold rounded-md text-sm font-mono transition-colors disabled:opacity-50"
+              className="flex-1 px-4 py-2 bg-amber-600 hover:bg-amber-500 text-foreground font-semibold rounded-md text-sm font-mono transition-colors disabled:opacity-50"
             >
               {submitting ? 'Sending...' : 'Send Invite'}
             </button>
@@ -795,7 +795,7 @@ function InviteModal({
 
 function EmptyState({ message }: { message: string }) {
   return (
-    <div className="flex flex-col items-center justify-center py-16 text-zinc-500">
+    <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
       <Users className="w-10 h-10 mb-3 opacity-30" />
       <p className="text-sm">{message}</p>
     </div>

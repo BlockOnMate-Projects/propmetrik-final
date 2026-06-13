@@ -22,7 +22,7 @@ export default function LifecycleProgressNav({
     return (
         <div className="relative">
             {/* Connector line track */}
-            <div className="absolute top-5 left-0 right-0 h-px bg-zinc-800 pointer-events-none" />
+            <div className="absolute top-5 left-0 right-0 h-px bg-muted pointer-events-none" />
 
             {/* Filled progress line */}
             <motion.div

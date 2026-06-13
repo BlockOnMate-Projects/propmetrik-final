@@ -137,7 +137,7 @@ export default function PDFViewer({
         </div>
 
         {/* Scroll container */}
-        <div className="flex-1 overflow-auto bg-zinc-200 dark:bg-zinc-800" ref={scrollContainerRef}>
+        <div className="flex-1 overflow-auto bg-zinc-200 dark:bg-muted" ref={scrollContainerRef}>
           {loading && (
             <div className="flex flex-col items-center justify-center h-64">
               <Loader2 className="h-8 w-8 animate-spin text-primary mb-2" />
@@ -152,7 +152,7 @@ export default function PDFViewer({
             {pages.map((page) => (
               <div
                 key={page.pageNum}
-                className="relative bg-white shadow-lg"
+                className="relative bg-card shadow-lg"
                 ref={(el) => {
                   if (el) pageRefs.current.set(page.pageNum, el);
                 }}
@@ -167,7 +167,7 @@ export default function PDFViewer({
                 onClick={(e) => onPageClick?.(e, page.pageNum)}
               >
                 {/* Page number badge */}
-                <div className="absolute -top-3 left-2 z-10 bg-zinc-700 text-white text-[10px] px-2 py-0.5 rounded">
+                <div className="absolute -top-3 left-2 z-10 bg-zinc-700 text-foreground text-[10px] px-2 py-0.5 rounded">
                   Page {page.pageNum}
                 </div>
                 <img src={page.dataUrl} alt={`Page ${page.pageNum}`} draggable={false} className="block" />

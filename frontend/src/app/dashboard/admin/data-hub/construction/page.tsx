@@ -112,18 +112,18 @@ export default function ConstructionCostsPage() {
   )
 
   return (
-    <div className="min-h-screen bg-black text-white p-4 pb-10">
+    <div className="min-h-screen bg-background text-foreground p-4 pb-10">
       {/* Header */}
       <div className="flex items-start justify-between mb-6">
         <div>
           <h1 className="font-mono text-2xl text-amber-500 tracking-wider">CONSTRUCTION COSTS MONITOR</h1>
-          <p className="font-mono text-[10px] text-zinc-500 mt-1">
+          <p className="font-mono text-[10px] text-muted-foreground mt-1">
             MATERIAL PRICES • LABOR RATES • REGIONAL COMPARISON • COST INDEX TRACKING
           </p>
         </div>
         <Link
           href="/dashboard/admin/data-hub/valuation-config"
-          className="flex items-center gap-2 px-4 py-2 bg-zinc-900 border border-zinc-700 hover:border-amber-500 transition-colors font-mono text-xs text-zinc-300 hover:text-amber-400 shrink-0"
+          className="flex items-center gap-2 px-4 py-2 bg-card border border-border hover:border-amber-500 transition-colors font-mono text-xs text-muted-foreground hover:text-amber-400 shrink-0"
         >
           <Settings className="w-4 h-4" />
           VALUATION CONFIG
@@ -170,12 +170,12 @@ export default function ConstructionCostsPage() {
       <div className="mb-6">
         <TerminalPanel title="Region & Controls">
           <div className="flex items-center gap-4">
-            <div className="flex items-center gap-2 text-zinc-400">
+            <div className="flex items-center gap-2 text-muted-foreground">
               <MapPin className="w-4 h-4" />
               <span className="font-mono text-xs">REGION:</span>
             </div>
             <Select value={selectedRegion} onValueChange={setSelectedRegion}>
-              <SelectTrigger className="w-48 bg-zinc-800 border-zinc-700 font-mono text-xs">
+              <SelectTrigger className="w-48 bg-muted border-border font-mono text-xs">
                 <SelectValue placeholder="Select region" />
               </SelectTrigger>
               <SelectContent>
@@ -189,7 +189,7 @@ export default function ConstructionCostsPage() {
             <button
               onClick={() => seedMutation.mutate()}
               disabled={seedMutation.isPending}
-              className="px-4 py-2 bg-amber-500 text-white font-mono text-xs hover:bg-amber-400 transition-colors disabled:opacity-50"
+              className="px-4 py-2 bg-amber-500 text-foreground font-mono text-xs hover:bg-amber-400 transition-colors disabled:opacity-50"
             >
               <RefreshCw className={cn(
                 'w-4 h-4 inline mr-2',
@@ -211,8 +211,8 @@ export default function ConstructionCostsPage() {
               className={cn(
                 'px-4 py-2 font-mono text-xs transition-colors',
                 activeTab === tab
-                  ? 'bg-amber-500 text-white'
-                  : 'bg-zinc-800 text-zinc-400 hover:text-white'
+                  ? 'bg-amber-500 text-foreground'
+                  : 'bg-muted text-muted-foreground hover:text-foreground'
               )}
             >
               {tab.toUpperCase()} ({tab === 'materials' ? materials?.count || 0 : laborRates?.count || 0})
@@ -226,17 +226,17 @@ export default function ConstructionCostsPage() {
             <TerminalPanel title="Search Materials">
               <div className="flex items-center gap-4">
                 <div className="flex-1 relative">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                   <input
                     type="text"
                     placeholder="Search materials..."
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    className="w-full pl-10 pr-4 py-2 bg-zinc-800 border border-zinc-700 text-white font-mono text-sm focus:outline-none focus:border-amber-500"
+                    className="w-full pl-10 pr-4 py-2 bg-muted border border-border text-foreground font-mono text-sm focus:outline-none focus:border-amber-500"
                   />
                 </div>
                 <Select value={materialCategory} onValueChange={setMaterialCategory}>
-                  <SelectTrigger className="w-40 bg-zinc-800 border-zinc-700 font-mono text-xs">
+                  <SelectTrigger className="w-40 bg-muted border-border font-mono text-xs">
                     <SelectValue placeholder="Category" />
                   </SelectTrigger>
                   <SelectContent>
@@ -256,41 +256,41 @@ export default function ConstructionCostsPage() {
               {materialsLoading ? (
                 <div className="space-y-2">
                   {[1, 2, 3, 4, 5].map((i) => (
-                    <div key={i} className="h-16 bg-zinc-800/30 animate-pulse" />
+                    <div key={i} className="h-16 bg-muted/30 animate-pulse" />
                   ))}
                 </div>
               ) : filteredMaterials.length === 0 ? (
                 <div className="text-center py-12">
                   <Package className="w-12 h-12 mx-auto mb-4 text-zinc-700" />
-                  <p className="font-mono text-sm text-zinc-500">No materials found</p>
+                  <p className="font-mono text-sm text-muted-foreground">No materials found</p>
                 </div>
               ) : (
                 <div className="space-y-2">
                   {filteredMaterials.map((material) => (
                     <div
                       key={material.id}
-                      className="p-3 bg-zinc-800/30 border border-zinc-800 hover:border-zinc-700 transition-colors"
+                      className="p-3 bg-muted/30 border border-border hover:border-border transition-colors"
                     >
                       <div className="flex items-center justify-between">
                         <div className="flex-1">
                           <div className="flex items-center gap-2 mb-1">
-                            <span className="font-mono text-sm text-white">{material.material_name}</span>
-                            <span className="px-2 py-0.5 bg-zinc-700 text-zinc-400 font-mono text-[9px]">
+                            <span className="font-mono text-sm text-foreground">{material.material_name}</span>
+                            <span className="px-2 py-0.5 bg-zinc-700 text-muted-foreground font-mono text-[9px]">
                               {material.material_category}
                             </span>
                           </div>
-                          <div className="flex items-center gap-4 font-mono text-[10px] text-zinc-500">
+                          <div className="flex items-center gap-4 font-mono text-[10px] text-muted-foreground">
                             <span>{material.unit}</span>
                             <span>•</span>
                             <span>{material.supplier_type || 'Retail'}</span>
                           </div>
                         </div>
                         <div className="text-right">
-                          <div className="font-mono text-lg text-white">{formatCurrency(material.price_ghs)}</div>
+                          <div className="font-mono text-lg text-foreground">{formatCurrency(material.price_ghs)}</div>
                           {material.price_change_percent !== undefined && material.price_change_percent !== null && (
                             <div className={cn(
                               'flex items-center gap-1 justify-end font-mono text-[10px]',
-                              material.price_change_percent >= 0 ? 'text-red-400' : 'text-green-400'
+                              material.price_change_percent >= 0 ? 'text-red-600 dark:text-red-400' : 'text-green-600 dark:text-green-400'
                             )}>
                               {material.price_change_percent >= 0 ? (
                                 <ArrowUpRight className="w-3 h-3" />
@@ -314,7 +314,7 @@ export default function ConstructionCostsPage() {
             <TerminalPanel title="Filter Labor Rates">
               <div className="flex items-center gap-4">
                 <Select value={laborCategory} onValueChange={setLaborCategory}>
-                  <SelectTrigger className="w-40 bg-zinc-800 border-zinc-700 font-mono text-xs">
+                  <SelectTrigger className="w-40 bg-muted border-border font-mono text-xs">
                     <SelectValue placeholder="Category" />
                   </SelectTrigger>
                   <SelectContent>
@@ -334,43 +334,43 @@ export default function ConstructionCostsPage() {
               {laborLoading ? (
                 <div className="space-y-2">
                   {[1, 2, 3, 4, 5].map((i) => (
-                    <div key={i} className="h-16 bg-zinc-800/30 animate-pulse" />
+                    <div key={i} className="h-16 bg-muted/30 animate-pulse" />
                   ))}
                 </div>
               ) : (laborRates?.data?.length || 0) === 0 ? (
                 <div className="text-center py-12">
                   <Users className="w-12 h-12 mx-auto mb-4 text-zinc-700" />
-                  <p className="font-mono text-sm text-zinc-500">No labor rates found</p>
+                  <p className="font-mono text-sm text-muted-foreground">No labor rates found</p>
                 </div>
               ) : (
                 <div className="space-y-2">
                   {laborRates?.data?.map((rate) => (
                     <div
                       key={rate.id}
-                      className="p-3 bg-zinc-800/30 border border-zinc-800 hover:border-zinc-700 transition-colors"
+                      className="p-3 bg-muted/30 border border-border hover:border-border transition-colors"
                     >
                       <div className="flex items-center justify-between">
                         <div className="flex-1">
                           <div className="flex items-center gap-2 mb-1">
-                            <span className="font-mono text-sm text-white">{rate.labor_category}</span>
+                            <span className="font-mono text-sm text-foreground">{rate.labor_category}</span>
                             <span className={cn(
                               'px-2 py-0.5 border font-mono text-[9px]',
-                              rate.skill_level === 'master' ? 'bg-purple-900/30 text-purple-400 border-purple-500/30' :
-                                rate.skill_level === 'specialist' ? 'bg-blue-900/30 text-blue-400 border-blue-500/30' :
-                                  'bg-zinc-700 text-zinc-400 border-zinc-600'
+                              rate.skill_level === 'master' ? 'bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400 border-purple-500/30' :
+                                rate.skill_level === 'specialist' ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 border-blue-500/30' :
+                                  'bg-zinc-700 text-muted-foreground border-zinc-600'
                             )}>
                               {rate.skill_level.toUpperCase()}
                             </span>
                           </div>
-                          <div className="font-mono text-[10px] text-zinc-500">
+                          <div className="font-mono text-[10px] text-muted-foreground">
                             {regionOptions.find((r) => r.value === rate.region)?.label || rate.region}
                           </div>
                         </div>
                         <div className="text-right">
-                          <div className="font-mono text-lg text-white">
+                          <div className="font-mono text-lg text-foreground">
                             {formatCurrency(rate.rate_type === 'daily' ? rate.rate_ghs : rate.rate_ghs * 8)}
                           </div>
-                          <div className="font-mono text-[10px] text-zinc-500">
+                          <div className="font-mono text-[10px] text-muted-foreground">
                             {formatCurrency(rate.rate_type === 'hourly' ? rate.rate_ghs : rate.rate_ghs / 8)}/hr
                           </div>
                         </div>

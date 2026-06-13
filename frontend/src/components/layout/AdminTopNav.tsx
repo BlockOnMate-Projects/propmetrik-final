@@ -130,7 +130,7 @@ export function AdminTopNav() {
 
   return (
     <div
-      className="w-full bg-zinc-950 border-b border-red-900/50"
+      className="w-full bg-background border-b border-red-900/50"
       onMouseLeave={() => setHoveredGroup(null)}
     >
       {/* ── Primary Category Tabs ── */}
@@ -150,13 +150,13 @@ export function AdminTopNav() {
                 className={cn(
                   'flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-mono tracking-wide transition-all whitespace-nowrap',
                   isActive
-                    ? 'bg-red-600 text-white font-bold'
+                    ? 'bg-red-600 text-foreground font-bold'
                     : isHovered
-                      ? 'text-red-300 bg-red-900/20'
-                      : 'text-zinc-400 hover:text-red-300 hover:bg-red-900/20'
+                      ? 'text-red-600 dark:text-red-300 bg-red-100 dark:bg-red-900/20'
+                      : 'text-muted-foreground hover:text-red-300 hover:bg-red-900/20'
                 )}
               >
-                <Icon className={cn('w-3.5 h-3.5', isActive ? 'text-white' : 'text-red-500/70')} />
+                <Icon className={cn('w-3.5 h-3.5', isActive ? 'text-foreground' : 'text-red-500/70')} />
                 {item.name}
               </Link>
             )
@@ -171,13 +171,13 @@ export function AdminTopNav() {
               className={cn(
                 'flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-mono tracking-wide transition-all whitespace-nowrap select-none',
                 isActive
-                  ? 'bg-red-600 text-white font-bold'
+                  ? 'bg-red-600 text-foreground font-bold'
                   : isHovered
-                    ? 'text-red-300 bg-red-900/20'
-                    : 'text-zinc-400 hover:text-red-300 hover:bg-red-900/20'
+                    ? 'text-red-600 dark:text-red-300 bg-red-100 dark:bg-red-900/20'
+                    : 'text-muted-foreground hover:text-red-300 hover:bg-red-900/20'
               )}
             >
-              <Icon className={cn('w-3.5 h-3.5', isActive ? 'text-white' : 'text-red-500/70')} />
+              <Icon className={cn('w-3.5 h-3.5', isActive ? 'text-foreground' : 'text-red-500/70')} />
               {item.name}
             </button>
           )
@@ -186,11 +186,11 @@ export function AdminTopNav() {
 
       {/* ── Row 3: Sub-Items — always visible for active group ── */}
       {(subItems || activeSubItems) && (
-        <div className="flex items-center h-8 px-4 gap-0.5 bg-zinc-900/80 border-t border-red-900/20 overflow-x-auto scrollbar-hide">
+        <div className="flex items-center h-8 px-4 gap-0.5 bg-card/80 border-t border-red-900/20 overflow-x-auto scrollbar-hide">
           <span className="font-mono text-[9px] text-red-500/60 uppercase tracking-widest mr-3 whitespace-nowrap">
             {displayGroup || activeGroup}
           </span>
-          <div className="w-px h-4 bg-red-900/30 mr-2" />
+          <div className="w-px h-4 bg-red-100 dark:bg-red-900/30 mr-2" />
           {(subItems || activeSubItems || []).map((child) => {
             const isChildActive = pathname.startsWith(child.href)
             const ChildIcon = child.icon
@@ -202,11 +202,11 @@ export function AdminTopNav() {
                 className={cn(
                   'flex items-center gap-1.5 px-3 py-1 text-[11px] font-mono tracking-wide transition-all whitespace-nowrap',
                   isChildActive
-                    ? 'bg-red-900/40 text-white font-bold border-b-2 border-red-500'
-                    : 'text-zinc-400 hover:text-white hover:bg-zinc-800/60'
+                    ? 'bg-red-100 dark:bg-red-900/40 text-foreground font-bold border-b-2 border-red-500'
+                    : 'text-muted-foreground hover:text-foreground hover:bg-amber-50 dark:hover:bg-amber-500/10'
                 )}
               >
-                <ChildIcon className={cn('w-3 h-3', isChildActive ? 'text-red-400' : 'text-zinc-600')} />
+                <ChildIcon className={cn('w-3 h-3', isChildActive ? 'text-red-600 dark:text-red-400' : 'text-muted-foreground')} />
                 {child.name}
               </Link>
             )

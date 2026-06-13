@@ -88,47 +88,47 @@ export default function ApplicationDetailPage() {
     const getStatusBadge = (status: ApplicationStatus) => {
         const config: Record<ApplicationStatus, { color: string; icon: React.ReactNode; label: string }> = {
             [ApplicationStatus.DRAFT]: { 
-                color: 'border-zinc-700 text-zinc-400 bg-zinc-800/20', 
+                color: 'border-border text-muted-foreground bg-muted/20', 
                 icon: <Clock className="h-3 w-3" />, 
                 label: 'Draft' 
             },
             [ApplicationStatus.SUBMITTED]: { 
-                color: 'border-blue-900 text-blue-400 bg-blue-900/20', 
+                color: 'border-blue-900 text-blue-600 dark:text-blue-400 bg-blue-100 dark:bg-blue-900/20', 
                 icon: <Send className="h-3 w-3" />, 
                 label: 'Submitted' 
             },
             [ApplicationStatus.UNDER_REVIEW]: { 
-                color: 'border-amber-900 text-amber-400 bg-amber-900/20', 
+                color: 'border-amber-900 text-amber-600 dark:text-amber-400 bg-amber-100 dark:bg-amber-900/20', 
                 icon: <Eye className="h-3 w-3" />, 
                 label: 'Under Review' 
             },
             [ApplicationStatus.APPROVED]: { 
-                color: 'border-green-900 text-green-400 bg-green-900/20', 
+                color: 'border-green-900 text-green-600 dark:text-green-400 bg-green-100 dark:bg-green-900/20', 
                 icon: <CheckCircle2 className="h-3 w-3" />, 
                 label: 'Approved' 
             },
             [ApplicationStatus.REJECTED]: { 
-                color: 'border-red-900 text-red-400 bg-red-900/20', 
+                color: 'border-red-900 text-red-600 dark:text-red-400 bg-red-100 dark:bg-red-900/20', 
                 icon: <XCircle className="h-3 w-3" />, 
                 label: 'Rejected' 
             },
             [ApplicationStatus.WITHDRAWN]: { 
-                color: 'border-zinc-700 text-zinc-500 bg-zinc-800/20', 
+                color: 'border-border text-muted-foreground bg-muted/20', 
                 icon: <X className="h-3 w-3" />, 
                 label: 'Withdrawn' 
             },
             [ApplicationStatus.LEASE_GENERATED]: {
-                color: 'border-emerald-900 text-emerald-400 bg-emerald-900/20',
+                color: 'border-emerald-900 text-emerald-600 dark:text-emerald-400 bg-emerald-100 dark:bg-emerald-900/20',
                 icon: <FileText className="h-3 w-3" />,
                 label: 'Lease Generated'
             },
             [ApplicationStatus.LEASE_SIGNED]: {
-                color: 'border-teal-900 text-teal-400 bg-teal-900/20',
+                color: 'border-teal-900 text-teal-600 dark:text-teal-400 bg-teal-100 dark:bg-teal-900/20',
                 icon: <CheckCircle2 className="h-3 w-3" />,
                 label: 'Lease Signed'
             },
             [ApplicationStatus.EXPIRED]: {
-                color: 'border-zinc-700 text-zinc-500 bg-zinc-800/20',
+                color: 'border-border text-muted-foreground bg-muted/20',
                 icon: <Clock className="h-3 w-3" />,
                 label: 'Expired'
             }
@@ -203,7 +203,7 @@ export default function ApplicationDetailPage() {
         return (
             <div className="flex flex-col items-center justify-center h-96 gap-4">
                 <AlertCircle className="h-12 w-12 text-red-500" />
-                <p className="text-zinc-400">{error || 'Application not found'}</p>
+                <p className="text-muted-foreground">{error || 'Application not found'}</p>
                 <Button variant="outline" onClick={() => router.back()}>
                     <ArrowLeft className="h-4 w-4 mr-2" />
                     Go Back
@@ -226,10 +226,10 @@ export default function ApplicationDetailPage() {
                     </Button>
                     <div>
                         <div className="flex items-center gap-3">
-                            <h1 className="text-2xl font-bold text-white">{application.applicantFullName}</h1>
+                            <h1 className="text-2xl font-bold text-foreground">{application.applicantFullName}</h1>
                             {getStatusBadge(application.status)}
                         </div>
-                        <p className="text-zinc-400 mt-1">
+                        <p className="text-muted-foreground mt-1">
                             Applied for {application.propertyName || 'Property'} • {format(new Date(application.createdAt), 'MMMM d, yyyy')}
                         </p>
                     </div>
@@ -293,13 +293,13 @@ export default function ApplicationDetailPage() {
 
             {/* Status Messages */}
             {application.status === ApplicationStatus.REJECTED && application.rejectionReason && (
-                <Card className="bg-red-900/20 border-red-900">
+                <Card className="bg-red-100 dark:bg-red-900/20 border-red-900">
                     <CardContent className="pt-4">
                         <div className="flex items-start gap-3">
-                            <XCircle className="h-5 w-5 text-red-400 mt-0.5" />
+                            <XCircle className="h-5 w-5 text-red-600 dark:text-red-400 mt-0.5" />
                             <div>
-                                <p className="font-medium text-red-400">Application Rejected</p>
-                                <p className="text-zinc-400 mt-1">{application.rejectionReason}</p>
+                                <p className="font-medium text-red-600 dark:text-red-400">Application Rejected</p>
+                                <p className="text-muted-foreground mt-1">{application.rejectionReason}</p>
                             </div>
                         </div>
                     </CardContent>
@@ -307,13 +307,13 @@ export default function ApplicationDetailPage() {
             )}
 
             {application.status === ApplicationStatus.APPROVED && application.approvalNotes && (
-                <Card className="bg-green-900/20 border-green-900">
+                <Card className="bg-green-100 dark:bg-green-900/20 border-green-900">
                     <CardContent className="pt-4">
                         <div className="flex items-start gap-3">
-                            <CheckCircle2 className="h-5 w-5 text-green-400 mt-0.5" />
+                            <CheckCircle2 className="h-5 w-5 text-green-600 dark:text-green-400 mt-0.5" />
                             <div>
-                                <p className="font-medium text-green-400">Application Approved</p>
-                                <p className="text-zinc-400 mt-1">{application.approvalNotes}</p>
+                                <p className="font-medium text-green-600 dark:text-green-400">Application Approved</p>
+                                <p className="text-muted-foreground mt-1">{application.approvalNotes}</p>
                             </div>
                         </div>
                     </CardContent>
@@ -323,14 +323,14 @@ export default function ApplicationDetailPage() {
             {/* Lease Signed - Tenant Created Banner */}
             {/* Only show when lease is actually signed (has envelopeId with completed status or explicit signed flag) */}
             {application.tenantId && application.envelopeId && application.status === 'lease_signed' && (
-                <Card className="bg-emerald-900/20 border-emerald-900">
+                <Card className="bg-emerald-100 dark:bg-emerald-900/20 border-emerald-900">
                     <CardContent className="pt-4">
                         <div className="flex items-center justify-between">
                             <div className="flex items-start gap-3">
-                                <UserCheck className="h-5 w-5 text-emerald-400 mt-0.5" />
+                                <UserCheck className="h-5 w-5 text-emerald-600 dark:text-emerald-400 mt-0.5" />
                                 <div>
-                                    <p className="font-medium text-emerald-400">Lease Signed - Tenant Record Created</p>
-                                    <p className="text-zinc-400 mt-1">
+                                    <p className="font-medium text-emerald-600 dark:text-emerald-400">Lease Signed - Tenant Record Created</p>
+                                    <p className="text-muted-foreground mt-1">
                                         The lease has been signed and this applicant is now a tenant.
                                         All personal details, employment information, and references have been transferred to the tenant system.
                                     </p>
@@ -350,14 +350,14 @@ export default function ApplicationDetailPage() {
             {/* Lease Generated - Awaiting Signature Banner */}
             {/* Show only when status is lease_generated */}
             {application.status === ApplicationStatus.LEASE_GENERATED && (
-                <Card className="bg-amber-900/20 border-amber-900">
+                <Card className="bg-amber-100 dark:bg-amber-900/20 border-amber-900">
                     <CardContent className="pt-4">
                         <div className="flex items-center justify-between">
                             <div className="flex items-start gap-3">
-                                <Send className="h-5 w-5 text-amber-400 mt-0.5" />
+                                <Send className="h-5 w-5 text-amber-600 dark:text-amber-400 mt-0.5" />
                                 <div>
-                                    <p className="font-medium text-amber-400">Lease Generated - Awaiting Signature</p>
-                                    <p className="text-zinc-400 mt-1">
+                                    <p className="font-medium text-amber-600 dark:text-amber-400">Lease Generated - Awaiting Signature</p>
+                                    <p className="text-muted-foreground mt-1">
                                         The lease agreement has been generated. Continue to the e-sign wizard to place signature fields and send for signing.
                                     </p>
                                 </div>
@@ -368,7 +368,7 @@ export default function ApplicationDetailPage() {
                                         <Button 
                                             variant="outline"
                                             size="sm"
-                                            className="border-amber-700 text-amber-400 hover:bg-amber-900/30"
+                                            className="border-amber-700 text-amber-600 dark:text-amber-400 hover:bg-amber-900/30"
                                         >
                                             <Eye className="h-4 w-4 mr-2" />
                                             View Envelope
@@ -390,19 +390,19 @@ export default function ApplicationDetailPage() {
 
             {/* Lease Sent - Awaiting Signature Banner (legacy - for old leases without tenantId set during generation) */}
             {application.status === ApplicationStatus.LEASE_GENERATED && !application.tenantId && (
-                <Card className="bg-amber-900/20 border-amber-900">
+                <Card className="bg-amber-100 dark:bg-amber-900/20 border-amber-900">
                     <CardContent className="pt-4">
                         <div className="flex items-center justify-between">
                             <div className="flex items-start gap-3">
-                                <Send className="h-5 w-5 text-amber-400 mt-0.5" />
+                                <Send className="h-5 w-5 text-amber-600 dark:text-amber-400 mt-0.5" />
                                 <div>
-                                    <p className="font-medium text-amber-400">Lease Sent - Awaiting Signature</p>
-                                    <p className="text-zinc-400 mt-1">
-                                        The lease agreement has been sent to <span className="text-white">{application.applicantEmail}</span> for signature.
+                                    <p className="font-medium text-amber-600 dark:text-amber-400">Lease Sent - Awaiting Signature</p>
+                                    <p className="text-muted-foreground mt-1">
+                                        The lease agreement has been sent to <span className="text-foreground">{application.applicantEmail}</span> for signature.
                                         Once the tenant signs the lease, they will automatically be converted to a tenant record.
                                     </p>
                                     {!application.envelopeId && (
-                                        <p className="text-zinc-500 text-xs mt-2">
+                                        <p className="text-muted-foreground text-xs mt-2">
                                             <AlertCircle className="h-3 w-3 inline mr-1" />
                                             This lease was created before envelope tracking. Regenerate to enable View/Void/Resend.
                                         </p>
@@ -416,7 +416,7 @@ export default function ApplicationDetailPage() {
                                             <Button 
                                                 variant="outline"
                                                 size="sm"
-                                                className="border-amber-700 text-amber-400 hover:bg-amber-900/30"
+                                                className="border-amber-700 text-amber-600 dark:text-amber-400 hover:bg-amber-900/30"
                                             >
                                                 <Eye className="h-4 w-4 mr-2" />
                                                 View Lease
@@ -425,7 +425,7 @@ export default function ApplicationDetailPage() {
                                         <Button 
                                             variant="outline"
                                             size="sm"
-                                            className="border-amber-700 text-amber-400 hover:bg-amber-900/30"
+                                            className="border-amber-700 text-amber-600 dark:text-amber-400 hover:bg-amber-900/30"
                                         >
                                             <Mail className="h-4 w-4 mr-2" />
                                             Resend Email
@@ -448,14 +448,14 @@ export default function ApplicationDetailPage() {
 
             {/* Generate Lease Info Banner (when approved but no lease yet) */}
             {application.status === ApplicationStatus.APPROVED && !application.tenantId && (
-                <Card className="bg-blue-900/20 border-blue-900">
+                <Card className="bg-blue-100 dark:bg-blue-900/20 border-blue-900">
                     <CardContent className="pt-4">
                         <div className="flex items-center justify-between">
                             <div className="flex items-start gap-3">
-                                <FileText className="h-5 w-5 text-blue-400 mt-0.5" />
+                                <FileText className="h-5 w-5 text-blue-600 dark:text-blue-400 mt-0.5" />
                                 <div>
-                                    <p className="font-medium text-blue-400">Ready to Generate Lease</p>
-                                    <p className="text-zinc-400 mt-1">
+                                    <p className="font-medium text-blue-600 dark:text-blue-400">Ready to Generate Lease</p>
+                                    <p className="text-muted-foreground mt-1">
                                         Click "Generate Lease" to create the lease agreement using this applicant's information.
                                         Once the lease is signed, the applicant will be converted to a tenant.
                                     </p>
@@ -477,65 +477,65 @@ export default function ApplicationDetailPage() {
                 {/* Main Content */}
                 <div className="lg:col-span-2 space-y-6">
                     {/* Personal Information */}
-                    <Card className="bg-zinc-900/50 border-zinc-800">
+                    <Card className="bg-card/50 border-border">
                         <CardHeader>
-                            <CardTitle className="text-white flex items-center gap-2">
-                                <User className="h-5 w-5 text-blue-400" />
+                            <CardTitle className="text-foreground flex items-center gap-2">
+                                <User className="h-5 w-5 text-blue-600 dark:text-blue-400" />
                                 Personal Information
                             </CardTitle>
                         </CardHeader>
                         <CardContent className="space-y-4">
                             <div className="grid grid-cols-2 gap-4">
                                 <div>
-                                    <p className="text-sm text-zinc-500">Full Name</p>
-                                    <p className="text-white">{application.applicantFullName}</p>
+                                    <p className="text-sm text-muted-foreground">Full Name</p>
+                                    <p className="text-foreground">{application.applicantFullName}</p>
                                 </div>
                                 <div>
-                                    <p className="text-sm text-zinc-500">Ghana Card Number</p>
-                                    <p className="text-white">{application.applicantGhanaCard || '-'}</p>
+                                    <p className="text-sm text-muted-foreground">Ghana Card Number</p>
+                                    <p className="text-foreground">{application.applicantGhanaCard || '-'}</p>
                                 </div>
                                 <div>
-                                    <p className="text-sm text-zinc-500">Email</p>
-                                    <p className="text-white flex items-center gap-2">
-                                        <Mail className="h-4 w-4 text-zinc-500" />
+                                    <p className="text-sm text-muted-foreground">Email</p>
+                                    <p className="text-foreground flex items-center gap-2">
+                                        <Mail className="h-4 w-4 text-muted-foreground" />
                                         {application.applicantEmail}
                                     </p>
                                 </div>
                                 <div>
-                                    <p className="text-sm text-zinc-500">Phone</p>
-                                    <p className="text-white flex items-center gap-2">
-                                        <Phone className="h-4 w-4 text-zinc-500" />
+                                    <p className="text-sm text-muted-foreground">Phone</p>
+                                    <p className="text-foreground flex items-center gap-2">
+                                        <Phone className="h-4 w-4 text-muted-foreground" />
                                         {application.applicantPhone}
                                     </p>
                                 </div>
                                 {application.applicantPhoneSecondary && (
                                     <div>
-                                        <p className="text-sm text-zinc-500">Secondary Phone</p>
-                                        <p className="text-white">{application.applicantPhoneSecondary}</p>
+                                        <p className="text-sm text-muted-foreground">Secondary Phone</p>
+                                        <p className="text-foreground">{application.applicantPhoneSecondary}</p>
                                     </div>
                                 )}
                                 {application.applicantDateOfBirth && (
                                     <div>
-                                        <p className="text-sm text-zinc-500">Date of Birth</p>
-                                        <p className="text-white">{format(new Date(application.applicantDateOfBirth), 'MMMM d, yyyy')}</p>
+                                        <p className="text-sm text-muted-foreground">Date of Birth</p>
+                                        <p className="text-foreground">{format(new Date(application.applicantDateOfBirth), 'MMMM d, yyyy')}</p>
                                     </div>
                                 )}
                             </div>
                             
-                            <Separator className="bg-zinc-800" />
+                            <Separator className="bg-muted" />
                             
                             <div className="grid grid-cols-2 gap-4">
                                 <div className="col-span-2">
-                                    <p className="text-sm text-zinc-500">Current Address</p>
-                                    <p className="text-white flex items-center gap-2">
-                                        <MapPin className="h-4 w-4 text-zinc-500" />
+                                    <p className="text-sm text-muted-foreground">Current Address</p>
+                                    <p className="text-foreground flex items-center gap-2">
+                                        <MapPin className="h-4 w-4 text-muted-foreground" />
                                         {application.applicantCurrentAddress || '-'}
                                     </p>
                                 </div>
                                 {application.applicantDigitalAddress && (
                                     <div>
-                                        <p className="text-sm text-zinc-500">Digital Address</p>
-                                        <p className="text-white">{application.applicantDigitalAddress}</p>
+                                        <p className="text-sm text-muted-foreground">Digital Address</p>
+                                        <p className="text-foreground">{application.applicantDigitalAddress}</p>
                                     </div>
                                 )}
                             </div>
@@ -543,34 +543,34 @@ export default function ApplicationDetailPage() {
                     </Card>
 
                     {/* Employment Information */}
-                    <Card className="bg-zinc-900/50 border-zinc-800">
+                    <Card className="bg-card/50 border-border">
                         <CardHeader>
-                            <CardTitle className="text-white flex items-center gap-2">
-                                <Briefcase className="h-5 w-5 text-amber-400" />
+                            <CardTitle className="text-foreground flex items-center gap-2">
+                                <Briefcase className="h-5 w-5 text-amber-600 dark:text-amber-400" />
                                 Employment Information
                             </CardTitle>
                         </CardHeader>
                         <CardContent>
                             <div className="grid grid-cols-2 gap-4">
                                 <div>
-                                    <p className="text-sm text-zinc-500">Occupation</p>
-                                    <p className="text-white">{application.occupation || '-'}</p>
+                                    <p className="text-sm text-muted-foreground">Occupation</p>
+                                    <p className="text-foreground">{application.occupation || '-'}</p>
                                 </div>
                                 <div>
-                                    <p className="text-sm text-zinc-500">Employer</p>
-                                    <p className="text-white">{application.employerName || '-'}</p>
+                                    <p className="text-sm text-muted-foreground">Employer</p>
+                                    <p className="text-foreground">{application.employerName || '-'}</p>
                                 </div>
                                 <div className="col-span-2">
-                                    <p className="text-sm text-zinc-500">Employer Address</p>
-                                    <p className="text-white">{application.employerAddress || '-'}</p>
+                                    <p className="text-sm text-muted-foreground">Employer Address</p>
+                                    <p className="text-foreground">{application.employerAddress || '-'}</p>
                                 </div>
                                 <div>
-                                    <p className="text-sm text-zinc-500">Employer Phone</p>
-                                    <p className="text-white">{application.employerPhone || '-'}</p>
+                                    <p className="text-sm text-muted-foreground">Employer Phone</p>
+                                    <p className="text-foreground">{application.employerPhone || '-'}</p>
                                 </div>
                                 <div>
-                                    <p className="text-sm text-zinc-500">Monthly Income</p>
-                                    <p className="text-white font-medium">
+                                    <p className="text-sm text-muted-foreground">Monthly Income</p>
+                                    <p className="text-foreground font-medium">
                                         {application.monthlyIncome 
                                             ? `GH₵ ${application.monthlyIncome.toLocaleString()}`
                                             : '-'}
@@ -578,8 +578,8 @@ export default function ApplicationDetailPage() {
                                 </div>
                                 {application.employmentDurationMonths && (
                                     <div>
-                                        <p className="text-sm text-zinc-500">Employment Duration</p>
-                                        <p className="text-white">{application.employmentDurationMonths} months</p>
+                                        <p className="text-sm text-muted-foreground">Employment Duration</p>
+                                        <p className="text-foreground">{application.employmentDurationMonths} months</p>
                                     </div>
                                 )}
                             </div>
@@ -587,58 +587,58 @@ export default function ApplicationDetailPage() {
                     </Card>
 
                     {/* Lease Preferences */}
-                    <Card className="bg-zinc-900/50 border-zinc-800">
+                    <Card className="bg-card/50 border-border">
                         <CardHeader>
-                            <CardTitle className="text-white flex items-center gap-2">
-                                <Home className="h-5 w-5 text-green-400" />
+                            <CardTitle className="text-foreground flex items-center gap-2">
+                                <Home className="h-5 w-5 text-green-600 dark:text-green-400" />
                                 Lease Preferences
                             </CardTitle>
                         </CardHeader>
                         <CardContent>
                             <div className="grid grid-cols-2 gap-4">
                                 <div>
-                                    <p className="text-sm text-zinc-500">Desired Move-in Date</p>
-                                    <p className="text-white flex items-center gap-2">
-                                        <Calendar className="h-4 w-4 text-zinc-500" />
+                                    <p className="text-sm text-muted-foreground">Desired Move-in Date</p>
+                                    <p className="text-foreground flex items-center gap-2">
+                                        <Calendar className="h-4 w-4 text-muted-foreground" />
                                         {application.desiredMoveInDate 
                                             ? format(new Date(application.desiredMoveInDate), 'MMMM d, yyyy')
                                             : 'Not specified'}
                                     </p>
                                 </div>
                                 <div>
-                                    <p className="text-sm text-zinc-500">Lease Term</p>
-                                    <p className="text-white">{application.desiredLeaseTermMonths} months</p>
+                                    <p className="text-sm text-muted-foreground">Lease Term</p>
+                                    <p className="text-foreground">{application.desiredLeaseTermMonths} months</p>
                                 </div>
                                 <div>
-                                    <p className="text-sm text-zinc-500">Number of Occupants</p>
-                                    <p className="text-white flex items-center gap-2">
-                                        <Users className="h-4 w-4 text-zinc-500" />
+                                    <p className="text-sm text-muted-foreground">Number of Occupants</p>
+                                    <p className="text-foreground flex items-center gap-2">
+                                        <Users className="h-4 w-4 text-muted-foreground" />
                                         {application.numberOfOccupants}
                                     </p>
                                 </div>
                                 <div>
-                                    <p className="text-sm text-zinc-500">Pets</p>
-                                    <p className="text-white flex items-center gap-2">
-                                        <PawPrint className="h-4 w-4 text-zinc-500" />
+                                    <p className="text-sm text-muted-foreground">Pets</p>
+                                    <p className="text-foreground flex items-center gap-2">
+                                        <PawPrint className="h-4 w-4 text-muted-foreground" />
                                         {application.hasPets ? 'Yes' : 'No'}
                                     </p>
                                 </div>
                                 {application.hasPets && application.petDetails && (
                                     <div className="col-span-2">
-                                        <p className="text-sm text-zinc-500">Pet Details</p>
-                                        <p className="text-white">{application.petDetails}</p>
+                                        <p className="text-sm text-muted-foreground">Pet Details</p>
+                                        <p className="text-foreground">{application.petDetails}</p>
                                     </div>
                                 )}
                                 {application.reasonForMoving && (
                                     <div className="col-span-2">
-                                        <p className="text-sm text-zinc-500">Reason for Moving</p>
-                                        <p className="text-white">{application.reasonForMoving}</p>
+                                        <p className="text-sm text-muted-foreground">Reason for Moving</p>
+                                        <p className="text-foreground">{application.reasonForMoving}</p>
                                     </div>
                                 )}
                                 {application.specialRequirements && (
                                     <div className="col-span-2">
-                                        <p className="text-sm text-zinc-500">Special Requirements</p>
-                                        <p className="text-white">{application.specialRequirements}</p>
+                                        <p className="text-sm text-muted-foreground">Special Requirements</p>
+                                        <p className="text-foreground">{application.specialRequirements}</p>
                                     </div>
                                 )}
                             </div>
@@ -647,26 +647,26 @@ export default function ApplicationDetailPage() {
 
                     {/* Emergency Contact */}
                     {application.emergencyContactName && (
-                        <Card className="bg-zinc-900/50 border-zinc-800">
+                        <Card className="bg-card/50 border-border">
                             <CardHeader>
-                                <CardTitle className="text-white flex items-center gap-2">
-                                    <AlertCircle className="h-5 w-5 text-red-400" />
+                                <CardTitle className="text-foreground flex items-center gap-2">
+                                    <AlertCircle className="h-5 w-5 text-red-600 dark:text-red-400" />
                                     Emergency Contact
                                 </CardTitle>
                             </CardHeader>
                             <CardContent>
                                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                                     <div>
-                                        <p className="text-sm text-zinc-500">Name</p>
-                                        <p className="text-white">{application.emergencyContactName}</p>
+                                        <p className="text-sm text-muted-foreground">Name</p>
+                                        <p className="text-foreground">{application.emergencyContactName}</p>
                                     </div>
                                     <div>
-                                        <p className="text-sm text-zinc-500">Relationship</p>
-                                        <p className="text-white">{application.emergencyContactRelationship || '-'}</p>
+                                        <p className="text-sm text-muted-foreground">Relationship</p>
+                                        <p className="text-foreground">{application.emergencyContactRelationship || '-'}</p>
                                     </div>
                                     <div>
-                                        <p className="text-sm text-zinc-500">Phone</p>
-                                        <p className="text-white">{application.emergencyContactPhone || '-'}</p>
+                                        <p className="text-sm text-muted-foreground">Phone</p>
+                                        <p className="text-foreground">{application.emergencyContactPhone || '-'}</p>
                                     </div>
                                 </div>
                             </CardContent>
@@ -675,26 +675,26 @@ export default function ApplicationDetailPage() {
 
                     {/* References */}
                     {application.characterReferences && application.characterReferences.length > 0 && (
-                        <Card className="bg-zinc-900/50 border-zinc-800">
+                        <Card className="bg-card/50 border-border">
                             <CardHeader>
-                                <CardTitle className="text-white">Character References</CardTitle>
+                                <CardTitle className="text-foreground">Character References</CardTitle>
                             </CardHeader>
                             <CardContent>
                                 <div className="space-y-4">
                                     {application.characterReferences.map((ref, idx) => (
-                                        <div key={idx} className="p-3 bg-zinc-800/50 rounded-lg">
+                                        <div key={idx} className="p-3 bg-muted/50 rounded-lg">
                                             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                                                 <div>
-                                                    <p className="text-sm text-zinc-500">Name</p>
-                                                    <p className="text-white">{ref.name}</p>
+                                                    <p className="text-sm text-muted-foreground">Name</p>
+                                                    <p className="text-foreground">{ref.name}</p>
                                                 </div>
                                                 <div>
-                                                    <p className="text-sm text-zinc-500">Relationship</p>
-                                                    <p className="text-white">{ref.relationship}</p>
+                                                    <p className="text-sm text-muted-foreground">Relationship</p>
+                                                    <p className="text-foreground">{ref.relationship}</p>
                                                 </div>
                                                 <div>
-                                                    <p className="text-sm text-zinc-500">Phone</p>
-                                                    <p className="text-white">{ref.phone}</p>
+                                                    <p className="text-sm text-muted-foreground">Phone</p>
+                                                    <p className="text-foreground">{ref.phone}</p>
                                                 </div>
                                             </div>
                                         </div>
@@ -706,33 +706,33 @@ export default function ApplicationDetailPage() {
 
                     {/* Previous Addresses */}
                     {application.previousAddresses && application.previousAddresses.length > 0 && (
-                        <Card className="bg-zinc-900/50 border-zinc-800">
+                        <Card className="bg-card/50 border-border">
                             <CardHeader>
-                                <CardTitle className="text-white">Previous Addresses</CardTitle>
+                                <CardTitle className="text-foreground">Previous Addresses</CardTitle>
                             </CardHeader>
                             <CardContent>
                                 <div className="space-y-4">
                                     {application.previousAddresses.map((addr, idx) => (
-                                        <div key={idx} className="p-3 bg-zinc-800/50 rounded-lg">
+                                        <div key={idx} className="p-3 bg-muted/50 rounded-lg">
                                             <div className="grid grid-cols-2 gap-4">
                                                 <div className="col-span-2">
-                                                    <p className="text-sm text-zinc-500">Address</p>
-                                                    <p className="text-white">{addr.address}</p>
+                                                    <p className="text-sm text-muted-foreground">Address</p>
+                                                    <p className="text-foreground">{addr.address}</p>
                                                 </div>
                                                 <div>
-                                                    <p className="text-sm text-zinc-500">Duration</p>
-                                                    <p className="text-white">{addr.duration}</p>
+                                                    <p className="text-sm text-muted-foreground">Duration</p>
+                                                    <p className="text-foreground">{addr.duration}</p>
                                                 </div>
                                                 {addr.landlordName && (
                                                     <div>
-                                                        <p className="text-sm text-zinc-500">Landlord</p>
-                                                        <p className="text-white">{addr.landlordName} {addr.landlordPhone && `(${addr.landlordPhone})`}</p>
+                                                        <p className="text-sm text-muted-foreground">Landlord</p>
+                                                        <p className="text-foreground">{addr.landlordName} {addr.landlordPhone && `(${addr.landlordPhone})`}</p>
                                                     </div>
                                                 )}
                                                 {addr.reasonForLeaving && (
                                                     <div className="col-span-2">
-                                                        <p className="text-sm text-zinc-500">Reason for Leaving</p>
-                                                        <p className="text-white">{addr.reasonForLeaving}</p>
+                                                        <p className="text-sm text-muted-foreground">Reason for Leaving</p>
+                                                        <p className="text-foreground">{addr.reasonForLeaving}</p>
                                                     </div>
                                                 )}
                                             </div>
@@ -747,17 +747,17 @@ export default function ApplicationDetailPage() {
                 {/* Sidebar */}
                 <div className="space-y-6">
                     {/* Property Info */}
-                    <Card className="bg-zinc-900/50 border-zinc-800">
+                    <Card className="bg-card/50 border-border">
                         <CardHeader>
-                            <CardTitle className="text-white flex items-center gap-2">
-                                <Building2 className="h-5 w-5 text-blue-400" />
+                            <CardTitle className="text-foreground flex items-center gap-2">
+                                <Building2 className="h-5 w-5 text-blue-600 dark:text-blue-400" />
                                 Property
                             </CardTitle>
                         </CardHeader>
                         <CardContent>
-                            <p className="text-white font-medium">{application.propertyName || 'Unknown Property'}</p>
+                            <p className="text-foreground font-medium">{application.propertyName || 'Unknown Property'}</p>
                             {application.propertyAddress && (
-                                <p className="text-zinc-400 text-sm mt-1">{application.propertyAddress}</p>
+                                <p className="text-muted-foreground text-sm mt-1">{application.propertyAddress}</p>
                             )}
                             <Link href={`/dashboard/property-management/properties/${application.propertyId}`}>
                                 <Button variant="outline" size="sm" className="mt-3 w-full">
@@ -768,10 +768,10 @@ export default function ApplicationDetailPage() {
                     </Card>
 
                     {/* Timeline */}
-                    <Card className="bg-zinc-900/50 border-zinc-800">
+                    <Card className="bg-card/50 border-border">
                         <CardHeader>
-                            <CardTitle className="text-white flex items-center gap-2">
-                                <History className="h-5 w-5 text-zinc-400" />
+                            <CardTitle className="text-foreground flex items-center gap-2">
+                                <History className="h-5 w-5 text-muted-foreground" />
                                 Status History
                             </CardTitle>
                         </CardHeader>
@@ -781,10 +781,10 @@ export default function ApplicationDetailPage() {
                                 <div className="flex items-start gap-3">
                                     <div className="w-2 h-2 bg-blue-500 rounded-full mt-2" />
                                     <div>
-                                        <p className="text-white text-sm font-medium">
+                                        <p className="text-foreground text-sm font-medium">
                                             Application Created
                                         </p>
-                                        <p className="text-zinc-500 text-xs">
+                                        <p className="text-muted-foreground text-xs">
                                             {format(new Date(application.createdAt), 'MMM d, yyyy h:mm a')}
                                         </p>
                                     </div>
@@ -800,18 +800,18 @@ export default function ApplicationDetailPage() {
                                             'bg-zinc-500'
                                         }`} />
                                         <div>
-                                            <p className="text-white text-sm font-medium">
+                                            <p className="text-foreground text-sm font-medium">
                                                 {entry.fromStatus 
                                                     ? `${formatStatus(entry.fromStatus)} → ${formatStatus(entry.toStatus)}`
                                                     : formatStatus(entry.toStatus)}
                                             </p>
                                             {entry.changedBy && (
-                                                <p className="text-zinc-400 text-xs">by {entry.changedBy}</p>
+                                                <p className="text-muted-foreground text-xs">by {entry.changedBy}</p>
                                             )}
                                             {entry.reason && (
-                                                <p className="text-zinc-500 text-xs mt-1">{entry.reason}</p>
+                                                <p className="text-muted-foreground text-xs mt-1">{entry.reason}</p>
                                             )}
-                                            <p className="text-zinc-500 text-xs">
+                                            <p className="text-muted-foreground text-xs">
                                                 {format(new Date(entry.changedAt), 'MMM d, yyyy h:mm a')}
                                             </p>
                                         </div>
@@ -823,10 +823,10 @@ export default function ApplicationDetailPage() {
 
                     {/* Documents */}
                     {application.uploadedDocuments && application.uploadedDocuments.length > 0 && (
-                        <Card className="bg-zinc-900/50 border-zinc-800">
+                        <Card className="bg-card/50 border-border">
                             <CardHeader>
-                                <CardTitle className="text-white flex items-center gap-2">
-                                    <FileText className="h-5 w-5 text-zinc-400" />
+                                <CardTitle className="text-foreground flex items-center gap-2">
+                                    <FileText className="h-5 w-5 text-muted-foreground" />
                                     Documents
                                 </CardTitle>
                             </CardHeader>
@@ -838,10 +838,10 @@ export default function ApplicationDetailPage() {
                                             href={doc.url} 
                                             target="_blank" 
                                             rel="noopener noreferrer"
-                                            className="flex items-center gap-2 p-2 bg-zinc-800/50 rounded hover:bg-zinc-800 transition-colors"
+                                            className="flex items-center gap-2 p-2 bg-muted/50 rounded hover:bg-muted transition-colors"
                                         >
-                                            <FileText className="h-4 w-4 text-zinc-500" />
-                                            <span className="text-white text-sm truncate">{doc.filename || doc.type}</span>
+                                            <FileText className="h-4 w-4 text-muted-foreground" />
+                                            <span className="text-foreground text-sm truncate">{doc.filename || doc.type}</span>
                                         </a>
                                     ))}
                                 </div>
@@ -851,10 +851,10 @@ export default function ApplicationDetailPage() {
 
                     {/* Source */}
                     {application.howDidYouHear && (
-                        <Card className="bg-zinc-900/50 border-zinc-800">
+                        <Card className="bg-card/50 border-border">
                             <CardContent className="pt-4">
-                                <p className="text-sm text-zinc-500">How did you hear about us?</p>
-                                <p className="text-white">{application.howDidYouHear}</p>
+                                <p className="text-sm text-muted-foreground">How did you hear about us?</p>
+                                <p className="text-foreground">{application.howDidYouHear}</p>
                             </CardContent>
                         </Card>
                     )}
@@ -863,21 +863,21 @@ export default function ApplicationDetailPage() {
 
             {/* Approve Dialog */}
             <Dialog open={isApproveDialogOpen} onOpenChange={setIsApproveDialogOpen}>
-                <DialogContent className="bg-zinc-900 border-zinc-800">
+                <DialogContent className="bg-card border-border">
                     <DialogHeader>
-                        <DialogTitle className="text-white">Approve Application</DialogTitle>
-                        <DialogDescription className="text-zinc-400">
+                        <DialogTitle className="text-foreground">Approve Application</DialogTitle>
+                        <DialogDescription className="text-muted-foreground">
                             Approve application from {application.applicantFullName}
                         </DialogDescription>
                     </DialogHeader>
                     <div className="space-y-4">
                         <div>
-                            <Label className="text-zinc-400">Approval Notes (Optional)</Label>
+                            <Label className="text-muted-foreground">Approval Notes (Optional)</Label>
                             <Textarea
                                 value={approvalNotes}
                                 onChange={(e) => setApprovalNotes(e.target.value)}
                                 placeholder="Add any notes about this approval..."
-                                className="bg-zinc-800 border-zinc-700 text-white mt-2"
+                                className="bg-muted border-border text-foreground mt-2"
                             />
                         </div>
                     </div>
@@ -899,21 +899,21 @@ export default function ApplicationDetailPage() {
 
             {/* Reject Dialog */}
             <Dialog open={isRejectDialogOpen} onOpenChange={setIsRejectDialogOpen}>
-                <DialogContent className="bg-zinc-900 border-zinc-800">
+                <DialogContent className="bg-card border-border">
                     <DialogHeader>
-                        <DialogTitle className="text-white">Reject Application</DialogTitle>
-                        <DialogDescription className="text-zinc-400">
+                        <DialogTitle className="text-foreground">Reject Application</DialogTitle>
+                        <DialogDescription className="text-muted-foreground">
                             Reject application from {application.applicantFullName}
                         </DialogDescription>
                     </DialogHeader>
                     <div className="space-y-4">
                         <div>
-                            <Label className="text-zinc-400">Rejection Reason (Required)</Label>
+                            <Label className="text-muted-foreground">Rejection Reason (Required)</Label>
                             <Textarea
                                 value={rejectionReason}
                                 onChange={(e) => setRejectionReason(e.target.value)}
                                 placeholder="Enter the reason for rejection..."
-                                className="bg-zinc-800 border-zinc-700 text-white mt-2"
+                                className="bg-muted border-border text-foreground mt-2"
                                 required
                             />
                         </div>

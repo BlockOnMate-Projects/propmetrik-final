@@ -227,7 +227,7 @@ export function ComplianceReport({ projectId, projectName }: ComplianceReportPro
             <FileText className="h-5 w-5 text-blue-600" />
             Compliance Reports
           </h2>
-          <p className="text-sm text-gray-500 mt-1">
+          <p className="text-sm text-muted-foreground mt-1">
             Generate and manage compliance reports for stakeholders
           </p>
         </div>
@@ -315,7 +315,7 @@ export function ComplianceReport({ projectId, projectName }: ComplianceReportPro
                 
                 {forSigning && (
                   <div className="space-y-4 pl-6 border-l-2 border-blue-100">
-                    <p className="text-sm text-gray-500">
+                    <p className="text-sm text-muted-foreground">
                       Add people who need to review and sign this report
                     </p>
                     
@@ -431,7 +431,7 @@ export function ComplianceReport({ projectId, projectName }: ComplianceReportPro
         <CardContent>
           {isLoading ? (
             <div className="flex items-center justify-center py-8">
-              <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
+              <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
             </div>
           ) : reports && reports.length > 0 ? (
             <Table>
@@ -448,12 +448,12 @@ export function ComplianceReport({ projectId, projectName }: ComplianceReportPro
                   <TableRow key={report.id}>
                     <TableCell>
                       <div className="flex items-center gap-2">
-                        <Calendar className="h-4 w-4 text-gray-400" />
+                        <Calendar className="h-4 w-4 text-muted-foreground" />
                         <div>
                           <p className="font-medium text-sm">
                             {format(new Date(report.created_at), 'MMM d, yyyy')}
                           </p>
-                          <p className="text-xs text-gray-500">
+                          <p className="text-xs text-muted-foreground">
                             {format(new Date(report.created_at), 'h:mm a')}
                           </p>
                         </div>
@@ -468,7 +468,7 @@ export function ComplianceReport({ projectId, projectName }: ComplianceReportPro
                       {report.signing_request_id ? (
                         <SigningStatusBadge status={report.signing_status} />
                       ) : (
-                        <span className="text-sm text-gray-500">No signatures</span>
+                        <span className="text-sm text-muted-foreground">No signatures</span>
                       )}
                     </TableCell>
                     <TableCell className="text-right">
@@ -502,7 +502,7 @@ export function ComplianceReport({ projectId, projectName }: ComplianceReportPro
             <div className="text-center py-8">
               <FileText className="h-12 w-12 mx-auto text-gray-300 mb-4" />
               <h3 className="font-medium text-gray-700 mb-2">No Reports Yet</h3>
-              <p className="text-sm text-gray-500 mb-4">
+              <p className="text-sm text-muted-foreground mb-4">
                 Generate your first compliance report to share with stakeholders
               </p>
               <Button variant="outline" onClick={() => setIsGenerateDialogOpen(true)}>

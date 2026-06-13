@@ -30,7 +30,7 @@ export default function Error({
         <AlertCircle className="w-10 h-10 text-red-500" />
       </div>
       <h2 className="text-2xl font-bold mb-2">Something went wrong</h2>
-      <p className="text-gray-500 dark:text-gray-400 max-w-md mb-6">
+      <p className="text-muted-foreground dark:text-muted-foreground max-w-md mb-6">
         We encountered an error while loading this property. The listing may have been removed or is temporarily unavailable.
       </p>
       <div className="flex gap-4">

@@ -12,13 +12,13 @@ const assets = [
 
 export default function MediaKitPage() {
   return (
-    <main className="pt-32 pb-24 bg-zinc-950">
+    <main className="pt-32 pb-24 bg-background">
       <section className="pb-10">
         <div className="container mx-auto px-4 md:px-6">
           <div className="max-w-3xl">
             <div className="text-sm font-bold text-primary uppercase tracking-[0.2em] mb-4">Brand Assets</div>
-            <h1 className="text-5xl md:text-7xl font-bold tracking-tight text-white mb-5">Media Kit</h1>
-            <p className="text-zinc-400 text-lg">
+            <h1 className="text-5xl md:text-7xl font-bold tracking-tight text-foreground mb-5">Media Kit</h1>
+            <p className="text-muted-foreground text-lg">
               Download PROPMETRIK logos, brand guidelines, company information, and leadership photos
               for use in publications and media.
             </p>
@@ -36,11 +36,11 @@ export default function MediaKitPage() {
                 whileInView={{ opacity: 1, x: 0 }}
                 viewport={{ once: true }}
                 transition={{ delay: index * 0.1 }}
-                className="flex items-center justify-between p-5 bg-zinc-900 border border-zinc-800 rounded-lg hover:border-primary/50 transition-colors"
+                className="flex items-center justify-between p-5 bg-card border border-border rounded-lg hover:border-primary/50 transition-colors"
               >
                 <div>
-                  <div className="font-bold text-white mb-1">{item.name}</div>
-                  <div className="text-sm text-zinc-500">{item.format} · {item.size}</div>
+                  <div className="font-bold text-foreground mb-1">{item.name}</div>
+                  <div className="text-sm text-muted-foreground">{item.format} · {item.size}</div>
                 </div>
                 <button className="px-5 py-2.5 bg-primary text-zinc-950 font-bold rounded hover:bg-primary/90 transition-colors text-sm">
                   Download

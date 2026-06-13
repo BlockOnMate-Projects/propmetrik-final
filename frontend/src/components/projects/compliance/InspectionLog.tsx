@@ -110,7 +110,7 @@ const INSPECTION_RESULTS: { value: InspectionResult; label: string; color: strin
   { value: 'conditional_pass', label: 'Conditional Pass', color: 'bg-yellow-100 text-yellow-700' },
   { value: 'failed', label: 'Failed', color: 'bg-red-100 text-red-700' },
   { value: 'reinspection_required', label: 'Reinspection Required', color: 'bg-orange-100 text-orange-700' },
-  { value: 'cancelled', label: 'Cancelled', color: 'bg-gray-100 text-gray-700' },
+  { value: 'cancelled', label: 'Cancelled', color: 'bg-muted text-gray-700' },
 ];
 
 export function InspectionLog({ projectId, permitId, permit }: InspectionLogProps) {

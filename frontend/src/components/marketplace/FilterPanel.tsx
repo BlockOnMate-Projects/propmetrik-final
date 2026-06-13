@@ -33,9 +33,9 @@ export function FilterPanel({ filters, onFilterChange, aggregations }: FilterPan
     (filters.listed_within_days ? 1 : 0);
 
   return (
-    <div className="bg-white rounded-xl p-6 border border-gray-200 shadow-sm">
+    <div className="bg-card rounded-xl p-6 border border-border shadow-sm">
       {/* Header */}
-      <div className="flex items-center justify-between mb-6 pb-4 border-b border-gray-200">
+      <div className="flex items-center justify-between mb-6 pb-4 border-b border-border">
         <h3 className="font-bold text-lg text-gray-900">Filters</h3>
         {activeFilterCount > 0 && (
           <button
@@ -58,8 +58,8 @@ export function FilterPanel({ filters, onFilterChange, aggregations }: FilterPan
               onClick={() => onFilterChange({ ...filters, transaction_type: type })}
               className={`px-3 py-2.5 rounded-lg text-sm font-medium transition-all ${
                 filters.transaction_type === type
-                  ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/50'
-                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200 border border-gray-200'
+                  ? 'bg-indigo-600 text-foreground shadow-lg shadow-indigo-600/50'
+                  : 'bg-muted text-gray-700 hover:bg-gray-200 border border-border'
               }`}
             >
               {type === 'all' ? 'All' : type === 'rental' ? 'Rent' : 'Buy'}
@@ -74,7 +74,7 @@ export function FilterPanel({ filters, onFilterChange, aggregations }: FilterPan
         <select
           value={filters.region || ''}
           onChange={(e) => onFilterChange({ ...filters,region: e.target.value || undefined })}
-          className="w-full border border-gray-300 rounded-lg px-3 py-2.5 bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm"
+          className="w-full border border-gray-300 rounded-lg px-3 py-2.5 bg-card text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm"
         >
           <option value="">All Regions</option>
           <option value="greater_accra">Greater Accra</option>
@@ -94,7 +94,7 @@ export function FilterPanel({ filters, onFilterChange, aggregations }: FilterPan
             const isSelected = filters.property_types?.includes(type.toLowerCase());
             
             return (
-              <label key={type} className="flex items-center justify-between cursor-pointer hover:bg-gray-50 p-2.5 rounded-lg transition-colors group">
+              <label key={type} className="flex items-center justify-between cursor-pointer hover:bg-muted p-2.5 rounded-lg transition-colors group">
                 <div className="flex items-center gap-3">
                   <input
                     type="checkbox"
@@ -127,9 +127,9 @@ export function FilterPanel({ filters, onFilterChange, aggregations }: FilterPan
               setPriceRange({ ...priceRange, min: e.target.value });
               onFilterChange({ ...filters, min_price: parseInt(e.target.value) || undefined });
             }}
-            className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm bg-card text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500"
           />
-          <span className="self-center text-gray-400">→</span>
+          <span className="self-center text-muted-foreground">→</span>
           <input 
             type="number"
             placeholder="Max"
@@ -138,7 +138,7 @@ export function FilterPanel({ filters, onFilterChange, aggregations }: FilterPan
               setPriceRange({ ...priceRange, max: e.target.value });
               onFilterChange({ ...filters, max_price: parseInt(e.target.value) || undefined });
             }}
-            className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm bg-card text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500"
           />
         </div>
 
@@ -156,7 +156,7 @@ export function FilterPanel({ filters, onFilterChange, aggregations }: FilterPan
                 setPriceRange({ min: range.min?.toString() || '', max: range.max?.toString() || '' });
                 onFilterChange({ ...filters, min_price: range.min, max_price: range.max });
               }}
-              className="text-xs px-3 py-1.5 bg-gray-100 hover:bg-gray-200 border border-gray-200 rounded-lg text-gray-700 hover:text-gray-900 transition-colors"
+              className="text-xs px-3 py-1.5 bg-muted hover:bg-gray-200 border border-border rounded-lg text-gray-700 hover:text-gray-900 transition-colors"
             >
               {range.label}
             </button>
@@ -177,8 +177,8 @@ export function FilterPanel({ filters, onFilterChange, aggregations }: FilterPan
                 onClick={() => onFilterChange({ ...filters, bedrooms: value })}
                 className={`px-2 py-2.5 rounded-lg text-sm font-medium transition-all ${
                   filters.bedrooms === value
-                    ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/50'
-                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200 border border-gray-200'
+                    ? 'bg-indigo-600 text-foreground shadow-lg shadow-indigo-600/50'
+                    : 'bg-muted text-gray-700 hover:bg-gray-200 border border-border'
                 }`}
               >
                 {label}
@@ -201,8 +201,8 @@ export function FilterPanel({ filters, onFilterChange, aggregations }: FilterPan
                 onClick={() => onFilterChange({ ...filters, bathrooms: value })}
                 className={`px-2 py-2.5 rounded-lg text-sm font-medium transition-all ${
                   filters.bathrooms === value
-                    ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/50'
-                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200 border border-gray-200'
+                    ? 'bg-indigo-600 text-foreground shadow-lg shadow-indigo-600/50'
+                    : 'bg-muted text-gray-700 hover:bg-gray-200 border border-border'
                 }`}
               >
                 {label}
@@ -225,8 +225,8 @@ export function FilterPanel({ filters, onFilterChange, aggregations }: FilterPan
                 onClick={() => onFilterChange({ ...filters, parking_spaces: value })}
                 className={`px-2 py-2.5 rounded-lg text-sm font-medium transition-all ${
                   filters.parking_spaces === value
-                    ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/50'
-                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200 border border-gray-200'
+                    ? 'bg-indigo-600 text-foreground shadow-lg shadow-indigo-600/50'
+                    : 'bg-muted text-gray-700 hover:bg-gray-200 border border-border'
                 }`}
               >
                 {label}
@@ -244,7 +244,7 @@ export function FilterPanel({ filters, onFilterChange, aggregations }: FilterPan
             const isSelected = filters.amenities?.includes(amenity.toLowerCase());
             
             return (
-              <label key={amenity} className="flex items-center cursor-pointer hover:bg-gray-50 p-2.5 rounded-lg transition-colors group">
+              <label key={amenity} className="flex items-center cursor-pointer hover:bg-muted p-2.5 rounded-lg transition-colors group">
                 <input
                   type="checkbox"
                   checked={isSelected}
@@ -269,7 +269,7 @@ export function FilterPanel({ filters, onFilterChange, aggregations }: FilterPan
         <select
           value={filters.listed_within_days || ''}
           onChange={(e) => onFilterChange({ ...filters, listed_within_days: parseInt(e.target.value) || undefined })}
-          className="w-full border border-gray-300 rounded-lg px-3 py-2.5 bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm"
+          className="w-full border border-gray-300 rounded-lg px-3 py-2.5 bg-card text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm"
         >
           <option value="">Any time</option>
           <option value="1">Last 24 hours</option>

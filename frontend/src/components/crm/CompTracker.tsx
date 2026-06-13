@@ -227,7 +227,7 @@ export function CompTracker() {
                                         </thead>
                                         <tbody>
                                             {comps.map(comp => (
-                                                <tr key={comp.id} className="border-b border-border/50 hover:bg-muted/30 transition-colors">
+                                                <tr key={comp.id} className="border-b border-border/50 hover:bg-amber-50 dark:hover:bg-amber-500/10 transition-colors">
                                                     <td className="py-2 text-foreground">{comp.address}</td>
                                                     <td className="py-2 text-muted-foreground">{comp.city}</td>
                                                     <td className="py-2 text-muted-foreground capitalize">{comp.property_type}</td>

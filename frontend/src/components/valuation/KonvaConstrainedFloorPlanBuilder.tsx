@@ -353,7 +353,7 @@ export default function ConstrainedFloorPlanBuilder({
     return (
       <Card className={cn('', className)}>
         <CardContent className="flex items-center justify-center h-[600px]">
-          <div className="text-center text-gray-500">
+          <div className="text-center text-muted-foreground">
             <Layers className="h-12 w-12 mx-auto mb-4 opacity-50" />
             <p>No geometry available</p>
             <p className="text-sm">Generate a design intent first</p>
@@ -403,16 +403,16 @@ export default function ConstrainedFloorPlanBuilder({
             </div>
 
             <div className="flex items-center gap-4 text-sm">
-              <div><span className="text-gray-500">GFA:</span> <span className="font-medium">{blenderGeometry.measurements.gfa_sqm.toFixed(1)} m²</span></div>
-              <div><span className="text-gray-500">NIA:</span> <span className="font-medium">{blenderGeometry.measurements.nia_sqm.toFixed(1)} m²</span></div>
-              <div><span className="text-gray-500">Efficiency:</span> <span className="font-medium">{(blenderGeometry.measurements.efficiency_ratio * 100).toFixed(1)}%</span></div>
+              <div><span className="text-muted-foreground">GFA:</span> <span className="font-medium">{blenderGeometry.measurements.gfa_sqm.toFixed(1)} m²</span></div>
+              <div><span className="text-muted-foreground">NIA:</span> <span className="font-medium">{blenderGeometry.measurements.nia_sqm.toFixed(1)} m²</span></div>
+              <div><span className="text-muted-foreground">Efficiency:</span> <span className="font-medium">{(blenderGeometry.measurements.efficiency_ratio * 100).toFixed(1)}%</span></div>
             </div>
           </div>
         </CardContent>
       </Card>
 
       {/* Canvas */}
-      <div className="relative border rounded-lg overflow-hidden bg-white">
+      <div className="relative border rounded-lg overflow-hidden bg-card">
         <Stage ref={stageRef} width={canvasWidth} height={canvasHeight}>
           {/* Grid */}
           <Layer listening={false}>
@@ -505,12 +505,12 @@ export default function ConstrainedFloorPlanBuilder({
         </Stage>
 
         {/* Floor indicator */}
-        <div className="absolute top-2 left-2 bg-white/90 px-3 py-1 rounded-md shadow-sm text-sm font-medium">
+        <div className="absolute top-2 left-2 bg-card/90 px-3 py-1 rounded-md shadow-sm text-sm font-medium">
           {currentFloorData?.floor_label || `Floor ${currentFloor}`}
         </div>
 
         {readonly && (
-          <div className="absolute top-2 right-2 bg-gray-100 px-3 py-1 rounded-md shadow-sm flex items-center gap-1 text-sm">
+          <div className="absolute top-2 right-2 bg-muted px-3 py-1 rounded-md shadow-sm flex items-center gap-1 text-sm">
             <Lock className="h-3 w-3" />View Only
           </div>
         )}
@@ -569,7 +569,7 @@ export default function ConstrainedFloorPlanBuilder({
               {pendingAdjustments.map((adj) => {
                 const violation = checkConstraintViolation(adj);
                 return (
-                  <div key={adj.delta_id} className={cn('text-xs p-2 rounded', violation ? 'bg-red-100 text-red-800' : 'bg-white')}>
+                  <div key={adj.delta_id} className={cn('text-xs p-2 rounded', violation ? 'bg-red-100 text-red-800' : 'bg-card')}>
                     <span className="font-medium">{adj.operation}</span>: {adj.element_type} {adj.element_id.slice(0, 8)}...
                     {adj.delta_x !== undefined && (
                       <span className="ml-2">ΔX: {adj.delta_x.toFixed(2)}m, ΔY: {adj.delta_y?.toFixed(2)}m</span>

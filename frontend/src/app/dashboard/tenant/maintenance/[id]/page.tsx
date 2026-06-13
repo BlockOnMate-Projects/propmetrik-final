@@ -28,11 +28,11 @@ const STATUS_CONFIG: Record<string, { label: string; color: string; bg: string; 
   in_progress: { label: 'In Progress', color: 'text-amber-600', bg: 'bg-amber-50', icon: AlertCircle },
   scheduled: { label: 'Scheduled', color: 'text-purple-600', bg: 'bg-purple-50', icon: CalendarDays },
   completed: { label: 'Completed', color: 'text-green-600', bg: 'bg-green-50', icon: CheckCircle2 },
-  cancelled: { label: 'Cancelled', color: 'text-gray-500', bg: 'bg-gray-50', icon: AlertCircle },
+  cancelled: { label: 'Cancelled', color: 'text-muted-foreground', bg: 'bg-muted', icon: AlertCircle },
 };
 
 const PRIORITY_CONFIG: Record<string, { label: string; color: string }> = {
-  low: { label: 'Low', color: 'text-gray-600 bg-gray-100' },
+  low: { label: 'Low', color: 'text-muted-foreground bg-muted' },
   medium: { label: 'Medium', color: 'text-amber-600 bg-amber-50' },
   high: { label: 'High', color: 'text-orange-600 bg-orange-50' },
   urgent: { label: 'Urgent', color: 'text-red-600 bg-red-50' },
@@ -84,7 +84,7 @@ function MaintenanceDetailContent() {
   };
 
   if (loading) {
-    return <div className="flex items-center justify-center py-24"><Loader2 className="w-6 h-6 text-gray-400 animate-spin" /></div>;
+    return <div className="flex items-center justify-center py-24"><Loader2 className="w-6 h-6 text-muted-foreground animate-spin" /></div>;
   }
 
   if (!request) {
@@ -103,16 +103,16 @@ function MaintenanceDetailContent() {
 
   return (
     <div className="space-y-6 animate-fade-in max-w-3xl">
-      <Link href={`${T}/maintenance`} className="inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-700 font-medium">
+      <Link href={`${T}/maintenance`} className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-gray-700 font-medium">
         <ArrowLeft className="w-3.5 h-3.5" /> Back to Maintenance
       </Link>
 
       {/* Header */}
-      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
+      <div className="bg-card rounded-2xl border border-gray-100 shadow-sm p-6">
         <div className="flex items-start justify-between gap-4 mb-4">
           <div>
             <h2 className="text-lg font-bold text-gray-900">{request.title}</h2>
-            <p className="text-xs text-gray-400 mt-1">
+            <p className="text-xs text-muted-foreground mt-1">
               Submitted {new Date(request.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}
             </p>
           </div>
@@ -127,26 +127,26 @@ function MaintenanceDetailContent() {
         </div>
 
         {request.description && (
-          <p className="text-sm text-gray-600 leading-relaxed">{request.description}</p>
+          <p className="text-sm text-muted-foreground leading-relaxed">{request.description}</p>
         )}
 
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-4 pt-4 border-t border-gray-100">
           <div className="text-center">
-            <p className="text-xs text-gray-400">Category</p>
+            <p className="text-xs text-muted-foreground">Category</p>
             <p className="text-sm font-medium text-gray-900 capitalize mt-0.5">{request.category || '—'}</p>
           </div>
           <div className="text-center">
-            <p className="text-xs text-gray-400">Preferred Date</p>
+            <p className="text-xs text-muted-foreground">Preferred Date</p>
             <p className="text-sm font-medium text-gray-900 mt-0.5">
               {request.preferredDate ? new Date(request.preferredDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) : '—'}
             </p>
           </div>
           <div className="text-center">
-            <p className="text-xs text-gray-400">Preferred Time</p>
+            <p className="text-xs text-muted-foreground">Preferred Time</p>
             <p className="text-sm font-medium text-gray-900 capitalize mt-0.5">{request.preferredTime || 'Any'}</p>
           </div>
           <div className="text-center">
-            <p className="text-xs text-gray-400">Entry Permission</p>
+            <p className="text-xs text-muted-foreground">Entry Permission</p>
             <p className="text-sm font-medium text-gray-900 mt-0.5">{request.permissionToEnter ? 'Yes' : 'No'}</p>
           </div>
         </div>
@@ -154,7 +154,7 @@ function MaintenanceDetailContent() {
 
       {/* Assigned Vendor & Scheduled Visit */}
       {request.vendorName && (
-        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
+        <div className="bg-card rounded-2xl border border-gray-100 shadow-sm p-6">
           <h3 className="text-sm font-semibold text-gray-900 mb-4">Assigned Vendor</h3>
           <div className="flex items-start gap-3">
             <div className="w-10 h-10 rounded-full bg-cyan-50 flex items-center justify-center flex-shrink-0">
@@ -163,7 +163,7 @@ function MaintenanceDetailContent() {
             <div className="min-w-0">
               <p className="text-sm font-semibold text-gray-900">{request.vendorName}</p>
               {request.vendorContact && (
-                <p className="text-xs text-gray-500 mt-0.5">{request.vendorContact}</p>
+                <p className="text-xs text-muted-foreground mt-0.5">{request.vendorContact}</p>
               )}
               {request.vendorPhone && (
                 <a href={`tel:${request.vendorPhone}`} className="inline-flex items-center gap-1.5 text-xs text-cyan-600 hover:underline mt-1">
@@ -176,11 +176,11 @@ function MaintenanceDetailContent() {
             <div className="mt-4 pt-4 border-t border-gray-100 flex items-center gap-2">
               <CalendarDays className="w-4 h-4 text-purple-500 flex-shrink-0" />
               <div>
-                <p className="text-xs text-gray-400">Scheduled Visit</p>
+                <p className="text-xs text-muted-foreground">Scheduled Visit</p>
                 <p className="text-sm font-medium text-gray-900">
                   {new Date(request.scheduledDate).toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'long', year: 'numeric' })}
                   {request.scheduledTimeStart && (
-                    <span className="text-gray-600">
+                    <span className="text-muted-foreground">
                       {' · '}{request.scheduledTimeStart.slice(0, 5)}
                       {request.scheduledTimeEnd ? `–${request.scheduledTimeEnd.slice(0, 5)}` : ''}
                     </span>
@@ -194,7 +194,7 @@ function MaintenanceDetailContent() {
 
       {/* Progress Tracker */}
       {request.status !== 'cancelled' && (
-        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
+        <div className="bg-card rounded-2xl border border-gray-100 shadow-sm p-6">
           <h3 className="text-sm font-semibold text-gray-900 mb-4">Progress</h3>
           <div className="flex items-center justify-between relative">
             <div className="absolute left-0 right-0 top-4 h-0.5 bg-gray-200" />
@@ -205,11 +205,11 @@ function MaintenanceDetailContent() {
               return (
                 <div key={step} className="relative flex flex-col items-center z-10">
                   <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold transition-all ${
-                    isComplete ? 'bg-cyan-500 text-white' : 'bg-gray-200 text-gray-400'
+                    isComplete ? 'bg-cyan-500 text-foreground' : 'bg-gray-200 text-muted-foreground'
                   } ${isCurrent ? 'ring-4 ring-cyan-100' : ''}`}>
                     {isComplete ? <CheckCircle2 className="w-4 h-4" /> : i + 1}
                   </div>
-                  <p className={`text-[10px] mt-1.5 font-medium capitalize whitespace-nowrap ${isComplete ? 'text-cyan-600' : 'text-gray-400'}`}>
+                  <p className={`text-[10px] mt-1.5 font-medium capitalize whitespace-nowrap ${isComplete ? 'text-cyan-600' : 'text-muted-foreground'}`}>
                     {STATUS_CONFIG[step]?.label || step}
                   </p>
                 </div>
@@ -221,14 +221,14 @@ function MaintenanceDetailContent() {
 
       {/* Photos */}
       {request.photos && request.photos.length > 0 && (
-        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
+        <div className="bg-card rounded-2xl border border-gray-100 shadow-sm p-6">
           <h3 className="text-sm font-semibold text-gray-900 mb-3">
             <ImageIcon className="w-4 h-4 inline mr-1.5" /> Photos
           </h3>
           <div className="flex flex-wrap gap-2">
             {request.photos.map((photo: string, i: number) => (
               <a key={i} href={photo} target="_blank" rel="noopener noreferrer"
-                className="w-24 h-24 rounded-lg overflow-hidden border border-gray-200 hover:opacity-80 transition-opacity">
+                className="w-24 h-24 rounded-lg overflow-hidden border border-border hover:opacity-80 transition-opacity">
                 <img src={photo} alt={`Photo ${i + 1}`} className="w-full h-full object-cover" />
               </a>
             ))}
@@ -237,7 +237,7 @@ function MaintenanceDetailContent() {
       )}
 
       {/* Comments */}
-      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
+      <div className="bg-card rounded-2xl border border-gray-100 shadow-sm p-6">
         <h3 className="text-sm font-semibold text-gray-900 mb-4">
           <MessageSquare className="w-4 h-4 inline mr-1.5" /> Comments ({comments.length})
         </h3>
@@ -247,14 +247,14 @@ function MaintenanceDetailContent() {
               const isTenant = comment.senderType === 'tenant';
               return (
                 <div key={comment.id} className={`flex gap-3 ${isTenant ? 'flex-row-reverse' : ''}`}>
-                  <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${isTenant ? 'bg-cyan-100' : 'bg-gray-100'}`}>
-                    {isTenant ? <User className="w-4 h-4 text-cyan-600" /> : <Building2 className="w-4 h-4 text-gray-500" />}
+                  <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${isTenant ? 'bg-cyan-100' : 'bg-muted'}`}>
+                    {isTenant ? <User className="w-4 h-4 text-cyan-600" /> : <Building2 className="w-4 h-4 text-muted-foreground" />}
                   </div>
                   <div className={`max-w-[80%] ${isTenant ? 'text-right' : ''}`}>
-                    <div className={`px-3 py-2 rounded-xl text-sm ${isTenant ? 'bg-cyan-50 text-gray-900' : 'bg-gray-50 text-gray-900'}`}>
+                    <div className={`px-3 py-2 rounded-xl text-sm ${isTenant ? 'bg-cyan-50 text-gray-900' : 'bg-muted text-gray-900'}`}>
                       {comment.content}
                     </div>
-                    <p className="text-[10px] text-gray-400 mt-0.5 px-1">
+                    <p className="text-[10px] text-muted-foreground mt-0.5 px-1">
                       {comment.senderName || (isTenant ? 'You' : 'Management')} · {new Date(comment.createdAt).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
                     </p>
                   </div>
@@ -263,16 +263,16 @@ function MaintenanceDetailContent() {
             })}
           </div>
         ) : (
-          <p className="text-sm text-gray-400 mb-4 text-center py-4">No comments yet</p>
+          <p className="text-sm text-muted-foreground mb-4 text-center py-4">No comments yet</p>
         )}
         <div className="flex items-end gap-2 pt-3 border-t border-gray-100">
           <textarea value={newComment} onChange={e => setNewComment(e.target.value)}
             onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleComment(); } }}
             placeholder="Add a comment..." rows={1}
-            className="flex-1 px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-cyan-500 resize-none"
+            className="flex-1 px-4 py-2.5 border border-border rounded-xl text-sm focus:ring-2 focus:ring-cyan-500 resize-none"
             style={{ minHeight: '42px', maxHeight: '120px' }} />
           <button onClick={handleComment} disabled={!newComment.trim() || sendingComment}
-            className="p-2.5 bg-cyan-600 text-white rounded-xl hover:bg-cyan-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors flex-shrink-0">
+            className="p-2.5 bg-cyan-600 text-foreground rounded-xl hover:bg-cyan-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors flex-shrink-0">
             {sendingComment ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
           </button>
         </div>

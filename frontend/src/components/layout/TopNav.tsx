@@ -47,7 +47,7 @@ function Clock() {
       {mounted && (
         <>
           <span className="text-amber-500">{date}</span>
-          <span className="text-green-400 font-bold">{time}</span>
+          <span className="text-green-600 dark:text-green-400 font-bold">{time}</span>
         </>
       )}
     </div>
@@ -106,14 +106,14 @@ function UserMenu({
         className={cn(
           'flex items-center gap-2 px-2 py-1 border transition-colors font-mono text-xs',
           open
-            ? 'border-amber-500 bg-zinc-800'
-            : 'border-zinc-800 hover:border-zinc-600',
+            ? 'border-amber-500 bg-muted'
+            : 'border-border hover:border-zinc-600',
         )}
       >
         {/* Avatar circle */}
         <span className={cn(
           'flex items-center justify-center w-5 h-5 rounded-full text-[9px] font-bold',
-          admin ? 'bg-red-600 text-white' : 'bg-amber-500 text-white'
+          admin ? 'bg-red-600 text-foreground' : 'bg-amber-500 text-foreground'
         )}>
           {mounted ? initials : '?'}
         </span>
@@ -122,48 +122,48 @@ function UserMenu({
           <>
             <span className={cn(
               'hidden sm:inline max-w-[100px] truncate',
-              admin ? 'text-red-400' : 'text-zinc-300',
+              admin ? 'text-red-600 dark:text-red-400' : 'text-muted-foreground',
             )}>
               {session?.user?.name || session?.user?.email || 'User'}
             </span>
             <span className={cn(
               'text-[8px] px-1 py-0.5 rounded',
-              admin ? 'bg-red-500/20 text-red-400' : 'bg-zinc-700 text-zinc-400',
+              admin ? 'bg-red-500/20 text-red-600 dark:text-red-400' : 'bg-zinc-700 text-muted-foreground',
             )}>
               {displayRole}
             </span>
           </>
         ) : (
-          <span className="text-zinc-400">USER</span>
+          <span className="text-muted-foreground">USER</span>
         )}
 
         {/* Chevron */}
-        <svg className={cn("w-3 h-3 text-zinc-500 transition-transform", open && "rotate-180")} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <svg className={cn("w-3 h-3 text-muted-foreground transition-transform", open && "rotate-180")} fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
         </svg>
       </button>
 
       {/* Dropdown */}
       {open && sessionReady && (
-        <div className="absolute right-0 top-full mt-1 w-64 bg-zinc-900 border border-zinc-700 shadow-xl shadow-black/50 z-[60] font-mono">
+        <div className="absolute right-0 top-full mt-1 w-64 bg-card border border-border shadow-xl shadow-black/50 z-[60] font-mono">
           {/* User header */}
-          <div className="px-4 py-3 border-b border-zinc-800">
+          <div className="px-4 py-3 border-b border-border">
             <div className="flex items-center gap-3">
               <span className={cn(
                 'flex items-center justify-center w-9 h-9 rounded-full text-sm font-bold shrink-0',
-                admin ? 'bg-red-600 text-white' : 'bg-amber-500 text-white',
+                admin ? 'bg-red-600 text-foreground' : 'bg-amber-500 text-foreground',
               )}>
                 {initials}
               </span>
               <div className="min-w-0">
-                <p className="text-sm text-white truncate">{session?.user?.name || 'User'}</p>
-                <p className="text-[10px] text-zinc-500 truncate">{session?.user?.email}</p>
+                <p className="text-sm text-foreground truncate">{session?.user?.name || 'User'}</p>
+                <p className="text-[10px] text-muted-foreground truncate">{session?.user?.email}</p>
               </div>
             </div>
             <div className="flex items-center gap-2 mt-2">
               <span className={cn(
                 'text-[9px] px-1.5 py-0.5 rounded font-bold tracking-wide',
-                admin ? 'bg-red-500/20 text-red-400 border border-red-800' : 'bg-zinc-800 text-zinc-400 border border-zinc-700',
+                admin ? 'bg-red-500/20 text-red-600 dark:text-red-400 border border-red-800' : 'bg-muted text-muted-foreground border border-border',
               )}>
                 {displayRole}
               </span>
@@ -173,7 +173,7 @@ function UserMenu({
                 </span>
               )}
               {session?.user?.organizationName && (
-                <span className="text-[9px] text-zinc-600 truncate">
+                <span className="text-[9px] text-muted-foreground truncate">
                   {session.user.organizationName}
                 </span>
               )}
@@ -192,6 +192,11 @@ function UserMenu({
               icon={<GearIcon />}
               onClick={() => { setOpen(false); router.push('/dashboard/profile') }}
             />
+            <MenuItem
+              label="BILLING"
+              icon={<CreditCardIcon />}
+              onClick={() => { setOpen(false); router.push('/dashboard/billing') }}
+            />
             {admin && (
               <MenuItem
                 label="ADMIN PANEL"
@@ -203,12 +208,12 @@ function UserMenu({
           </div>
 
           {/* Theme toggle */}
-          <div className="border-t border-zinc-800 py-1">
+          <div className="border-t border-border py-1">
             <ThemeMenuItem />
           </div>
 
           {/* Sign out */}
-          <div className="border-t border-zinc-800 py-1">
+          <div className="border-t border-border py-1">
             <MenuItem
               label="SIGN OUT"
               icon={<LogoutIcon />}
@@ -218,15 +223,15 @@ function UserMenu({
           </div>
 
           {/* Footer */}
-          <div className="px-4 py-2 border-t border-zinc-800">
-            <p className="text-[9px] text-zinc-600">SESSION EXPIRES {new Date(session?.expires || '').toLocaleDateString('en-GB')}</p>
+          <div className="px-4 py-2 border-t border-border">
+            <p className="text-[9px] text-muted-foreground">SESSION EXPIRES {new Date(session?.expires || '').toLocaleDateString('en-GB')}</p>
           </div>
         </div>
       )}
 
       {/* Not signed in */}
       {open && mounted && !sessionReady && (
-        <div className="absolute right-0 top-full mt-1 w-52 bg-zinc-900 border border-zinc-700 shadow-xl shadow-black/50 z-[60] font-mono py-1">
+        <div className="absolute right-0 top-full mt-1 w-52 bg-card border border-border shadow-xl shadow-black/50 z-[60] font-mono py-1">
           <MenuItem
             label="SIGN IN"
             icon={<LoginIcon />}
@@ -254,10 +259,10 @@ function MenuItem({ label, icon, onClick, accent }: {
       className={cn(
         'w-full flex items-center gap-3 px-4 py-2 text-[11px] tracking-wide transition-colors text-left',
         accent === 'red'
-          ? 'text-red-400 hover:bg-red-900/20 hover:text-red-300'
+          ? 'text-red-600 dark:text-red-400 hover:bg-red-900/20 hover:text-red-300'
           : accent === 'amber'
-            ? 'text-amber-400 hover:bg-amber-900/20 hover:text-amber-300'
-            : 'text-zinc-400 hover:bg-zinc-800 hover:text-white',
+            ? 'text-amber-600 dark:text-amber-400 hover:bg-amber-900/20 hover:text-amber-300'
+            : 'text-muted-foreground hover:bg-muted hover:text-foreground',
       )}
     >
       <span className="w-4 h-4 flex items-center justify-center opacity-60">{icon}</span>
@@ -274,16 +279,32 @@ function ThemeMenuItem() {
   const [m, setM] = useState(false)
   useEffect(() => { setM(true) }, [])
   if (!m) return null
+  const opts: { id: string; label: string; icon: React.ReactNode }[] = [
+    { id: 'light', label: 'Light', icon: <SunIcon /> },
+    { id: 'dark', label: 'Dark', icon: <MoonIcon /> },
+    { id: 'system', label: 'System', icon: <MonitorIcon /> },
+  ]
   return (
-    <button
-      onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
-      className="w-full flex items-center gap-3 px-4 py-2 text-[11px] tracking-wide text-zinc-400 hover:bg-zinc-800 hover:text-white transition-colors text-left"
-    >
-      <span className="w-4 h-4 flex items-center justify-center opacity-60">
-        {theme === 'dark' ? <SunIcon /> : <MoonIcon />}
-      </span>
-      {theme === 'dark' ? 'LIGHT MODE' : 'DARK MODE'}
-    </button>
+    <div className="px-3 py-2">
+      <div className="px-1 pb-1.5 text-[10px] tracking-wider text-muted-foreground/70 uppercase">Theme</div>
+      <div className="flex items-center gap-1 rounded-lg bg-muted p-1">
+        {opts.map((o) => (
+          <button
+            key={o.id}
+            onClick={() => setTheme(o.id)}
+            aria-pressed={theme === o.id}
+            className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-md text-[11px] font-medium transition-colors ${
+              theme === o.id
+                ? 'bg-background text-foreground shadow-sm'
+                : 'text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            <span className="w-3.5 h-3.5 flex items-center justify-center">{o.icon}</span>
+            {o.label}
+          </button>
+        ))}
+      </div>
+    </div>
   )
 }
 
@@ -306,6 +327,11 @@ const ShieldIcon = () => (
     <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
   </svg>
 )
+const CreditCardIcon = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-4 h-4">
+    <rect x="2" y="5" width="20" height="14" rx="2" /><line x1="2" y1="10" x2="22" y2="10" />
+  </svg>
+)
 const LogoutIcon = () => (
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-4 h-4">
     <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4" /><polyline points="16 17 21 12 16 7" /><line x1="21" y1="12" x2="9" y2="12" />
@@ -324,6 +350,11 @@ const SunIcon = () => (
 const MoonIcon = () => (
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-4 h-4">
     <path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z" />
+  </svg>
+)
+const MonitorIcon = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-4 h-4">
+    <rect x="2" y="3" width="20" height="14" rx="2" /><line x1="8" y1="21" x2="16" y2="21" /><line x1="12" y1="17" x2="12" y2="21" />
   </svg>
 )
 
@@ -433,12 +464,12 @@ export function TopNav() {
   }, [mobileMenuOpen])
 
   return (
-    <header className="sticky top-0 z-50 w-full bg-black border-b border-zinc-800" suppressHydrationWarning>
+    <header className="sticky top-0 z-50 w-full bg-background border-b border-border" suppressHydrationWarning>
       {/* Top Bar — hidden on small screens */}
-      <div className="hidden sm:flex items-center justify-between h-8 px-4 bg-zinc-900 border-b border-zinc-800">
+      <div className="hidden sm:flex items-center justify-between h-8 px-4 bg-card border-b border-border">
         <div className="flex items-center gap-4">
-          <span className="font-mono text-[10px] text-zinc-500">PROPMETRIK TERMINAL</span>
-          <span className="text-[10px] text-zinc-600">|</span>
+          <span className="font-mono text-[10px] text-muted-foreground">PROPMETRIK TERMINAL</span>
+          <span className="text-[10px] text-muted-foreground">|</span>
           <span className="font-mono text-[10px] text-green-500">● CONNECTED</span>
         </div>
         <div className="flex items-center gap-4">
@@ -451,7 +482,7 @@ export function TopNav() {
         {/* Hamburger button — mobile only */}
         <button
           onClick={() => setMobileMenuOpen(o => !o)}
-          className="md:hidden p-1.5 mr-2 text-zinc-400 hover:text-white transition-colors"
+          className="md:hidden p-1.5 mr-2 text-muted-foreground hover:text-foreground transition-colors"
           aria-label="Toggle navigation menu"
         >
           {mobileMenuOpen ? (
@@ -465,7 +496,7 @@ export function TopNav() {
         <Link href="/dashboard" className="flex items-center gap-2 mr-4 sm:mr-6">
           <div className="flex items-center">
             <span className="font-bold text-amber-500 text-lg tracking-tight">PROP</span>
-            <span className="font-bold text-white text-lg tracking-tight">METRIK</span>
+            <span className="font-bold text-foreground text-lg tracking-tight">METRIK</span>
           </div>
         </Link>
 
@@ -491,17 +522,17 @@ export function TopNav() {
                 className={cn(
                   'px-2 sm:px-3 py-1.5 text-[10px] sm:text-xs font-mono tracking-wider transition-colors flex items-center gap-1 sm:gap-1.5 relative whitespace-nowrap',
                   tierLocked
-                    ? 'text-zinc-600 hover:text-zinc-500 hover:bg-zinc-800/50 cursor-pointer'
+                    ? 'text-muted-foreground hover:text-muted-foreground hover:bg-muted/50 cursor-pointer'
                     : active
                       ? isAdminTab
-                        ? 'bg-red-600 text-white font-bold'
-                        : 'bg-amber-500 text-white font-bold'
+                        ? 'bg-red-600 text-foreground font-bold'
+                        : 'bg-amber-500 text-foreground font-bold'
                       : isAdminTab
-                        ? 'text-red-400 hover:text-red-300 hover:bg-red-900/30 border border-red-900/50'
-                        : 'text-zinc-400 hover:text-white hover:bg-zinc-800'
+                        ? 'text-red-600 dark:text-red-400 hover:text-red-300 hover:bg-red-900/30 border border-red-900/50'
+                        : 'text-muted-foreground hover:text-foreground hover:bg-muted'
                 )}
               >
-                <span className={cn("mr-1", tierLocked ? "text-zinc-700" : isAdminTab ? "text-red-600" : "text-zinc-600")}>{item.key}</span>
+                <span className={cn("mr-1", tierLocked ? "text-zinc-700" : isAdminTab ? "text-red-600" : "text-muted-foreground")}>{item.key}</span>
                 {item.name}
                 {tierLocked && (
                   <svg className="w-3 h-3 text-amber-500/60 ml-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -513,10 +544,10 @@ export function TopNav() {
                     'px-1 py-0.5 text-[8px] rounded',
                     active
                       ? isAdminTab
-                        ? 'bg-black/20 text-white'
-                        : 'bg-black/20 text-white'
+                        ? 'bg-background/20 text-foreground'
+                        : 'bg-background/20 text-foreground'
                       : isAdminTab
-                        ? 'bg-red-500/20 text-red-400'
+                        ? 'bg-red-500/20 text-red-600 dark:text-red-400'
                         : 'bg-yellow-500/20 text-yellow-500'
                   )}>
                     {item.badge}
@@ -548,11 +579,11 @@ export function TopNav() {
         <>
           {/* Backdrop */}
           <div
-            className="md:hidden fixed inset-0 top-12 bg-black/60 z-40"
+            className="md:hidden fixed inset-0 top-12 bg-background/60 z-40"
             onClick={() => setMobileMenuOpen(false)}
           />
           {/* Drawer */}
-          <div className="md:hidden fixed inset-x-0 top-12 bottom-0 z-50 bg-zinc-950 border-t border-zinc-800 overflow-y-auto">
+          <div className="md:hidden fixed inset-x-0 top-12 bottom-0 z-50 bg-background border-t border-border overflow-y-auto">
             <nav className="flex flex-col py-2">
               {visibleNavigation.map((item) => {
                 const active = isActive(item.href)
@@ -573,21 +604,21 @@ export function TopNav() {
                     href={tierLocked ? '#' : item.href}
                     onClick={handleClick}
                     className={cn(
-                      'flex items-center gap-3 px-5 py-3.5 font-mono text-sm tracking-wider transition-colors border-b border-zinc-800/50',
+                      'flex items-center gap-3 px-5 py-3.5 font-mono text-sm tracking-wider transition-colors border-b border-border/50',
                       tierLocked
-                        ? 'text-zinc-600'
+                        ? 'text-muted-foreground'
                         : active
                           ? isAdminTab
-                            ? 'bg-red-600/10 text-red-400 border-l-2 border-l-red-500'
+                            ? 'bg-red-600/10 text-red-600 dark:text-red-400 border-l-2 border-l-red-500'
                             : 'bg-amber-500/10 text-amber-500 border-l-2 border-l-amber-500'
                           : isAdminTab
-                            ? 'text-red-400 hover:bg-red-900/20'
-                            : 'text-zinc-300 hover:bg-zinc-800/70 hover:text-white'
+                            ? 'text-red-600 dark:text-red-400 hover:bg-red-900/20'
+                            : 'text-muted-foreground hover:bg-amber-50 dark:hover:bg-amber-500/10 hover:text-foreground'
                     )}
                   >
                     <span className={cn(
                       'text-[10px] w-6 text-center',
-                      tierLocked ? 'text-zinc-700' : isAdminTab ? 'text-red-600' : 'text-zinc-600'
+                      tierLocked ? 'text-zinc-700' : isAdminTab ? 'text-red-600' : 'text-muted-foreground'
                     )}>
                       {item.key}
                     </span>
@@ -600,7 +631,7 @@ export function TopNav() {
                     {item.badge && !tierLocked && (
                       <span className={cn(
                         'px-1.5 py-0.5 text-[9px] rounded',
-                        isAdminTab ? 'bg-red-500/20 text-red-400' : 'bg-yellow-500/20 text-yellow-500'
+                        isAdminTab ? 'bg-red-500/20 text-red-600 dark:text-red-400' : 'bg-yellow-500/20 text-yellow-500'
                       )}>
                         {item.badge}
                       </span>
@@ -617,25 +648,25 @@ export function TopNav() {
 
             {/* Mobile market summary */}
             {ticker && (
-              <div className="px-5 py-4 border-t border-zinc-800 space-y-2">
-                <p className="text-[10px] text-zinc-500 font-mono tracking-wider">MARKET DATA</p>
+              <div className="px-5 py-4 border-t border-border space-y-2">
+                <p className="text-[10px] text-muted-foreground font-mono tracking-wider">MARKET DATA</p>
                 <div className="grid grid-cols-2 gap-2 font-mono text-[11px]">
                   <div>
-                    <span className="text-zinc-500">GH PROPERTY IDX</span>{' '}
-                    <span className={ticker.cap_rate >= 0 ? 'text-green-400' : 'text-red-400'}>
+                    <span className="text-muted-foreground">GH PROPERTY IDX</span>{' '}
+                    <span className={ticker.cap_rate >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}>
                       {ticker.cap_rate >= 0 ? '+' : ''}{ticker.cap_rate.toFixed(2)}%
                     </span>
                   </div>
                   <div>
-                    <span className="text-zinc-500">ACCRA AVG</span>{' '}
-                    <span className="text-white">&#x20B5;{ticker.accra_avg.toLocaleString()}</span>
+                    <span className="text-muted-foreground">ACCRA AVG</span>{' '}
+                    <span className="text-foreground">&#x20B5;{ticker.accra_avg.toLocaleString()}</span>
                   </div>
                   <div>
-                    <span className="text-zinc-500">ACTIVE DEALS</span>{' '}
+                    <span className="text-muted-foreground">ACTIVE DEALS</span>{' '}
                     <span className="text-amber-500">{ticker.active_deals}</span>
                   </div>
                   <div>
-                    <span className="text-zinc-500">PENDING VAL</span>{' '}
+                    <span className="text-muted-foreground">PENDING VAL</span>{' '}
                     <span className="text-amber-500">{ticker.pending_valuations}</span>
                   </div>
                 </div>
@@ -646,47 +677,47 @@ export function TopNav() {
       )}
 
       {/* Ticker Bar — hidden on mobile */}
-      <div className="hidden sm:flex items-center h-6 px-4 bg-zinc-900/50 border-t border-zinc-800 overflow-hidden">
+      <div className="hidden sm:flex items-center h-6 px-4 bg-card/50 border-t border-border overflow-hidden">
         <div className="flex items-center gap-6 font-mono text-[10px]">
           {ticker ? (
             <>
               <span>
-                <span className="text-zinc-500">GH PROPERTY IDX</span>{' '}
-                <span className={ticker.cap_rate >= 0 ? 'text-green-400' : 'text-red-400'}>
+                <span className="text-muted-foreground">GH PROPERTY IDX</span>{' '}
+                <span className={ticker.cap_rate >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}>
                   {ticker.cap_rate >= 0 ? '+' : ''}{ticker.cap_rate.toFixed(2)}%
                 </span>
               </span>
               <span>
-                <span className="text-zinc-500">ACCRA AVG</span>{' '}
-                <span className="text-white">₵{ticker.accra_avg.toLocaleString()}</span>
+                <span className="text-muted-foreground">ACCRA AVG</span>{' '}
+                <span className="text-foreground">₵{ticker.accra_avg.toLocaleString()}</span>
               </span>
               {ticker.neighborhoods.slice(0, 5).map((n) => (
                 <span key={n.name}>
-                  <span className="text-zinc-500">{n.name.toUpperCase()}</span>{' '}
-                  <span className={n.direction === 'up' ? 'text-green-400' : 'text-red-400'}>
+                  <span className="text-muted-foreground">{n.name.toUpperCase()}</span>{' '}
+                  <span className={n.direction === 'up' ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}>
                     {n.direction === 'up' ? '↑' : '↓'}
                   </span>
                 </span>
               ))}
               <span>
-                <span className="text-zinc-500">ACTIVE DEALS</span>{' '}
+                <span className="text-muted-foreground">ACTIVE DEALS</span>{' '}
                 <span className="text-amber-500">{ticker.active_deals}</span>
               </span>
               <span>
-                <span className="text-zinc-500">PENDING VAL</span>{' '}
+                <span className="text-muted-foreground">PENDING VAL</span>{' '}
                 <span className="text-amber-500">{ticker.pending_valuations}</span>
               </span>
               <span>
-                <span className="text-zinc-500">PROPERTIES</span>{' '}
-                <span className="text-cyan-400">{ticker.gh_property_index.total_properties.toLocaleString()}</span>
+                <span className="text-muted-foreground">PROPERTIES</span>{' '}
+                <span className="text-cyan-600 dark:text-cyan-400">{ticker.gh_property_index.total_properties.toLocaleString()}</span>
               </span>
               <span>
-                <span className="text-zinc-500">CAP RATE</span>{' '}
-                <span className="text-green-400">{ticker.cap_rate.toFixed(2)}%</span>
+                <span className="text-muted-foreground">CAP RATE</span>{' '}
+                <span className="text-green-600 dark:text-green-400">{ticker.cap_rate.toFixed(2)}%</span>
               </span>
             </>
           ) : (
-            <span className="text-zinc-600">Loading market data...</span>
+            <span className="text-muted-foreground">Loading market data...</span>
           )}
         </div>
       </div>

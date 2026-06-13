@@ -93,21 +93,21 @@ async function apiFetch<T>(path: string, opts?: RequestInit): Promise<T> {
 
 function statusColor(s: string) {
   switch (s) {
-    case 'published': return 'text-emerald-400'
-    case 'deferred': return 'text-amber-400'
-    case 'failed': return 'text-red-400'
-    case 'running': return 'text-blue-400'
-    default: return 'text-zinc-400'
+    case 'published': return 'text-emerald-600 dark:text-emerald-400'
+    case 'deferred': return 'text-amber-600 dark:text-amber-400'
+    case 'failed': return 'text-red-600 dark:text-red-400'
+    case 'running': return 'text-blue-600 dark:text-blue-400'
+    default: return 'text-muted-foreground'
   }
 }
 
 function statusIcon(s: string) {
   switch (s) {
-    case 'published': return <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
-    case 'deferred': return <Clock className="w-3.5 h-3.5 text-amber-400" />
-    case 'failed': return <XCircle className="w-3.5 h-3.5 text-red-400" />
-    case 'running': return <RefreshCw className="w-3.5 h-3.5 text-blue-400 animate-spin" />
-    default: return <Activity className="w-3.5 h-3.5 text-zinc-400" />
+    case 'published': return <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+    case 'deferred': return <Clock className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
+    case 'failed': return <XCircle className="w-3.5 h-3.5 text-red-600 dark:text-red-400" />
+    case 'running': return <RefreshCw className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400 animate-spin" />
+    default: return <Activity className="w-3.5 h-3.5 text-muted-foreground" />
   }
 }
 
@@ -123,12 +123,12 @@ function timeAgo(dateStr: string) {
 
 function MetricCard({ label, value, icon: Icon, color }: { label: string; value: number | string; icon: any; color: string }) {
   return (
-    <div className="bg-zinc-900/50 border border-zinc-800 rounded-lg p-4">
-      <div className="flex items-center gap-2 text-zinc-500 text-[10px] font-mono uppercase tracking-wider mb-2">
+    <div className="bg-card/50 border border-border rounded-lg p-4">
+      <div className="flex items-center gap-2 text-muted-foreground text-[10px] font-mono uppercase tracking-wider mb-2">
         <Icon className={`w-3.5 h-3.5 ${color}`} />
         {label}
       </div>
-      <div className="text-2xl font-semibold text-white font-mono">{value}</div>
+      <div className="text-2xl font-semibold text-foreground font-mono">{value}</div>
     </div>
   )
 }
@@ -224,8 +224,8 @@ export default function AutopilotPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <RefreshCw className="w-5 h-5 text-red-400 animate-spin" />
-        <span className="ml-2 text-zinc-400 text-sm">Loading autopilot status…</span>
+        <RefreshCw className="w-5 h-5 text-red-600 dark:text-red-400 animate-spin" />
+        <span className="ml-2 text-muted-foreground text-sm">Loading autopilot status…</span>
       </div>
     )
   }
@@ -233,9 +233,9 @@ export default function AutopilotPage() {
   if (error) {
     return (
       <div className="bg-red-950/20 border border-red-900/30 rounded-lg p-6 text-center">
-        <AlertTriangle className="w-6 h-6 text-red-400 mx-auto mb-2" />
-        <p className="text-red-300 text-sm">{error}</p>
-        <button onClick={fetchAll} className="mt-3 text-xs text-red-400 hover:text-red-300 underline">
+        <AlertTriangle className="w-6 h-6 text-red-600 dark:text-red-400 mx-auto mb-2" />
+        <p className="text-red-600 dark:text-red-300 text-sm">{error}</p>
+        <button onClick={fetchAll} className="mt-3 text-xs text-red-600 dark:text-red-400 hover:text-red-300 underline">
           Retry
         </button>
       </div>
@@ -254,8 +254,8 @@ export default function AutopilotPage() {
   if (!mounted) {
     return (
       <div className="flex items-center justify-center h-64">
-        <RefreshCw className="w-5 h-5 text-red-400 animate-spin" />
-        <span className="ml-2 text-zinc-400 text-sm">Loading autopilot status…</span>
+        <RefreshCw className="w-5 h-5 text-red-600 dark:text-red-400 animate-spin" />
+        <span className="ml-2 text-muted-foreground text-sm">Loading autopilot status…</span>
       </div>
     )
   }
@@ -266,18 +266,18 @@ export default function AutopilotPage() {
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-red-600 to-orange-600 flex items-center justify-center">
-            <Bot className="w-5 h-5 text-white" />
+            <Bot className="w-5 h-5 text-foreground" />
           </div>
           <div>
-            <h1 className="text-lg font-semibold text-white">Autopilot Pipeline</h1>
-            <p className="text-xs text-zinc-500">Autonomous publication generation & scheduling</p>
+            <h1 className="text-lg font-semibold text-foreground">Autopilot Pipeline</h1>
+            <p className="text-xs text-muted-foreground">Autonomous publication generation & scheduling</p>
           </div>
         </div>
 
         <div className="flex items-center gap-3">
           <button
             onClick={fetchAll}
-            className="p-2 rounded-md border border-zinc-800 hover:bg-zinc-800 text-zinc-400 hover:text-white transition"
+            className="p-2 rounded-md border border-border hover:bg-muted text-muted-foreground hover:text-foreground transition"
             title="Refresh"
           >
             <RefreshCw className="w-4 h-4" />
@@ -286,8 +286,8 @@ export default function AutopilotPage() {
             onClick={toggleGlobal}
             className={`flex items-center gap-2 px-4 py-2 rounded-md text-xs font-mono tracking-wide transition ${
               health?.globalEnabled
-                ? 'bg-red-900/30 border border-red-700 text-red-300 hover:bg-red-900/50'
-                : 'bg-emerald-900/30 border border-emerald-700 text-emerald-300 hover:bg-emerald-900/50'
+                ? 'bg-red-100 dark:bg-red-900/30 border border-red-700 text-red-600 dark:text-red-300 hover:bg-red-900/50'
+                : 'bg-emerald-100 dark:bg-emerald-900/30 border border-emerald-700 text-emerald-600 dark:text-emerald-300 hover:bg-emerald-900/50'
             }`}
           >
             {health?.globalEnabled ? (
@@ -309,15 +309,15 @@ export default function AutopilotPage() {
       {health && (
         <div className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-mono ${
           health.globalEnabled
-            ? 'bg-emerald-950/30 border border-emerald-900/30 text-emerald-400'
-            : 'bg-zinc-900/50 border border-zinc-800 text-zinc-500'
+            ? 'bg-emerald-950/30 border border-emerald-900/30 text-emerald-600 dark:text-emerald-400'
+            : 'bg-card/50 border border-border text-muted-foreground'
         }`}>
           <div className={`w-2 h-2 rounded-full ${health.globalEnabled ? 'bg-emerald-400 animate-pulse' : 'bg-zinc-600'}`} />
           {health.globalEnabled
             ? `ACTIVE — ${health.scheduler.jobCount} cron jobs running`
             : 'PAUSED — no automated publications'
           }
-          <span className="ml-auto text-zinc-600">
+          <span className="ml-auto text-muted-foreground">
             24h: {health.last24h.published} published · {health.last24h.deferred} deferred · {health.last24h.failed} failed
           </span>
         </div>
@@ -326,15 +326,15 @@ export default function AutopilotPage() {
       {/* ── Metric Cards ── */}
       {health && (
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <MetricCard label="Published (24h)" value={health.last24h.published} icon={CheckCircle2} color="text-emerald-400" />
-          <MetricCard label="Deferred" value={deferred.length} icon={Clock} color="text-amber-400" />
-          <MetricCard label="Failed (24h)" value={health.last24h.failed} icon={XCircle} color="text-red-400" />
-          <MetricCard label="Confidence Floor" value={`${((health.settings.confidenceFloor || 0.7) * 100).toFixed(0)}%`} icon={Settings2} color="text-blue-400" />
+          <MetricCard label="Published (24h)" value={health.last24h.published} icon={CheckCircle2} color="text-emerald-600 dark:text-emerald-400" />
+          <MetricCard label="Deferred" value={deferred.length} icon={Clock} color="text-amber-600 dark:text-amber-400" />
+          <MetricCard label="Failed (24h)" value={health.last24h.failed} icon={XCircle} color="text-red-600 dark:text-red-400" />
+          <MetricCard label="Confidence Floor" value={`${((health.settings.confidenceFloor || 0.7) * 100).toFixed(0)}%`} icon={Settings2} color="text-blue-600 dark:text-blue-400" />
         </div>
       )}
 
       {/* ── Sub-tabs ── */}
-      <div className="flex gap-0 border-b border-zinc-800">
+      <div className="flex gap-0 border-b border-border">
         {tabs.map((tab) => {
           const Icon = tab.icon
           const isActive = activeTab === tab.key
@@ -344,11 +344,11 @@ export default function AutopilotPage() {
               onClick={() => setActiveTab(tab.key)}
               className={`flex items-center gap-1.5 px-4 py-2 text-[11px] font-mono tracking-wide transition border-b-2 -mb-px ${
                 isActive
-                  ? 'border-red-500 text-white'
-                  : 'border-transparent text-zinc-500 hover:text-zinc-300'
+                  ? 'border-red-500 text-foreground'
+                  : 'border-transparent text-muted-foreground hover:text-muted-foreground'
               }`}
             >
-              <Icon className={`w-3.5 h-3.5 ${isActive ? 'text-red-400' : 'text-zinc-600'}`} />
+              <Icon className={`w-3.5 h-3.5 ${isActive ? 'text-red-600 dark:text-red-400' : 'text-muted-foreground'}`} />
               {tab.label}
             </button>
           )
@@ -360,24 +360,24 @@ export default function AutopilotPage() {
         {/* OVERVIEW */}
         {activeTab === 'overview' && (
           <div className="space-y-4">
-            <h2 className="text-sm font-mono text-zinc-400 uppercase tracking-wider">Active Schedules</h2>
+            <h2 className="text-sm font-mono text-muted-foreground uppercase tracking-wider">Active Schedules</h2>
             <div className="grid gap-3">
               {schedules.filter(s => s.enabled).map(schedule => (
                 <div
                   key={schedule.id}
-                  className="bg-zinc-900/50 border border-zinc-800 rounded-lg p-4 flex items-center gap-4"
+                  className="bg-card/50 border border-border rounded-lg p-4 flex items-center gap-4"
                 >
-                  <div className="w-8 h-8 rounded-md bg-zinc-800 flex items-center justify-center">
-                    <Bot className="w-4 h-4 text-red-400" />
+                  <div className="w-8 h-8 rounded-md bg-muted flex items-center justify-center">
+                    <Bot className="w-4 h-4 text-red-600 dark:text-red-400" />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <div className="text-sm text-white font-medium">
+                    <div className="text-sm text-foreground font-medium">
                       {schedule.product.replace(/_/g, ' ')} · {schedule.edition}
                       {schedule.region && (
-                        <span className="text-zinc-500 ml-2 text-xs">({schedule.region})</span>
+                        <span className="text-muted-foreground ml-2 text-xs">({schedule.region})</span>
                       )}
                     </div>
-                    <div className="text-[10px] text-zinc-600 font-mono mt-0.5">
+                    <div className="text-[10px] text-muted-foreground font-mono mt-0.5">
                       {schedule.cron_expression === 'EVENT_DRIVEN'
                         ? 'Anomaly-triggered'
                         : `Cron: ${schedule.cron_expression}`
@@ -386,14 +386,14 @@ export default function AutopilotPage() {
                     </div>
                   </div>
                   <div className="text-right text-xs">
-                    <div className="text-emerald-400">{schedule.recent_published ?? 0} published</div>
-                    <div className="text-red-400">{schedule.recent_failed ?? 0} failed</div>
-                    <div className="text-zinc-600 text-[10px]">30d</div>
+                    <div className="text-emerald-600 dark:text-emerald-400">{schedule.recent_published ?? 0} published</div>
+                    <div className="text-red-600 dark:text-red-400">{schedule.recent_failed ?? 0} failed</div>
+                    <div className="text-muted-foreground text-[10px]">30d</div>
                   </div>
                   <button
                     onClick={() => triggerRun(schedule.product, schedule.edition, schedule.region || undefined)}
                     disabled={runningSchedule === `${schedule.product}-${schedule.edition || 'any'}-${schedule.region || 'all'}`}
-                    className={`p-2 rounded-md border border-zinc-700 hover:bg-zinc-800 text-zinc-400 hover:text-white transition ${runningSchedule === `${schedule.product}-${schedule.edition || 'any'}-${schedule.region || 'all'}` ? 'opacity-50 cursor-wait' : ''}`}
+                    className={`p-2 rounded-md border border-border hover:bg-muted text-muted-foreground hover:text-foreground transition ${runningSchedule === `${schedule.product}-${schedule.edition || 'any'}-${schedule.region || 'all'}` ? 'opacity-50 cursor-wait' : ''}`}
                     title="Trigger manual run"
                   >
                     {runningSchedule === `${schedule.product}-${schedule.edition || 'any'}-${schedule.region || 'all'}` ? (
@@ -405,7 +405,7 @@ export default function AutopilotPage() {
                 </div>
               ))}
               {schedules.filter(s => s.enabled).length === 0 && (
-                <div className="text-center text-zinc-600 text-sm py-8">No active schedules</div>
+                <div className="text-center text-muted-foreground text-sm py-8">No active schedules</div>
               )}
             </div>
           </div>
@@ -417,34 +417,34 @@ export default function AutopilotPage() {
             {schedules.map(schedule => (
               <div
                 key={schedule.id}
-                className="bg-zinc-900/50 border border-zinc-800 rounded-lg overflow-hidden"
+                className="bg-card/50 border border-border rounded-lg overflow-hidden"
               >
                 <button
                   onClick={() => setExpandedSchedule(expandedSchedule === schedule.id ? null : schedule.id)}
-                  className="w-full flex items-center gap-3 p-4 hover:bg-zinc-800/30 transition text-left"
+                  className="w-full flex items-center gap-3 p-4 hover:bg-amber-50 dark:hover:bg-amber-500/10 transition text-left"
                 >
                   {expandedSchedule === schedule.id
-                    ? <ChevronDown className="w-4 h-4 text-zinc-500" />
-                    : <ChevronRight className="w-4 h-4 text-zinc-500" />
+                    ? <ChevronDown className="w-4 h-4 text-muted-foreground" />
+                    : <ChevronRight className="w-4 h-4 text-muted-foreground" />
                   }
                   <div className={`w-2 h-2 rounded-full ${schedule.enabled ? 'bg-emerald-400' : 'bg-zinc-600'}`} />
-                  <span className="text-sm text-white flex-1">
+                  <span className="text-sm text-foreground flex-1">
                     {schedule.product.replace(/_/g, ' ')} · {schedule.edition}
-                    {schedule.region && <span className="text-zinc-500 ml-1 text-xs">({schedule.region})</span>}
+                    {schedule.region && <span className="text-muted-foreground ml-1 text-xs">({schedule.region})</span>}
                   </span>
-                  <span className="text-xs text-zinc-500 font-mono">{schedule.cron_expression}</span>
+                  <span className="text-xs text-muted-foreground font-mono">{schedule.cron_expression}</span>
                 </button>
                 {expandedSchedule === schedule.id && (
-                  <div className="border-t border-zinc-800 p-4 space-y-2 text-xs">
-                    <div className="grid grid-cols-2 gap-2 text-zinc-400">
-                      <div>Template: <span className="text-white">{schedule.template_id}</span></div>
-                      <div>Enabled: <span className={schedule.enabled ? 'text-emerald-400' : 'text-red-400'}>{schedule.enabled ? 'Yes' : 'No'}</span></div>
-                      <div>Last updated: <span className="text-zinc-300">{schedule.updated_at ? timeAgo(schedule.updated_at) : 'never'}</span></div>
+                  <div className="border-t border-border p-4 space-y-2 text-xs">
+                    <div className="grid grid-cols-2 gap-2 text-muted-foreground">
+                      <div>Template: <span className="text-foreground">{schedule.template_id}</span></div>
+                      <div>Enabled: <span className={schedule.enabled ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}>{schedule.enabled ? 'Yes' : 'No'}</span></div>
+                      <div>Last updated: <span className="text-muted-foreground">{schedule.updated_at ? timeAgo(schedule.updated_at) : 'never'}</span></div>
                     </div>
                     <div className="flex gap-2 mt-3">
                       <button
                         onClick={() => triggerRun(schedule.product, schedule.edition, schedule.region || undefined)}
-                        className="flex items-center gap-1 px-3 py-1.5 rounded bg-red-900/30 border border-red-800 text-red-300 hover:bg-red-900/50 text-xs"
+                        className="flex items-center gap-1 px-3 py-1.5 rounded bg-red-100 dark:bg-red-900/30 border border-red-800 text-red-600 dark:text-red-300 hover:bg-red-900/50 text-xs"
                       >
                         <Play className="w-3 h-3" /> Run Now
                       </button>
@@ -462,11 +462,11 @@ export default function AutopilotPage() {
             {runs.map(run => (
               <div
                 key={run.id}
-                className="bg-zinc-900/50 border border-zinc-800 rounded-lg p-4 flex items-center gap-3"
+                className="bg-card/50 border border-border rounded-lg p-4 flex items-center gap-3"
               >
                 {statusIcon(run.status)}
                 <div className="flex-1 min-w-0">
-                  <div className="text-sm text-white">
+                  <div className="text-sm text-foreground">
                     {run.publication_id ? (
                       <Link
                         href={`/dashboard/admin/publications/${run.publication_id}`}
@@ -478,12 +478,12 @@ export default function AutopilotPage() {
                       run.publication_title || `${(run.product || run.publication_type).replace(/_/g, ' ')} ${run.edition || ''} run`
                     )}
                   </div>
-                  <div className="text-[10px] text-zinc-600 font-mono mt-0.5">
+                  <div className="text-[10px] text-muted-foreground font-mono mt-0.5">
                     {run.trigger_type || 'scheduled'}
                     {run.region && ` · ${run.region}`}
                     {' · '}{timeAgo(run.started_at)}
                     {run.confidence_score != null && (
-                      <span className="ml-2 text-zinc-400">
+                      <span className="ml-2 text-muted-foreground">
                         Confidence: {(run.confidence_score * 100).toFixed(0)}%
                       </span>
                     )}
@@ -506,7 +506,7 @@ export default function AutopilotPage() {
               </div>
             ))}
             {runs.length === 0 && (
-              <div className="text-center text-zinc-600 text-sm py-12">No runs yet</div>
+              <div className="text-center text-muted-foreground text-sm py-12">No runs yet</div>
             )}
           </div>
         )}
@@ -517,46 +517,46 @@ export default function AutopilotPage() {
             {deferred.map(item => (
               <div
                 key={item.id}
-                className="bg-zinc-900/50 border border-amber-900/30 rounded-lg p-4"
+                className="bg-card/50 border border-amber-900/30 rounded-lg p-4"
               >
                 <div className="flex items-start gap-3">
-                  <Clock className="w-4 h-4 text-amber-400 mt-0.5 flex-shrink-0" />
+                  <Clock className="w-4 h-4 text-amber-600 dark:text-amber-400 mt-0.5 flex-shrink-0" />
                   <div className="flex-1 min-w-0">
                     <Link
                       href={`/dashboard/admin/publications/${item.id}`}
-                      className="text-sm text-white font-medium hover:text-red-400 transition-colors hover:underline"
+                      className="text-sm text-foreground font-medium hover:text-red-400 transition-colors hover:underline"
                     >
                       {item.title}
                     </Link>
-                    <div className="text-xs text-zinc-500 mt-1 line-clamp-2">{item.excerpt}</div>
+                    <div className="text-xs text-muted-foreground mt-1 line-clamp-2">{item.excerpt}</div>
                     {item.deferred_reason && (
                       <div className="text-[10px] text-amber-500/80 mt-1 line-clamp-1">⚠ {item.deferred_reason}</div>
                     )}
-                    <div className="text-[10px] text-zinc-600 font-mono mt-2">
+                    <div className="text-[10px] text-muted-foreground font-mono mt-2">
                       {(item.product || item.publication_type).replace(/_/g, ' ')}{item.edition ? ` · ${item.edition}` : ''}
                       {item.region && ` · ${item.region}`}
-                      {' · '}Confidence: <span className="text-amber-400">{(item.confidence_score * 100).toFixed(0)}%</span>
+                      {' · '}Confidence: <span className="text-amber-600 dark:text-amber-400">{(item.confidence_score * 100).toFixed(0)}%</span>
                       {' · '}{timeAgo(item.created_at)}
                     </div>
                   </div>
                   <div className="flex gap-2 flex-shrink-0">
                     <Link
                       href={`/dashboard/admin/publications/${item.id}`}
-                      className="flex items-center gap-1 px-3 py-1.5 rounded bg-zinc-800/60 border border-zinc-700 text-zinc-300 hover:bg-zinc-800 text-xs"
+                      className="flex items-center gap-1 px-3 py-1.5 rounded bg-muted/60 border border-border text-muted-foreground hover:bg-muted text-xs"
                       title="View & edit publication"
                     >
                       <Eye className="w-3 h-3" /> View
                     </Link>
                     <button
                       onClick={() => approveDeferred(item.id)}
-                      className="flex items-center gap-1 px-3 py-1.5 rounded bg-emerald-900/30 border border-emerald-800 text-emerald-300 hover:bg-emerald-900/50 text-xs"
+                      className="flex items-center gap-1 px-3 py-1.5 rounded bg-emerald-100 dark:bg-emerald-900/30 border border-emerald-800 text-emerald-600 dark:text-emerald-300 hover:bg-emerald-900/50 text-xs"
                       title="Approve and publish"
                     >
                       <ThumbsUp className="w-3 h-3" /> Approve
                     </button>
                     <button
                       onClick={() => rejectDeferred(item.id)}
-                      className="flex items-center gap-1 px-3 py-1.5 rounded bg-red-900/30 border border-red-800 text-red-300 hover:bg-red-900/50 text-xs"
+                      className="flex items-center gap-1 px-3 py-1.5 rounded bg-red-100 dark:bg-red-900/30 border border-red-800 text-red-600 dark:text-red-300 hover:bg-red-900/50 text-xs"
                       title="Reject and discard"
                     >
                       <Trash2 className="w-3 h-3" /> Reject
@@ -566,7 +566,7 @@ export default function AutopilotPage() {
               </div>
             ))}
             {deferred.length === 0 && (
-              <div className="text-center text-zinc-600 text-sm py-12">
+              <div className="text-center text-muted-foreground text-sm py-12">
                 <CheckCircle2 className="w-6 h-6 mx-auto mb-2 text-zinc-700" />
                 No publications awaiting review
               </div>

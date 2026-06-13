@@ -13,7 +13,7 @@ const stats = [
 
 export default function StatsSection() {
     return (
-        <section className="py-24 bg-zinc-900 text-white border-y border-zinc-800">
+        <section className="py-24 bg-card text-foreground border-y border-border">
             <div className="container mx-auto px-4 md:px-6">
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-12 text-center">
                     {stats.map((stat, index) => (
@@ -28,7 +28,7 @@ export default function StatsSection() {
                             <div className="text-5xl md:text-6xl font-bold mb-3 tracking-tighter">
                                 {stat.value}
                             </div>
-                            <div className="text-xs md:text-sm font-medium text-zinc-500 uppercase tracking-[0.2em]">
+                            <div className="text-xs md:text-sm font-medium text-muted-foreground uppercase tracking-[0.2em]">
                                 {stat.label}
                             </div>
                         </motion.div>

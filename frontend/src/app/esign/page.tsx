@@ -89,7 +89,7 @@ export default function ESignDashboard() {
       case 'voided':
         return <Badge className="bg-red-100 text-red-800">Voided</Badge>;
       case 'expired':
-        return <Badge className="bg-gray-100 text-gray-800">Expired</Badge>;
+        return <Badge className="bg-muted text-gray-800">Expired</Badge>;
       default:
         return <Badge>{status}</Badge>;
     }
@@ -100,7 +100,7 @@ export default function ESignDashboard() {
       <div className="flex justify-between items-center mb-8">
         <div>
           <h1 className="text-3xl font-bold text-gray-900">E-Signatures</h1>
-          <p className="text-gray-600">Manage your documents and signature requests</p>
+          <p className="text-muted-foreground">Manage your documents and signature requests</p>
         </div>
         <Button asChild>
           <Link href="/esign/new">
@@ -118,7 +118,7 @@ export default function ESignDashboard() {
             <CardTitle className="text-3xl">{stats.total}</CardTitle>
           </CardHeader>
           <CardContent>
-            <FileText className="h-5 w-5 text-gray-400" />
+            <FileText className="h-5 w-5 text-muted-foreground" />
           </CardContent>
         </Card>
         <Card>
@@ -197,13 +197,13 @@ export default function ESignDashboard() {
               {envelopes.map((envelope) => (
                 <div 
                   key={envelope.id} 
-                  className="flex items-center justify-between p-4 rounded-lg border hover:bg-gray-50 transition-colors"
+                  className="flex items-center justify-between p-4 rounded-lg border hover:bg-muted transition-colors"
                 >
                   <div className="flex items-center gap-4">
-                    <FileText className="h-10 w-10 text-gray-400" />
+                    <FileText className="h-10 w-10 text-muted-foreground" />
                     <div>
                       <h4 className="font-medium">{envelope.name}</h4>
-                      <p className="text-sm text-gray-500">
+                      <p className="text-sm text-muted-foreground">
                         {envelope.contextEntityName || 'Document'} • {new Date(envelope.createdAt).toLocaleDateString('en-GB')}
                       </p>
                     </div>
@@ -223,7 +223,7 @@ export default function ESignDashboard() {
             <div className="text-center py-8">
               <FileText className="h-12 w-12 text-gray-300 mx-auto mb-4" />
               <h3 className="text-lg font-medium text-gray-900 mb-1">No documents yet</h3>
-              <p className="text-gray-500 mb-4">Get started by creating your first signature request</p>
+              <p className="text-muted-foreground mb-4">Get started by creating your first signature request</p>
               <Button asChild>
                 <Link href="/esign/new">
                   <Plus className="mr-2 h-4 w-4" />

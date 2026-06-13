@@ -7,7 +7,7 @@ export default function DataHubLayout({
   children: React.ReactNode
 }) {
   return (
-    <div className="flex flex-col min-h-[calc(100vh-6rem)] bg-black">
+    <div className="flex flex-col min-h-[calc(100vh-6rem)] bg-background">
       <DataHubTopNav />
       <main className="flex-1 overflow-auto">
         {children}

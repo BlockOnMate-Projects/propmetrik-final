@@ -30,7 +30,7 @@ export default function ProjectSubnav({ projectId }: ProjectSubnavProps) {
   const items = useMemo(() => buildItems(projectId), [projectId]);
 
   return (
-    <div className="border border-zinc-800 bg-zinc-950 rounded-xl px-2 py-2 overflow-x-auto">
+    <div className="border border-border bg-background rounded-xl px-2 py-2 overflow-x-auto">
       <div className="flex items-center gap-2 min-w-max">
         {items.map((item) => {
           const isActive = pathname === item.href;
@@ -41,8 +41,8 @@ export default function ProjectSubnav({ projectId }: ProjectSubnavProps) {
               className={cn(
                 'px-3 py-1.5 rounded-lg text-xs font-medium transition-colors',
                 isActive
-                  ? 'bg-amber-500/15 text-amber-400'
-                  : 'text-zinc-400 hover:text-white hover:bg-zinc-900'
+                  ? 'bg-amber-500/15 text-amber-600 dark:text-amber-400'
+                  : 'text-muted-foreground hover:text-foreground hover:bg-card'
               )}
             >
               {item.label}

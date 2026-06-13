@@ -71,13 +71,13 @@ const categoryLabels: Record<string, string> = {
 };
 
 const statusConfig: Record<string, { label: string; color: string }> = {
-  draft: { label: 'Draft', color: 'bg-zinc-500/20 text-zinc-400' },
-  budgeted: { label: 'Budgeted', color: 'bg-blue-500/20 text-blue-400' },
-  committed: { label: 'Committed', color: 'bg-purple-500/20 text-purple-400' },
-  invoiced: { label: 'Invoiced', color: 'bg-yellow-500/20 text-yellow-400' },
-  approved: { label: 'Approved', color: 'bg-emerald-500/20 text-emerald-400' },
-  paid: { label: 'Paid', color: 'bg-green-500/20 text-green-400' },
-  cancelled: { label: 'Cancelled', color: 'bg-red-500/20 text-red-400' }
+  draft: { label: 'Draft', color: 'bg-zinc-500/20 text-muted-foreground' },
+  budgeted: { label: 'Budgeted', color: 'bg-blue-500/20 text-blue-600 dark:text-blue-400' },
+  committed: { label: 'Committed', color: 'bg-purple-500/20 text-purple-600 dark:text-purple-400' },
+  invoiced: { label: 'Invoiced', color: 'bg-yellow-500/20 text-yellow-600 dark:text-yellow-400' },
+  approved: { label: 'Approved', color: 'bg-emerald-500/20 text-emerald-600 dark:text-emerald-400' },
+  paid: { label: 'Paid', color: 'bg-green-500/20 text-green-600 dark:text-green-400' },
+  cancelled: { label: 'Cancelled', color: 'bg-red-500/20 text-red-600 dark:text-red-400' }
 };
 
 export default function ProjectBudgetCostPage() {
@@ -177,15 +177,15 @@ export default function ProjectBudgetCostPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-white tracking-tight">Budget & Cost</h1>
-          <p className="text-zinc-400 text-sm mt-1">Track budgets, commitments, and actuals.</p>
+          <h1 className="text-2xl font-bold text-foreground tracking-tight">Budget & Cost</h1>
+          <p className="text-muted-foreground text-sm mt-1">Track budgets, commitments, and actuals.</p>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" className="border-zinc-700 text-zinc-300" onClick={() => fetchData()}>
+          <Button variant="outline" className="border-border text-muted-foreground" onClick={() => fetchData()}>
             <RefreshCw className="h-4 w-4 mr-2" />
             Refresh
           </Button>
-          <Button className="bg-amber-600 hover:bg-amber-700 text-white border-0" onClick={() => setShowAddDialog(true)}>
+          <Button className="bg-amber-600 hover:bg-amber-700 text-foreground border-0" onClick={() => setShowAddDialog(true)}>
             <Plus className="h-4 w-4 mr-2" />
             Add Cost
           </Button>
@@ -201,62 +201,62 @@ export default function ProjectBudgetCostPage() {
       ) : (
         <>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            <Card className="bg-zinc-900 border-zinc-800">
+            <Card className="bg-card border-border">
               <CardContent className="pt-6">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-xs uppercase tracking-wider text-zinc-500">Total Budget</p>
-                    <p className="text-2xl font-bold text-white mt-1">{formatCurrency(totalBudget)}</p>
+                    <p className="text-xs uppercase tracking-wider text-muted-foreground">Total Budget</p>
+                    <p className="text-2xl font-bold text-foreground mt-1">{formatCurrency(totalBudget)}</p>
                   </div>
                   <div className="h-12 w-12 rounded-lg bg-blue-500/10 flex items-center justify-center">
-                    <PieChart className="h-6 w-6 text-blue-400" />
+                    <PieChart className="h-6 w-6 text-blue-600 dark:text-blue-400" />
                   </div>
                 </div>
               </CardContent>
             </Card>
 
-            <Card className="bg-zinc-900 border-zinc-800">
+            <Card className="bg-card border-border">
               <CardContent className="pt-6">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-xs uppercase tracking-wider text-zinc-500">Committed</p>
-                    <p className="text-2xl font-bold text-white mt-1">{formatCurrency(budgetSummary?.total_committed || 0)}</p>
-                    <p className="text-xs text-zinc-500 mt-1">{committedPercentage}% of budget</p>
+                    <p className="text-xs uppercase tracking-wider text-muted-foreground">Committed</p>
+                    <p className="text-2xl font-bold text-foreground mt-1">{formatCurrency(budgetSummary?.total_committed || 0)}</p>
+                    <p className="text-xs text-muted-foreground mt-1">{committedPercentage}% of budget</p>
                   </div>
                   <div className="h-12 w-12 rounded-lg bg-purple-500/10 flex items-center justify-center">
-                    <DollarSign className="h-6 w-6 text-purple-400" />
+                    <DollarSign className="h-6 w-6 text-purple-600 dark:text-purple-400" />
                   </div>
                 </div>
               </CardContent>
             </Card>
 
-            <Card className="bg-zinc-900 border-zinc-800">
+            <Card className="bg-card border-border">
               <CardContent className="pt-6">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-xs uppercase tracking-wider text-zinc-500">Spent</p>
-                    <p className="text-2xl font-bold text-white mt-1">{formatCurrency(totalSpent)}</p>
-                    <p className="text-xs text-zinc-500 mt-1">{budgetUtilization}% utilized</p>
+                    <p className="text-xs uppercase tracking-wider text-muted-foreground">Spent</p>
+                    <p className="text-2xl font-bold text-foreground mt-1">{formatCurrency(totalSpent)}</p>
+                    <p className="text-xs text-muted-foreground mt-1">{budgetUtilization}% utilized</p>
                   </div>
                   <div className="h-12 w-12 rounded-lg bg-green-500/10 flex items-center justify-center">
-                    <DollarSign className="h-6 w-6 text-green-400" />
+                    <DollarSign className="h-6 w-6 text-green-600 dark:text-green-400" />
                   </div>
                 </div>
               </CardContent>
             </Card>
 
-            <Card className={`bg-zinc-900 border-zinc-800 ${isOverBudget ? 'border-red-500/50' : ''}`}>
+            <Card className={`bg-card border-border ${isOverBudget ? 'border-red-500/50' : ''}`}>
               <CardContent className="pt-6">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-xs uppercase tracking-wider text-zinc-500">Variance</p>
-                    <p className={`text-2xl font-bold mt-1 ${isOverBudget ? 'text-red-400' : 'text-green-400'}`}>
+                    <p className="text-xs uppercase tracking-wider text-muted-foreground">Variance</p>
+                    <p className={`text-2xl font-bold mt-1 ${isOverBudget ? 'text-red-600 dark:text-red-400' : 'text-green-600 dark:text-green-400'}`}>
                       {isOverBudget ? '-' : '+'}{formatCurrency(Math.abs(variance))}
                     </p>
-                    <p className="text-xs text-zinc-500 mt-1">{isOverBudget ? 'Over budget' : 'Under budget'}</p>
+                    <p className="text-xs text-muted-foreground mt-1">{isOverBudget ? 'Over budget' : 'Under budget'}</p>
                   </div>
                   <div className={`h-12 w-12 rounded-lg flex items-center justify-center ${isOverBudget ? 'bg-red-500/10' : 'bg-green-500/10'}`}>
-                    {isOverBudget ? <TrendingDown className="h-6 w-6 text-red-400" /> : <TrendingUp className="h-6 w-6 text-green-400" />}
+                    {isOverBudget ? <TrendingDown className="h-6 w-6 text-red-600 dark:text-red-400" /> : <TrendingUp className="h-6 w-6 text-green-600 dark:text-green-400" />}
                   </div>
                 </div>
               </CardContent>
@@ -264,16 +264,16 @@ export default function ProjectBudgetCostPage() {
           </div>
 
           <Tabs value={activeTab} onValueChange={setActiveTab}>
-            <TabsList className="bg-zinc-800 border-zinc-700">
+            <TabsList className="bg-muted border-border">
               <TabsTrigger value="overview">Overview</TabsTrigger>
               <TabsTrigger value="costs">Cost Items</TabsTrigger>
             </TabsList>
 
             <TabsContent value="overview" className="mt-6">
-              <Card className="bg-zinc-900 border-zinc-800">
+              <Card className="bg-card border-border">
                 <CardHeader>
-                  <CardTitle className="text-white">Budget Breakdown</CardTitle>
-                  <CardDescription className="text-zinc-400">Budget vs. actual spending by category</CardDescription>
+                  <CardTitle className="text-foreground">Budget Breakdown</CardTitle>
+                  <CardDescription className="text-muted-foreground">Budget vs. actual spending by category</CardDescription>
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-4">
@@ -287,17 +287,17 @@ export default function ProjectBudgetCostPage() {
                       return (
                         <div key={cat.category} className="space-y-2">
                           <div className="flex items-center justify-between text-sm">
-                            <span className="text-zinc-300">{categoryLabels[cat.category] || cat.category}</span>
-                            <span className={`font-mono text-xs ${percentage > 100 ? 'text-red-400' : 'text-zinc-400'}`}>{percentage}%</span>
+                            <span className="text-muted-foreground">{categoryLabels[cat.category] || cat.category}</span>
+                            <span className={`font-mono text-xs ${percentage > 100 ? 'text-red-600 dark:text-red-400' : 'text-muted-foreground'}`}>{percentage}%</span>
                           </div>
-                          <div className="h-2 bg-zinc-800 rounded-full overflow-hidden">
+                          <div className="h-2 bg-muted rounded-full overflow-hidden">
                             <div className={`h-full ${percentage > 100 ? 'bg-red-500' : 'bg-amber-500'}`} style={{ width: `${Math.min(percentage, 100)}%` }} />
                           </div>
                         </div>
                       );
                     })}
                     {(!budgetSummary?.by_category || (Array.isArray(budgetSummary.by_category) ? budgetSummary.by_category.length === 0 : Object.keys(budgetSummary.by_category).length === 0)) && (
-                      <div className="text-center py-8 text-zinc-500">No budget categories configured yet.</div>
+                      <div className="text-center py-8 text-muted-foreground">No budget categories configured yet.</div>
                     )}
                   </div>
                 </CardContent>
@@ -307,18 +307,18 @@ export default function ProjectBudgetCostPage() {
             <TabsContent value="costs" className="mt-6">
               <div className="flex gap-3 mb-4">
                 <div className="relative flex-1 max-w-sm">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-500" />
-                  <Input placeholder="Search costs..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="pl-10 bg-zinc-900 border-zinc-800" />
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input placeholder="Search costs..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="pl-10 bg-card border-border" />
                 </div>
                 <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-                  <SelectTrigger className="w-[180px] bg-zinc-900 border-zinc-800"><SelectValue placeholder="Category" /></SelectTrigger>
+                  <SelectTrigger className="w-[180px] bg-card border-border"><SelectValue placeholder="Category" /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">All Categories</SelectItem>
                     {Object.entries(categoryLabels).map(([value, label]) => (<SelectItem key={value} value={value}>{label}</SelectItem>))}
                   </SelectContent>
                 </Select>
                 <Select value={statusFilter} onValueChange={setStatusFilter}>
-                  <SelectTrigger className="w-[150px] bg-zinc-900 border-zinc-800"><SelectValue placeholder="Status" /></SelectTrigger>
+                  <SelectTrigger className="w-[150px] bg-card border-border"><SelectValue placeholder="Status" /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">All Status</SelectItem>
                     {Object.entries(statusConfig).map(([value, { label }]) => (<SelectItem key={value} value={value}>{label}</SelectItem>))}
@@ -326,17 +326,17 @@ export default function ProjectBudgetCostPage() {
                 </Select>
               </div>
 
-              <Card className="bg-zinc-900 border-zinc-800">
+              <Card className="bg-card border-border">
                 <CardContent className="p-0">
                   <Table>
                     <TableHeader>
-                      <TableRow className="border-zinc-800 hover:bg-transparent">
-                        <TableHead className="text-zinc-400">Description</TableHead>
-                        <TableHead className="text-zinc-400">Category</TableHead>
-                        <TableHead className="text-zinc-400">Status</TableHead>
-                        <TableHead className="text-zinc-400 text-right">Budgeted</TableHead>
-                        <TableHead className="text-zinc-400 text-right">Actual</TableHead>
-                        <TableHead className="text-zinc-400 text-right">Variance</TableHead>
+                      <TableRow className="border-border hover:bg-transparent">
+                        <TableHead className="text-muted-foreground">Description</TableHead>
+                        <TableHead className="text-muted-foreground">Category</TableHead>
+                        <TableHead className="text-muted-foreground">Status</TableHead>
+                        <TableHead className="text-muted-foreground text-right">Budgeted</TableHead>
+                        <TableHead className="text-muted-foreground text-right">Actual</TableHead>
+                        <TableHead className="text-muted-foreground text-right">Variance</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -345,17 +345,17 @@ export default function ProjectBudgetCostPage() {
                         const costActual = cost.actual_costs || 0;
                         const costVariance = costBudget - costActual;
                         return (
-                          <TableRow key={cost.id} className="border-zinc-800 hover:bg-zinc-800/50">
-                            <TableCell className="font-medium text-white">{cost.description}</TableCell>
-                            <TableCell className="text-zinc-300">{categoryLabels[cost.category] || cost.category}</TableCell>
-                            <TableCell><Badge className={statusConfig[cost.status]?.color || 'bg-zinc-500/20 text-zinc-400'}>{statusConfig[cost.status]?.label || cost.status}</Badge></TableCell>
-                            <TableCell className="text-right text-zinc-300">{formatCurrency(costBudget)}</TableCell>
-                            <TableCell className="text-right text-zinc-300">{formatCurrency(costActual)}</TableCell>
-                            <TableCell className={`text-right font-mono ${costVariance < 0 ? 'text-red-400' : 'text-green-400'}`}>{costVariance < 0 ? '-' : '+'}{formatCurrency(Math.abs(costVariance))}</TableCell>
+                          <TableRow key={cost.id} className="border-border hover:bg-muted/50">
+                            <TableCell className="font-medium text-foreground">{cost.description}</TableCell>
+                            <TableCell className="text-muted-foreground">{categoryLabels[cost.category] || cost.category}</TableCell>
+                            <TableCell><Badge className={statusConfig[cost.status]?.color || 'bg-zinc-500/20 text-muted-foreground'}>{statusConfig[cost.status]?.label || cost.status}</Badge></TableCell>
+                            <TableCell className="text-right text-muted-foreground">{formatCurrency(costBudget)}</TableCell>
+                            <TableCell className="text-right text-muted-foreground">{formatCurrency(costActual)}</TableCell>
+                            <TableCell className={`text-right font-mono ${costVariance < 0 ? 'text-red-600 dark:text-red-400' : 'text-green-600 dark:text-green-400'}`}>{costVariance < 0 ? '-' : '+'}{formatCurrency(Math.abs(costVariance))}</TableCell>
                           </TableRow>
                         );
                       })}
-                      {costs.length === 0 && (<TableRow><TableCell colSpan={6} className="text-center py-8 text-zinc-500">No cost items found.</TableCell></TableRow>)}
+                      {costs.length === 0 && (<TableRow><TableCell colSpan={6} className="text-center py-8 text-muted-foreground">No cost items found.</TableCell></TableRow>)}
                     </TableBody>
                   </Table>
                 </CardContent>
@@ -366,45 +366,45 @@ export default function ProjectBudgetCostPage() {
       )}
 
       <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
-        <DialogContent className="bg-zinc-900 border-zinc-800">
+        <DialogContent className="bg-card border-border">
           <DialogHeader>
-            <DialogTitle className="text-white">Add Cost Item</DialogTitle>
-            <DialogDescription className="text-zinc-400">Add a new cost item to the project budget.</DialogDescription>
+            <DialogTitle className="text-foreground">Add Cost Item</DialogTitle>
+            <DialogDescription className="text-muted-foreground">Add a new cost item to the project budget.</DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <Label className="text-zinc-300">Description</Label>
+              <Label className="text-muted-foreground">Description</Label>
               <Input
                 placeholder="Enter cost description"
-                className="bg-zinc-800 border-zinc-700"
+                className="bg-muted border-border"
                 value={newCost.description}
                 onChange={(e) => setNewCost(prev => ({ ...prev, description: e.target.value }))}
               />
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label className="text-zinc-300">Category</Label>
+                <Label className="text-muted-foreground">Category</Label>
                 <Select value={newCost.category} onValueChange={(val) => setNewCost(prev => ({ ...prev, category: val }))}>
-                  <SelectTrigger className="bg-zinc-800 border-zinc-700"><SelectValue placeholder="Select category" /></SelectTrigger>
+                  <SelectTrigger className="bg-muted border-border"><SelectValue placeholder="Select category" /></SelectTrigger>
                   <SelectContent>{Object.entries(categoryLabels).map(([value, label]) => (<SelectItem key={value} value={value}>{label}</SelectItem>))}</SelectContent>
                 </Select>
               </div>
               <div className="space-y-2">
-                <Label className="text-zinc-300">Budgeted Amount</Label>
+                <Label className="text-muted-foreground">Budgeted Amount</Label>
                 <Input
                   type="number"
                   placeholder="0.00"
-                  className="bg-zinc-800 border-zinc-700"
+                  className="bg-muted border-border"
                   value={newCost.original_budget}
                   onChange={(e) => setNewCost(prev => ({ ...prev, original_budget: e.target.value }))}
                 />
               </div>
             </div>
             <div className="space-y-2">
-              <Label className="text-zinc-300">Notes</Label>
+              <Label className="text-muted-foreground">Notes</Label>
               <Textarea
                 placeholder="Additional notes..."
-                className="bg-zinc-800 border-zinc-700"
+                className="bg-muted border-border"
                 value={newCost.notes}
                 onChange={(e) => setNewCost(prev => ({ ...prev, notes: e.target.value }))}
               />

@@ -169,7 +169,7 @@ For service support: support@propmetrik.com`
     ];
 
     return (
-        <main className="pt-32 pb-24 bg-zinc-950 text-white">
+        <main className="pt-32 pb-24 bg-background text-foreground">
             <div className="container mx-auto px-4 md:px-6 max-w-4xl">
                 <motion.div
                     initial={{ opacity: 0, y: 20 }}
@@ -182,7 +182,7 @@ For service support: support@propmetrik.com`
                     </div>
 
                     <h1 className="text-4xl md:text-6xl font-bold mb-4">Terms of Service</h1>
-                    <p className="text-zinc-400 mb-12">Last updated: {lastUpdated}</p>
+                    <p className="text-muted-foreground mb-12">Last updated: {lastUpdated}</p>
 
                     <div className="prose prose-invert prose-lg max-w-none">
                         {sections.map((section, index) => (
@@ -194,32 +194,32 @@ For service support: support@propmetrik.com`
                                 transition={{ delay: index * 0.05 }}
                                 className="mb-12"
                             >
-                                <h2 className="text-2xl font-bold text-white mb-4">{section.title}</h2>
-                                <p className="text-zinc-300 leading-relaxed whitespace-pre-line">
+                                <h2 className="text-2xl font-bold text-foreground mb-4">{section.title}</h2>
+                                <p className="text-muted-foreground leading-relaxed whitespace-pre-line">
                                     {section.content}
                                 </p>
                             </motion.section>
                         ))}
                     </div>
 
-                    <div className="mt-16 pt-8 border-t border-zinc-800">
+                    <div className="mt-16 pt-8 border-t border-border">
                         <div className="grid md:grid-cols-2 gap-4">
                             <Link href="/privacy">
                                 <motion.div
                                     whileHover={{ x: 5 }}
-                                    className="p-4 bg-zinc-900 border border-zinc-800 rounded-lg hover:border-primary/50 transition-colors"
+                                    className="p-4 bg-card border border-border rounded-lg hover:border-primary/50 transition-colors"
                                 >
-                                    <div className="text-sm text-zinc-500 mb-1">Related</div>
-                                    <div className="font-bold text-white">Privacy Policy →</div>
+                                    <div className="text-sm text-muted-foreground mb-1">Related</div>
+                                    <div className="font-bold text-foreground">Privacy Policy →</div>
                                 </motion.div>
                             </Link>
                             <Link href="/acceptable-use">
                                 <motion.div
                                     whileHover={{ x: 5 }}
-                                    className="p-4 bg-zinc-900 border border-zinc-800 rounded-lg hover:border-primary/50 transition-colors"
+                                    className="p-4 bg-card border border-border rounded-lg hover:border-primary/50 transition-colors"
                                 >
-                                    <div className="text-sm text-zinc-500 mb-1">Related</div>
-                                    <div className="font-bold text-white">Acceptable Use Policy →</div>
+                                    <div className="text-sm text-muted-foreground mb-1">Related</div>
+                                    <div className="font-bold text-foreground">Acceptable Use Policy →</div>
                                 </motion.div>
                             </Link>
                         </div>

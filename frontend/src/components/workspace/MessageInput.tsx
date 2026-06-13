@@ -135,17 +135,17 @@ export function MessageInput({
     };
 
     return (
-        <div className="border-t border-zinc-800/60 bg-zinc-950/60 px-4 py-3">
+        <div className="border-t border-border/60 bg-background/60 px-4 py-3">
             {/* Reply Preview */}
             {replyingTo && (
-                <div className="flex items-center justify-between gap-2 mb-2 px-3 py-2 rounded-xl bg-zinc-900 border border-zinc-800 animate-slide-up">
+                <div className="flex items-center justify-between gap-2 mb-2 px-3 py-2 rounded-xl bg-card border border-border animate-slide-up">
                     <div className="flex-1 min-w-0">
                         <p className="text-[10px] font-bold text-emerald-500 uppercase tracking-wider">Replying to {replyingTo.senderName}</p>
-                        <p className="text-xs text-zinc-400 truncate">{replyingTo.content}</p>
+                        <p className="text-xs text-muted-foreground truncate">{replyingTo.content}</p>
                     </div>
                     <button
                         onClick={onCancelReply}
-                        className="p-1 hover:bg-zinc-800 rounded-lg text-zinc-500 hover:text-zinc-300"
+                        className="p-1 hover:bg-muted rounded-lg text-muted-foreground hover:text-muted-foreground"
                     >
                         <span className="text-lg">×</span>
                     </button>
@@ -154,7 +154,7 @@ export function MessageInput({
 
             {/* Kobby AI suggestion chip */}
             {isKobbyMention && (
-                <div className="flex items-center gap-2 mb-2 px-3 py-1.5 rounded-xl bg-violet-950/60 border border-violet-800/40 text-xs text-violet-300 animate-fade-in">
+                <div className="flex items-center gap-2 mb-2 px-3 py-1.5 rounded-xl bg-violet-950/60 border border-violet-800/40 text-xs text-violet-600 dark:text-violet-300 animate-fade-in">
                     <span className="text-base">✨</span>
                     <span>
                         <span className="font-semibold text-violet-200">Kobby AI</span> — asking about this{' '}
@@ -165,7 +165,7 @@ export function MessageInput({
 
             {/* Connection indicator */}
             {!connected && (
-                <div className="flex items-center gap-2 mb-2 px-3 py-1.5 rounded-xl bg-amber-950/40 border border-amber-800/40 text-xs text-amber-400">
+                <div className="flex items-center gap-2 mb-2 px-3 py-1.5 rounded-xl bg-amber-950/40 border border-amber-800/40 text-xs text-amber-600 dark:text-amber-400">
                     <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />
                     Reconnecting to workspace...
                 </div>
@@ -184,7 +184,7 @@ export function MessageInput({
                     disabled={disabled || !connected || isUploading}
                     onClick={() => fileInputRef.current?.click()}
                     className={cn(
-                        "flex-shrink-0 p-2 rounded-xl text-zinc-500 hover:text-zinc-300 hover:bg-zinc-800 transition-colors disabled:opacity-40 disabled:cursor-not-allowed",
+                        "flex-shrink-0 p-2 rounded-xl text-muted-foreground hover:text-muted-foreground hover:bg-muted transition-colors disabled:opacity-40 disabled:cursor-not-allowed",
                         attachment && "text-emerald-500 bg-emerald-500/10"
                     )}
                     title="Attach file"
@@ -199,12 +199,12 @@ export function MessageInput({
                 {/* Text area */}
                 <div className="flex flex-col flex-1 gap-2">
                     {attachment && (
-                        <div className="flex items-center gap-2 p-1.5 rounded-lg bg-zinc-800/40 border border-emerald-500/20 w-fit animate-fade-in">
+                        <div className="flex items-center gap-2 p-1.5 rounded-lg bg-muted/40 border border-emerald-500/20 w-fit animate-fade-in">
                             <Paperclip className="w-3 h-3 text-emerald-500" />
-                            <span className="text-[10px] text-zinc-300 truncate max-w-[150px]">{attachment.file_name}</span>
+                            <span className="text-[10px] text-muted-foreground truncate max-w-[150px]">{attachment.file_name}</span>
                             <button
                                 onClick={() => setAttachment(null)}
-                                className="ml-1 text-zinc-500 hover:text-zinc-300"
+                                className="ml-1 text-muted-foreground hover:text-muted-foreground"
                             >
                                 ×
                             </button>
@@ -221,8 +221,8 @@ export function MessageInput({
                             rows={1}
                             className={cn(
                                 'resize-none min-h-[40px] max-h-[120px] text-sm',
-                                'bg-zinc-800/60 border-zinc-700/50 rounded-xl',
-                                'text-zinc-100 placeholder:text-zinc-500',
+                                'bg-muted/60 border-border/50 rounded-xl',
+                                'text-zinc-100 placeholder:text-muted-foreground',
                                 'focus:ring-1 focus:ring-emerald-500/50 focus:border-emerald-600/50',
                                 'transition-all duration-200',
                                 'scrollbar-thin scrollbar-thumb-zinc-700 scrollbar-track-transparent',
@@ -252,7 +252,7 @@ export function MessageInput({
             </div>
 
             {/* Hint */}
-            <p className="text-xs text-zinc-600 mt-2 ml-1">
+            <p className="text-xs text-muted-foreground mt-2 ml-1">
                 Enter to send · Shift+Enter new line · @kobby to ask AI
             </p>
         </div>

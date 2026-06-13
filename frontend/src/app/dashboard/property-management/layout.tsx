@@ -6,9 +6,9 @@ export default function PropertyManagementLayout({
     children: React.ReactNode
 }) {
     return (
-        <div className="dark flex flex-col min-h-[calc(100vh-8rem)] bg-black text-white">
+        <div className="flex flex-col min-h-[calc(100vh-8rem)] bg-background text-foreground">
             <PMTopNav />
-            <main className="flex-1 overflow-y-auto p-6 bg-black">
+            <main className="flex-1 overflow-y-auto p-6 bg-background">
                 {children}
             </main>
         </div>

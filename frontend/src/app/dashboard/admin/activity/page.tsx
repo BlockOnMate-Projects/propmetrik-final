@@ -49,40 +49,40 @@ export default function ActivityPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <div className="p-2 bg-red-900/30 border border-red-800">
-            <Activity className="w-5 h-5 text-red-400" />
+          <div className="p-2 bg-red-100 dark:bg-red-900/30 border border-red-800">
+            <Activity className="w-5 h-5 text-red-600 dark:text-red-400" />
           </div>
           <div>
-            <h1 className="font-mono text-lg text-white font-bold tracking-wide">ACTIVITY</h1>
-            <p className="font-mono text-xs text-zinc-500">Real-time platform activity feed</p>
+            <h1 className="font-mono text-lg text-foreground font-bold tracking-wide">ACTIVITY</h1>
+            <p className="font-mono text-xs text-muted-foreground">Real-time platform activity feed</p>
           </div>
         </div>
-        <button onClick={fetchActivity} className="p-2 text-zinc-400 hover:text-white transition-colors">
+        <button onClick={fetchActivity} className="p-2 text-muted-foreground hover:text-foreground transition-colors">
           <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
         </button>
       </div>
 
       <div className="space-y-2">
         {loading ? (
-          <div className="p-8 text-center font-mono text-sm text-zinc-500">Loading activity...</div>
+          <div className="p-8 text-center font-mono text-sm text-muted-foreground">Loading activity...</div>
         ) : events.length === 0 ? (
-          <div className="p-8 text-center font-mono text-sm text-zinc-500">No recent activity</div>
+          <div className="p-8 text-center font-mono text-sm text-muted-foreground">No recent activity</div>
         ) : (
           events.map((event) => (
-            <div key={event.id} className="flex items-start gap-4 p-4 bg-zinc-900 border border-zinc-800 hover:border-zinc-700 transition-colors">
-              <div className="p-1.5 bg-zinc-800 border border-zinc-700 mt-0.5">
-                <User className="w-3.5 h-3.5 text-zinc-400" />
+            <div key={event.id} className="flex items-start gap-4 p-4 bg-card border border-border hover:border-border transition-colors">
+              <div className="p-1.5 bg-muted border border-border mt-0.5">
+                <User className="w-3.5 h-3.5 text-muted-foreground" />
               </div>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 mb-1">
-                  <span className="font-mono text-sm text-white">{event.user_email}</span>
-                  <span className="inline-block px-1.5 py-0.5 font-mono text-[9px] bg-zinc-800 text-zinc-400 border border-zinc-700 uppercase">
+                  <span className="font-mono text-sm text-foreground">{event.user_email}</span>
+                  <span className="inline-block px-1.5 py-0.5 font-mono text-[9px] bg-muted text-muted-foreground border border-border uppercase">
                     {event.event_type}
                   </span>
                 </div>
-                <p className="font-mono text-xs text-zinc-400">{event.description}</p>
+                <p className="font-mono text-xs text-muted-foreground">{event.description}</p>
               </div>
-              <div className="flex items-center gap-1 text-zinc-500 shrink-0">
+              <div className="flex items-center gap-1 text-muted-foreground shrink-0">
                 <Clock className="w-3 h-3" />
                 <span className="font-mono text-[10px]">{timeAgo(event.created_at)}</span>
               </div>

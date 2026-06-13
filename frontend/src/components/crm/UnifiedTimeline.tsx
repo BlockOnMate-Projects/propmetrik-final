@@ -246,13 +246,13 @@ export function UnifiedTimeline({
                     <div key={item.id} className="relative pl-8">
                       <div
                         className={cn(
-                          'absolute left-[3px] top-1 w-[17px] h-[17px] rounded-full flex items-center justify-center text-white z-10',
+                          'absolute left-[3px] top-1 w-[17px] h-[17px] rounded-full flex items-center justify-center text-foreground z-10',
                           getTimelineColor(item)
                         )}
                       >
                         {getTimelineIcon(item)}
                       </div>
-                      <div className="p-3 rounded-lg border border-border bg-card hover:bg-muted/30 transition-colors">
+                      <div className="p-3 rounded-lg border border-border bg-card hover:bg-amber-50 dark:hover:bg-amber-500/10 transition-colors">
                         <div className="flex items-start justify-between mb-1">
                           <div className="flex items-center gap-2 min-w-0">
                             <span className="text-[10px] font-medium text-primary uppercase">

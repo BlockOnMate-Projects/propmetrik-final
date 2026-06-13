@@ -65,10 +65,10 @@ function ViewOptions({
           View
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-56 bg-zinc-900 border-zinc-700" align="end">
+      <PopoverContent className="w-56 bg-card border-border" align="end">
         <div className="space-y-3">
           <div className="flex items-center justify-between">
-            <Label htmlFor="baseline" className="text-xs text-zinc-300">
+            <Label htmlFor="baseline" className="text-xs text-muted-foreground">
               Show Baseline
             </Label>
             <Switch
@@ -78,7 +78,7 @@ function ViewOptions({
             />
           </div>
           <div className="flex items-center justify-between">
-            <Label htmlFor="dependencies" className="text-xs text-zinc-300">
+            <Label htmlFor="dependencies" className="text-xs text-muted-foreground">
               Show Dependencies
             </Label>
             <Switch
@@ -88,7 +88,7 @@ function ViewOptions({
             />
           </div>
           <div className="flex items-center justify-between">
-            <Label htmlFor="milestones" className="text-xs text-zinc-300">
+            <Label htmlFor="milestones" className="text-xs text-muted-foreground">
               Show Milestones
             </Label>
             <Switch
@@ -145,10 +145,10 @@ function BaselineManager({
           Baselines
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-72 bg-zinc-900 border-zinc-700" align="end">
+      <PopoverContent className="w-72 bg-card border-border" align="end">
         <div className="space-y-3">
           <div className="flex items-center justify-between">
-            <span className="font-mono text-xs text-zinc-400">Saved Baselines</span>
+            <span className="font-mono text-xs text-muted-foreground">Saved Baselines</span>
             <Button
               variant="ghost"
               size="sm"
@@ -175,12 +175,12 @@ function BaselineManager({
                     "flex items-center justify-between p-2 rounded text-xs",
                     currentBaseline?.id === baseline.id
                       ? "bg-amber-500/20 border border-amber-500/30"
-                      : "hover:bg-zinc-800"
+                      : "hover:bg-muted"
                   )}
                 >
                   <div>
-                    <span className="text-zinc-300">{baseline.name}</span>
-                    <span className="text-zinc-500 text-[10px] block">
+                    <span className="text-muted-foreground">{baseline.name}</span>
+                    <span className="text-muted-foreground text-[10px] block">
                       {new Date(baseline.created_at).toLocaleDateString('en-GB')}
                     </span>
                   </div>
@@ -188,7 +188,7 @@ function BaselineManager({
               ))}
             </div>
           ) : (
-            <p className="text-xs text-zinc-500 text-center py-4">
+            <p className="text-xs text-muted-foreground text-center py-4">
               No baselines saved yet
             </p>
           )}
@@ -225,7 +225,7 @@ function CriticalPathSummary({
   return (
     <Card className="bg-red-500/5 border-red-500/20">
       <CardHeader className="py-2 px-3">
-        <CardTitle className="text-xs text-red-400 font-mono flex items-center gap-1.5">
+        <CardTitle className="text-xs text-red-600 dark:text-red-400 font-mono flex items-center gap-1.5">
           <span className="w-2 h-2 bg-red-500 rounded-full animate-pulse" />
           Critical Path ({totalDays} days)
         </CardTitle>
@@ -234,7 +234,7 @@ function CriticalPathSummary({
         <div className="flex flex-wrap gap-1">
           {criticalPhases.map((phase, i) => (
             <React.Fragment key={phase.id}>
-              <span className="font-mono text-[10px] text-red-300 bg-red-500/20 px-1.5 py-0.5 rounded">
+              <span className="font-mono text-[10px] text-red-600 dark:text-red-300 bg-red-500/20 px-1.5 py-0.5 rounded">
                 {phase.name}
               </span>
               {i < criticalPhases.length - 1 && (
@@ -422,9 +422,9 @@ export function ProjectGantt({
 
   if (error) {
     return (
-      <div className={cn("border border-zinc-800 bg-zinc-900/50 p-8", className)}>
+      <div className={cn("border border-border bg-card/50 p-8", className)}>
         <div className="flex flex-col items-center justify-center text-center">
-          <span className="text-red-400 font-mono text-sm mb-2">
+          <span className="text-red-600 dark:text-red-400 font-mono text-sm mb-2">
             Failed to load timeline
           </span>
           <Button variant="outline" size="sm" onClick={() => refetch()}>
@@ -440,7 +440,7 @@ export function ProjectGantt({
     <div className={cn("space-y-3", className)}>
       {/* Toolbar */}
       <div className="flex items-center justify-between">
-        <h3 className="font-mono text-sm text-zinc-300">Project Timeline</h3>
+        <h3 className="font-mono text-sm text-muted-foreground">Project Timeline</h3>
 
         <div className="flex items-center gap-2">
           <ViewOptions
@@ -469,11 +469,11 @@ export function ProjectGantt({
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-        <TabsList className="bg-zinc-800/50 border border-zinc-700 h-9 p-0.5">
-          <TabsTrigger value="timeline" className="font-mono text-xs data-[state=active]:bg-zinc-900 data-[state=active]:text-amber-500">
+        <TabsList className="bg-muted/50 border border-border h-9 p-0.5">
+          <TabsTrigger value="timeline" className="font-mono text-xs data-[state=active]:bg-card data-[state=active]:text-amber-500">
             Timeline View
           </TabsTrigger>
-          <TabsTrigger value="wbs" className="font-mono text-xs data-[state=active]:bg-zinc-900 data-[state=active]:text-amber-500">
+          <TabsTrigger value="wbs" className="font-mono text-xs data-[state=active]:bg-card data-[state=active]:text-amber-500">
             WBS (Spreadsheet)
           </TabsTrigger>
         </TabsList>
@@ -481,10 +481,10 @@ export function ProjectGantt({
         <TabsContent value="timeline" className="space-y-3 mt-0">
           {/* Empty state — no phases yet (older projects). Offer to generate one. */}
           {!isLoading && chartData && chartData.phases.length === 0 && (
-            <div className="border border-dashed border-zinc-700 bg-zinc-900/40 rounded-lg p-10 flex flex-col items-center justify-center text-center">
-              <CalendarRange className="h-10 w-10 text-zinc-600 mb-3" />
-              <h4 className="text-white font-medium mb-1">No schedule yet</h4>
-              <p className="text-zinc-400 text-sm max-w-md mb-4">
+            <div className="border border-dashed border-border bg-card/40 rounded-lg p-10 flex flex-col items-center justify-center text-center">
+              <CalendarRange className="h-10 w-10 text-muted-foreground mb-3" />
+              <h4 className="text-foreground font-medium mb-1">No schedule yet</h4>
+              <p className="text-muted-foreground text-sm max-w-md mb-4">
                 This project has no phases. Generate a structured Ghana construction plan
                 (phases + statutory milestones) you can then drag to reschedule.
               </p>

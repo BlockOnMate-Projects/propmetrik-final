@@ -238,7 +238,7 @@ export function PipelineFunnelChart({ data, height = 350 }: FunnelChartProps) {
                   opacity: 0.85,
                 }}
               >
-                <span className="text-xs font-bold text-white drop-shadow-sm whitespace-nowrap">
+                <span className="text-xs font-bold text-foreground drop-shadow-sm whitespace-nowrap">
                   {stage.deals} deals
                 </span>
               </div>

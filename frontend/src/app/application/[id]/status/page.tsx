@@ -53,7 +53,7 @@ export default function ApplicationStatusPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-muted flex items-center justify-center">
         <Loader2 className="w-8 h-8 text-cyan-600 animate-spin" />
       </div>
     );
@@ -61,12 +61,12 @@ export default function ApplicationStatusPage() {
 
   if (error || !status) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+      <div className="min-h-screen bg-muted flex items-center justify-center p-4">
         <Card className="max-w-md w-full">
           <CardContent className="text-center py-12">
             <AlertCircle className="w-12 h-12 text-gray-300 mx-auto mb-4" />
             <h2 className="text-lg font-bold text-gray-900 mb-2">Application Not Found</h2>
-            <p className="text-sm text-gray-500 mb-4">
+            <p className="text-sm text-muted-foreground mb-4">
               We couldn&apos;t find an application with this tracking ID. Please check the link and try again.
             </p>
             <Button onClick={loadStatus} variant="outline" className="gap-2">
@@ -84,8 +84,8 @@ export default function ApplicationStatusPage() {
   const isRejected = status.status === 'rejected';
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="bg-white border-b border-gray-200">
+    <div className="min-h-screen bg-muted">
+      <div className="bg-card border-b border-border">
         <div className="max-w-2xl mx-auto px-4 py-6">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 bg-cyan-100 rounded-lg flex items-center justify-center">
@@ -93,7 +93,7 @@ export default function ApplicationStatusPage() {
             </div>
             <div>
               <h1 className="text-lg font-bold text-gray-900">Application Status</h1>
-              <p className="text-sm text-gray-500">Tracking ID: {id}</p>
+              <p className="text-sm text-muted-foreground">Tracking ID: {id}</p>
             </div>
           </div>
         </div>
@@ -107,9 +107,9 @@ export default function ApplicationStatusPage() {
               <StatusIcon className={`w-8 h-8 ${cfg.color}`} />
             </div>
             <h2 className="text-xl font-bold text-gray-900 mb-1">{cfg.label}</h2>
-            <p className="text-sm text-gray-500">{cfg.desc}</p>
+            <p className="text-sm text-muted-foreground">{cfg.desc}</p>
             {status.updatedAt && (
-              <p className="text-xs text-gray-400 mt-3">
+              <p className="text-xs text-muted-foreground mt-3">
                 Last updated: {new Date(status.updatedAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
               </p>
             )}
@@ -134,11 +134,11 @@ export default function ApplicationStatusPage() {
                   return (
                     <div key={step} className="relative flex flex-col items-center z-10">
                       <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold transition-all ${
-                        isComplete ? 'bg-cyan-500 text-white' : 'bg-gray-200 text-gray-400'
+                        isComplete ? 'bg-cyan-500 text-foreground' : 'bg-gray-200 text-muted-foreground'
                       } ${isCurrent ? 'ring-4 ring-cyan-100' : ''}`}>
                         {isComplete ? <CheckCircle2 className="w-4 h-4" /> : i + 1}
                       </div>
-                      <p className={`text-[10px] mt-1.5 font-medium whitespace-nowrap ${isComplete ? 'text-cyan-600' : 'text-gray-400'}`}>
+                      <p className={`text-[10px] mt-1.5 font-medium whitespace-nowrap ${isComplete ? 'text-cyan-600' : 'text-muted-foreground'}`}>
                         {stepCfg.label}
                       </p>
                     </div>
@@ -157,7 +157,7 @@ export default function ApplicationStatusPage() {
                 <FileText className="w-5 h-5 text-purple-600" />
                 <div>
                   <p className="text-sm font-semibold text-gray-900">Your lease is ready</p>
-                  <p className="text-xs text-gray-500">Sign your lease agreement to finalize your tenancy</p>
+                  <p className="text-xs text-muted-foreground">Sign your lease agreement to finalize your tenancy</p>
                 </div>
               </div>
               <Link href={`/dashboard/tenant/lease/${status.leaseId}`}>
@@ -174,7 +174,7 @@ export default function ApplicationStatusPage() {
                 <FileText className="w-5 h-5 text-purple-600" />
                 <div>
                   <p className="text-sm font-semibold text-gray-900">Lease Agreement Ready</p>
-                  <p className="text-xs text-gray-500">Your lease agreement is ready for review and signing</p>
+                  <p className="text-xs text-muted-foreground">Your lease agreement is ready for review and signing</p>
                 </div>
               </div>
               <Link href={`/dashboard/tenant/lease/${status.leaseId}`}>
@@ -186,13 +186,13 @@ export default function ApplicationStatusPage() {
 
         {/* Refresh */}
         <div className="text-center">
-          <button onClick={loadStatus} className="inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-700 font-medium">
+          <button onClick={loadStatus} className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-gray-700 font-medium">
             <RefreshCw className="w-3.5 h-3.5" /> Refresh Status
           </button>
         </div>
 
-        <div className="text-center pt-4 border-t border-gray-200">
-          <div className="flex items-center justify-center gap-2 text-gray-400">
+        <div className="text-center pt-4 border-t border-border">
+          <div className="flex items-center justify-center gap-2 text-muted-foreground">
             <Building2 className="w-4 h-4" />
             <span className="text-xs">Propmetrik Tenant Portal</span>
           </div>

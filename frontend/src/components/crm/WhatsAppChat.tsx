@@ -151,18 +151,18 @@ function MessageBubble({ message }: { message: WhatsAppMessage }) {
                 className={cn(
                     'max-w-[80%] rounded-lg px-3 py-2',
                     isOutbound
-                        ? 'bg-whatsapp text-white rounded-br-none'
-                        : 'bg-muted text-white rounded-bl-none'
+                        ? 'bg-whatsapp text-foreground rounded-br-none'
+                        : 'bg-muted text-foreground rounded-bl-none'
                 )}
             >
                 {message.message_type === 'template' && (
-                    <Badge variant="outline" className="mb-1 text-xs bg-transparent border-white/30 text-white/70">
+                    <Badge variant="outline" className="mb-1 text-xs bg-transparent border-white/30 text-foreground/70">
                         Template: {message.template_name}
                     </Badge>
                 )}
                 
                 {message.message_type === 'document' && message.media_url && (
-                    <div className="flex items-center gap-2 mb-1 p-2 bg-black/20 rounded">
+                    <div className="flex items-center gap-2 mb-1 p-2 bg-background/20 rounded">
                         <FileText className="h-4 w-4" />
                         <a 
                             href={message.media_url} 
@@ -191,7 +191,7 @@ function MessageBubble({ message }: { message: WhatsAppMessage }) {
                     'flex items-center gap-1 mt-1',
                     isOutbound ? 'justify-end' : 'justify-start'
                 )}>
-                    <span className="text-[10px] text-white/60">
+                    <span className="text-[10px] text-foreground/60">
                         {formatTime(message.created_at)}
                     </span>
                     {isOutbound && getStatusIcon(message.status)}
@@ -270,7 +270,7 @@ function TemplateDialog({
                         <>
                             <div className="p-3 bg-muted rounded-lg text-sm">
                                 <p className="text-muted-foreground mb-2">Preview:</p>
-                                <p className="text-white">
+                                <p className="text-foreground">
                                     {selectedTemplate.components.find(c => c.type === 'BODY')?.text}
                                 </p>
                             </div>
@@ -482,7 +482,7 @@ export function WhatsAppChat({
                     <div className="flex items-center gap-3">
                         <Avatar className="h-10 w-10">
                             <AvatarImage src={contactAvatar} />
-                            <AvatarFallback className="bg-whatsapp text-white">
+                            <AvatarFallback className="bg-whatsapp text-foreground">
                                 {contactName?.split(' ').map(n => n[0]).join('').toUpperCase() || <User className="h-5 w-5" />}
                             </AvatarFallback>
                         </Avatar>

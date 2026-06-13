@@ -72,7 +72,7 @@ export function RealtimeStatus({ className, showLabel = false }: RealtimeStatusP
           )}
         </div>
       </TooltipTrigger>
-      <TooltipContent side="bottom" className="bg-zinc-900 text-zinc-100 border-zinc-800">
+      <TooltipContent side="bottom" className="bg-card text-zinc-100 border-border">
         <p className="text-xs">
           {statusText}
           {isConnected && ' - Real-time updates active'}

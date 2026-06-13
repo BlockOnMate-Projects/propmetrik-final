@@ -122,9 +122,9 @@ function TrendIndicator({
   const Icon = trend === 'up' ? TrendingUp : trend === 'down' ? TrendingDown : Minus
 
   const colorClass = {
-    up: 'text-green-400 bg-green-400/10',
-    down: 'text-red-400 bg-red-400/10',
-    neutral: 'text-zinc-400 bg-zinc-400/10',
+    up: 'text-green-600 dark:text-green-400 bg-green-400/10',
+    down: 'text-red-600 dark:text-red-400 bg-red-400/10',
+    neutral: 'text-muted-foreground bg-zinc-400/10',
   }[trend]
 
   return (
@@ -147,7 +147,7 @@ function StatusIcon({ status }: { status: 'success' | 'warning' | 'danger' | 'ne
     success: { icon: CheckCircle, color: 'text-green-500' },
     warning: { icon: AlertTriangle, color: 'text-amber-500' },
     danger: { icon: XCircle, color: 'text-red-500' },
-    neutral: { icon: Building2, color: 'text-zinc-500' },
+    neutral: { icon: Building2, color: 'text-muted-foreground' },
   }[status]
 
   const Icon = config.icon
@@ -183,8 +183,8 @@ export function MetricCard({
       whileHover={onClick ? { scale: 1.02 } : undefined}
       onClick={onClick}
       className={cn(
-        'relative overflow-hidden border border-zinc-800 bg-zinc-900/50 p-4 transition-colors',
-        onClick && 'cursor-pointer hover:border-zinc-700 hover:bg-zinc-900',
+        'relative overflow-hidden border border-border bg-card/50 p-4 transition-colors',
+        onClick && 'cursor-pointer hover:border-border hover:bg-card',
         className
       )}
     >
@@ -203,8 +203,8 @@ export function MetricCard({
         {/* Header */}
         <div className="flex items-center justify-between mb-2">
           <div className="flex items-center gap-2">
-            <Icon className="h-4 w-4 text-zinc-500" />
-            <span className="font-mono text-[10px] text-zinc-500 uppercase tracking-wider">
+            <Icon className="h-4 w-4 text-muted-foreground" />
+            <span className="font-mono text-[10px] text-muted-foreground uppercase tracking-wider">
               {label}
             </span>
           </div>
@@ -215,8 +215,8 @@ export function MetricCard({
         <div className="flex items-baseline justify-between">
           {isLoading ? (
             <div className="flex items-center gap-2">
-              <Loader2 className="h-5 w-5 animate-spin text-zinc-500" />
-              <span className="font-mono text-xs text-zinc-500">Loading...</span>
+              <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+              <span className="font-mono text-xs text-muted-foreground">Loading...</span>
             </div>
           ) : (
             <>
@@ -240,7 +240,7 @@ export function MetricCard({
 
         {/* Previous value comparison */}
         {previousValue !== undefined && !isLoading && (
-          <p className="font-mono text-[10px] text-zinc-500 mt-1">
+          <p className="font-mono text-[10px] text-muted-foreground mt-1">
             vs. previous: {previousValue}
           </p>
         )}
@@ -300,7 +300,7 @@ export function PortfolioMetricCards({
   if (!metrics && !isLoading) {
     return (
       <MetricGrid className={className}>
-        <div className="col-span-full text-center py-8 text-zinc-500">
+        <div className="col-span-full text-center py-8 text-muted-foreground">
           <span className="font-mono text-sm">No metrics available</span>
         </div>
       </MetricGrid>

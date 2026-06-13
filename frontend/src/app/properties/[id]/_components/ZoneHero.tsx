@@ -45,7 +45,7 @@ export function ZoneHero({ property }: ZoneHeroProps) {
                     View All {images.length} Photos
                 </Button>
             </DialogTrigger>
-            <DialogContent className="max-w-7xl w-full h-[90vh] p-0 bg-black border-none">
+            <DialogContent className="max-w-7xl w-full h-[90vh] p-0 bg-background border-none">
                 <div className="relative w-full h-full flex items-center justify-center">
                     <Image 
                         src={images[currentImageIndex]} 
@@ -70,7 +70,7 @@ export function ZoneHero({ property }: ZoneHeroProps) {
         </Dialog>
 
         {/* Overlay Metrics */}
-        <div className="absolute bottom-0 left-0 w-full bg-gradient-to-t from-black/80 to-transparent p-6 text-white">
+        <div className="absolute bottom-0 left-0 w-full bg-gradient-to-t from-black/80 to-transparent p-6 text-foreground">
           <div className="flex justify-between items-end">
             <div>
               <div className="flex items-center gap-2 mb-2">
@@ -78,7 +78,7 @@ export function ZoneHero({ property }: ZoneHeroProps) {
                     <CheckCircle className="w-3 h-3 mr-1" />
                     Data Quality {Math.round(property.data_quality.trust_score * 100)}%
                  </Badge>
-                 <span className="text-sm font-medium bg-black/40 px-2 py-0.5 rounded backdrop-blur-sm">
+                 <span className="text-sm font-medium bg-background/40 px-2 py-0.5 rounded backdrop-blur-sm">
                     {property.status}
                  </span>
               </div>
@@ -93,16 +93,16 @@ export function ZoneHero({ property }: ZoneHeroProps) {
             </div>
             
             {/* Currency Toggle */}
-            <div className="bg-white/10 backdrop-blur-md rounded-lg p-1 flex">
+            <div className="bg-card/10 backdrop-blur-md rounded-lg p-1 flex">
               <button 
                 onClick={() => setCurrency('GHS')}
-                className={`px-3 py-1 rounded-md text-sm font-medium transition-colors ${currency === 'GHS' ? 'bg-white text-white' : 'text-white hover:bg-white/20'}`}
+                className={`px-3 py-1 rounded-md text-sm font-medium transition-colors ${currency === 'GHS' ? 'bg-card text-foreground' : 'text-foreground hover:bg-card/20'}`}
               >
                 GHS
               </button>
               <button 
                 onClick={() => setCurrency('USD')}
-                className={`px-3 py-1 rounded-md text-sm font-medium transition-colors ${currency === 'USD' ? 'bg-white text-white' : 'text-white hover:bg-white/20'}`}
+                className={`px-3 py-1 rounded-md text-sm font-medium transition-colors ${currency === 'USD' ? 'bg-card text-foreground' : 'text-foreground hover:bg-card/20'}`}
               >
                 USD
               </button>

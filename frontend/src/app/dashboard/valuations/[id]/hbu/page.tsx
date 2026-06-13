@@ -365,16 +365,16 @@ export default function HBUAnalysisPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-black text-white flex items-center justify-center">
+      <div className="min-h-screen bg-background text-foreground flex items-center justify-center">
         <Loader2 className="w-8 h-8 text-amber-500 animate-spin" />
-        <span className="ml-3 font-mono text-sm text-zinc-400">Loading HBU analysis...</span>
+        <span className="ml-3 font-mono text-sm text-muted-foreground">Loading HBU analysis...</span>
       </div>
     )
   }
 
   if (error || !valuation) {
     return (
-      <div className="min-h-screen bg-black text-white p-4">
+      <div className="min-h-screen bg-background text-foreground p-4">
         <AlertBanner type="error" title="Error" message={error || 'Valuation not found'} />
       </div>
     )
@@ -384,22 +384,22 @@ export default function HBUAnalysisPage() {
   const currentTest = tests.find(t => t.id === activeTest)
 
   return (
-    <div className="min-h-screen bg-black text-white p-4 pb-10">
+    <div className="min-h-screen bg-background text-foreground p-4 pb-10">
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-4">
           <Link
             href={`/dashboard/valuations/${valuationId}`}
-            className="p-2 hover:bg-zinc-800 transition-colors"
+            className="p-2 hover:bg-muted transition-colors"
           >
-            <ArrowLeft className="w-4 h-4 text-zinc-400" />
+            <ArrowLeft className="w-4 h-4 text-muted-foreground" />
           </Link>
           <div>
             <div className="flex items-center gap-3">
-              <h1 className="font-mono text-xl text-white">STEP 2: HBU ANALYSIS</h1>
+              <h1 className="font-mono text-xl text-foreground">STEP 2: HBU ANALYSIS</h1>
               <StatusBadge status="in_progress" />
             </div>
-            <p className="font-mono text-[10px] text-zinc-500">
+            <p className="font-mono text-[10px] text-muted-foreground">
               Highest & Best Use Determination • VAL-{valuationId.slice(0, 8).toUpperCase()}
             </p>
           </div>
@@ -408,7 +408,7 @@ export default function HBUAnalysisPage() {
           <button
             onClick={handleSaveAndContinue}
             disabled={saving}
-            className="flex items-center gap-2 px-4 py-2 bg-amber-500 text-white font-mono text-xs font-bold hover:bg-amber-400 transition-colors disabled:opacity-50"
+            className="flex items-center gap-2 px-4 py-2 bg-amber-500 text-foreground font-mono text-xs font-bold hover:bg-amber-400 transition-colors disabled:opacity-50"
           >
             {saving ? (
               <>
@@ -441,11 +441,11 @@ export default function HBUAnalysisPage() {
       </div>
 
       {/* Info Banner */}
-      <div className="mb-6 p-4 bg-blue-900/20 border border-blue-500/30 flex items-start gap-3">
-        <Info className="w-5 h-5 text-blue-400 flex-shrink-0 mt-0.5" />
+      <div className="mb-6 p-4 bg-blue-100 dark:bg-blue-900/20 border border-blue-500/30 flex items-start gap-3">
+        <Info className="w-5 h-5 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" />
         <div>
-          <div className="font-mono text-sm text-blue-400">Highest & Best Use (HBU) Analysis</div>
-          <div className="font-mono text-xs text-zinc-400 mt-1">
+          <div className="font-mono text-sm text-blue-600 dark:text-blue-400">Highest & Best Use (HBU) Analysis</div>
+          <div className="font-mono text-xs text-muted-foreground mt-1">
             The HBU is the reasonably probable use of property that results in the highest value. 
             A use must be legally permissible, physically possible, financially feasible, and maximally productive.
           </div>
@@ -461,21 +461,21 @@ export default function HBUAnalysisPage() {
             className={`p-4 border transition-colors text-left ${
               activeTest === test.id 
                 ? 'border-amber-500 bg-amber-500/10' 
-                : 'border-zinc-800 hover:border-zinc-700'
+                : 'border-border hover:border-border'
             }`}
           >
             <div className="flex items-center justify-between mb-2">
-              <div className={activeTest === test.id ? 'text-amber-400' : 'text-zinc-500'}>
+              <div className={activeTest === test.id ? 'text-amber-600 dark:text-amber-400' : 'text-muted-foreground'}>
                 {test.icon}
               </div>
-              {test.passed === true && <CheckCircle2 className="w-4 h-4 text-green-400" />}
-              {test.passed === false && <XCircle className="w-4 h-4 text-red-400" />}
-              {test.passed === null && <AlertTriangle className="w-4 h-4 text-yellow-400" />}
+              {test.passed === true && <CheckCircle2 className="w-4 h-4 text-green-600 dark:text-green-400" />}
+              {test.passed === false && <XCircle className="w-4 h-4 text-red-600 dark:text-red-400" />}
+              {test.passed === null && <AlertTriangle className="w-4 h-4 text-yellow-600 dark:text-yellow-400" />}
             </div>
-            <div className={`font-mono text-xs ${activeTest === test.id ? 'text-white' : 'text-zinc-400'}`}>
+            <div className={`font-mono text-xs ${activeTest === test.id ? 'text-foreground' : 'text-muted-foreground'}`}>
               {test.name.toUpperCase()}
             </div>
-            <div className="font-mono text-[10px] text-zinc-600 mt-1">
+            <div className="font-mono text-[10px] text-muted-foreground mt-1">
               {test.factors.filter(f => f.value !== null).length}/{test.factors.length} assessed
             </div>
           </button>
@@ -487,26 +487,26 @@ export default function HBUAnalysisPage() {
         {/* Test Details */}
         <TerminalPanel title={currentTest?.name.toUpperCase() || 'TEST'} className="col-span-2">
           <div className="mb-4">
-            <div className="font-mono text-xs text-zinc-400">{currentTest?.description}</div>
+            <div className="font-mono text-xs text-muted-foreground">{currentTest?.description}</div>
           </div>
 
           {/* Factors */}
           <div className="space-y-3">
             {currentTest?.factors.map((factor, idx) => (
-              <div key={idx} className="flex items-center justify-between p-3 bg-zinc-800/30 border border-zinc-700">
+              <div key={idx} className="flex items-center justify-between p-3 bg-muted/30 border border-border">
                 <div className="flex items-center gap-3">
                   <div className="w-8 text-center">
-                    <span className="font-mono text-[10px] text-zinc-500">{factor.weight}%</span>
+                    <span className="font-mono text-[10px] text-muted-foreground">{factor.weight}%</span>
                   </div>
-                  <span className="font-mono text-sm text-white">{factor.name}</span>
+                  <span className="font-mono text-sm text-foreground">{factor.name}</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <button
                     onClick={() => updateFactorValue(activeTest, idx, true)}
                     className={`px-3 py-1.5 font-mono text-xs transition-colors ${
                       factor.value === true 
-                        ? 'bg-green-500 text-white font-bold' 
-                        : 'bg-zinc-700 text-zinc-400 hover:text-white'
+                        ? 'bg-green-500 text-foreground font-bold' 
+                        : 'bg-zinc-700 text-muted-foreground hover:text-foreground'
                     }`}
                   >
                     PASS
@@ -515,8 +515,8 @@ export default function HBUAnalysisPage() {
                     onClick={() => updateFactorValue(activeTest, idx, false)}
                     className={`px-3 py-1.5 font-mono text-xs transition-colors ${
                       factor.value === false 
-                        ? 'bg-red-500 text-white font-bold' 
-                        : 'bg-zinc-700 text-zinc-400 hover:text-white'
+                        ? 'bg-red-500 text-foreground font-bold' 
+                        : 'bg-zinc-700 text-muted-foreground hover:text-foreground'
                     }`}
                   >
                     FAIL
@@ -528,13 +528,13 @@ export default function HBUAnalysisPage() {
 
           {/* Test Notes */}
           <div className="mt-4">
-            <label className="font-mono text-[10px] text-zinc-500 mb-1 block">NOTES</label>
+            <label className="font-mono text-[10px] text-muted-foreground mb-1 block">NOTES</label>
             <textarea
               value={currentTest?.notes || ''}
               onChange={(e) => updateTestNotes(activeTest, e.target.value)}
               placeholder="Add supporting notes or observations..."
               rows={3}
-              className="w-full px-3 py-2 bg-zinc-900 border border-zinc-800 text-white font-mono text-sm placeholder-zinc-600 focus:outline-none focus:border-amber-500/50 resize-none"
+              className="w-full px-3 py-2 bg-card border border-border text-foreground font-mono text-sm placeholder-zinc-600 focus:outline-none focus:border-amber-500/50 resize-none"
             />
           </div>
         </TerminalPanel>
@@ -545,37 +545,37 @@ export default function HBUAnalysisPage() {
             <div className="text-center py-4">
               <div className="mb-2">
                 {allTestsPassed ? (
-                  <CheckCircle2 className="w-12 h-12 text-green-400 mx-auto" />
+                  <CheckCircle2 className="w-12 h-12 text-green-600 dark:text-green-400 mx-auto" />
                 ) : someTestsPassed ? (
-                  <AlertTriangle className="w-12 h-12 text-yellow-400 mx-auto" />
+                  <AlertTriangle className="w-12 h-12 text-yellow-600 dark:text-yellow-400 mx-auto" />
                 ) : (
-                  <XCircle className="w-12 h-12 text-zinc-600 mx-auto" />
+                  <XCircle className="w-12 h-12 text-muted-foreground mx-auto" />
                 )}
               </div>
               <div className={`font-mono text-2xl ${
-                allTestsPassed ? 'text-green-400' : someTestsPassed ? 'text-yellow-400' : 'text-zinc-500'
+                allTestsPassed ? 'text-green-600 dark:text-green-400' : someTestsPassed ? 'text-yellow-600 dark:text-yellow-400' : 'text-muted-foreground'
               }`}>
                 {(hbuScore * 100).toFixed(0)}%
               </div>
-              <div className="font-mono text-[10px] text-zinc-500">HBU SCORE</div>
+              <div className="font-mono text-[10px] text-muted-foreground">HBU SCORE</div>
             </div>
 
             <div>
-              <div className="font-mono text-[10px] text-zinc-500 mb-2">TEST RESULTS</div>
+              <div className="font-mono text-[10px] text-muted-foreground mb-2">TEST RESULTS</div>
               {tests.map((test) => (
-                <div key={test.id} className="flex items-center justify-between py-2 border-b border-zinc-800 last:border-0">
-                  <span className="font-mono text-xs text-zinc-400">{test.name}</span>
-                  {test.passed === true && <span className="font-mono text-[10px] text-green-400">PASS</span>}
-                  {test.passed === false && <span className="font-mono text-[10px] text-red-400">FAIL</span>}
-                  {test.passed === null && <span className="font-mono text-[10px] text-zinc-600">—</span>}
+                <div key={test.id} className="flex items-center justify-between py-2 border-b border-border last:border-0">
+                  <span className="font-mono text-xs text-muted-foreground">{test.name}</span>
+                  {test.passed === true && <span className="font-mono text-[10px] text-green-600 dark:text-green-400">PASS</span>}
+                  {test.passed === false && <span className="font-mono text-[10px] text-red-600 dark:text-red-400">FAIL</span>}
+                  {test.passed === null && <span className="font-mono text-[10px] text-muted-foreground">—</span>}
                 </div>
               ))}
             </div>
 
             {recommendedUse && (
-              <div className="pt-4 border-t border-zinc-800">
-                <div className="font-mono text-[10px] text-zinc-500 mb-1">RECOMMENDED USE</div>
-                <div className="font-mono text-sm text-amber-400">{recommendedUse}</div>
+              <div className="pt-4 border-t border-border">
+                <div className="font-mono text-[10px] text-muted-foreground mb-1">RECOMMENDED USE</div>
+                <div className="font-mono text-sm text-amber-600 dark:text-amber-400">{recommendedUse}</div>
               </div>
             )}
           </div>
@@ -585,12 +585,12 @@ export default function HBUAnalysisPage() {
       {/* Use Scenarios */}
       <TerminalPanel title="ALTERNATIVE USE SCENARIOS" className="mt-4">
         <div className="mb-4 flex justify-between items-center">
-          <div className="font-mono text-xs text-zinc-400">
+          <div className="font-mono text-xs text-muted-foreground">
             Compare potential uses to determine the maximally productive option
           </div>
           <button
             onClick={addScenario}
-            className="flex items-center gap-1 px-3 py-2 bg-zinc-800 text-zinc-400 font-mono text-xs hover:text-white transition-colors"
+            className="flex items-center gap-1 px-3 py-2 bg-muted text-muted-foreground font-mono text-xs hover:text-foreground transition-colors"
           >
             <Plus className="w-3 h-3" />
             ADD SCENARIO
@@ -598,17 +598,17 @@ export default function HBUAnalysisPage() {
         </div>
 
         {scenarios.length === 0 ? (
-          <div className="text-center py-8 border border-dashed border-zinc-800">
-            <Scale className="w-8 h-8 text-zinc-600 mx-auto mb-3" />
-            <div className="font-mono text-sm text-zinc-500 mb-1">No scenarios added yet</div>
-            <div className="font-mono text-[10px] text-zinc-600">
+          <div className="text-center py-8 border border-dashed border-border">
+            <Scale className="w-8 h-8 text-muted-foreground mx-auto mb-3" />
+            <div className="font-mono text-sm text-muted-foreground mb-1">No scenarios added yet</div>
+            <div className="font-mono text-[10px] text-muted-foreground">
               Add alternative use scenarios to compare their financial viability
             </div>
           </div>
         ) : (
           <table className="w-full">
             <thead>
-              <tr className="text-[10px] font-mono text-zinc-500 border-b border-zinc-800">
+              <tr className="text-[10px] font-mono text-muted-foreground border-b border-border">
                 <th className="text-left pb-2 w-48">USE SCENARIO</th>
                 <th className="text-left pb-2 w-28">TYPE</th>
                 <th className="text-right pb-2 w-32">EST. VALUE</th>
@@ -621,7 +621,7 @@ export default function HBUAnalysisPage() {
             </thead>
             <tbody className="font-mono text-xs">
               {scenarios.map((scenario) => (
-                <tr key={scenario.id} className={`border-b border-zinc-800/50 ${
+                <tr key={scenario.id} className={`border-b border-border/50 ${
                   scenario.selected ? 'bg-amber-500/10' : ''
                 }`}>
                   <td className="py-2">
@@ -630,14 +630,14 @@ export default function HBUAnalysisPage() {
                       value={scenario.name}
                       onChange={(e) => updateScenario(scenario.id, { name: e.target.value })}
                       placeholder="Enter use name..."
-                      className="w-full bg-transparent text-white placeholder-zinc-600 focus:outline-none"
+                      className="w-full bg-transparent text-foreground placeholder-zinc-600 focus:outline-none"
                     />
                   </td>
                   <td className="py-2">
                     <select
                       value={scenario.propertyType}
                       onChange={(e) => updateScenario(scenario.id, { propertyType: e.target.value })}
-                      className="bg-transparent text-white focus:outline-none"
+                      className="bg-transparent text-foreground focus:outline-none"
                     >
                       <option value="residential">Residential</option>
                       <option value="commercial">Commercial</option>
@@ -651,7 +651,7 @@ export default function HBUAnalysisPage() {
                       value={scenario.estimatedValue || ''}
                       onChange={(e) => updateScenario(scenario.id, { estimatedValue: parseFloat(e.target.value) || 0 })}
                       placeholder="0"
-                      className="w-full text-right bg-transparent text-green-400 placeholder-zinc-600 focus:outline-none"
+                      className="w-full text-right bg-transparent text-green-600 dark:text-green-400 placeholder-zinc-600 focus:outline-none"
                     />
                   </td>
                   <td className="py-2 text-right">
@@ -660,7 +660,7 @@ export default function HBUAnalysisPage() {
                       value={scenario.developmentCost || ''}
                       onChange={(e) => updateScenario(scenario.id, { developmentCost: parseFloat(e.target.value) || 0 })}
                       placeholder="0"
-                      className="w-full text-right bg-transparent text-red-400 placeholder-zinc-600 focus:outline-none"
+                      className="w-full text-right bg-transparent text-red-600 dark:text-red-400 placeholder-zinc-600 focus:outline-none"
                     />
                   </td>
                   <td className="py-2 text-right">
@@ -669,10 +669,10 @@ export default function HBUAnalysisPage() {
                       value={scenario.annualIncome || ''}
                       onChange={(e) => updateScenario(scenario.id, { annualIncome: parseFloat(e.target.value) || 0 })}
                       placeholder="0"
-                      className="w-full text-right bg-transparent text-blue-400 placeholder-zinc-600 focus:outline-none"
+                      className="w-full text-right bg-transparent text-blue-600 dark:text-blue-400 placeholder-zinc-600 focus:outline-none"
                     />
                   </td>
-                  <td className={`py-2 text-right ${scenario.roi > 0 ? 'text-green-400' : 'text-zinc-500'}`}>
+                  <td className={`py-2 text-right ${scenario.roi > 0 ? 'text-green-600 dark:text-green-400' : 'text-muted-foreground'}`}>
                     {scenario.roi > 0 ? `${scenario.roi.toFixed(1)}%` : '—'}
                   </td>
                   <td className="py-2 text-center">
@@ -681,16 +681,16 @@ export default function HBUAnalysisPage() {
                       className={`w-6 h-6 border ${
                         scenario.selected 
                           ? 'border-amber-500 bg-amber-500' 
-                          : 'border-zinc-700 hover:border-zinc-500'
+                          : 'border-border hover:border-zinc-500'
                       }`}
                     >
-                      {scenario.selected && <CheckCircle2 className="w-4 h-4 text-white mx-auto" />}
+                      {scenario.selected && <CheckCircle2 className="w-4 h-4 text-foreground mx-auto" />}
                     </button>
                   </td>
                   <td className="py-2 text-right">
                     <button
                       onClick={() => removeScenario(scenario.id)}
-                      className="p-1 text-zinc-500 hover:text-red-400 transition-colors"
+                      className="p-1 text-muted-foreground hover:text-red-400 transition-colors"
                     >
                       <Trash2 className="w-3 h-3" />
                     </button>
@@ -706,7 +706,7 @@ export default function HBUAnalysisPage() {
       <TerminalPanel title="HIGHEST AND BEST USE CONCLUSION" className="mt-4">
         <div className="space-y-4">
           <div>
-            <div className="font-mono text-[10px] text-zinc-500 mb-2">SELECT HBU CONCLUSION</div>
+            <div className="font-mono text-[10px] text-muted-foreground mb-2">SELECT HBU CONCLUSION</div>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
               {[
                 'Current residential use',
@@ -723,8 +723,8 @@ export default function HBUAnalysisPage() {
                   onClick={() => setRecommendedUse(option)}
                   className={`px-3 py-2 font-mono text-xs border transition-colors ${
                     recommendedUse === option
-                      ? 'border-amber-500 bg-amber-500/20 text-amber-400'
-                      : 'border-zinc-700 text-zinc-400 hover:border-zinc-500 hover:text-white'
+                      ? 'border-amber-500 bg-amber-500/20 text-amber-600 dark:text-amber-400'
+                      : 'border-border text-muted-foreground hover:border-zinc-500 hover:text-foreground'
                   }`}
                 >
                   {option}
@@ -733,19 +733,19 @@ export default function HBUAnalysisPage() {
             </div>
           </div>
           <div>
-            <div className="font-mono text-[10px] text-zinc-500 mb-2">OR ENTER CUSTOM CONCLUSION</div>
+            <div className="font-mono text-[10px] text-muted-foreground mb-2">OR ENTER CUSTOM CONCLUSION</div>
             <input
               type="text"
               value={recommendedUse}
               onChange={(e) => setRecommendedUse(e.target.value)}
               placeholder="e.g., Current use as a 4-bedroom residential property"
-              className="w-full px-3 py-2 bg-zinc-900 border border-zinc-800 text-white font-mono text-sm placeholder-zinc-600 focus:outline-none focus:border-amber-500/50"
+              className="w-full px-3 py-2 bg-card border border-border text-foreground font-mono text-sm placeholder-zinc-600 focus:outline-none focus:border-amber-500/50"
             />
           </div>
           {recommendedUse && (
             <div className="p-3 bg-amber-500/10 border border-amber-500/30">
               <div className="font-mono text-[10px] text-amber-500 mb-1">SELECTED HBU</div>
-              <div className="font-mono text-sm text-amber-400">{recommendedUse}</div>
+              <div className="font-mono text-sm text-amber-600 dark:text-amber-400">{recommendedUse}</div>
             </div>
           )}
         </div>
@@ -758,7 +758,7 @@ export default function HBUAnalysisPage() {
           onChange={(e) => setAnalysisNotes(e.target.value)}
           placeholder="Document your HBU analysis rationale, supporting evidence, and conclusions..."
           rows={4}
-          className="w-full px-3 py-2 bg-zinc-900 border border-zinc-800 text-white font-mono text-sm placeholder-zinc-600 focus:outline-none focus:border-amber-500/50 resize-none"
+          className="w-full px-3 py-2 bg-card border border-border text-foreground font-mono text-sm placeholder-zinc-600 focus:outline-none focus:border-amber-500/50 resize-none"
         />
       </TerminalPanel>
 
@@ -766,7 +766,7 @@ export default function HBUAnalysisPage() {
       <div className="mt-6 flex justify-between">
         <Link
           href={`/dashboard/valuations/${valuationId}/floor-plan`}
-          className="px-6 py-3 bg-zinc-800 text-zinc-400 font-mono text-sm hover:text-white transition-colors"
+          className="px-6 py-3 bg-muted text-muted-foreground font-mono text-sm hover:text-foreground transition-colors"
         >
           ← BACK TO FLOOR PLANS
         </Link>
@@ -774,7 +774,7 @@ export default function HBUAnalysisPage() {
           <button
             onClick={handleSave}
             disabled={saving}
-            className="flex items-center gap-2 px-6 py-3 bg-zinc-700 text-white font-mono text-sm font-bold hover:bg-zinc-600 transition-colors disabled:opacity-50"
+            className="flex items-center gap-2 px-6 py-3 bg-zinc-700 text-foreground font-mono text-sm font-bold hover:bg-zinc-600 transition-colors disabled:opacity-50"
           >
             {saving ? (
               <>
@@ -791,7 +791,7 @@ export default function HBUAnalysisPage() {
           <button
             onClick={handleSaveAndContinue}
             disabled={saving}
-            className="flex items-center gap-2 px-6 py-3 bg-amber-500 text-white font-mono text-sm font-bold hover:bg-amber-400 transition-colors disabled:opacity-50"
+            className="flex items-center gap-2 px-6 py-3 bg-amber-500 text-foreground font-mono text-sm font-bold hover:bg-amber-400 transition-colors disabled:opacity-50"
           >
             {saving ? (
               <>

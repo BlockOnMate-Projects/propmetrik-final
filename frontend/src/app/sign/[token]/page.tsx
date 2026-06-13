@@ -344,10 +344,10 @@ export default function SigningPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-950">
+      <div className="min-h-screen flex items-center justify-center bg-muted dark:bg-gray-950">
         <div className="text-center">
           <Loader2 className="h-12 w-12 animate-spin text-primary mx-auto mb-4" />
-          <p className="text-gray-600 dark:text-gray-400">Loading document...</p>
+          <p className="text-muted-foreground dark:text-muted-foreground">Loading document...</p>
         </div>
       </div>
     );
@@ -355,7 +355,7 @@ export default function SigningPage() {
 
   if (error) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-950">
+      <div className="min-h-screen flex items-center justify-center bg-muted dark:bg-gray-950">
         <Card className="max-w-md">
           <CardHeader>
             <AlertTriangle className="h-12 w-12 text-red-500 mx-auto mb-4" />
@@ -363,7 +363,7 @@ export default function SigningPage() {
             <CardDescription className="text-center">{error}</CardDescription>
           </CardHeader>
           <CardContent className="text-center">
-            <p className="text-sm text-gray-500">Please contact the sender for a new signing link.</p>
+            <p className="text-sm text-muted-foreground">Please contact the sender for a new signing link.</p>
           </CardContent>
         </Card>
       </div>
@@ -372,7 +372,7 @@ export default function SigningPage() {
 
   if (signed) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-950">
+      <div className="min-h-screen flex items-center justify-center bg-muted dark:bg-gray-950">
         <Card className="max-w-md">
           <CardHeader>
             <CheckCircle className="h-16 w-16 text-green-500 mx-auto mb-4" />
@@ -388,7 +388,7 @@ export default function SigningPage() {
 
   if (declined) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-950">
+      <div className="min-h-screen flex items-center justify-center bg-muted dark:bg-gray-950">
         <Card className="max-w-md">
           <CardHeader>
             <XCircle className="h-16 w-16 text-red-500 mx-auto mb-4" />
@@ -405,9 +405,9 @@ export default function SigningPage() {
   // ─── Main Signing UI ──────────────────────────────
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-950 flex flex-col">
+    <div className="min-h-screen bg-muted dark:bg-gray-950 flex flex-col">
       {/* Header */}
-      <div className="bg-white dark:bg-gray-900 border-b px-4 py-3 sticky top-0 z-30">
+      <div className="bg-card dark:bg-gray-900 border-b px-4 py-3 sticky top-0 z-30">
         <div className="max-w-5xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-4">
             <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
@@ -438,7 +438,7 @@ export default function SigningPage() {
       {/* Content */}
       <div className="flex-1 flex">
         {/* Sidebar - Field List */}
-        <div className="w-64 bg-white dark:bg-gray-900 border-r hidden md:block shrink-0 overflow-auto">
+        <div className="w-64 bg-card dark:bg-gray-900 border-r hidden md:block shrink-0 overflow-auto">
           <div className="p-4 border-b">
             <h2 className="font-semibold text-sm mb-2">Required Fields</h2>
             <Progress value={progress} className="h-2" />
@@ -540,7 +540,7 @@ export default function SigningPage() {
                   <div
                     key={pageNum}
                     ref={(el) => { if (el) pageRefs.current.set(pageNum, el); }}
-                    className="relative bg-white shadow-lg rounded"
+                    className="relative bg-card shadow-lg rounded"
                     style={{ width: "100%", aspectRatio: `${pdfDimensions.width} / ${pdfDimensions.height}` }}
                   >
                     <img src={pageImg} alt={`Page ${pageNum}`} className="w-full h-full object-contain rounded" />
@@ -592,7 +592,7 @@ export default function SigningPage() {
       </div>
 
       {/* Mobile bottom bar */}
-      <div className="md:hidden bg-white dark:bg-gray-900 border-t px-4 py-3 sticky bottom-0 z-30">
+      <div className="md:hidden bg-card dark:bg-gray-900 border-t px-4 py-3 sticky bottom-0 z-30">
         <div className="flex items-center justify-between mb-2">
           <span className="text-xs text-muted-foreground">{completedFields.size}/{requiredFields.length} fields</span>
           <Progress value={progress} className="w-32 h-2" />
@@ -648,7 +648,7 @@ export default function SigningPage() {
 
       {/* Decline Dialog */}
       {showDeclineDialog && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+        <div className="fixed inset-0 bg-background/50 flex items-center justify-center p-4 z-50">
           <Card className="max-w-md w-full">
             <CardHeader>
               <CardTitle>Decline Signature</CardTitle>

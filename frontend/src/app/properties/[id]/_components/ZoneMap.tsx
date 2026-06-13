@@ -50,7 +50,7 @@ export function ZoneMap({ location, pois }: ZoneMapProps) {
 
   if (!token || !location.lat || !location.lng) {
     return (
-        <div className="w-full h-[400px] bg-gray-100 flex items-center justify-center rounded-xl text-muted-foreground">
+        <div className="w-full h-[400px] bg-muted flex items-center justify-center rounded-xl text-muted-foreground">
             Map unavailable
         </div>
     )
@@ -81,7 +81,7 @@ export function ZoneMap({ location, pois }: ZoneMapProps) {
         )}
       </div>
       
-      <div className="w-full h-[400px] rounded-xl overflow-hidden border border-gray-200 dark:border-gray-800">
+      <div className="w-full h-[400px] rounded-xl overflow-hidden border border-border dark:border-gray-800">
         <Map
           initialViewState={{
             longitude: location.lng,
@@ -101,7 +101,7 @@ export function ZoneMap({ location, pois }: ZoneMapProps) {
                 // High accuracy: precise pin
                 <>
                   <MapPin className="w-10 h-10 text-primary fill-current" />
-                  <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-4 h-1 bg-black/20 blur-[2px] rounded-full"></div>
+                  <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-4 h-1 bg-background/20 blur-[2px] rounded-full"></div>
                 </>
               ) : accuracyLevel === 'medium' ? (
                 // Medium accuracy: pin with small uncertainty circle

@@ -20,7 +20,7 @@ export function RateStamp({ fx, className }: { fx?: PortfolioFxMeta | null; clas
 
     return (
         <span
-            className={`text-[9px] font-mono ${fx.ratesDegraded ? 'text-amber-600' : 'text-zinc-500'} ${className || ''}`}
+            className={`text-[9px] font-mono ${fx.ratesDegraded ? 'text-amber-600' : 'text-muted-foreground'} ${className || ''}`}
             title={fx.ratesDegraded ? 'A live rate was unavailable — converted at 1:1' : `Source: ${fx.ratesSource}`}
         >
             GH₵ base{usd ? ` · USD ${Number(usd).toFixed(2)}` : ''}{time ? ` · ${time}` : ''}

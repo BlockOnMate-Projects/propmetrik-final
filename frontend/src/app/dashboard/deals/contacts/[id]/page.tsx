@@ -77,11 +77,11 @@ function InfoRow({ label, value, icon: Icon }: {
 function LeadStatusBadge({ status }: { status: LeadStatus }) {
     const getStatusColor = (status: LeadStatus) => {
         switch (status) {
-            case LeadStatus.NEW: return 'bg-blue-900/50 text-blue-400 border-blue-700'
-            case LeadStatus.CONTACTED: return 'bg-purple-900/50 text-purple-400 border-purple-700'
-            case LeadStatus.QUALIFIED: return 'bg-green-900/50 text-green-400 border-green-700'
-            case LeadStatus.UNQUALIFIED: return 'bg-red-900/50 text-red-400 border-red-700'
-            case LeadStatus.NURTURING: return 'bg-yellow-900/50 text-yellow-400 border-yellow-700'
+            case LeadStatus.NEW: return 'bg-blue-100 dark:bg-blue-900/50 text-blue-600 dark:text-blue-400 border-blue-700'
+            case LeadStatus.CONTACTED: return 'bg-purple-100 dark:bg-purple-900/50 text-purple-600 dark:text-purple-400 border-purple-700'
+            case LeadStatus.QUALIFIED: return 'bg-green-100 dark:bg-green-900/50 text-green-600 dark:text-green-400 border-green-700'
+            case LeadStatus.UNQUALIFIED: return 'bg-red-100 dark:bg-red-900/50 text-red-600 dark:text-red-400 border-red-700'
+            case LeadStatus.NURTURING: return 'bg-yellow-100 dark:bg-yellow-900/50 text-yellow-600 dark:text-yellow-400 border-yellow-700'
             default: return 'bg-muted text-muted-foreground border-border'
         }
     }
@@ -188,7 +188,7 @@ export default function ContactDetailPage() {
                             Back to Contacts
                         </Button>
                     </Link>
-                    <div className="p-6 bg-red-900/20 border border-red-800 text-red-400 font-mono text-sm">
+                    <div className="p-6 bg-red-100 dark:bg-red-900/20 border border-red-800 text-red-600 dark:text-red-400 font-mono text-sm">
                         {error || 'Contact not found'}
                     </div>
                 </div>
@@ -236,7 +236,7 @@ export default function ContactDetailPage() {
                             size="sm"
                             onClick={handleDelete}
                             disabled={isDeleting}
-                            className="border-red-700 text-red-400 hover:bg-red-900/20"
+                            className="border-red-700 text-red-600 dark:text-red-400 hover:bg-red-900/20"
                         >
                             {isDeleting ? (
                                 <Loader2 className="h-4 w-4 animate-spin" />
@@ -337,7 +337,7 @@ export default function ContactDetailPage() {
                                 </div>
                                 <div className="flex justify-between items-center py-2 border-b border-border">
                                     <span className="font-mono text-[10px] text-muted-foreground">TOTAL DEAL VALUE</span>
-                                    <span className="font-mono text-sm font-bold text-green-400">
+                                    <span className="font-mono text-sm font-bold text-green-600 dark:text-green-400">
                                         {contact.total_deal_value ? formatCurrency(contact.total_deal_value) : '—'}
                                     </span>
                                 </div>
@@ -441,9 +441,9 @@ export default function ContactDetailPage() {
                                             </p>
                                             <span className={cn(
                                                 'font-mono text-[9px] px-1.5 py-0.5 mt-2 inline-block',
-                                                deal.deal_status === 'won' ? 'bg-green-900/50 text-green-400' :
-                                                deal.deal_status === 'lost' ? 'bg-red-900/50 text-red-400' :
-                                                'bg-blue-900/50 text-blue-400'
+                                                deal.deal_status === 'won' ? 'bg-green-100 dark:bg-green-900/50 text-green-600 dark:text-green-400' :
+                                                deal.deal_status === 'lost' ? 'bg-red-100 dark:bg-red-900/50 text-red-600 dark:text-red-400' :
+                                                'bg-blue-100 dark:bg-blue-900/50 text-blue-600 dark:text-blue-400'
                                             )}>
                                                 {deal.deal_status?.toUpperCase()}
                                             </span>

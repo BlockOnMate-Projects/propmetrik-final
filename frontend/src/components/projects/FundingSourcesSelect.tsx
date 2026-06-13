@@ -182,7 +182,7 @@ export function FundingSourcesSelect({
           FUNDING SOURCES
         </span>
         {maxSelections && (
-          <span className="font-mono text-[10px] text-zinc-500">
+          <span className="font-mono text-[10px] text-muted-foreground">
             ({value.length}/{maxSelections})
           </span>
         )}
@@ -192,20 +192,20 @@ export function FundingSourcesSelect({
       <div
         onClick={() => setIsOpen(!isOpen)}
         className={cn(
-          "min-h-[42px] p-2 bg-zinc-900 border rounded cursor-pointer transition-colors",
-          isOpen ? "border-amber-500 ring-1 ring-amber-500/20" : "border-zinc-700 hover:border-zinc-600",
+          "min-h-[42px] p-2 bg-card border rounded cursor-pointer transition-colors",
+          isOpen ? "border-amber-500 ring-1 ring-amber-500/20" : "border-border hover:border-zinc-600",
           error && "border-red-500"
         )}
       >
         <div className="flex flex-wrap gap-1.5 items-center">
           {value.length === 0 ? (
-            <span className="font-mono text-xs text-zinc-500">{placeholder}</span>
+            <span className="font-mono text-xs text-muted-foreground">{placeholder}</span>
           ) : (
             value.map(sourceId => (
               <Badge
                 key={sourceId}
                 variant="secondary"
-                className="bg-zinc-800 text-zinc-300 hover:bg-zinc-700 gap-1"
+                className="bg-muted text-muted-foreground hover:bg-zinc-700 gap-1"
               >
                 {getLabel(sourceId)}
                 <button
@@ -222,7 +222,7 @@ export function FundingSourcesSelect({
             ))
           )}
           <ChevronDown className={cn(
-            "h-4 w-4 text-zinc-500 ml-auto transition-transform",
+            "h-4 w-4 text-muted-foreground ml-auto transition-transform",
             isOpen && "transform rotate-180"
           )} />
         </div>
@@ -230,21 +230,21 @@ export function FundingSourcesSelect({
 
       {/* Error message */}
       {error && (
-        <p className="font-mono text-[10px] text-red-400 mt-1">{error}</p>
+        <p className="font-mono text-[10px] text-red-600 dark:text-red-400 mt-1">{error}</p>
       )}
 
       {/* Dropdown */}
       {isOpen && (
-        <div className="absolute z-50 w-full mt-1 bg-zinc-900 border border-zinc-700 rounded shadow-xl max-h-80 overflow-hidden">
+        <div className="absolute z-50 w-full mt-1 bg-card border border-border rounded shadow-xl max-h-80 overflow-hidden">
           {/* Search input */}
-          <div className="p-2 border-b border-zinc-800">
+          <div className="p-2 border-b border-border">
             <input
               ref={inputRef}
               type="text"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               placeholder="Search funding sources..."
-              className="w-full px-2 py-1.5 bg-zinc-800 border border-zinc-700 rounded font-mono text-xs text-zinc-100 placeholder:text-zinc-500 focus:outline-none focus:border-amber-500"
+              className="w-full px-2 py-1.5 bg-muted border border-border rounded font-mono text-xs text-zinc-100 placeholder:text-muted-foreground focus:outline-none focus:border-amber-500"
             />
           </div>
 
@@ -252,7 +252,7 @@ export function FundingSourcesSelect({
           <div className="overflow-y-auto max-h-60">
             {Object.entries(filteredGroups).map(([category, items]) => (
               <div key={category}>
-                <div className="px-3 py-1.5 bg-zinc-800/50 sticky top-0">
+                <div className="px-3 py-1.5 bg-muted/50 sticky top-0">
                   <span className="font-mono text-[10px] text-amber-500/80 uppercase tracking-wider">
                     {category}
                   </span>
@@ -269,13 +269,13 @@ export function FundingSourcesSelect({
                       disabled={isDisabled}
                       className={cn(
                         "w-full flex items-center justify-between px-3 py-2 text-left transition-colors",
-                        isSelected ? "bg-amber-500/10" : "hover:bg-zinc-800",
+                        isSelected ? "bg-amber-500/10" : "hover:bg-muted",
                         isDisabled && "opacity-50 cursor-not-allowed"
                       )}
                     >
                       <span className={cn(
                         "font-mono text-xs",
-                        isSelected ? "text-amber-400" : "text-zinc-300"
+                        isSelected ? "text-amber-600 dark:text-amber-400" : "text-muted-foreground"
                       )}>
                         {source.label}
                       </span>
@@ -289,14 +289,14 @@ export function FundingSourcesSelect({
             {/* No results */}
             {Object.keys(filteredGroups).length === 0 && (
               <div className="p-4 text-center">
-                <span className="font-mono text-xs text-zinc-500">No matching sources found</span>
+                <span className="font-mono text-xs text-muted-foreground">No matching sources found</span>
               </div>
             )}
           </div>
 
           {/* Add custom option */}
           {allowCustom && (
-            <div className="p-2 border-t border-zinc-800">
+            <div className="p-2 border-t border-border">
               <div className="flex gap-2">
                 <input
                   type="text"
@@ -309,7 +309,7 @@ export function FundingSourcesSelect({
                     }
                   }}
                   placeholder="Add custom source..."
-                  className="flex-1 px-2 py-1.5 bg-zinc-800 border border-zinc-700 rounded font-mono text-xs text-zinc-100 placeholder:text-zinc-500 focus:outline-none focus:border-amber-500"
+                  className="flex-1 px-2 py-1.5 bg-muted border border-border rounded font-mono text-xs text-zinc-100 placeholder:text-muted-foreground focus:outline-none focus:border-amber-500"
                 />
                 <Button
                   type="button"
@@ -317,7 +317,7 @@ export function FundingSourcesSelect({
                   variant="outline"
                   onClick={handleAddCustom}
                   disabled={!customInput.trim() || isAtMax}
-                  className="border-zinc-700"
+                  className="border-border"
                 >
                   <Plus className="h-3 w-3" />
                 </Button>
@@ -329,7 +329,7 @@ export function FundingSourcesSelect({
 
       {/* Max reached indicator */}
       {isAtMax && (
-        <p className="font-mono text-[10px] text-amber-400 mt-1">
+        <p className="font-mono text-[10px] text-amber-600 dark:text-amber-400 mt-1">
           Maximum of {maxSelections} sources selected
         </p>
       )}

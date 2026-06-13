@@ -101,13 +101,13 @@ export default function SettingsPage() {
   }
 
   return (
-    <div className="flex flex-col h-full bg-black text-white">
+    <div className="flex flex-col h-full bg-background text-foreground">
       <Header title="Settings" description="Configure Data Hub settings" />
 
       <ScrollArea className="flex-1">
         <div className="p-6 space-y-6">
           <Tabs defaultValue="general" className="space-y-4">
-            <TabsList className="bg-zinc-800">
+            <TabsList className="bg-muted">
               <TabsTrigger value="general">General</TabsTrigger>
               <TabsTrigger value="sources">Data Sources</TabsTrigger>
               <TabsTrigger value="etl">ETL Pipeline</TabsTrigger>
@@ -117,9 +117,9 @@ export default function SettingsPage() {
 
             {/* General Settings */}
             <TabsContent value="general" className="space-y-4">
-              <Card className="bg-zinc-900 border-zinc-800">
+              <Card className="bg-card border-border">
                 <CardHeader>
-                  <CardTitle className="text-base font-medium flex items-center gap-2 text-white">
+                  <CardTitle className="text-base font-medium flex items-center gap-2 text-foreground">
                     <Settings className="h-5 w-5" />
                     General Settings
                   </CardTitle>
@@ -130,15 +130,15 @@ export default function SettingsPage() {
                 <CardContent className="space-y-4">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <label className="text-sm font-medium text-zinc-300">Default Region</label>
+                      <label className="text-sm font-medium text-muted-foreground">Default Region</label>
                       <Select
                         value={getValue('general.region', 'greater_accra')}
                         onValueChange={(val) => handleChange('general.region', val)}
                       >
-                        <SelectTrigger className="bg-zinc-800 border-zinc-700">
+                        <SelectTrigger className="bg-muted border-border">
                           <SelectValue placeholder="Select region" />
                         </SelectTrigger>
-                        <SelectContent className="bg-zinc-800 border-zinc-700">
+                        <SelectContent className="bg-muted border-border">
                           <SelectItem value="greater_accra">Greater Accra</SelectItem>
                           <SelectItem value="ashanti">Ashanti</SelectItem>
                           <SelectItem value="western">Western</SelectItem>
@@ -147,30 +147,30 @@ export default function SettingsPage() {
                       </Select>
                     </div>
                     <div className="space-y-2">
-                      <label className="text-sm font-medium text-zinc-300">Currency</label>
+                      <label className="text-sm font-medium text-muted-foreground">Currency</label>
                       <Select
                         value={getValue('general.currency', 'ghs')}
                         onValueChange={(val) => handleChange('general.currency', val)}
                       >
-                        <SelectTrigger className="bg-zinc-800 border-zinc-700">
+                        <SelectTrigger className="bg-muted border-border">
                           <SelectValue placeholder="Select currency" />
                         </SelectTrigger>
-                        <SelectContent className="bg-zinc-800 border-zinc-700">
+                        <SelectContent className="bg-muted border-border">
                           <SelectItem value="ghs">GHS (Ghana Cedis)</SelectItem>
                           <SelectItem value="usd">USD (US Dollar)</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
                     <div className="space-y-2">
-                      <label className="text-sm font-medium text-zinc-300">Timezone</label>
+                      <label className="text-sm font-medium text-muted-foreground">Timezone</label>
                       <Select
                         value={getValue('general.timezone', 'gmt')}
                         onValueChange={(val) => handleChange('general.timezone', val)}
                       >
-                        <SelectTrigger className="bg-zinc-800 border-zinc-700">
+                        <SelectTrigger className="bg-muted border-border">
                           <SelectValue placeholder="Select timezone" />
                         </SelectTrigger>
-                        <SelectContent className="bg-zinc-800 border-zinc-700">
+                        <SelectContent className="bg-muted border-border">
                           <SelectItem value="gmt">GMT (Accra)</SelectItem>
                           <SelectItem value="utc">UTC</SelectItem>
                         </SelectContent>
@@ -180,24 +180,24 @@ export default function SettingsPage() {
                 </CardContent>
               </Card>
 
-              <Card className="bg-zinc-900 border-zinc-800">
+              <Card className="bg-card border-border">
                 <CardHeader>
-                  <CardTitle className="text-base font-medium flex items-center gap-2 text-white">
+                  <CardTitle className="text-base font-medium flex items-center gap-2 text-foreground">
                     <Server className="h-5 w-5" />
                     Backend Connection
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div className="space-y-2">
-                    <label className="text-sm font-medium text-zinc-300">API Base URL</label>
+                    <label className="text-sm font-medium text-muted-foreground">API Base URL</label>
                     <Input
                       defaultValue="http://localhost:4000/api/v1"
                       readOnly
-                      className="bg-zinc-800 border-zinc-700 text-zinc-400 cursor-not-allowed"
+                      className="bg-muted border-border text-muted-foreground cursor-not-allowed"
                     />
                   </div>
                   <div className="flex items-center gap-2">
-                    <Badge variant="success" className="gap-1 bg-green-500/20 text-green-400 border-green-500/30">
+                    <Badge variant="success" className="gap-1 bg-green-500/20 text-green-600 dark:text-green-400 border-green-500/30">
                       <div className="h-2 w-2 rounded-full bg-green-400 animate-pulse" />
                       Connected
                     </Badge>
@@ -208,9 +208,9 @@ export default function SettingsPage() {
 
             {/* ETL Settings */}
             <TabsContent value="etl" className="space-y-4">
-              <Card className="bg-zinc-900 border-zinc-800">
+              <Card className="bg-card border-border">
                 <CardHeader>
-                  <CardTitle className="text-base font-medium flex items-center gap-2 text-white">
+                  <CardTitle className="text-base font-medium flex items-center gap-2 text-foreground">
                     <Zap className="h-5 w-5" />
                     ETL Pipeline Configuration
                   </CardTitle>
@@ -218,12 +218,12 @@ export default function SettingsPage() {
                 <CardContent className="space-y-4">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <label className="text-sm font-medium text-zinc-300">Max concurrent jobs</label>
+                      <label className="text-sm font-medium text-muted-foreground">Max concurrent jobs</label>
                       <Input
                         type="number"
                         value={getValue('etl.max_concurrent_jobs', 5)}
                         onChange={(e) => handleChange('etl.max_concurrent_jobs', parseInt(e.target.value))}
-                        className="bg-zinc-800 border-zinc-700"
+                        className="bg-muted border-border"
                       />
                     </div>
                   </div>
@@ -233,18 +233,18 @@ export default function SettingsPage() {
 
             {/* Notifications Settings */}
             <TabsContent value="notifications" className="space-y-4">
-              <Card className="bg-zinc-900 border-zinc-800">
+              <Card className="bg-card border-border">
                 <CardHeader>
-                  <CardTitle className="text-base font-medium flex items-center gap-2 text-white">
+                  <CardTitle className="text-base font-medium flex items-center gap-2 text-foreground">
                     <Bell className="h-5 w-5" />
                     Notification Preferences
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  <div className="flex items-center justify-between p-4 rounded-lg border border-zinc-800">
+                  <div className="flex items-center justify-between p-4 rounded-lg border border-border">
                     <div>
-                      <p className="font-medium text-white">Email Notifications</p>
-                      <p className="text-sm text-zinc-500">Receive alerts via email</p>
+                      <p className="font-medium text-foreground">Email Notifications</p>
+                      <p className="text-sm text-muted-foreground">Receive alerts via email</p>
                     </div>
                     <Button
                       variant={getValue('notifications.email_enabled', "true") === "true" ? 'default' : 'outline'}
@@ -261,7 +261,7 @@ export default function SettingsPage() {
 
           {/* Save Button */}
           <div className="flex justify-end">
-            <Button onClick={handleSave} disabled={saveMutation.isPending} className="bg-amber-600 hover:bg-amber-700 text-white">
+            <Button onClick={handleSave} disabled={saveMutation.isPending} className="bg-amber-600 hover:bg-amber-700 text-foreground">
               {saveMutation.isPending ? (
                 <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
               ) : (

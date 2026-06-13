@@ -23,11 +23,11 @@ const STATUS_CONFIG: Record<string, { label: string; color: string; bg: string; 
   in_progress: { label: 'In Progress', color: 'text-amber-600', bg: 'bg-amber-50', icon: AlertCircle },
   scheduled: { label: 'Scheduled', color: 'text-purple-600', bg: 'bg-purple-50', icon: CalendarDays },
   completed: { label: 'Completed', color: 'text-green-600', bg: 'bg-green-50', icon: CheckCircle2 },
-  cancelled: { label: 'Cancelled', color: 'text-gray-500', bg: 'bg-gray-50', icon: AlertCircle },
+  cancelled: { label: 'Cancelled', color: 'text-muted-foreground', bg: 'bg-muted', icon: AlertCircle },
 };
 
 const PRIORITY_CONFIG: Record<string, { label: string; color: string }> = {
-  low: { label: 'Low', color: 'text-gray-500 bg-gray-100' },
+  low: { label: 'Low', color: 'text-muted-foreground bg-muted' },
   medium: { label: 'Medium', color: 'text-amber-600 bg-amber-50' },
   high: { label: 'High', color: 'text-orange-600 bg-orange-50' },
   urgent: { label: 'Urgent', color: 'text-red-600 bg-red-50' },
@@ -69,7 +69,7 @@ function MaintenanceContent() {
   };
 
   if (loading) {
-    return <div className="flex items-center justify-center py-24"><Loader2 className="w-6 h-6 text-gray-400 animate-spin" /></div>;
+    return <div className="flex items-center justify-center py-24"><Loader2 className="w-6 h-6 text-muted-foreground animate-spin" /></div>;
   }
 
   return (
@@ -83,38 +83,38 @@ function MaintenanceContent() {
 
       {/* Stats */}
       <div className="grid grid-cols-3 gap-3">
-        <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-4 text-center">
+        <div className="bg-card rounded-xl border border-gray-100 shadow-sm p-4 text-center">
           <p className="text-2xl font-bold text-gray-900">{stats.total}</p>
-          <p className="text-xs text-gray-500 mt-0.5">Total</p>
+          <p className="text-xs text-muted-foreground mt-0.5">Total</p>
         </div>
-        <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-4 text-center">
+        <div className="bg-card rounded-xl border border-gray-100 shadow-sm p-4 text-center">
           <p className="text-2xl font-bold text-amber-600">{stats.open}</p>
-          <p className="text-xs text-gray-500 mt-0.5">Open</p>
+          <p className="text-xs text-muted-foreground mt-0.5">Open</p>
         </div>
-        <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-4 text-center">
+        <div className="bg-card rounded-xl border border-gray-100 shadow-sm p-4 text-center">
           <p className="text-2xl font-bold text-green-600">{stats.completed}</p>
-          <p className="text-xs text-gray-500 mt-0.5">Completed</p>
+          <p className="text-xs text-muted-foreground mt-0.5">Completed</p>
         </div>
       </div>
 
       {/* Filters */}
       <div className="flex flex-col sm:flex-row sm:items-center gap-3">
         <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <input type="text" value={searchQuery} onChange={e => setSearchQuery(e.target.value)} placeholder="Search requests..."
-            className="w-full pl-9 pr-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500" />
+            className="w-full pl-9 pr-3 py-2.5 border border-border rounded-xl text-sm focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500" />
         </div>
         <div className="flex items-center gap-2">
           <div className="relative">
-            <Filter className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+            <Filter className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)}
-              className="pl-9 pr-8 py-2.5 border border-gray-200 rounded-xl text-sm bg-white focus:ring-2 focus:ring-cyan-500 appearance-none">
+              className="pl-9 pr-8 py-2.5 border border-border rounded-xl text-sm bg-card focus:ring-2 focus:ring-cyan-500 appearance-none">
               <option value="">All Status</option>
               {Object.entries(STATUS_CONFIG).map(([key, val]) => <option key={key} value={key}>{val.label}</option>)}
             </select>
           </div>
           <Link href={`${T}/maintenance/new`}
-            className="flex items-center gap-2 px-4 py-2.5 bg-cyan-600 text-white rounded-xl text-sm font-medium hover:bg-cyan-700 transition-colors">
+            className="flex items-center gap-2 px-4 py-2.5 bg-cyan-600 text-foreground rounded-xl text-sm font-medium hover:bg-cyan-700 transition-colors">
             <Plus className="w-4 h-4" /> New Request
           </Link>
         </div>
@@ -122,16 +122,16 @@ function MaintenanceContent() {
 
       {/* List */}
       {filtered.length === 0 ? (
-        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-12 text-center">
+        <div className="bg-card rounded-2xl border border-gray-100 shadow-sm p-12 text-center">
           <Wrench className="w-10 h-10 text-gray-300 mx-auto mb-3" />
           <p className="text-sm font-medium text-gray-700">
             {searchQuery || statusFilter ? 'No matching requests found' : 'No maintenance requests yet'}
           </p>
-          <p className="text-xs text-gray-400 mt-1">
+          <p className="text-xs text-muted-foreground mt-1">
             {searchQuery || statusFilter ? 'Try adjusting your search or filter' : 'Submit a request when something needs fixing'}
           </p>
           {!searchQuery && !statusFilter && (
-            <Link href={`${T}/maintenance/new`} className="inline-flex items-center gap-2 mt-4 px-4 py-2 bg-cyan-600 text-white rounded-xl text-sm font-medium hover:bg-cyan-700">
+            <Link href={`${T}/maintenance/new`} className="inline-flex items-center gap-2 mt-4 px-4 py-2 bg-cyan-600 text-foreground rounded-xl text-sm font-medium hover:bg-cyan-700">
               <Plus className="w-4 h-4" /> Create Request
             </Link>
           )}
@@ -144,7 +144,7 @@ function MaintenanceContent() {
             const StatusIcon = statusCfg.icon;
             return (
               <Link key={req.id} href={`${T}/maintenance/${req.id}`}
-                className="block bg-white rounded-xl border border-gray-100 shadow-sm hover:shadow-md hover:border-gray-200 transition-all p-4">
+                className="block bg-card rounded-xl border border-gray-100 shadow-sm hover:shadow-md hover:border-border transition-all p-4">
                 <div className="flex items-start gap-3">
                   <div className={`w-9 h-9 rounded-lg ${statusCfg.bg} flex items-center justify-center flex-shrink-0`}>
                     <StatusIcon className={`w-4 h-4 ${statusCfg.color}`} />
@@ -153,9 +153,9 @@ function MaintenanceContent() {
                     <div className="flex items-start justify-between gap-2">
                       <div className="min-w-0">
                         <p className="text-sm font-semibold text-gray-900 truncate">{req.title}</p>
-                        {req.description && <p className="text-xs text-gray-500 mt-0.5 line-clamp-1">{req.description}</p>}
+                        {req.description && <p className="text-xs text-muted-foreground mt-0.5 line-clamp-1">{req.description}</p>}
                       </div>
-                      <ChevronRight className="w-4 h-4 text-gray-400 flex-shrink-0 mt-0.5" />
+                      <ChevronRight className="w-4 h-4 text-muted-foreground flex-shrink-0 mt-0.5" />
                     </div>
                     <div className="flex items-center gap-2 mt-2 flex-wrap">
                       <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium ${statusCfg.bg} ${statusCfg.color}`}>
@@ -164,7 +164,7 @@ function MaintenanceContent() {
                       <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium ${priorityCfg.color}`}>
                         {priorityCfg.label}
                       </span>
-                      <span className="text-[10px] text-gray-400">
+                      <span className="text-[10px] text-muted-foreground">
                         {new Date(req.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
                       </span>
                     </div>
@@ -177,7 +177,7 @@ function MaintenanceContent() {
       )}
 
       {/* Back */}
-      <Link href={`${T}`} className="inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-700 font-medium">
+      <Link href={`${T}`} className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-gray-700 font-medium">
         <ArrowLeft className="w-3.5 h-3.5" /> Back to Dashboard
       </Link>
     </div>

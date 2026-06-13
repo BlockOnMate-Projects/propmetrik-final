@@ -94,24 +94,24 @@ import { PhaseHierarchy } from '@/components/projects/PhaseHierarchy'
 // STATUS CONFIGURATIONS
 // =====================================================
 const statusColors: Record<ProjectStatus, { bg: string; text: string; label: string }> = {
-  planning: { bg: 'bg-blue-900/50', text: 'text-blue-400', label: 'Planning' },
-  pre_sales: { bg: 'bg-purple-900/50', text: 'text-purple-400', label: 'Pre-Sales' },
-  under_construction: { bg: 'bg-amber-900/50', text: 'text-amber-400', label: 'Under Construction' },
-  nearing_completion: { bg: 'bg-orange-900/50', text: 'text-orange-400', label: 'Near Completion' },
-  completed: { bg: 'bg-green-900/50', text: 'text-green-400', label: 'Completed' },
-  sold_out: { bg: 'bg-emerald-900/50', text: 'text-emerald-400', label: 'Sold Out' },
-  on_hold: { bg: 'bg-zinc-700/50', text: 'text-zinc-400', label: 'On Hold' },
-  cancelled: { bg: 'bg-red-900/50', text: 'text-red-400', label: 'Cancelled' },
-  archived: { bg: 'bg-zinc-800/50', text: 'text-zinc-500', label: 'Archived' },
+  planning: { bg: 'bg-blue-100 dark:bg-blue-900/50', text: 'text-blue-600 dark:text-blue-400', label: 'Planning' },
+  pre_sales: { bg: 'bg-purple-100 dark:bg-purple-900/50', text: 'text-purple-600 dark:text-purple-400', label: 'Pre-Sales' },
+  under_construction: { bg: 'bg-amber-100 dark:bg-amber-900/50', text: 'text-amber-600 dark:text-amber-400', label: 'Under Construction' },
+  nearing_completion: { bg: 'bg-orange-100 dark:bg-orange-900/50', text: 'text-orange-600 dark:text-orange-400', label: 'Near Completion' },
+  completed: { bg: 'bg-green-100 dark:bg-green-900/50', text: 'text-green-600 dark:text-green-400', label: 'Completed' },
+  sold_out: { bg: 'bg-emerald-100 dark:bg-emerald-900/50', text: 'text-emerald-600 dark:text-emerald-400', label: 'Sold Out' },
+  on_hold: { bg: 'bg-zinc-700/50', text: 'text-muted-foreground', label: 'On Hold' },
+  cancelled: { bg: 'bg-red-100 dark:bg-red-900/50', text: 'text-red-600 dark:text-red-400', label: 'Cancelled' },
+  archived: { bg: 'bg-muted/50', text: 'text-muted-foreground', label: 'Archived' },
 }
 
 const phaseStatusColors: Record<PhaseStatus, { bg: string; text: string }> = {
-  not_started: { bg: 'bg-zinc-700/50', text: 'text-zinc-400' },
-  in_progress: { bg: 'bg-amber-900/50', text: 'text-amber-400' },
-  completed: { bg: 'bg-green-900/50', text: 'text-green-400' },
-  delayed: { bg: 'bg-red-900/50', text: 'text-red-400' },
-  blocked: { bg: 'bg-red-900/50', text: 'text-red-400' },
-  cancelled: { bg: 'bg-zinc-800/50', text: 'text-zinc-500' },
+  not_started: { bg: 'bg-zinc-700/50', text: 'text-muted-foreground' },
+  in_progress: { bg: 'bg-amber-100 dark:bg-amber-900/50', text: 'text-amber-600 dark:text-amber-400' },
+  completed: { bg: 'bg-green-100 dark:bg-green-900/50', text: 'text-green-600 dark:text-green-400' },
+  delayed: { bg: 'bg-red-100 dark:bg-red-900/50', text: 'text-red-600 dark:text-red-400' },
+  blocked: { bg: 'bg-red-100 dark:bg-red-900/50', text: 'text-red-600 dark:text-red-400' },
+  cancelled: { bg: 'bg-muted/50', text: 'text-muted-foreground' },
 }
 
 // =====================================================
@@ -124,8 +124,8 @@ function Panel({ title, children, className, action }: {
   action?: React.ReactNode;
 }) {
   return (
-    <div className={cn('border border-zinc-800 bg-zinc-900/50', className)}>
-      <div className="flex items-center justify-between px-3 py-1.5 bg-zinc-800/50 border-b border-zinc-800">
+    <div className={cn('border border-border bg-card/50', className)}>
+      <div className="flex items-center justify-between px-3 py-1.5 bg-muted/50 border-b border-border">
         <span className="font-mono text-[10px] text-amber-500 tracking-wider">{title}</span>
         {action}
       </div>
@@ -152,14 +152,14 @@ function StatCard({ label, value, subValue, icon: Icon, color = 'amber' }: {
   }
 
   return (
-    <div className="border border-zinc-800 bg-zinc-900/50 p-3">
+    <div className="border border-border bg-card/50 p-3">
       <div className="flex items-center justify-between mb-2">
-        <span className="font-mono text-[10px] text-zinc-500 uppercase tracking-wider">{label}</span>
+        <span className="font-mono text-[10px] text-muted-foreground uppercase tracking-wider">{label}</span>
         <Icon className={cn("h-4 w-4", colorClasses[color])} />
       </div>
-      <div className="font-mono text-lg text-white">{value}</div>
+      <div className="font-mono text-lg text-foreground">{value}</div>
       {subValue && (
-        <div className="font-mono text-[10px] text-zinc-500 mt-1">{subValue}</div>
+        <div className="font-mono text-[10px] text-muted-foreground mt-1">{subValue}</div>
       )}
     </div>
   )
@@ -203,11 +203,11 @@ function GanttChart({ phases, projectStart, projectEnd }: {
   return (
     <div className="relative">
       {/* Month headers */}
-      <div className="relative h-6 border-b border-zinc-800 mb-2">
+      <div className="relative h-6 border-b border-border mb-2">
         {months.map((month, i) => (
           <div
             key={i}
-            className="absolute font-mono text-[9px] text-zinc-500"
+            className="absolute font-mono text-[9px] text-muted-foreground"
             style={{ left: `${month.position}%` }}
           >
             {month.label}
@@ -226,11 +226,11 @@ function GanttChart({ phases, projectStart, projectEnd }: {
           return (
             <div key={phase.id} className="flex items-center gap-3">
               <div className="w-32 flex-shrink-0">
-                <span className="font-mono text-[10px] text-zinc-300 line-clamp-1">
+                <span className="font-mono text-[10px] text-muted-foreground line-clamp-1">
                   {phase.phase_number}. {phase.phase_name}
                 </span>
               </div>
-              <div className="flex-1 relative h-6 bg-zinc-800/50 rounded">
+              <div className="flex-1 relative h-6 bg-muted/50 rounded">
                 {/* Planned bar */}
                 <div
                   className={cn("absolute h-4 top-1 rounded", config.bg)}
@@ -262,7 +262,7 @@ function GanttChart({ phases, projectStart, projectEnd }: {
                 })}
               </div>
               <div className="w-12 text-right">
-                <span className="font-mono text-[10px] text-zinc-500">{phase.progress_percentage}%</span>
+                <span className="font-mono text-[10px] text-muted-foreground">{phase.progress_percentage}%</span>
               </div>
             </div>
           )
@@ -274,7 +274,7 @@ function GanttChart({ phases, projectStart, projectEnd }: {
         className="absolute top-0 bottom-0 w-px bg-red-500/50"
         style={{ left: `${getPosition(new Date().toISOString())}%` }}
       >
-        <div className="absolute -top-1 -left-2 font-mono text-[8px] text-red-400">TODAY</div>
+        <div className="absolute -top-1 -left-2 font-mono text-[8px] text-red-600 dark:text-red-400">TODAY</div>
       </div>
     </div>
   )
@@ -304,10 +304,10 @@ function BudgetOverview({ budget, projectId, projectBudget, currency = 'GHS', on
   })
 
   const healthColors: Record<string, string> = {
-    on_budget: 'text-green-400',
-    under_budget: 'text-blue-400',
-    at_risk: 'text-yellow-400',
-    over_budget: 'text-red-400',
+    on_budget: 'text-green-600 dark:text-green-400',
+    under_budget: 'text-blue-600 dark:text-blue-400',
+    at_risk: 'text-yellow-600 dark:text-yellow-400',
+    over_budget: 'text-red-600 dark:text-red-400',
   }
 
   // Load costs
@@ -381,22 +381,22 @@ function BudgetOverview({ budget, projectId, projectBudget, currency = 'GHS', on
     <div className="space-y-4">
       {/* Summary Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-        <div className="bg-zinc-800/50 p-2 border border-zinc-700 min-w-0">
-          <div className="font-mono text-[9px] text-zinc-500 truncate">ORIGINAL BUDGET</div>
-          <div className="font-mono text-sm text-white truncate" title={formatCurrency(originalBudget, currency)}>{formatCurrencyCompact(originalBudget, currency)}</div>
+        <div className="bg-muted/50 p-2 border border-border min-w-0">
+          <div className="font-mono text-[9px] text-muted-foreground truncate">ORIGINAL BUDGET</div>
+          <div className="font-mono text-sm text-foreground truncate" title={formatCurrency(originalBudget, currency)}>{formatCurrencyCompact(originalBudget, currency)}</div>
         </div>
-        <div className="bg-zinc-800/50 p-2 border border-zinc-700 min-w-0">
-          <div className="font-mono text-[9px] text-zinc-500 truncate">REVISED BUDGET</div>
-          <div className="font-mono text-sm text-amber-400 truncate" title={formatCurrency(revisedBudget, currency)}>{formatCurrencyCompact(revisedBudget, currency)}</div>
+        <div className="bg-muted/50 p-2 border border-border min-w-0">
+          <div className="font-mono text-[9px] text-muted-foreground truncate">REVISED BUDGET</div>
+          <div className="font-mono text-sm text-amber-600 dark:text-amber-400 truncate" title={formatCurrency(revisedBudget, currency)}>{formatCurrencyCompact(revisedBudget, currency)}</div>
         </div>
-        <div className="bg-zinc-800/50 p-2 border border-zinc-700 min-w-0">
-          <div className="font-mono text-[9px] text-zinc-500 truncate">ACTUAL SPENT</div>
-          <div className="font-mono text-sm text-green-400 truncate" title={formatCurrency(actualSpent, currency)}>{formatCurrencyCompact(actualSpent, currency)}</div>
+        <div className="bg-muted/50 p-2 border border-border min-w-0">
+          <div className="font-mono text-[9px] text-muted-foreground truncate">ACTUAL SPENT</div>
+          <div className="font-mono text-sm text-green-600 dark:text-green-400 truncate" title={formatCurrency(actualSpent, currency)}>{formatCurrencyCompact(actualSpent, currency)}</div>
         </div>
-        <div className="bg-zinc-800/50 p-2 border border-zinc-700 min-w-0">
-          <div className="font-mono text-[9px] text-zinc-500 truncate">VARIANCE</div>
+        <div className="bg-muted/50 p-2 border border-border min-w-0">
+          <div className="font-mono text-[9px] text-muted-foreground truncate">VARIANCE</div>
           <div
-            className={cn("font-mono text-sm truncate", variance >= 0 ? "text-green-400" : "text-red-400")}
+            className={cn("font-mono text-sm truncate", variance >= 0 ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400")}
             title={`${variance >= 0 ? '+' : ''}${formatCurrency(variance, currency)}`}
           >
             {variance >= 0 ? '+' : ''}{formatCurrencyCompact(variance, currency)}
@@ -407,8 +407,8 @@ function BudgetOverview({ budget, projectId, projectBudget, currency = 'GHS', on
       {/* Budget Health */}
       {budget?.health && (
         <div className="flex items-center gap-2">
-          <span className="font-mono text-[10px] text-zinc-500">BUDGET HEALTH:</span>
-          <span className={cn("font-mono text-xs uppercase", healthColors[budget.health] || 'text-zinc-400')}>
+          <span className="font-mono text-[10px] text-muted-foreground">BUDGET HEALTH:</span>
+          <span className={cn("font-mono text-xs uppercase", healthColors[budget.health] || 'text-muted-foreground')}>
             {budget.health.replace('_', ' ')}
           </span>
         </div>
@@ -417,10 +417,10 @@ function BudgetOverview({ budget, projectId, projectBudget, currency = 'GHS', on
       {/* Cost Line Items */}
       <div className="space-y-2">
         <div className="flex items-center justify-between">
-          <div className="font-mono text-[10px] text-zinc-500">COST ITEMS</div>
+          <div className="font-mono text-[10px] text-muted-foreground">COST ITEMS</div>
           <Button
             size="sm"
-            className="h-6 font-mono text-[10px] bg-amber-600 hover:bg-amber-700 text-white"
+            className="h-6 font-mono text-[10px] bg-amber-600 hover:bg-amber-700 text-foreground"
             onClick={() => setShowAddCostDialog(true)}
           >
             <Plus className="h-3 w-3 mr-1" />
@@ -433,27 +433,27 @@ function BudgetOverview({ budget, projectId, projectBudget, currency = 'GHS', on
             <Loader2 className="h-5 w-5 animate-spin text-amber-500 mx-auto" />
           </div>
         ) : costs.length > 0 ? (
-          <div className="border border-zinc-800 rounded overflow-hidden">
+          <div className="border border-border rounded overflow-hidden">
             <table className="w-full">
               <thead>
-                <tr className="bg-zinc-800/50 border-b border-zinc-800">
-                  <th className="font-mono text-[10px] text-zinc-500 text-left p-2">Description</th>
-                  <th className="font-mono text-[10px] text-zinc-500 text-left p-2">Category</th>
-                  <th className="font-mono text-[10px] text-zinc-500 text-right p-2">Budget</th>
-                  <th className="font-mono text-[10px] text-zinc-500 text-right p-2">Actual</th>
-                  <th className="font-mono text-[10px] text-zinc-500 text-right p-2">Variance</th>
+                <tr className="bg-muted/50 border-b border-border">
+                  <th className="font-mono text-[10px] text-muted-foreground text-left p-2">Description</th>
+                  <th className="font-mono text-[10px] text-muted-foreground text-left p-2">Category</th>
+                  <th className="font-mono text-[10px] text-muted-foreground text-right p-2">Budget</th>
+                  <th className="font-mono text-[10px] text-muted-foreground text-right p-2">Actual</th>
+                  <th className="font-mono text-[10px] text-muted-foreground text-right p-2">Variance</th>
                 </tr>
               </thead>
               <tbody>
                 {costs.slice(0, 10).map((cost) => {
                   const costVariance = (cost.revised_budget || cost.original_budget) - (cost.actual_costs || 0)
                   return (
-                    <tr key={cost.id} className="border-b border-zinc-800/50 hover:bg-zinc-800/30">
-                      <td className="font-mono text-xs text-white p-2">{cost.description}</td>
-                      <td className="font-mono text-[10px] text-zinc-400 p-2 capitalize">
+                    <tr key={cost.id} className="border-b border-border/50 hover:bg-amber-50 dark:hover:bg-amber-500/10">
+                      <td className="font-mono text-xs text-foreground p-2">{cost.description}</td>
+                      <td className="font-mono text-[10px] text-muted-foreground p-2 capitalize">
                         {cost.category?.replace(/_/g, ' ')}
                       </td>
-                      <td className="font-mono text-xs text-zinc-300 text-right p-2">
+                      <td className="font-mono text-xs text-muted-foreground text-right p-2">
                         {formatCurrency(cost.revised_budget || cost.original_budget, currency)}
                       </td>
                       <td className="font-mono text-xs text-right p-2">
@@ -461,12 +461,12 @@ function BudgetOverview({ budget, projectId, projectBudget, currency = 'GHS', on
                           type="number"
                           defaultValue={cost.actual_costs || 0}
                           onBlur={(e) => handleRecordActual(cost.id, e.target.value)}
-                          className="w-24 bg-zinc-800 border border-zinc-700 rounded px-1 py-0.5 text-right text-green-400 font-mono text-xs"
+                          className="w-24 bg-muted border border-border rounded px-1 py-0.5 text-right text-green-600 dark:text-green-400 font-mono text-xs"
                         />
                       </td>
                       <td className={cn(
                         "font-mono text-xs text-right p-2",
-                        costVariance >= 0 ? "text-green-400" : "text-red-400"
+                        costVariance >= 0 ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"
                       )}>
                         {costVariance >= 0 ? '+' : ''}{formatCurrency(costVariance, currency)}
                       </td>
@@ -477,15 +477,15 @@ function BudgetOverview({ budget, projectId, projectBudget, currency = 'GHS', on
             </table>
           </div>
         ) : (
-          <div className="text-center py-6 border border-dashed border-zinc-800 rounded">
+          <div className="text-center py-6 border border-dashed border-border rounded">
             <DollarSign className="h-8 w-8 text-zinc-700 mx-auto mb-2" />
-            <p className="font-mono text-xs text-zinc-500 mb-2">No cost items yet</p>
-            <p className="font-mono text-[10px] text-zinc-600 mb-3">
+            <p className="font-mono text-xs text-muted-foreground mb-2">No cost items yet</p>
+            <p className="font-mono text-[10px] text-muted-foreground mb-3">
               Add cost line items to track budgets and record actual expenses
             </p>
             <Button
               size="sm"
-              className="font-mono text-xs bg-amber-600 hover:bg-amber-700 text-white"
+              className="font-mono text-xs bg-amber-600 hover:bg-amber-700 text-foreground"
               onClick={() => setShowAddCostDialog(true)}
             >
               <Plus className="h-3 w-3 mr-1" />
@@ -498,7 +498,7 @@ function BudgetOverview({ budget, projectId, projectBudget, currency = 'GHS', on
       {/* Category Breakdown */}
       {budget?.by_category && budget.by_category.length > 0 && (
         <div className="space-y-2">
-          <div className="font-mono text-[10px] text-zinc-500">BY CATEGORY</div>
+          <div className="font-mono text-[10px] text-muted-foreground">BY CATEGORY</div>
           {budget.by_category.slice(0, 5).map((cat) => {
             const spent = cat.actual || 0
             const catBudget = cat.revised_budget || 0
@@ -507,14 +507,14 @@ function BudgetOverview({ budget, projectId, projectBudget, currency = 'GHS', on
             return (
               <div key={cat.category} className="space-y-1">
                 <div className="flex items-center justify-between">
-                  <span className="font-mono text-[10px] text-zinc-400 capitalize">
+                  <span className="font-mono text-[10px] text-muted-foreground capitalize">
                     {(cat.category || 'unknown').replace(/_/g, ' ')}
                   </span>
-                  <span className="font-mono text-[10px] text-zinc-500">
+                  <span className="font-mono text-[10px] text-muted-foreground">
                     {formatCurrency(spent, currency)} / {formatCurrency(catBudget, currency)}
                   </span>
                 </div>
-                <div className="h-1.5 bg-zinc-800 rounded-full overflow-hidden">
+                <div className="h-1.5 bg-muted rounded-full overflow-hidden">
                   <div
                     className={cn(
                       "h-full transition-all",
@@ -531,10 +531,10 @@ function BudgetOverview({ budget, projectId, projectBudget, currency = 'GHS', on
 
       {/* Add Cost Dialog */}
       <Dialog open={showAddCostDialog} onOpenChange={setShowAddCostDialog}>
-        <DialogContent className="bg-zinc-900 border-zinc-800 max-w-md">
+        <DialogContent className="bg-card border-border max-w-md">
           <DialogHeader>
             <DialogTitle className="font-mono">Add Cost Item</DialogTitle>
-            <DialogDescription className="font-mono text-xs text-zinc-400">
+            <DialogDescription className="font-mono text-xs text-muted-foreground">
               Add a budget line item and optionally record actual expenses
             </DialogDescription>
           </DialogHeader>
@@ -546,7 +546,7 @@ function BudgetOverview({ budget, projectId, projectBudget, currency = 'GHS', on
                 value={costForm.description}
                 onChange={(e) => setCostForm({ ...costForm, description: e.target.value })}
                 placeholder="e.g., Foundation Works"
-                className="bg-zinc-800 border-zinc-700 font-mono text-sm"
+                className="bg-muted border-border font-mono text-sm"
               />
             </div>
 
@@ -556,7 +556,7 @@ function BudgetOverview({ budget, projectId, projectBudget, currency = 'GHS', on
                 value={costForm.category}
                 onValueChange={(v) => setCostForm({ ...costForm, category: v })}
               >
-                <SelectTrigger className="bg-zinc-800 border-zinc-700 font-mono text-sm">
+                <SelectTrigger className="bg-muted border-border font-mono text-sm">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -587,7 +587,7 @@ function BudgetOverview({ budget, projectId, projectBudget, currency = 'GHS', on
                   value={costForm.original_budget}
                   onChange={(e) => setCostForm({ ...costForm, original_budget: e.target.value })}
                   placeholder="e.g., 50000"
-                  className="bg-zinc-800 border-zinc-700 font-mono text-sm"
+                  className="bg-muted border-border font-mono text-sm"
                 />
               </div>
               <div className="space-y-2">
@@ -597,7 +597,7 @@ function BudgetOverview({ budget, projectId, projectBudget, currency = 'GHS', on
                   value={costForm.committed_costs}
                   onChange={(e) => setCostForm({ ...costForm, committed_costs: e.target.value })}
                   placeholder="e.g., 45000"
-                  className="bg-zinc-800 border-zinc-700 font-mono text-sm"
+                  className="bg-muted border-border font-mono text-sm"
                 />
               </div>
             </div>
@@ -614,7 +614,7 @@ function BudgetOverview({ budget, projectId, projectBudget, currency = 'GHS', on
             <Button
               onClick={handleAddCost}
               disabled={isAdding || !costForm.description || !costForm.original_budget}
-              className="bg-amber-600 hover:bg-amber-700 text-white font-mono text-xs"
+              className="bg-amber-600 hover:bg-amber-700 text-foreground font-mono text-xs"
             >
               {isAdding ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
               Add Cost Item
@@ -634,7 +634,7 @@ function ContractorList({ assignments }: { assignments: ContractorAssignment[] }
     return (
       <div className="text-center py-4">
         <HardHat className="h-8 w-8 text-zinc-700 mx-auto mb-2" />
-        <p className="font-mono text-[10px] text-zinc-500">No contractors assigned</p>
+        <p className="font-mono text-[10px] text-muted-foreground">No contractors assigned</p>
       </div>
     )
   }
@@ -644,30 +644,30 @@ function ContractorList({ assignments }: { assignments: ContractorAssignment[] }
       {assignments.map((assignment) => (
         <div
           key={assignment.id}
-          className="p-2 bg-zinc-800/30 border border-zinc-800"
+          className="p-2 bg-muted/30 border border-border"
         >
           <div className="flex items-center justify-between mb-1">
-            <span className="font-mono text-xs text-white">
+            <span className="font-mono text-xs text-foreground">
               {assignment.contractor?.company_name || 'Unknown'}
             </span>
-            <span className="font-mono text-[10px] text-zinc-500">
+            <span className="font-mono text-[10px] text-muted-foreground">
               {assignment.contractor?.trade}
             </span>
           </div>
-          <div className="font-mono text-[10px] text-zinc-400 line-clamp-1 mb-2">
+          <div className="font-mono text-[10px] text-muted-foreground line-clamp-1 mb-2">
             {assignment.scope_of_work}
           </div>
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <div className="w-20 h-1.5 bg-zinc-800 rounded-full overflow-hidden">
+              <div className="w-20 h-1.5 bg-muted rounded-full overflow-hidden">
                 <div
                   className="h-full bg-amber-500"
                   style={{ width: `${assignment.progress_percentage}%` }}
                 />
               </div>
-              <span className="font-mono text-[10px] text-zinc-500">{assignment.progress_percentage}%</span>
+              <span className="font-mono text-[10px] text-muted-foreground">{assignment.progress_percentage}%</span>
             </div>
-            <span className="font-mono text-[10px] text-green-400">
+            <span className="font-mono text-[10px] text-green-600 dark:text-green-400">
               {formatCurrency(assignment.paid_amount, 'GHS')} / {formatCurrency(assignment.contract_amount, 'GHS')}
             </span>
           </div>
@@ -712,11 +712,11 @@ function formatRole(role: string): string {
 }
 
 const roleCategoryColors: Record<string, string> = {
-  professional: 'text-blue-400',
-  construction: 'text-amber-400',
-  government: 'text-purple-400',
-  stakeholder: 'text-emerald-400',
-  internal: 'text-zinc-400',
+  professional: 'text-blue-600 dark:text-blue-400',
+  construction: 'text-amber-600 dark:text-amber-400',
+  government: 'text-purple-600 dark:text-purple-400',
+  stakeholder: 'text-emerald-600 dark:text-emerald-400',
+  internal: 'text-muted-foreground',
 }
 
 // =====================================================
@@ -734,7 +734,7 @@ function TeamRoster({ teamMembers, projectManager, assignments }: {
     return (
       <div className="text-center py-4">
         <Users className="h-8 w-8 text-zinc-700 mx-auto mb-2" />
-        <p className="font-mono text-[10px] text-zinc-500">No team members assigned</p>
+        <p className="font-mono text-[10px] text-muted-foreground">No team members assigned</p>
       </div>
     )
   }
@@ -747,13 +747,13 @@ function TeamRoster({ teamMembers, projectManager, assignments }: {
     <div className="space-y-3">
       {/* Project Manager (highlighted) */}
       {projectManager && (
-        <div className="p-2 bg-amber-900/15 border border-amber-800/50">
+        <div className="p-2 bg-amber-100 dark:bg-amber-900/15 border border-amber-800/50">
           <div className="flex items-center gap-2.5">
-            <div className="w-7 h-7 flex items-center justify-center bg-amber-900/50 text-amber-500 font-mono text-[10px] font-bold flex-shrink-0">
+            <div className="w-7 h-7 flex items-center justify-center bg-amber-100 dark:bg-amber-900/50 text-amber-500 font-mono text-[10px] font-bold flex-shrink-0">
               PM
             </div>
             <div className="flex-1 min-w-0">
-              <div className="font-mono text-xs text-white line-clamp-1">
+              <div className="font-mono text-xs text-foreground line-clamp-1">
                 {projectManager.fullName || projectManager.userName || projectManager.userEmail || projectManager.contactEmail || 'Assigned PM'}
               </div>
               <div className="font-mono text-[10px] text-amber-500">Project Manager</div>
@@ -766,25 +766,25 @@ function TeamRoster({ teamMembers, projectManager, assignments }: {
       {otherMembers.length > 0 && (
         <div className="space-y-1.5">
           {otherMembers.slice(0, 8).map((member) => (
-            <div key={member.id} className="flex items-center gap-2.5 p-1.5 bg-zinc-800/30 border border-zinc-800">
-              <div className="w-6 h-6 flex items-center justify-center bg-zinc-800 text-zinc-400 font-mono text-[9px] font-bold flex-shrink-0 uppercase">
+            <div key={member.id} className="flex items-center gap-2.5 p-1.5 bg-muted/30 border border-border">
+              <div className="w-6 h-6 flex items-center justify-center bg-muted text-muted-foreground font-mono text-[9px] font-bold flex-shrink-0 uppercase">
                 {(member.fullName || member.userName || member.userEmail || '??').substring(0, 2)}
               </div>
               <div className="flex-1 min-w-0">
-                <div className="font-mono text-xs text-white line-clamp-1">
+                <div className="font-mono text-xs text-foreground line-clamp-1">
                   {member.fullName || member.userName || member.userEmail || member.contactEmail || 'Unknown'}
                 </div>
               </div>
               <span className={cn(
                 "font-mono text-[9px] flex-shrink-0",
-                roleCategoryColors[member.roleCategory] || 'text-zinc-500'
+                roleCategoryColors[member.roleCategory] || 'text-muted-foreground'
               )}>
                 {formatRole(member.role)}
               </span>
             </div>
           ))}
           {otherMembers.length > 8 && (
-            <div className="font-mono text-[10px] text-zinc-500 text-center py-1">
+            <div className="font-mono text-[10px] text-muted-foreground text-center py-1">
               +{otherMembers.length - 8} more members
             </div>
           )}
@@ -794,26 +794,26 @@ function TeamRoster({ teamMembers, projectManager, assignments }: {
       {/* Active contractors */}
       {assignments.length > 0 && (
         <>
-          <div className="border-t border-zinc-800 pt-2">
-            <div className="font-mono text-[9px] text-zinc-600 uppercase tracking-wider mb-1.5">Contractors</div>
+          <div className="border-t border-border pt-2">
+            <div className="font-mono text-[9px] text-muted-foreground uppercase tracking-wider mb-1.5">Contractors</div>
           </div>
           {assignments.slice(0, 4).map((assignment) => (
-            <div key={assignment.id} className="flex items-center gap-2.5 p-1.5 bg-zinc-800/30 border border-zinc-800">
-              <div className="w-6 h-6 flex items-center justify-center bg-zinc-800 text-green-500 font-mono text-[9px] font-bold flex-shrink-0">
+            <div key={assignment.id} className="flex items-center gap-2.5 p-1.5 bg-muted/30 border border-border">
+              <div className="w-6 h-6 flex items-center justify-center bg-muted text-green-500 font-mono text-[9px] font-bold flex-shrink-0">
                 <HardHat className="h-3 w-3" />
               </div>
               <div className="flex-1 min-w-0">
-                <div className="font-mono text-xs text-white line-clamp-1">
+                <div className="font-mono text-xs text-foreground line-clamp-1">
                   {assignment.contractor?.company_name || 'Unknown'}
                 </div>
               </div>
-              <span className="font-mono text-[9px] text-zinc-500 flex-shrink-0">
+              <span className="font-mono text-[9px] text-muted-foreground flex-shrink-0">
                 {assignment.contractor?.trade}
               </span>
             </div>
           ))}
           {assignments.length > 4 && (
-            <div className="font-mono text-[10px] text-zinc-500 text-center py-1">
+            <div className="font-mono text-[10px] text-muted-foreground text-center py-1">
               +{assignments.length - 4} more contractors
             </div>
           )}
@@ -1093,7 +1093,7 @@ export default function ProjectDetailPage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-zinc-950 flex items-center justify-center">
+      <div className="min-h-screen bg-background flex items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-amber-500" />
       </div>
     )
@@ -1101,10 +1101,10 @@ export default function ProjectDetailPage() {
 
   if (error || !project) {
     return (
-      <div className="min-h-screen bg-zinc-950 p-6">
-        <div className="border border-red-800 bg-red-900/20 p-6 text-center">
-          <AlertCircle className="h-8 w-8 text-red-400 mx-auto mb-2" />
-          <p className="font-mono text-sm text-red-400">{error || 'Project not found'}</p>
+      <div className="min-h-screen bg-background p-6">
+        <div className="border border-red-800 bg-red-100 dark:bg-red-900/20 p-6 text-center">
+          <AlertCircle className="h-8 w-8 text-red-600 dark:text-red-400 mx-auto mb-2" />
+          <p className="font-mono text-sm text-red-600 dark:text-red-400">{error || 'Project not found'}</p>
           <Button
             variant="outline"
             className="mt-4"
@@ -1120,7 +1120,7 @@ export default function ProjectDetailPage() {
   const statusConfig = statusColors[project.status]
 
   return (
-    <div className="min-h-screen bg-zinc-950 text-white p-6">
+    <div className="min-h-screen bg-background text-foreground p-6">
       <ProjectHeader
         project={project}
         isLoading={isLoading}
@@ -1133,7 +1133,7 @@ export default function ProjectDetailPage() {
       />
 
       <Tabs value={activeTab} onValueChange={handleTabChange} className="space-y-6">
-        <div className="border-b border-zinc-800">
+        <div className="border-b border-border">
           <TabsList className="bg-transparent p-0 h-auto gap-0 w-full justify-start">
             {visibleTabs.map((tab) => (
               <TabsTrigger
@@ -1141,7 +1141,7 @@ export default function ProjectDetailPage() {
                 value={tab.value}
                 className={cn(
                   "font-mono text-xs px-4 py-2 rounded-none border-b-2 data-[state=active]:border-amber-500 data-[state=active]:text-amber-500",
-                  "data-[state=inactive]:border-transparent data-[state=inactive]:text-zinc-500"
+                  "data-[state=inactive]:border-transparent data-[state=inactive]:text-muted-foreground"
                 )}
               >
                 <tab.icon className="h-3 w-3 mr-1.5" />
@@ -1163,66 +1163,66 @@ export default function ProjectDetailPage() {
 
           {/* Quick Stats Row — RFIs, Submittals, Change Orders, Punch Lists */}
           <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3">
-            <div className="border border-zinc-800 bg-zinc-900/50 p-3">
+            <div className="border border-border bg-card/50 p-3">
               <div className="flex items-center justify-between mb-1.5">
-                <span className="font-mono text-[10px] text-zinc-500 uppercase tracking-wider">Open RFIs</span>
-                <MessageSquare className="h-3.5 w-3.5 text-blue-400" />
+                <span className="font-mono text-[10px] text-muted-foreground uppercase tracking-wider">Open RFIs</span>
+                <MessageSquare className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400" />
               </div>
-              <div className="font-mono text-lg text-white">{rfiStats ? (rfiStats.total - (rfiStats.by_status?.['closed'] || 0)) : 0}</div>
+              <div className="font-mono text-lg text-foreground">{rfiStats ? (rfiStats.total - (rfiStats.by_status?.['closed'] || 0)) : 0}</div>
               {rfiStats && rfiStats.overdue > 0 && (
-                <div className="font-mono text-[10px] text-red-400 mt-0.5">{rfiStats.overdue} overdue</div>
+                <div className="font-mono text-[10px] text-red-600 dark:text-red-400 mt-0.5">{rfiStats.overdue} overdue</div>
               )}
             </div>
-            <div className="border border-zinc-800 bg-zinc-900/50 p-3">
+            <div className="border border-border bg-card/50 p-3">
               <div className="flex items-center justify-between mb-1.5">
-                <span className="font-mono text-[10px] text-zinc-500 uppercase tracking-wider">Submittals</span>
-                <FileCheck2 className="h-3.5 w-3.5 text-purple-400" />
+                <span className="font-mono text-[10px] text-muted-foreground uppercase tracking-wider">Submittals</span>
+                <FileCheck2 className="h-3.5 w-3.5 text-purple-600 dark:text-purple-400" />
               </div>
-              <div className="font-mono text-lg text-white">{submittalStats ? (submittalStats.total - (submittalStats.by_status?.['approved'] || 0) - (submittalStats.by_status?.['approved_as_noted'] || 0)) : 0}</div>
+              <div className="font-mono text-lg text-foreground">{submittalStats ? (submittalStats.total - (submittalStats.by_status?.['approved'] || 0) - (submittalStats.by_status?.['approved_as_noted'] || 0)) : 0}</div>
               {submittalStats && submittalStats.overdue > 0 && (
-                <div className="font-mono text-[10px] text-red-400 mt-0.5">{submittalStats.overdue} overdue</div>
+                <div className="font-mono text-[10px] text-red-600 dark:text-red-400 mt-0.5">{submittalStats.overdue} overdue</div>
               )}
             </div>
-            <div className="border border-zinc-800 bg-zinc-900/50 p-3">
+            <div className="border border-border bg-card/50 p-3">
               <div className="flex items-center justify-between mb-1.5">
-                <span className="font-mono text-[10px] text-zinc-500 uppercase tracking-wider">Change Orders</span>
-                <FileEdit className="h-3.5 w-3.5 text-amber-400" />
+                <span className="font-mono text-[10px] text-muted-foreground uppercase tracking-wider">Change Orders</span>
+                <FileEdit className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400" />
               </div>
-              <div className="font-mono text-lg text-white">{coStats?.total_pending || 0}</div>
+              <div className="font-mono text-lg text-foreground">{coStats?.total_pending || 0}</div>
               {coStats && coStats.total_cost_impact !== 0 && (
-                <div className={cn("font-mono text-[10px] mt-0.5", coStats.total_cost_impact > 0 ? 'text-red-400' : 'text-emerald-400')}>
+                <div className={cn("font-mono text-[10px] mt-0.5", coStats.total_cost_impact > 0 ? 'text-red-600 dark:text-red-400' : 'text-emerald-600 dark:text-emerald-400')}>
                   {coStats.total_cost_impact > 0 ? '+' : ''}{formatCurrency(coStats.total_cost_impact, project.currency)} impact
                 </div>
               )}
             </div>
-            <div className="border border-zinc-800 bg-zinc-900/50 p-3">
+            <div className="border border-border bg-card/50 p-3">
               <div className="flex items-center justify-between mb-1.5">
-                <span className="font-mono text-[10px] text-zinc-500 uppercase tracking-wider">Punch List</span>
-                <ClipboardType className="h-3.5 w-3.5 text-orange-400" />
+                <span className="font-mono text-[10px] text-muted-foreground uppercase tracking-wider">Punch List</span>
+                <ClipboardType className="h-3.5 w-3.5 text-orange-600 dark:text-orange-400" />
               </div>
-              <div className="font-mono text-lg text-white">{punchStats ? (punchStats.total - (punchStats.by_status?.['closed'] || 0) - (punchStats.by_status?.['completed'] || 0)) : 0}</div>
+              <div className="font-mono text-lg text-foreground">{punchStats ? (punchStats.total - (punchStats.by_status?.['closed'] || 0) - (punchStats.by_status?.['completed'] || 0)) : 0}</div>
             </div>
-            <div className="border border-zinc-800 bg-zinc-900/50 p-3">
+            <div className="border border-border bg-card/50 p-3">
               <div className="flex items-center justify-between mb-1.5">
-                <span className="font-mono text-[10px] text-zinc-500 uppercase tracking-wider">Schedule</span>
-                <Calendar className="h-3.5 w-3.5 text-indigo-400" />
+                <span className="font-mono text-[10px] text-muted-foreground uppercase tracking-wider">Schedule</span>
+                <Calendar className="h-3.5 w-3.5 text-indigo-600 dark:text-indigo-400" />
               </div>
               {project.planned_end_date ? (
                 <>
-                  <div className="font-mono text-xs text-white">{new Date(project.planned_end_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}</div>
-                  <div className="font-mono text-[10px] text-zinc-500 mt-0.5">Target completion</div>
+                  <div className="font-mono text-xs text-foreground">{new Date(project.planned_end_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}</div>
+                  <div className="font-mono text-[10px] text-muted-foreground mt-0.5">Target completion</div>
                 </>
               ) : (
-                <div className="font-mono text-xs text-zinc-500">Not set</div>
+                <div className="font-mono text-xs text-muted-foreground">Not set</div>
               )}
             </div>
-            <div className="border border-zinc-800 bg-zinc-900/50 p-3">
+            <div className="border border-border bg-card/50 p-3">
               <div className="flex items-center justify-between mb-1.5">
-                <span className="font-mono text-[10px] text-zinc-500 uppercase tracking-wider">Team</span>
-                <Users className="h-3.5 w-3.5 text-green-400" />
+                <span className="font-mono text-[10px] text-muted-foreground uppercase tracking-wider">Team</span>
+                <Users className="h-3.5 w-3.5 text-green-600 dark:text-green-400" />
               </div>
-              <div className="font-mono text-lg text-white">{teamMembers.filter(m => m.isActive).length + assignments.filter(a => a.is_active).length}</div>
-              <div className="font-mono text-[10px] text-zinc-500 mt-0.5">{teamMembers.filter(m => m.isActive).length} members · {assignments.filter(a => a.is_active).length} contractors</div>
+              <div className="font-mono text-lg text-foreground">{teamMembers.filter(m => m.isActive).length + assignments.filter(a => a.is_active).length}</div>
+              <div className="font-mono text-[10px] text-muted-foreground mt-0.5">{teamMembers.filter(m => m.isActive).length} members · {assignments.filter(a => a.is_active).length} contractors</div>
             </div>
           </div>
 
@@ -1240,7 +1240,7 @@ export default function ProjectDetailPage() {
                 ) : (
                   <div className="text-center py-8">
                     <Clock className="h-8 w-8 text-zinc-700 mx-auto mb-2" />
-                    <p className="font-mono text-[10px] text-zinc-500">No phases defined yet</p>
+                    <p className="font-mono text-[10px] text-muted-foreground">No phases defined yet</p>
                     <Button
                       variant="outline"
                       size="sm"
@@ -1273,7 +1273,7 @@ export default function ProjectDetailPage() {
               <Panel
                 title="ACTIVE TEAM"
                 action={
-                  <Button variant="ghost" size="sm" className="h-5 font-mono text-[10px] text-zinc-500 hover:text-amber-500" onClick={() => handleTabChange('team')}>
+                  <Button variant="ghost" size="sm" className="h-5 font-mono text-[10px] text-muted-foreground hover:text-amber-500" onClick={() => handleTabChange('team')}>
                     Manage
                     <ChevronRight className="h-3 w-3 ml-1" />
                   </Button>
@@ -1301,7 +1301,7 @@ export default function ProjectDetailPage() {
                     if (upcoming.length === 0) return (
                       <div className="text-center py-4">
                         <Flag className="h-6 w-6 text-zinc-700 mx-auto mb-2" />
-                        <p className="font-mono text-[10px] text-zinc-500">No upcoming milestones</p>
+                        <p className="font-mono text-[10px] text-muted-foreground">No upcoming milestones</p>
                       </div>
                     )
 
@@ -1311,18 +1311,18 @@ export default function ProjectDetailPage() {
                           const daysUntil = m.target_date ? Math.ceil((new Date(m.target_date).getTime() - Date.now()) / (1000 * 60 * 60 * 24)) : 0
                           const isOverdue = daysUntil < 0
                           return (
-                            <div key={m.id || i} className="flex items-start gap-2 p-2 bg-zinc-800/30 border border-zinc-800">
+                            <div key={m.id || i} className="flex items-start gap-2 p-2 bg-muted/30 border border-border">
                               <div className={cn(
                                 "w-2 h-2 mt-1.5 rotate-45 flex-shrink-0",
                                 isOverdue ? "bg-red-500" : daysUntil <= 7 ? "bg-amber-500" : "bg-zinc-600"
                               )} />
                               <div className="flex-1 min-w-0">
-                                <div className="font-mono text-xs text-white line-clamp-1">{m.name}</div>
-                                <div className="font-mono text-[10px] text-zinc-500">{m.phase_name}</div>
+                                <div className="font-mono text-xs text-foreground line-clamp-1">{m.name}</div>
+                                <div className="font-mono text-[10px] text-muted-foreground">{m.phase_name}</div>
                               </div>
                               <div className={cn(
                                 "font-mono text-[10px] flex-shrink-0",
-                                isOverdue ? "text-red-400" : daysUntil <= 7 ? "text-amber-400" : "text-zinc-500"
+                                isOverdue ? "text-red-600 dark:text-red-400" : daysUntil <= 7 ? "text-amber-600 dark:text-amber-400" : "text-muted-foreground"
                               )}>
                                 {isOverdue ? `${Math.abs(daysUntil)}d late` : daysUntil === 0 ? 'Today' : `${daysUntil}d`}
                               </div>
@@ -1361,7 +1361,7 @@ export default function ProjectDetailPage() {
             <Panel
               title="PHASE DETAILS"
               action={
-                <Button size="sm" onClick={() => setShowAddPhaseDialog(true)} className="h-6 font-mono text-[10px] bg-amber-600 hover:bg-amber-700 text-white">
+                <Button size="sm" onClick={() => setShowAddPhaseDialog(true)} className="h-6 font-mono text-[10px] bg-amber-600 hover:bg-amber-700 text-foreground">
                   <Plus className="h-3 w-3 mr-1" />
                   Add Phase
                 </Button>
@@ -1383,11 +1383,11 @@ export default function ProjectDetailPage() {
               ) : (
                 <div className="text-center py-12">
                   <Layers className="h-12 w-12 text-zinc-700 mx-auto mb-4" />
-                  <h3 className="font-mono text-sm text-white mb-2">No phases defined</h3>
-                  <p className="font-mono text-[10px] text-zinc-500 mb-4">
+                  <h3 className="font-mono text-sm text-foreground mb-2">No phases defined</h3>
+                  <p className="font-mono text-[10px] text-muted-foreground mb-4">
                     Add phases to track construction progress and milestones
                   </p>
-                  <Button onClick={() => setShowAddPhaseDialog(true)} className="bg-amber-600 hover:bg-amber-700 text-white font-mono text-xs">
+                  <Button onClick={() => setShowAddPhaseDialog(true)} className="bg-amber-600 hover:bg-amber-700 text-foreground font-mono text-xs">
                     <Plus className="h-4 w-4 mr-2" />
                     Add First Phase
                   </Button>
@@ -1476,11 +1476,11 @@ export default function ProjectDetailPage() {
             <Panel title="BUDGET">
               <div className="text-center py-12">
                 <DollarSign className="h-12 w-12 text-zinc-700 mx-auto mb-4" />
-                <h3 className="font-mono text-sm text-white mb-2">No budget defined</h3>
-                <p className="font-mono text-[10px] text-zinc-500 mb-4">
+                <h3 className="font-mono text-sm text-foreground mb-2">No budget defined</h3>
+                <p className="font-mono text-[10px] text-muted-foreground mb-4">
                   Set up cost codes to track project budget
                 </p>
-                <Button className="bg-amber-600 hover:bg-amber-700 text-white font-mono text-xs">
+                <Button className="bg-amber-600 hover:bg-amber-700 text-foreground font-mono text-xs">
                   <Plus className="h-4 w-4 mr-2" />
                   Setup Budget
                 </Button>
@@ -1494,7 +1494,7 @@ export default function ProjectDetailPage() {
           <Panel
             title="CONTRACTORS"
             action={
-              <Button size="sm" className="h-6 font-mono text-[10px] bg-amber-600 hover:bg-amber-700 text-white">
+              <Button size="sm" className="h-6 font-mono text-[10px] bg-amber-600 hover:bg-amber-700 text-foreground">
                 <Plus className="h-3 w-3 mr-1" />
                 Assign Contractor
               </Button>
@@ -1510,7 +1510,7 @@ export default function ProjectDetailPage() {
             title="PROJECT TEAM"
             action={
               <Link href={`/dashboard/projects/${projectId}/team`}>
-                <Button size="sm" className="h-6 font-mono text-[10px] bg-amber-600 hover:bg-amber-700 text-white">
+                <Button size="sm" className="h-6 font-mono text-[10px] bg-amber-600 hover:bg-amber-700 text-foreground">
                   Manage Team
                 </Button>
               </Link>
@@ -1519,9 +1519,9 @@ export default function ProjectDetailPage() {
             <div className="space-y-4">
               {/* Project Manager */}
               {projectManager ? (
-                <div className="flex items-center gap-3 p-3 bg-zinc-800/50 border border-zinc-700 rounded">
+                <div className="flex items-center gap-3 p-3 bg-muted/50 border border-border rounded">
                   <div className="h-10 w-10 bg-amber-600 rounded-full flex items-center justify-center">
-                    <span className="font-mono text-sm text-white font-bold">
+                    <span className="font-mono text-sm text-foreground font-bold">
                       {(projectManager.fullName || projectManager.userName || 'PM')
                         .split(' ')
                         .map(n => n[0])
@@ -1530,7 +1530,7 @@ export default function ProjectDetailPage() {
                     </span>
                   </div>
                   <div className="flex-1">
-                    <p className="font-mono text-sm text-white">
+                    <p className="font-mono text-sm text-foreground">
                       {projectManager.fullName || projectManager.userName || projectManager.email || projectManager.userEmail || projectManager.contactEmail || 'Project Manager'}
                     </p>
                     <p className="font-mono text-[10px] text-amber-500">Project Manager</p>
@@ -1539,9 +1539,9 @@ export default function ProjectDetailPage() {
               ) : (
                 <div className="text-center py-8">
                   <Users className="h-10 w-10 text-zinc-700 mx-auto mb-3" />
-                  <p className="font-mono text-xs text-zinc-400 mb-2">No project manager assigned</p>
+                  <p className="font-mono text-xs text-muted-foreground mb-2">No project manager assigned</p>
                   <Link href={`/dashboard/projects/${projectId}/team`}>
-                    <Button size="sm" className="font-mono text-xs bg-amber-600 hover:bg-amber-700 text-white">
+                    <Button size="sm" className="font-mono text-xs bg-amber-600 hover:bg-amber-700 text-foreground">
                       <Plus className="h-3 w-3 mr-1" />
                       Assign PM
                     </Button>
@@ -1550,7 +1550,7 @@ export default function ProjectDetailPage() {
               )}
 
               {/* View Full Team Link */}
-              <div className="pt-3 border-t border-zinc-800 text-center">
+              <div className="pt-3 border-t border-border text-center">
                 <Link
                   href={`/dashboard/projects/${projectId}/team`}
                   className="font-mono text-xs text-amber-500 hover:text-amber-400"
@@ -1569,7 +1569,7 @@ export default function ProjectDetailPage() {
             action={
               <Button
                 size="sm"
-                className="h-6 font-mono text-[10px] bg-amber-600 hover:bg-amber-700 text-white"
+                className="h-6 font-mono text-[10px] bg-amber-600 hover:bg-amber-700 text-foreground"
                 onClick={() => setShowUploadDialog(true)}
               >
                 <Plus className="h-3 w-3 mr-1" />
@@ -1580,12 +1580,12 @@ export default function ProjectDetailPage() {
             {documents.length === 0 ? (
               <div className="text-center py-12">
                 <FileText className="h-12 w-12 text-zinc-700 mx-auto mb-4" />
-                <h3 className="font-mono text-sm text-white mb-2">No documents yet</h3>
-                <p className="font-mono text-[10px] text-zinc-500 mb-4">
+                <h3 className="font-mono text-sm text-foreground mb-2">No documents yet</h3>
+                <p className="font-mono text-[10px] text-muted-foreground mb-4">
                   Upload project documents, contracts, and permits
                 </p>
                 <Button
-                  className="bg-amber-600 hover:bg-amber-700 text-white font-mono text-xs"
+                  className="bg-amber-600 hover:bg-amber-700 text-foreground font-mono text-xs"
                   onClick={() => setShowUploadDialog(true)}
                 >
                   <Plus className="h-4 w-4 mr-2" />
@@ -1606,17 +1606,17 @@ export default function ProjectDetailPage() {
                   return (
                     <div
                       key={doc.id}
-                      className="flex items-center gap-3 p-3 bg-zinc-800/50 border border-zinc-700 rounded hover:border-zinc-600 transition-colors group"
+                      className="flex items-center gap-3 p-3 bg-muted/50 border border-border rounded hover:border-zinc-600 transition-colors group"
                     >
                       {/* File icon */}
-                      <div className="flex-shrink-0 h-9 w-9 bg-amber-900/40 border border-amber-700/50 rounded flex items-center justify-center">
-                        <span className="font-mono text-[9px] text-amber-400 uppercase">{ext || 'DOC'}</span>
+                      <div className="flex-shrink-0 h-9 w-9 bg-amber-100 dark:bg-amber-900/40 border border-amber-700/50 rounded flex items-center justify-center">
+                        <span className="font-mono text-[9px] text-amber-600 dark:text-amber-400 uppercase">{ext || 'DOC'}</span>
                       </div>
 
                       {/* Info */}
                       <div className="flex-1 min-w-0">
                         <button
-                          className="font-mono text-xs text-white truncate block hover:text-amber-500 transition-colors cursor-pointer text-left max-w-full"
+                          className="font-mono text-xs text-foreground truncate block hover:text-amber-500 transition-colors cursor-pointer text-left max-w-full"
                           onClick={() => handleDownloadDocument(doc.id)}
                           title="Click to open document"
                         >
@@ -1624,12 +1624,12 @@ export default function ProjectDetailPage() {
                         </button>
                         <div className="flex items-center gap-2 mt-0.5">
                           <span className="font-mono text-[10px] text-amber-500/80 capitalize">{docType}</span>
-                          <span className="text-zinc-600">·</span>
-                          <span className="font-mono text-[10px] text-zinc-500">{sizeLabel || '—'}</span>
-                          <span className="text-zinc-600">·</span>
-                          <span className="font-mono text-[10px] text-zinc-500">{date}</span>
-                          <span className="text-zinc-600">·</span>
-                          <span className="font-mono text-[10px] text-zinc-400">by {uploader}</span>
+                          <span className="text-muted-foreground">·</span>
+                          <span className="font-mono text-[10px] text-muted-foreground">{sizeLabel || '—'}</span>
+                          <span className="text-muted-foreground">·</span>
+                          <span className="font-mono text-[10px] text-muted-foreground">{date}</span>
+                          <span className="text-muted-foreground">·</span>
+                          <span className="font-mono text-[10px] text-muted-foreground">by {uploader}</span>
                         </div>
                       </div>
 
@@ -1638,7 +1638,7 @@ export default function ProjectDetailPage() {
                         <Button
                           variant="outline"
                           size="sm"
-                          className="h-7 px-2 font-mono text-[10px] text-zinc-300 border-zinc-700 hover:border-amber-600 hover:text-amber-500 bg-transparent"
+                          className="h-7 px-2 font-mono text-[10px] text-muted-foreground border-border hover:border-amber-600 hover:text-amber-500 bg-transparent"
                           onClick={() => handleDownloadDocument(doc.id)}
                         >
                           <Download className="h-3 w-3 mr-1" />
@@ -1647,7 +1647,7 @@ export default function ProjectDetailPage() {
                         <Button
                           variant="outline"
                           size="sm"
-                          className="h-7 px-2 font-mono text-[10px] text-zinc-400 border-zinc-700 hover:border-red-600 hover:text-red-500 bg-transparent"
+                          className="h-7 px-2 font-mono text-[10px] text-muted-foreground border-border hover:border-red-600 hover:text-red-500 bg-transparent"
                           onClick={() => handleDeleteDocument(doc.id, doc.name)}
                         >
                           <Trash2 className="h-3 w-3 mr-1" />
@@ -1665,35 +1665,35 @@ export default function ProjectDetailPage() {
 
       {/* Upload Document Dialog */}
       <Dialog open={showUploadDialog} onOpenChange={setShowUploadDialog}>
-        <DialogContent className="bg-zinc-900 border-zinc-800 max-w-md">
+        <DialogContent className="bg-card border-border max-w-md">
           <DialogHeader>
             <DialogTitle className="font-mono">Upload Document</DialogTitle>
-            <DialogDescription className="font-mono text-xs text-zinc-400">
+            <DialogDescription className="font-mono text-xs text-muted-foreground">
               Upload a document to this project
             </DialogDescription>
           </DialogHeader>
 
           <div className="grid gap-4 py-4">
             <div className="space-y-2">
-              <Label className="font-mono text-xs text-zinc-300">Document Name *</Label>
+              <Label className="font-mono text-xs text-muted-foreground">Document Name *</Label>
               <Input
                 value={documentForm.name}
                 onChange={(e) => setDocumentForm({ ...documentForm, name: e.target.value })}
                 placeholder="e.g., Building Permit"
-                className="bg-zinc-800 border-zinc-700 font-mono text-sm text-white placeholder:text-zinc-500"
+                className="bg-muted border-border font-mono text-sm text-foreground placeholder:text-muted-foreground"
               />
             </div>
 
             <div className="space-y-2">
-              <Label className="font-mono text-xs text-zinc-300">Document Type *</Label>
+              <Label className="font-mono text-xs text-muted-foreground">Document Type *</Label>
               <Select
                 value={documentForm.category}
                 onValueChange={(v) => setDocumentForm({ ...documentForm, category: v })}
               >
-                <SelectTrigger className="bg-zinc-800 border-zinc-700 font-mono text-sm text-white">
+                <SelectTrigger className="bg-muted border-border font-mono text-sm text-foreground">
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent className="bg-zinc-800 border-zinc-700">
+                <SelectContent className="bg-muted border-border">
                   <SelectItem value="contract">Contract</SelectItem>
                   <SelectItem value="permit">Permit</SelectItem>
                   <SelectItem value="drawing">Design / Drawing</SelectItem>
@@ -1708,8 +1708,8 @@ export default function ProjectDetailPage() {
             </div>
 
             <div className="space-y-2">
-              <Label className="font-mono text-xs text-zinc-300">File *</Label>
-              <div className="border-2 border-dashed border-zinc-700 rounded-lg p-6 text-center hover:border-amber-600/50 transition-colors">
+              <Label className="font-mono text-xs text-muted-foreground">File *</Label>
+              <div className="border-2 border-dashed border-border rounded-lg p-6 text-center hover:border-amber-600/50 transition-colors">
                 <input
                   type="file"
                   id="file-upload"
@@ -1725,7 +1725,7 @@ export default function ProjectDetailPage() {
                   {documentForm.file ? (
                     <div className="flex items-center justify-center gap-2">
                       <FileText className="h-6 w-6 text-amber-500" />
-                      <span className="font-mono text-xs text-white">{documentForm.file.name}</span>
+                      <span className="font-mono text-xs text-foreground">{documentForm.file.name}</span>
                       <Button
                         size="sm"
                         variant="ghost"
@@ -1735,14 +1735,14 @@ export default function ProjectDetailPage() {
                           setDocumentForm({ ...documentForm, file: null })
                         }}
                       >
-                        <X className="h-4 w-4 text-zinc-400" />
+                        <X className="h-4 w-4 text-muted-foreground" />
                       </Button>
                     </div>
                   ) : (
                     <>
-                      <Upload className="h-8 w-8 text-zinc-600 mx-auto mb-2" />
-                      <p className="font-mono text-xs text-zinc-400">Click to upload or drag and drop</p>
-                      <p className="font-mono text-[10px] text-zinc-600 mt-1">PDF, DOC, XLS, JPG up to 10MB</p>
+                      <Upload className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
+                      <p className="font-mono text-xs text-muted-foreground">Click to upload or drag and drop</p>
+                      <p className="font-mono text-[10px] text-muted-foreground mt-1">PDF, DOC, XLS, JPG up to 10MB</p>
                     </>
                   )}
                 </label>
@@ -1761,7 +1761,7 @@ export default function ProjectDetailPage() {
             <Button
               onClick={handleUploadDocument}
               disabled={isUploading || !documentForm.name || !documentForm.file}
-              className="bg-amber-600 hover:bg-amber-700 text-white font-mono text-xs"
+              className="bg-amber-600 hover:bg-amber-700 text-foreground font-mono text-xs"
             >
               {isUploading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Upload className="h-4 w-4 mr-2" />}
               Upload
@@ -1772,49 +1772,49 @@ export default function ProjectDetailPage() {
 
       {/* Add Phase Dialog */}
       <Dialog open={showAddPhaseDialog} onOpenChange={setShowAddPhaseDialog}>
-        <DialogContent className="bg-zinc-900 border-zinc-800 max-w-md">
+        <DialogContent className="bg-card border-border max-w-md">
           <DialogHeader>
             <DialogTitle className="font-mono">Add Phase</DialogTitle>
-            <DialogDescription className="font-mono text-xs text-zinc-400">
+            <DialogDescription className="font-mono text-xs text-muted-foreground">
               Create a new construction phase for this project
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
             <div className="space-y-2">
-              <Label className="font-mono text-xs text-zinc-300">Phase Name *</Label>
+              <Label className="font-mono text-xs text-muted-foreground">Phase Name *</Label>
               <Input
                 value={phaseForm.name}
                 onChange={(e) => setPhaseForm({ ...phaseForm, name: e.target.value })}
                 placeholder="e.g., Foundation, Structure, Finishing"
-                className="bg-zinc-800 border-zinc-700 font-mono text-sm text-white placeholder:text-zinc-500"
+                className="bg-muted border-border font-mono text-sm text-foreground placeholder:text-muted-foreground"
               />
             </div>
             <div className="space-y-2">
-              <Label className="font-mono text-xs text-zinc-300">Description</Label>
+              <Label className="font-mono text-xs text-muted-foreground">Description</Label>
               <Input
                 value={phaseForm.description}
                 onChange={(e) => setPhaseForm({ ...phaseForm, description: e.target.value })}
                 placeholder="Optional description"
-                className="bg-zinc-800 border-zinc-700 font-mono text-sm text-white placeholder:text-zinc-500"
+                className="bg-muted border-border font-mono text-sm text-foreground placeholder:text-muted-foreground"
               />
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-2">
-                <Label className="font-mono text-xs text-zinc-300">Start Date</Label>
+                <Label className="font-mono text-xs text-muted-foreground">Start Date</Label>
                 <Input
                   type="date"
                   value={phaseForm.planned_start_date}
                   onChange={(e) => setPhaseForm({ ...phaseForm, planned_start_date: e.target.value })}
-                  className="bg-zinc-800 border-zinc-700 font-mono text-sm text-white"
+                  className="bg-muted border-border font-mono text-sm text-foreground"
                 />
               </div>
               <div className="space-y-2">
-                <Label className="font-mono text-xs text-zinc-300">End Date</Label>
+                <Label className="font-mono text-xs text-muted-foreground">End Date</Label>
                 <Input
                   type="date"
                   value={phaseForm.planned_end_date}
                   onChange={(e) => setPhaseForm({ ...phaseForm, planned_end_date: e.target.value })}
-                  className="bg-zinc-800 border-zinc-700 font-mono text-sm text-white"
+                  className="bg-muted border-border font-mono text-sm text-foreground"
                 />
               </div>
             </div>
@@ -1826,7 +1826,7 @@ export default function ProjectDetailPage() {
             <Button
               onClick={handleAddPhase}
               disabled={isAddingPhase || !phaseForm.name}
-              className="bg-amber-600 hover:bg-amber-700 text-white font-mono text-xs"
+              className="bg-amber-600 hover:bg-amber-700 text-foreground font-mono text-xs"
             >
               {isAddingPhase ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Plus className="h-4 w-4 mr-2" />}
               Create Phase

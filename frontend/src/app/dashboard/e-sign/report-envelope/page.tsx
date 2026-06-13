@@ -292,10 +292,10 @@ export default function ReportEnvelopePage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-zinc-950 flex items-center justify-center">
+      <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center">
           <Loader2 className="h-12 w-12 animate-spin text-emerald-500 mx-auto mb-4" />
-          <p className="text-white text-lg">Loading E-Sign...</p>
+          <p className="text-foreground text-lg">Loading E-Sign...</p>
         </div>
       </div>
     )
@@ -307,15 +307,15 @@ export default function ReportEnvelopePage() {
 
   if (isApproved && approvalResult) {
     return (
-      <div className="min-h-screen bg-zinc-950 flex items-center justify-center">
+      <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="max-w-md text-center">
           <CheckCircle className="h-16 w-16 text-emerald-500 mx-auto mb-4" />
-          <h2 className="text-2xl font-bold text-white mb-2">Report Approved</h2>
-          <p className="text-zinc-400 mb-2">
-            The valuation report for <strong className="text-white">{esignData?.propertyAddress}</strong> has been signed and approved.
+          <h2 className="text-2xl font-bold text-foreground mb-2">Report Approved</h2>
+          <p className="text-muted-foreground mb-2">
+            The valuation report for <strong className="text-foreground">{esignData?.propertyAddress}</strong> has been signed and approved.
           </p>
           {approvalResult.digital_seal_hash && (
-            <p className="text-xs text-zinc-500 mb-6 font-mono">
+            <p className="text-xs text-muted-foreground mb-6 font-mono">
               Seal: {approvalResult.digital_seal_hash.substring(0, 16)}...
             </p>
           )}
@@ -335,7 +335,7 @@ export default function ReportEnvelopePage() {
               </Link>
             )}
             <Link href="/dashboard/valuations">
-              <Button variant="outline" className="border-zinc-700 text-zinc-300">
+              <Button variant="outline" className="border-border text-muted-foreground">
                 Back to Valuations
               </Button>
             </Link>
@@ -349,13 +349,13 @@ export default function ReportEnvelopePage() {
 
   if (!esignData) {
     return (
-      <div className="min-h-screen bg-zinc-950 flex items-center justify-center">
+      <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="max-w-md text-center">
-          <div className="bg-red-900/20 border border-red-700 rounded-lg p-6 mb-4">
-            <p className="text-red-400">No report e-sign data found</p>
+          <div className="bg-red-100 dark:bg-red-900/20 border border-red-700 rounded-lg p-6 mb-4">
+            <p className="text-red-600 dark:text-red-400">No report e-sign data found</p>
           </div>
           <Link href="/dashboard/valuations">
-            <Button variant="outline" className="border-zinc-700">
+            <Button variant="outline" className="border-border">
               <ArrowLeft className="mr-2 h-4 w-4" />
               Back to Valuations
             </Button>
@@ -371,18 +371,18 @@ export default function ReportEnvelopePage() {
 
   if (signingMode === 'select') {
     return (
-      <div className="min-h-screen bg-zinc-950 flex flex-col">
+      <div className="min-h-screen bg-background flex flex-col">
         {/* Header */}
-        <div className="bg-zinc-900 border-b border-zinc-800 px-6 py-4">
+        <div className="bg-card border-b border-border px-6 py-4">
           <div className="flex items-center gap-4">
             <Link href={getBackUrl()}>
-              <Button variant="ghost" size="icon" className="text-zinc-400 hover:text-white">
+              <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-foreground">
                 <ArrowLeft className="h-5 w-5" />
               </Button>
             </Link>
             <div>
-              <h1 className="text-xl font-bold text-white">E-Sign: Valuation Report Approval</h1>
-              <p className="text-sm text-zinc-400">
+              <h1 className="text-xl font-bold text-foreground">E-Sign: Valuation Report Approval</h1>
+              <p className="text-sm text-muted-foreground">
                 {esignData.propertyAddress} &mdash; {session?.user?.name || esignData.signer?.name}
               </p>
             </div>
@@ -393,22 +393,22 @@ export default function ReportEnvelopePage() {
         <div className="flex-1 flex items-center justify-center px-6">
           <div className="w-full max-w-xl space-y-6">
             <div className="text-center mb-8">
-              <h2 className="text-2xl font-bold text-white mb-2">How would you like to proceed?</h2>
-              <p className="text-zinc-400">Choose how this valuation report should be signed and approved.</p>
+              <h2 className="text-2xl font-bold text-foreground mb-2">How would you like to proceed?</h2>
+              <p className="text-muted-foreground">Choose how this valuation report should be signed and approved.</p>
             </div>
 
             {/* Option 1: Self Sign */}
             <button
               onClick={() => setSigningMode('self_signed')}
-              className="w-full bg-zinc-900 border-2 border-zinc-700 hover:border-emerald-500 rounded-xl p-6 text-left transition-all group"
+              className="w-full bg-card border-2 border-border hover:border-emerald-500 rounded-xl p-6 text-left transition-all group"
             >
               <div className="flex items-start gap-4">
                 <div className="bg-emerald-600/20 rounded-lg p-3 group-hover:bg-emerald-600/30 transition-colors">
-                  <PenTool className="h-6 w-6 text-emerald-400" />
+                  <PenTool className="h-6 w-6 text-emerald-600 dark:text-emerald-400" />
                 </div>
                 <div className="flex-1">
-                  <h3 className="text-lg font-semibold text-white mb-1">Sign it myself</h3>
-                  <p className="text-sm text-zinc-400">
+                  <h3 className="text-lg font-semibold text-foreground mb-1">Sign it myself</h3>
+                  <p className="text-sm text-muted-foreground">
                     I am a qualified valuer and will sign this report directly. The report will be approved and
                     sealed immediately after signing.
                   </p>
@@ -424,15 +424,15 @@ export default function ReportEnvelopePage() {
             {/* Option 2: Send to Qualified Valuer */}
             <button
               onClick={() => setSigningMode('send_to_valuer')}
-              className="w-full bg-zinc-900 border-2 border-zinc-700 hover:border-blue-500 rounded-xl p-6 text-left transition-all group"
+              className="w-full bg-card border-2 border-border hover:border-blue-500 rounded-xl p-6 text-left transition-all group"
             >
               <div className="flex items-start gap-4">
                 <div className="bg-blue-600/20 rounded-lg p-3 group-hover:bg-blue-600/30 transition-colors">
-                  <Send className="h-6 w-6 text-blue-400" />
+                  <Send className="h-6 w-6 text-blue-600 dark:text-blue-400" />
                 </div>
                 <div className="flex-1">
-                  <h3 className="text-lg font-semibold text-white mb-1">Send to a qualified valuer</h3>
-                  <p className="text-sm text-zinc-400">
+                  <h3 className="text-lg font-semibold text-foreground mb-1">Send to a qualified valuer</h3>
+                  <p className="text-sm text-muted-foreground">
                     Forward this report to another qualified valuer for review and signing.
                     They will receive an email with a link to sign the document.
                   </p>
@@ -456,21 +456,21 @@ export default function ReportEnvelopePage() {
 
   if (signingMode === 'send_to_valuer' && !valuerConfirmed) {
     return (
-      <div className="min-h-screen bg-zinc-950 flex flex-col">
+      <div className="min-h-screen bg-background flex flex-col">
         {/* Header */}
-        <div className="bg-zinc-900 border-b border-zinc-800 px-6 py-4">
+        <div className="bg-card border-b border-border px-6 py-4">
           <div className="flex items-center gap-4">
             <Button
               variant="ghost"
               size="icon"
-              className="text-zinc-400 hover:text-white"
+              className="text-muted-foreground hover:text-foreground"
               onClick={() => setSigningMode('select')}
             >
               <ArrowLeft className="h-5 w-5" />
             </Button>
             <div>
-              <h1 className="text-xl font-bold text-white">Send to Qualified Valuer</h1>
-              <p className="text-sm text-zinc-400">
+              <h1 className="text-xl font-bold text-foreground">Send to Qualified Valuer</h1>
+              <p className="text-sm text-muted-foreground">
                 {esignData.propertyAddress}
               </p>
             </div>
@@ -482,32 +482,32 @@ export default function ReportEnvelopePage() {
           <div className="w-full max-w-md space-y-6">
             <div className="text-center mb-4">
               <div className="bg-blue-600/20 rounded-full p-4 w-16 h-16 mx-auto mb-4 flex items-center justify-center">
-                <User className="h-8 w-8 text-blue-400" />
+                <User className="h-8 w-8 text-blue-600 dark:text-blue-400" />
               </div>
-              <h2 className="text-xl font-bold text-white mb-2">Qualified Valuer Details</h2>
-              <p className="text-zinc-400 text-sm">Enter the details of the qualified valuer who will sign this report.</p>
+              <h2 className="text-xl font-bold text-foreground mb-2">Qualified Valuer Details</h2>
+              <p className="text-muted-foreground text-sm">Enter the details of the qualified valuer who will sign this report.</p>
             </div>
 
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-zinc-300 mb-1.5">Full Name</label>
+                <label className="block text-sm font-medium text-muted-foreground mb-1.5">Full Name</label>
                 <input
                   type="text"
                   value={qualifiedValuerName}
                   onChange={(e) => setQualifiedValuerName(e.target.value)}
                   placeholder="e.g. Dr. Kwame Asare"
-                  className="w-full bg-zinc-900 border border-zinc-700 rounded-lg px-4 py-3 text-white placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full bg-card border border-border rounded-lg px-4 py-3 text-foreground placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-zinc-300 mb-1.5">Email Address</label>
+                <label className="block text-sm font-medium text-muted-foreground mb-1.5">Email Address</label>
                 <input
                   type="email"
                   value={qualifiedValuerEmail}
                   onChange={(e) => setQualifiedValuerEmail(e.target.value)}
                   placeholder="e.g. k.asare@valuation.com"
-                  className="w-full bg-zinc-900 border border-zinc-700 rounded-lg px-4 py-3 text-white placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full bg-card border border-border rounded-lg px-4 py-3 text-foreground placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 />
               </div>
             </div>
@@ -515,7 +515,7 @@ export default function ReportEnvelopePage() {
             <div className="flex gap-3 pt-2">
               <Button
                 variant="outline"
-                className="flex-1 border-zinc-700 text-zinc-300"
+                className="flex-1 border-border text-muted-foreground"
                 onClick={() => {
                   setSigningMode('select')
                   setQualifiedValuerName('')
@@ -526,7 +526,7 @@ export default function ReportEnvelopePage() {
                 Back
               </Button>
               <Button
-                className="flex-1 bg-blue-600 hover:bg-blue-700 text-white"
+                className="flex-1 bg-blue-600 hover:bg-blue-700 text-foreground"
                 disabled={!qualifiedValuerName.trim() || !qualifiedValuerEmail.trim() || !qualifiedValuerEmail.includes('@')}
                 onClick={() => setValuerConfirmed(true)}
               >
@@ -551,15 +551,15 @@ export default function ReportEnvelopePage() {
   const signedCount = requiredFields.filter((f) => signedFields.has(f.id)).length
 
   return (
-    <div className="h-screen bg-zinc-950 flex flex-col overflow-hidden">
+    <div className="h-screen bg-background flex flex-col overflow-hidden">
       {/* Header */}
-      <div className="bg-zinc-900 border-b border-zinc-800 px-6 py-3 flex-shrink-0">
+      <div className="bg-card border-b border-border px-6 py-3 flex-shrink-0">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
             <Button
               variant="ghost"
               size="icon"
-              className="text-zinc-400 hover:text-white"
+              className="text-muted-foreground hover:text-foreground"
               onClick={() => {
                 fieldsInitialized.current = false
                 setFields([])
@@ -575,8 +575,8 @@ export default function ReportEnvelopePage() {
               <ArrowLeft className="h-5 w-5" />
             </Button>
             <div>
-              <h1 className="text-lg font-bold text-white">E-Sign: Valuation Report</h1>
-              <p className="text-xs text-zinc-400">
+              <h1 className="text-lg font-bold text-foreground">E-Sign: Valuation Report</h1>
+              <p className="text-xs text-muted-foreground">
                 {esignData.propertyAddress} &mdash; {signerName}
               </p>
             </div>
@@ -584,8 +584,8 @@ export default function ReportEnvelopePage() {
 
           {/* Progress + Approve button */}
           <div className="flex items-center gap-4">
-            <div className="text-sm text-zinc-400">
-              <span className="text-emerald-400 font-medium">{signedCount}</span>
+            <div className="text-sm text-muted-foreground">
+              <span className="text-emerald-600 dark:text-emerald-400 font-medium">{signedCount}</span>
               <span> / {requiredFields.length} fields completed</span>
             </div>
             <Button
@@ -611,14 +611,14 @@ export default function ReportEnvelopePage() {
 
       {/* Inline error banner */}
       {error && (
-        <div className="bg-red-900/30 border-b border-red-700 px-6 py-3 flex-shrink-0">
+        <div className="bg-red-100 dark:bg-red-900/30 border-b border-red-700 px-6 py-3 flex-shrink-0">
           <div className="flex items-center justify-between">
-            <p className="text-red-400 text-sm">{error}</p>
+            <p className="text-red-600 dark:text-red-400 text-sm">{error}</p>
             <div className="flex gap-2">
               <Button
                 size="sm"
                 variant="ghost"
-                className="text-red-400 hover:text-red-300 h-7 px-2"
+                className="text-red-600 dark:text-red-400 hover:text-red-300 h-7 px-2"
                 onClick={() => setError(null)}
               >
                 Dismiss
@@ -641,10 +641,10 @@ export default function ReportEnvelopePage() {
       {/* FieldPlacement — full PDF viewer with signature fields */}
       <div className="flex-1 overflow-hidden relative">
         {isApproving && (
-          <div className="absolute inset-0 bg-zinc-950/70 z-50 flex items-center justify-center">
+          <div className="absolute inset-0 bg-background/70 z-50 flex items-center justify-center">
             <div className="text-center">
               <Loader2 className="h-10 w-10 animate-spin text-emerald-500 mx-auto mb-3" />
-              <p className="text-white text-sm">Approving & generating PDF...</p>
+              <p className="text-foreground text-sm">Approving & generating PDF...</p>
             </div>
           </div>
         )}
@@ -662,8 +662,8 @@ export default function ReportEnvelopePage() {
       </div>
 
       {/* Legal notice */}
-      <div className="bg-zinc-900 border-t border-zinc-800 px-6 py-2 flex-shrink-0">
-        <p className="text-[10px] text-zinc-500 text-center">
+      <div className="bg-card border-t border-border px-6 py-2 flex-shrink-0">
+        <p className="text-[10px] text-muted-foreground text-center">
           By signing, I agree that this electronic signature is the legal equivalent of my handwritten signature
           and that this valuation report has been prepared in accordance with applicable professional standards.
         </p>

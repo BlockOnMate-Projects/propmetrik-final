@@ -68,14 +68,14 @@ export default function ProjectsCostsPage() {
       {/* Page header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-mono font-bold text-white tracking-tight">
+          <h1 className="text-2xl font-mono font-bold text-foreground tracking-tight">
             PORTFOLIO COSTS
           </h1>
-          <p className="text-zinc-500 font-mono text-xs mt-1">
+          <p className="text-muted-foreground font-mono text-xs mt-1">
             Budget and cost overview across all projects
           </p>
         </div>
-        <Button variant="outline" className="border-zinc-700 text-zinc-300" onClick={fetchData}>
+        <Button variant="outline" className="border-border text-muted-foreground" onClick={fetchData}>
           <RefreshCw className="h-4 w-4 mr-2" />
           Refresh
         </Button>
@@ -89,80 +89,80 @@ export default function ProjectsCostsPage() {
         <>
           {/* KPI Cards */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            <Card className="bg-zinc-900/80 border-zinc-800">
+            <Card className="bg-card/80 border-border">
               <CardContent className="p-4">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-[10px] font-mono text-zinc-500 tracking-wider">TOTAL BUDGET</p>
-                    <p className="text-xl font-bold text-white mt-1">
+                    <p className="text-[10px] font-mono text-muted-foreground tracking-wider">TOTAL BUDGET</p>
+                    <p className="text-xl font-bold text-foreground mt-1">
                       {formatCurrency(totalBudget, currency)}
                     </p>
-                    <p className="text-[10px] font-mono text-zinc-500 mt-1">
+                    <p className="text-[10px] font-mono text-muted-foreground mt-1">
                       {metrics?.totalProjects || projects.length} projects
                     </p>
                   </div>
                   <div className="h-10 w-10 rounded-lg bg-blue-500/10 flex items-center justify-center">
-                    <PieChart className="h-5 w-5 text-blue-400" />
+                    <PieChart className="h-5 w-5 text-blue-600 dark:text-blue-400" />
                   </div>
                 </div>
               </CardContent>
             </Card>
 
-            <Card className="bg-zinc-900/80 border-zinc-800">
+            <Card className="bg-card/80 border-border">
               <CardContent className="p-4">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-[10px] font-mono text-zinc-500 tracking-wider">TOTAL SPENT</p>
-                    <p className="text-xl font-bold text-white mt-1">
+                    <p className="text-[10px] font-mono text-muted-foreground tracking-wider">TOTAL SPENT</p>
+                    <p className="text-xl font-bold text-foreground mt-1">
                       {formatCurrency(totalSpent, currency)}
                     </p>
-                    <p className="text-[10px] font-mono text-zinc-500 mt-1">
+                    <p className="text-[10px] font-mono text-muted-foreground mt-1">
                       {utilization}% utilized
                     </p>
                   </div>
                   <div className="h-10 w-10 rounded-lg bg-green-500/10 flex items-center justify-center">
-                    <DollarSign className="h-5 w-5 text-green-400" />
+                    <DollarSign className="h-5 w-5 text-green-600 dark:text-green-400" />
                   </div>
                 </div>
               </CardContent>
             </Card>
 
-            <Card className="bg-zinc-900/80 border-zinc-800">
+            <Card className="bg-card/80 border-border">
               <CardContent className="p-4">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-[10px] font-mono text-zinc-500 tracking-wider">REMAINING</p>
-                    <p className={`text-xl font-bold mt-1 ${isOverBudget ? 'text-red-400' : 'text-emerald-400'}`}>
+                    <p className="text-[10px] font-mono text-muted-foreground tracking-wider">REMAINING</p>
+                    <p className={`text-xl font-bold mt-1 ${isOverBudget ? 'text-red-600 dark:text-red-400' : 'text-emerald-600 dark:text-emerald-400'}`}>
                       {formatCurrency(Math.abs(totalRemaining), currency)}
                     </p>
-                    <p className="text-[10px] font-mono text-zinc-500 mt-1">
+                    <p className="text-[10px] font-mono text-muted-foreground mt-1">
                       {isOverBudget ? 'Over budget' : 'Under budget'}
                     </p>
                   </div>
                   <div className={`h-10 w-10 rounded-lg flex items-center justify-center ${isOverBudget ? 'bg-red-500/10' : 'bg-emerald-500/10'}`}>
                     {isOverBudget
-                      ? <TrendingDown className="h-5 w-5 text-red-400" />
-                      : <TrendingUp className="h-5 w-5 text-emerald-400" />
+                      ? <TrendingDown className="h-5 w-5 text-red-600 dark:text-red-400" />
+                      : <TrendingUp className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
                     }
                   </div>
                 </div>
               </CardContent>
             </Card>
 
-            <Card className="bg-zinc-900/80 border-zinc-800">
+            <Card className="bg-card/80 border-border">
               <CardContent className="p-4">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-[10px] font-mono text-zinc-500 tracking-wider">AT RISK</p>
-                    <p className="text-xl font-bold text-white mt-1">
+                    <p className="text-[10px] font-mono text-muted-foreground tracking-wider">AT RISK</p>
+                    <p className="text-xl font-bold text-foreground mt-1">
                       {metrics?.projectsAtRisk ?? 0}
                     </p>
-                    <p className="text-[10px] font-mono text-zinc-500 mt-1">
+                    <p className="text-[10px] font-mono text-muted-foreground mt-1">
                       projects over budget
                     </p>
                   </div>
                   <div className="h-10 w-10 rounded-lg bg-amber-500/10 flex items-center justify-center">
-                    <AlertTriangle className="h-5 w-5 text-amber-400" />
+                    <AlertTriangle className="h-5 w-5 text-amber-600 dark:text-amber-400" />
                   </div>
                 </div>
               </CardContent>
@@ -170,33 +170,33 @@ export default function ProjectsCostsPage() {
           </div>
 
           {/* Budget Utilization Bar */}
-          <Card className="bg-zinc-900/80 border-zinc-800">
+          <Card className="bg-card/80 border-border">
             <CardHeader className="pb-3">
-              <CardTitle className="text-white text-sm font-mono">Budget Utilization</CardTitle>
+              <CardTitle className="text-foreground text-sm font-mono">Budget Utilization</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="h-3 bg-zinc-800 rounded-full overflow-hidden">
+              <div className="h-3 bg-muted rounded-full overflow-hidden">
                 <div
                   className={`h-full rounded-full transition-all ${utilization > 100 ? 'bg-red-500' : utilization > 80 ? 'bg-amber-500' : 'bg-emerald-500'}`}
                   style={{ width: `${Math.min(utilization, 100)}%` }}
                 />
               </div>
               <div className="flex items-center justify-between mt-2">
-                <span className="font-mono text-[10px] text-zinc-500">0%</span>
-                <span className={`font-mono text-xs font-bold ${utilization > 100 ? 'text-red-400' : 'text-zinc-300'}`}>
+                <span className="font-mono text-[10px] text-muted-foreground">0%</span>
+                <span className={`font-mono text-xs font-bold ${utilization > 100 ? 'text-red-600 dark:text-red-400' : 'text-muted-foreground'}`}>
                   {utilization}%
                 </span>
-                <span className="font-mono text-[10px] text-zinc-500">100%</span>
+                <span className="font-mono text-[10px] text-muted-foreground">100%</span>
               </div>
             </CardContent>
           </Card>
 
           {/* Budget Breakdown by Category */}
           {budgetOverview?.categories && budgetOverview.categories.length > 0 && (
-            <Card className="bg-zinc-900/80 border-zinc-800">
+            <Card className="bg-card/80 border-border">
               <CardHeader>
-                <CardTitle className="text-white text-sm font-mono">Cost by Category</CardTitle>
-                <CardDescription className="text-zinc-500 text-xs">
+                <CardTitle className="text-foreground text-sm font-mono">Cost by Category</CardTitle>
+                <CardDescription className="text-muted-foreground text-xs">
                   Aggregate budget vs. actual across all projects
                 </CardDescription>
               </CardHeader>
@@ -207,17 +207,17 @@ export default function ProjectsCostsPage() {
                     return (
                       <div key={cat.category} className="space-y-1.5">
                         <div className="flex items-center justify-between text-sm">
-                          <span className="text-zinc-300 capitalize">{cat.category.replace(/_/g, ' ')}</span>
+                          <span className="text-muted-foreground capitalize">{cat.category.replace(/_/g, ' ')}</span>
                           <div className="flex items-center gap-3">
-                            <span className="font-mono text-[10px] text-zinc-500">
+                            <span className="font-mono text-[10px] text-muted-foreground">
                               {formatCurrency(cat.spent, currency)} / {formatCurrency(cat.budgeted, currency)}
                             </span>
-                            <span className={`font-mono text-xs font-medium ${pct > 100 ? 'text-red-400' : 'text-zinc-400'}`}>
+                            <span className={`font-mono text-xs font-medium ${pct > 100 ? 'text-red-600 dark:text-red-400' : 'text-muted-foreground'}`}>
                               {pct}%
                             </span>
                           </div>
                         </div>
-                        <div className="h-1.5 bg-zinc-800 rounded-full overflow-hidden">
+                        <div className="h-1.5 bg-muted rounded-full overflow-hidden">
                           <div
                             className={`h-full rounded-full ${pct > 100 ? 'bg-red-500' : 'bg-amber-500'}`}
                             style={{ width: `${Math.min(pct, 100)}%` }}
@@ -232,10 +232,10 @@ export default function ProjectsCostsPage() {
           )}
 
           {/* Per-Project Budget Table */}
-          <Card className="bg-zinc-900/80 border-zinc-800">
+          <Card className="bg-card/80 border-border">
             <CardHeader>
-              <CardTitle className="text-white text-sm font-mono">Project Budgets</CardTitle>
-              <CardDescription className="text-zinc-500 text-xs">
+              <CardTitle className="text-foreground text-sm font-mono">Project Budgets</CardTitle>
+              <CardDescription className="text-muted-foreground text-xs">
                 Click a project to manage its individual costs
               </CardDescription>
             </CardHeader>
@@ -243,7 +243,7 @@ export default function ProjectsCostsPage() {
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead>
-                    <tr className="border-b border-zinc-800 text-zinc-500 font-mono text-[10px] tracking-wider">
+                    <tr className="border-b border-border text-muted-foreground font-mono text-[10px] tracking-wider">
                       <th className="text-left p-3">PROJECT</th>
                       <th className="text-left p-3">STATUS</th>
                       <th className="text-right p-3">BUDGET</th>
@@ -255,7 +255,7 @@ export default function ProjectsCostsPage() {
                   <tbody>
                     {projects.length === 0 && (
                       <tr>
-                        <td colSpan={6} className="text-center py-10 text-zinc-500 font-mono text-xs">
+                        <td colSpan={6} className="text-center py-10 text-muted-foreground font-mono text-xs">
                           No projects found
                         </td>
                       </tr>
@@ -267,36 +267,36 @@ export default function ProjectsCostsPage() {
                       return (
                         <tr
                           key={p.id}
-                          className="border-b border-zinc-800/50 hover:bg-zinc-800/30 transition-colors"
+                          className="border-b border-border/50 hover:bg-amber-50 dark:hover:bg-amber-500/10 transition-colors"
                         >
                           <td className="p-3">
-                            <span className="text-white font-medium">{p.name}</span>
+                            <span className="text-foreground font-medium">{p.name}</span>
                           </td>
                           <td className="p-3">
                             <Badge
                               variant="outline"
                               className={`text-[10px] font-mono capitalize ${
-                                p.status === 'under_construction' ? 'border-amber-600 text-amber-400 bg-amber-500/10' :
-                                p.status === 'completed' ? 'border-green-600 text-green-400 bg-green-500/10' :
-                                p.status === 'planning' ? 'border-blue-600 text-blue-400 bg-blue-500/10' :
-                                p.status === 'on_hold' ? 'border-red-600 text-red-400 bg-red-500/10' :
-                                p.status === 'cancelled' ? 'border-zinc-600 text-zinc-400 bg-zinc-500/10' :
-                                'border-zinc-600 text-zinc-300 bg-zinc-800'
+                                p.status === 'under_construction' ? 'border-amber-600 text-amber-600 dark:text-amber-400 bg-amber-500/10' :
+                                p.status === 'completed' ? 'border-green-600 text-green-600 dark:text-green-400 bg-green-500/10' :
+                                p.status === 'planning' ? 'border-blue-600 text-blue-600 dark:text-blue-400 bg-blue-500/10' :
+                                p.status === 'on_hold' ? 'border-red-600 text-red-600 dark:text-red-400 bg-red-500/10' :
+                                p.status === 'cancelled' ? 'border-zinc-600 text-muted-foreground bg-zinc-500/10' :
+                                'border-zinc-600 text-muted-foreground bg-muted'
                               }`}
                             >
                               {(p.status || '').replace(/_/g, ' ')}
                             </Badge>
                           </td>
-                          <td className="p-3 text-right font-mono text-zinc-300">
+                          <td className="p-3 text-right font-mono text-muted-foreground">
                             {formatCurrency(pBudget, (p as any).currency || currency)}
                           </td>
-                          <td className="p-3 text-right font-mono text-zinc-300">
+                          <td className="p-3 text-right font-mono text-muted-foreground">
                             {formatCurrency(pSpent, (p as any).currency || currency)}
                           </td>
                           <td className="p-3 text-right">
                             <span
                               className={`font-mono text-xs font-medium ${
-                                pUtil > 100 ? 'text-red-400' : pUtil > 80 ? 'text-amber-400' : 'text-zinc-400'
+                                pUtil > 100 ? 'text-red-600 dark:text-red-400' : pUtil > 80 ? 'text-amber-600 dark:text-amber-400' : 'text-muted-foreground'
                               }`}
                             >
                               {pUtil}%

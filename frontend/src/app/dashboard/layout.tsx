@@ -82,22 +82,22 @@ export default function DashboardLayout({
     <UpgradeGateProvider>
       <div className="min-h-screen bg-background">
         {isTenantRoute ? null : mounted ? <TopNav /> : (
-          <header className="sticky top-0 z-50 w-full bg-black border-b border-zinc-800">
-            <div className="flex items-center justify-between h-8 px-4 bg-zinc-900 border-b border-zinc-800">
+          <header className="sticky top-0 z-50 w-full bg-background border-b border-border">
+            <div className="flex items-center justify-between h-8 px-4 bg-card border-b border-border">
               <div className="flex items-center gap-4">
-                <span className="font-mono text-[10px] text-zinc-500">PROPMETRIK TERMINAL</span>
-                <span className="text-[10px] text-zinc-600">|</span>
+                <span className="font-mono text-[10px] text-muted-foreground">PROPMETRIK TERMINAL</span>
+                <span className="text-[10px] text-muted-foreground">|</span>
                 <span className="font-mono text-[10px] text-green-500">● CONNECTED</span>
               </div>
             </div>
             <div className="flex items-center h-10 px-4">
               <div className="flex items-center">
                 <span className="font-bold text-amber-500 text-lg tracking-tight">PROP</span>
-                <span className="font-bold text-white text-lg tracking-tight">METRIK</span>
+                <span className="font-bold text-foreground text-lg tracking-tight">METRIK</span>
               </div>
             </div>
-            <div className="h-6 px-4 bg-zinc-900/50 border-t border-zinc-800">
-              <span className="font-mono text-[10px] text-zinc-600">Loading market data...</span>
+            <div className="h-6 px-4 bg-card/50 border-t border-border">
+              <span className="font-mono text-[10px] text-muted-foreground">Loading market data...</span>
             </div>
           </header>
         )}

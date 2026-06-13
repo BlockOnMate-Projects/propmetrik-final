@@ -66,7 +66,7 @@ const TOOLTIPS = {
 const Tooltip = ({ text }: { text: string }) => (
   <div className="group relative inline-block ml-1">
     <HelpCircle className="w-3 h-3 text-amber-500/70 cursor-help inline" />
-    <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-2 bg-zinc-800 border border-amber-500/30 text-xs text-zinc-300 rounded-md opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 w-64 z-50 font-normal">
+    <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-2 bg-muted border border-amber-500/30 text-xs text-muted-foreground rounded-md opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 w-64 z-50 font-normal">
       {text}
       <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-amber-500/30"></div>
     </div>
@@ -574,33 +574,33 @@ export default function ResidualMethodPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-black text-white flex items-center justify-center">
+      <div className="min-h-screen bg-background text-foreground flex items-center justify-center">
         <Loader2 className="w-8 h-8 text-amber-500 animate-spin" />
-        <span className="ml-3 font-mono text-sm text-zinc-400">Loading residual method...</span>
+        <span className="ml-3 font-mono text-sm text-muted-foreground">Loading residual method...</span>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-black text-white p-4 pb-10">
+    <div className="min-h-screen bg-background text-foreground p-4 pb-10">
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-4">
-          <Link href={getBackPath()} className="p-2 hover:bg-zinc-800 transition-colors">
-            <ArrowLeft className="w-4 h-4 text-zinc-400" />
+          <Link href={getBackPath()} className="p-2 hover:bg-muted transition-colors">
+            <ArrowLeft className="w-4 h-4 text-muted-foreground" />
           </Link>
           <div>
             <div className="flex items-center gap-3">
-              <h1 className="font-mono text-xl text-white">RESIDUAL METHOD</h1>
+              <h1 className="font-mono text-xl text-foreground">RESIDUAL METHOD</h1>
               <MethodBadge method="RESIDUAL" />
             </div>
-            <p className="font-mono text-xs text-zinc-500">Development Land Valuation</p>
+            <p className="font-mono text-xs text-muted-foreground">Development Land Valuation</p>
           </div>
         </div>
         <div className="flex items-center gap-4">
           {/* Purpose Badge - RICS Compliance */}
           <div className="px-3 py-1 bg-blue-500/10 border border-blue-500/30 rounded">
-            <span className="font-mono text-[10px] text-blue-400">PURPOSE: DEVELOPMENT FEASIBILITY</span>
+            <span className="font-mono text-[10px] text-blue-600 dark:text-blue-400">PURPOSE: DEVELOPMENT FEASIBILITY</span>
           </div>
           <ConfidenceBar score={calculateConfidence() * 100} />
         </div>
@@ -610,15 +610,15 @@ export default function ResidualMethodPage() {
 
       {/* Subject Property Card */}
       {valuation?.property && (
-        <div className="mb-4 p-4 bg-zinc-900/50 border border-zinc-800">
+        <div className="mb-4 p-4 bg-card/50 border border-border">
           <div className="flex items-start justify-between">
             <div className="flex items-start gap-4">
               <div className="p-3 bg-amber-500/20 border border-amber-500/30">
-                <Home className="w-6 h-6 text-amber-400" />
+                <Home className="w-6 h-6 text-amber-600 dark:text-amber-400" />
               </div>
               <div>
-                <h2 className="font-mono text-lg text-white mb-1">SUBJECT PROPERTY</h2>
-                <div className="flex items-center gap-2 text-zinc-400 font-mono text-sm mb-3">
+                <h2 className="font-mono text-lg text-foreground mb-1">SUBJECT PROPERTY</h2>
+                <div className="flex items-center gap-2 text-muted-foreground font-mono text-sm mb-3">
                   <MapPin className="w-4 h-4" />
                   <span>
                     {valuation.property.address_street || valuation.property.address || 'Address not set'}
@@ -627,26 +627,26 @@ export default function ResidualMethodPage() {
                 </div>
                 <div className="grid grid-cols-4 gap-6">
                   <div>
-                    <span className="font-mono text-[10px] text-zinc-500 block">PROPERTY TYPE</span>
-                    <span className="font-mono text-sm text-white uppercase">
+                    <span className="font-mono text-[10px] text-muted-foreground block">PROPERTY TYPE</span>
+                    <span className="font-mono text-sm text-foreground uppercase">
                       {(valuation.property.property_type || 'N/A').replace(/_/g, ' ')}
                     </span>
                   </div>
                   <div>
-                    <span className="font-mono text-[10px] text-zinc-500 block">LAND AREA</span>
-                    <span className="font-mono text-sm text-amber-400">
+                    <span className="font-mono text-[10px] text-muted-foreground block">LAND AREA</span>
+                    <span className="font-mono text-sm text-amber-600 dark:text-amber-400">
                       {(valuation.property.land_area_sqm || valuation.property.plot_size || 0).toLocaleString()} sqm
                     </span>
                   </div>
                   <div>
-                    <span className="font-mono text-[10px] text-zinc-500 block">BUILDING SIZE</span>
-                    <span className="font-mono text-sm text-white">
+                    <span className="font-mono text-[10px] text-muted-foreground block">BUILDING SIZE</span>
+                    <span className="font-mono text-sm text-foreground">
                       {(valuation.property.building_area_sqm || 0).toLocaleString()} sqm
                     </span>
                   </div>
                   <div>
-                    <span className="font-mono text-[10px] text-zinc-500 block">FLOORS</span>
-                    <span className="font-mono text-sm text-white">
+                    <span className="font-mono text-[10px] text-muted-foreground block">FLOORS</span>
+                    <span className="font-mono text-sm text-foreground">
                       {valuation.property.floors || 1}
                     </span>
                   </div>
@@ -655,14 +655,14 @@ export default function ResidualMethodPage() {
                   <div className="grid grid-cols-4 gap-6 mt-2">
                     {valuation.property.bedrooms && (
                       <div>
-                        <span className="font-mono text-[10px] text-zinc-500 block">BEDROOMS</span>
-                        <span className="font-mono text-sm text-white">{valuation.property.bedrooms}</span>
+                        <span className="font-mono text-[10px] text-muted-foreground block">BEDROOMS</span>
+                        <span className="font-mono text-sm text-foreground">{valuation.property.bedrooms}</span>
                       </div>
                     )}
                     {valuation.property.bathrooms && (
                       <div>
-                        <span className="font-mono text-[10px] text-zinc-500 block">BATHROOMS</span>
-                        <span className="font-mono text-sm text-white">{valuation.property.bathrooms}</span>
+                        <span className="font-mono text-[10px] text-muted-foreground block">BATHROOMS</span>
+                        <span className="font-mono text-sm text-foreground">{valuation.property.bathrooms}</span>
                       </div>
                     )}
                   </div>
@@ -670,9 +670,9 @@ export default function ResidualMethodPage() {
               </div>
             </div>
             <div className="text-right">
-              <span className="font-mono text-[10px] text-zinc-500 block">CURRENT PLOT SIZE</span>
-              <span className="font-mono text-2xl text-amber-400 font-bold">{plotSize.toLocaleString()}</span>
-              <span className="font-mono text-sm text-zinc-500 ml-1">sqm</span>
+              <span className="font-mono text-[10px] text-muted-foreground block">CURRENT PLOT SIZE</span>
+              <span className="font-mono text-2xl text-amber-600 dark:text-amber-400 font-bold">{plotSize.toLocaleString()}</span>
+              <span className="font-mono text-sm text-muted-foreground ml-1">sqm</span>
             </div>
           </div>
         </div>
@@ -685,7 +685,7 @@ export default function ResidualMethodPage() {
           <TerminalPanel title="DEVELOPMENT SCHEME">
             <div className="p-4 space-y-4">
               <div>
-                <label className="font-mono text-[10px] text-zinc-500 block mb-2">DEVELOPMENT TYPE</label>
+                <label className="font-mono text-[10px] text-muted-foreground block mb-2">DEVELOPMENT TYPE</label>
                 <div className="grid grid-cols-4 gap-2">
                   {DEVELOPMENT_TYPES.map(type => (
                     <button
@@ -693,8 +693,8 @@ export default function ResidualMethodPage() {
                       onClick={() => setDevelopmentType(type)}
                       className={`p-2 border text-center transition-colors ${
                         developmentType === type
-                          ? 'bg-amber-500/20 border-amber-500 text-amber-400'
-                          : 'bg-zinc-900 border-zinc-700 text-zinc-400 hover:border-zinc-500'
+                          ? 'bg-amber-500/20 border-amber-500 text-amber-600 dark:text-amber-400'
+                          : 'bg-card border-border text-muted-foreground hover:border-zinc-500'
                       }`}
                     >
                       <div className="font-mono text-xs font-bold uppercase">{type}</div>
@@ -705,59 +705,59 @@ export default function ResidualMethodPage() {
 
               <div className="grid grid-cols-4 gap-4">
                 <div>
-                  <label className="font-mono text-[10px] text-zinc-500 block mb-1">
+                  <label className="font-mono text-[10px] text-muted-foreground block mb-1">
                     PLOT SIZE (SQM) <Tooltip text={TOOLTIPS.plotSize} />
                   </label>
                   <input
                     type="number"
                     value={plotSize}
                     onChange={(e) => setPlotSize(Number(e.target.value))}
-                    className="w-full bg-black border border-zinc-700 p-2 font-mono text-sm text-white"
+                    className="w-full bg-background border border-border p-2 font-mono text-sm text-foreground"
                   />
                 </div>
                 <div>
-                  <label className="font-mono text-[10px] text-zinc-500 block mb-1">
+                  <label className="font-mono text-[10px] text-muted-foreground block mb-1">
                     PLOT COVERAGE % <Tooltip text={TOOLTIPS.plotCoverage} />
                   </label>
                   <input
                     type="number"
                     value={plotCoverage * 100}
                     onChange={(e) => setPlotCoverage(Number(e.target.value) / 100)}
-                    className="w-full bg-black border border-zinc-700 p-2 font-mono text-sm text-white"
+                    className="w-full bg-background border border-border p-2 font-mono text-sm text-foreground"
                   />
                 </div>
                 <div>
-                  <label className="font-mono text-[10px] text-zinc-500 block mb-1">NO. OF FLOORS</label>
+                  <label className="font-mono text-[10px] text-muted-foreground block mb-1">NO. OF FLOORS</label>
                   <input
                     type="number"
                     value={numberOfFloors}
                     onChange={(e) => setNumberOfFloors(Number(e.target.value))}
-                    className="w-full bg-black border border-zinc-700 p-2 font-mono text-sm text-white"
+                    className="w-full bg-background border border-border p-2 font-mono text-sm text-foreground"
                   />
                 </div>
                 <div>
-                  <label className="font-mono text-[10px] text-zinc-500 block mb-1">
+                  <label className="font-mono text-[10px] text-muted-foreground block mb-1">
                     EFFICIENCY % <Tooltip text={TOOLTIPS.efficiency} />
                   </label>
                   <input
                     type="number"
                     value={efficiency * 100}
                     onChange={(e) => setEfficiency(Number(e.target.value) / 100)}
-                    className="w-full bg-black border border-zinc-700 p-2 font-mono text-sm text-white"
+                    className="w-full bg-background border border-border p-2 font-mono text-sm text-foreground"
                   />
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4 p-3 bg-zinc-900 border border-zinc-700">
+              <div className="grid grid-cols-2 gap-4 p-3 bg-card border border-border">
                 <div>
-                  <span className="font-mono text-xs text-zinc-500">Gross Building Area</span>
-                  <div className="font-mono text-lg text-white">{grossBuildingArea.toLocaleString()} sqm</div>
+                  <span className="font-mono text-xs text-muted-foreground">Gross Building Area</span>
+                  <div className="font-mono text-lg text-foreground">{grossBuildingArea.toLocaleString()} sqm</div>
                 </div>
                 <div>
-                  <span className="font-mono text-xs text-zinc-500">
+                  <span className="font-mono text-xs text-muted-foreground">
                     Net Saleable Area <Tooltip text={TOOLTIPS.netSaleableArea} />
                   </span>
-                  <div className="font-mono text-lg text-amber-400">{netSaleableArea.toLocaleString()} sqm</div>
+                  <div className="font-mono text-lg text-amber-600 dark:text-amber-400">{netSaleableArea.toLocaleString()} sqm</div>
                 </div>
               </div>
             </div>
@@ -768,18 +768,18 @@ export default function ResidualMethodPage() {
             <div className="p-4 space-y-4">
               {salePriceSource && (
                 <div className="flex items-center gap-2 flex-wrap">
-                  <span className="px-2 py-0.5 bg-green-500/10 border border-green-500/30 rounded font-mono text-[9px] text-green-400">
+                  <span className="px-2 py-0.5 bg-green-500/10 border border-green-500/30 rounded font-mono text-[9px] text-green-600 dark:text-green-400">
                     {loadingMarketData ? 'LOADING...' : `EVIDENCE: ${salePriceSource.toUpperCase()}`}
                   </span>
                   {comparableEvidence[developmentType] && (
-                    <span className="px-2 py-0.5 bg-zinc-800 border border-zinc-700 rounded font-mono text-[9px] text-zinc-400">
+                    <span className="px-2 py-0.5 bg-muted border border-border rounded font-mono text-[9px] text-muted-foreground">
                       P25: GH₵{comparableEvidence[developmentType].p25.toLocaleString()} | MEDIAN: GH₵{comparableEvidence[developmentType].median.toLocaleString()} | P75: GH₵{comparableEvidence[developmentType].p75.toLocaleString()}
                     </span>
                   )}
                   {systemSalePrices[developmentType] && salePricePerSqm !== systemSalePrices[developmentType] && (
                     <button
                       onClick={() => setSalePricePerSqm(systemSalePrices[developmentType])}
-                      className="px-2 py-0.5 bg-amber-500/10 border border-amber-500/30 rounded font-mono text-[9px] text-amber-400 hover:bg-amber-500/20"
+                      className="px-2 py-0.5 bg-amber-500/10 border border-amber-500/30 rounded font-mono text-[9px] text-amber-600 dark:text-amber-400 hover:bg-amber-500/20"
                     >
                       ↺ RESET TO MEDIAN (GH₵{systemSalePrices[developmentType].toLocaleString()})
                     </button>
@@ -788,23 +788,23 @@ export default function ResidualMethodPage() {
               )}
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="font-mono text-[10px] text-zinc-500 block mb-1">
+                  <label className="font-mono text-[10px] text-muted-foreground block mb-1">
                     SALE PRICE/SQM (GH₵) <Tooltip text={TOOLTIPS.salePricePerSqm} />
                   </label>
                   <input
                     type="number"
                     value={salePricePerSqm}
                     onChange={(e) => setSalePricePerSqm(Number(e.target.value))}
-                    className="w-full bg-black border border-zinc-700 p-2 font-mono text-sm text-white"
+                    className="w-full bg-background border border-border p-2 font-mono text-sm text-foreground"
                   />
                 </div>
                 <div className="flex items-end">
                   <div className="w-full p-3 bg-green-500/20 border border-green-500/30">
                     <div className="flex items-center gap-1">
-                      <span className="font-mono text-xs text-green-400">GDV</span>
+                      <span className="font-mono text-xs text-green-600 dark:text-green-400">GDV</span>
                       <Tooltip text={TOOLTIPS.gdv} />
                     </div>
-                    <span className="font-mono text-xl text-green-400 font-bold">
+                    <span className="font-mono text-xl text-green-600 dark:text-green-400 font-bold">
                       GH₵ {gdv.toLocaleString()}
                     </span>
                   </div>
@@ -818,13 +818,13 @@ export default function ResidualMethodPage() {
             <div className="p-4 space-y-4">
               {constructionCostSource && (
                 <div className="flex items-center gap-2">
-                  <span className="px-2 py-0.5 bg-cyan-500/10 border border-cyan-500/30 rounded font-mono text-[9px] text-cyan-400">
+                  <span className="px-2 py-0.5 bg-cyan-500/10 border border-cyan-500/30 rounded font-mono text-[9px] text-cyan-600 dark:text-cyan-400">
                     {loadingMarketData ? 'LOADING...' : `SOURCE: ${constructionCostSource.toUpperCase()}`}
                   </span>
                   {systemConstructionCosts[developmentType] && constructionCostPerSqm !== systemConstructionCosts[developmentType] && (
                     <button
                       onClick={() => setConstructionCostPerSqm(systemConstructionCosts[developmentType])}
-                      className="px-2 py-0.5 bg-amber-500/10 border border-amber-500/30 rounded font-mono text-[9px] text-amber-400 hover:bg-amber-500/20"
+                      className="px-2 py-0.5 bg-amber-500/10 border border-amber-500/30 rounded font-mono text-[9px] text-amber-600 dark:text-amber-400 hover:bg-amber-500/20"
                     >
                       ↺ RESET TO SYSTEM (GH₵{systemConstructionCosts[developmentType].toLocaleString()})
                     </button>
@@ -832,12 +832,12 @@ export default function ResidualMethodPage() {
                 </div>
               )}
               {/* Cost Basis Toggle */}
-              <div className="flex items-center justify-between p-3 bg-zinc-900 border border-zinc-700">
+              <div className="flex items-center justify-between p-3 bg-card border border-border">
                 <div>
-                  <span className="font-mono text-xs text-zinc-400 block">
+                  <span className="font-mono text-xs text-muted-foreground block">
                     COST BASIS <Tooltip text={TOOLTIPS.costBasis} />
                   </span>
-                  <span className="font-mono text-[10px] text-zinc-600">
+                  <span className="font-mono text-[10px] text-muted-foreground">
                     {costBasis === 'gross' ? 'Rate applied to GROSS building area' : 'Rate applied to NET saleable area (auto-converted)'}
                   </span>
                 </div>
@@ -846,8 +846,8 @@ export default function ResidualMethodPage() {
                     onClick={() => setCostBasis('gross')}
                     className={`px-3 py-1 font-mono text-xs border transition-colors ${
                       costBasis === 'gross'
-                        ? 'bg-amber-500/20 border-amber-500 text-amber-400'
-                        : 'bg-black border-zinc-700 text-zinc-500 hover:border-zinc-500'
+                        ? 'bg-amber-500/20 border-amber-500 text-amber-600 dark:text-amber-400'
+                        : 'bg-background border-border text-muted-foreground hover:border-zinc-500'
                     }`}
                   >
                     GROSS
@@ -856,8 +856,8 @@ export default function ResidualMethodPage() {
                     onClick={() => setCostBasis('net')}
                     className={`px-3 py-1 font-mono text-xs border transition-colors ${
                       costBasis === 'net'
-                        ? 'bg-amber-500/20 border-amber-500 text-amber-400'
-                        : 'bg-black border-zinc-700 text-zinc-500 hover:border-zinc-500'
+                        ? 'bg-amber-500/20 border-amber-500 text-amber-600 dark:text-amber-400'
+                        : 'bg-background border-border text-muted-foreground hover:border-zinc-500'
                     }`}
                   >
                     NET
@@ -867,116 +867,116 @@ export default function ResidualMethodPage() {
 
               <div className="grid grid-cols-3 gap-4">
                 <div>
-                  <label className="font-mono text-[10px] text-zinc-500 block mb-1">
+                  <label className="font-mono text-[10px] text-muted-foreground block mb-1">
                     CONSTRUCTION/SQM (GH₵) <Tooltip text={TOOLTIPS.constructionCost} />
                   </label>
                   <input
                     type="number"
                     value={constructionCostPerSqm}
                     onChange={(e) => setConstructionCostPerSqm(Number(e.target.value))}
-                    className="w-full bg-black border border-zinc-700 p-2 font-mono text-sm text-white"
+                    className="w-full bg-background border border-border p-2 font-mono text-sm text-foreground"
                   />
                   {costBasis === 'net' && (
-                    <span className="font-mono text-[10px] text-zinc-600">
+                    <span className="font-mono text-[10px] text-muted-foreground">
                       Effective GROSS rate: GH₵{Math.round(constructionCostPerSqm / efficiency).toLocaleString()}/sqm
                     </span>
                   )}
                 </div>
                 <div>
-                  <label className="font-mono text-[10px] text-zinc-500 block mb-1">
+                  <label className="font-mono text-[10px] text-muted-foreground block mb-1">
                     PROFESSIONAL FEES % <Tooltip text={TOOLTIPS.professionalFees} />
                   </label>
                   <input
                     type="number"
                     value={professionalFees}
                     onChange={(e) => setProfessionalFees(Number(e.target.value))}
-                    className="w-full bg-black border border-zinc-700 p-2 font-mono text-sm text-white"
+                    className="w-full bg-background border border-border p-2 font-mono text-sm text-foreground"
                   />
                 </div>
                 <div>
-                  <label className="font-mono text-[10px] text-zinc-500 block mb-1">
+                  <label className="font-mono text-[10px] text-muted-foreground block mb-1">
                     CONTINGENCY % <Tooltip text={TOOLTIPS.contingency} />
                   </label>
                   <input
                     type="number"
                     value={contingency}
                     onChange={(e) => setContingency(Number(e.target.value))}
-                    className="w-full bg-black border border-zinc-700 p-2 font-mono text-sm text-white"
+                    className="w-full bg-background border border-border p-2 font-mono text-sm text-foreground"
                   />
                 </div>
               </div>
 
               <div className="grid grid-cols-3 gap-4">
                 <div>
-                  <label className="font-mono text-[10px] text-zinc-500 block mb-1">
+                  <label className="font-mono text-[10px] text-muted-foreground block mb-1">
                     MARKETING % <Tooltip text={TOOLTIPS.marketing} />
                   </label>
                   <input
                     type="number"
                     value={marketingCost}
                     onChange={(e) => setMarketingCost(Number(e.target.value))}
-                    className="w-full bg-black border border-zinc-700 p-2 font-mono text-sm text-white"
+                    className="w-full bg-background border border-border p-2 font-mono text-sm text-foreground"
                   />
                 </div>
                 <div>
-                  <label className="font-mono text-[10px] text-zinc-500 block mb-1">
+                  <label className="font-mono text-[10px] text-muted-foreground block mb-1">
                     SALES COMMISSION % <Tooltip text={TOOLTIPS.salesCommission} />
                   </label>
                   <input
                     type="number"
                     value={salesCommission}
                     onChange={(e) => setSalesCommission(Number(e.target.value))}
-                    className="w-full bg-black border border-zinc-700 p-2 font-mono text-sm text-white"
+                    className="w-full bg-background border border-border p-2 font-mono text-sm text-foreground"
                   />
                 </div>
                 <div>
-                  <label className="font-mono text-[10px] text-zinc-500 block mb-1">
+                  <label className="font-mono text-[10px] text-muted-foreground block mb-1">
                     LEGAL FEES % <Tooltip text={TOOLTIPS.legalFees} />
                   </label>
                   <input
                     type="number"
                     value={legalFees}
                     onChange={(e) => setLegalFees(Number(e.target.value))}
-                    className="w-full bg-black border border-zinc-700 p-2 font-mono text-sm text-white"
+                    className="w-full bg-background border border-border p-2 font-mono text-sm text-foreground"
                   />
                 </div>
               </div>
 
               <div className="grid grid-cols-3 gap-4">
                 <div>
-                  <label className="font-mono text-[10px] text-zinc-500 block mb-1">
+                  <label className="font-mono text-[10px] text-muted-foreground block mb-1">
                     INTEREST RATE % <Tooltip text={TOOLTIPS.interestRate} />
                     {interestRateSource && (
-                      <span className="text-zinc-600 ml-1">({interestRateSource})</span>
+                      <span className="text-muted-foreground ml-1">({interestRateSource})</span>
                     )}
                   </label>
                   <input
                     type="number"
                     value={interestRate}
                     onChange={(e) => setInterestRate(Number(e.target.value))}
-                    className="w-full bg-black border border-zinc-700 p-2 font-mono text-sm text-white"
+                    className="w-full bg-background border border-border p-2 font-mono text-sm text-foreground"
                   />
                 </div>
                 <div>
-                  <label className="font-mono text-[10px] text-zinc-500 block mb-1">
+                  <label className="font-mono text-[10px] text-muted-foreground block mb-1">
                     LOAN TO VALUE % <Tooltip text={TOOLTIPS.loanToValue} />
                   </label>
                   <input
                     type="number"
                     value={loanToValue}
                     onChange={(e) => setLoanToValue(Number(e.target.value))}
-                    className="w-full bg-black border border-zinc-700 p-2 font-mono text-sm text-white"
+                    className="w-full bg-background border border-border p-2 font-mono text-sm text-foreground"
                   />
                 </div>
                 <div>
-                  <label className="font-mono text-[10px] text-zinc-500 block mb-1">
+                  <label className="font-mono text-[10px] text-muted-foreground block mb-1">
                     DEV. TIMELINE (MONTHS) <Tooltip text={TOOLTIPS.timeline} />
                   </label>
                   <input
                     type="number"
                     value={totalMonths}
                     disabled
-                    className="w-full bg-zinc-900 border border-zinc-700 p-2 font-mono text-sm text-zinc-500"
+                    className="w-full bg-card border border-border p-2 font-mono text-sm text-muted-foreground"
                   />
                 </div>
               </div>
@@ -985,22 +985,22 @@ export default function ResidualMethodPage() {
               {economicData && (
                 <div className="flex items-center gap-3 flex-wrap">
                   {economicData.lending_rate && (
-                    <span className="px-2 py-0.5 bg-blue-500/10 border border-blue-500/30 rounded font-mono text-[9px] text-blue-400">
+                    <span className="px-2 py-0.5 bg-blue-500/10 border border-blue-500/30 rounded font-mono text-[9px] text-blue-600 dark:text-blue-400">
                       LENDING: {parseFloat(economicData.lending_rate).toFixed(1)}%
                     </span>
                   )}
                   {economicData.interest_rate_prime && (
-                    <span className="px-2 py-0.5 bg-zinc-800 border border-zinc-700 rounded font-mono text-[9px] text-zinc-400">
+                    <span className="px-2 py-0.5 bg-muted border border-border rounded font-mono text-[9px] text-muted-foreground">
                       PRIME: {parseFloat(economicData.interest_rate_prime).toFixed(1)}%
                     </span>
                   )}
                   {economicData.interest_rate_policy && (
-                    <span className="px-2 py-0.5 bg-zinc-800 border border-zinc-700 rounded font-mono text-[9px] text-zinc-400">
+                    <span className="px-2 py-0.5 bg-muted border border-border rounded font-mono text-[9px] text-muted-foreground">
                       POLICY: {parseFloat(economicData.interest_rate_policy).toFixed(1)}%
                     </span>
                   )}
                   {economicData.mortgage_rate_avg && (
-                    <span className="px-2 py-0.5 bg-zinc-800 border border-zinc-700 rounded font-mono text-[9px] text-zinc-400">
+                    <span className="px-2 py-0.5 bg-muted border border-border rounded font-mono text-[9px] text-muted-foreground">
                       MORTGAGE: {parseFloat(economicData.mortgage_rate_avg).toFixed(1)}%
                     </span>
                   )}
@@ -1008,12 +1008,12 @@ export default function ResidualMethodPage() {
               )}
 
               {/* Finance Model Toggle */}
-              <div className="flex items-center justify-between p-3 bg-zinc-900 border border-zinc-700">
+              <div className="flex items-center justify-between p-3 bg-card border border-border">
                 <div>
-                  <span className="font-mono text-xs text-zinc-400 block">
+                  <span className="font-mono text-xs text-muted-foreground block">
                     FINANCE MODEL <Tooltip text={TOOLTIPS.financeModel} />
                   </span>
-                  <span className="font-mono text-[10px] text-zinc-600">
+                  <span className="font-mono text-[10px] text-muted-foreground">
                     {useAdvancedFinance 
                       ? 'S-curve drawdown: avg. 55% of loan outstanding' 
                       : 'Simple model: 100% loan for full period'}
@@ -1024,8 +1024,8 @@ export default function ResidualMethodPage() {
                     onClick={() => setUseAdvancedFinance(false)}
                     className={`px-3 py-1 font-mono text-xs border transition-colors ${
                       !useAdvancedFinance
-                        ? 'bg-amber-500/20 border-amber-500 text-amber-400'
-                        : 'bg-black border-zinc-700 text-zinc-500 hover:border-zinc-500'
+                        ? 'bg-amber-500/20 border-amber-500 text-amber-600 dark:text-amber-400'
+                        : 'bg-background border-border text-muted-foreground hover:border-zinc-500'
                     }`}
                   >
                     SIMPLE
@@ -1034,8 +1034,8 @@ export default function ResidualMethodPage() {
                     onClick={() => setUseAdvancedFinance(true)}
                     className={`px-3 py-1 font-mono text-xs border transition-colors ${
                       useAdvancedFinance
-                        ? 'bg-amber-500/20 border-amber-500 text-amber-400'
-                        : 'bg-black border-zinc-700 text-zinc-500 hover:border-zinc-500'
+                        ? 'bg-amber-500/20 border-amber-500 text-amber-600 dark:text-amber-400'
+                        : 'bg-background border-border text-muted-foreground hover:border-zinc-500'
                     }`}
                   >
                     S-CURVE
@@ -1044,14 +1044,14 @@ export default function ResidualMethodPage() {
               </div>
 
               {/* Finance Cost Preview */}
-              <div className="grid grid-cols-2 gap-4 p-3 bg-zinc-900/50 border border-zinc-800">
+              <div className="grid grid-cols-2 gap-4 p-3 bg-card/50 border border-border">
                 <div>
-                  <span className="font-mono text-[10px] text-zinc-600">Finance Cost</span>
-                  <div className="font-mono text-sm text-red-400">GH₵ {financeCost.toLocaleString()}</div>
+                  <span className="font-mono text-[10px] text-muted-foreground">Finance Cost</span>
+                  <div className="font-mono text-sm text-red-600 dark:text-red-400">GH₵ {financeCost.toLocaleString()}</div>
                 </div>
                 <div>
-                  <span className="font-mono text-[10px] text-zinc-600">As % of Construction</span>
-                  <div className="font-mono text-sm text-zinc-400">
+                  <span className="font-mono text-[10px] text-muted-foreground">As % of Construction</span>
+                  <div className="font-mono text-sm text-muted-foreground">
                     {totalConstructionCost > 0 ? ((financeCost / totalConstructionCost) * 100).toFixed(1) : 0}%
                   </div>
                 </div>
@@ -1067,7 +1067,7 @@ export default function ResidualMethodPage() {
             <div className="p-4 space-y-4">
               <div>
                 <div className="flex items-center gap-4 mb-2">
-                  <label className="font-mono text-xs text-zinc-400">
+                  <label className="font-mono text-xs text-muted-foreground">
                     Target Profit on Cost: <Tooltip text={TOOLTIPS.developerProfit} />
                   </label>
                   <input
@@ -1078,14 +1078,14 @@ export default function ResidualMethodPage() {
                     onChange={(e) => setTargetProfit(Number(e.target.value))}
                     className="flex-1"
                   />
-                  <span className="font-mono text-sm text-amber-400 w-12 text-right">
+                  <span className="font-mono text-sm text-amber-600 dark:text-amber-400 w-12 text-right">
                     {targetProfit}%
                   </span>
                 </div>
-                <div className="font-mono text-xs text-zinc-500">
+                <div className="font-mono text-xs text-muted-foreground">
                   Target profit: GH₵ {targetProfitAmount.toLocaleString()}
                 </div>
-                <div className="font-mono text-[10px] text-zinc-600 mt-1">
+                <div className="font-mono text-[10px] text-muted-foreground mt-1">
                   Typical Ghana residential range: 20–30% of GDV
                 </div>
               </div>
@@ -1093,12 +1093,12 @@ export default function ResidualMethodPage() {
               {/* Break-even Analysis */}
               <div className={`p-3 border ${breakEvenProfitPercent >= 15 ? 'bg-green-500/10 border-green-500/30' : breakEvenProfitPercent >= 10 ? 'bg-amber-500/10 border-amber-500/30' : 'bg-red-500/10 border-red-500/30'}`}>
                 <div className="flex justify-between items-center mb-2">
-                  <span className="font-mono text-[10px] text-zinc-400">BREAK-EVEN PROFIT</span>
-                  <span className={`font-mono text-sm font-bold ${breakEvenProfitPercent >= 15 ? 'text-green-400' : breakEvenProfitPercent >= 10 ? 'text-amber-400' : 'text-red-400'}`}>
+                  <span className="font-mono text-[10px] text-muted-foreground">BREAK-EVEN PROFIT</span>
+                  <span className={`font-mono text-sm font-bold ${breakEvenProfitPercent >= 15 ? 'text-green-600 dark:text-green-400' : breakEvenProfitPercent >= 10 ? 'text-amber-600 dark:text-amber-400' : 'text-red-600 dark:text-red-400'}`}>
                     {breakEvenProfitPercent.toFixed(1)}%
                   </span>
                 </div>
-                <div className="font-mono text-xs text-zinc-500">
+                <div className="font-mono text-xs text-muted-foreground">
                   {breakEvenProfitPercent >= 20 
                     ? 'Achievable profit is above typical Ghana market benchmarks.'
                     : breakEvenProfitPercent >= 15
@@ -1106,7 +1106,7 @@ export default function ResidualMethodPage() {
                     : 'Achievable profit is below typical Ghana market benchmarks.'}
                 </div>
                 {profitGap !== 0 && (
-                  <div className={`font-mono text-xs mt-1 ${profitGap > 0 ? 'text-green-400' : 'text-red-400'}`}>
+                  <div className={`font-mono text-xs mt-1 ${profitGap > 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
                     {profitGap > 0 ? '↑' : '↓'} {Math.abs(profitGap).toFixed(1)}% {profitGap > 0 ? 'above' : 'below'} target
                   </div>
                 )}
@@ -1115,17 +1115,17 @@ export default function ResidualMethodPage() {
               {/* Min Viable Land Value */}
               {minViableLandValue > 0 && minViableLandValue < residualLandValue && (
                 <div className="p-3 bg-blue-500/10 border border-blue-500/30">
-                  <div className="font-mono text-[10px] text-zinc-400 mb-1">MIN VIABLE LAND VALUE (at 15% profit)</div>
-                  <div className="font-mono text-sm text-blue-400">GH₵ {minViableLandValue.toLocaleString()}</div>
-                  <div className="font-mono text-[10px] text-zinc-600 mt-1">
+                  <div className="font-mono text-[10px] text-muted-foreground mb-1">MIN VIABLE LAND VALUE (at 15% profit)</div>
+                  <div className="font-mono text-sm text-blue-600 dark:text-blue-400">GH₵ {minViableLandValue.toLocaleString()}</div>
+                  <div className="font-mono text-[10px] text-muted-foreground mt-1">
                     Buffer: GH₵ {(residualLandValue - minViableLandValue).toLocaleString()} above minimum
                   </div>
                 </div>
               )}
 
               <div className="flex items-start gap-3 p-3 bg-blue-500/10 border border-blue-500/30">
-                <Info className="w-4 h-4 text-blue-400 mt-0.5" />
-                <div className="font-mono text-xs text-blue-300">
+                <Info className="w-4 h-4 text-blue-600 dark:text-blue-400 mt-0.5" />
+                <div className="font-mono text-xs text-blue-600 dark:text-blue-300">
                   Ghana market typically requires 20-25% profit margin due to risk factors
                 </div>
               </div>
@@ -1135,31 +1135,31 @@ export default function ResidualMethodPage() {
           {/* Sensitivity Toggles */}
           <TerminalPanel title="QUICK SENSITIVITY">
             <div className="p-4 space-y-2">
-              <div className="font-mono text-[10px] text-zinc-500 mb-3">Test impact of changes:</div>
+              <div className="font-mono text-[10px] text-muted-foreground mb-3">Test impact of changes:</div>
               <div className="grid grid-cols-2 gap-2">
                 <button 
                   onClick={() => setSalePricePerSqm(Math.round(salePricePerSqm * 1.1))}
                   className="p-2 bg-green-500/10 border border-green-500/30 hover:bg-green-500/20 transition-colors"
                 >
-                  <span className="font-mono text-xs text-green-400">Sale +10%</span>
+                  <span className="font-mono text-xs text-green-600 dark:text-green-400">Sale +10%</span>
                 </button>
                 <button 
                   onClick={() => setConstructionCostPerSqm(Math.round(constructionCostPerSqm * 0.9))}
                   className="p-2 bg-green-500/10 border border-green-500/30 hover:bg-green-500/20 transition-colors"
                 >
-                  <span className="font-mono text-xs text-green-400">Cost -10%</span>
+                  <span className="font-mono text-xs text-green-600 dark:text-green-400">Cost -10%</span>
                 </button>
                 <button 
                   onClick={() => setNumberOfFloors(numberOfFloors + 1)}
                   className="p-2 bg-blue-500/10 border border-blue-500/30 hover:bg-blue-500/20 transition-colors"
                 >
-                  <span className="font-mono text-xs text-blue-400">Floors +1</span>
+                  <span className="font-mono text-xs text-blue-600 dark:text-blue-400">Floors +1</span>
                 </button>
                 <button 
                   onClick={() => setTargetProfit(Math.max(10, targetProfit - 5))}
                   className="p-2 bg-amber-500/10 border border-amber-500/30 hover:bg-amber-500/20 transition-colors"
                 >
-                  <span className="font-mono text-xs text-amber-400">Profit -5%</span>
+                  <span className="font-mono text-xs text-amber-600 dark:text-amber-400">Profit -5%</span>
                 </button>
               </div>
               <button 
@@ -1185,11 +1185,11 @@ export default function ResidualMethodPage() {
                     setTargetProfit(20)
                   }
                 }}
-                className="w-full p-2 bg-zinc-800 border border-zinc-700 hover:border-zinc-500 transition-colors"
+                className="w-full p-2 bg-muted border border-border hover:border-zinc-500 transition-colors"
               >
-                <span className="font-mono text-xs text-zinc-400">↺ Reset to Defaults</span>
+                <span className="font-mono text-xs text-muted-foreground">↺ Reset to Defaults</span>
               </button>
-              <div className="font-mono text-[9px] text-zinc-600 mt-2 italic">
+              <div className="font-mono text-[9px] text-muted-foreground mt-2 italic">
                 Sensitivity testing is indicative only and does not replace full scenario analysis.
               </div>
             </div>
@@ -1198,64 +1198,64 @@ export default function ResidualMethodPage() {
           {/* Residual Calculation */}
           <TerminalPanel title="RESIDUAL CALCULATION">
             <div className="p-4 space-y-3">
-              <div className="flex justify-between py-2 border-b border-zinc-800">
-                <span className="font-mono text-xs text-zinc-500">Gross Development Value</span>
-                <span className="font-mono text-sm text-green-400">
+              <div className="flex justify-between py-2 border-b border-border">
+                <span className="font-mono text-xs text-muted-foreground">Gross Development Value</span>
+                <span className="font-mono text-sm text-green-600 dark:text-green-400">
                   GH₵ {gdv.toLocaleString()}
                 </span>
               </div>
-              <div className="flex justify-between py-2 border-b border-zinc-800">
-                <span className="font-mono text-xs text-zinc-500">Less: Construction Costs</span>
-                <span className="font-mono text-sm text-red-400">
+              <div className="flex justify-between py-2 border-b border-border">
+                <span className="font-mono text-xs text-muted-foreground">Less: Construction Costs</span>
+                <span className="font-mono text-sm text-red-600 dark:text-red-400">
                   -GH₵ {totalConstructionCost.toLocaleString()}
                 </span>
               </div>
-              <div className="flex justify-between py-2 border-b border-zinc-800">
-                <span className="font-mono text-xs text-zinc-500">Less: Sales & Marketing</span>
-                <span className="font-mono text-sm text-red-400">
+              <div className="flex justify-between py-2 border-b border-border">
+                <span className="font-mono text-xs text-muted-foreground">Less: Sales & Marketing</span>
+                <span className="font-mono text-sm text-red-600 dark:text-red-400">
                   -GH₵ {totalSalesCost.toLocaleString()}
                 </span>
               </div>
-              <div className="flex justify-between py-2 border-b border-zinc-800">
-                <span className="font-mono text-xs text-zinc-500">
+              <div className="flex justify-between py-2 border-b border-border">
+                <span className="font-mono text-xs text-muted-foreground">
                   Less: Finance Costs {useAdvancedFinance ? '(S-curve)' : '(Simple)'}
                 </span>
-                <span className="font-mono text-sm text-red-400">
+                <span className="font-mono text-sm text-red-600 dark:text-red-400">
                   -GH₵ {financeCost.toLocaleString()}
                 </span>
               </div>
-              <div className="flex justify-between py-2 border-b border-zinc-800">
-                <span className="font-mono text-xs text-zinc-500">Less: Developer Profit ({targetProfit}%)</span>
-                <span className="font-mono text-sm text-red-400">
+              <div className="flex justify-between py-2 border-b border-border">
+                <span className="font-mono text-xs text-muted-foreground">Less: Developer Profit ({targetProfit}%)</span>
+                <span className="font-mono text-sm text-red-600 dark:text-red-400">
                   -GH₵ {targetProfitAmount.toLocaleString()}
                 </span>
               </div>
               <div className={`flex justify-between py-3 -mx-4 px-4 ${isViable ? 'bg-amber-500/20' : 'bg-red-500/20'}`}>
                 <div>
-                  <span className={`font-mono text-sm font-bold ${isViable ? 'text-amber-400' : 'text-red-400'}`}>
+                  <span className={`font-mono text-sm font-bold ${isViable ? 'text-amber-600 dark:text-amber-400' : 'text-red-600 dark:text-red-400'}`}>
                     RESIDUAL LAND VALUE <Tooltip text={TOOLTIPS.residualLandValue} />
                   </span>
                   {!isViable && (
-                    <span className="ml-2 px-2 py-0.5 bg-red-500/20 border border-red-500/40 rounded font-mono text-[9px] text-red-400">
+                    <span className="ml-2 px-2 py-0.5 bg-red-500/20 border border-red-500/40 rounded font-mono text-[9px] text-red-600 dark:text-red-400">
                       RICS: LAND VALUE CANNOT BE NEGATIVE — SCHEME NOT VIABLE
                     </span>
                   )}
                 </div>
-                <span className={`font-mono text-xl font-bold ${isViable ? 'text-amber-400' : 'text-red-400'}`}>
+                <span className={`font-mono text-xl font-bold ${isViable ? 'text-amber-600 dark:text-amber-400' : 'text-red-600 dark:text-red-400'}`}>
                   GH₵ {residualLandValue.toLocaleString()}
                 </span>
               </div>
               {!isViable && (
                 <div className="flex justify-between py-2 bg-red-500/10 -mx-4 px-4 border-t border-red-500/20">
-                  <span className="font-mono text-[10px] text-red-400">Shortfall (development not viable by)</span>
-                  <span className="font-mono text-sm text-red-400">
+                  <span className="font-mono text-[10px] text-red-600 dark:text-red-400">Shortfall (development not viable by)</span>
+                  <span className="font-mono text-sm text-red-600 dark:text-red-400">
                     GH₵ {Math.abs(rawResidualLandValue).toLocaleString()}
                   </span>
                 </div>
               )}
-              <div className="flex justify-between py-2 bg-zinc-900 -mx-4 px-4">
-                <span className="font-mono text-xs text-zinc-500">Value per SQM of Land</span>
-                <span className="font-mono text-sm text-white">
+              <div className="flex justify-between py-2 bg-card -mx-4 px-4">
+                <span className="font-mono text-xs text-muted-foreground">Value per SQM of Land</span>
+                <span className="font-mono text-sm text-foreground">
                   GH₵ {landValuePerSqm.toLocaleString()}/sqm
                 </span>
               </div>
@@ -1263,8 +1263,8 @@ export default function ResidualMethodPage() {
               {/* Break-even Land Value Indicator */}
               {minViableLandValue > 0 && (
                 <div className="flex justify-between py-2 bg-blue-500/10 -mx-4 px-4 border-t border-blue-500/20">
-                  <span className="font-mono text-xs text-blue-400">Break-even Land Value (at 15%)</span>
-                  <span className="font-mono text-sm text-blue-400">
+                  <span className="font-mono text-xs text-blue-600 dark:text-blue-400">Break-even Land Value (at 15%)</span>
+                  <span className="font-mono text-sm text-blue-600 dark:text-blue-400">
                     GH₵ {minViableLandValue.toLocaleString()}
                   </span>
                 </div>
@@ -1276,19 +1276,19 @@ export default function ResidualMethodPage() {
           {!isViable ? (
             <div className="p-4 bg-red-500/10 border border-red-500/30">
               <div className="flex items-start gap-3">
-                <AlertTriangle className="w-5 h-5 text-red-400" />
+                <AlertTriangle className="w-5 h-5 text-red-600 dark:text-red-400" />
                 <div>
-                  <div className="font-mono text-sm text-red-400 font-bold mb-1">⚠ SCHEME NOT VIABLE — LAND VALUE: NIL</div>
-                  <div className="font-mono text-xs text-red-300">
+                  <div className="font-mono text-sm text-red-600 dark:text-red-400 font-bold mb-1">⚠ SCHEME NOT VIABLE — LAND VALUE: NIL</div>
+                  <div className="font-mono text-xs text-red-600 dark:text-red-300">
                     Per RICS Valuation of Development Property guidance, land value cannot be negative.
                     A nil residual indicates the proposed development is not financially viable at stated assumptions.
                   </div>
-                  <div className="font-mono text-xs text-red-300 mt-1">
+                  <div className="font-mono text-xs text-red-600 dark:text-red-300 mt-1">
                     Shortfall: GH₵ {Math.abs(rawResidualLandValue).toLocaleString()} — the development costs exceed achievable GDV.
                   </div>
-                  <div className="font-mono text-xs text-zinc-500 mt-2">
+                  <div className="font-mono text-xs text-muted-foreground mt-2">
                     Adjust assumptions to achieve viability:
-                    <ul className="list-disc list-inside mt-1 space-y-0.5 text-red-300/80">
+                    <ul className="list-disc list-inside mt-1 space-y-0.5 text-red-600 dark:text-red-300/80">
                       <li>Increase sale price per sqm</li>
                       <li>Reduce construction costs</li>
                       <li>Add more floors (increase density)</li>
@@ -1301,13 +1301,13 @@ export default function ResidualMethodPage() {
           ) : breakEvenProfitPercent < 15 ? (
             <div className="p-4 bg-amber-500/10 border border-amber-500/30">
               <div className="flex items-start gap-3">
-                <Info className="w-5 h-5 text-amber-400" />
+                <Info className="w-5 h-5 text-amber-600 dark:text-amber-400" />
                 <div>
-                  <div className="font-mono text-sm text-amber-400 font-bold mb-1">⚡ MARGINAL VIABILITY</div>
-                  <div className="font-mono text-xs text-amber-300">
+                  <div className="font-mono text-sm text-amber-600 dark:text-amber-400 font-bold mb-1">⚡ MARGINAL VIABILITY</div>
+                  <div className="font-mono text-xs text-amber-600 dark:text-amber-300">
                     Scheme is viable but profit ({breakEvenProfitPercent.toFixed(1)}%) is below typical 15% threshold.
                   </div>
-                  <div className="font-mono text-xs text-zinc-500 mt-1">
+                  <div className="font-mono text-xs text-muted-foreground mt-1">
                     Consider reducing land bid or improving scheme economics.
                   </div>
                 </div>
@@ -1316,14 +1316,14 @@ export default function ResidualMethodPage() {
           ) : (
             <div className="p-4 bg-green-500/10 border border-green-500/30">
               <div className="flex items-start gap-3">
-                <TrendingUp className="w-5 h-5 text-green-400" />
+                <TrendingUp className="w-5 h-5 text-green-600 dark:text-green-400" />
                 <div>
-                  <div className="font-mono text-sm text-green-400 font-bold mb-1">✓ VIABLE SCHEME</div>
-                  <div className="font-mono text-xs text-green-300">
+                  <div className="font-mono text-sm text-green-600 dark:text-green-400 font-bold mb-1">✓ VIABLE SCHEME</div>
+                  <div className="font-mono text-xs text-green-600 dark:text-green-300">
                     Development achieves {breakEvenProfitPercent.toFixed(1)}% profit on cost.
                   </div>
                   {breakEvenProfitPercent >= targetProfit && (
-                    <div className="font-mono text-xs text-green-300/80 mt-1">
+                    <div className="font-mono text-xs text-green-600 dark:text-green-300/80 mt-1">
                       Exceeds target profit of {targetProfit}% by {(breakEvenProfitPercent - targetProfit).toFixed(1)}%.
                     </div>
                   )}
@@ -1335,11 +1335,11 @@ export default function ResidualMethodPage() {
       </div>
 
       {/* RICS/GhIS Compliance Disclosure */}
-      <div className="mt-6 p-4 bg-zinc-900/50 border border-zinc-800">
+      <div className="mt-6 p-4 bg-card/50 border border-border">
         <div className="flex items-start gap-3">
-          <AlertTriangle className="w-4 h-4 text-zinc-500 mt-0.5 flex-shrink-0" />
-          <div className="font-mono text-[10px] text-zinc-500 leading-relaxed">
-            <strong className="text-zinc-400">Residual Valuation Disclosure:</strong> This residual valuation is prepared for 
+          <AlertTriangle className="w-4 h-4 text-muted-foreground mt-0.5 flex-shrink-0" />
+          <div className="font-mono text-[10px] text-muted-foreground leading-relaxed">
+            <strong className="text-muted-foreground">Residual Valuation Disclosure:</strong> This residual valuation is prepared for 
             feasibility and decision-support purposes. It is highly sensitive to assumptions regarding value, cost, finance, 
             and profit. Results should not be relied upon in isolation and must be interpreted with professional judgment. 
             Methodology is aligned with RICS residual valuation principles and GhIS development practice.
@@ -1351,14 +1351,14 @@ export default function ResidualMethodPage() {
       <div className="mt-6 flex justify-between">
         <Link
           href={getBackPath()}
-          className="px-6 py-3 bg-zinc-800 text-zinc-400 font-mono text-sm hover:text-white transition-colors"
+          className="px-6 py-3 bg-muted text-muted-foreground font-mono text-sm hover:text-foreground transition-colors"
         >
           ← BACK
         </Link>
         <button
           onClick={handleSave}
           disabled={saving}
-          className="px-6 py-3 bg-amber-500 text-white font-mono text-sm font-bold hover:bg-amber-400 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-2"
+          className="px-6 py-3 bg-amber-500 text-foreground font-mono text-sm font-bold hover:bg-amber-400 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-2"
         >
           {saving && <Loader2 className="w-4 h-4 animate-spin" />}
           SAVE & CONTINUE TO RECONCILIATION →

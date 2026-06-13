@@ -317,12 +317,12 @@ function NewTenantContent() {
                                 className={`flex items-center gap-3 px-4 py-2 rounded-lg transition-all ${isActive
                                     ? 'bg-primary text-primary-foreground'
                                     : isCompleted
-                                        ? 'bg-green-900/30 text-green-500 cursor-pointer hover:bg-green-900/50'
+                                        ? 'bg-green-100 dark:bg-green-900/30 text-green-500 cursor-pointer hover:bg-green-900/50'
                                         : 'text-muted-foreground'
                                     }`}
                                 disabled={currentStep < step.id}
                             >
-                                <div className={`h-8 w-8 rounded-full flex items-center justify-center ${isActive ? 'bg-black/20' : isCompleted ? 'bg-green-500/20' : 'bg-secondary'
+                                <div className={`h-8 w-8 rounded-full flex items-center justify-center ${isActive ? 'bg-background/20' : isCompleted ? 'bg-green-500/20' : 'bg-secondary'
                                     }`}>
                                     {isCompleted ? (
                                         <CheckCircle className="h-4 w-4" />
@@ -370,59 +370,59 @@ function NewTenantContent() {
                                         />
                                     </div>
                                     <div className="space-y-2">
-                                        <Label className="text-[10px] font-mono uppercase text-zinc-500">Ghana Card Number *</Label>
+                                        <Label className="text-[10px] font-mono uppercase text-muted-foreground">Ghana Card Number *</Label>
                                         <Input
                                             placeholder="GHA-000000000-0"
                                             value={tenantForm.ghanaCardNumber}
                                             onChange={(e) => setTenantForm(prev => ({ ...prev, ghanaCardNumber: e.target.value }))}
-                                            className="bg-black border-zinc-800 text-white font-mono focus:border-amber-500"
+                                            className="bg-background border-border text-foreground font-mono focus:border-amber-500"
                                         />
                                     </div>
                                     <div className="space-y-2">
-                                        <Label className="text-[10px] font-mono uppercase text-zinc-500">Phone (Primary) *</Label>
+                                        <Label className="text-[10px] font-mono uppercase text-muted-foreground">Phone (Primary) *</Label>
                                         <Input
                                             placeholder="e.g. 024 123 4567"
                                             value={tenantForm.phonePrimary}
                                             onChange={(e) => setTenantForm(prev => ({ ...prev, phonePrimary: e.target.value }))}
-                                            className="bg-black border-zinc-800 text-white font-mono focus:border-amber-500"
+                                            className="bg-background border-border text-foreground font-mono focus:border-amber-500"
                                         />
                                     </div>
                                     <div className="space-y-2">
-                                        <Label className="text-[10px] font-mono uppercase text-zinc-500">Email</Label>
+                                        <Label className="text-[10px] font-mono uppercase text-muted-foreground">Email</Label>
                                         <Input
                                             type="email"
                                             placeholder="e.g. kwame@example.com"
                                             value={tenantForm.email}
                                             onChange={(e) => setTenantForm(prev => ({ ...prev, email: e.target.value }))}
-                                            className="bg-black border-zinc-800 text-white font-mono focus:border-amber-500"
+                                            className="bg-background border-border text-foreground font-mono focus:border-amber-500"
                                         />
                                     </div>
                                     <div className="space-y-2">
-                                        <Label className="text-[10px] font-mono uppercase text-zinc-500">Date of Birth</Label>
+                                        <Label className="text-[10px] font-mono uppercase text-muted-foreground">Date of Birth</Label>
                                         <Input
                                             type="date"
                                             value={tenantForm.dateOfBirth}
                                             onChange={(e) => setTenantForm(prev => ({ ...prev, dateOfBirth: e.target.value }))}
-                                            className="bg-black border-zinc-800 text-white font-mono focus:border-amber-500"
+                                            className="bg-background border-border text-foreground font-mono focus:border-amber-500"
                                         />
                                     </div>
                                     <div className="space-y-2">
-                                        <Label className="text-[10px] font-mono uppercase text-zinc-500">Digital Address</Label>
+                                        <Label className="text-[10px] font-mono uppercase text-muted-foreground">Digital Address</Label>
                                         <Input
                                             placeholder="GA-123-4567"
                                             value={tenantForm.digitalAddress}
                                             onChange={(e) => setTenantForm(prev => ({ ...prev, digitalAddress: e.target.value }))}
-                                            className="bg-black border-zinc-800 text-white font-mono focus:border-amber-500"
+                                            className="bg-background border-border text-foreground font-mono focus:border-amber-500"
                                         />
                                     </div>
                                 </div>
                                 <div className="space-y-2">
-                                    <Label className="text-[10px] font-mono uppercase text-zinc-500">Current Address</Label>
+                                    <Label className="text-[10px] font-mono uppercase text-muted-foreground">Current Address</Label>
                                     <Textarea
                                         placeholder="Enter current residential address"
                                         value={tenantForm.currentAddress}
                                         onChange={(e) => setTenantForm(prev => ({ ...prev, currentAddress: e.target.value }))}
-                                        className="bg-black border-zinc-800 text-white font-mono focus:border-amber-500 h-20"
+                                        className="bg-background border-border text-foreground font-mono focus:border-amber-500 h-20"
                                     />
                                 </div>
                             </CardContent>
@@ -435,31 +435,31 @@ function NewTenantContent() {
                             </CardHeader>
                             <CardContent className="space-y-4">
                                 <div className="space-y-2">
-                                    <Label className="text-[10px] font-mono uppercase text-zinc-500">Occupation</Label>
+                                    <Label className="text-[10px] font-mono uppercase text-muted-foreground">Occupation</Label>
                                     <Input
                                         placeholder="e.g. Software Engineer"
                                         value={tenantForm.occupation}
                                         onChange={(e) => setTenantForm(prev => ({ ...prev, occupation: e.target.value }))}
-                                        className="bg-black border-zinc-800 text-white font-mono focus:border-amber-500"
+                                        className="bg-background border-border text-foreground font-mono focus:border-amber-500"
                                     />
                                 </div>
                                 <div className="space-y-2">
-                                    <Label className="text-[10px] font-mono uppercase text-zinc-500">Employer</Label>
+                                    <Label className="text-[10px] font-mono uppercase text-muted-foreground">Employer</Label>
                                     <Input
                                         placeholder="e.g. Tech Solutions Ltd"
                                         value={tenantForm.employer}
                                         onChange={(e) => setTenantForm(prev => ({ ...prev, employer: e.target.value }))}
-                                        className="bg-black border-zinc-800 text-white font-mono focus:border-amber-500"
+                                        className="bg-background border-border text-foreground font-mono focus:border-amber-500"
                                     />
                                 </div>
                                 <div className="space-y-2">
-                                    <Label className="text-[10px] font-mono uppercase text-zinc-500">Monthly Income (GHS)</Label>
+                                    <Label className="text-[10px] font-mono uppercase text-muted-foreground">Monthly Income (GHS)</Label>
                                     <Input
                                         type="number"
                                         placeholder="0.00"
                                         value={tenantForm.monthlyIncome}
                                         onChange={(e) => setTenantForm(prev => ({ ...prev, monthlyIncome: e.target.value }))}
-                                        className="bg-black border-zinc-800 text-white font-mono focus:border-amber-500"
+                                        className="bg-background border-border text-foreground font-mono focus:border-amber-500"
                                     />
                                 </div>
                             </CardContent>
@@ -472,24 +472,24 @@ function NewTenantContent() {
                             </CardHeader>
                             <CardContent className="space-y-4">
                                 <div className="space-y-2">
-                                    <Label className="text-[10px] font-mono uppercase text-zinc-500">Contact Name</Label>
+                                    <Label className="text-[10px] font-mono uppercase text-muted-foreground">Contact Name</Label>
                                     <Input
                                         placeholder="Full Name"
                                         value={tenantForm.emergencyContactName}
                                         onChange={(e) => setTenantForm(prev => ({ ...prev, emergencyContactName: e.target.value }))}
-                                        className="bg-black border-zinc-800 text-white font-mono focus:border-amber-500"
+                                        className="bg-background border-border text-foreground font-mono focus:border-amber-500"
                                     />
                                 </div>
                                 <div className="space-y-2">
-                                    <Label className="text-[10px] font-mono uppercase text-zinc-500">Relationship</Label>
+                                    <Label className="text-[10px] font-mono uppercase text-muted-foreground">Relationship</Label>
                                     <Select
                                         value={tenantForm.emergencyContactRelationship}
                                         onValueChange={(v) => setTenantForm(prev => ({ ...prev, emergencyContactRelationship: v }))}
                                     >
-                                        <SelectTrigger className="bg-black border-zinc-800 text-white font-mono">
+                                        <SelectTrigger className="bg-background border-border text-foreground font-mono">
                                             <SelectValue placeholder="Select relationship" />
                                         </SelectTrigger>
-                                        <SelectContent className="bg-zinc-950 border-zinc-800">
+                                        <SelectContent className="bg-background border-border">
                                             <SelectItem value="spouse">Spouse</SelectItem>
                                             <SelectItem value="parent">Parent</SelectItem>
                                             <SelectItem value="sibling">Sibling</SelectItem>
@@ -499,12 +499,12 @@ function NewTenantContent() {
                                     </Select>
                                 </div>
                                 <div className="space-y-2">
-                                    <Label className="text-[10px] font-mono uppercase text-zinc-500">Phone Number</Label>
+                                    <Label className="text-[10px] font-mono uppercase text-muted-foreground">Phone Number</Label>
                                     <Input
                                         placeholder="e.g. 020 987 6543"
                                         value={tenantForm.emergencyContactPhone}
                                         onChange={(e) => setTenantForm(prev => ({ ...prev, emergencyContactPhone: e.target.value }))}
-                                        className="bg-black border-zinc-800 text-white font-mono focus:border-amber-500"
+                                        className="bg-background border-border text-foreground font-mono focus:border-amber-500"
                                     />
                                 </div>
                             </CardContent>
@@ -597,7 +597,7 @@ function NewTenantContent() {
                                     />
                                 </div>
                                 <div className="space-y-2">
-                                    <Label className="text-[10px] font-mono uppercase text-zinc-500">Duration</Label>
+                                    <Label className="text-[10px] font-mono uppercase text-muted-foreground">Duration</Label>
                                     <Select
                                         value={leaseForm.leaseDuration}
                                         onValueChange={(v) => setLeaseForm(prev => ({ ...prev, leaseDuration: v }))}
@@ -696,7 +696,7 @@ function NewTenantContent() {
                                     <div className="text-2xl font-bold text-primary font-mono">
                                         {leaseForm.rentCurrency === 'USD' ? '$' : '₵'}{totalDueAtSigning.toLocaleString()}
                                     </div>
-                                    <div className="text-[10px] text-zinc-500 font-mono mt-1">
+                                    <div className="text-[10px] text-muted-foreground font-mono mt-1">
                                         Advance: {leaseForm.rentCurrency === 'USD' ? '$' : '₵'}{advanceAmount.toLocaleString()} +
                                         Deposit: {leaseForm.rentCurrency === 'USD' ? '$' : '₵'}{securityDeposit.toLocaleString()}
                                     </div>
@@ -1046,7 +1046,7 @@ function NewTenantContent() {
                     </Button>
                 ) : (
                     <Button
-                        className="bg-green-600 hover:bg-green-500 text-white font-bold font-mono text-xs"
+                        className="bg-green-600 hover:bg-green-500 text-foreground font-bold font-mono text-xs"
                         onClick={handleSave}
                         disabled={isSaving}
                     >

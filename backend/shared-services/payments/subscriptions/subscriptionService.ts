@@ -76,6 +76,15 @@ export interface Subscription {
   payment_provider?: string;
   payment_provider_subscription_id?: string;
   payment_provider_customer_id?: string;
+  // Recurring billing (see subscriptionBillingService)
+  payment_authorization_code?: string;
+  payment_card_last4?: string;
+  payment_card_brand?: string;
+  payment_channel?: string;
+  payment_email?: string;
+  renewal_attempts?: number;
+  last_payment_at?: string;
+  next_retry_at?: string;
   quantity: number;
   keycloak_group_id?: string;
   metadata?: Record<string, any>;
@@ -300,7 +309,7 @@ export async function createPlan(data: {
       data.cta_text || 'Get Started',
       data.is_featured || false,
       data.sort_order || 0,
-      data.trial_days ?? 14,
+      data.trial_days ?? 0,  // no-trial model (charge immediately) — see signup-routing-and-pricing
       JSON.stringify(data.metadata || {}),
     ]);
 
@@ -498,6 +507,9 @@ export async function createSubscription(data: {
   payment_provider_customer_id?: string;
   quantity?: number;
   start_trial?: boolean;
+  /** When true, the subscription starts 'incomplete' (awaiting first payment)
+   *  and is activated by reconcileSubscriptionPayment once Paystack confirms. */
+  payment_pending?: boolean;
   metadata?: Record<string, any>;
   actor_id?: string;
 }): Promise<Subscription> {
@@ -524,9 +536,9 @@ export async function createSubscription(data: {
       periodEnd.setMonth(periodEnd.getMonth() + 1);
     }
 
-    const startTrial = data.start_trial !== false && plan.trial_days > 0;
+    const startTrial = !data.payment_pending && data.start_trial !== false && plan.trial_days > 0;
     const trialEnds = startTrial ? new Date(now.getTime() + plan.trial_days * 86400000) : null;
-    const status = startTrial ? 'trialing' : 'active';
+    const status = data.payment_pending ? 'incomplete' : (startTrial ? 'trialing' : 'active');
 
     const { rows } = await client.query(`
       INSERT INTO subscriptions (

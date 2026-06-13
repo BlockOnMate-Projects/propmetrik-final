@@ -14,18 +14,18 @@ export default function ProjectTeamPage() {
   const organizationId = '' // TODO: pull from auth context/session
   
   return (
-    <div className="dark min-h-screen bg-zinc-950 text-white p-6">
+    <div className="min-h-screen bg-background text-foreground p-6">
       {/* Header */}
       <div className="mb-6">
         <Link 
           href={`/dashboard/projects/${projectId}`}
-          className="flex items-center gap-2 font-mono text-[10px] text-zinc-500 hover:text-amber-500 mb-4"
+          className="flex items-center gap-2 font-mono text-[10px] text-muted-foreground hover:text-amber-500 mb-4"
         >
           <ArrowLeft className="h-3 w-3" />
           Back to Project
         </Link>
         <h1 className="font-mono text-xl tracking-tight">PROJECT TEAM</h1>
-        <p className="font-mono text-[10px] text-zinc-500 mt-1">
+        <p className="font-mono text-[10px] text-muted-foreground mt-1">
           Manage team members, assign roles, and set permissions
         </p>
       </div>

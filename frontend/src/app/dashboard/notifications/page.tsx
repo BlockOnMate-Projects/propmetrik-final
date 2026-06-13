@@ -102,14 +102,14 @@ export default function NotificationsPage() {
   const totalPages = Math.ceil(total / limit)
 
   return (
-    <div className="min-h-screen bg-black text-white font-mono p-6">
+    <div className="min-h-screen bg-background text-foreground font-mono p-6">
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-3">
           <Bell className="h-4 w-4 text-amber-500" />
           <h1 className="text-sm font-mono text-amber-500 uppercase tracking-wider">Notifications</h1>
           {totalUnread > 0 && (
-            <Badge className="bg-red-500/20 text-red-400 border-red-500/30 text-[10px] font-mono">
+            <Badge className="bg-red-500/20 text-red-600 dark:text-red-400 border-red-500/30 text-[10px] font-mono">
               {totalUnread} unread
             </Badge>
           )}
@@ -119,7 +119,7 @@ export default function NotificationsPage() {
             variant="outline"
             size="sm"
             onClick={() => setUnreadOnly(u => !u)}
-            className={`text-[10px] font-mono border-zinc-800 h-7 ${unreadOnly ? 'bg-amber-500/10 text-amber-400 border-amber-500/30' : 'text-zinc-500'}`}
+            className={`text-[10px] font-mono border-border h-7 ${unreadOnly ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/30' : 'text-muted-foreground'}`}
           >
             <Filter className="h-3 w-3 mr-1" />
             {unreadOnly ? 'UNREAD ONLY' : 'ALL'}
@@ -129,7 +129,7 @@ export default function NotificationsPage() {
               variant="outline"
               size="sm"
               onClick={handleMarkAllRead}
-              className="text-[10px] font-mono border-zinc-800 text-zinc-500 hover:text-amber-400 h-7"
+              className="text-[10px] font-mono border-border text-muted-foreground hover:text-amber-400 h-7"
             >
               <CheckCheck className="h-3 w-3 mr-1" />
               MARK ALL READ
@@ -148,13 +148,13 @@ export default function NotificationsPage() {
               onClick={() => { setCategory(cat); setPage(1) }}
               className={`px-3 py-1 text-[10px] font-mono uppercase tracking-wider rounded transition-colors whitespace-nowrap ${
                 category === cat
-                  ? 'bg-amber-500/10 text-amber-400 border border-amber-500/30'
-                  : 'text-zinc-500 hover:text-zinc-300 border border-transparent'
+                  ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/30'
+                  : 'text-muted-foreground hover:text-muted-foreground border border-transparent'
               }`}
             >
               {cat}
               {count > 0 && (
-                <span className="ml-1.5 inline-flex items-center justify-center h-3.5 min-w-[14px] rounded-full bg-red-500/20 text-red-400 text-[8px] px-1">
+                <span className="ml-1.5 inline-flex items-center justify-center h-3.5 min-w-[14px] rounded-full bg-red-500/20 text-red-600 dark:text-red-400 text-[8px] px-1">
                   {count}
                 </span>
               )}
@@ -165,12 +165,12 @@ export default function NotificationsPage() {
 
       {/* Search */}
       <div className="relative mb-4">
-        <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3 w-3 text-zinc-600" />
+        <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3 w-3 text-muted-foreground" />
         <Input
           placeholder="Search notifications..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          className="pl-8 h-8 bg-zinc-900 border-zinc-800 text-xs font-mono placeholder:text-zinc-600"
+          className="pl-8 h-8 bg-card border-border text-xs font-mono placeholder:text-muted-foreground"
         />
       </div>
 
@@ -180,7 +180,7 @@ export default function NotificationsPage() {
           <Loader2 className="h-6 w-6 text-amber-600 animate-spin" />
         </div>
       ) : filtered.length === 0 ? (
-        <div className="text-center py-16 text-zinc-600 font-mono text-xs">
+        <div className="text-center py-16 text-muted-foreground font-mono text-xs">
           <Bell className="h-8 w-8 text-zinc-800 mx-auto mb-3" />
           <p>No notifications</p>
         </div>
@@ -189,8 +189,8 @@ export default function NotificationsPage() {
           {filtered.map(notif => (
             <div
               key={notif.id}
-              className={`group border border-zinc-800 rounded-md px-4 py-3 transition-colors hover:bg-zinc-900/50 ${
-                !notif.is_read ? 'bg-zinc-900/30 border-l-2 border-l-amber-500' : ''
+              className={`group border border-border rounded-md px-4 py-3 transition-colors hover:bg-card/50 ${
+                !notif.is_read ? 'bg-card/30 border-l-2 border-l-amber-500' : ''
               }`}
             >
               <div className="flex items-start gap-3">
@@ -200,23 +200,23 @@ export default function NotificationsPage() {
                 {/* Content */}
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-0.5">
-                    <span className={`text-xs truncate ${!notif.is_read ? 'text-zinc-200 font-medium' : 'text-zinc-400'}`}>
+                    <span className={`text-xs truncate ${!notif.is_read ? 'text-zinc-200 font-medium' : 'text-muted-foreground'}`}>
                       {notif.title}
                     </span>
-                    <Badge variant="outline" className="text-[8px] uppercase border-zinc-800 text-zinc-600 px-1 py-0 shrink-0">
+                    <Badge variant="outline" className="text-[8px] uppercase border-border text-muted-foreground px-1 py-0 shrink-0">
                       {notif.category}
                     </Badge>
                     {notif.priority === 'urgent' && (
-                      <Badge className="bg-red-500/20 text-red-400 border-red-500/30 text-[8px] px-1 py-0">URGENT</Badge>
+                      <Badge className="bg-red-500/20 text-red-600 dark:text-red-400 border-red-500/30 text-[8px] px-1 py-0">URGENT</Badge>
                     )}
                     {notif.priority === 'high' && (
-                      <Badge className="bg-orange-500/20 text-orange-400 border-orange-500/30 text-[8px] px-1 py-0">HIGH</Badge>
+                      <Badge className="bg-orange-500/20 text-orange-600 dark:text-orange-400 border-orange-500/30 text-[8px] px-1 py-0">HIGH</Badge>
                     )}
                   </div>
-                  <p className="text-[10px] text-zinc-500 line-clamp-2">
+                  <p className="text-[10px] text-muted-foreground line-clamp-2">
                     {notif.summary || notif.body || 'No details'}
                   </p>
-                  <span className="text-[9px] text-zinc-600 mt-1 block">{timeAgo(notif.created_at)}</span>
+                  <span className="text-[9px] text-muted-foreground mt-1 block">{timeAgo(notif.created_at)}</span>
                 </div>
 
                 {/* Actions */}
@@ -224,7 +224,7 @@ export default function NotificationsPage() {
                   {!notif.is_read && (
                     <button
                       onClick={() => handleMarkRead(notif.id)}
-                      className="p-1 text-zinc-600 hover:text-amber-400 transition-colors"
+                      className="p-1 text-muted-foreground hover:text-amber-400 transition-colors"
                       title="Mark as read"
                     >
                       <Check className="h-3.5 w-3.5" />
@@ -232,14 +232,14 @@ export default function NotificationsPage() {
                   )}
                   <button
                     onClick={() => handleArchive(notif.id)}
-                    className="p-1 text-zinc-600 hover:text-zinc-400 transition-colors"
+                    className="p-1 text-muted-foreground hover:text-muted-foreground transition-colors"
                     title="Archive"
                   >
                     <Archive className="h-3.5 w-3.5" />
                   </button>
                   <button
                     onClick={() => handleDelete(notif.id)}
-                    className="p-1 text-zinc-600 hover:text-red-400 transition-colors"
+                    className="p-1 text-muted-foreground hover:text-red-400 transition-colors"
                     title="Delete"
                   >
                     <Trash2 className="h-3.5 w-3.5" />
@@ -253,8 +253,8 @@ export default function NotificationsPage() {
 
       {/* Pagination */}
       {totalPages > 1 && (
-        <div className="flex items-center justify-between mt-4 pt-4 border-t border-zinc-800">
-          <span className="text-[10px] font-mono text-zinc-600 uppercase">
+        <div className="flex items-center justify-between mt-4 pt-4 border-t border-border">
+          <span className="text-[10px] font-mono text-muted-foreground uppercase">
             Showing {((page - 1) * limit) + 1}–{Math.min(page * limit, total)} of {total}
           </span>
           <div className="flex items-center gap-1">
@@ -263,7 +263,7 @@ export default function NotificationsPage() {
               size="sm"
               disabled={page === 1}
               onClick={() => setPage(p => p - 1)}
-              className="text-[10px] font-mono border-zinc-800 text-zinc-500 h-7"
+              className="text-[10px] font-mono border-border text-muted-foreground h-7"
             >
               PREV
             </Button>
@@ -272,7 +272,7 @@ export default function NotificationsPage() {
               size="sm"
               disabled={page >= totalPages}
               onClick={() => setPage(p => p + 1)}
-              className="text-[10px] font-mono border-zinc-800 text-zinc-500 h-7"
+              className="text-[10px] font-mono border-border text-muted-foreground h-7"
             >
               NEXT
             </Button>

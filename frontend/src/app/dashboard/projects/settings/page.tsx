@@ -201,15 +201,15 @@ export default function ProjectSettingsPage() {
         <div className="space-y-6">
             <div className="flex items-center justify-between">
                 <div>
-                    <h1 className="text-2xl font-mono font-bold text-white tracking-tight">SETTINGS</h1>
-                    <p className="text-zinc-500 font-mono text-xs mt-1">
+                    <h1 className="text-2xl font-mono font-bold text-foreground tracking-tight">SETTINGS</h1>
+                    <p className="text-muted-foreground font-mono text-xs mt-1">
                         Manage preferences, notifications &amp; security
                     </p>
                 </div>
             </div>
 
             <Tabs defaultValue="general">
-                <TabsList className="bg-zinc-800 border border-zinc-700">
+                <TabsList className="bg-muted border border-border">
                     <TabsTrigger value="general" className="font-mono text-xs"><Settings className="h-3 w-3 mr-1" />General</TabsTrigger>
                     <TabsTrigger value="notifications" className="font-mono text-xs"><Bell className="h-3 w-3 mr-1" />Notifications</TabsTrigger>
                     <TabsTrigger value="security" className="font-mono text-xs"><Shield className="h-3 w-3 mr-1" />Security</TabsTrigger>
@@ -222,18 +222,18 @@ export default function ProjectSettingsPage() {
                 <TabsContent value="general" className="space-y-6 mt-6">
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                         {/* User Info */}
-                        <Card className="bg-zinc-900/80 border-zinc-800">
+                        <Card className="bg-card/80 border-border">
                             <CardHeader className="pb-3">
                                 <div className="flex items-center justify-between">
                                     <div className="flex items-center gap-2">
                                         <div className="p-1.5 bg-blue-500/10 rounded-lg"><User className="h-4 w-4 text-blue-500" /></div>
                                         <div>
-                                            <CardTitle className="text-sm font-mono text-white">USER PROFILE</CardTitle>
-                                            <CardDescription className="text-[10px] font-mono text-zinc-500">Edit your personal details</CardDescription>
+                                            <CardTitle className="text-sm font-mono text-foreground">USER PROFILE</CardTitle>
+                                            <CardDescription className="text-[10px] font-mono text-muted-foreground">Edit your personal details</CardDescription>
                                         </div>
                                     </div>
                                     {profileDirty && (
-                                        <Button onClick={saveProfile} disabled={saving} size="sm" className="bg-amber-500 hover:bg-amber-600 text-white font-mono text-xs">
+                                        <Button onClick={saveProfile} disabled={saving} size="sm" className="bg-amber-500 hover:bg-amber-600 text-foreground font-mono text-xs">
                                             {saving ? <Loader2 className="h-3 w-3 mr-1 animate-spin" /> : <Save className="h-3 w-3 mr-1" />}Save
                                         </Button>
                                     )}
@@ -242,71 +242,71 @@ export default function ProjectSettingsPage() {
                             <CardContent className="space-y-3">
                                 <div className="grid grid-cols-2 gap-3">
                                     <div>
-                                        <Label className="text-[10px] font-mono text-zinc-500">FIRST NAME</Label>
-                                        <Input value={profileForm.firstName} onChange={(e) => updateProfileField('firstName', e.target.value)} className="bg-zinc-800 border-zinc-700 text-white" />
+                                        <Label className="text-[10px] font-mono text-muted-foreground">FIRST NAME</Label>
+                                        <Input value={profileForm.firstName} onChange={(e) => updateProfileField('firstName', e.target.value)} className="bg-muted border-border text-foreground" />
                                     </div>
                                     <div>
-                                        <Label className="text-[10px] font-mono text-zinc-500">LAST NAME</Label>
-                                        <Input value={profileForm.lastName} onChange={(e) => updateProfileField('lastName', e.target.value)} className="bg-zinc-800 border-zinc-700 text-white" />
+                                        <Label className="text-[10px] font-mono text-muted-foreground">LAST NAME</Label>
+                                        <Input value={profileForm.lastName} onChange={(e) => updateProfileField('lastName', e.target.value)} className="bg-muted border-border text-foreground" />
                                     </div>
                                 </div>
                                 <div>
-                                    <Label className="text-[10px] font-mono text-zinc-500">DISPLAY NAME</Label>
-                                    <Input value={profileForm.displayName} onChange={(e) => updateProfileField('displayName', e.target.value)} placeholder={`${profileForm.firstName} ${profileForm.lastName}`.trim() || 'Display name'} className="bg-zinc-800 border-zinc-700 text-white" />
+                                    <Label className="text-[10px] font-mono text-muted-foreground">DISPLAY NAME</Label>
+                                    <Input value={profileForm.displayName} onChange={(e) => updateProfileField('displayName', e.target.value)} placeholder={`${profileForm.firstName} ${profileForm.lastName}`.trim() || 'Display name'} className="bg-muted border-border text-foreground" />
                                 </div>
                                 <div>
-                                    <Label className="text-[10px] font-mono text-zinc-500">PHONE</Label>
-                                    <Input value={profileForm.phone} onChange={(e) => updateProfileField('phone', e.target.value)} placeholder="+233 XX XXX XXXX" className="bg-zinc-800 border-zinc-700 text-white" />
+                                    <Label className="text-[10px] font-mono text-muted-foreground">PHONE</Label>
+                                    <Input value={profileForm.phone} onChange={(e) => updateProfileField('phone', e.target.value)} placeholder="+233 XX XXX XXXX" className="bg-muted border-border text-foreground" />
                                 </div>
-                                <div className="flex items-center justify-between p-3 bg-zinc-800/50 border border-zinc-700/50 rounded-lg">
-                                    <div><p className="text-[10px] font-mono text-zinc-500">EMAIL</p><p className="text-sm text-white">{profile?.email}</p></div>
+                                <div className="flex items-center justify-between p-3 bg-muted/50 border border-border/50 rounded-lg">
+                                    <div><p className="text-[10px] font-mono text-muted-foreground">EMAIL</p><p className="text-sm text-foreground">{profile?.email}</p></div>
                                 </div>
-                                <div className="flex items-center justify-between p-3 bg-zinc-800/50 border border-zinc-700/50 rounded-lg">
-                                    <div><p className="text-[10px] font-mono text-zinc-500">ROLE</p><p className="text-sm text-white">{humanize(profile?.role) || 'User'}</p></div>
+                                <div className="flex items-center justify-between p-3 bg-muted/50 border border-border/50 rounded-lg">
+                                    <div><p className="text-[10px] font-mono text-muted-foreground">ROLE</p><p className="text-sm text-foreground">{humanize(profile?.role) || 'User'}</p></div>
                                 </div>
                             </CardContent>
                         </Card>
 
                         {/* Default Currency */}
-                        <Card className="bg-zinc-900/80 border-zinc-800">
+                        <Card className="bg-card/80 border-border">
                             <CardHeader className="pb-3">
                                 <div className="flex items-center gap-2">
                                     <div className="p-1.5 bg-amber-500/10 rounded-lg"><DollarSign className="h-4 w-4 text-amber-500" /></div>
                                     <div>
-                                        <CardTitle className="text-sm font-mono text-white">DEFAULT CURRENCY</CardTitle>
-                                        <CardDescription className="text-[10px] font-mono text-zinc-500">Currency used for new projects</CardDescription>
+                                        <CardTitle className="text-sm font-mono text-foreground">DEFAULT CURRENCY</CardTitle>
+                                        <CardDescription className="text-[10px] font-mono text-muted-foreground">Currency used for new projects</CardDescription>
                                     </div>
                                 </div>
                             </CardHeader>
                             <CardContent>
                                 <div className="relative">
-                                    <select value={currency} onChange={(e) => setCurrency(e.target.value)} className="w-full px-4 py-2.5 bg-zinc-800 border border-zinc-700 rounded-lg text-sm font-mono text-white appearance-none focus:outline-none focus:border-amber-500/50">
+                                    <select value={currency} onChange={(e) => setCurrency(e.target.value)} className="w-full px-4 py-2.5 bg-muted border border-border rounded-lg text-sm font-mono text-foreground appearance-none focus:outline-none focus:border-amber-500/50">
                                         <option value="GHS">GH₵ — Ghana Cedi (GHS)</option>
                                         <option value="USD">$ — US Dollar (USD)</option>
                                         <option value="EUR">€ — Euro (EUR)</option>
                                         <option value="GBP">£ — British Pound (GBP)</option>
                                         <option value="NGN">₦ — Nigerian Naira (NGN)</option>
                                     </select>
-                                    <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-500 pointer-events-none" />
+                                    <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
                                 </div>
                             </CardContent>
                         </Card>
                     </div>
 
-                    <Card className="bg-zinc-900/80 border-zinc-800">
+                    <Card className="bg-card/80 border-border">
                         <CardHeader className="pb-3">
                             <div className="flex items-center gap-2">
                                 <div className="p-1.5 bg-emerald-500/10 rounded-lg"><Tags className="h-4 w-4 text-emerald-500" /></div>
                                 <div>
-                                    <CardTitle className="text-sm font-mono text-white">COST CATEGORIES</CardTitle>
-                                    <CardDescription className="text-[10px] font-mono text-zinc-500">Default categories applied to new projects</CardDescription>
+                                    <CardTitle className="text-sm font-mono text-foreground">COST CATEGORIES</CardTitle>
+                                    <CardDescription className="text-[10px] font-mono text-muted-foreground">Default categories applied to new projects</CardDescription>
                                 </div>
                             </div>
                         </CardHeader>
                         <CardContent>
                             <div className="flex flex-wrap gap-2">
                                 {defaultCostCategories.map((cat) => (
-                                    <Badge key={cat} variant="outline" className="border-zinc-700 text-zinc-300 text-[10px] font-mono px-3 py-1.5 hover:border-amber-500/50 hover:text-amber-400 transition-colors cursor-default">{cat}</Badge>
+                                    <Badge key={cat} variant="outline" className="border-border text-muted-foreground text-[10px] font-mono px-3 py-1.5 hover:border-amber-500/50 hover:text-amber-400 transition-colors cursor-default">{cat}</Badge>
                                 ))}
                             </div>
                         </CardContent>
@@ -315,17 +315,17 @@ export default function ProjectSettingsPage() {
 
                 {/* Notifications Tab */}
                 <TabsContent value="notifications" className="space-y-6 mt-6">
-                    <Card className="bg-zinc-900/80 border-zinc-800">
+                    <Card className="bg-card/80 border-border">
                         <CardHeader className="pb-3">
                             <div className="flex items-center justify-between">
                                 <div className="flex items-center gap-2">
                                     <div className="p-1.5 bg-blue-500/10 rounded-lg"><Bell className="h-4 w-4 text-blue-500" /></div>
                                     <div>
-                                        <CardTitle className="text-sm font-mono text-white">NOTIFICATION PREFERENCES</CardTitle>
-                                        <CardDescription className="text-[10px] font-mono text-zinc-500">Configure alerts and notification delivery</CardDescription>
+                                        <CardTitle className="text-sm font-mono text-foreground">NOTIFICATION PREFERENCES</CardTitle>
+                                        <CardDescription className="text-[10px] font-mono text-muted-foreground">Configure alerts and notification delivery</CardDescription>
                                     </div>
                                 </div>
-                                <Button onClick={saveNotifications} disabled={saving} className="bg-amber-500 hover:bg-amber-600 text-white font-mono text-xs">
+                                <Button onClick={saveNotifications} disabled={saving} className="bg-amber-500 hover:bg-amber-600 text-foreground font-mono text-xs">
                                     {saving ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : <Save className="h-3.5 w-3.5 mr-1.5" />}Save
                                 </Button>
                             </div>
@@ -333,15 +333,15 @@ export default function ProjectSettingsPage() {
                         <CardContent>
                             <div className="space-y-3">
                                 {notificationItems.map((item) => (
-                                    <label key={item.key} className="flex items-center justify-between p-3 rounded-lg bg-zinc-800/50 border border-zinc-700/50 cursor-pointer hover:bg-zinc-800/80 transition-colors">
+                                    <label key={item.key} className="flex items-center justify-between p-3 rounded-lg bg-muted/50 border border-border/50 cursor-pointer hover:bg-muted/80 transition-colors">
                                         <div>
-                                            <p className="text-xs font-mono text-white">{item.label}</p>
-                                            <p className="text-[10px] font-mono text-zinc-500">{item.desc}</p>
+                                            <p className="text-xs font-mono text-foreground">{item.label}</p>
+                                            <p className="text-[10px] font-mono text-muted-foreground">{item.desc}</p>
                                         </div>
                                         <div className="relative">
                                             <input type="checkbox" checked={notifications[item.key] ?? false} onChange={() => toggleNotification(item.key)} className="sr-only peer" />
                                             <div className="w-9 h-5 bg-zinc-700 rounded-full peer peer-checked:bg-amber-500 transition-colors" />
-                                            <div className="absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full transition-transform peer-checked:translate-x-4" />
+                                            <div className="absolute top-0.5 left-0.5 w-4 h-4 bg-card rounded-full transition-transform peer-checked:translate-x-4" />
                                         </div>
                                     </label>
                                 ))}
@@ -352,30 +352,30 @@ export default function ProjectSettingsPage() {
 
                 {/* Security Tab */}
                 <TabsContent value="security" className="space-y-6 mt-6">
-                    <Card className="bg-zinc-900/80 border-zinc-800">
+                    <Card className="bg-card/80 border-border">
                         <CardHeader className="pb-3">
                             <div className="flex items-center gap-2">
                                 <div className="p-1.5 bg-red-500/10 rounded-lg"><Shield className="h-4 w-4 text-red-500" /></div>
                                 <div>
-                                    <CardTitle className="text-sm font-mono text-white">CHANGE PASSWORD</CardTitle>
-                                    <CardDescription className="text-[10px] font-mono text-zinc-500">Update your account password</CardDescription>
+                                    <CardTitle className="text-sm font-mono text-foreground">CHANGE PASSWORD</CardTitle>
+                                    <CardDescription className="text-[10px] font-mono text-muted-foreground">Update your account password</CardDescription>
                                 </div>
                             </div>
                         </CardHeader>
                         <CardContent className="space-y-4 max-w-md">
                             <div>
-                                <Label className="text-zinc-400 text-xs font-mono">Current Password</Label>
-                                <Input type="password" value={passwordForm.current} onChange={(e) => setPasswordForm({ ...passwordForm, current: e.target.value })} className="bg-zinc-800 border-zinc-700" />
+                                <Label className="text-muted-foreground text-xs font-mono">Current Password</Label>
+                                <Input type="password" value={passwordForm.current} onChange={(e) => setPasswordForm({ ...passwordForm, current: e.target.value })} className="bg-muted border-border" />
                             </div>
                             <div>
-                                <Label className="text-zinc-400 text-xs font-mono">New Password</Label>
-                                <Input type="password" value={passwordForm.newPass} onChange={(e) => setPasswordForm({ ...passwordForm, newPass: e.target.value })} className="bg-zinc-800 border-zinc-700" />
+                                <Label className="text-muted-foreground text-xs font-mono">New Password</Label>
+                                <Input type="password" value={passwordForm.newPass} onChange={(e) => setPasswordForm({ ...passwordForm, newPass: e.target.value })} className="bg-muted border-border" />
                             </div>
                             <div>
-                                <Label className="text-zinc-400 text-xs font-mono">Confirm New Password</Label>
-                                <Input type="password" value={passwordForm.confirm} onChange={(e) => setPasswordForm({ ...passwordForm, confirm: e.target.value })} className="bg-zinc-800 border-zinc-700" />
+                                <Label className="text-muted-foreground text-xs font-mono">Confirm New Password</Label>
+                                <Input type="password" value={passwordForm.confirm} onChange={(e) => setPasswordForm({ ...passwordForm, confirm: e.target.value })} className="bg-muted border-border" />
                             </div>
-                            <Button onClick={changePassword} disabled={saving || !passwordForm.current || !passwordForm.newPass} className="bg-amber-500 hover:bg-amber-600 text-white font-mono text-xs">
+                            <Button onClick={changePassword} disabled={saving || !passwordForm.current || !passwordForm.newPass} className="bg-amber-500 hover:bg-amber-600 text-foreground font-mono text-xs">
                                 {saving ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : <Shield className="h-3.5 w-3.5 mr-1.5" />}Update Password
                             </Button>
                         </CardContent>
@@ -384,35 +384,35 @@ export default function ProjectSettingsPage() {
 
                 {/* Display Tab */}
                 <TabsContent value="display" className="space-y-6 mt-6">
-                    <Card className="bg-zinc-900/80 border-zinc-800">
+                    <Card className="bg-card/80 border-border">
                         <CardHeader className="pb-3">
                             <div className="flex items-center gap-2">
                                 <div className="p-1.5 bg-purple-500/10 rounded-lg"><Palette className="h-4 w-4 text-purple-500" /></div>
                                 <div>
-                                    <CardTitle className="text-sm font-mono text-white">DISPLAY PREFERENCES</CardTitle>
-                                    <CardDescription className="text-[10px] font-mono text-zinc-500">Customize the look and feel</CardDescription>
+                                    <CardTitle className="text-sm font-mono text-foreground">DISPLAY PREFERENCES</CardTitle>
+                                    <CardDescription className="text-[10px] font-mono text-muted-foreground">Customize the look and feel</CardDescription>
                                 </div>
                             </div>
                         </CardHeader>
                         <CardContent className="space-y-4">
-                            <div className="flex items-center justify-between p-3 bg-zinc-800/50 border border-zinc-700/50 rounded-lg">
-                                <div><p className="text-xs font-mono text-white">Theme</p><p className="text-[10px] font-mono text-zinc-500">Application color scheme</p></div>
-                                <Badge variant="outline" className="border-amber-800 text-amber-400">Dark</Badge>
+                            <div className="flex items-center justify-between p-3 bg-muted/50 border border-border/50 rounded-lg">
+                                <div><p className="text-xs font-mono text-foreground">Theme</p><p className="text-[10px] font-mono text-muted-foreground">Application color scheme</p></div>
+                                <Badge variant="outline" className="border-amber-800 text-amber-600 dark:text-amber-400">Dark</Badge>
                             </div>
-                            <div className="flex items-center justify-between p-3 bg-zinc-800/50 border border-zinc-700/50 rounded-lg">
-                                <div><p className="text-xs font-mono text-white">Date Format</p><p className="text-[10px] font-mono text-zinc-500">How dates are displayed</p></div>
-                                <select className="bg-zinc-700 border border-zinc-600 rounded px-2 py-1 text-xs font-mono text-white">
+                            <div className="flex items-center justify-between p-3 bg-muted/50 border border-border/50 rounded-lg">
+                                <div><p className="text-xs font-mono text-foreground">Date Format</p><p className="text-[10px] font-mono text-muted-foreground">How dates are displayed</p></div>
+                                <select className="bg-zinc-700 border border-zinc-600 rounded px-2 py-1 text-xs font-mono text-foreground">
                                     <option value="DD/MM/YYYY">DD/MM/YYYY</option>
                                     <option value="MM/DD/YYYY">MM/DD/YYYY</option>
                                     <option value="YYYY-MM-DD">YYYY-MM-DD</option>
                                 </select>
                             </div>
-                            <div className="flex items-center justify-between p-3 bg-zinc-800/50 border border-zinc-700/50 rounded-lg">
-                                <div><p className="text-xs font-mono text-white">Compact View</p><p className="text-[10px] font-mono text-zinc-500">Reduce spacing in tables and lists</p></div>
+                            <div className="flex items-center justify-between p-3 bg-muted/50 border border-border/50 rounded-lg">
+                                <div><p className="text-xs font-mono text-foreground">Compact View</p><p className="text-[10px] font-mono text-muted-foreground">Reduce spacing in tables and lists</p></div>
                                 <div className="relative">
                                     <input type="checkbox" className="sr-only peer" defaultChecked={false} />
                                     <div className="w-9 h-5 bg-zinc-700 rounded-full peer peer-checked:bg-amber-500 transition-colors cursor-pointer" />
-                                    <div className="absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full transition-transform peer-checked:translate-x-4 pointer-events-none" />
+                                    <div className="absolute top-0.5 left-0.5 w-4 h-4 bg-card rounded-full transition-transform peer-checked:translate-x-4 pointer-events-none" />
                                 </div>
                             </div>
                         </CardContent>
@@ -464,35 +464,35 @@ function CustomFieldsManager() {
         <div className="space-y-4">
             <div className="flex items-center justify-between">
                 <div>
-                    <h3 className="text-sm font-mono font-bold text-white">CUSTOM FIELD DEFINITIONS</h3>
-                    <p className="text-[10px] font-mono text-zinc-500">Define reusable fields for any entity type</p>
+                    <h3 className="text-sm font-mono font-bold text-foreground">CUSTOM FIELD DEFINITIONS</h3>
+                    <p className="text-[10px] font-mono text-muted-foreground">Define reusable fields for any entity type</p>
                 </div>
                 <div className="flex items-center gap-2">
                     <Select value={filterEntity || 'all'} onValueChange={v => setFilterEntity(v === 'all' ? '' : v)}>
-                        <SelectTrigger className="bg-zinc-800 border-zinc-700 text-white w-40 text-xs"><SelectValue placeholder="All types" /></SelectTrigger>
-                        <SelectContent className="bg-zinc-800 border-zinc-700">
+                        <SelectTrigger className="bg-muted border-border text-foreground w-40 text-xs"><SelectValue placeholder="All types" /></SelectTrigger>
+                        <SelectContent className="bg-muted border-border">
                             <SelectItem value="all">All Types</SelectItem>
                             {ENTITY_TYPES.map(t => <SelectItem key={t} value={t}>{t.replace(/_/g, ' ')}</SelectItem>)}
                         </SelectContent>
                     </Select>
                     <Dialog open={showCreate} onOpenChange={setShowCreate}>
-                        <DialogTrigger asChild><Button size="sm" className="bg-amber-500 hover:bg-amber-600 text-white text-xs">+ ADD FIELD</Button></DialogTrigger>
-                        <DialogContent className="bg-zinc-900 border-zinc-800 max-w-md">
-                            <DialogHeader><DialogTitle className="text-white">Add Custom Field</DialogTitle></DialogHeader>
+                        <DialogTrigger asChild><Button size="sm" className="bg-amber-500 hover:bg-amber-600 text-foreground text-xs">+ ADD FIELD</Button></DialogTrigger>
+                        <DialogContent className="bg-card border-border max-w-md">
+                            <DialogHeader><DialogTitle className="text-foreground">Add Custom Field</DialogTitle></DialogHeader>
                             <div className="space-y-3">
-                                <div><Label className="text-[10px] font-mono text-zinc-500">FIELD NAME</Label><Input className="bg-zinc-800 border-zinc-700 text-white" value={form.field_name || ''} onChange={e => setForm({ ...form, field_name: e.target.value })} /></div>
+                                <div><Label className="text-[10px] font-mono text-muted-foreground">FIELD NAME</Label><Input className="bg-muted border-border text-foreground" value={form.field_name || ''} onChange={e => setForm({ ...form, field_name: e.target.value })} /></div>
                                 <div className="grid grid-cols-2 gap-3">
-                                    <div><Label className="text-[10px] font-mono text-zinc-500">ENTITY TYPE</Label>
-                                        <Select value={form.entity_type || 'project'} onValueChange={v => setForm({ ...form, entity_type: v })}><SelectTrigger className="bg-zinc-800 border-zinc-700 text-white"><SelectValue /></SelectTrigger><SelectContent className="bg-zinc-800 border-zinc-700">{ENTITY_TYPES.map(t => <SelectItem key={t} value={t}>{t.replace(/_/g, ' ')}</SelectItem>)}</SelectContent></Select></div>
-                                    <div><Label className="text-[10px] font-mono text-zinc-500">FIELD TYPE</Label>
-                                        <Select value={form.field_type || 'text'} onValueChange={v => setForm({ ...form, field_type: v })}><SelectTrigger className="bg-zinc-800 border-zinc-700 text-white"><SelectValue /></SelectTrigger><SelectContent className="bg-zinc-800 border-zinc-700">{FIELD_TYPES.map(t => <SelectItem key={t} value={t}>{t.replace(/_/g, ' ')}</SelectItem>)}</SelectContent></Select></div>
+                                    <div><Label className="text-[10px] font-mono text-muted-foreground">ENTITY TYPE</Label>
+                                        <Select value={form.entity_type || 'project'} onValueChange={v => setForm({ ...form, entity_type: v })}><SelectTrigger className="bg-muted border-border text-foreground"><SelectValue /></SelectTrigger><SelectContent className="bg-muted border-border">{ENTITY_TYPES.map(t => <SelectItem key={t} value={t}>{t.replace(/_/g, ' ')}</SelectItem>)}</SelectContent></Select></div>
+                                    <div><Label className="text-[10px] font-mono text-muted-foreground">FIELD TYPE</Label>
+                                        <Select value={form.field_type || 'text'} onValueChange={v => setForm({ ...form, field_type: v })}><SelectTrigger className="bg-muted border-border text-foreground"><SelectValue /></SelectTrigger><SelectContent className="bg-muted border-border">{FIELD_TYPES.map(t => <SelectItem key={t} value={t}>{t.replace(/_/g, ' ')}</SelectItem>)}</SelectContent></Select></div>
                                 </div>
-                                <div><Label className="text-[10px] font-mono text-zinc-500">DESCRIPTION (OPTIONAL)</Label><Input className="bg-zinc-800 border-zinc-700 text-white" value={form.description || ''} onChange={e => setForm({ ...form, description: e.target.value })} /></div>
+                                <div><Label className="text-[10px] font-mono text-muted-foreground">DESCRIPTION (OPTIONAL)</Label><Input className="bg-muted border-border text-foreground" value={form.description || ''} onChange={e => setForm({ ...form, description: e.target.value })} /></div>
                                 {(form.field_type === 'select' || form.field_type === 'multi_select') && (
-                                    <div><Label className="text-[10px] font-mono text-zinc-500">OPTIONS (ONE PER LINE)</Label><Textarea className="bg-zinc-800 border-zinc-700 text-white" rows={3} value={form.options_text || ''} onChange={e => setForm({ ...form, options_text: e.target.value })} /></div>
+                                    <div><Label className="text-[10px] font-mono text-muted-foreground">OPTIONS (ONE PER LINE)</Label><Textarea className="bg-muted border-border text-foreground" rows={3} value={form.options_text || ''} onChange={e => setForm({ ...form, options_text: e.target.value })} /></div>
                                 )}
-                                <div className="flex items-center gap-2"><input type="checkbox" checked={form.is_required || false} onChange={e => setForm({ ...form, is_required: e.target.checked })} /><span className="text-xs text-zinc-400">Required field</span></div>
-                                <Button className="w-full bg-amber-500 hover:bg-amber-600 text-white" onClick={() => {
+                                <div className="flex items-center gap-2"><input type="checkbox" checked={form.is_required || false} onChange={e => setForm({ ...form, is_required: e.target.checked })} /><span className="text-xs text-muted-foreground">Required field</span></div>
+                                <Button className="w-full bg-amber-500 hover:bg-amber-600 text-foreground" onClick={() => {
                                     const payload = { ...form };
                                     if (payload.options_text) { payload.options = payload.options_text.split('\n').filter(Boolean); delete payload.options_text; }
                                     createField.mutate(payload);
@@ -508,23 +508,23 @@ function CustomFieldsManager() {
             ) : (
                 <div className="space-y-2">
                     {(fields?.data || []).map((f: any) => (
-                        <Card key={f.id} className="bg-zinc-900/80 border-zinc-800">
+                        <Card key={f.id} className="bg-card/80 border-border">
                             <CardContent className="p-4 flex items-center justify-between">
                                 <div className="space-y-1">
                                     <div className="flex items-center gap-2">
-                                        <span className="text-sm text-white font-medium">{f.field_name}</span>
-                                        <Badge variant="outline" className="border-zinc-700 text-zinc-400 text-[10px]">{f.field_type}</Badge>
-                                        <Badge variant="outline" className="border-amber-800 text-amber-400 text-[10px]">{f.entity_type}</Badge>
-                                        {f.is_required && <Badge className="bg-red-500/20 text-red-400 text-[10px]">Required</Badge>}
+                                        <span className="text-sm text-foreground font-medium">{f.field_name}</span>
+                                        <Badge variant="outline" className="border-border text-muted-foreground text-[10px]">{f.field_type}</Badge>
+                                        <Badge variant="outline" className="border-amber-800 text-amber-600 dark:text-amber-400 text-[10px]">{f.entity_type}</Badge>
+                                        {f.is_required && <Badge className="bg-red-500/20 text-red-600 dark:text-red-400 text-[10px]">Required</Badge>}
                                     </div>
-                                    {f.description && <p className="text-xs text-zinc-500">{f.description}</p>}
-                                    {f.options?.length > 0 && <p className="text-[10px] text-zinc-600">Options: {(f.options || []).join(', ')}</p>}
+                                    {f.description && <p className="text-xs text-muted-foreground">{f.description}</p>}
+                                    {f.options?.length > 0 && <p className="text-[10px] text-muted-foreground">Options: {(f.options || []).join(', ')}</p>}
                                 </div>
-                                <Button size="sm" variant="outline" className="border-red-500/50 text-red-400 text-xs" onClick={() => deleteField.mutate(f.id)}>Delete</Button>
+                                <Button size="sm" variant="outline" className="border-red-500/50 text-red-600 dark:text-red-400 text-xs" onClick={() => deleteField.mutate(f.id)}>Delete</Button>
                             </CardContent>
                         </Card>
                     ))}
-                    {!fields?.data?.length && <p className="text-center text-zinc-500 py-8 text-sm">No custom fields defined</p>}
+                    {!fields?.data?.length && <p className="text-center text-muted-foreground py-8 text-sm">No custom fields defined</p>}
                 </div>
             )}
         </div>

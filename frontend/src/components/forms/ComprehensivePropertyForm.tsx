@@ -116,15 +116,15 @@ export default function ComprehensivePropertyForm({
   return (
     <div className={cn('space-y-6', className)}>
       {/* Header */}
-      <div className="flex items-center gap-3 border-b border-zinc-800 pb-3">
+      <div className="flex items-center gap-3 border-b border-border pb-3">
         <Building2 className="w-5 h-5 text-amber-500" />
         <div>
-          <h3 className="font-mono text-lg text-white">
+          <h3 className="font-mono text-lg text-foreground">
             {mode === 'subject' ? 'SUBJECT PROPERTY' : 
              mode === 'comparable' ? 'COMPARABLE PROPERTY' : 
              'PROPERTY DETAILS'}
           </h3>
-          <p className="font-mono text-[10px] text-zinc-500">
+          <p className="font-mono text-[10px] text-muted-foreground">
             Complete property information for accurate valuation
           </p>
         </div>
@@ -135,16 +135,16 @@ export default function ComprehensivePropertyForm({
         <div className="space-y-4 border border-amber-500/20 rounded-lg p-4 bg-amber-500/5">
           <div className="flex items-center gap-2 mb-3">
             <Calendar className="w-4 h-4 text-amber-500" />
-            <span className="font-mono text-sm text-zinc-300">VALUATION DATES</span>
+            <span className="font-mono text-sm text-muted-foreground">VALUATION DATES</span>
             <span className="font-mono text-[9px] text-amber-500/70 ml-auto">RICS VPS 3 / GhIS Compliant</span>
           </div>
-          <p className="font-mono text-[10px] text-zinc-500 -mt-2 mb-3">
+          <p className="font-mono text-[10px] text-muted-foreground -mt-2 mb-3">
             These dates determine exchange rates and market conditions for the valuation per RICS Red Book standards
           </p>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             <div>
-              <label className="font-mono text-[10px] text-zinc-500 mb-1 block">
+              <label className="font-mono text-[10px] text-muted-foreground mb-1 block">
                 DATE OF INSPECTION *
               </label>
               <input
@@ -153,22 +153,22 @@ export default function ComprehensivePropertyForm({
                 onChange={(e) => updateField('inspection_date', e.target.value)}
                 max={new Date().toISOString().split('T')[0]}
                 className={cn(
-                  'w-full px-3 py-2 bg-zinc-900 border text-white font-mono text-sm focus:outline-none focus:border-amber-500/50',
-                  (dateErrors.inspection_date || errors.inspection_date) ? 'border-red-500/50' : 'border-zinc-800'
+                  'w-full px-3 py-2 bg-card border text-foreground font-mono text-sm focus:outline-none focus:border-amber-500/50',
+                  (dateErrors.inspection_date || errors.inspection_date) ? 'border-red-500/50' : 'border-border'
                 )}
               />
               {(dateErrors.inspection_date || errors.inspection_date) && (
-                <p className="font-mono text-[9px] text-red-400 mt-1">
+                <p className="font-mono text-[9px] text-red-600 dark:text-red-400 mt-1">
                   {dateErrors.inspection_date || errors.inspection_date}
                 </p>
               )}
-              <p className="font-mono text-[9px] text-zinc-600 mt-1">
+              <p className="font-mono text-[9px] text-muted-foreground mt-1">
                 Physical inspection date
               </p>
             </div>
 
             <div>
-              <label className="font-mono text-[10px] text-zinc-500 mb-1 block">
+              <label className="font-mono text-[10px] text-muted-foreground mb-1 block">
                 DATE OF VALUATION (EFFECTIVE) *
               </label>
               <input
@@ -186,22 +186,22 @@ export default function ComprehensivePropertyForm({
                   }
                 }}
                 className={cn(
-                  'w-full px-3 py-2 bg-zinc-900 border text-white font-mono text-sm focus:outline-none focus:border-amber-500/50',
-                  (dateErrors.valuation_date || errors.valuation_date) ? 'border-red-500/50' : 'border-zinc-800'
+                  'w-full px-3 py-2 bg-card border text-foreground font-mono text-sm focus:outline-none focus:border-amber-500/50',
+                  (dateErrors.valuation_date || errors.valuation_date) ? 'border-red-500/50' : 'border-border'
                 )}
               />
               {(dateErrors.valuation_date || errors.valuation_date) && (
-                <p className="font-mono text-[9px] text-red-400 mt-1">
+                <p className="font-mono text-[9px] text-red-600 dark:text-red-400 mt-1">
                   {dateErrors.valuation_date || errors.valuation_date}
                 </p>
               )}
-              <p className="font-mono text-[9px] text-zinc-600 mt-1">
+              <p className="font-mono text-[9px] text-muted-foreground mt-1">
                 FX rates fetched as of this date
               </p>
             </div>
 
             <div>
-              <label className="font-mono text-[10px] text-zinc-500 mb-1 block">
+              <label className="font-mono text-[10px] text-muted-foreground mb-1 block">
                 DATE OF INSTRUCTION
               </label>
               <input
@@ -219,18 +219,18 @@ export default function ComprehensivePropertyForm({
                   }
                 }}
                 max={new Date().toISOString().split('T')[0]}
-                className="w-full px-3 py-2 bg-zinc-900 border border-zinc-800 text-white font-mono text-sm focus:outline-none focus:border-amber-500/50"
+                className="w-full px-3 py-2 bg-card border border-border text-foreground font-mono text-sm focus:outline-none focus:border-amber-500/50"
               />
-              <p className="font-mono text-[9px] text-zinc-600 mt-1">
+              <p className="font-mono text-[9px] text-muted-foreground mt-1">
                 When client instructed
               </p>
             </div>
 
             <div>
-              <label className="font-mono text-[10px] text-zinc-500 mb-1 block">
+              <label className="font-mono text-[10px] text-muted-foreground mb-1 block">
                 RETROSPECTIVE VALUATION
               </label>
-              <div className="flex items-center gap-3 px-3 py-2 bg-zinc-900 border border-zinc-800 rounded">
+              <div className="flex items-center gap-3 px-3 py-2 bg-card border border-border rounded">
                 <button
                   type="button"
                   onClick={() => updateBooleanField('is_retrospective', !data.is_retrospective)}
@@ -240,16 +240,16 @@ export default function ComprehensivePropertyForm({
                   )}
                 >
                   <span className={cn(
-                    'absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full transition-transform duration-200',
+                    'absolute top-0.5 left-0.5 w-4 h-4 bg-card rounded-full transition-transform duration-200',
                     data.is_retrospective ? 'translate-x-5' : 'translate-x-0'
                   )} />
                 </button>
-                <span className="font-mono text-[10px] text-zinc-400">
+                <span className="font-mono text-[10px] text-muted-foreground">
                   {data.is_retrospective ? 'Yes - Historic date' : 'No - Current/Future'}
                 </span>
               </div>
               {dateErrors.is_retrospective && (
-                <p className="font-mono text-[9px] text-amber-400 mt-1">
+                <p className="font-mono text-[9px] text-amber-600 dark:text-amber-400 mt-1">
                   {dateErrors.is_retrospective}
                 </p>
               )}
@@ -259,7 +259,7 @@ export default function ComprehensivePropertyForm({
           {/* RICS VPS 3 Compliance Note */}
           {data.is_retrospective && (
             <div className="mt-3 p-2 bg-amber-500/10 border border-amber-500/30 rounded">
-              <p className="font-mono text-[9px] text-amber-400">
+              <p className="font-mono text-[9px] text-amber-600 dark:text-amber-400">
                 ⚠️ RETROSPECTIVE VALUATION: Per RICS VPS 3, this valuation reflects market conditions and 
                 exchange rates as at the effective date ({data.valuation_date}). Special assumptions may apply.
               </p>
@@ -269,13 +269,13 @@ export default function ComprehensivePropertyForm({
           {/* Engagement/Client Information */}
           <div className="mt-4 pt-4 border-t border-amber-500/20">
             <div className="flex items-center gap-2 mb-3">
-              <span className="font-mono text-sm text-zinc-300">INSTRUCTING CLIENT</span>
-              <span className="font-mono text-[9px] text-zinc-500 ml-auto">Who requested this valuation</span>
+              <span className="font-mono text-sm text-muted-foreground">INSTRUCTING CLIENT</span>
+              <span className="font-mono text-[9px] text-muted-foreground ml-auto">Who requested this valuation</span>
             </div>
             
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
               <div className="lg:col-span-2">
-                <label className="font-mono text-[10px] text-zinc-500 mb-1 block">
+                <label className="font-mono text-[10px] text-muted-foreground mb-1 block">
                   CLIENT NAME *
                 </label>
                 <input
@@ -283,33 +283,33 @@ export default function ComprehensivePropertyForm({
                   value={data.client_name || ''}
                   onChange={(e) => updateField('client_name', e.target.value)}
                   placeholder="e.g., Mr. Eric Danso or ABC Bank Ltd"
-                  className="w-full px-3 py-2 bg-zinc-900 border border-zinc-800 text-white font-mono text-sm placeholder-zinc-600 focus:outline-none focus:border-amber-500/50"
+                  className="w-full px-3 py-2 bg-card border border-border text-foreground font-mono text-sm placeholder-zinc-600 focus:outline-none focus:border-amber-500/50"
                 />
-                <p className="font-mono text-[9px] text-zinc-600 mt-1">
+                <p className="font-mono text-[9px] text-muted-foreground mt-1">
                   Person or entity who instructed the valuation
                 </p>
               </div>
 
               <div>
-                <label className="font-mono text-[10px] text-zinc-500 mb-1 block">
+                <label className="font-mono text-[10px] text-muted-foreground mb-1 block">
                   REQUEST TYPE
                 </label>
                 <select
                   value={data.request_type || 'written'}
                   onChange={(e) => updateField('request_type', e.target.value)}
-                  className="w-full px-3 py-2 bg-zinc-900 border border-zinc-800 text-white font-mono text-sm focus:outline-none focus:border-amber-500/50"
+                  className="w-full px-3 py-2 bg-card border border-border text-foreground font-mono text-sm focus:outline-none focus:border-amber-500/50"
                 >
                   <option value="written">Written Request</option>
                   <option value="verbal">Verbal Communication</option>
                   <option value="online">Online Request</option>
                 </select>
-                <p className="font-mono text-[9px] text-zinc-600 mt-1">
+                <p className="font-mono text-[9px] text-muted-foreground mt-1">
                   How instruction was received
                 </p>
               </div>
 
               <div>
-                <label className="font-mono text-[10px] text-zinc-500 mb-1 block">
+                <label className="font-mono text-[10px] text-muted-foreground mb-1 block">
                   SAME AS OWNER?
                 </label>
                 <button
@@ -326,13 +326,13 @@ export default function ComprehensivePropertyForm({
                   className={cn(
                     'w-full px-3 py-2 font-mono text-sm border rounded transition-colors',
                     data.owner_name 
-                      ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/20' 
-                      : 'bg-zinc-900 border-zinc-800 text-zinc-600 cursor-not-allowed'
+                      ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/20' 
+                      : 'bg-card border-border text-muted-foreground cursor-not-allowed'
                   )}
                 >
                   Copy from Owner
                 </button>
-                <p className="font-mono text-[9px] text-zinc-600 mt-1">
+                <p className="font-mono text-[9px] text-muted-foreground mt-1">
                   {data.owner_name ? 'Click to copy owner info' : 'Enter owner info first'}
                 </p>
               </div>
@@ -340,7 +340,7 @@ export default function ComprehensivePropertyForm({
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-3">
               <div>
-                <label className="font-mono text-[10px] text-zinc-500 mb-1 block">
+                <label className="font-mono text-[10px] text-muted-foreground mb-1 block">
                   CLIENT EMAIL
                 </label>
                 <input
@@ -348,12 +348,12 @@ export default function ComprehensivePropertyForm({
                   value={data.client_email || ''}
                   onChange={(e) => updateField('client_email', e.target.value)}
                   placeholder="client@example.com"
-                  className="w-full px-3 py-2 bg-zinc-900 border border-zinc-800 text-white font-mono text-sm placeholder-zinc-600 focus:outline-none focus:border-amber-500/50"
+                  className="w-full px-3 py-2 bg-card border border-border text-foreground font-mono text-sm placeholder-zinc-600 focus:outline-none focus:border-amber-500/50"
                 />
               </div>
 
               <div>
-                <label className="font-mono text-[10px] text-zinc-500 mb-1 block">
+                <label className="font-mono text-[10px] text-muted-foreground mb-1 block">
                   CLIENT PHONE
                 </label>
                 <input
@@ -361,12 +361,12 @@ export default function ComprehensivePropertyForm({
                   value={data.client_phone || ''}
                   onChange={(e) => updateField('client_phone', e.target.value)}
                   placeholder="+233 XX XXX XXXX"
-                  className="w-full px-3 py-2 bg-zinc-900 border border-zinc-800 text-white font-mono text-sm placeholder-zinc-600 focus:outline-none focus:border-amber-500/50"
+                  className="w-full px-3 py-2 bg-card border border-border text-foreground font-mono text-sm placeholder-zinc-600 focus:outline-none focus:border-amber-500/50"
                 />
               </div>
 
               <div>
-                <label className="font-mono text-[10px] text-zinc-500 mb-1 block">
+                <label className="font-mono text-[10px] text-muted-foreground mb-1 block">
                   CLIENT ADDRESS
                 </label>
                 <input
@@ -374,7 +374,7 @@ export default function ComprehensivePropertyForm({
                   value={data.client_address || ''}
                   onChange={(e) => updateField('client_address', e.target.value)}
                   placeholder="Client's address"
-                  className="w-full px-3 py-2 bg-zinc-900 border border-zinc-800 text-white font-mono text-sm placeholder-zinc-600 focus:outline-none focus:border-amber-500/50"
+                  className="w-full px-3 py-2 bg-card border border-border text-foreground font-mono text-sm placeholder-zinc-600 focus:outline-none focus:border-amber-500/50"
                 />
               </div>
             </div>
@@ -386,11 +386,11 @@ export default function ComprehensivePropertyForm({
       {showValuationDates && mode === 'subject' && (
         <div className="space-y-4 border border-amber-500/20 rounded-lg p-4 bg-amber-500/5">
           <div className="flex items-center gap-2 mb-3">
-            <Scale className="w-4 h-4 text-amber-400" />
-            <span className="font-mono text-sm text-zinc-300">PURPOSE OF VALUATION</span>
-            <span className="font-mono text-[9px] text-amber-400/70 ml-auto">RICS Red Book Compliant</span>
+            <Scale className="w-4 h-4 text-amber-600 dark:text-amber-400" />
+            <span className="font-mono text-sm text-muted-foreground">PURPOSE OF VALUATION</span>
+            <span className="font-mono text-[9px] text-amber-600 dark:text-amber-400/70 ml-auto">RICS Red Book Compliant</span>
           </div>
-          <p className="font-mono text-[10px] text-zinc-500 -mt-2 mb-3">
+          <p className="font-mono text-[10px] text-muted-foreground -mt-2 mb-3">
             Select the purpose for which this valuation is being conducted
           </p>
 
@@ -414,16 +414,16 @@ export default function ComprehensivePropertyForm({
                   'p-3 border text-left transition-colors',
                   data.valuation_purpose === purpose.value
                     ? 'border-amber-500 bg-amber-500/10'
-                    : 'border-zinc-800 bg-zinc-900 hover:border-zinc-700'
+                    : 'border-border bg-card hover:border-border'
                 )}
               >
                 <div className={cn(
                   'font-mono text-sm',
-                  data.valuation_purpose === purpose.value ? 'text-amber-400' : 'text-white'
+                  data.valuation_purpose === purpose.value ? 'text-amber-600 dark:text-amber-400' : 'text-foreground'
                 )}>
                   {purpose.label}
                 </div>
-                <div className="font-mono text-[9px] text-zinc-500 mt-1">
+                <div className="font-mono text-[9px] text-muted-foreground mt-1">
                   {purpose.description}
                 </div>
               </button>
@@ -436,12 +436,12 @@ export default function ComprehensivePropertyForm({
       <div className="space-y-4">
         <div className="flex items-center gap-2 mb-3">
           <MapPin className="w-4 h-4 text-amber-500" />
-          <span className="font-mono text-sm text-zinc-300">BASIC INFORMATION</span>
+          <span className="font-mono text-sm text-muted-foreground">BASIC INFORMATION</span>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
-            <label className="font-mono text-[10px] text-zinc-500 mb-1 block">
+            <label className="font-mono text-[10px] text-muted-foreground mb-1 block">
               ADDRESS {isRequired('address') && '*'}
             </label>
             <input
@@ -450,17 +450,17 @@ export default function ComprehensivePropertyForm({
               onChange={(e) => updateField('address', e.target.value)}
               placeholder="Enter property address"
               className={cn(
-                'w-full px-3 py-2 bg-zinc-900 border text-white font-mono text-sm placeholder-zinc-600 focus:outline-none focus:border-amber-500/50',
-                hasError('address') ? 'border-red-500/50' : 'border-zinc-800'
+                'w-full px-3 py-2 bg-card border text-foreground font-mono text-sm placeholder-zinc-600 focus:outline-none focus:border-amber-500/50',
+                hasError('address') ? 'border-red-500/50' : 'border-border'
               )}
             />
             {hasError('address') && (
-              <p className="font-mono text-[9px] text-red-400 mt-1">{getError('address')}</p>
+              <p className="font-mono text-[9px] text-red-600 dark:text-red-400 mt-1">{getError('address')}</p>
             )}
           </div>
 
           <div>
-            <label className="font-mono text-[10px] text-zinc-500 mb-1 block">
+            <label className="font-mono text-[10px] text-muted-foreground mb-1 block">
               DIGITAL ADDRESS (GHANA POST GPS)
             </label>
             <input
@@ -468,13 +468,13 @@ export default function ComprehensivePropertyForm({
               value={data.digital_address || ''}
               onChange={(e) => updateField('digital_address', e.target.value.toUpperCase())}
               placeholder="e.g., GA-123-4567"
-              className="w-full px-3 py-2 bg-zinc-900 border border-amber-500/30 text-amber-400 font-mono text-sm placeholder-zinc-600 focus:outline-none focus:border-amber-500"
+              className="w-full px-3 py-2 bg-card border border-amber-500/30 text-amber-600 dark:text-amber-400 font-mono text-sm placeholder-zinc-600 focus:outline-none focus:border-amber-500"
             />
-            <p className="font-mono text-[9px] text-zinc-600 mt-1">For precise geocoding & verification</p>
+            <p className="font-mono text-[9px] text-muted-foreground mt-1">For precise geocoding & verification</p>
           </div>
 
           <div>
-            <label className="font-mono text-[10px] text-zinc-500 mb-1 block">
+            <label className="font-mono text-[10px] text-muted-foreground mb-1 block">
               CITY {isRequired('city') && '*'}
             </label>
             <input
@@ -483,23 +483,23 @@ export default function ComprehensivePropertyForm({
               onChange={(e) => updateField('city', e.target.value)}
               placeholder="Enter city"
               className={cn(
-                'w-full px-3 py-2 bg-zinc-900 border text-white font-mono text-sm placeholder-zinc-600 focus:outline-none focus:border-amber-500/50',
-                hasError('city') ? 'border-red-500/50' : 'border-zinc-800'
+                'w-full px-3 py-2 bg-card border text-foreground font-mono text-sm placeholder-zinc-600 focus:outline-none focus:border-amber-500/50',
+                hasError('city') ? 'border-red-500/50' : 'border-border'
               )}
             />
             {hasError('city') && (
-              <p className="font-mono text-[9px] text-red-400 mt-1">{getError('city')}</p>
+              <p className="font-mono text-[9px] text-red-600 dark:text-red-400 mt-1">{getError('city')}</p>
             )}
           </div>
 
           <div>
-            <label className="font-mono text-[10px] text-zinc-500 mb-1 block">
+            <label className="font-mono text-[10px] text-muted-foreground mb-1 block">
               REGION {isRequired('region') && '*'}
             </label>
             <select
               value={data.region || 'greater_accra'}
               onChange={(e) => updateField('region', e.target.value)}
-              className="w-full px-3 py-2 bg-zinc-900 border border-zinc-800 text-white font-mono text-sm focus:outline-none focus:border-amber-500/50"
+              className="w-full px-3 py-2 bg-card border border-border text-foreground font-mono text-sm focus:outline-none focus:border-amber-500/50"
             >
               {REGIONS.map((region) => (
                 <option key={region.value} value={region.value}>{region.label}</option>
@@ -508,13 +508,13 @@ export default function ComprehensivePropertyForm({
           </div>
 
           <div>
-            <label className="font-mono text-[10px] text-zinc-500 mb-1 block">
+            <label className="font-mono text-[10px] text-muted-foreground mb-1 block">
               PROPERTY TYPE {isRequired('property_type') && '*'}
             </label>
             <select
               value={data.property_type || 'house'}
               onChange={(e) => updateField('property_type', e.target.value)}
-              className="w-full px-3 py-2 bg-zinc-900 border border-zinc-800 text-white font-mono text-sm focus:outline-none focus:border-amber-500/50"
+              className="w-full px-3 py-2 bg-card border border-border text-foreground font-mono text-sm focus:outline-none focus:border-amber-500/50"
             >
               {PROPERTY_TYPES.map((type) => (
                 <option key={type.value} value={type.value}>{type.label}</option>
@@ -528,78 +528,78 @@ export default function ComprehensivePropertyForm({
       <div className="space-y-4">
         <div className="flex items-center gap-2 mb-3">
           <Ruler className="w-4 h-4 text-amber-500" />
-          <span className="font-mono text-sm text-zinc-300">PHYSICAL CHARACTERISTICS</span>
+          <span className="font-mono text-sm text-muted-foreground">PHYSICAL CHARACTERISTICS</span>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div>
-            <label className="font-mono text-[10px] text-zinc-500 mb-1 block">GROSS FLOOR AREA (SQM)</label>
+            <label className="font-mono text-[10px] text-muted-foreground mb-1 block">GROSS FLOOR AREA (SQM)</label>
             <input
               type="number"
               value={data.gfa || ''}
               onChange={(e) => updateField('gfa', parseFloat(e.target.value) || undefined)}
               placeholder="0"
-              className="w-full px-3 py-2 bg-zinc-900 border border-zinc-800 text-white font-mono text-sm placeholder-zinc-600 focus:outline-none focus:border-amber-500/50"
+              className="w-full px-3 py-2 bg-card border border-border text-foreground font-mono text-sm placeholder-zinc-600 focus:outline-none focus:border-amber-500/50"
             />
           </div>
 
           <div>
-            <label className="font-mono text-[10px] text-zinc-500 mb-1 block">PLOT SIZE (SQM)</label>
+            <label className="font-mono text-[10px] text-muted-foreground mb-1 block">PLOT SIZE (SQM)</label>
             <input
               type="number"
               value={data.plot_size || ''}
               onChange={(e) => updateField('plot_size', parseFloat(e.target.value) || undefined)}
               placeholder="0"
-              className="w-full px-3 py-2 bg-zinc-900 border border-zinc-800 text-white font-mono text-sm placeholder-zinc-600 focus:outline-none focus:border-amber-500/50"
+              className="w-full px-3 py-2 bg-card border border-border text-foreground font-mono text-sm placeholder-zinc-600 focus:outline-none focus:border-amber-500/50"
             />
           </div>
 
           <div>
-            <label className="font-mono text-[10px] text-zinc-500 mb-1 block">LAND AREA (SQM)</label>
+            <label className="font-mono text-[10px] text-muted-foreground mb-1 block">LAND AREA (SQM)</label>
             <input
               type="number"
               value={data.land_area || ''}
               onChange={(e) => updateField('land_area', parseFloat(e.target.value) || undefined)}
               placeholder="0"
-              className="w-full px-3 py-2 bg-zinc-900 border border-zinc-800 text-white font-mono text-sm placeholder-zinc-600 focus:outline-none focus:border-amber-500/50"
+              className="w-full px-3 py-2 bg-card border border-border text-foreground font-mono text-sm placeholder-zinc-600 focus:outline-none focus:border-amber-500/50"
             />
           </div>
 
           <div>
-            <label className="font-mono text-[10px] text-zinc-500 mb-1 block">BEDROOMS</label>
+            <label className="font-mono text-[10px] text-muted-foreground mb-1 block">BEDROOMS</label>
             <input
               type="number"
               value={data.bedrooms || ''}
               onChange={(e) => updateField('bedrooms', parseInt(e.target.value) || undefined)}
               placeholder="0"
-              className="w-full px-3 py-2 bg-zinc-900 border border-zinc-800 text-white font-mono text-sm placeholder-zinc-600 focus:outline-none focus:border-amber-500/50"
+              className="w-full px-3 py-2 bg-card border border-border text-foreground font-mono text-sm placeholder-zinc-600 focus:outline-none focus:border-amber-500/50"
             />
           </div>
 
           <div>
-            <label className="font-mono text-[10px] text-zinc-500 mb-1 block">BATHROOMS</label>
+            <label className="font-mono text-[10px] text-muted-foreground mb-1 block">BATHROOMS</label>
             <input
               type="number"
               value={data.bathrooms || ''}
               onChange={(e) => updateField('bathrooms', parseInt(e.target.value) || undefined)}
               placeholder="0"
-              className="w-full px-3 py-2 bg-zinc-900 border border-zinc-800 text-white font-mono text-sm placeholder-zinc-600 focus:outline-none focus:border-amber-500/50"
+              className="w-full px-3 py-2 bg-card border border-border text-foreground font-mono text-sm placeholder-zinc-600 focus:outline-none focus:border-amber-500/50"
             />
           </div>
 
           <div>
-            <label className="font-mono text-[10px] text-zinc-500 mb-1 block">TOTAL FLOORS</label>
+            <label className="font-mono text-[10px] text-muted-foreground mb-1 block">TOTAL FLOORS</label>
             <input
               type="number"
               value={data.total_floors || ''}
               onChange={(e) => updateField('total_floors', parseInt(e.target.value) || undefined)}
               placeholder="0"
-              className="w-full px-3 py-2 bg-zinc-900 border border-zinc-800 text-white font-mono text-sm placeholder-zinc-600 focus:outline-none focus:border-amber-500/50"
+              className="w-full px-3 py-2 bg-card border border-border text-foreground font-mono text-sm placeholder-zinc-600 focus:outline-none focus:border-amber-500/50"
             />
           </div>
 
           <div>
-            <label className="font-mono text-[10px] text-zinc-500 mb-1 block">YEAR BUILT</label>
+            <label className="font-mono text-[10px] text-muted-foreground mb-1 block">YEAR BUILT</label>
             <input
               type="number"
               value={data.year_built || ''}
@@ -607,31 +607,31 @@ export default function ComprehensivePropertyForm({
               placeholder="e.g. 2020"
               min={VALIDATION_RULES.minYear}
               max={VALIDATION_RULES.maxYear}
-              className="w-full px-3 py-2 bg-zinc-900 border border-zinc-800 text-white font-mono text-sm placeholder-zinc-600 focus:outline-none focus:border-amber-500/50"
+              className="w-full px-3 py-2 bg-card border border-border text-foreground font-mono text-sm placeholder-zinc-600 focus:outline-none focus:border-amber-500/50"
             />
           </div>
 
           <div>
-            <label className="font-mono text-[10px] text-zinc-500 mb-1 block">PARKING SPACES</label>
+            <label className="font-mono text-[10px] text-muted-foreground mb-1 block">PARKING SPACES</label>
             <input
               type="number"
               value={data.parking_spaces || ''}
               onChange={(e) => updateField('parking_spaces', parseInt(e.target.value) || undefined)}
               placeholder="0"
-              className="w-full px-3 py-2 bg-zinc-900 border border-zinc-800 text-white font-mono text-sm placeholder-zinc-600 focus:outline-none focus:border-amber-500/50"
+              className="w-full px-3 py-2 bg-card border border-border text-foreground font-mono text-sm placeholder-zinc-600 focus:outline-none focus:border-amber-500/50"
             />
           </div>
 
           {/* Floor Number for Apartments */}
           {(data.property_type === 'apartment' || data.property_type === 'condo') && (
             <div>
-              <label className="font-mono text-[10px] text-zinc-500 mb-1 block">FLOOR NUMBER</label>
+              <label className="font-mono text-[10px] text-muted-foreground mb-1 block">FLOOR NUMBER</label>
               <input
                 type="number"
                 value={data.floor_number || ''}
                 onChange={(e) => updateField('floor_number', parseInt(e.target.value) || undefined)}
                 placeholder="0"
-                className="w-full px-3 py-2 bg-zinc-900 border border-zinc-800 text-white font-mono text-sm placeholder-zinc-600 focus:outline-none focus:border-amber-500/50"
+                className="w-full px-3 py-2 bg-card border border-border text-foreground font-mono text-sm placeholder-zinc-600 focus:outline-none focus:border-amber-500/50"
               />
             </div>
           )}
@@ -642,38 +642,38 @@ export default function ComprehensivePropertyForm({
       <div className="space-y-4">
         <div className="flex items-center gap-2 mb-3">
           <Star className="w-4 h-4 text-amber-500" />
-          <span className="font-mono text-sm text-zinc-300">QUALITY & CONDITION</span>
+          <span className="font-mono text-sm text-muted-foreground">QUALITY & CONDITION</span>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
-            <label className="font-mono text-[10px] text-zinc-500 mb-1 block">QUALITY RATING</label>
+            <label className="font-mono text-[10px] text-muted-foreground mb-1 block">QUALITY RATING</label>
             <select
               value={data.quality_rating || 'standard'}
               onChange={(e) => updateField('quality_rating', e.target.value)}
-              className="w-full px-3 py-2 bg-zinc-900 border border-zinc-800 text-white font-mono text-sm focus:outline-none focus:border-amber-500/50"
+              className="w-full px-3 py-2 bg-card border border-border text-foreground font-mono text-sm focus:outline-none focus:border-amber-500/50"
             >
               {QUALITY_RATINGS.map((rating) => (
                 <option key={rating.value} value={rating.value}>{rating.label}</option>
               ))}
             </select>
-            <p className="font-mono text-[9px] text-zinc-600 mt-1">
+            <p className="font-mono text-[9px] text-muted-foreground mt-1">
               {QUALITY_RATINGS.find(r => r.value === data.quality_rating)?.description}
             </p>
           </div>
 
           <div>
-            <label className="font-mono text-[10px] text-zinc-500 mb-1 block">CONDITION</label>
+            <label className="font-mono text-[10px] text-muted-foreground mb-1 block">CONDITION</label>
             <select
               value={data.condition || 'good'}
               onChange={(e) => updateField('condition', e.target.value)}
-              className="w-full px-3 py-2 bg-zinc-900 border border-zinc-800 text-white font-mono text-sm focus:outline-none focus:border-amber-500/50"
+              className="w-full px-3 py-2 bg-card border border-border text-foreground font-mono text-sm focus:outline-none focus:border-amber-500/50"
             >
               {CONDITIONS.map((condition) => (
                 <option key={condition.value} value={condition.value}>{condition.label}</option>
               ))}
             </select>
-            <p className="font-mono text-[9px] text-zinc-600 mt-1">
+            <p className="font-mono text-[9px] text-muted-foreground mt-1">
               {CONDITIONS.find(c => c.value === data.condition)?.description}
             </p>
           </div>
@@ -684,7 +684,7 @@ export default function ComprehensivePropertyForm({
       <div className="space-y-4">
         <div className="flex items-center gap-2 mb-3">
           <Home className="w-4 h-4 text-amber-500" />
-          <span className="font-mono text-sm text-zinc-300">AMENITIES</span>
+          <span className="font-mono text-sm text-muted-foreground">AMENITIES</span>
         </div>
 
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
@@ -713,12 +713,12 @@ export default function ComprehensivePropertyForm({
                 <div className={cn(
                   'flex items-center justify-center w-8 h-8 border-2 rounded transition-colors',
                   data[amenity.key as keyof ComprehensivePropertyData]
-                    ? 'bg-amber-500 border-amber-500 text-white'
-                    : 'border-zinc-600 text-zinc-600 group-hover:border-amber-500/50'
+                    ? 'bg-amber-500 border-amber-500 text-foreground'
+                    : 'border-zinc-600 text-muted-foreground group-hover:border-amber-500/50'
                 )}>
                   <IconComponent className="w-4 h-4" />
                 </div>
-                <span className="font-mono text-sm text-zinc-300">{amenity.label}</span>
+                <span className="font-mono text-sm text-muted-foreground">{amenity.label}</span>
               </label>
             )
           })}
@@ -730,54 +730,54 @@ export default function ComprehensivePropertyForm({
         <div className="space-y-4">
           <div className="flex items-center gap-2 mb-3">
             <Eye className="w-4 h-4 text-amber-500" />
-            <span className="font-mono text-sm text-zinc-300">LOCATION QUALITY</span>
+            <span className="font-mono text-sm text-muted-foreground">LOCATION QUALITY</span>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
-              <label className="font-mono text-[10px] text-zinc-500 mb-1 block">VIEW QUALITY</label>
+              <label className="font-mono text-[10px] text-muted-foreground mb-1 block">VIEW QUALITY</label>
               <select
                 value={data.view_quality || 'standard'}
                 onChange={(e) => updateField('view_quality', e.target.value)}
-                className="w-full px-3 py-2 bg-zinc-900 border border-zinc-800 text-white font-mono text-sm focus:outline-none focus:border-amber-500/50"
+                className="w-full px-3 py-2 bg-card border border-border text-foreground font-mono text-sm focus:outline-none focus:border-amber-500/50"
               >
                 {VIEW_QUALITIES.map((view) => (
                   <option key={view.value} value={view.value}>{view.label}</option>
                 ))}
               </select>
-              <p className="font-mono text-[9px] text-zinc-600 mt-1">
+              <p className="font-mono text-[9px] text-muted-foreground mt-1">
                 {VIEW_QUALITIES.find(v => v.value === data.view_quality)?.description}
               </p>
             </div>
 
             <div>
-              <label className="font-mono text-[10px] text-zinc-500 mb-1 block">NEIGHBORHOOD RATING</label>
+              <label className="font-mono text-[10px] text-muted-foreground mb-1 block">NEIGHBORHOOD RATING</label>
               <select
                 value={data.neighborhood_rating || 'secondary'}
                 onChange={(e) => updateField('neighborhood_rating', e.target.value)}
-                className="w-full px-3 py-2 bg-zinc-900 border border-zinc-800 text-white font-mono text-sm focus:outline-none focus:border-amber-500/50"
+                className="w-full px-3 py-2 bg-card border border-border text-foreground font-mono text-sm focus:outline-none focus:border-amber-500/50"
               >
                 {NEIGHBORHOOD_RATINGS.map((rating) => (
                   <option key={rating.value} value={rating.value}>{rating.label}</option>
                 ))}
               </select>
-              <p className="font-mono text-[9px] text-zinc-600 mt-1">
+              <p className="font-mono text-[9px] text-muted-foreground mt-1">
                 {NEIGHBORHOOD_RATINGS.find(n => n.value === data.neighborhood_rating)?.description}
               </p>
             </div>
 
             <div>
-              <label className="font-mono text-[10px] text-zinc-500 mb-1 block">ACCESSIBILITY</label>
+              <label className="font-mono text-[10px] text-muted-foreground mb-1 block">ACCESSIBILITY</label>
               <select
                 value={data.accessibility_rating || 'good'}
                 onChange={(e) => updateField('accessibility_rating', e.target.value)}
-                className="w-full px-3 py-2 bg-zinc-900 border border-zinc-800 text-white font-mono text-sm focus:outline-none focus:border-amber-500/50"
+                className="w-full px-3 py-2 bg-card border border-border text-foreground font-mono text-sm focus:outline-none focus:border-amber-500/50"
               >
                 {ACCESSIBILITY_RATINGS.map((access) => (
                   <option key={access.value} value={access.value}>{access.label}</option>
                 ))}
               </select>
-              <p className="font-mono text-[9px] text-zinc-600 mt-1">
+              <p className="font-mono text-[9px] text-muted-foreground mt-1">
                 {ACCESSIBILITY_RATINGS.find(a => a.value === data.accessibility_rating)?.description}
               </p>
             </div>
@@ -789,35 +789,35 @@ export default function ComprehensivePropertyForm({
       <div className="space-y-4">
         <div className="flex items-center gap-2 mb-3">
           <Scale className="w-4 h-4 text-amber-500" />
-          <span className="font-mono text-sm text-zinc-300">LEGAL & TENURE</span>
+          <span className="font-mono text-sm text-muted-foreground">LEGAL & TENURE</span>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
-            <label className="font-mono text-[10px] text-zinc-500 mb-1 block">TENURE TYPE</label>
+            <label className="font-mono text-[10px] text-muted-foreground mb-1 block">TENURE TYPE</label>
             <select
               value={data.tenure_type || 'freehold'}
               onChange={(e) => updateField('tenure_type', e.target.value)}
-              className="w-full px-3 py-2 bg-zinc-900 border border-zinc-800 text-white font-mono text-sm focus:outline-none focus:border-amber-500/50"
+              className="w-full px-3 py-2 bg-card border border-border text-foreground font-mono text-sm focus:outline-none focus:border-amber-500/50"
             >
               {TENURE_TYPES.map((tenure) => (
                 <option key={tenure.value} value={tenure.value}>{tenure.label}</option>
               ))}
             </select>
-            <p className="font-mono text-[9px] text-zinc-600 mt-1">
+            <p className="font-mono text-[9px] text-muted-foreground mt-1">
               {TENURE_TYPES.find(t => t.value === data.tenure_type)?.description}
             </p>
           </div>
 
           {data.tenure_type === 'leasehold' && (
             <div>
-              <label className="font-mono text-[10px] text-zinc-500 mb-1 block">LEASE YEARS REMAINING</label>
+              <label className="font-mono text-[10px] text-muted-foreground mb-1 block">LEASE YEARS REMAINING</label>
               <input
                 type="number"
                 value={data.lease_years_remaining || ''}
                 onChange={(e) => updateField('lease_years_remaining', parseInt(e.target.value) || undefined)}
                 placeholder="99"
-                className="w-full px-3 py-2 bg-zinc-900 border border-zinc-800 text-white font-mono text-sm placeholder-zinc-600 focus:outline-none focus:border-amber-500/50"
+                className="w-full px-3 py-2 bg-card border border-border text-foreground font-mono text-sm placeholder-zinc-600 focus:outline-none focus:border-amber-500/50"
               />
             </div>
           )}
@@ -828,46 +828,46 @@ export default function ComprehensivePropertyForm({
       <div className="space-y-6 border border-amber-500/30 p-4 bg-amber-500/5">
         <div className="flex items-center gap-2 mb-3">
           <FileText className="w-4 h-4 text-amber-500" />
-          <span className="font-mono text-sm text-amber-300">REPORT DATA (CHAPTER 3)</span>
-          <span className="font-mono text-[9px] text-zinc-500 ml-2">Detailed descriptions for valuation report</span>
+          <span className="font-mono text-sm text-amber-600 dark:text-amber-300">REPORT DATA (CHAPTER 3)</span>
+          <span className="font-mono text-[9px] text-muted-foreground ml-2">Detailed descriptions for valuation report</span>
         </div>
 
         {/* City Data */}
         <div className="space-y-3">
-          <div className="font-mono text-[10px] text-amber-400 border-b border-amber-500/20 pb-1">CITY DATA</div>
+          <div className="font-mono text-[10px] text-amber-600 dark:text-amber-400 border-b border-amber-500/20 pb-1">CITY DATA</div>
           <div>
-            <label className="font-mono text-[10px] text-zinc-500 mb-1 block">CITY DESCRIPTION</label>
+            <label className="font-mono text-[10px] text-muted-foreground mb-1 block">CITY DESCRIPTION</label>
             <textarea
               value={data.city_description || ''}
               onChange={(e) => updateField('city_description', e.target.value)}
               placeholder="Describe the city/metropolitan area - its history, economic activities, infrastructure, notable features, and development trends..."
               rows={4}
-              className="w-full px-3 py-2 bg-zinc-900 border border-zinc-800 text-white font-mono text-sm placeholder-zinc-600 focus:outline-none focus:border-amber-500/50 resize-none"
+              className="w-full px-3 py-2 bg-card border border-border text-foreground font-mono text-sm placeholder-zinc-600 focus:outline-none focus:border-amber-500/50 resize-none"
             />
-            <p className="font-mono text-[9px] text-zinc-600 mt-1">e.g., "The property is located within the Sekondi-Takoradi Metropolitan Area..."</p>
+            <p className="font-mono text-[9px] text-muted-foreground mt-1">e.g., "The property is located within the Sekondi-Takoradi Metropolitan Area..."</p>
           </div>
         </div>
 
         {/* Neighbourhood Data */}
         <div className="space-y-3">
-          <div className="font-mono text-[10px] text-amber-400 border-b border-amber-500/20 pb-1">NEIGHBOURHOOD DATA</div>
+          <div className="font-mono text-[10px] text-amber-600 dark:text-amber-400 border-b border-amber-500/20 pb-1">NEIGHBOURHOOD DATA</div>
           <div>
-            <label className="font-mono text-[10px] text-zinc-500 mb-1 block">NEIGHBOURHOOD DESCRIPTION</label>
+            <label className="font-mono text-[10px] text-muted-foreground mb-1 block">NEIGHBOURHOOD DESCRIPTION</label>
             <textarea
               value={data.neighbourhood_description || ''}
               onChange={(e) => updateField('neighbourhood_description', e.target.value)}
               placeholder="Describe the neighborhood - location, character, building types, income levels, infrastructure, nearby facilities..."
               rows={4}
-              className="w-full px-3 py-2 bg-zinc-900 border border-zinc-800 text-white font-mono text-sm placeholder-zinc-600 focus:outline-none focus:border-amber-500/50 resize-none"
+              className="w-full px-3 py-2 bg-card border border-border text-foreground font-mono text-sm placeholder-zinc-600 focus:outline-none focus:border-amber-500/50 resize-none"
             />
           </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
-              <label className="font-mono text-[10px] text-zinc-500 mb-1 block">NEIGHBOURHOOD CLASS</label>
+              <label className="font-mono text-[10px] text-muted-foreground mb-1 block">NEIGHBOURHOOD CLASS</label>
               <select
                 value={data.neighborhood_class || 'middle_class'}
                 onChange={(e) => updateField('neighborhood_class', e.target.value)}
-                className="w-full px-3 py-2 bg-zinc-900 border border-zinc-800 text-white font-mono text-sm focus:outline-none focus:border-amber-500/50"
+                className="w-full px-3 py-2 bg-card border border-border text-foreground font-mono text-sm focus:outline-none focus:border-amber-500/50"
               >
                 <option value="first_class">1st Class</option>
                 <option value="high_class">High Class</option>
@@ -878,11 +878,11 @@ export default function ComprehensivePropertyForm({
               </select>
             </div>
             <div>
-              <label className="font-mono text-[10px] text-zinc-500 mb-1 block">RESIDENT INCOME LEVEL</label>
+              <label className="font-mono text-[10px] text-muted-foreground mb-1 block">RESIDENT INCOME LEVEL</label>
               <select
                 value={data.resident_income_level || 'middle_income'}
                 onChange={(e) => updateField('resident_income_level', e.target.value)}
-                className="w-full px-3 py-2 bg-zinc-900 border border-zinc-800 text-white font-mono text-sm focus:outline-none focus:border-amber-500/50"
+                className="w-full px-3 py-2 bg-card border border-border text-foreground font-mono text-sm focus:outline-none focus:border-amber-500/50"
               >
                 <option value="high_income">High Income Earners</option>
                 <option value="middle_income">Middle Income Earners</option>
@@ -891,11 +891,11 @@ export default function ComprehensivePropertyForm({
               </select>
             </div>
             <div>
-              <label className="font-mono text-[10px] text-zinc-500 mb-1 block">PRIMARY USE</label>
+              <label className="font-mono text-[10px] text-muted-foreground mb-1 block">PRIMARY USE</label>
               <select
                 value={data.primary_use || 'residential'}
                 onChange={(e) => updateField('primary_use', e.target.value)}
-                className="w-full px-3 py-2 bg-zinc-900 border border-zinc-800 text-white font-mono text-sm focus:outline-none focus:border-amber-500/50"
+                className="w-full px-3 py-2 bg-card border border-border text-foreground font-mono text-sm focus:outline-none focus:border-amber-500/50"
               >
                 <option value="residential">Residential</option>
                 <option value="commercial">Commercial</option>
@@ -908,111 +908,111 @@ export default function ComprehensivePropertyForm({
 
         {/* Location Description */}
         <div className="space-y-3">
-          <div className="font-mono text-[10px] text-amber-400 border-b border-amber-500/20 pb-1">LOCATION</div>
+          <div className="font-mono text-[10px] text-amber-600 dark:text-amber-400 border-b border-amber-500/20 pb-1">LOCATION</div>
           <div>
-            <label className="font-mono text-[10px] text-zinc-500 mb-1 block">LOCATION DESCRIPTION</label>
+            <label className="font-mono text-[10px] text-muted-foreground mb-1 block">LOCATION DESCRIPTION</label>
             <textarea
               value={data.location_description || ''}
               onChange={(e) => updateField('location_description', e.target.value)}
               placeholder="Describe the specific location - distance from main roads, landmarks, access points..."
               rows={2}
-              className="w-full px-3 py-2 bg-zinc-900 border border-zinc-800 text-white font-mono text-sm placeholder-zinc-600 focus:outline-none focus:border-amber-500/50 resize-none"
+              className="w-full px-3 py-2 bg-card border border-border text-foreground font-mono text-sm placeholder-zinc-600 focus:outline-none focus:border-amber-500/50 resize-none"
             />
           </div>
         </div>
 
         {/* Brief Property Description */}
         <div className="space-y-3">
-          <div className="font-mono text-[10px] text-amber-400 border-b border-amber-500/20 pb-1">BRIEF DESCRIPTION OF PROPERTY</div>
+          <div className="font-mono text-[10px] text-amber-600 dark:text-amber-400 border-b border-amber-500/20 pb-1">BRIEF DESCRIPTION OF PROPERTY</div>
           <div>
-            <label className="font-mono text-[10px] text-zinc-500 mb-1 block">PROPERTY DESCRIPTION</label>
+            <label className="font-mono text-[10px] text-muted-foreground mb-1 block">PROPERTY DESCRIPTION</label>
             <textarea
               value={data.brief_description || ''}
               onChange={(e) => updateField('brief_description', e.target.value)}
               placeholder="Brief description of the property - type, layout, land size, coverage..."
               rows={3}
-              className="w-full px-3 py-2 bg-zinc-900 border border-zinc-800 text-white font-mono text-sm placeholder-zinc-600 focus:outline-none focus:border-amber-500/50 resize-none"
+              className="w-full px-3 py-2 bg-card border border-border text-foreground font-mono text-sm placeholder-zinc-600 focus:outline-none focus:border-amber-500/50 resize-none"
             />
           </div>
         </div>
 
         {/* Grounds and External Works */}
         <div className="space-y-3">
-          <div className="font-mono text-[10px] text-amber-400 border-b border-amber-500/20 pb-1">GROUNDS AND EXTERNAL WORKS</div>
+          <div className="font-mono text-[10px] text-amber-600 dark:text-amber-400 border-b border-amber-500/20 pb-1">GROUNDS AND EXTERNAL WORKS</div>
           <div>
-            <label className="font-mono text-[10px] text-zinc-500 mb-1 block">GROUNDS DESCRIPTION</label>
+            <label className="font-mono text-[10px] text-muted-foreground mb-1 block">GROUNDS DESCRIPTION</label>
             <textarea
               value={data.grounds_external_works || ''}
               onChange={(e) => updateField('grounds_external_works', e.target.value)}
               placeholder="Describe the compound - boundary walls, landscaping, paving, water tanks, outbuildings..."
               rows={3}
-              className="w-full px-3 py-2 bg-zinc-900 border border-zinc-800 text-white font-mono text-sm placeholder-zinc-600 focus:outline-none focus:border-amber-500/50 resize-none"
+              className="w-full px-3 py-2 bg-card border border-border text-foreground font-mono text-sm placeholder-zinc-600 focus:outline-none focus:border-amber-500/50 resize-none"
             />
           </div>
         </div>
 
         {/* Construction Details */}
         <div className="space-y-3">
-          <div className="font-mono text-[10px] text-amber-400 border-b border-amber-500/20 pb-1">CONSTRUCTION DETAILS</div>
+          <div className="font-mono text-[10px] text-amber-600 dark:text-amber-400 border-b border-amber-500/20 pb-1">CONSTRUCTION DETAILS</div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="font-mono text-[10px] text-zinc-500 mb-1 block">FLOOR FINISH</label>
+              <label className="font-mono text-[10px] text-muted-foreground mb-1 block">FLOOR FINISH</label>
               <input
                 type="text"
                 value={data.floor_finish || ''}
                 onChange={(e) => updateField('floor_finish', e.target.value)}
                 placeholder="e.g., Ceramic tiles in all areas"
-                className="w-full px-3 py-2 bg-zinc-900 border border-zinc-800 text-white font-mono text-sm placeholder-zinc-600 focus:outline-none focus:border-amber-500/50"
+                className="w-full px-3 py-2 bg-card border border-border text-foreground font-mono text-sm placeholder-zinc-600 focus:outline-none focus:border-amber-500/50"
               />
             </div>
             <div>
-              <label className="font-mono text-[10px] text-zinc-500 mb-1 block">WALL CONSTRUCTION</label>
+              <label className="font-mono text-[10px] text-muted-foreground mb-1 block">WALL CONSTRUCTION</label>
               <input
                 type="text"
                 value={data.wall_construction || ''}
                 onChange={(e) => updateField('wall_construction', e.target.value)}
                 placeholder="e.g., Sandcrete blockwork, plastered and painted"
-                className="w-full px-3 py-2 bg-zinc-900 border border-zinc-800 text-white font-mono text-sm placeholder-zinc-600 focus:outline-none focus:border-amber-500/50"
+                className="w-full px-3 py-2 bg-card border border-border text-foreground font-mono text-sm placeholder-zinc-600 focus:outline-none focus:border-amber-500/50"
               />
             </div>
             <div>
-              <label className="font-mono text-[10px] text-zinc-500 mb-1 block">DOORS</label>
+              <label className="font-mono text-[10px] text-muted-foreground mb-1 block">DOORS</label>
               <input
                 type="text"
                 value={data.doors || ''}
                 onChange={(e) => updateField('doors', e.target.value)}
                 placeholder="e.g., Polished wooden panel and aluminum doors"
-                className="w-full px-3 py-2 bg-zinc-900 border border-zinc-800 text-white font-mono text-sm placeholder-zinc-600 focus:outline-none focus:border-amber-500/50"
+                className="w-full px-3 py-2 bg-card border border-border text-foreground font-mono text-sm placeholder-zinc-600 focus:outline-none focus:border-amber-500/50"
               />
             </div>
             <div>
-              <label className="font-mono text-[10px] text-zinc-500 mb-1 block">WINDOWS</label>
+              <label className="font-mono text-[10px] text-muted-foreground mb-1 block">WINDOWS</label>
               <input
                 type="text"
                 value={data.windows || ''}
                 onChange={(e) => updateField('windows', e.target.value)}
                 placeholder="e.g., Aluminum sliding windows with insect nets"
-                className="w-full px-3 py-2 bg-zinc-900 border border-zinc-800 text-white font-mono text-sm placeholder-zinc-600 focus:outline-none focus:border-amber-500/50"
+                className="w-full px-3 py-2 bg-card border border-border text-foreground font-mono text-sm placeholder-zinc-600 focus:outline-none focus:border-amber-500/50"
               />
             </div>
             <div>
-              <label className="font-mono text-[10px] text-zinc-500 mb-1 block">CEILING</label>
+              <label className="font-mono text-[10px] text-muted-foreground mb-1 block">CEILING</label>
               <input
                 type="text"
                 value={data.ceiling || ''}
                 onChange={(e) => updateField('ceiling', e.target.value)}
                 placeholder="e.g., Plaster of paris (POP)"
-                className="w-full px-3 py-2 bg-zinc-900 border border-zinc-800 text-white font-mono text-sm placeholder-zinc-600 focus:outline-none focus:border-amber-500/50"
+                className="w-full px-3 py-2 bg-card border border-border text-foreground font-mono text-sm placeholder-zinc-600 focus:outline-none focus:border-amber-500/50"
               />
             </div>
             <div>
-              <label className="font-mono text-[10px] text-zinc-500 mb-1 block">ROOFING</label>
+              <label className="font-mono text-[10px] text-muted-foreground mb-1 block">ROOFING</label>
               <input
                 type="text"
                 value={data.roofing || ''}
                 onChange={(e) => updateField('roofing', e.target.value)}
                 placeholder="e.g., Aluminum roofing sheets"
-                className="w-full px-3 py-2 bg-zinc-900 border border-zinc-800 text-white font-mono text-sm placeholder-zinc-600 focus:outline-none focus:border-amber-500/50"
+                className="w-full px-3 py-2 bg-card border border-border text-foreground font-mono text-sm placeholder-zinc-600 focus:outline-none focus:border-amber-500/50"
               />
             </div>
           </div>
@@ -1020,82 +1020,82 @@ export default function ComprehensivePropertyForm({
 
         {/* Fixtures and Fittings */}
         <div className="space-y-3">
-          <div className="font-mono text-[10px] text-amber-400 border-b border-amber-500/20 pb-1">FIXTURES AND FITTINGS</div>
+          <div className="font-mono text-[10px] text-amber-600 dark:text-amber-400 border-b border-amber-500/20 pb-1">FIXTURES AND FITTINGS</div>
           <div>
-            <label className="font-mono text-[10px] text-zinc-500 mb-1 block">FIXTURES LIST</label>
+            <label className="font-mono text-[10px] text-muted-foreground mb-1 block">FIXTURES LIST</label>
             <textarea
               value={data.fixtures_fittings || ''}
               onChange={(e) => updateField('fixtures_fittings', e.target.value)}
               placeholder="e.g., Water closets, wash hand basins, shower sets, air-conditioners..."
               rows={2}
-              className="w-full px-3 py-2 bg-zinc-900 border border-zinc-800 text-white font-mono text-sm placeholder-zinc-600 focus:outline-none focus:border-amber-500/50 resize-none"
+              className="w-full px-3 py-2 bg-card border border-border text-foreground font-mono text-sm placeholder-zinc-600 focus:outline-none focus:border-amber-500/50 resize-none"
             />
           </div>
         </div>
 
         {/* Drainage/Sanitation */}
         <div className="space-y-3">
-          <div className="font-mono text-[10px] text-amber-400 border-b border-amber-500/20 pb-1">DRAINAGE / SANITATION</div>
+          <div className="font-mono text-[10px] text-amber-600 dark:text-amber-400 border-b border-amber-500/20 pb-1">DRAINAGE / SANITATION</div>
           <div>
-            <label className="font-mono text-[10px] text-zinc-500 mb-1 block">DRAINAGE DESCRIPTION</label>
+            <label className="font-mono text-[10px] text-muted-foreground mb-1 block">DRAINAGE DESCRIPTION</label>
             <textarea
               value={data.drainage_sanitation || ''}
               onChange={(e) => updateField('drainage_sanitation', e.target.value)}
               placeholder="e.g., Drainage of liquid and solid waste is through PVC pipes into a septic tank..."
               rows={2}
-              className="w-full px-3 py-2 bg-zinc-900 border border-zinc-800 text-white font-mono text-sm placeholder-zinc-600 focus:outline-none focus:border-amber-500/50 resize-none"
+              className="w-full px-3 py-2 bg-card border border-border text-foreground font-mono text-sm placeholder-zinc-600 focus:outline-none focus:border-amber-500/50 resize-none"
             />
           </div>
         </div>
 
         {/* Condition State */}
         <div className="space-y-3">
-          <div className="font-mono text-[10px] text-amber-400 border-b border-amber-500/20 pb-1">GENERAL CONDITION AND STATE OF REPAIR</div>
+          <div className="font-mono text-[10px] text-amber-600 dark:text-amber-400 border-b border-amber-500/20 pb-1">GENERAL CONDITION AND STATE OF REPAIR</div>
           <div>
-            <label className="font-mono text-[10px] text-zinc-500 mb-1 block">CONDITION NOTES</label>
+            <label className="font-mono text-[10px] text-muted-foreground mb-1 block">CONDITION NOTES</label>
             <textarea
               value={data.condition_state || ''}
               onChange={(e) => updateField('condition_state', e.target.value)}
               placeholder="Describe the property condition, any defects observed (cracks, dampness, deterioration)..."
               rows={3}
-              className="w-full px-3 py-2 bg-zinc-900 border border-zinc-800 text-white font-mono text-sm placeholder-zinc-600 focus:outline-none focus:border-amber-500/50 resize-none"
+              className="w-full px-3 py-2 bg-card border border-border text-foreground font-mono text-sm placeholder-zinc-600 focus:outline-none focus:border-amber-500/50 resize-none"
             />
           </div>
         </div>
 
         {/* Services */}
         <div className="space-y-3">
-          <div className="font-mono text-[10px] text-amber-400 border-b border-amber-500/20 pb-1">SERVICES</div>
+          <div className="font-mono text-[10px] text-amber-600 dark:text-amber-400 border-b border-amber-500/20 pb-1">SERVICES</div>
           <div>
-            <label className="font-mono text-[10px] text-zinc-500 mb-1 block">SERVICES DESCRIPTION</label>
+            <label className="font-mono text-[10px] text-muted-foreground mb-1 block">SERVICES DESCRIPTION</label>
             <textarea
               value={data.services_description || ''}
               onChange={(e) => updateField('services_description', e.target.value)}
               placeholder="e.g., Water, electricity and telecommunication facilities are available..."
               rows={2}
-              className="w-full px-3 py-2 bg-zinc-900 border border-zinc-800 text-white font-mono text-sm placeholder-zinc-600 focus:outline-none focus:border-amber-500/50 resize-none"
+              className="w-full px-3 py-2 bg-card border border-border text-foreground font-mono text-sm placeholder-zinc-600 focus:outline-none focus:border-amber-500/50 resize-none"
             />
           </div>
         </div>
 
         {/* Land Value Evidence */}
         <div className="space-y-3">
-          <div className="font-mono text-[10px] text-amber-400 border-b border-amber-500/20 pb-1">EVIDENCE OF LAND VALUES</div>
+          <div className="font-mono text-[10px] text-amber-600 dark:text-amber-400 border-b border-amber-500/20 pb-1">EVIDENCE OF LAND VALUES</div>
           <div>
-            <label className="font-mono text-[10px] text-zinc-500 mb-1 block">LAND VALUE ANALYSIS</label>
+            <label className="font-mono text-[10px] text-muted-foreground mb-1 block">LAND VALUE ANALYSIS</label>
             <textarea
               value={data.land_value_evidence || ''}
               onChange={(e) => updateField('land_value_evidence', e.target.value)}
               placeholder="Describe the land value analysis - infrastructure, drainage, neighborhood factors, adopted value per acre..."
               rows={3}
-              className="w-full px-3 py-2 bg-zinc-900 border border-zinc-800 text-white font-mono text-sm placeholder-zinc-600 focus:outline-none focus:border-amber-500/50 resize-none"
+              className="w-full px-3 py-2 bg-card border border-border text-foreground font-mono text-sm placeholder-zinc-600 focus:outline-none focus:border-amber-500/50 resize-none"
             />
           </div>
         </div>
 
         {/* Property Risk Assessment (GhIS Section 3) */}
         <div className="space-y-3">
-          <div className="font-mono text-[10px] text-amber-400 border-b border-amber-500/20 pb-1">PROPERTY RISK ASSESSMENT</div>
+          <div className="font-mono text-[10px] text-amber-600 dark:text-amber-400 border-b border-amber-500/20 pb-1">PROPERTY RISK ASSESSMENT</div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             {([
               { key: 'employment_stability', label: 'EMPLOYMENT STABILITY' },
@@ -1109,14 +1109,14 @@ export default function ComprehensivePropertyForm({
               { key: 'accessibility', label: 'ACCESSIBILITY' },
             ] as const).map(({ key, label }) => (
               <div key={key}>
-                <label className="font-mono text-[10px] text-zinc-500 mb-1 block">{label}</label>
+                <label className="font-mono text-[10px] text-muted-foreground mb-1 block">{label}</label>
                 <select
                   value={(data.risk_assessment as any)?.[key] || 'average'}
                   onChange={(e) => {
                     const current = (data.risk_assessment || {}) as any;
                     updateField('risk_assessment', { ...current, [key]: e.target.value });
                   }}
-                  className="w-full px-3 py-2 bg-zinc-900 border border-zinc-800 text-white font-mono text-sm focus:outline-none focus:border-amber-500/50"
+                  className="w-full px-3 py-2 bg-card border border-border text-foreground font-mono text-sm focus:outline-none focus:border-amber-500/50"
                 >
                   <option value="good">Good</option>
                   <option value="average">Average</option>
@@ -1133,70 +1133,70 @@ export default function ComprehensivePropertyForm({
       <div className="space-y-4">
         <div className="flex items-center gap-2 mb-3">
           <Home className="w-4 h-4 text-emerald-500" />
-          <span className="font-mono text-sm text-zinc-300">PROPERTY OWNER INFORMATION</span>
+          <span className="font-mono text-sm text-muted-foreground">PROPERTY OWNER INFORMATION</span>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
-            <label className="font-mono text-[10px] text-zinc-500 mb-1 block">OWNER NAME</label>
+            <label className="font-mono text-[10px] text-muted-foreground mb-1 block">OWNER NAME</label>
             <input
               type="text"
               value={data.owner_name || ''}
               onChange={(e) => updateField('owner_name', e.target.value)}
               placeholder="Full Name"
-              className="w-full px-3 py-2 bg-zinc-900 border border-zinc-800 text-white font-mono text-sm placeholder-zinc-600 focus:outline-none focus:border-emerald-500/50"
+              className="w-full px-3 py-2 bg-card border border-border text-foreground font-mono text-sm placeholder-zinc-600 focus:outline-none focus:border-emerald-500/50"
             />
           </div>
 
           <div>
-            <label className="font-mono text-[10px] text-zinc-500 mb-1 block">EMAIL ADDRESS</label>
+            <label className="font-mono text-[10px] text-muted-foreground mb-1 block">EMAIL ADDRESS</label>
             <input
               type="email"
               value={data.owner_email || ''}
               onChange={(e) => updateField('owner_email', e.target.value)}
               placeholder="owner@example.com"
-              className="w-full px-3 py-2 bg-zinc-900 border border-zinc-800 text-white font-mono text-sm placeholder-zinc-600 focus:outline-none focus:border-emerald-500/50"
+              className="w-full px-3 py-2 bg-card border border-border text-foreground font-mono text-sm placeholder-zinc-600 focus:outline-none focus:border-emerald-500/50"
             />
           </div>
 
           <div>
-            <label className="font-mono text-[10px] text-zinc-500 mb-1 block">PHONE NUMBER</label>
+            <label className="font-mono text-[10px] text-muted-foreground mb-1 block">PHONE NUMBER</label>
             <input
               type="tel"
               value={data.owner_phone || ''}
               onChange={(e) => updateField('owner_phone', e.target.value)}
               placeholder="+233 XX XXX XXXX"
-              className="w-full px-3 py-2 bg-zinc-900 border border-zinc-800 text-white font-mono text-sm placeholder-zinc-600 focus:outline-none focus:border-emerald-500/50"
+              className="w-full px-3 py-2 bg-card border border-border text-foreground font-mono text-sm placeholder-zinc-600 focus:outline-none focus:border-emerald-500/50"
             />
           </div>
 
           <div>
-            <label className="font-mono text-[10px] text-zinc-500 mb-1 block">CONTACT PREFERENCE</label>
+            <label className="font-mono text-[10px] text-muted-foreground mb-1 block">CONTACT PREFERENCE</label>
             <select
               value={data.owner_contact_preference || 'email'}
               onChange={(e) => updateField('owner_contact_preference', e.target.value as 'email' | 'phone' | 'mail' | 'any')}
-              className="w-full px-3 py-2 bg-zinc-900 border border-zinc-800 text-white font-mono text-sm focus:outline-none focus:border-emerald-500/50"
+              className="w-full px-3 py-2 bg-card border border-border text-foreground font-mono text-sm focus:outline-none focus:border-emerald-500/50"
             >
               {CONTACT_PREFERENCES.map((pref) => (
                 <option key={pref.value} value={pref.value}>{pref.label}</option>
               ))}
             </select>
-            <p className="font-mono text-[9px] text-zinc-600 mt-1">
+            <p className="font-mono text-[9px] text-muted-foreground mt-1">
               {CONTACT_PREFERENCES.find(p => p.value === data.owner_contact_preference)?.description}
             </p>
           </div>
         </div>
 
         <div>
-          <label className="font-mono text-[10px] text-zinc-500 mb-1 block">OWNER MAILING ADDRESS</label>
+          <label className="font-mono text-[10px] text-muted-foreground mb-1 block">OWNER MAILING ADDRESS</label>
           <textarea
             value={data.owner_address || ''}
             onChange={(e) => updateField('owner_address', e.target.value)}
             placeholder="Mailing/Contact address (if different from property address)..."
             rows={2}
-            className="w-full px-3 py-2 bg-zinc-900 border border-zinc-800 text-white font-mono text-sm placeholder-zinc-600 focus:outline-none focus:border-emerald-500/50 resize-none"
+            className="w-full px-3 py-2 bg-card border border-border text-foreground font-mono text-sm placeholder-zinc-600 focus:outline-none focus:border-emerald-500/50 resize-none"
           />
-          <p className="font-mono text-[9px] text-zinc-600 mt-1">
+          <p className="font-mono text-[9px] text-muted-foreground mt-1">
             Optional: Leave blank if same as property address
           </p>
         </div>
@@ -1207,37 +1207,37 @@ export default function ComprehensivePropertyForm({
         <div className="space-y-4">
           <div className="flex items-center gap-2 mb-3">
             <Info className="w-4 h-4 text-amber-500" />
-            <span className="font-mono text-sm text-zinc-300">TRANSACTION DETAILS</span>
+            <span className="font-mono text-sm text-muted-foreground">TRANSACTION DETAILS</span>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
-              <label className="font-mono text-[10px] text-zinc-500 mb-1 block">SALE PRICE (GHS)</label>
+              <label className="font-mono text-[10px] text-muted-foreground mb-1 block">SALE PRICE (GHS)</label>
               <input
                 type="number"
                 value={data.sale_price || ''}
                 onChange={(e) => updateField('sale_price', parseFloat(e.target.value) || undefined)}
                 placeholder="0"
-                className="w-full px-3 py-2 bg-zinc-900 border border-zinc-800 text-white font-mono text-sm placeholder-zinc-600 focus:outline-none focus:border-amber-500/50"
+                className="w-full px-3 py-2 bg-card border border-border text-foreground font-mono text-sm placeholder-zinc-600 focus:outline-none focus:border-amber-500/50"
               />
             </div>
 
             <div>
-              <label className="font-mono text-[10px] text-zinc-500 mb-1 block">SALE DATE</label>
+              <label className="font-mono text-[10px] text-muted-foreground mb-1 block">SALE DATE</label>
               <input
                 type="date"
                 value={data.sale_date || ''}
                 onChange={(e) => updateField('sale_date', e.target.value)}
-                className="w-full px-3 py-2 bg-zinc-900 border border-zinc-800 text-white font-mono text-sm focus:outline-none focus:border-amber-500/50"
+                className="w-full px-3 py-2 bg-card border border-border text-foreground font-mono text-sm focus:outline-none focus:border-amber-500/50"
               />
             </div>
 
             <div>
-              <label className="font-mono text-[10px] text-zinc-500 mb-1 block">TRANSACTION TYPE</label>
+              <label className="font-mono text-[10px] text-muted-foreground mb-1 block">TRANSACTION TYPE</label>
               <select
                 value={data.transaction_type || 'sale'}
                 onChange={(e) => updateField('transaction_type', e.target.value)}
-                className="w-full px-3 py-2 bg-zinc-900 border border-zinc-800 text-white font-mono text-sm focus:outline-none focus:border-amber-500/50"
+                className="w-full px-3 py-2 bg-card border border-border text-foreground font-mono text-sm focus:outline-none focus:border-amber-500/50"
               >
                 <option value="verified_sale">Verified Sale</option>
                 <option value="sale">Sale</option>

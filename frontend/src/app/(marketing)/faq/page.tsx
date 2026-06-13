@@ -23,8 +23,8 @@ export default function FAQPage() {
     }, []);
 
     const pricingAnswer = fromPrice
-        ? `Plans start from GHS ${fromPrice.toLocaleString()}/month with a 14-day free trial. Enterprise solutions are custom-priced — visit our pricing page for the full breakdown.`
-        : 'Pricing varies by plan and module, and every plan includes a 14-day free trial. Visit our pricing page for current rates and details.';
+        ? `Plans start from GHS ${fromPrice.toLocaleString()}/month, with full access from the moment you subscribe. Enterprise solutions are custom-priced — visit our pricing page for the full breakdown.`
+        : 'Pricing varies by plan and module, and you get full access as soon as you subscribe. Visit our pricing page for current rates and details.';
 
     const faqCategories = [
         {
@@ -90,8 +90,8 @@ export default function FAQPage() {
                     answer: pricingAnswer
                 },
                 {
-                    question: 'Do you offer free trials?',
-                    answer: 'Yes! We offer a 14-day free trial for our Market Intelligence and Deal Management subscriptions. No credit card required to start.'
+                    question: 'How does billing work?',
+                    answer: 'You subscribe to a plan and get full access immediately — no trial period. Payment is processed securely via Paystack (card or mobile money), and you can change plans or cancel anytime from your billing dashboard.'
                 },
                 {
                     question: 'What payment methods do you accept?',
@@ -127,7 +127,7 @@ export default function FAQPage() {
     ];
 
     return (
-        <main className="pt-32 pb-24 bg-zinc-950">
+        <main className="pt-32 pb-24 bg-background">
             {/* Hero Section */}
             <section className="pb-16">
                 <div className="container mx-auto px-4 md:px-6">
@@ -136,23 +136,23 @@ export default function FAQPage() {
                         animate={{ opacity: 1, y: 0 }}
                         className="max-w-3xl mx-auto text-center"
                     >
-                        <h1 className="text-5xl md:text-7xl font-bold tracking-tight text-white mb-6">
+                        <h1 className="text-5xl md:text-7xl font-bold tracking-tight text-foreground mb-6">
                             Frequently Asked{' '}
                             <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary to-yellow-400">
                                 Questions
                             </span>
                         </h1>
-                        <p className="text-xl text-zinc-400 leading-relaxed mb-8">
+                        <p className="text-xl text-muted-foreground leading-relaxed mb-8">
                             Find answers to common questions about our services, pricing, and platform.
                         </p>
 
                         {/* Search Bar */}
                         <div className="relative max-w-2xl mx-auto">
-                            <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 w-5 h-5 text-zinc-500" />
+                            <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 w-5 h-5 text-muted-foreground" />
                             <input
                                 type="text"
                                 placeholder="Search for answers..."
-                                className="w-full pl-12 pr-4 py-4 bg-zinc-900 border border-zinc-800 text-white rounded-lg focus:outline-none focus:border-primary transition-colors"
+                                className="w-full pl-12 pr-4 py-4 bg-card border border-border text-foreground rounded-lg focus:outline-none focus:border-primary transition-colors"
                             />
                         </div>
                     </motion.div>
@@ -164,7 +164,7 @@ export default function FAQPage() {
                 <div className="container mx-auto px-4 md:px-6 max-w-4xl">
                     {faqCategories.map((category, categoryIndex) => (
                         <div key={categoryIndex} className="mb-12">
-                            <h2 className="text-2xl font-bold text-white mb-6 pb-4 border-b border-zinc-800">
+                            <h2 className="text-2xl font-bold text-foreground mb-6 pb-4 border-b border-border">
                                 {category.category}
                             </h2>
 
@@ -183,13 +183,13 @@ export default function FAQPage() {
                                             whileInView={{ opacity: 1, y: 0 }}
                                             viewport={{ once: true }}
                                             transition={{ delay: faqIndex * 0.05 }}
-                                            className="bg-zinc-900 border border-zinc-800 rounded-lg overflow-hidden hover:border-primary/50 transition-colors"
+                                            className="bg-card border border-border rounded-lg overflow-hidden hover:border-primary/50 transition-colors"
                                         >
                                             <button
                                                 onClick={() => setOpenIndex(isOpen ? null : globalIndex)}
                                                 className="w-full flex items-center justify-between p-6 text-left"
                                             >
-                                                <span className="text-lg font-bold text-white pr-4">
+                                                <span className="text-lg font-bold text-foreground pr-4">
                                                     {faq.question}
                                                 </span>
                                                 <ChevronDown
@@ -207,7 +207,7 @@ export default function FAQPage() {
                                                 transition={{ duration: 0.3 }}
                                                 className="overflow-hidden"
                                             >
-                                                <div className="px-6 pb-6 text-zinc-400 leading-relaxed">
+                                                <div className="px-6 pb-6 text-muted-foreground leading-relaxed">
                                                     {faq.answer}
                                                 </div>
                                             </motion.div>
@@ -221,13 +221,13 @@ export default function FAQPage() {
             </section>
 
             {/* Still Have Questions CTA */}
-            <section className="py-16 border-t border-zinc-800">
+            <section className="py-16 border-t border-border">
                 <div className="container mx-auto px-4 md:px-6">
                     <div className="max-w-3xl mx-auto text-center">
-                        <h2 className="text-3xl md:text-4xl font-bold text-white mb-6">
+                        <h2 className="text-3xl md:text-4xl font-bold text-foreground mb-6">
                             Still Have Questions?
                         </h2>
-                        <p className="text-xl text-zinc-400 mb-8">
+                        <p className="text-xl text-muted-foreground mb-8">
                             Our team is here to help. Get in touch and we'll respond within 24 hours.
                         </p>
                         <div className="flex flex-col sm:flex-row gap-4 justify-center">
@@ -244,26 +244,26 @@ export default function FAQPage() {
                                 <motion.button
                                     whileHover={{ scale: 1.02 }}
                                     whileTap={{ scale: 0.98 }}
-                                    className="px-8 py-4 border-2 border-zinc-700 text-white font-bold rounded hover:border-primary hover:text-primary transition-colors"
+                                    className="px-8 py-4 border-2 border-border text-foreground font-bold rounded hover:border-primary hover:text-primary transition-colors"
                                 >
-                                    Start Free Trial
+                                    Get Started
                                 </motion.button>
                             </Link>
                         </div>
 
-                        <div className="mt-12 pt-12 border-t border-zinc-800">
+                        <div className="mt-12 pt-12 border-t border-border">
                             <div className="grid md:grid-cols-3 gap-8">
                                 <div>
-                                    <h3 className="font-bold text-white mb-2">Email Support</h3>
-                                    <p className="text-zinc-400 text-sm">support@propmetrik.com</p>
+                                    <h3 className="font-bold text-foreground mb-2">Email Support</h3>
+                                    <p className="text-muted-foreground text-sm">support@propmetrik.com</p>
                                 </div>
                                 <div>
-                                    <h3 className="font-bold text-white mb-2">Sales Inquiries</h3>
-                                    <p className="text-zinc-400 text-sm">sales@propmetrik.com</p>
+                                    <h3 className="font-bold text-foreground mb-2">Sales Inquiries</h3>
+                                    <p className="text-muted-foreground text-sm">sales@propmetrik.com</p>
                                 </div>
                                 <div>
-                                    <h3 className="font-bold text-white mb-2">Response Time</h3>
-                                    <p className="text-zinc-400 text-sm">Within 24 hours</p>
+                                    <h3 className="font-bold text-foreground mb-2">Response Time</h3>
+                                    <p className="text-muted-foreground text-sm">Within 24 hours</p>
                                 </div>
                             </div>
                         </div>

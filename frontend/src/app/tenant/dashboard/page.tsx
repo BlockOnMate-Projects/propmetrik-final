@@ -58,7 +58,7 @@ export default function TenantDashboard() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+      <div className="min-h-screen flex items-center justify-center bg-muted">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
       </div>
     );
@@ -66,7 +66,7 @@ export default function TenantDashboard() {
 
   if (error) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+      <div className="min-h-screen flex items-center justify-center bg-muted">
         <div className="text-center">
           <p className="text-red-600 mb-4">{error}</p>
           <button
@@ -84,14 +84,14 @@ export default function TenantDashboard() {
   const openRequests = maintenanceRequests.filter(r => r.status !== 'completed' && r.status !== 'cancelled');
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-muted">
       {/* Header */}
-      <header className="bg-white shadow">
+      <header className="bg-card shadow">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex justify-between items-center">
             <h1 className="text-2xl font-bold text-gray-900">Tenant Portal</h1>
             <div className="flex items-center gap-4">
-              <span className="text-gray-600">{profile?.fullName}</span>
+              <span className="text-muted-foreground">{profile?.fullName}</span>
               <Link
                 href="/profile"
                 className="text-sm text-blue-600 hover:underline"
@@ -110,7 +110,7 @@ export default function TenantDashboard() {
             Welcome back, {profile?.fullName?.split(' ')[0]}!
           </h2>
           {activeTenancy && (
-            <p className="text-gray-600 mt-1">
+            <p className="text-muted-foreground mt-1">
               {activeTenancy.propertyTitle}
               {activeTenancy.unitNumber ? ` · Unit ${activeTenancy.unitNumber}` : ''} • {activeTenancy.propertyAddress}
             </p>
@@ -120,8 +120,8 @@ export default function TenantDashboard() {
         {/* Quick Stats */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
           {/* Payment Status */}
-          <div className="bg-white rounded-lg shadow p-6">
-            <h3 className="text-sm font-medium text-gray-500 uppercase tracking-wider">
+          <div className="bg-card rounded-lg shadow p-6">
+            <h3 className="text-sm font-medium text-muted-foreground uppercase tracking-wider">
               Outstanding Balance
             </h3>
             <p className={`text-3xl font-bold mt-2 ${
@@ -143,8 +143,8 @@ export default function TenantDashboard() {
           </div>
 
           {/* Next Payment */}
-          <div className="bg-white rounded-lg shadow p-6">
-            <h3 className="text-sm font-medium text-gray-500 uppercase tracking-wider">
+          <div className="bg-card rounded-lg shadow p-6">
+            <h3 className="text-sm font-medium text-muted-foreground uppercase tracking-wider">
               Next Payment Due
             </h3>
             {paymentSummary?.nextPaymentDue ? (
@@ -152,12 +152,12 @@ export default function TenantDashboard() {
                 <p className="text-3xl font-bold mt-2 text-gray-900">
                   {paymentSummary.currency} {paymentSummary.nextPaymentDue.amount.toLocaleString()}
                 </p>
-                <p className="text-sm text-gray-500 mt-1">
+                <p className="text-sm text-muted-foreground mt-1">
                   Due: {new Date(paymentSummary.nextPaymentDue.dueDate).toLocaleDateString('en-GB')}
                 </p>
               </>
             ) : (
-              <p className="text-gray-500 mt-2">No upcoming payments</p>
+              <p className="text-muted-foreground mt-2">No upcoming payments</p>
             )}
             <Link
               href="/payments/make"
@@ -168,14 +168,14 @@ export default function TenantDashboard() {
           </div>
 
           {/* Maintenance Requests */}
-          <div className="bg-white rounded-lg shadow p-6">
-            <h3 className="text-sm font-medium text-gray-500 uppercase tracking-wider">
+          <div className="bg-card rounded-lg shadow p-6">
+            <h3 className="text-sm font-medium text-muted-foreground uppercase tracking-wider">
               Open Maintenance Requests
             </h3>
             <p className="text-3xl font-bold mt-2 text-gray-900">
               {openRequests.length}
             </p>
-            <p className="text-sm text-gray-500 mt-1">
+            <p className="text-sm text-muted-foreground mt-1">
               {openRequests.filter(r => r.priority === 'high' || r.priority === 'emergency').length} high priority
             </p>
             <Link
@@ -189,7 +189,7 @@ export default function TenantDashboard() {
 
         {/* Quick Actions */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-          <div className="bg-white rounded-lg shadow p-6">
+          <div className="bg-card rounded-lg shadow p-6">
             <h3 className="text-lg font-semibold text-gray-900 mb-4">Quick Actions</h3>
             <div className="grid grid-cols-2 gap-4">
               <Link
@@ -231,10 +231,10 @@ export default function TenantDashboard() {
               
               <Link
                 href="/profile"
-                className="flex items-center justify-center p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
+                className="flex items-center justify-center p-4 bg-muted rounded-lg hover:bg-muted transition-colors"
               >
                 <div className="text-center">
-                  <svg className="w-8 h-8 mx-auto text-gray-600 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg className="w-8 h-8 mx-auto text-muted-foreground mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                   </svg>
                   <span className="text-sm font-medium text-gray-900">My Profile</span>
@@ -244,7 +244,7 @@ export default function TenantDashboard() {
           </div>
 
           {/* Recent Activity */}
-          <div className="bg-white rounded-lg shadow p-6">
+          <div className="bg-card rounded-lg shadow p-6">
             <h3 className="text-lg font-semibold text-gray-900 mb-4">Recent Maintenance</h3>
             {maintenanceRequests.length > 0 ? (
               <div className="space-y-3">
@@ -252,13 +252,13 @@ export default function TenantDashboard() {
                   <div key={request.id} className="flex items-center justify-between py-2 border-b last:border-0">
                     <div>
                       <p className="font-medium text-gray-900">{request.title}</p>
-                      <p className="text-sm text-gray-500">{request.category}</p>
+                      <p className="text-sm text-muted-foreground">{request.category}</p>
                     </div>
                     <span className={`px-2 py-1 text-xs rounded-full ${
                       request.status === 'completed' ? 'bg-green-100 text-green-800' :
                       request.status === 'in_progress' ? 'bg-blue-100 text-blue-800' :
                       request.status === 'assigned' ? 'bg-yellow-100 text-yellow-800' :
-                      'bg-gray-100 text-gray-800'
+                      'bg-muted text-gray-800'
                     }`}>
                       {request.status.replace('_', ' ')}
                     </span>
@@ -266,33 +266,33 @@ export default function TenantDashboard() {
                 ))}
               </div>
             ) : (
-              <p className="text-gray-500 text-center py-4">No maintenance requests</p>
+              <p className="text-muted-foreground text-center py-4">No maintenance requests</p>
             )}
           </div>
         </div>
 
         {/* Lease Info */}
         {activeTenancy && (
-          <div className="bg-white rounded-lg shadow p-6">
+          <div className="bg-card rounded-lg shadow p-6">
             <h3 className="text-lg font-semibold text-gray-900 mb-4">Your Lease</h3>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               <div>
-                <p className="text-sm text-gray-500">Property</p>
+                <p className="text-sm text-muted-foreground">Property</p>
                 <p className="font-medium">
                   {activeTenancy.propertyTitle}
-                  {activeTenancy.unitNumber ? <span className="text-gray-500"> · Unit {activeTenancy.unitNumber}</span> : ''}
+                  {activeTenancy.unitNumber ? <span className="text-muted-foreground"> · Unit {activeTenancy.unitNumber}</span> : ''}
                 </p>
               </div>
               <div>
-                <p className="text-sm text-gray-500">Monthly Rent</p>
+                <p className="text-sm text-muted-foreground">Monthly Rent</p>
                 <p className="font-medium">{activeTenancy.rentCurrency} {(activeTenancy.rentAmount || 0).toLocaleString()}</p>
               </div>
               <div>
-                <p className="text-sm text-gray-500">Lease Start</p>
+                <p className="text-sm text-muted-foreground">Lease Start</p>
                 <p className="font-medium">{activeTenancy.startDate ? new Date(activeTenancy.startDate).toLocaleDateString('en-GB') : '—'}</p>
               </div>
               <div>
-                <p className="text-sm text-gray-500">Lease End</p>
+                <p className="text-sm text-muted-foreground">Lease End</p>
                 <p className="font-medium">{activeTenancy.endDate ? new Date(activeTenancy.endDate).toLocaleDateString('en-GB') : '—'}</p>
               </div>
             </div>

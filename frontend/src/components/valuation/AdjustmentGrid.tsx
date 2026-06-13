@@ -678,7 +678,7 @@ function AdjustmentCell({
   readOnly?: boolean;
   isLocked?: boolean;
 }) {
-  const color = value > 0 ? 'text-green-400' : value < 0 ? 'text-red-400' : 'text-zinc-500';
+  const color = value > 0 ? 'text-green-600 dark:text-green-400' : value < 0 ? 'text-red-600 dark:text-red-400' : 'text-muted-foreground';
   const absValue = Math.abs(value);
   const isWarning = absValue > maxAdjustment * 0.8;
   
@@ -686,7 +686,7 @@ function AdjustmentCell({
     return (
       <div className={cn('font-mono text-[10px] text-center', color)}>
         {value > 0 ? '+' : ''}{value.toFixed(1)}%
-        {isWarning && <AlertTriangle className="w-2 h-2 inline ml-1 text-yellow-400" />}
+        {isWarning && <AlertTriangle className="w-2 h-2 inline ml-1 text-yellow-600 dark:text-yellow-400" />}
       </div>
     );
   }
@@ -700,9 +700,9 @@ function AdjustmentCell({
       max={maxAdjustment}
       step={0.5}
       className={cn(
-        'w-14 px-1 py-0.5 bg-black border font-mono text-[10px] text-center',
+        'w-14 px-1 py-0.5 bg-background border font-mono text-[10px] text-center',
         color,
-        isWarning ? 'border-yellow-500/50' : 'border-zinc-700'
+        isWarning ? 'border-yellow-500/50' : 'border-border'
       )}
     />
   );
@@ -721,7 +721,7 @@ function CategoryRow({
 }) {
   return (
     <tr 
-      className="bg-zinc-800/50 cursor-pointer hover:bg-zinc-800"
+      className="bg-muted/50 cursor-pointer hover:bg-muted"
       onClick={onToggle}
     >
       <td className="py-1.5 px-2 font-mono text-[10px] text-amber-500 uppercase tracking-wider" colSpan={columnCount}>
@@ -732,7 +732,7 @@ function CategoryRow({
             <ChevronUp className="w-3 h-3" />
           )}
           <span>{category.label}</span>
-          <span className="text-zinc-500 normal-case tracking-normal">— {category.description}</span>
+          <span className="text-muted-foreground normal-case tracking-normal">— {category.description}</span>
         </div>
       </td>
     </tr>
@@ -786,7 +786,7 @@ export function AdjustmentGrid({
       className={className}
       action={
         <div className="flex items-center gap-2">
-          <span className="font-mono text-[9px] text-zinc-500">
+          <span className="font-mono text-[9px] text-muted-foreground">
             {comparables.length} comparables
           </span>
         </div>
@@ -795,7 +795,7 @@ export function AdjustmentGrid({
       <div className="overflow-x-auto">
         <table className="w-full min-w-[800px]">
           <thead>
-            <tr className="text-[10px] font-mono text-zinc-500 border-b border-zinc-800">
+            <tr className="text-[10px] font-mono text-muted-foreground border-b border-border">
               <th className="text-left pb-2 px-2 w-32">ELEMENT</th>
               <th className="text-center pb-2 px-2 w-20 bg-amber-500/10">
                 <div className="text-amber-500">SUBJECT</div>
@@ -813,7 +813,7 @@ export function AdjustmentGrid({
                           {comp.isLocked ? (
                             <Lock className="w-2.5 h-2.5 text-amber-500" />
                           ) : (
-                            <Unlock className="w-2.5 h-2.5 text-zinc-500" />
+                            <Unlock className="w-2.5 h-2.5 text-muted-foreground" />
                           )}
                         </button>
                       )}
@@ -835,14 +835,14 @@ export function AdjustmentGrid({
                 />
                 
                 {!collapsedCategories.has(category.id) && category.items.map(item => (
-                  <tr key={item.id} className="border-b border-zinc-800/30 hover:bg-zinc-800/20">
-                    <td className="py-1 px-2 pl-6 font-mono text-[10px] text-zinc-400">
+                  <tr key={item.id} className="border-b border-border/30 hover:bg-amber-50 dark:hover:bg-amber-500/10">
+                    <td className="py-1 px-2 pl-6 font-mono text-[10px] text-muted-foreground">
                       {item.label}
                       {item.maxAdjustment && (
-                        <span className="text-zinc-600 ml-1">(±{item.maxAdjustment}%)</span>
+                        <span className="text-muted-foreground ml-1">(±{item.maxAdjustment}%)</span>
                       )}
                     </td>
-                    <td className="py-1 px-2 text-center font-mono text-[10px] text-white bg-amber-500/5">
+                    <td className="py-1 px-2 text-center font-mono text-[10px] text-foreground bg-amber-500/5">
                       {item.formatValue 
                         ? item.formatValue(item.getSubjectValue(subject))
                         : item.getSubjectValue(subject) ?? '—'}
@@ -854,7 +854,7 @@ export function AdjustmentGrid({
                       
                       return (
                         <React.Fragment key={comp.id}>
-                          <td className="py-1 px-2 text-center font-mono text-[10px] text-zinc-300">
+                          <td className="py-1 px-2 text-center font-mono text-[10px] text-muted-foreground">
                             {item.formatValue 
                               ? item.formatValue(compValue)
                               : compValue ?? '—'}
@@ -869,7 +869,7 @@ export function AdjustmentGrid({
                                 isLocked={comp.isLocked}
                               />
                             ) : (
-                              <span className="font-mono text-[10px] text-zinc-600">—</span>
+                              <span className="font-mono text-[10px] text-muted-foreground">—</span>
                             )}
                           </td>
                         </React.Fragment>
@@ -881,11 +881,11 @@ export function AdjustmentGrid({
             ))}
             
             {/* Totals Row */}
-            <tr className="bg-zinc-800/50 border-t-2 border-zinc-700">
+            <tr className="bg-muted/50 border-t-2 border-border">
               <td className="py-2 px-2 font-mono text-[10px] text-amber-500 font-bold uppercase">
                 GROSS ADJUSTMENT
               </td>
-              <td className="py-2 px-2 text-center font-mono text-[10px] text-zinc-500 bg-amber-500/5">
+              <td className="py-2 px-2 text-center font-mono text-[10px] text-muted-foreground bg-amber-500/5">
                 —
               </td>
               {comparables.map((comp, idx) => (
@@ -896,8 +896,8 @@ export function AdjustmentGrid({
                   <td className="py-2 px-1 text-center">
                     <span className={cn(
                       'font-mono text-xs font-bold',
-                      totals[idx].totalAdj > 0 ? 'text-green-400' :
-                      totals[idx].totalAdj < 0 ? 'text-red-400' : 'text-zinc-400'
+                      totals[idx].totalAdj > 0 ? 'text-green-600 dark:text-green-400' :
+                      totals[idx].totalAdj < 0 ? 'text-red-600 dark:text-red-400' : 'text-muted-foreground'
                     )}>
                       {totals[idx].totalAdj > 0 ? '+' : ''}{totals[idx].totalAdj.toFixed(1)}%
                     </span>
@@ -907,20 +907,20 @@ export function AdjustmentGrid({
             </tr>
             
             {/* Adjusted Price Row */}
-            <tr className="bg-zinc-800/30">
+            <tr className="bg-muted/30">
               <td className="py-2 px-2 font-mono text-[10px] text-amber-500 font-bold uppercase">
                 ADJUSTED PRICE
               </td>
-              <td className="py-2 px-2 text-center font-mono text-[10px] text-zinc-500 bg-amber-500/5">
+              <td className="py-2 px-2 text-center font-mono text-[10px] text-muted-foreground bg-amber-500/5">
                 —
               </td>
               {comparables.map((comp, idx) => (
                 <React.Fragment key={comp.id}>
                   <td className="py-2 px-2 text-center" colSpan={2}>
-                    <div className="font-mono text-sm text-amber-400 font-bold">
+                    <div className="font-mono text-sm text-amber-600 dark:text-amber-400 font-bold">
                       ₵{Math.round(totals[idx].adjustedPrice).toLocaleString()}
                     </div>
-                    <div className="font-mono text-[9px] text-zinc-500">
+                    <div className="font-mono text-[9px] text-muted-foreground">
                       ₵{Math.round(totals[idx].adjustedPricePerSqm).toLocaleString()}/sqm
                     </div>
                   </td>
@@ -930,11 +930,11 @@ export function AdjustmentGrid({
             
             {/* Weight Row (optional) */}
             {showWeights && (
-              <tr className="bg-green-900/10 border-t border-green-800/30">
-                <td className="py-2 px-2 font-mono text-[10px] text-green-400 font-bold uppercase">
+              <tr className="bg-green-100 dark:bg-green-900/10 border-t border-green-800/30">
+                <td className="py-2 px-2 font-mono text-[10px] text-green-600 dark:text-green-400 font-bold uppercase">
                   WEIGHT
                 </td>
-                <td className="py-2 px-2 text-center font-mono text-[10px] text-zinc-500 bg-amber-500/5">
+                <td className="py-2 px-2 text-center font-mono text-[10px] text-muted-foreground bg-amber-500/5">
                   —
                 </td>
                 {comparables.map(comp => (
@@ -948,10 +948,10 @@ export function AdjustmentGrid({
                           min={0}
                           max={100}
                           step={5}
-                          className="w-16 px-1 py-0.5 bg-black border border-green-700 text-green-400 font-mono text-xs text-center"
+                          className="w-16 px-1 py-0.5 bg-background border border-green-700 text-green-600 dark:text-green-400 font-mono text-xs text-center"
                         />
                       ) : (
-                        <span className="font-mono text-sm text-green-400 font-bold">
+                        <span className="font-mono text-sm text-green-600 dark:text-green-400 font-bold">
                           {((comp.weight || 0) * 100).toFixed(0)}%
                         </span>
                       )}
@@ -965,8 +965,8 @@ export function AdjustmentGrid({
       </div>
       
       {/* Info Banner - Adjustments are automatic */}
-      <div className="mt-3 pt-3 border-t border-zinc-800">
-        <div className="flex items-center gap-2 text-zinc-500">
+      <div className="mt-3 pt-3 border-t border-border">
+        <div className="flex items-center gap-2 text-muted-foreground">
           <Info className="w-3 h-3" />
           <span className="font-mono text-[10px]">
             Adjustments are automatically calculated based on property differences. Click any cell to override.

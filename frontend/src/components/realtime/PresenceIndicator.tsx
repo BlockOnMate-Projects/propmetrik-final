@@ -62,7 +62,7 @@ export function PresenceIndicator({
   return (
     <div className="flex items-center gap-2">
       {showLabel && (
-        <span className="text-xs text-gray-500">
+        <span className="text-xs text-muted-foreground">
           {presence.length === 1 ? '1 viewer' : `${presence.length} viewers`}
         </span>
       )}
@@ -71,7 +71,7 @@ export function PresenceIndicator({
         {displayedUsers.map((user, index) => (
           <div
             key={user.userId}
-            className={`relative w-7 h-7 rounded-full border-2 border-white flex items-center justify-center text-white text-xs font-medium ${getAvatarColor(user.userId)}`}
+            className={`relative w-7 h-7 rounded-full border-2 border-white flex items-center justify-center text-foreground text-xs font-medium ${getAvatarColor(user.userId)}`}
             style={{ zIndex: maxDisplayed - index }}
             title={user.userInfo.name || user.userInfo.email || 'Anonymous'}
           >
@@ -92,7 +92,7 @@ export function PresenceIndicator({
         
         {remainingCount > 0 && (
           <div
-            className="relative w-7 h-7 rounded-full border-2 border-white flex items-center justify-center bg-gray-400 text-white text-xs font-medium"
+            className="relative w-7 h-7 rounded-full border-2 border-white flex items-center justify-center bg-gray-400 text-foreground text-xs font-medium"
             title={`${remainingCount} more viewers`}
           >
             +{remainingCount}
@@ -134,7 +134,7 @@ export function ConnectionStatus({ isConnected }: { isConnected: boolean }) {
           isConnected ? 'bg-green-500' : 'bg-gray-400'
         }`}
       />
-      <span className="text-xs text-gray-500">
+      <span className="text-xs text-muted-foreground">
         {isConnected ? 'Live' : 'Connecting...'}
       </span>
     </div>

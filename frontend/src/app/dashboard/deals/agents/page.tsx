@@ -62,7 +62,7 @@ function StatCard({
                         <p className="text-xs text-muted-foreground uppercase tracking-wider">{label}</p>
                         <p className="text-2xl font-bold text-foreground mt-1">{value}</p>
                         {trend && (
-                            <p className="text-xs text-green-400 mt-1">{trend}</p>
+                            <p className="text-xs text-green-600 dark:text-green-400 mt-1">{trend}</p>
                         )}
                     </div>
                     <div className="p-2 bg-primary/10 rounded">
@@ -100,10 +100,10 @@ function parsePostgresArray(value: any): string[] {
 function AgentCard({ agent }: { agent: Agent }) {
     const getStatusColor = (status: AgentStatus) => {
         switch (status) {
-            case AgentStatus.ACTIVE: return 'bg-green-900/50 text-green-400'
+            case AgentStatus.ACTIVE: return 'bg-green-100 dark:bg-green-900/50 text-green-600 dark:text-green-400'
             case AgentStatus.INACTIVE: return 'bg-muted text-muted-foreground'
-            case AgentStatus.SUSPENDED: return 'bg-red-900/50 text-red-400'
-            case AgentStatus.PENDING_APPROVAL: return 'bg-yellow-900/50 text-yellow-400'
+            case AgentStatus.SUSPENDED: return 'bg-red-100 dark:bg-red-900/50 text-red-600 dark:text-red-400'
+            case AgentStatus.PENDING_APPROVAL: return 'bg-yellow-100 dark:bg-yellow-900/50 text-yellow-600 dark:text-yellow-400'
             default: return 'bg-muted text-muted-foreground'
         }
     }
@@ -349,7 +349,7 @@ export default function AgentsPage() {
 
             {/* Error State */}
             {error && (
-                <div className="p-4 bg-red-900/20 border border-red-800 text-red-400 text-xs rounded-md">
+                <div className="p-4 bg-red-100 dark:bg-red-900/20 border border-red-800 text-red-600 dark:text-red-400 text-xs rounded-md">
                     {error}
                 </div>
             )}

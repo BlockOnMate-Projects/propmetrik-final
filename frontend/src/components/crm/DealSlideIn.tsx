@@ -71,7 +71,7 @@ function MiniTimeline({ activities }: { activities: DealActivity[] }) {
           <div key={a.id} className="relative pl-6">
             <div
               className={cn(
-                'absolute left-0 top-0.5 w-[15px] h-[15px] rounded-full flex items-center justify-center text-white',
+                'absolute left-0 top-0.5 w-[15px] h-[15px] rounded-full flex items-center justify-center text-foreground',
                 getActivityColor(a.activity_type)
               )}
             >

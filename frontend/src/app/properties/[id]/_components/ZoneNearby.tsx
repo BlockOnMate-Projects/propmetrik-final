@@ -61,13 +61,13 @@ export function ZoneNearby({ nearby, currentLocation }: ZoneNearbyProps) {
                     className="object-cover group-hover:scale-105 transition-transform duration-300"
                   />
                 ) : (
-                  <div className="w-full h-full flex items-center justify-center text-gray-400">
+                  <div className="w-full h-full flex items-center justify-center text-muted-foreground">
                     <Home className="w-12 h-12" />
                   </div>
                 )}
                 
                 {/* Distance Badge */}
-                <div className="absolute top-2 right-2 bg-black/60 text-white text-xs px-2 py-1 rounded-full backdrop-blur-sm flex items-center gap-1">
+                <div className="absolute top-2 right-2 bg-background/60 text-foreground text-xs px-2 py-1 rounded-full backdrop-blur-sm flex items-center gap-1">
                   <MapPin className="w-3 h-3" />
                   {formatDistance(property.distance)}
                 </div>
@@ -75,8 +75,8 @@ export function ZoneNearby({ nearby, currentLocation }: ZoneNearbyProps) {
                 {/* Transaction Type Badge */}
                 <div className={`absolute top-2 left-2 text-xs font-bold px-2 py-1 rounded ${
                   property.transaction_type === 'sale'
-                    ? 'bg-blue-500 text-white'
-                    : 'bg-purple-500 text-white'
+                    ? 'bg-blue-500 text-foreground'
+                    : 'bg-purple-500 text-foreground'
                 }`}>
                   {property.transaction_type === 'sale' ? 'SALE' : 'RENT'}
                 </div>
@@ -87,7 +87,7 @@ export function ZoneNearby({ nearby, currentLocation }: ZoneNearbyProps) {
                   {formatPrice(property.price, property.currency, property.transaction_type)}
                 </div>
                 
-                <div className="flex items-center gap-2 text-xs text-gray-500 mb-2">
+                <div className="flex items-center gap-2 text-xs text-muted-foreground mb-2">
                   <span className="flex items-center gap-0.5">
                     <Bed className="w-3 h-3" /> {property.beds}
                   </span>
@@ -99,7 +99,7 @@ export function ZoneNearby({ nearby, currentLocation }: ZoneNearbyProps) {
                   </span>
                 </div>
                 
-                <div className="text-xs text-gray-400 truncate flex items-center gap-1">
+                <div className="text-xs text-muted-foreground truncate flex items-center gap-1">
                   <MapPin className="w-3 h-3 flex-shrink-0" />
                   {property.digital_address ? (
                     <span className="font-mono text-green-600 dark:text-green-400">{property.digital_address}</span>

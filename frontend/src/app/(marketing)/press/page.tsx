@@ -54,7 +54,7 @@ export default function PressPage() {
   ];
 
   return (
-    <main className="pt-32 pb-24 bg-zinc-950">
+    <main className="pt-32 pb-24 bg-background">
       {/* Hero */}
       <section className="pb-16">
         <div className="container mx-auto px-4 md:px-6">
@@ -66,13 +66,13 @@ export default function PressPage() {
             <div className="text-sm font-bold text-primary uppercase tracking-[0.2em] mb-4">
               PRESS &amp; MEDIA
             </div>
-            <h1 className="text-5xl md:text-7xl font-bold tracking-tight text-white mb-6">
+            <h1 className="text-5xl md:text-7xl font-bold tracking-tight text-foreground mb-6">
               Press{' '}
               <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary to-yellow-400">
                 Room
               </span>
             </h1>
-            <p className="text-xl text-zinc-400 leading-relaxed">
+            <p className="text-xl text-muted-foreground leading-relaxed">
               Official announcements, media resources, and analyst quotes from
               PROPMETRIK Research — a real estate intelligence platform for
               Ghana and West Africa.
@@ -82,7 +82,7 @@ export default function PressPage() {
       </section>
 
       {/* Quick Links */}
-      <section className="border-y border-zinc-800 py-8">
+      <section className="border-y border-border py-8">
         <div className="container mx-auto px-4 md:px-6">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             {[
@@ -101,11 +101,11 @@ export default function PressPage() {
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: i * 0.1 }}
-                className="bg-zinc-900 border border-zinc-800 rounded-lg p-4 hover:border-primary/50 transition-colors text-center"
+                className="bg-card border border-border rounded-lg p-4 hover:border-primary/50 transition-colors text-center"
               >
-                <div className="text-white font-bold">{item.label}</div>
+                <div className="text-foreground font-bold">{item.label}</div>
                 {item.count !== null && (
-                  <div className="text-sm text-zinc-500">
+                  <div className="text-sm text-muted-foreground">
                     {item.count} published
                   </div>
                 )}
@@ -118,7 +118,7 @@ export default function PressPage() {
       {/* Press Releases */}
       <section id="releases" className="py-16">
         <div className="container mx-auto px-4 md:px-6">
-          <h2 className="text-3xl font-bold text-white mb-8">
+          <h2 className="text-3xl font-bold text-foreground mb-8">
             Press Releases
           </h2>
 
@@ -127,18 +127,18 @@ export default function PressPage() {
               {[...Array(4)].map((_, i) => (
                 <div
                   key={i}
-                  className="bg-zinc-900 border border-zinc-800 rounded-lg p-6 animate-pulse"
+                  className="bg-card border border-border rounded-lg p-6 animate-pulse"
                 >
-                  <div className="h-4 w-24 bg-zinc-800 rounded mb-3" />
-                  <div className="h-6 w-3/4 bg-zinc-800 rounded mb-2" />
-                  <div className="h-4 w-1/2 bg-zinc-800 rounded" />
+                  <div className="h-4 w-24 bg-muted rounded mb-3" />
+                  <div className="h-6 w-3/4 bg-muted rounded mb-2" />
+                  <div className="h-4 w-1/2 bg-muted rounded" />
                 </div>
               ))}
             </div>
           ) : pressReleases.length === 0 ? (
-            <div className="text-center py-12 bg-zinc-900 border border-zinc-800 rounded-lg">
+            <div className="text-center py-12 bg-card border border-border rounded-lg">
               <div className="text-4xl mb-4">📰</div>
-              <p className="text-zinc-400">
+              <p className="text-muted-foreground">
                 Press releases will appear here once published.
               </p>
             </div>
@@ -153,15 +153,15 @@ export default function PressPage() {
                   transition={{ delay: i * 0.05 }}
                 >
                   <Link href={`/insights/${pr.slug}`}>
-                    <div className="group bg-zinc-900 border border-zinc-800 rounded-lg p-6 hover:border-primary/50 transition-colors">
-                      <div className="text-sm text-zinc-500 mb-2">
+                    <div className="group bg-card border border-border rounded-lg p-6 hover:border-primary/50 transition-colors">
+                      <div className="text-sm text-muted-foreground mb-2">
                         {formatDate(pr.published_at)}
                       </div>
-                      <h3 className="text-xl font-bold text-white mb-2 group-hover:text-primary transition-colors">
+                      <h3 className="text-xl font-bold text-foreground mb-2 group-hover:text-primary transition-colors">
                         {pr.title}
                       </h3>
                       {pr.excerpt && (
-                        <p className="text-zinc-400 line-clamp-2">
+                        <p className="text-muted-foreground line-clamp-2">
                           {pr.excerpt}
                         </p>
                       )}
@@ -175,12 +175,12 @@ export default function PressPage() {
       </section>
 
       {/* Media Kit */}
-      <section id="media-kit" className="py-16 border-t border-zinc-800">
+      <section id="media-kit" className="py-16 border-t border-border">
         <div className="container mx-auto px-4 md:px-6">
           <div className="grid lg:grid-cols-2 gap-12">
             <div>
-              <h2 className="text-3xl font-bold text-white mb-6">Media Kit</h2>
-              <p className="text-zinc-400 mb-8">
+              <h2 className="text-3xl font-bold text-foreground mb-6">Media Kit</h2>
+              <p className="text-muted-foreground mb-8">
                 Download our media kit for logos, brand assets, company
                 information, and leadership photos.
               </p>
@@ -192,13 +192,13 @@ export default function PressPage() {
                     whileInView={{ opacity: 1, x: 0 }}
                     viewport={{ once: true }}
                     transition={{ delay: index * 0.1 }}
-                    className="flex items-center justify-between p-4 bg-zinc-900 border border-zinc-800 rounded-lg hover:border-primary/50 transition-colors"
+                    className="flex items-center justify-between p-4 bg-card border border-border rounded-lg hover:border-primary/50 transition-colors"
                   >
                     <div>
-                      <div className="font-bold text-white mb-1">
+                      <div className="font-bold text-foreground mb-1">
                         {item.name}
                       </div>
-                      <div className="text-sm text-zinc-500">
+                      <div className="text-sm text-muted-foreground">
                         {item.format} · {item.size}
                       </div>
                     </div>
@@ -211,7 +211,7 @@ export default function PressPage() {
             </div>
 
             <div>
-              <h2 className="text-3xl font-bold text-white mb-6">
+              <h2 className="text-3xl font-bold text-foreground mb-6">
                 Data for Press
               </h2>
               <div className="grid gap-4">
@@ -235,10 +235,10 @@ export default function PressPage() {
                     whileInView={{ opacity: 1, y: 0 }}
                     viewport={{ once: true }}
                     transition={{ delay: i * 0.1 }}
-                    className="bg-zinc-900 border border-zinc-800 rounded-lg p-5"
+                    className="bg-card border border-border rounded-lg p-5"
                   >
-                    <h3 className="font-bold text-white mb-1">{item.title}</h3>
-                    <p className="text-sm text-zinc-400">{item.desc}</p>
+                    <h3 className="font-bold text-foreground mb-1">{item.title}</h3>
+                    <p className="text-sm text-muted-foreground">{item.desc}</p>
                   </motion.div>
                 ))}
               </div>
@@ -248,13 +248,13 @@ export default function PressPage() {
       </section>
 
       {/* Instant Quote Generator */}
-      <section id="quotes" className="py-16 border-t border-zinc-800">
+      <section id="quotes" className="py-16 border-t border-border">
         <div className="container mx-auto px-4 md:px-6">
           <div className="max-w-2xl">
-            <h2 className="text-3xl font-bold text-white mb-4">
+            <h2 className="text-3xl font-bold text-foreground mb-4">
               Instant Market Quotes
             </h2>
-            <p className="text-zinc-400 mb-8">
+            <p className="text-muted-foreground mb-8">
               Need a data-driven market quote for your article? Our AI generates
               publication-ready quotes based on the latest PROPMETRIK data.
               Attribution: PROPMETRIK Research.
@@ -266,7 +266,7 @@ export default function PressPage() {
                 value={quoteTopic}
                 onChange={(e) => setQuoteTopic(e.target.value)}
                 placeholder='e.g., "Current state of Accra residential market"'
-                className="w-full px-4 py-3 bg-zinc-900 border border-zinc-800 rounded-lg text-white placeholder-zinc-500 focus:outline-none focus:border-primary transition-colors"
+                className="w-full px-4 py-3 bg-card border border-border rounded-lg text-foreground placeholder-zinc-500 focus:outline-none focus:border-primary transition-colors"
                 onKeyDown={(e) => {
                   if (e.key === 'Enter') handleGenerateQuote();
                 }}
@@ -285,12 +285,12 @@ export default function PressPage() {
                 <motion.div
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
-                  className="bg-zinc-900 border border-zinc-800 rounded-lg p-6 mt-4"
+                  className="bg-card border border-border rounded-lg p-6 mt-4"
                 >
-                  <blockquote className="text-zinc-300 italic leading-relaxed mb-4">
+                  <blockquote className="text-muted-foreground italic leading-relaxed mb-4">
                     &ldquo;{generatedQuote}&rdquo;
                   </blockquote>
-                  <div className="text-sm text-zinc-500">
+                  <div className="text-sm text-muted-foreground">
                     — PROPMETRIK Research,{' '}
                     {new Date().toLocaleDateString('en-GB', {
                       day: 'numeric',
@@ -298,7 +298,7 @@ export default function PressPage() {
                       year: 'numeric',
                     })}
                   </div>
-                  <div className="text-xs text-zinc-600 mt-2">
+                  <div className="text-xs text-muted-foreground mt-2">
                     Attribution: PROPMETRIK Ghana Real Estate Intelligence
                   </div>
                 </motion.div>
@@ -309,28 +309,28 @@ export default function PressPage() {
       </section>
 
       {/* Contact */}
-      <section id="contact" className="py-16 border-t border-zinc-800">
+      <section id="contact" className="py-16 border-t border-border">
         <div className="container mx-auto px-4 md:px-6">
           <div className="max-w-2xl">
-            <h2 className="text-3xl font-bold text-white mb-4">
+            <h2 className="text-3xl font-bold text-foreground mb-4">
               Press Contact
             </h2>
-            <p className="text-zinc-400 mb-8">
+            <p className="text-muted-foreground mb-8">
               For media inquiries, interview requests, or analyst commentary,
               please contact our communications team.
             </p>
-            <div className="bg-zinc-900 border border-zinc-800 rounded-lg p-6">
-              <div className="space-y-3 text-zinc-300">
+            <div className="bg-card border border-border rounded-lg p-6">
+              <div className="space-y-3 text-muted-foreground">
                 <p>
-                  <span className="text-zinc-500">Email:</span>{' '}
+                  <span className="text-muted-foreground">Email:</span>{' '}
                   press@propmetrik.com
                 </p>
                 <p>
-                  <span className="text-zinc-500">Phone:</span> +233 XX XXX
+                  <span className="text-muted-foreground">Phone:</span> +233 XX XXX
                   XXXX
                 </p>
                 <p>
-                  <span className="text-zinc-500">Response Time:</span> Within
+                  <span className="text-muted-foreground">Response Time:</span> Within
                   24 hours
                 </p>
               </div>

@@ -89,7 +89,7 @@ export default function SignatureModal({
 
     return (
         <Dialog open={isOpen} onOpenChange={onClose}>
-            <DialogContent className="sm:max-w-[600px] bg-white p-0 overflow-hidden">
+            <DialogContent className="sm:max-w-[600px] bg-card p-0 overflow-hidden">
                 <DialogHeader className="p-6 pb-0">
                     <DialogTitle className="text-xl font-bold flex items-center gap-2">
                         <PenTool className="h-5 w-5 text-primary" />
@@ -125,7 +125,7 @@ export default function SignatureModal({
                         <TabsContent value="draw" className="m-0 h-full relative">
                             <SignatureCanvas
                                 ref={canvasRef}
-                                className="h-full w-full bg-white shadow-inner"
+                                className="h-full w-full bg-card shadow-inner"
                             />
                             <Button
                                 variant="ghost"
@@ -146,16 +146,16 @@ export default function SignatureModal({
                                     value={typedName}
                                     onChange={(e) => setTypedName(e.target.value)}
                                     placeholder="Type your name here..."
-                                    className="bg-white border-slate-200"
+                                    className="bg-card border-slate-200"
                                 />
                             </div>
 
                             <div
                                 ref={typePreviewRef}
-                                className="h-28 w-full bg-white border border-slate-200 rounded-md shadow-inner flex items-center justify-center p-4 overflow-hidden"
+                                className="h-28 w-full bg-card border border-slate-200 rounded-md shadow-inner flex items-center justify-center p-4 overflow-hidden"
                             >
                                 <span
-                                    className="text-4xl text-black select-none pointer-events-none"
+                                    className="text-4xl text-foreground select-none pointer-events-none"
                                     style={{
                                         fontFamily: "var(--font-dancing-script), 'Brush Script MT', cursive",
                                         fontStyle: 'italic'

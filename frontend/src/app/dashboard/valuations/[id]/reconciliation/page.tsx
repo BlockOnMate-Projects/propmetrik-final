@@ -745,16 +745,16 @@ export default function ReconciliationPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-black text-white flex items-center justify-center">
+      <div className="min-h-screen bg-background text-foreground flex items-center justify-center">
         <Loader2 className="w-8 h-8 text-amber-500 animate-spin" />
-        <span className="ml-3 font-mono text-sm text-zinc-400">Loading reconciliation...</span>
+        <span className="ml-3 font-mono text-sm text-muted-foreground">Loading reconciliation...</span>
       </div>
     )
   }
 
   if (error || !valuation) {
     return (
-      <div className="min-h-screen bg-black text-white p-4">
+      <div className="min-h-screen bg-background text-foreground p-4">
         <AlertBanner type="error" title="Error" message={error || 'Valuation not found'} />
       </div>
     )
@@ -763,22 +763,22 @@ export default function ReconciliationPage() {
   const methods = Object.keys(methodResults)
 
   return (
-    <div className="min-h-screen bg-black text-white p-4 pb-10">
+    <div className="min-h-screen bg-background text-foreground p-4 pb-10">
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-4">
           <Link
             href={`/dashboard/valuations/${valuationId}`}
-            className="p-2 hover:bg-zinc-800 transition-colors"
+            className="p-2 hover:bg-muted transition-colors"
           >
-            <ArrowLeft className="w-4 h-4 text-zinc-400" />
+            <ArrowLeft className="w-4 h-4 text-muted-foreground" />
           </Link>
           <div>
             <div className="flex items-center gap-3">
-              <h1 className="font-mono text-xl text-white">STEP 7: RECONCILIATION</h1>
+              <h1 className="font-mono text-xl text-foreground">STEP 7: RECONCILIATION</h1>
               <StatusBadge status="in_progress" />
             </div>
-            <p className="font-mono text-[10px] text-zinc-500">
+            <p className="font-mono text-[10px] text-muted-foreground">
               Final Value Determination • VAL-{valuationId.slice(0, 8).toUpperCase()}
             </p>
           </div>
@@ -786,7 +786,7 @@ export default function ReconciliationPage() {
         <div className="flex items-center gap-3">
           <button
             onClick={() => setShowSensitivity(!showSensitivity)}
-            className={`flex items-center gap-2 px-3 py-2 font-mono text-xs transition-colors ${showSensitivity ? 'bg-amber-500 text-white' : 'bg-zinc-800 text-zinc-400 hover:text-white'
+            className={`flex items-center gap-2 px-3 py-2 font-mono text-xs transition-colors ${showSensitivity ? 'bg-amber-500 text-foreground' : 'bg-muted text-muted-foreground hover:text-foreground'
               }`}
           >
             <Sliders className="w-3 h-3" />
@@ -798,7 +798,7 @@ export default function ReconciliationPage() {
                 <button
                   onClick={handleSaveAndContinue}
                   disabled={saving || !canFinalize}
-                  className="flex items-center gap-2 px-4 py-2 bg-amber-500 text-white font-mono text-xs font-bold hover:bg-amber-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="flex items-center gap-2 px-4 py-2 bg-amber-500 text-foreground font-mono text-xs font-bold hover:bg-amber-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {saving ? (
                     <>
@@ -815,7 +815,7 @@ export default function ReconciliationPage() {
               </TooltipTrigger>
               {!canFinalize && !saving && (
                 <TooltipContent side="bottom" className="max-w-xs">
-                  <p className="text-xs text-red-300">Cannot finalize. Check validation errors below.</p>
+                  <p className="text-xs text-red-600 dark:text-red-300">Cannot finalize. Check validation errors below.</p>
                 </TooltipContent>
               )}
             </Tooltip>
@@ -847,12 +847,12 @@ export default function ReconciliationPage() {
             <TooltipProvider>
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <div className="p-3 bg-zinc-800/50 border border-zinc-700 cursor-help">
+                  <div className="p-3 bg-muted/50 border border-border cursor-help">
                     <div className="flex items-center gap-2 mb-1">
-                      <span className="font-mono text-[10px] text-zinc-500">PRIMARY METHOD</span>
-                      <HelpCircle className="w-3 h-3 text-zinc-500" />
+                      <span className="font-mono text-[10px] text-muted-foreground">PRIMARY METHOD</span>
+                      <HelpCircle className="w-3 h-3 text-muted-foreground" />
                     </div>
-                    <div className="font-mono text-sm text-amber-400">
+                    <div className="font-mono text-sm text-amber-600 dark:text-amber-400">
                       {valuation?.primary_method?.replace('_', ' ').toUpperCase() || methods[0]?.replace('_', ' ').toUpperCase() || '—'}
                     </div>
                   </div>
@@ -866,12 +866,12 @@ export default function ReconciliationPage() {
             <TooltipProvider>
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <div className="p-3 bg-zinc-800/50 border border-zinc-700 cursor-help">
+                  <div className="p-3 bg-muted/50 border border-border cursor-help">
                     <div className="flex items-center gap-2 mb-1">
-                      <span className="font-mono text-[10px] text-zinc-500">SECONDARY METHODS</span>
-                      <HelpCircle className="w-3 h-3 text-zinc-500" />
+                      <span className="font-mono text-[10px] text-muted-foreground">SECONDARY METHODS</span>
+                      <HelpCircle className="w-3 h-3 text-muted-foreground" />
                     </div>
-                    <div className="font-mono text-sm text-zinc-300">
+                    <div className="font-mono text-sm text-muted-foreground">
                       {methods.filter(m => m !== valuation?.primary_method).map(m => m.replace('_', ' ').split(' ')[0].charAt(0).toUpperCase()).join(', ') || 'None'}
                     </div>
                   </div>
@@ -885,12 +885,12 @@ export default function ReconciliationPage() {
             <TooltipProvider>
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <div className="p-3 bg-zinc-800/50 border border-zinc-700 cursor-help">
+                  <div className="p-3 bg-muted/50 border border-border cursor-help">
                     <div className="flex items-center gap-2 mb-1">
-                      <span className="font-mono text-[10px] text-zinc-500">MARKET EVIDENCE</span>
-                      <HelpCircle className="w-3 h-3 text-zinc-500" />
+                      <span className="font-mono text-[10px] text-muted-foreground">MARKET EVIDENCE</span>
+                      <HelpCircle className="w-3 h-3 text-muted-foreground" />
                     </div>
-                    <div className="font-mono text-sm text-zinc-300">
+                    <div className="font-mono text-sm text-muted-foreground">
                       {valueRange.spread < 10 ? 'Strong' : valueRange.spread < 20 ? 'Moderate' : 'Limited'}
                     </div>
                   </div>
@@ -904,12 +904,12 @@ export default function ReconciliationPage() {
             <TooltipProvider>
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <div className="p-3 bg-zinc-800/50 border border-zinc-700 cursor-help">
+                  <div className="p-3 bg-muted/50 border border-border cursor-help">
                     <div className="flex items-center gap-2 mb-1">
-                      <span className="font-mono text-[10px] text-zinc-500">PROPERTY SUITABILITY</span>
-                      <HelpCircle className="w-3 h-3 text-zinc-500" />
+                      <span className="font-mono text-[10px] text-muted-foreground">PROPERTY SUITABILITY</span>
+                      <HelpCircle className="w-3 h-3 text-muted-foreground" />
                     </div>
-                    <div className="font-mono text-sm text-zinc-300">
+                    <div className="font-mono text-sm text-muted-foreground">
                       {(confidenceScore * 100) >= 80 ? 'High' : (confidenceScore * 100) >= 60 ? 'Medium' : 'Low'}
                     </div>
                   </div>
@@ -929,9 +929,9 @@ export default function ReconciliationPage() {
         <TerminalPanel title="METHOD RESULTS" className="col-span-2">
           {methods.length === 0 ? (
             <div className="text-center py-12">
-              <Scale className="w-12 h-12 text-zinc-600 mx-auto mb-4" />
-              <div className="font-mono text-sm text-zinc-500">No method results available</div>
-              <div className="font-mono text-[10px] text-zinc-600 mt-1">
+              <Scale className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+              <div className="font-mono text-sm text-muted-foreground">No method results available</div>
+              <div className="font-mono text-[10px] text-muted-foreground mt-1">
                 Complete the valuation steps first
               </div>
             </div>
@@ -947,7 +947,7 @@ export default function ReconciliationPage() {
                 return (
                   <div
                     key={method}
-                    className={`p-4 border transition-colors ${isPrimary ? 'border-amber-500/50 bg-amber-500/5' : 'border-zinc-800 bg-zinc-900/50'
+                    className={`p-4 border transition-colors ${isPrimary ? 'border-amber-500/50 bg-amber-500/5' : 'border-border bg-card/50'
                       }`}
                   >
                     <div className="flex items-center justify-between mb-3">
@@ -957,7 +957,7 @@ export default function ReconciliationPage() {
                           <Tooltip>
                             <TooltipTrigger asChild>
                               <div className="cursor-help">
-                                <div className="flex items-center gap-1 font-mono text-xs text-zinc-500">
+                                <div className="flex items-center gap-1 font-mono text-xs text-muted-foreground">
                                   Confidence
                                   <HelpCircle className="w-3 h-3" />
                                 </div>
@@ -966,7 +966,7 @@ export default function ReconciliationPage() {
                             </TooltipTrigger>
                             <TooltipContent side="top" className="max-w-xs">
                               <p className="text-xs font-medium mb-1">Data Quality Confidence</p>
-                              <p className="text-xs text-zinc-400">Reflects data reliability and method applicability. High confidence does NOT automatically warrant high weight — professional judgment considers market conditions, property uniqueness, and comparable quality.</p>
+                              <p className="text-xs text-muted-foreground">Reflects data reliability and method applicability. High confidence does NOT automatically warrant high weight — professional judgment considers market conditions, property uniqueness, and comparable quality.</p>
                             </TooltipContent>
                           </Tooltip>
                         </TooltipProvider>
@@ -983,7 +983,7 @@ export default function ReconciliationPage() {
                               <TooltipTrigger asChild>
                                 <button
                                   onClick={() => toggleWeightLock(method)}
-                                  className={`p-1 transition-colors ${isLocked ? 'text-amber-500 hover:text-amber-400' : 'text-zinc-500 hover:text-zinc-300'}`}
+                                  className={`p-1 transition-colors ${isLocked ? 'text-amber-500 hover:text-amber-400' : 'text-muted-foreground hover:text-muted-foreground'}`}
                                 >
                                   {isLocked ? <Lock className="w-3 h-3" /> : <Unlock className="w-3 h-3" />}
                                 </button>
@@ -994,7 +994,7 @@ export default function ReconciliationPage() {
                             </Tooltip>
                           </TooltipProvider>
                           
-                          <span className="font-mono text-[10px] text-zinc-500">WEIGHT:</span>
+                          <span className="font-mono text-[10px] text-muted-foreground">WEIGHT:</span>
                           <input
                             type="range"
                             min="0"
@@ -1011,12 +1011,12 @@ export default function ReconciliationPage() {
                             value={weight}
                             onChange={(e) => updateWeight(method, parseInt(e.target.value) || 0)}
                             disabled={isLocked}
-                            className={`w-14 px-2 py-1 bg-zinc-800 border border-zinc-700 text-white font-mono text-xs text-center focus:outline-none focus:border-amber-500/50 ${isLocked ? 'opacity-50 cursor-not-allowed' : ''}`}
+                            className={`w-14 px-2 py-1 bg-muted border border-border text-foreground font-mono text-xs text-center focus:outline-none focus:border-amber-500/50 ${isLocked ? 'opacity-50 cursor-not-allowed' : ''}`}
                           />
-                          <span className="font-mono text-[10px] text-zinc-500">%</span>
+                          <span className="font-mono text-[10px] text-muted-foreground">%</span>
                         </div>
                         {/* Weight micro-label */}
-                        <div className="font-mono text-[9px] text-zinc-600 mt-0.5 ml-6">
+                        <div className="font-mono text-[9px] text-muted-foreground mt-0.5 ml-6">
                           Weight reflects professional judgment, not mathematical certainty.
                         </div>
                         
@@ -1028,16 +1028,16 @@ export default function ReconciliationPage() {
                               value={weightJustifications[method] || ''}
                               onChange={(e) => setWeightJustifications(prev => ({ ...prev, [method]: e.target.value }))}
                               placeholder="Justification for locked weight (required)..."
-                              className="w-full px-2 py-1 bg-zinc-900 border border-amber-500/30 text-white font-mono text-[10px] placeholder-zinc-500 focus:outline-none focus:border-amber-500"
+                              className="w-full px-2 py-1 bg-card border border-amber-500/30 text-foreground font-mono text-[10px] placeholder-zinc-500 focus:outline-none focus:border-amber-500"
                             />
                             {(!weightJustifications[method] || weightJustifications[method].trim().length < 10) && (
-                              <div className="text-[9px] text-amber-400 mt-0.5">Minimum 10 characters required</div>
+                              <div className="text-[9px] text-amber-600 dark:text-amber-400 mt-0.5">Minimum 10 characters required</div>
                             )}
                           </div>
                         )}
                       </div>
                       <div className="text-right w-32">
-                        <div className="font-mono text-[10px] text-zinc-500">CONTRIBUTION</div>
+                        <div className="font-mono text-[10px] text-muted-foreground">CONTRIBUTION</div>
                         <Currency value={contribution} size="sm" />
                       </div>
                     </div>
@@ -1046,22 +1046,22 @@ export default function ReconciliationPage() {
               })}
 
               {/* Weight Actions */}
-              <div className="flex items-center justify-between pt-3 border-t border-zinc-800">
+              <div className="flex items-center justify-between pt-3 border-t border-border">
                 <div className="flex items-center gap-2">
                   <button
                     onClick={autoBalance}
-                    className="px-3 py-1.5 bg-zinc-800 text-zinc-400 font-mono text-[10px] hover:text-white transition-colors"
+                    className="px-3 py-1.5 bg-muted text-muted-foreground font-mono text-[10px] hover:text-foreground transition-colors"
                   >
                     EQUAL WEIGHTS
                   </button>
                   <button
                     onClick={weightByConfidence}
-                    className="px-3 py-1.5 bg-zinc-800 text-zinc-400 font-mono text-[10px] hover:text-white transition-colors"
+                    className="px-3 py-1.5 bg-muted text-muted-foreground font-mono text-[10px] hover:text-foreground transition-colors"
                   >
                     WEIGHT BY CONFIDENCE
                   </button>
                 </div>
-                <div className={`font-mono text-xs ${Math.abs(totalWeight - 100) <= 1 ? 'text-green-400' : 'text-red-400'
+                <div className={`font-mono text-xs ${Math.abs(totalWeight - 100) <= 1 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'
                   }`}>
                   TOTAL: {totalWeight}%
                   {Math.abs(totalWeight - 100) > 1 && ' ⚠'}
@@ -1075,13 +1075,13 @@ export default function ReconciliationPage() {
         <div className="space-y-4">
           <TerminalPanel title="RECONCILED VALUE">
             <div className="text-center py-6">
-              <div className="font-mono text-4xl text-green-400 mb-2">
+              <div className="font-mono text-4xl text-green-600 dark:text-green-400 mb-2">
                 ₵{reconciledValue.toLocaleString()}
               </div>
               <TooltipProvider>
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <div className="font-mono text-[10px] text-zinc-500 cursor-help inline-flex items-center gap-1">
+                    <div className="font-mono text-[10px] text-muted-foreground cursor-help inline-flex items-center gap-1">
                       FINAL INDICATED MARKET VALUE
                       <HelpCircle className="w-3 h-3" />
                     </div>
@@ -1092,12 +1092,12 @@ export default function ReconciliationPage() {
                 </Tooltip>
               </TooltipProvider>
 
-              <div className="mt-4 pt-4 border-t border-zinc-800">
+              <div className="mt-4 pt-4 border-t border-border">
                 <div className="flex justify-between items-center mb-2">
                   <TooltipProvider>
                     <Tooltip>
                       <TooltipTrigger asChild>
-                        <span className="font-mono text-[10px] text-zinc-500 cursor-help inline-flex items-center gap-1">
+                        <span className="font-mono text-[10px] text-muted-foreground cursor-help inline-flex items-center gap-1">
                           CONFIDENCE SCORE
                           <HelpCircle className="w-3 h-3" />
                         </span>
@@ -1107,7 +1107,7 @@ export default function ReconciliationPage() {
                       </TooltipContent>
                     </Tooltip>
                   </TooltipProvider>
-                  <span className="font-mono text-xs text-zinc-400">{(confidenceScore * 100).toFixed(0)}%</span>
+                  <span className="font-mono text-xs text-muted-foreground">{(confidenceScore * 100).toFixed(0)}%</span>
                 </div>
                 <ConfidenceBar score={confidenceScore * 100} showValue={false} />
               </div>
@@ -1121,29 +1121,29 @@ export default function ReconciliationPage() {
                   <TooltipTrigger asChild>
                     <div className="flex justify-between items-center cursor-help">
                       <div>
-                        <div className="font-mono text-[10px] text-zinc-500">LOW</div>
+                        <div className="font-mono text-[10px] text-muted-foreground">LOW</div>
                         <Currency value={valueRange.low} size="sm" />
                       </div>
                       <div className="text-center">
-                        <div className="font-mono text-[10px] text-zinc-500 flex items-center justify-center gap-1">
+                        <div className="font-mono text-[10px] text-muted-foreground flex items-center justify-center gap-1">
                           SPREAD
                           <HelpCircle className="w-3 h-3" />
                         </div>
-                        <div className={`font-mono text-lg ${valueRange.spread < 10 ? 'text-green-400' :
-                          valueRange.spread < 20 ? 'text-yellow-400' : 'text-red-400'
+                        <div className={`font-mono text-lg ${valueRange.spread < 10 ? 'text-green-600 dark:text-green-400' :
+                          valueRange.spread < 20 ? 'text-yellow-600 dark:text-yellow-400' : 'text-red-600 dark:text-red-400'
                           }`}>
                           {valueRange.spread.toFixed(1)}%
                         </div>
                       </div>
                       <div className="text-right">
-                        <div className="font-mono text-[10px] text-zinc-500">HIGH</div>
+                        <div className="font-mono text-[10px] text-muted-foreground">HIGH</div>
                         <Currency value={valueRange.high} size="sm" />
                       </div>
                     </div>
                   </TooltipTrigger>
                   <TooltipContent side="bottom" className="max-w-xs">
                     <p className="text-xs mb-1">Value range represents the spread between lowest and highest method indications.</p>
-                    <p className="text-xs text-zinc-400">
+                    <p className="text-xs text-muted-foreground">
                       {valueRange.spread === 0 
                         ? 'Single-method valuation shows 0% spread. Consider advisory range below for uncertainty disclosure.'
                         : valueRange.spread < 10 
@@ -1158,15 +1158,15 @@ export default function ReconciliationPage() {
 
               {/* Advisory Band for single-method or low-confidence scenarios */}
               {valueRange.showAdvisory && (
-                <div className="p-2 bg-blue-900/20 border border-blue-500/30">
+                <div className="p-2 bg-blue-100 dark:bg-blue-900/20 border border-blue-500/30">
                   <div className="flex items-start gap-2">
-                    <Info className="w-3 h-3 text-blue-400 flex-shrink-0 mt-0.5" />
+                    <Info className="w-3 h-3 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" />
                     <div>
-                      <div className="font-mono text-[10px] text-blue-400 font-medium">ADVISORY RANGE</div>
-                      <div className="font-mono text-xs text-blue-300 mt-1">
+                      <div className="font-mono text-[10px] text-blue-600 dark:text-blue-400 font-medium">ADVISORY RANGE</div>
+                      <div className="font-mono text-xs text-blue-600 dark:text-blue-300 mt-1">
                         ₵{valueRange.advisoryLow.toLocaleString()} – ₵{valueRange.advisoryHigh.toLocaleString()}
                       </div>
-                      <div className="font-mono text-[9px] text-blue-400/70 mt-1">
+                      <div className="font-mono text-[9px] text-blue-600 dark:text-blue-400/70 mt-1">
                         Single-method valuation with confidence below 85%. Consider disclosing this range per RICS uncertainty guidance.
                       </div>
                     </div>
@@ -1175,10 +1175,10 @@ export default function ReconciliationPage() {
               )}
 
               {valueRange.spread > 15 && (
-                <div className="p-2 bg-yellow-900/20 border border-yellow-500/30">
+                <div className="p-2 bg-yellow-100 dark:bg-yellow-900/20 border border-yellow-500/30">
                   <div className="flex items-start gap-2">
-                    <AlertTriangle className="w-3 h-3 text-yellow-400 flex-shrink-0 mt-0.5" />
-                    <div className="font-mono text-[10px] text-yellow-400">
+                    <AlertTriangle className="w-3 h-3 text-yellow-600 dark:text-yellow-400 flex-shrink-0 mt-0.5" />
+                    <div className="font-mono text-[10px] text-yellow-600 dark:text-yellow-400">
                       High variance between methods. Consider reviewing assumptions.
                     </div>
                   </div>
@@ -1189,13 +1189,13 @@ export default function ReconciliationPage() {
 
           <TerminalPanel title="STATISTICS">
             <div className="grid grid-cols-2 gap-3">
-              <div className="p-3 bg-zinc-800/50">
-                <div className="font-mono text-[10px] text-zinc-500">METHODS USED</div>
-                <div className="font-mono text-xl text-white">{methods.length}</div>
+              <div className="p-3 bg-muted/50">
+                <div className="font-mono text-[10px] text-muted-foreground">METHODS USED</div>
+                <div className="font-mono text-xl text-foreground">{methods.length}</div>
               </div>
-              <div className="p-3 bg-zinc-800/50">
-                <div className="font-mono text-[10px] text-zinc-500">PRIMARY</div>
-                <div className="font-mono text-xs text-amber-400 mt-1">
+              <div className="p-3 bg-muted/50">
+                <div className="font-mono text-[10px] text-muted-foreground">PRIMARY</div>
+                <div className="font-mono text-xs text-amber-600 dark:text-amber-400 mt-1">
                   {(valuation.primary_method || methods[0])?.replace(/_/g, ' ').toUpperCase() || '—'}
                 </div>
               </div>
@@ -1210,11 +1210,11 @@ export default function ReconciliationPage() {
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-4">
               <div className="flex items-center gap-2">
-                <span className="font-mono text-[10px] text-zinc-500">RANGE:</span>
+                <span className="font-mono text-[10px] text-muted-foreground">RANGE:</span>
                 <select
                   value={sensitivityRange}
                   onChange={(e) => setSensitivityRange(parseInt(e.target.value))}
-                  className="px-2 py-1 bg-zinc-800 border border-zinc-700 text-white font-mono text-xs focus:outline-none"
+                  className="px-2 py-1 bg-muted border border-border text-foreground font-mono text-xs focus:outline-none"
                 >
                   <option value={5}>±5%</option>
                   <option value={10}>±10%</option>
@@ -1227,22 +1227,22 @@ export default function ReconciliationPage() {
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <div className="flex items-center gap-2 cursor-help">
-                      <span className="font-mono text-[10px] text-zinc-500">DRIVER:</span>
+                      <span className="font-mono text-[10px] text-muted-foreground">DRIVER:</span>
                       <select
                         value={sensitivityDriver}
                         onChange={(e) => setSensitivityDriver(e.target.value as SensitivityDriverType)}
-                        className="px-2 py-1 bg-zinc-800 border border-zinc-700 text-white font-mono text-xs focus:outline-none"
+                        className="px-2 py-1 bg-muted border border-border text-foreground font-mono text-xs focus:outline-none"
                       >
                         {availableDrivers.map(d => (
                           <option key={d.value} value={d.value}>{d.label}</option>
                         ))}
                       </select>
-                      <HelpCircle className="w-3 h-3 text-zinc-500" />
+                      <HelpCircle className="w-3 h-3 text-muted-foreground" />
                     </div>
                   </TooltipTrigger>
                   <TooltipContent side="top" className="max-w-xs">
                     <p className="text-xs font-medium mb-1">Sensitivity Driver</p>
-                    <p className="text-xs text-zinc-400">
+                    <p className="text-xs text-muted-foreground">
                       {availableDrivers.find(d => d.value === sensitivityDriver)?.tooltip || 'Select a driver to see how changes impact the reconciled value.'}
                     </p>
                   </TooltipContent>
@@ -1250,22 +1250,22 @@ export default function ReconciliationPage() {
               </TooltipProvider>
             </div>
             
-            <div className="font-mono text-[9px] text-zinc-600">
+            <div className="font-mono text-[9px] text-muted-foreground">
               Sensitivity analysis per RICS VPS 3 uncertainty disclosure requirements
             </div>
           </div>
 
           {/* Professional Table Format */}
-          <div className="overflow-hidden border border-zinc-800">
+          <div className="overflow-hidden border border-border">
             <table className="w-full">
               <thead>
-                <tr className="bg-zinc-800/50">
-                  <th className="px-4 py-2 text-left font-mono text-[10px] text-zinc-400 uppercase">
+                <tr className="bg-muted/50">
+                  <th className="px-4 py-2 text-left font-mono text-[10px] text-muted-foreground uppercase">
                     {(availableDrivers.find(d => d.value === sensitivityDriver)?.label || 'Driver')} Δ
                   </th>
-                  <th className="px-4 py-2 text-right font-mono text-[10px] text-zinc-400">INDICATED VALUE</th>
-                  <th className="px-4 py-2 text-right font-mono text-[10px] text-zinc-400">VALUE CHANGE</th>
-                  <th className="px-4 py-2 text-center font-mono text-[10px] text-zinc-400 w-48">IMPACT</th>
+                  <th className="px-4 py-2 text-right font-mono text-[10px] text-muted-foreground">INDICATED VALUE</th>
+                  <th className="px-4 py-2 text-right font-mono text-[10px] text-muted-foreground">VALUE CHANGE</th>
+                  <th className="px-4 py-2 text-center font-mono text-[10px] text-muted-foreground w-48">IMPACT</th>
                 </tr>
               </thead>
               <tbody>
@@ -1277,24 +1277,24 @@ export default function ReconciliationPage() {
                   return (
                     <tr 
                       key={idx} 
-                      className={`border-t border-zinc-800 ${isBase ? 'bg-amber-500/10' : 'hover:bg-zinc-800/30'}`}
+                      className={`border-t border-border ${isBase ? 'bg-amber-500/10' : 'hover:bg-amber-50 dark:hover:bg-amber-500/10'}`}
                     >
                       <td className="px-4 py-3">
                         <span className={`font-mono text-sm font-medium ${
-                          row.percentage < 0 ? 'text-red-400' : row.percentage > 0 ? 'text-green-400' : 'text-amber-400'
+                          row.percentage < 0 ? 'text-red-600 dark:text-red-400' : row.percentage > 0 ? 'text-green-600 dark:text-green-400' : 'text-amber-600 dark:text-amber-400'
                         }`}>
                           {row.percentage > 0 ? '+' : ''}{row.percentage.toFixed(0)}%
                         </span>
-                        {isBase && <span className="ml-2 font-mono text-[9px] text-amber-400/70">BASE</span>}
+                        {isBase && <span className="ml-2 font-mono text-[9px] text-amber-600 dark:text-amber-400/70">BASE</span>}
                       </td>
                       <td className="px-4 py-3 text-right">
-                        <span className="font-mono text-sm text-white">
+                        <span className="font-mono text-sm text-foreground">
                           ₵{row.value.toLocaleString(undefined, { maximumFractionDigits: 0 })}
                         </span>
                       </td>
                       <td className="px-4 py-3 text-right">
                         <span className={`font-mono text-xs ${
-                          row.change < 0 ? 'text-red-400' : row.change > 0 ? 'text-green-400' : 'text-zinc-500'
+                          row.change < 0 ? 'text-red-600 dark:text-red-400' : row.change > 0 ? 'text-green-600 dark:text-green-400' : 'text-muted-foreground'
                         }`}>
                           {row.change >= 0 ? '+' : ''}₵{row.change.toLocaleString(undefined, { maximumFractionDigits: 0 })}
                         </span>
@@ -1302,7 +1302,7 @@ export default function ReconciliationPage() {
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-2">
                           {/* Bar chart visualization */}
-                          <div className="flex-1 h-4 bg-zinc-800 relative overflow-hidden">
+                          <div className="flex-1 h-4 bg-muted relative overflow-hidden">
                             <div className="absolute inset-y-0 left-1/2 w-px bg-zinc-600" />
                             {row.changePercent !== 0 && (
                               <div 
@@ -1315,7 +1315,7 @@ export default function ReconciliationPage() {
                             )}
                           </div>
                           <span className={`font-mono text-[10px] w-12 text-right ${
-                            row.changePercent < 0 ? 'text-red-400' : row.changePercent > 0 ? 'text-green-400' : 'text-zinc-500'
+                            row.changePercent < 0 ? 'text-red-600 dark:text-red-400' : row.changePercent > 0 ? 'text-green-600 dark:text-green-400' : 'text-muted-foreground'
                           }`}>
                             {row.changePercent >= 0 ? '+' : ''}{row.changePercent.toFixed(1)}%
                           </span>
@@ -1330,28 +1330,28 @@ export default function ReconciliationPage() {
 
           {/* Summary insights */}
           <div className="mt-4 grid grid-cols-3 gap-4">
-            <div className="p-3 bg-zinc-800/50 border border-zinc-700">
-              <div className="font-mono text-[10px] text-zinc-500 mb-1">DOWNSIDE RISK</div>
-              <div className="font-mono text-lg text-red-400">
+            <div className="p-3 bg-muted/50 border border-border">
+              <div className="font-mono text-[10px] text-muted-foreground mb-1">DOWNSIDE RISK</div>
+              <div className="font-mono text-lg text-red-600 dark:text-red-400">
                 {sensitivityData[0]?.changePercent.toFixed(1)}%
               </div>
-              <div className="font-mono text-[10px] text-zinc-600">
+              <div className="font-mono text-[10px] text-muted-foreground">
                 ₵{sensitivityData[0]?.value.toLocaleString(undefined, { maximumFractionDigits: 0 })}
               </div>
             </div>
             <div className="p-3 bg-amber-500/10 border border-amber-500/30">
-              <div className="font-mono text-[10px] text-zinc-500 mb-1">BASE VALUE</div>
-              <div className="font-mono text-lg text-amber-400">
+              <div className="font-mono text-[10px] text-muted-foreground mb-1">BASE VALUE</div>
+              <div className="font-mono text-lg text-amber-600 dark:text-amber-400">
                 ₵{reconciledValue.toLocaleString(undefined, { maximumFractionDigits: 0 })}
               </div>
-              <div className="font-mono text-[10px] text-zinc-600">Current indicated value</div>
+              <div className="font-mono text-[10px] text-muted-foreground">Current indicated value</div>
             </div>
-            <div className="p-3 bg-zinc-800/50 border border-zinc-700">
-              <div className="font-mono text-[10px] text-zinc-500 mb-1">UPSIDE POTENTIAL</div>
-              <div className="font-mono text-lg text-green-400">
+            <div className="p-3 bg-muted/50 border border-border">
+              <div className="font-mono text-[10px] text-muted-foreground mb-1">UPSIDE POTENTIAL</div>
+              <div className="font-mono text-lg text-green-600 dark:text-green-400">
                 +{sensitivityData[4]?.changePercent.toFixed(1)}%
               </div>
-              <div className="font-mono text-[10px] text-zinc-600">
+              <div className="font-mono text-[10px] text-muted-foreground">
                 ₵{sensitivityData[4]?.value.toLocaleString(undefined, { maximumFractionDigits: 0 })}
               </div>
             </div>
@@ -1364,11 +1364,11 @@ export default function ReconciliationPage() {
         <div className="grid grid-cols-2 gap-4">
           <div>
             <div className="flex items-center gap-2 mb-1">
-              <label className="font-mono text-[10px] text-zinc-500">WEIGHT RATIONALE</label>
+              <label className="font-mono text-[10px] text-muted-foreground">WEIGHT RATIONALE</label>
               <TooltipProvider>
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <HelpCircle className="w-3 h-3 text-zinc-500 cursor-help" />
+                    <HelpCircle className="w-3 h-3 text-muted-foreground cursor-help" />
                   </TooltipTrigger>
                   <TooltipContent side="top" className="max-w-xs">
                     <p className="text-xs">Per RICS VPS 3, provide reasoning for weight allocation. Address why primary method received highest weight and consider data quality, market conditions, and property characteristics.</p>
@@ -1376,7 +1376,7 @@ export default function ReconciliationPage() {
                 </Tooltip>
               </TooltipProvider>
               {reconciliationNotes.trim().length < 20 && (
-                <span className="font-mono text-[9px] text-amber-400">Min 20 chars required</span>
+                <span className="font-mono text-[9px] text-amber-600 dark:text-amber-400">Min 20 chars required</span>
               )}
             </div>
             <textarea
@@ -1384,18 +1384,18 @@ export default function ReconciliationPage() {
               onChange={(e) => setReconciliationNotes(e.target.value)}
               placeholder="Example: The Cost Approach was given primary weight (60%) due to the recent construction date (2023) and availability of verified construction cost data. The limited comparable sales in this micro-market reduced reliability of the Sales Comparison approach..."
               rows={5}
-              className={`w-full px-3 py-2 bg-zinc-900 border text-white font-mono text-sm placeholder-zinc-600 focus:outline-none resize-none ${
-                reconciliationNotes.trim().length >= 20 ? 'border-zinc-800 focus:border-amber-500/50' : 'border-amber-500/30'
+              className={`w-full px-3 py-2 bg-card border text-foreground font-mono text-sm placeholder-zinc-600 focus:outline-none resize-none ${
+                reconciliationNotes.trim().length >= 20 ? 'border-border focus:border-amber-500/50' : 'border-amber-500/30'
               }`}
             />
           </div>
           <div>
             <div className="flex items-center gap-2 mb-1">
-              <label className="font-mono text-[10px] text-zinc-500">ADJUSTMENTS & SPECIAL ASSUMPTIONS</label>
+              <label className="font-mono text-[10px] text-muted-foreground">ADJUSTMENTS & SPECIAL ASSUMPTIONS</label>
               <TooltipProvider>
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <HelpCircle className="w-3 h-3 text-zinc-500 cursor-help" />
+                    <HelpCircle className="w-3 h-3 text-muted-foreground cursor-help" />
                   </TooltipTrigger>
                   <TooltipContent side="top" className="max-w-xs">
                     <p className="text-xs">Document any special assumptions per RICS VPS 4, departures from standard methodology, or market conditions affecting the valuation.</p>
@@ -1408,7 +1408,7 @@ export default function ReconciliationPage() {
               onChange={(e) => setAdjustmentRationale(e.target.value)}
               placeholder="Example: Special assumption — valued on basis of vacant possession. Adjustment of +5% applied to cost approach to account for premium location near upcoming metro station. Market conditions reflect post-election uncertainty..."
               rows={5}
-              className="w-full px-3 py-2 bg-zinc-900 border border-zinc-800 text-white font-mono text-sm placeholder-zinc-600 focus:outline-none focus:border-amber-500/50 resize-none"
+              className="w-full px-3 py-2 bg-card border border-border text-foreground font-mono text-sm placeholder-zinc-600 focus:outline-none focus:border-amber-500/50 resize-none"
             />
           </div>
         </div>
@@ -1418,12 +1418,12 @@ export default function ReconciliationPage() {
       <TerminalPanel title="RECONCILIATION NARRATIVE PREVIEW" className="mt-4">
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-2">
-            <FileText className="w-4 h-4 text-zinc-500" />
-            <span className="font-mono text-[10px] text-zinc-500">AUTO-GENERATED NARRATIVE (EDITABLE)</span>
+            <FileText className="w-4 h-4 text-muted-foreground" />
+            <span className="font-mono text-[10px] text-muted-foreground">AUTO-GENERATED NARRATIVE (EDITABLE)</span>
             <TooltipProvider>
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <HelpCircle className="w-3 h-3 text-zinc-500 cursor-help" />
+                  <HelpCircle className="w-3 h-3 text-muted-foreground cursor-help" />
                 </TooltipTrigger>
                 <TooltipContent side="top" className="max-w-xs">
                   <p className="text-xs">This narrative is automatically generated from your reconciliation data and will appear in the final valuation report. You can edit it before finalization.</p>
@@ -1433,7 +1433,7 @@ export default function ReconciliationPage() {
           </div>
           <button
             onClick={() => setShowNarrativePreview(!showNarrativePreview)}
-            className="flex items-center gap-1 px-2 py-1 bg-zinc-800 text-zinc-400 font-mono text-[10px] hover:text-white transition-colors"
+            className="flex items-center gap-1 px-2 py-1 bg-muted text-muted-foreground font-mono text-[10px] hover:text-foreground transition-colors"
           >
             {showNarrativePreview ? (
               <>
@@ -1450,17 +1450,17 @@ export default function ReconciliationPage() {
         </div>
         
         {showNarrativePreview && (
-          <div className="p-4 bg-zinc-900 border border-zinc-800">
-            <div className="font-mono text-xs text-zinc-300 whitespace-pre-wrap leading-relaxed">
+          <div className="p-4 bg-card border border-border">
+            <div className="font-mono text-xs text-muted-foreground whitespace-pre-wrap leading-relaxed">
               {autoNarrative}
             </div>
-            <div className="mt-3 pt-3 border-t border-zinc-800 flex items-center justify-between">
-              <span className="font-mono text-[9px] text-zinc-600">
+            <div className="mt-3 pt-3 border-t border-border flex items-center justify-between">
+              <span className="font-mono text-[9px] text-muted-foreground">
                 {autoNarrative.length} characters • This text will appear in Section 8 of the valuation report
               </span>
               <button
                 onClick={() => navigator.clipboard.writeText(autoNarrative)}
-                className="px-2 py-1 bg-zinc-800 text-zinc-400 font-mono text-[9px] hover:text-white transition-colors"
+                className="px-2 py-1 bg-muted text-muted-foreground font-mono text-[9px] hover:text-foreground transition-colors"
               >
                 COPY TO CLIPBOARD
               </button>
@@ -1470,7 +1470,7 @@ export default function ReconciliationPage() {
       </TerminalPanel>
 
       {/* Finalization Disclaimer */}
-      <div className="mt-4 p-4 bg-zinc-900 border border-zinc-800">
+      <div className="mt-4 p-4 bg-card border border-border">
         <label className="flex items-start gap-3 cursor-pointer">
           <input
             type="checkbox"
@@ -1479,8 +1479,8 @@ export default function ReconciliationPage() {
             className="mt-1 w-4 h-4 accent-amber-500"
           />
           <div>
-            <div className="font-mono text-xs text-white mb-1">Professional Certification</div>
-            <div className="font-mono text-[10px] text-zinc-400 leading-relaxed">
+            <div className="font-mono text-xs text-foreground mb-1">Professional Certification</div>
+            <div className="font-mono text-[10px] text-muted-foreground leading-relaxed">
               I certify that this valuation has been prepared in accordance with the Ghana Institution of Surveyors (GhIS) Valuation Standards, 
               RICS Valuation – Global Standards (Red Book), and applicable regulatory requirements. The final indicated market value reflects 
               my independent professional judgment based on the data, methodologies, and analysis documented herein. I confirm that I have no 
@@ -1490,7 +1490,7 @@ export default function ReconciliationPage() {
         </label>
         
         {!disclaimerAccepted && (
-          <div className="mt-2 flex items-center gap-2 text-amber-400">
+          <div className="mt-2 flex items-center gap-2 text-amber-600 dark:text-amber-400">
             <AlertTriangle className="w-3 h-3" />
             <span className="font-mono text-[10px]">Certification required before finalization</span>
           </div>
@@ -1499,23 +1499,23 @@ export default function ReconciliationPage() {
 
       {/* Validation Summary */}
       {!canFinalize && (
-        <div className="mt-4 p-3 bg-red-900/20 border border-red-500/30">
-          <div className="font-mono text-[10px] text-red-400 font-medium mb-2">FINALIZATION BLOCKED:</div>
+        <div className="mt-4 p-3 bg-red-100 dark:bg-red-900/20 border border-red-500/30">
+          <div className="font-mono text-[10px] text-red-600 dark:text-red-400 font-medium mb-2">FINALIZATION BLOCKED:</div>
           <ul className="space-y-1">
             {Math.abs(totalWeight - 100) > 1 && (
-              <li className="font-mono text-[10px] text-red-300 flex items-center gap-2">
+              <li className="font-mono text-[10px] text-red-600 dark:text-red-300 flex items-center gap-2">
                 <span className="w-1.5 h-1.5 bg-red-400 rounded-full" />
                 Weights must sum to 100% (currently {totalWeight}%)
               </li>
             )}
             {reconciliationNotes.trim().length < 20 && (
-              <li className="font-mono text-[10px] text-red-300 flex items-center gap-2">
+              <li className="font-mono text-[10px] text-red-600 dark:text-red-300 flex items-center gap-2">
                 <span className="w-1.5 h-1.5 bg-red-400 rounded-full" />
                 Weight rationale requires minimum 20 characters
               </li>
             )}
             {!disclaimerAccepted && (
-              <li className="font-mono text-[10px] text-red-300 flex items-center gap-2">
+              <li className="font-mono text-[10px] text-red-600 dark:text-red-300 flex items-center gap-2">
                 <span className="w-1.5 h-1.5 bg-red-400 rounded-full" />
                 Professional certification checkbox required
               </li>
@@ -1523,7 +1523,7 @@ export default function ReconciliationPage() {
             {Object.entries(lockedWeights).some(([method, locked]) => 
               locked && (!weightJustifications[method] || weightJustifications[method].trim().length < 10)
             ) && (
-              <li className="font-mono text-[10px] text-red-300 flex items-center gap-2">
+              <li className="font-mono text-[10px] text-red-600 dark:text-red-300 flex items-center gap-2">
                 <span className="w-1.5 h-1.5 bg-red-400 rounded-full" />
                 Locked weights require justification (min 10 characters each)
               </li>
@@ -1536,14 +1536,14 @@ export default function ReconciliationPage() {
       <div className="mt-6 flex justify-between">
         <Link
           href={getBackPath()}
-          className="px-6 py-3 bg-zinc-800 text-zinc-400 font-mono text-sm hover:text-white transition-colors"
+          className="px-6 py-3 bg-muted text-muted-foreground font-mono text-sm hover:text-foreground transition-colors"
         >
           {getBackLabel()}
         </Link>
         <button
           onClick={handleSaveAndContinue}
           disabled={saving || !canFinalize}
-          className="flex items-center gap-2 px-6 py-3 bg-amber-500 text-white font-mono text-sm font-bold hover:bg-amber-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          className="flex items-center gap-2 px-6 py-3 bg-amber-500 text-foreground font-mono text-sm font-bold hover:bg-amber-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {saving ? (
             <>

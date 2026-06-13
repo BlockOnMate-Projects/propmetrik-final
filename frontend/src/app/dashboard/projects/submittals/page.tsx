@@ -69,14 +69,14 @@ import { Pagination } from '@/components/ui/pagination-controls';
 
 // Status configuration
 const statusConfig: Record<SubmittalStatus, { label: string; bg: string; text: string }> = {
-  draft: { label: 'Draft', bg: 'bg-zinc-500/20', text: 'text-zinc-400' },
-  submitted: { label: 'Submitted', bg: 'bg-blue-500/20', text: 'text-blue-400' },
-  under_review: { label: 'Under Review', bg: 'bg-yellow-500/20', text: 'text-yellow-400' },
-  approved: { label: 'Approved', bg: 'bg-green-500/20', text: 'text-green-400' },
-  approved_as_noted: { label: 'Approved as Noted', bg: 'bg-emerald-500/20', text: 'text-emerald-400' },
-  revise_resubmit: { label: 'Revise & Resubmit', bg: 'bg-orange-500/20', text: 'text-orange-400' },
-  rejected: { label: 'Rejected', bg: 'bg-red-500/20', text: 'text-red-400' },
-  closed: { label: 'Closed', bg: 'bg-zinc-600/20', text: 'text-zinc-500' },
+  draft: { label: 'Draft', bg: 'bg-zinc-500/20', text: 'text-muted-foreground' },
+  submitted: { label: 'Submitted', bg: 'bg-blue-500/20', text: 'text-blue-600 dark:text-blue-400' },
+  under_review: { label: 'Under Review', bg: 'bg-yellow-500/20', text: 'text-yellow-600 dark:text-yellow-400' },
+  approved: { label: 'Approved', bg: 'bg-green-500/20', text: 'text-green-600 dark:text-green-400' },
+  approved_as_noted: { label: 'Approved as Noted', bg: 'bg-emerald-500/20', text: 'text-emerald-600 dark:text-emerald-400' },
+  revise_resubmit: { label: 'Revise & Resubmit', bg: 'bg-orange-500/20', text: 'text-orange-600 dark:text-orange-400' },
+  rejected: { label: 'Rejected', bg: 'bg-red-500/20', text: 'text-red-600 dark:text-red-400' },
+  closed: { label: 'Closed', bg: 'bg-zinc-600/20', text: 'text-muted-foreground' },
 };
 
 const typeLabels: Record<SubmittalType, string> = {
@@ -241,7 +241,7 @@ export default function SubmittalsPage() {
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div>
           {projectId && (
-            <Link href={`/dashboard/projects/projects/${projectId}`} className="inline-flex items-center gap-1 text-zinc-500 hover:text-zinc-300 text-sm mb-2 transition-colors">
+            <Link href={`/dashboard/projects/projects/${projectId}`} className="inline-flex items-center gap-1 text-muted-foreground hover:text-muted-foreground text-sm mb-2 transition-colors">
               <ArrowLeft className="h-3 w-3" />Back to Project
             </Link>
           )}
@@ -250,13 +250,13 @@ export default function SubmittalsPage() {
               <ClipboardList className="h-5 w-5 text-amber-500" />
             </div>
             <div>
-              <h1 className="text-2xl font-bold text-white tracking-tight">Submittals</h1>
-              <p className="text-zinc-400 text-sm">Track shop drawings, samples, and product data</p>
+              <h1 className="text-2xl font-bold text-foreground tracking-tight">Submittals</h1>
+              <p className="text-muted-foreground text-sm">Track shop drawings, samples, and product data</p>
             </div>
           </div>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" className="border-zinc-700 text-zinc-300" onClick={fetchData}>
+          <Button variant="outline" className="border-border text-muted-foreground" onClick={fetchData}>
             <RefreshCw className="h-4 w-4 mr-2" />Refresh
           </Button>
           <Button className="bg-amber-600 hover:bg-amber-700" onClick={() => setShowCreateDialog(true)}>
@@ -267,28 +267,28 @@ export default function SubmittalsPage() {
 
       {/* Stats Cards */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-        <Card className="bg-zinc-900 border-zinc-800">
+        <Card className="bg-card border-border">
           <CardContent className="pt-6 pb-4">
-            <p className="text-xs uppercase tracking-wider text-zinc-500">Total</p>
-            <p className="text-2xl font-bold text-white mt-1">{submittals.length}</p>
+            <p className="text-xs uppercase tracking-wider text-muted-foreground">Total</p>
+            <p className="text-2xl font-bold text-foreground mt-1">{submittals.length}</p>
           </CardContent>
         </Card>
-        <Card className="bg-zinc-900 border-zinc-800">
+        <Card className="bg-card border-border">
           <CardContent className="pt-6 pb-4">
-            <p className="text-xs uppercase tracking-wider text-zinc-500">Pending Review</p>
-            <p className="text-2xl font-bold text-yellow-400 mt-1">{pendingCount}</p>
+            <p className="text-xs uppercase tracking-wider text-muted-foreground">Pending Review</p>
+            <p className="text-2xl font-bold text-yellow-600 dark:text-yellow-400 mt-1">{pendingCount}</p>
           </CardContent>
         </Card>
-        <Card className="bg-zinc-900 border-zinc-800">
+        <Card className="bg-card border-border">
           <CardContent className="pt-6 pb-4">
-            <p className="text-xs uppercase tracking-wider text-zinc-500">Approved</p>
-            <p className="text-2xl font-bold text-green-400 mt-1">{approvedCount}</p>
+            <p className="text-xs uppercase tracking-wider text-muted-foreground">Approved</p>
+            <p className="text-2xl font-bold text-green-600 dark:text-green-400 mt-1">{approvedCount}</p>
           </CardContent>
         </Card>
-        <Card className={`bg-zinc-900 border-zinc-800 ${overdueCount > 0 ? 'border-red-500/50' : ''}`}>
+        <Card className={`bg-card border-border ${overdueCount > 0 ? 'border-red-500/50' : ''}`}>
           <CardContent className="pt-6 pb-4">
-            <p className="text-xs uppercase tracking-wider text-zinc-500">Overdue</p>
-            <p className={`text-2xl font-bold mt-1 ${overdueCount > 0 ? 'text-red-400' : 'text-white'}`}>{overdueCount}</p>
+            <p className="text-xs uppercase tracking-wider text-muted-foreground">Overdue</p>
+            <p className={`text-2xl font-bold mt-1 ${overdueCount > 0 ? 'text-red-600 dark:text-red-400' : 'text-foreground'}`}>{overdueCount}</p>
           </CardContent>
         </Card>
       </div>
@@ -296,18 +296,18 @@ export default function SubmittalsPage() {
       {/* Filters */}
       <div className="flex flex-col sm:flex-row gap-3">
         <div className="relative flex-1 max-w-md">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-500" />
-          <Input placeholder="Search submittals..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="pl-10 bg-zinc-900 border-zinc-800 text-white placeholder:text-zinc-500" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input placeholder="Search submittals..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="pl-10 bg-card border-border text-foreground placeholder:text-muted-foreground" />
         </div>
         <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as SubmittalStatus | 'all')}>
-          <SelectTrigger className="w-[180px] bg-zinc-900 border-zinc-800"><SelectValue placeholder="All Statuses" /></SelectTrigger>
+          <SelectTrigger className="w-[180px] bg-card border-border"><SelectValue placeholder="All Statuses" /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All Statuses</SelectItem>
             {Object.entries(statusConfig).map(([value, config]) => (<SelectItem key={value} value={value}>{config.label}</SelectItem>))}
           </SelectContent>
         </Select>
         <Select value={typeFilter} onValueChange={(v) => setTypeFilter(v as SubmittalType | 'all')}>
-          <SelectTrigger className="w-[180px] bg-zinc-900 border-zinc-800"><SelectValue placeholder="All Types" /></SelectTrigger>
+          <SelectTrigger className="w-[180px] bg-card border-border"><SelectValue placeholder="All Types" /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All Types</SelectItem>
             {Object.entries(typeLabels).map(([value, label]) => (<SelectItem key={value} value={value}>{label}</SelectItem>))}
@@ -317,64 +317,64 @@ export default function SubmittalsPage() {
 
       {/* Tabs and Table */}
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="bg-zinc-800 border-zinc-700">
+        <TabsList className="bg-muted border-border">
           <TabsTrigger value="all">All ({submittals.length})</TabsTrigger>
           <TabsTrigger value="awaiting-me" className="data-[state=active]:text-amber-400">Awaiting Me</TabsTrigger>
           <TabsTrigger value="pending">Pending ({pendingCount})</TabsTrigger>
           <TabsTrigger value="approved">Approved ({approvedCount})</TabsTrigger>
-          <TabsTrigger value="action" className={actionCount > 0 ? 'text-orange-400' : ''}>Action Required ({actionCount})</TabsTrigger>
+          <TabsTrigger value="action" className={actionCount > 0 ? 'text-orange-600 dark:text-orange-400' : ''}>Action Required ({actionCount})</TabsTrigger>
         </TabsList>
 
         <TabsContent value={activeTab} className="mt-4">
           {loading ? (
             <div className="flex items-center justify-center py-12"><Loader2 className="h-8 w-8 animate-spin text-amber-500" /></div>
           ) : filteredSubmittals.length === 0 ? (
-            <Card className="bg-zinc-900 border-zinc-800">
+            <Card className="bg-card border-border">
               <CardContent className="py-12 text-center">
-                <ClipboardList className="h-12 w-12 text-zinc-600 mx-auto mb-4" />
-                <h3 className="text-lg font-medium text-white mb-2">No Submittals Found</h3>
-                <p className="text-zinc-400 text-sm mb-4">{activeTab === 'all' ? 'Create your first submittal to get started' : 'No submittals match the current filter'}</p>
+                <ClipboardList className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                <h3 className="text-lg font-medium text-foreground mb-2">No Submittals Found</h3>
+                <p className="text-muted-foreground text-sm mb-4">{activeTab === 'all' ? 'Create your first submittal to get started' : 'No submittals match the current filter'}</p>
                 <Button onClick={() => setShowCreateDialog(true)} className="bg-amber-600 hover:bg-amber-700"><Plus className="h-4 w-4 mr-2" />New Submittal</Button>
               </CardContent>
             </Card>
           ) : (
-            <Card className="bg-zinc-900 border-zinc-800">
+            <Card className="bg-card border-border">
               <CardContent className="p-0">
                 <Table>
                   <TableHeader>
-                    <TableRow className="border-zinc-800 hover:bg-transparent">
-                      <TableHead className="text-zinc-400">Submittal #</TableHead>
-                      <TableHead className="text-zinc-400">Title</TableHead>
-                      <TableHead className="text-zinc-400">Type</TableHead>
-                      <TableHead className="text-zinc-400">Spec Section</TableHead>
-                      <TableHead className="text-zinc-400">Status</TableHead>
-                      <TableHead className="text-zinc-400">Ball in Court</TableHead>
-                      <TableHead className="text-zinc-400">Rev</TableHead>
-                      <TableHead className="text-zinc-400">Due Date</TableHead>
+                    <TableRow className="border-border hover:bg-transparent">
+                      <TableHead className="text-muted-foreground">Submittal #</TableHead>
+                      <TableHead className="text-muted-foreground">Title</TableHead>
+                      <TableHead className="text-muted-foreground">Type</TableHead>
+                      <TableHead className="text-muted-foreground">Spec Section</TableHead>
+                      <TableHead className="text-muted-foreground">Status</TableHead>
+                      <TableHead className="text-muted-foreground">Ball in Court</TableHead>
+                      <TableHead className="text-muted-foreground">Rev</TableHead>
+                      <TableHead className="text-muted-foreground">Due Date</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {filteredSubmittals.map((submittal) => {
                       const status = statusConfig[submittal.status] || statusConfig.submitted;
                       return (
-                        <TableRow key={submittal.id} className="border-zinc-800 hover:bg-zinc-800/50 cursor-pointer" onClick={() => handleViewSubmittal(submittal)}>
+                        <TableRow key={submittal.id} className="border-border hover:bg-muted/50 cursor-pointer" onClick={() => handleViewSubmittal(submittal)}>
                           <TableCell className="font-mono text-amber-500">{submittal.submittal_number}</TableCell>
                           <TableCell>
                             <div className="flex items-center gap-2">
-                              <span className="font-medium text-white truncate max-w-[200px]">{submittal.title}</span>
-                              {submittal.is_overdue && <AlertTriangle className="h-4 w-4 text-red-400 flex-shrink-0" />}
+                              <span className="font-medium text-foreground truncate max-w-[200px]">{submittal.title}</span>
+                              {submittal.is_overdue && <AlertTriangle className="h-4 w-4 text-red-600 dark:text-red-400 flex-shrink-0" />}
                             </div>
                           </TableCell>
-                          <TableCell className="text-zinc-300 text-sm">{typeLabels[submittal.type] || submittal.type}</TableCell>
-                          <TableCell className="text-zinc-400 font-mono text-sm">{submittal.spec_section || '—'}</TableCell>
+                          <TableCell className="text-muted-foreground text-sm">{typeLabels[submittal.type] || submittal.type}</TableCell>
+                          <TableCell className="text-muted-foreground font-mono text-sm">{submittal.spec_section || '—'}</TableCell>
                           <TableCell><Badge className={`${status.bg} ${status.text} border-0`}>{status.label}</Badge></TableCell>
                           <TableCell className="text-sm">
                             {submittal.ball_in_court_name
-                              ? <span className="inline-flex items-center rounded-md bg-amber-500/10 text-amber-300 px-2 py-0.5 text-xs">{submittal.ball_in_court_name}</span>
-                              : <span className="text-zinc-600">—</span>}
+                              ? <span className="inline-flex items-center rounded-md bg-amber-500/10 text-amber-600 dark:text-amber-300 px-2 py-0.5 text-xs">{submittal.ball_in_court_name}</span>
+                              : <span className="text-muted-foreground">—</span>}
                           </TableCell>
-                          <TableCell className="text-zinc-400">{submittal.revision_number || 0}</TableCell>
-                          <TableCell className="text-zinc-400 text-sm">{formatDate(submittal.due_date)}</TableCell>
+                          <TableCell className="text-muted-foreground">{submittal.revision_number || 0}</TableCell>
+                          <TableCell className="text-muted-foreground text-sm">{formatDate(submittal.due_date)}</TableCell>
                         </TableRow>
                       );
                     })}
@@ -390,36 +390,36 @@ export default function SubmittalsPage() {
 
       {/* Create Submittal Dialog */}
       <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
-        <DialogContent className="bg-zinc-900 border-zinc-800 max-w-lg">
+        <DialogContent className="bg-card border-border max-w-lg">
           <DialogHeader>
-            <DialogTitle className="text-white">Create New Submittal</DialogTitle>
-            <DialogDescription className="text-zinc-400">Submit a new shop drawing, sample, or product data</DialogDescription>
+            <DialogTitle className="text-foreground">Create New Submittal</DialogTitle>
+            <DialogDescription className="text-muted-foreground">Submit a new shop drawing, sample, or product data</DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <Label className="text-zinc-300">Title *</Label>
-              <Input placeholder="Submittal title" value={formData.title || ''} onChange={(e) => setFormData({ ...formData, title: e.target.value })} className="bg-zinc-800 border-zinc-700" />
+              <Label className="text-muted-foreground">Title *</Label>
+              <Input placeholder="Submittal title" value={formData.title || ''} onChange={(e) => setFormData({ ...formData, title: e.target.value })} className="bg-muted border-border" />
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label className="text-zinc-300">Type</Label>
+                <Label className="text-muted-foreground">Type</Label>
                 <Select value={formData.type} onValueChange={(v) => setFormData({ ...formData, type: v as SubmittalType })}>
-                  <SelectTrigger className="bg-zinc-800 border-zinc-700"><SelectValue /></SelectTrigger>
+                  <SelectTrigger className="bg-muted border-border"><SelectValue /></SelectTrigger>
                   <SelectContent>{Object.entries(typeLabels).map(([value, label]) => (<SelectItem key={value} value={value}>{label}</SelectItem>))}</SelectContent>
                 </Select>
               </div>
               <div className="space-y-2">
-                <Label className="text-zinc-300">Spec Section</Label>
-                <Input placeholder="e.g. 03 30 00" value={formData.spec_section || ''} onChange={(e) => setFormData({ ...formData, spec_section: e.target.value })} className="bg-zinc-800 border-zinc-700" />
+                <Label className="text-muted-foreground">Spec Section</Label>
+                <Input placeholder="e.g. 03 30 00" value={formData.spec_section || ''} onChange={(e) => setFormData({ ...formData, spec_section: e.target.value })} className="bg-muted border-border" />
               </div>
             </div>
             <div className="space-y-2">
-              <Label className="text-zinc-300">Description</Label>
-              <Textarea placeholder="Submittal description..." value={formData.description || ''} onChange={(e) => setFormData({ ...formData, description: e.target.value })} className="bg-zinc-800 border-zinc-700 min-h-[100px]" />
+              <Label className="text-muted-foreground">Description</Label>
+              <Textarea placeholder="Submittal description..." value={formData.description || ''} onChange={(e) => setFormData({ ...formData, description: e.target.value })} className="bg-muted border-border min-h-[100px]" />
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setShowCreateDialog(false)} className="border-zinc-700">Cancel</Button>
+            <Button variant="outline" onClick={() => setShowCreateDialog(false)} className="border-border">Cancel</Button>
             <Button onClick={handleCreateSubmittal} disabled={creating} className="bg-amber-600 hover:bg-amber-700">
               {creating ? (<><Loader2 className="h-4 w-4 mr-2 animate-spin" />Creating...</>) : (<><Send className="h-4 w-4 mr-2" />Create Submittal</>)}
             </Button>
@@ -429,9 +429,9 @@ export default function SubmittalsPage() {
 
       {/* Submittal Detail Sheet */}
       <Sheet open={showDetailSheet} onOpenChange={setShowDetailSheet}>
-        <SheetContent className="bg-zinc-900 border-zinc-800 w-full sm:max-w-lg">
+        <SheetContent className="bg-card border-border w-full sm:max-w-lg">
           <SheetHeader>
-            <SheetTitle className="text-white flex items-center gap-2">
+            <SheetTitle className="text-foreground flex items-center gap-2">
               <span className="font-mono text-amber-500">{selectedSubmittal?.submittal_number}</span>
               {selectedSubmittal && (<Badge className={`${statusConfig[selectedSubmittal.status].bg} ${statusConfig[selectedSubmittal.status].text} border-0`}>{statusConfig[selectedSubmittal.status].label}</Badge>)}
             </SheetTitle>
@@ -439,8 +439,8 @@ export default function SubmittalsPage() {
           {selectedSubmittal && (
             <div className="mt-6 space-y-6">
               <div>
-                <h3 className="text-lg font-medium text-white mb-2">{selectedSubmittal.title}</h3>
-                <div className="flex flex-wrap gap-2 text-sm text-zinc-400">
+                <h3 className="text-lg font-medium text-foreground mb-2">{selectedSubmittal.title}</h3>
+                <div className="flex flex-wrap gap-2 text-sm text-muted-foreground">
                   <span>{typeLabels[selectedSubmittal.type]}</span>
                   {selectedSubmittal.spec_section && (<><span>•</span><span className="font-mono">{selectedSubmittal.spec_section}</span></>)}
                   <span>•</span>
@@ -448,25 +448,25 @@ export default function SubmittalsPage() {
                 </div>
               </div>
               {selectedSubmittal.description && (
-                <div className="p-4 rounded-lg bg-zinc-800/50 border border-zinc-800">
-                  <h4 className="text-sm font-medium text-zinc-400 mb-2">Description</h4>
+                <div className="p-4 rounded-lg bg-muted/50 border border-border">
+                  <h4 className="text-sm font-medium text-muted-foreground mb-2">Description</h4>
                   <p className="text-zinc-200 text-sm whitespace-pre-wrap">{selectedSubmittal.description}</p>
                 </div>
               )}
               {selectedSubmittal.review_comments && (
                 <div className="p-4 rounded-lg bg-amber-500/10 border border-amber-500/20">
-                  <h4 className="text-sm font-medium text-amber-400 mb-2">Review Comments</h4>
+                  <h4 className="text-sm font-medium text-amber-600 dark:text-amber-400 mb-2">Review Comments</h4>
                   <p className="text-zinc-200 text-sm whitespace-pre-wrap">{selectedSubmittal.review_comments}</p>
                 </div>
               )}
               <div className="grid grid-cols-2 gap-4 text-sm">
-                <div className="space-y-1"><p className="text-zinc-500">Submitted By</p><p className="text-zinc-200">{selectedSubmittal.submitted_by_name || '—'}</p></div>
-                <div className="space-y-1"><p className="text-zinc-500">Reviewer</p><p className="text-zinc-200">{selectedSubmittal.reviewer_name || '—'}</p></div>
+                <div className="space-y-1"><p className="text-muted-foreground">Submitted By</p><p className="text-zinc-200">{selectedSubmittal.submitted_by_name || '—'}</p></div>
+                <div className="space-y-1"><p className="text-muted-foreground">Reviewer</p><p className="text-zinc-200">{selectedSubmittal.reviewer_name || '—'}</p></div>
                 <div className="space-y-1">
-                  <p className="text-zinc-500">Due Date</p>
-                  <p className={`${selectedSubmittal.is_overdue ? 'text-red-400' : 'text-zinc-200'}`}>{formatDate(selectedSubmittal.due_date)}</p>
+                  <p className="text-muted-foreground">Due Date</p>
+                  <p className={`${selectedSubmittal.is_overdue ? 'text-red-600 dark:text-red-400' : 'text-zinc-200'}`}>{formatDate(selectedSubmittal.due_date)}</p>
                 </div>
-                <div className="space-y-1"><p className="text-zinc-500">Created</p><p className="text-zinc-200">{formatDate(selectedSubmittal.created_at)}</p></div>
+                <div className="space-y-1"><p className="text-muted-foreground">Created</p><p className="text-zinc-200">{formatDate(selectedSubmittal.created_at)}</p></div>
               </div>
             </div>
           )}

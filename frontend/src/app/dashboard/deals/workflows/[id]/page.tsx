@@ -290,7 +290,7 @@ export default function WorkflowEditorPage() {
                   onClick={toggleWorkflow}
                   className={`flex items-center gap-2 px-4 py-2 rounded transition-colors font-mono text-xs ${
                     workflow.is_active
-                      ? 'bg-green-900/30 text-green-400 hover:bg-green-900/50'
+                      ? 'bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400 hover:bg-green-900/50'
                       : 'bg-muted text-muted-foreground hover:bg-accent'
                   }`}
                 >
@@ -325,8 +325,8 @@ export default function WorkflowEditorPage() {
         {/* Trigger */}
         <div className="bg-card border border-border rounded-lg p-6 mb-6">
           <div className="flex items-center gap-3 mb-4">
-            <div className="w-10 h-10 rounded-full bg-purple-900/30 flex items-center justify-center">
-              <Zap className="w-5 h-5 text-purple-400" />
+            <div className="w-10 h-10 rounded-full bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center">
+              <Zap className="w-5 h-5 text-purple-600 dark:text-purple-400" />
             </div>
             <div>
               <h2 className="font-semibold text-foreground font-mono">TRIGGER</h2>
@@ -400,16 +400,16 @@ export default function WorkflowEditorPage() {
                         <GripVertical className="w-4 h-4" />
                       </div>
                       <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
-                        step.step_type === 'action' ? 'bg-blue-900/30' :
-                        step.step_type === 'condition' ? 'bg-yellow-900/30' : 'bg-muted'
+                        step.step_type === 'action' ? 'bg-blue-100 dark:bg-blue-900/30' :
+                        step.step_type === 'condition' ? 'bg-yellow-100 dark:bg-yellow-900/30' : 'bg-muted'
                       }`}>
                         {step.step_type === 'action' && step.action_type && (
                           (() => {
                             const ActionIcon = actionOptions.find(a => a.value === step.action_type)?.icon || Settings;
-                            return <ActionIcon className="w-4 h-4 text-blue-400" />;
+                            return <ActionIcon className="w-4 h-4 text-blue-600 dark:text-blue-400" />;
                           })()
                         )}
-                        {step.step_type === 'condition' && <GitBranch className="w-4 h-4 text-yellow-400" />}
+                        {step.step_type === 'condition' && <GitBranch className="w-4 h-4 text-yellow-600 dark:text-yellow-400" />}
                         {step.step_type === 'delay' && <Clock className="w-4 h-4 text-muted-foreground" />}
                       </div>
                       <div>
@@ -471,7 +471,7 @@ export default function WorkflowEditorPage() {
 
         {/* Action Picker Modal */}
         {showActionPicker && (
-          <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50">
+          <div className="fixed inset-0 bg-background/70 flex items-center justify-center z-50">
             <div className="bg-card border border-border rounded-xl max-w-md w-full p-6">
               <h3 className="text-lg font-bold text-foreground mb-4 font-mono">ADD A STEP</h3>
               

@@ -36,7 +36,7 @@ export function ZoneFacts({ property, dataQuality }: ZoneFactsProps) {
   const verificationColors: Record<string, string> = {
     'verified': 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400',
     'pending': 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400',
-    'unverified': 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400',
+    'unverified': 'bg-muted text-muted-foreground dark:bg-gray-800 dark:text-muted-foreground',
   };
 
   return (
@@ -54,7 +54,7 @@ export function ZoneFacts({ property, dataQuality }: ZoneFactsProps) {
           </div>
         </div>
 
-        <div className="bg-gray-50 dark:bg-gray-900 p-4 rounded-lg border">
+        <div className="bg-muted dark:bg-gray-900 p-4 rounded-lg border">
           <div className="flex items-center gap-2 text-muted-foreground mb-1 text-sm">
             <Ruler className="w-4 h-4" /> Built Area
           </div>
@@ -63,7 +63,7 @@ export function ZoneFacts({ property, dataQuality }: ZoneFactsProps) {
           </div>
         </div>
 
-        <div className="bg-gray-50 dark:bg-gray-900 p-4 rounded-lg border">
+        <div className="bg-muted dark:bg-gray-900 p-4 rounded-lg border">
           <div className="flex items-center gap-2 text-muted-foreground mb-1 text-sm">
             <Grid className="w-4 h-4" /> Land Area
           </div>
@@ -73,7 +73,7 @@ export function ZoneFacts({ property, dataQuality }: ZoneFactsProps) {
           </div>
         </div>
 
-        <div className="bg-gray-50 dark:bg-gray-900 p-4 rounded-lg border">
+        <div className="bg-muted dark:bg-gray-900 p-4 rounded-lg border">
           <div className="flex items-center gap-2 text-muted-foreground mb-1 text-sm">
             <Calendar className="w-4 h-4" /> Year Built
           </div>
@@ -89,8 +89,8 @@ export function ZoneFacts({ property, dataQuality }: ZoneFactsProps) {
         <CardContent>
           <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
             <div className="flex items-center gap-3">
-              <div className="p-2 bg-gray-100 dark:bg-gray-800 rounded-lg">
-                <Home className="w-5 h-5 text-gray-600 dark:text-gray-400" />
+              <div className="p-2 bg-muted dark:bg-gray-800 rounded-lg">
+                <Home className="w-5 h-5 text-muted-foreground dark:text-muted-foreground" />
               </div>
               <div>
                 <div className="text-sm text-muted-foreground">Type</div>
@@ -102,8 +102,8 @@ export function ZoneFacts({ property, dataQuality }: ZoneFactsProps) {
             </div>
 
             <div className="flex items-center gap-3">
-              <div className="p-2 bg-gray-100 dark:bg-gray-800 rounded-lg">
-                <Building className="w-5 h-5 text-gray-600 dark:text-gray-400" />
+              <div className="p-2 bg-muted dark:bg-gray-800 rounded-lg">
+                <Building className="w-5 h-5 text-muted-foreground dark:text-muted-foreground" />
               </div>
               <div>
                 <div className="text-sm text-muted-foreground">Floors</div>
@@ -112,8 +112,8 @@ export function ZoneFacts({ property, dataQuality }: ZoneFactsProps) {
             </div>
 
             <div className="flex items-center gap-3">
-              <div className="p-2 bg-gray-100 dark:bg-gray-800 rounded-lg">
-                <Car className="w-5 h-5 text-gray-600 dark:text-gray-400" />
+              <div className="p-2 bg-muted dark:bg-gray-800 rounded-lg">
+                <Car className="w-5 h-5 text-muted-foreground dark:text-muted-foreground" />
               </div>
               <div>
                 <div className="text-sm text-muted-foreground">Parking</div>
@@ -122,8 +122,8 @@ export function ZoneFacts({ property, dataQuality }: ZoneFactsProps) {
             </div>
 
             <div className="flex items-center gap-3">
-              <div className="p-2 bg-gray-100 dark:bg-gray-800 rounded-lg">
-                <MapPin className="w-5 h-5 text-gray-600 dark:text-gray-400" />
+              <div className="p-2 bg-muted dark:bg-gray-800 rounded-lg">
+                <MapPin className="w-5 h-5 text-muted-foreground dark:text-muted-foreground" />
               </div>
               <div>
                 <div className="text-sm text-muted-foreground">Region</div>
@@ -132,8 +132,8 @@ export function ZoneFacts({ property, dataQuality }: ZoneFactsProps) {
             </div>
 
             <div className="flex items-center gap-3">
-              <div className="p-2 bg-gray-100 dark:bg-gray-800 rounded-lg">
-                <Grid className="w-5 h-5 text-gray-600 dark:text-gray-400" />
+              <div className="p-2 bg-muted dark:bg-gray-800 rounded-lg">
+                <Grid className="w-5 h-5 text-muted-foreground dark:text-muted-foreground" />
               </div>
               <div>
                 <div className="text-sm text-muted-foreground">Transaction</div>
@@ -145,13 +145,13 @@ export function ZoneFacts({ property, dataQuality }: ZoneFactsProps) {
             </div>
 
             <div className="flex items-center gap-3">
-              <div className="p-2 bg-gray-100 dark:bg-gray-800 rounded-lg">
-                <Shield className="w-5 h-5 text-gray-600 dark:text-gray-400" />
+              <div className="p-2 bg-muted dark:bg-gray-800 rounded-lg">
+                <Shield className="w-5 h-5 text-muted-foreground dark:text-muted-foreground" />
               </div>
               <div>
                 <div className="text-sm text-muted-foreground">Condition</div>
                 {property.condition ? (
-                  <Badge className={conditionColors[property.condition] || 'bg-gray-100'}>
+                  <Badge className={conditionColors[property.condition] || 'bg-muted'}>
                     {property.condition.replace(/_/g, ' ')}
                   </Badge>
                 ) : (
@@ -199,26 +199,26 @@ export function ZoneFacts({ property, dataQuality }: ZoneFactsProps) {
 
               {/* Verification & Source */}
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3 pt-2">
-                <div className="text-center p-3 bg-gray-50 dark:bg-gray-900 rounded-lg">
+                <div className="text-center p-3 bg-muted dark:bg-gray-900 rounded-lg">
                   <div className="text-xs text-muted-foreground mb-1">Verification</div>
-                  <Badge className={verificationColors[dataQuality.verification_status] || 'bg-gray-100'}>
+                  <Badge className={verificationColors[dataQuality.verification_status] || 'bg-muted'}>
                     {dataQuality.verification_status}
                   </Badge>
                 </div>
 
-                <div className="text-center p-3 bg-gray-50 dark:bg-gray-900 rounded-lg">
+                <div className="text-center p-3 bg-muted dark:bg-gray-900 rounded-lg">
                   <div className="text-xs text-muted-foreground mb-1">Data Source</div>
                   <span className="text-sm font-medium capitalize">{dataQuality.data_source}</span>
                 </div>
 
-                <div className="text-center p-3 bg-gray-50 dark:bg-gray-900 rounded-lg">
+                <div className="text-center p-3 bg-muted dark:bg-gray-900 rounded-lg">
                   <div className="text-xs text-muted-foreground mb-1">Location</div>
                   <span className="text-sm font-medium">
                     {property.location.verified ? '✓ Verified' : 'Unverified'}
                   </span>
                 </div>
 
-                <div className="text-center p-3 bg-gray-50 dark:bg-gray-900 rounded-lg">
+                <div className="text-center p-3 bg-muted dark:bg-gray-900 rounded-lg">
                   <div className="text-xs text-muted-foreground mb-1 flex items-center justify-center gap-1">
                     <Clock className="w-3 h-3" /> Last Updated
                   </div>

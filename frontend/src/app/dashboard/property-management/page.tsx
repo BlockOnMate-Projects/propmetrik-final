@@ -308,49 +308,49 @@ export default function PropertyManagementDashboard() {
             {/* ─── Row 2.5: Portfolio Financial Analytics ── */}
             {portfolioFinancials && (
                 <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
-                    <Card className="bg-black border border-zinc-800">
+                    <Card className="bg-background border border-border">
                         <CardContent className="p-4">
-                            <p className="text-[10px] text-zinc-500 font-mono uppercase mb-1">Portfolio NOI</p>
-                            <p className={`text-xl font-bold font-mono ${(portfolioFinancials.portfolioNOI ?? 0) >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                            <p className="text-[10px] text-muted-foreground font-mono uppercase mb-1">Portfolio NOI</p>
+                            <p className={`text-xl font-bold font-mono ${(portfolioFinancials.portfolioNOI ?? 0) >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
                                 {fmtCurrency(portfolioFinancials.portfolioNOI ?? 0)}
                             </p>
-                            <p className="text-[9px] font-mono text-zinc-600 mt-1">Net Operating Income</p>
+                            <p className="text-[9px] font-mono text-muted-foreground mt-1">Net Operating Income</p>
                         </CardContent>
                     </Card>
-                    <Card className="bg-black border border-zinc-800">
+                    <Card className="bg-background border border-border">
                         <CardContent className="p-4">
-                            <p className="text-[10px] text-zinc-500 font-mono uppercase mb-1">Wtd. Cap Rate</p>
-                            <p className="text-xl font-bold text-amber-400 font-mono">
+                            <p className="text-[10px] text-muted-foreground font-mono uppercase mb-1">Wtd. Cap Rate</p>
+                            <p className="text-xl font-bold text-amber-600 dark:text-amber-400 font-mono">
                                 {(portfolioFinancials.weightedCapRate ?? 0).toFixed(2)}%
                             </p>
-                            <p className="text-[9px] font-mono text-zinc-600 mt-1">Weighted Capitalization</p>
+                            <p className="text-[9px] font-mono text-muted-foreground mt-1">Weighted Capitalization</p>
                         </CardContent>
                     </Card>
-                    <Card className="bg-black border border-zinc-800">
+                    <Card className="bg-background border border-border">
                         <CardContent className="p-4">
-                            <p className="text-[10px] text-zinc-500 font-mono uppercase mb-1">Avg Occupancy</p>
-                            <p className={`text-xl font-bold font-mono ${(portfolioFinancials.averageOccupancy ?? 0) >= 90 ? 'text-green-400' : (portfolioFinancials.averageOccupancy ?? 0) >= 70 ? 'text-amber-400' : 'text-red-400'}`}>
+                            <p className="text-[10px] text-muted-foreground font-mono uppercase mb-1">Avg Occupancy</p>
+                            <p className={`text-xl font-bold font-mono ${(portfolioFinancials.averageOccupancy ?? 0) >= 90 ? 'text-green-600 dark:text-green-400' : (portfolioFinancials.averageOccupancy ?? 0) >= 70 ? 'text-amber-600 dark:text-amber-400' : 'text-red-600 dark:text-red-400'}`}>
                                 {(portfolioFinancials.averageOccupancy ?? 0).toFixed(0)}%
                             </p>
-                            <p className="text-[9px] font-mono text-zinc-600 mt-1">Portfolio Average</p>
+                            <p className="text-[9px] font-mono text-muted-foreground mt-1">Portfolio Average</p>
                         </CardContent>
                     </Card>
-                    <Card className="bg-black border border-zinc-800">
+                    <Card className="bg-background border border-border">
                         <CardContent className="p-4">
-                            <p className="text-[10px] text-zinc-500 font-mono uppercase mb-1">Monthly Income</p>
-                            <p className="text-xl font-bold text-green-400 font-mono">
+                            <p className="text-[10px] text-muted-foreground font-mono uppercase mb-1">Monthly Income</p>
+                            <p className="text-xl font-bold text-green-600 dark:text-green-400 font-mono">
                                 {fmtCurrency(portfolioFinancials.totalMonthlyIncome ?? 0)}
                             </p>
-                            <p className="text-[9px] font-mono text-zinc-600 mt-1">Gross Monthly</p>
+                            <p className="text-[9px] font-mono text-muted-foreground mt-1">Gross Monthly</p>
                         </CardContent>
                     </Card>
-                    <Card className="bg-black border border-zinc-800">
+                    <Card className="bg-background border border-border">
                         <CardContent className="p-4">
-                            <p className="text-[10px] text-zinc-500 font-mono uppercase mb-1">Net Monthly</p>
-                            <p className={`text-xl font-bold font-mono ${(portfolioFinancials.netMonthlyCashFlow ?? 0) >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                            <p className="text-[10px] text-muted-foreground font-mono uppercase mb-1">Net Monthly</p>
+                            <p className={`text-xl font-bold font-mono ${(portfolioFinancials.netMonthlyCashFlow ?? 0) >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
                                 {fmtCurrency(portfolioFinancials.netMonthlyCashFlow ?? 0)}
                             </p>
-                            <p className="text-[9px] font-mono text-zinc-600 mt-1">After Expenses</p>
+                            <p className="text-[9px] font-mono text-muted-foreground mt-1">After Expenses</p>
                         </CardContent>
                     </Card>
                 </div>
@@ -359,12 +359,12 @@ export default function PropertyManagementDashboard() {
             {/* ─── Row 3: Revenue Chart + Receivables ───── */}
             <div className="grid gap-6 lg:grid-cols-7">
                 {/* Revenue Performance Chart */}
-                <Card className="lg:col-span-4 bg-black border border-zinc-800">
+                <Card className="lg:col-span-4 bg-background border border-border">
                     <CardHeader className="pb-2">
                         <div className="flex items-center justify-between">
                             <div>
                                 <CardTitle className="text-sm font-mono uppercase text-amber-500">Revenue Performance</CardTitle>
-                                <CardDescription className="text-[10px] font-mono text-zinc-600 uppercase mt-1">
+                                <CardDescription className="text-[10px] font-mono text-muted-foreground uppercase mt-1">
                                     {cashFlow ? `YTD: ${fmtCurrency(cashFlow.totalIncome)} income · ${fmtCurrency(cashFlow.totalExpenses)} expenses` : 'Loading...'}
                                 </CardDescription>
                             </div>
@@ -408,10 +408,10 @@ export default function PropertyManagementDashboard() {
                                 </AreaChart>
                             </ResponsiveContainer>
                         ) : (
-                            <div className="h-[280px] flex items-center justify-center border border-dashed border-zinc-800 bg-zinc-950/30 rounded">
+                            <div className="h-[280px] flex items-center justify-center border border-dashed border-border bg-background/30 rounded">
                                 <div className="text-center space-y-2">
                                     <TrendingUp className="h-8 w-8 text-amber-900/50 mx-auto" />
-                                    <p className="text-xs text-zinc-600 font-mono uppercase">No revenue data yet</p>
+                                    <p className="text-xs text-muted-foreground font-mono uppercase">No revenue data yet</p>
                                 </div>
                             </div>
                         )}
@@ -419,13 +419,13 @@ export default function PropertyManagementDashboard() {
                 </Card>
 
                 {/* Aged Receivables + Lease Alerts */}
-                <Card className="lg:col-span-3 bg-black border border-zinc-800">
+                <Card className="lg:col-span-3 bg-background border border-border">
                     <CardHeader className="pb-2">
                         <div className="flex items-center justify-between gap-2">
                             <CardTitle className="text-sm font-mono uppercase text-amber-500">Financial Health</CardTitle>
                             <RateStamp fx={fx} />
                         </div>
-                        <CardDescription className="text-[10px] font-mono text-zinc-600 uppercase">Receivables & lease status</CardDescription>
+                        <CardDescription className="text-[10px] font-mono text-muted-foreground uppercase">Receivables & lease status</CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-5">
                         {isLoading ? (
@@ -435,26 +435,26 @@ export default function PropertyManagementDashboard() {
                         ) : (
                             <>
                                 {/* Net Cash Flow Summary */}
-                                <div className="p-3 rounded-lg bg-zinc-950 border border-zinc-800">
-                                    <p className="text-[10px] font-mono text-zinc-500 uppercase mb-1">Net Cash Flow (YTD)</p>
-                                    <p className={`text-xl font-bold font-mono ${(cashFlow?.netCashFlow ?? 0) >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                                <div className="p-3 rounded-lg bg-background border border-border">
+                                    <p className="text-[10px] font-mono text-muted-foreground uppercase mb-1">Net Cash Flow (YTD)</p>
+                                    <p className={`text-xl font-bold font-mono ${(cashFlow?.netCashFlow ?? 0) >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
                                         {cashFlow ? fmtCurrency(cashFlow.netCashFlow) : '₵0'}
                                     </p>
                                     <div className="flex gap-4 mt-2">
                                         <div className="flex items-center gap-1.5">
                                             <div className="h-2 w-2 rounded-full bg-green-500" />
-                                            <span className="text-[10px] font-mono text-zinc-400">Income {cashFlow ? fmtCurrency(cashFlow.totalIncome) : '₵0'}</span>
+                                            <span className="text-[10px] font-mono text-muted-foreground">Income {cashFlow ? fmtCurrency(cashFlow.totalIncome) : '₵0'}</span>
                                         </div>
                                         <div className="flex items-center gap-1.5">
                                             <div className="h-2 w-2 rounded-full bg-red-500" />
-                                            <span className="text-[10px] font-mono text-zinc-400">Expenses {cashFlow ? fmtCurrency(cashFlow.totalExpenses) : '₵0'}</span>
+                                            <span className="text-[10px] font-mono text-muted-foreground">Expenses {cashFlow ? fmtCurrency(cashFlow.totalExpenses) : '₵0'}</span>
                                         </div>
                                     </div>
                                 </div>
 
                                 {/* Receivables Aging */}
                                 <div>
-                                    <p className="text-[10px] font-mono text-zinc-500 uppercase mb-2">Receivables Aging</p>
+                                    <p className="text-[10px] font-mono text-muted-foreground uppercase mb-2">Receivables Aging</p>
                                     <div className="space-y-2">
                                         {[
                                             { label: 'Current', amount: receivables?.summary?.current ?? 0, color: 'bg-green-500' },
@@ -466,11 +466,11 @@ export default function PropertyManagementDashboard() {
                                             const pct = total > 0 ? (b.amount / total) * 100 : 0
                                             return (
                                                 <div key={b.label} className="flex items-center gap-3">
-                                                    <span className="text-[10px] font-mono text-zinc-500 w-20">{b.label}</span>
-                                                    <div className="flex-1 h-1.5 bg-zinc-900 rounded-full overflow-hidden">
+                                                    <span className="text-[10px] font-mono text-muted-foreground w-20">{b.label}</span>
+                                                    <div className="flex-1 h-1.5 bg-card rounded-full overflow-hidden">
                                                         <div className={`h-full rounded-full ${b.color}`} style={{ width: `${Math.max(pct, b.amount > 0 ? 5 : 0)}%` }} />
                                                     </div>
-                                                    <span className="text-[10px] font-mono text-zinc-400 w-16 text-right">{fmtCurrency(b.amount)}</span>
+                                                    <span className="text-[10px] font-mono text-muted-foreground w-16 text-right">{fmtCurrency(b.amount)}</span>
                                                 </div>
                                             )
                                         })}
@@ -479,18 +479,18 @@ export default function PropertyManagementDashboard() {
 
                                 {/* Lease Expiry Alerts */}
                                 <div>
-                                    <p className="text-[10px] font-mono text-zinc-500 uppercase mb-2">Lease Expiry Alerts</p>
+                                    <p className="text-[10px] font-mono text-muted-foreground uppercase mb-2">Lease Expiry Alerts</p>
                                     <div className="grid grid-cols-3 gap-2">
                                         {[
                                             { days: '30d', count: leases?.expiringSoon?.within30Days ?? 0, urgent: true },
                                             { days: '60d', count: leases?.expiringSoon?.within60Days ?? 0, urgent: false },
                                             { days: '90d', count: leases?.expiringSoon?.within90Days ?? 0, urgent: false },
                                         ].map(e => (
-                                            <div key={e.days} className={`p-2 rounded border text-center ${e.count > 0 && e.urgent ? 'border-red-900 bg-red-950/30' : 'border-zinc-800 bg-zinc-950'}`}>
-                                                <p className={`text-lg font-bold font-mono ${e.count > 0 && e.urgent ? 'text-red-400' : 'text-zinc-300'}`}>
+                                            <div key={e.days} className={`p-2 rounded border text-center ${e.count > 0 && e.urgent ? 'border-red-900 bg-red-950/30' : 'border-border bg-background'}`}>
+                                                <p className={`text-lg font-bold font-mono ${e.count > 0 && e.urgent ? 'text-red-600 dark:text-red-400' : 'text-muted-foreground'}`}>
                                                     {e.count}
                                                 </p>
-                                                <p className="text-[9px] font-mono text-zinc-500 uppercase">Within {e.days}</p>
+                                                <p className="text-[9px] font-mono text-muted-foreground uppercase">Within {e.days}</p>
                                             </div>
                                         ))}
                                     </div>
@@ -504,7 +504,7 @@ export default function PropertyManagementDashboard() {
             {/* ─── Row 4: Work Orders + Composition + Applications ─ */}
             <div className="grid gap-6 lg:grid-cols-3">
                 {/* Work Orders by Category */}
-                <Card className="bg-black border border-zinc-800">
+                <Card className="bg-background border border-border">
                     <CardHeader className="pb-2">
                         <div className="flex items-center justify-between">
                             <CardTitle className="text-sm font-mono uppercase text-amber-500">Maintenance</CardTitle>
@@ -525,16 +525,16 @@ export default function PropertyManagementDashboard() {
                                 {/* Status Summary */}
                                 <div className="grid grid-cols-2 gap-2">
                                     {[
-                                        { label: 'Open', count: workOrders.byStatus.open ?? 0, icon: CircleDot, color: 'text-amber-400' },
-                                        { label: 'In Progress', count: workOrders.byStatus.inProgress ?? 0, icon: Activity, color: 'text-blue-400' },
-                                        { label: 'Completed', count: workOrders.byStatus.completed ?? 0, icon: CheckCircle2, color: 'text-green-400' },
-                                        { label: 'Urgent', count: workOrders.urgentPending, icon: ShieldAlert, color: 'text-red-400' },
+                                        { label: 'Open', count: workOrders.byStatus.open ?? 0, icon: CircleDot, color: 'text-amber-600 dark:text-amber-400' },
+                                        { label: 'In Progress', count: workOrders.byStatus.inProgress ?? 0, icon: Activity, color: 'text-blue-600 dark:text-blue-400' },
+                                        { label: 'Completed', count: workOrders.byStatus.completed ?? 0, icon: CheckCircle2, color: 'text-green-600 dark:text-green-400' },
+                                        { label: 'Urgent', count: workOrders.urgentPending, icon: ShieldAlert, color: 'text-red-600 dark:text-red-400' },
                                     ].map(s => (
-                                        <div key={s.label} className="flex items-center gap-2 p-2 rounded bg-zinc-950 border border-zinc-800">
+                                        <div key={s.label} className="flex items-center gap-2 p-2 rounded bg-background border border-border">
                                             <s.icon className={`h-3.5 w-3.5 ${s.color}`} />
                                             <div>
-                                                <p className="text-sm font-bold font-mono text-white">{s.count}</p>
-                                                <p className="text-[9px] font-mono text-zinc-500 uppercase">{s.label}</p>
+                                                <p className="text-sm font-bold font-mono text-foreground">{s.count}</p>
+                                                <p className="text-[9px] font-mono text-muted-foreground uppercase">{s.label}</p>
                                             </div>
                                         </div>
                                     ))}
@@ -559,13 +559,13 @@ export default function PropertyManagementDashboard() {
                                 )}
                             </div>
                         ) : (
-                            <p className="text-xs text-zinc-600 font-mono text-center py-8">No maintenance data</p>
+                            <p className="text-xs text-muted-foreground font-mono text-center py-8">No maintenance data</p>
                         )}
                     </CardContent>
                 </Card>
 
                 {/* Portfolio Composition */}
-                <Card className="bg-black border border-zinc-800">
+                <Card className="bg-background border border-border">
                     <CardHeader className="pb-2">
                         <div className="flex items-center justify-between">
                             <CardTitle className="text-sm font-mono uppercase text-amber-500">Portfolio Mix</CardTitle>
@@ -610,7 +610,7 @@ export default function PropertyManagementDashboard() {
                                     {compositionChartData.map((item, i) => (
                                         <div key={item.name} className="flex items-center gap-1.5">
                                             <div className="h-2 w-2 rounded-full" style={{ backgroundColor: CHART_COLORS[i % CHART_COLORS.length] }} />
-                                            <span className="text-[10px] font-mono text-zinc-400">{item.name} ({item.value})</span>
+                                            <span className="text-[10px] font-mono text-muted-foreground">{item.name} ({item.value})</span>
                                         </div>
                                     ))}
                                 </div>
@@ -619,8 +619,8 @@ export default function PropertyManagementDashboard() {
                                 {data.composition?.byRegion && data.composition.byRegion.length > 0 && (() => {
                                     const regionTotal = data.composition.byRegion.reduce((sum, r) => sum + r.count, 0) || 1
                                     return (
-                                        <div className="mt-4 pt-3 border-t border-zinc-800">
-                                            <p className="text-[10px] font-mono text-zinc-500 uppercase mb-2">By Region</p>
+                                        <div className="mt-4 pt-3 border-t border-border">
+                                            <p className="text-[10px] font-mono text-muted-foreground uppercase mb-2">By Region</p>
                                             <div className="space-y-2">
                                                 {data.composition.byRegion.map((r, i) => {
                                                     const pct = Math.round((r.count / regionTotal) * 100)
@@ -628,10 +628,10 @@ export default function PropertyManagementDashboard() {
                                                     return (
                                                         <div key={r.region}>
                                                             <div className="flex items-center justify-between mb-1">
-                                                                <span className="text-[10px] font-mono text-zinc-400">{r.region.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())}</span>
-                                                                <span className="text-[9px] font-mono text-zinc-500">{r.count} · {pct}%</span>
+                                                                <span className="text-[10px] font-mono text-muted-foreground">{r.region.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())}</span>
+                                                                <span className="text-[9px] font-mono text-muted-foreground">{r.count} · {pct}%</span>
                                                             </div>
-                                                            <div className="h-1.5 w-full rounded-full bg-zinc-900 overflow-hidden">
+                                                            <div className="h-1.5 w-full rounded-full bg-card overflow-hidden">
                                                                 <div className="h-full rounded-full transition-all" style={{ width: `${pct}%`, backgroundColor: color }} />
                                                             </div>
                                                         </div>
@@ -646,7 +646,7 @@ export default function PropertyManagementDashboard() {
                             <div className="h-[200px] flex items-center justify-center">
                                 <div className="text-center space-y-2">
                                     <PieChartIcon className="h-8 w-8 text-amber-900/50 mx-auto" />
-                                    <p className="text-xs text-zinc-600 font-mono uppercase">No properties yet</p>
+                                    <p className="text-xs text-muted-foreground font-mono uppercase">No properties yet</p>
                                 </div>
                             </div>
                         )}
@@ -654,7 +654,7 @@ export default function PropertyManagementDashboard() {
                 </Card>
 
                 {/* Applications & Activity */}
-                <Card className="bg-black border border-zinc-800">
+                <Card className="bg-background border border-border">
                     <CardHeader className="pb-2">
                         <CardTitle className="text-sm font-mono uppercase text-amber-500">Applications & Activity</CardTitle>
                     </CardHeader>
@@ -667,24 +667,24 @@ export default function PropertyManagementDashboard() {
                             <>
                                 {/* Application Pipeline */}
                                 <div>
-                                    <p className="text-[10px] font-mono text-zinc-500 uppercase mb-2">Application Pipeline</p>
+                                    <p className="text-[10px] font-mono text-muted-foreground uppercase mb-2">Application Pipeline</p>
                                     {applications?.byStatus && Object.keys(applications.byStatus).length > 0 ? (
                                         <div className="space-y-1.5">
                                             {Object.entries(applications.byStatus).map(([status, count]) => (
-                                                <div key={status} className="flex items-center justify-between py-1 px-2 rounded bg-zinc-950 border border-zinc-800">
-                                                    <span className="text-[10px] font-mono text-zinc-400">{status.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())}</span>
+                                                <div key={status} className="flex items-center justify-between py-1 px-2 rounded bg-background border border-border">
+                                                    <span className="text-[10px] font-mono text-muted-foreground">{status.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())}</span>
                                                     <Badge variant="outline" className="text-[9px] font-mono">{count}</Badge>
                                                 </div>
                                             ))}
                                         </div>
                                     ) : (
-                                        <p className="text-[10px] font-mono text-zinc-600 text-center py-2">No applications</p>
+                                        <p className="text-[10px] font-mono text-muted-foreground text-center py-2">No applications</p>
                                     )}
                                 </div>
 
                                 {/* Key Metrics */}
-                                <div className="pt-2 border-t border-zinc-800">
-                                    <p className="text-[10px] font-mono text-zinc-500 uppercase mb-2">Portfolio Snapshot</p>
+                                <div className="pt-2 border-t border-border">
+                                    <p className="text-[10px] font-mono text-muted-foreground uppercase mb-2">Portfolio Snapshot</p>
                                     <div className="space-y-2">
                                         {[
                                             { label: 'Total Tenants', value: metrics?.totalTenants ?? 0 },
@@ -693,24 +693,24 @@ export default function PropertyManagementDashboard() {
                                             { label: 'Monthly Rent Roll', value: fmtCurrency(leases?.totalMonthlyRevenue ?? 0) },
                                         ].map(item => (
                                             <div key={item.label} className="flex items-center justify-between">
-                                                <span className="text-[10px] font-mono text-zinc-500">{item.label}</span>
-                                                <span className="text-xs font-mono text-white font-medium">{item.value}</span>
+                                                <span className="text-[10px] font-mono text-muted-foreground">{item.label}</span>
+                                                <span className="text-xs font-mono text-foreground font-medium">{item.value}</span>
                                             </div>
                                         ))}
                                     </div>
                                 </div>
 
                                 {/* Collection Rate Gauge */}
-                                <div className="pt-2 border-t border-zinc-800">
+                                <div className="pt-2 border-t border-border">
                                     <div className="flex items-center justify-between mb-1">
-                                        <span className="text-[10px] font-mono text-zinc-500 uppercase">Collection Rate</span>
-                                        <span className={`text-xs font-mono font-bold ${collectionRate >= 90 ? 'text-green-400' : collectionRate >= 70 ? 'text-amber-400' : 'text-red-400'}`}>
+                                        <span className="text-[10px] font-mono text-muted-foreground uppercase">Collection Rate</span>
+                                        <span className={`text-xs font-mono font-bold ${collectionRate >= 90 ? 'text-green-600 dark:text-green-400' : collectionRate >= 70 ? 'text-amber-600 dark:text-amber-400' : 'text-red-600 dark:text-red-400'}`}>
                                             {collectionRate}%
                                         </span>
                                     </div>
                                     <Progress
                                         value={collectionRate}
-                                        className="h-2 bg-zinc-900"
+                                        className="h-2 bg-card"
                                         indicatorClassName={collectionRate >= 90 ? 'bg-green-500' : collectionRate >= 70 ? 'bg-amber-500' : 'bg-red-500'}
                                     />
                                 </div>
@@ -721,7 +721,7 @@ export default function PropertyManagementDashboard() {
             </div>
 
             {/* ─── Row 5: Quick Actions ─────────────────── */}
-            <Card className="bg-black border border-zinc-800">
+            <Card className="bg-background border border-border">
                 <CardHeader className="pb-2">
                     <CardTitle className="text-sm font-mono uppercase text-amber-500">Quick Actions</CardTitle>
                 </CardHeader>
@@ -738,7 +738,7 @@ export default function PropertyManagementDashboard() {
                             <Link key={action.label} href={action.href}>
                                 <Button
                                     variant="outline"
-                                    className="w-full h-16 bg-zinc-950 border-zinc-800 hover:bg-zinc-900 text-zinc-400 hover:text-amber-500 hover:border-amber-900 group transition-all"
+                                    className="w-full h-16 bg-background border-border hover:bg-card text-muted-foreground hover:text-amber-500 hover:border-amber-900 group transition-all"
                                 >
                                     <div className="flex flex-col items-center gap-1.5">
                                         <action.icon className="h-4 w-4 opacity-50 group-hover:opacity-100 transition-opacity" />
@@ -777,13 +777,13 @@ function KPICard({
     progressValue?: number
 }) {
     return (
-        <Card className={`bg-black border ${alert ? 'border-red-900/50' : 'border-zinc-800'}`}>
+        <Card className={`bg-background border ${alert ? 'border-red-900/50' : 'border-border'}`}>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-[10px] font-mono uppercase tracking-wider text-amber-500">{title}</CardTitle>
                 <Icon className={`h-4 w-4 ${alert ? 'text-red-500' : 'text-amber-600'}`} />
             </CardHeader>
             <CardContent>
-                <div className="text-2xl font-bold text-white font-mono">
+                <div className="text-2xl font-bold text-foreground font-mono">
                     {loading ? <Loader2 className="h-5 w-5 animate-spin inline text-amber-600" /> : (value ?? 0)}
                 </div>
                 {subtitle && (
@@ -794,7 +794,7 @@ function KPICard({
                                 : <ArrowDownRight className="h-3 w-3 text-red-500" />
                         )}
                         {highlight && <CheckCircle2 className="h-3 w-3 text-green-500" />}
-                        <p className={`text-[10px] font-mono uppercase ${alert ? 'text-red-400' : trend && trend > 0 ? 'text-green-500' : 'text-zinc-500'}`}>
+                        <p className={`text-[10px] font-mono uppercase ${alert ? 'text-red-600 dark:text-red-400' : trend && trend > 0 ? 'text-green-500' : 'text-muted-foreground'}`}>
                             {subtitle}
                         </p>
                     </div>
@@ -802,7 +802,7 @@ function KPICard({
                 {progressValue !== undefined && (
                     <Progress
                         value={progressValue}
-                        className="h-1 mt-2 bg-zinc-900"
+                        className="h-1 mt-2 bg-card"
                         indicatorClassName={progressValue >= 90 ? 'bg-green-500' : progressValue >= 70 ? 'bg-amber-500' : 'bg-red-500'}
                     />
                 )}

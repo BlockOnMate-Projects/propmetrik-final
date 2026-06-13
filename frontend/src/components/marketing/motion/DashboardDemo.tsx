@@ -15,15 +15,15 @@ export default function DashboardDemo() {
     }, [tabs.length]);
 
     return (
-        <div className="relative w-full aspect-video rounded-lg overflow-hidden bg-zinc-900 border border-zinc-800">
+        <div className="relative w-full aspect-video rounded-lg overflow-hidden bg-card border border-border">
             {/* Dashboard Header */}
-            <div className="bg-zinc-950 border-b border-zinc-800 p-4">
+            <div className="bg-background border-b border-border p-4">
                 <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
                         <div className="w-8 h-8 rounded bg-gradient-to-br from-primary to-yellow-400" />
                         <div>
-                            <div className="text-sm font-bold text-white">PROPMETRIK</div>
-                            <div className="text-xs text-zinc-500">Illustrative dashboard</div>
+                            <div className="text-sm font-bold text-foreground">PROPMETRIK</div>
+                            <div className="text-xs text-muted-foreground">Illustrative dashboard</div>
                         </div>
                     </div>
                     <div className="flex gap-2">
@@ -41,7 +41,7 @@ export default function DashboardDemo() {
                             onClick={() => setActiveTab(index)}
                             className={`px-4 py-2 text-sm font-medium transition-colors relative ${activeTab === index
                                     ? 'text-primary'
-                                    : 'text-zinc-400 hover:text-zinc-300'
+                                    : 'text-muted-foreground hover:text-muted-foreground'
                                 }`}
                         >
                             {tab}
@@ -71,12 +71,12 @@ export default function DashboardDemo() {
                             initial={{ opacity: 0, y: 20 }}
                             animate={{ opacity: 1, y: 0 }}
                             transition={{ delay: index * 0.1 }}
-                            className="bg-zinc-950 border border-zinc-800 rounded-lg p-4"
+                            className="bg-background border border-border rounded-lg p-4"
                         >
-                            <div className="text-xs text-zinc-500 mb-2">{stat.label}</div>
+                            <div className="text-xs text-muted-foreground mb-2">{stat.label}</div>
                             <div className="flex items-end justify-between">
-                                <div className="text-xl font-bold text-white">{stat.value}</div>
-                                <div className="text-xs text-green-400">{stat.change}</div>
+                                <div className="text-xl font-bold text-foreground">{stat.value}</div>
+                                <div className="text-xs text-green-600 dark:text-green-400">{stat.change}</div>
                             </div>
                         </motion.div>
                     ))}
@@ -88,7 +88,7 @@ export default function DashboardDemo() {
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     transition={{ duration: 0.5 }}
-                    className="bg-zinc-950 border border-zinc-800 rounded-lg p-4 h-40"
+                    className="bg-background border border-border rounded-lg p-4 h-40"
                 >
                     <div className="flex items-end justify-between h-full gap-2">
                         {Array.from({ length: 12 }, (_, i) => {

@@ -215,8 +215,8 @@ export default function PlatformFeesPage() {
             {/* Page Header */}
             <div className="flex items-center justify-between">
                 <div>
-                    <h1 className="text-2xl font-bold tracking-tight text-white font-mono">PLATFORM FEES</h1>
-                    <p className="text-sm text-zinc-500 font-mono">
+                    <h1 className="text-2xl font-bold tracking-tight text-foreground font-mono">PLATFORM FEES</h1>
+                    <p className="text-sm text-muted-foreground font-mono">
                         Configure service fees charged on payments processed through PROPMETRIK
                     </p>
                 </div>
@@ -225,7 +225,7 @@ export default function PlatformFeesPage() {
                     size="sm"
                     onClick={loadConfigs}
                     disabled={loading}
-                    className="border-zinc-800 text-zinc-400 hover:text-red-400 hover:border-red-900 bg-black font-mono text-xs uppercase"
+                    className="border-border text-muted-foreground hover:text-red-400 hover:border-red-900 bg-background font-mono text-xs uppercase"
                 >
                     <RefreshCw className={`h-3 w-3 mr-2 ${loading ? 'animate-spin' : ''}`} />
                     Refresh
@@ -234,8 +234,8 @@ export default function PlatformFeesPage() {
 
             {/* Info Banner */}
             <div className="flex items-start gap-3 p-4 bg-blue-950/20 border border-blue-900/30 rounded-lg">
-                <Info className="h-5 w-5 text-blue-400 mt-0.5 shrink-0" />
-                <div className="text-xs text-blue-300 font-mono space-y-1">
+                <Info className="h-5 w-5 text-blue-600 dark:text-blue-400 mt-0.5 shrink-0" />
+                <div className="text-xs text-blue-600 dark:text-blue-300 font-mono space-y-1">
                     <p className="font-bold">How fees work</p>
                     <p>Fees are charged to the payer on top of the principal amount. Paystack deducts fees from the payer&apos;s payment and splits the remainder between the recipient&apos;s subaccount and PROPMETRIK.</p>
                     <p><strong>max_of</strong> = whichever is higher: percentage or flat fee. <strong>percentage</strong> = percentage only. <strong>flat</strong> = fixed amount.</p>
@@ -245,9 +245,9 @@ export default function PlatformFeesPage() {
             {/* Error */}
             {error && (
                 <div className="flex items-center gap-2 p-3 bg-red-950/30 border border-red-800 rounded-lg">
-                    <AlertTriangle className="h-4 w-4 text-red-400" />
-                    <p className="text-sm text-red-400 font-mono">{error}</p>
-                    <Button variant="link" onClick={() => setError(null)} className="text-zinc-500 ml-auto text-xs">
+                    <AlertTriangle className="h-4 w-4 text-red-600 dark:text-red-400" />
+                    <p className="text-sm text-red-600 dark:text-red-400 font-mono">{error}</p>
+                    <Button variant="link" onClick={() => setError(null)} className="text-muted-foreground ml-auto text-xs">
                         Dismiss
                     </Button>
                 </div>
@@ -262,8 +262,8 @@ export default function PlatformFeesPage() {
 
             {/* Fee Configuration Cards */}
             {!loading && globalConfigs.length === 0 && (
-                <Card className="bg-zinc-900 border-zinc-800">
-                    <CardContent className="flex flex-col items-center justify-center py-12 text-zinc-500 font-mono">
+                <Card className="bg-card border-border">
+                    <CardContent className="flex flex-col items-center justify-center py-12 text-muted-foreground font-mono">
                         <DollarSign className="h-10 w-10 mb-3 opacity-30" />
                         <p>No fee configurations found.</p>
                         <p className="text-xs mt-1">The payment system migration may not have run yet.</p>
@@ -279,7 +279,7 @@ export default function PlatformFeesPage() {
                 const justSaved = saveSuccess === config.id
 
                 return (
-                    <Card key={config.id} className="bg-zinc-900 border-zinc-800">
+                    <Card key={config.id} className="bg-card border-border">
                         <CardHeader>
                             <div className="flex items-center justify-between">
                                 <div className="flex items-center gap-3">
@@ -287,18 +287,18 @@ export default function PlatformFeesPage() {
                                         <Icon className={`h-5 w-5 text-${typeConfig.color}-500`} />
                                     </div>
                                     <div>
-                                        <CardTitle className="text-sm font-mono uppercase text-white flex items-center gap-2">
+                                        <CardTitle className="text-sm font-mono uppercase text-foreground flex items-center gap-2">
                                             {typeConfig.label}
-                                            <Badge variant="outline" className="border-zinc-700 text-zinc-400 font-mono text-[10px]">
+                                            <Badge variant="outline" className="border-border text-muted-foreground font-mono text-[10px]">
                                                 {config.paymentType}
                                             </Badge>
                                             {justSaved && (
-                                                <Badge className="bg-green-900/30 text-green-400 border-green-800 font-mono text-[10px]">
+                                                <Badge className="bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400 border-green-800 font-mono text-[10px]">
                                                     <CheckCircle className="h-3 w-3 mr-1" /> Saved
                                                 </Badge>
                                             )}
                                         </CardTitle>
-                                        <CardDescription className="text-zinc-500 font-mono text-xs">
+                                        <CardDescription className="text-muted-foreground font-mono text-xs">
                                             {typeConfig.description}
                                         </CardDescription>
                                     </div>
@@ -308,7 +308,7 @@ export default function PlatformFeesPage() {
                                         variant="outline"
                                         size="sm"
                                         onClick={() => startEdit(config)}
-                                        className="border-zinc-800 text-zinc-400 hover:text-red-400 hover:border-red-900 bg-black font-mono text-xs uppercase"
+                                        className="border-border text-muted-foreground hover:text-red-400 hover:border-red-900 bg-background font-mono text-xs uppercase"
                                     >
                                         Edit
                                     </Button>
@@ -321,12 +321,12 @@ export default function PlatformFeesPage() {
                                 <div className="space-y-4">
                                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                                         <div className="space-y-2">
-                                            <Label className="text-zinc-400 font-mono text-[11px] uppercase">Fee Mode</Label>
+                                            <Label className="text-muted-foreground font-mono text-[11px] uppercase">Fee Mode</Label>
                                             <Select value={editState.feeMode} onValueChange={(v) => setEditState({ ...editState, feeMode: v })}>
-                                                <SelectTrigger className="bg-black border-zinc-800 text-zinc-300 font-mono text-xs">
+                                                <SelectTrigger className="bg-background border-border text-muted-foreground font-mono text-xs">
                                                     <SelectValue />
                                                 </SelectTrigger>
-                                                <SelectContent className="bg-black border-zinc-800">
+                                                <SelectContent className="bg-background border-border">
                                                     <SelectItem value="percentage">Percentage Only</SelectItem>
                                                     <SelectItem value="flat">Flat Fee Only</SelectItem>
                                                     <SelectItem value="max_of">Max of (Percentage, Flat)</SelectItem>
@@ -334,7 +334,7 @@ export default function PlatformFeesPage() {
                                             </Select>
                                         </div>
                                         <div className="space-y-2">
-                                            <Label className="text-zinc-400 font-mono text-[11px] uppercase">
+                                            <Label className="text-muted-foreground font-mono text-[11px] uppercase">
                                                 Percentage Rate (%)
                                             </Label>
                                             <div className="relative">
@@ -345,28 +345,28 @@ export default function PlatformFeesPage() {
                                                     max="100"
                                                     value={editState.percentageRate}
                                                     onChange={(e) => setEditState({ ...editState, percentageRate: e.target.value })}
-                                                    className="bg-black border-zinc-800 text-white font-mono text-sm pr-8"
+                                                    className="bg-background border-border text-foreground font-mono text-sm pr-8"
                                                     disabled={editState.feeMode === 'flat'}
                                                 />
-                                                <Percent className="absolute right-3 top-1/2 -translate-y-1/2 h-3 w-3 text-zinc-600" />
+                                                <Percent className="absolute right-3 top-1/2 -translate-y-1/2 h-3 w-3 text-muted-foreground" />
                                             </div>
-                                            <p className="text-[10px] text-zinc-600 font-mono">
+                                            <p className="text-[10px] text-muted-foreground font-mono">
                                                 e.g., 1 = 1%, 0.25 = 0.25%
                                             </p>
                                         </div>
                                         <div className="space-y-2">
-                                            <Label className="text-zinc-400 font-mono text-[11px] uppercase">
+                                            <Label className="text-muted-foreground font-mono text-[11px] uppercase">
                                                 Flat Amount (GHS)
                                             </Label>
                                             <div className="relative">
-                                                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-600 font-mono text-sm">₵</span>
+                                                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground font-mono text-sm">₵</span>
                                                 <Input
                                                     type="number"
                                                     step="0.01"
                                                     min="0"
                                                     value={editState.flatAmount}
                                                     onChange={(e) => setEditState({ ...editState, flatAmount: e.target.value })}
-                                                    className="bg-black border-zinc-800 text-white font-mono text-sm pl-8"
+                                                    className="bg-background border-border text-foreground font-mono text-sm pl-8"
                                                     disabled={editState.feeMode === 'percentage'}
                                                 />
                                             </div>
@@ -374,35 +374,35 @@ export default function PlatformFeesPage() {
                                     </div>
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                         <div className="space-y-2">
-                                            <Label className="text-zinc-400 font-mono text-[11px] uppercase">
-                                                Min Fee (GHS) <span className="text-zinc-600">— optional</span>
+                                            <Label className="text-muted-foreground font-mono text-[11px] uppercase">
+                                                Min Fee (GHS) <span className="text-muted-foreground">— optional</span>
                                             </Label>
                                             <div className="relative">
-                                                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-600 font-mono text-sm">₵</span>
+                                                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground font-mono text-sm">₵</span>
                                                 <Input
                                                     type="number"
                                                     step="0.01"
                                                     min="0"
                                                     value={editState.minFee}
                                                     onChange={(e) => setEditState({ ...editState, minFee: e.target.value })}
-                                                    className="bg-black border-zinc-800 text-white font-mono text-sm pl-8"
+                                                    className="bg-background border-border text-foreground font-mono text-sm pl-8"
                                                     placeholder="No minimum"
                                                 />
                                             </div>
                                         </div>
                                         <div className="space-y-2">
-                                            <Label className="text-zinc-400 font-mono text-[11px] uppercase">
-                                                Max Fee (GHS) <span className="text-zinc-600">— optional</span>
+                                            <Label className="text-muted-foreground font-mono text-[11px] uppercase">
+                                                Max Fee (GHS) <span className="text-muted-foreground">— optional</span>
                                             </Label>
                                             <div className="relative">
-                                                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-600 font-mono text-sm">₵</span>
+                                                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground font-mono text-sm">₵</span>
                                                 <Input
                                                     type="number"
                                                     step="0.01"
                                                     min="0"
                                                     value={editState.maxFee}
                                                     onChange={(e) => setEditState({ ...editState, maxFee: e.target.value })}
-                                                    className="bg-black border-zinc-800 text-white font-mono text-sm pl-8"
+                                                    className="bg-background border-border text-foreground font-mono text-sm pl-8"
                                                     placeholder="No maximum"
                                                 />
                                             </div>
@@ -410,12 +410,12 @@ export default function PlatformFeesPage() {
                                     </div>
 
                                     {/* Preview */}
-                                    <div className="p-3 bg-zinc-950 border border-zinc-800 rounded-lg">
-                                        <p className="text-[10px] text-zinc-500 font-mono uppercase mb-2">Preview</p>
+                                    <div className="p-3 bg-background border border-border rounded-lg">
+                                        <p className="text-[10px] text-muted-foreground font-mono uppercase mb-2">Preview</p>
                                         <div className="grid grid-cols-3 gap-4 text-xs font-mono">
                                             <div>
-                                                <span className="text-zinc-500">₵500 payment:</span>
-                                                <span className="text-white ml-2">
+                                                <span className="text-muted-foreground">₵500 payment:</span>
+                                                <span className="text-foreground ml-2">
                                                     {(() => {
                                                         const pct = parseFloat(editState.percentageRate) / 100
                                                         const flat = parseFloat(editState.flatAmount)
@@ -429,8 +429,8 @@ export default function PlatformFeesPage() {
                                                 </span>
                                             </div>
                                             <div>
-                                                <span className="text-zinc-500">₵2,000 payment:</span>
-                                                <span className="text-white ml-2">
+                                                <span className="text-muted-foreground">₵2,000 payment:</span>
+                                                <span className="text-foreground ml-2">
                                                     {(() => {
                                                         const pct = parseFloat(editState.percentageRate) / 100
                                                         const flat = parseFloat(editState.flatAmount)
@@ -444,8 +444,8 @@ export default function PlatformFeesPage() {
                                                 </span>
                                             </div>
                                             <div>
-                                                <span className="text-zinc-500">₵10,000 payment:</span>
-                                                <span className="text-white ml-2">
+                                                <span className="text-muted-foreground">₵10,000 payment:</span>
+                                                <span className="text-foreground ml-2">
                                                     {(() => {
                                                         const pct = parseFloat(editState.percentageRate) / 100
                                                         const flat = parseFloat(editState.flatAmount)
@@ -466,7 +466,7 @@ export default function PlatformFeesPage() {
                                         <Button
                                             onClick={() => handleSave(config.id)}
                                             disabled={saving}
-                                            className="bg-red-600 hover:bg-red-700 text-white font-mono text-xs uppercase"
+                                            className="bg-red-600 hover:bg-red-700 text-foreground font-mono text-xs uppercase"
                                         >
                                             {saving ? (
                                                 <Loader2 className="h-3 w-3 mr-2 animate-spin" />
@@ -479,7 +479,7 @@ export default function PlatformFeesPage() {
                                             variant="outline"
                                             onClick={cancelEdit}
                                             disabled={saving}
-                                            className="border-zinc-800 text-zinc-400 hover:text-white bg-black font-mono text-xs uppercase"
+                                            className="border-border text-muted-foreground hover:text-foreground bg-background font-mono text-xs uppercase"
                                         >
                                             Cancel
                                         </Button>
@@ -490,58 +490,58 @@ export default function PlatformFeesPage() {
                                 <div className="space-y-4">
                                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                                         <div>
-                                            <p className="text-[10px] text-zinc-500 font-mono uppercase mb-1">Fee Mode</p>
-                                            <Badge variant="outline" className="border-zinc-700 text-zinc-300 font-mono text-xs">
+                                            <p className="text-[10px] text-muted-foreground font-mono uppercase mb-1">Fee Mode</p>
+                                            <Badge variant="outline" className="border-border text-muted-foreground font-mono text-xs">
                                                 {feeModeLabels[config.feeMode] || config.feeMode}
                                             </Badge>
                                         </div>
                                         <div>
-                                            <p className="text-[10px] text-zinc-500 font-mono uppercase mb-1">Fee Formula</p>
-                                            <p className="text-sm text-white font-mono font-bold">{feeDescription(config)}</p>
+                                            <p className="text-[10px] text-muted-foreground font-mono uppercase mb-1">Fee Formula</p>
+                                            <p className="text-sm text-foreground font-mono font-bold">{feeDescription(config)}</p>
                                         </div>
                                         <div>
-                                            <p className="text-[10px] text-zinc-500 font-mono uppercase mb-1">Currency</p>
-                                            <p className="text-sm text-white font-mono">{config.currency}</p>
+                                            <p className="text-[10px] text-muted-foreground font-mono uppercase mb-1">Currency</p>
+                                            <p className="text-sm text-foreground font-mono">{config.currency}</p>
                                         </div>
                                         <div>
-                                            <p className="text-[10px] text-zinc-500 font-mono uppercase mb-1">Last Updated</p>
-                                            <p className="text-sm text-zinc-400 font-mono">
+                                            <p className="text-[10px] text-muted-foreground font-mono uppercase mb-1">Last Updated</p>
+                                            <p className="text-sm text-muted-foreground font-mono">
                                                 {new Date(config.updatedAt).toLocaleDateString('en-GH')}
                                             </p>
                                         </div>
                                     </div>
 
                                     {/* Example Calculations */}
-                                    <div className="p-3 bg-zinc-950 border border-zinc-800 rounded-lg">
-                                        <p className="text-[10px] text-zinc-500 font-mono uppercase mb-2">Example Fees</p>
+                                    <div className="p-3 bg-background border border-border rounded-lg">
+                                        <p className="text-[10px] text-muted-foreground font-mono uppercase mb-2">Example Fees</p>
                                         <div className="grid grid-cols-4 gap-4 text-xs font-mono">
                                             <div>
-                                                <span className="text-zinc-500">₵500:</span>
-                                                <span className="text-amber-400 ml-1">{exampleFee(config, 500)}</span>
+                                                <span className="text-muted-foreground">₵500:</span>
+                                                <span className="text-amber-600 dark:text-amber-400 ml-1">{exampleFee(config, 500)}</span>
                                             </div>
                                             <div>
-                                                <span className="text-zinc-500">₵2,000:</span>
-                                                <span className="text-amber-400 ml-1">{exampleFee(config, 2000)}</span>
+                                                <span className="text-muted-foreground">₵2,000:</span>
+                                                <span className="text-amber-600 dark:text-amber-400 ml-1">{exampleFee(config, 2000)}</span>
                                             </div>
                                             <div>
-                                                <span className="text-zinc-500">₵5,000:</span>
-                                                <span className="text-amber-400 ml-1">{exampleFee(config, 5000)}</span>
+                                                <span className="text-muted-foreground">₵5,000:</span>
+                                                <span className="text-amber-600 dark:text-amber-400 ml-1">{exampleFee(config, 5000)}</span>
                                             </div>
                                             <div>
-                                                <span className="text-zinc-500">₵10,000:</span>
-                                                <span className="text-amber-400 ml-1">{exampleFee(config, 10000)}</span>
+                                                <span className="text-muted-foreground">₵10,000:</span>
+                                                <span className="text-amber-600 dark:text-amber-400 ml-1">{exampleFee(config, 10000)}</span>
                                             </div>
                                         </div>
                                     </div>
 
                                     {/* Caps */}
                                     {(config.minFee != null || config.maxFee != null) && (
-                                        <div className="flex items-center gap-4 text-xs font-mono text-zinc-500">
+                                        <div className="flex items-center gap-4 text-xs font-mono text-muted-foreground">
                                             {config.minFee != null && (
-                                                <span>Min fee: <span className="text-white">{config.currency} {config.minFee.toFixed(2)}</span></span>
+                                                <span>Min fee: <span className="text-foreground">{config.currency} {config.minFee.toFixed(2)}</span></span>
                                             )}
                                             {config.maxFee != null && (
-                                                <span>Max fee: <span className="text-white">{config.currency} {config.maxFee.toFixed(2)}</span></span>
+                                                <span>Max fee: <span className="text-foreground">{config.currency} {config.maxFee.toFixed(2)}</span></span>
                                             )}
                                         </div>
                                     )}

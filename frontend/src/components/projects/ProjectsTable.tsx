@@ -96,11 +96,11 @@ interface FilterState {
 // CONSTANTS
 // =====================================================
 const STATUS_CONFIG: Record<string, { label: string; color: string; border: string }> = {
-  draft: { label: 'Draft', color: 'bg-zinc-800 text-zinc-400', border: 'border-zinc-700' },
+  draft: { label: 'Draft', color: 'bg-muted text-muted-foreground', border: 'border-border' },
   pending: { label: 'Pending', color: 'bg-amber-500/10 text-amber-500', border: 'border-amber-500/20' },
-  active: { label: 'Active', color: 'bg-blue-500/10 text-blue-400', border: 'border-blue-500/20' },
-  in_progress: { label: 'In Progress', color: 'bg-blue-500/10 text-blue-400', border: 'border-blue-500/20' },
-  on_hold: { label: 'On Hold', color: 'bg-orange-500/10 text-orange-400', border: 'border-orange-500/20' },
+  active: { label: 'Active', color: 'bg-blue-500/10 text-blue-600 dark:text-blue-400', border: 'border-blue-500/20' },
+  in_progress: { label: 'In Progress', color: 'bg-blue-500/10 text-blue-600 dark:text-blue-400', border: 'border-blue-500/20' },
+  on_hold: { label: 'On Hold', color: 'bg-orange-500/10 text-orange-600 dark:text-orange-400', border: 'border-orange-500/20' },
   completed: { label: 'Completed', color: 'bg-emerald-500/10 text-emerald-500', border: 'border-emerald-500/20' },
   cancelled: { label: 'Cancelled', color: 'bg-red-500/10 text-red-500', border: 'border-red-500/20' },
 }
@@ -167,17 +167,17 @@ function FilterPanel({
           <SlidersHorizontal className="h-3.5 w-3.5" />
           Filters
           {hasActiveFilters && (
-            <Badge className="ml-1 h-4 w-4 p-0 flex items-center justify-center bg-amber-500 text-white text-[10px]">
+            <Badge className="ml-1 h-4 w-4 p-0 flex items-center justify-center bg-amber-500 text-foreground text-[10px]">
               {(filters.status?.length || 0) + (filters.propertyType?.length || 0) + (filters.region?.length || 0)}
             </Badge>
           )}
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-80 bg-zinc-900 border-zinc-700 p-4" align="start">
+      <PopoverContent className="w-80 bg-card border-border p-4" align="start">
         <div className="space-y-4">
           {/* Status filter */}
           <div>
-            <label className="font-mono text-xs text-zinc-400 block mb-2">Status</label>
+            <label className="font-mono text-xs text-muted-foreground block mb-2">Status</label>
             <div className="flex flex-wrap gap-1.5">
               {Object.entries(STATUS_CONFIG).map(([key, config]) => (
                 <Badge
@@ -186,7 +186,7 @@ function FilterPanel({
                     "cursor-pointer transition-all border font-medium px-2 py-0.5",
                     (filters.status || []).includes(key as ProjectStatus)
                       ? `${config.color} ${config.border}`
-                      : "bg-zinc-800 text-zinc-400 border-zinc-700 hover:bg-zinc-700 hover:border-zinc-600"
+                      : "bg-muted text-muted-foreground border-border hover:bg-zinc-700 hover:border-zinc-600"
                   )}
                   onClick={() => toggleArrayFilter('status', key)}
                 >
@@ -198,7 +198,7 @@ function FilterPanel({
 
           {/* Property Type filter */}
           <div>
-            <label className="font-mono text-xs text-zinc-400 block mb-2">Property Type</label>
+            <label className="font-mono text-xs text-muted-foreground block mb-2">Property Type</label>
             <div className="flex flex-wrap gap-1.5">
               {PROPERTY_TYPES.map(type => (
                 <Badge
@@ -207,7 +207,7 @@ function FilterPanel({
                     "cursor-pointer transition-all",
                     (filters.propertyType || []).includes(type)
                       ? "bg-amber-500/10 text-amber-500 border-amber-500/20"
-                      : "bg-zinc-800 text-zinc-400 border-zinc-700 hover:bg-zinc-700"
+                      : "bg-muted text-muted-foreground border-border hover:bg-zinc-700"
                   )}
                   onClick={() => toggleArrayFilter('propertyType', type)}
                 >
@@ -219,7 +219,7 @@ function FilterPanel({
 
           {/* Region filter */}
           <div>
-            <label className="font-mono text-xs text-zinc-400 block mb-2">Region</label>
+            <label className="font-mono text-xs text-muted-foreground block mb-2">Region</label>
             <div className="flex flex-wrap gap-1.5">
               {GHANA_REGIONS.slice(0, 6).map(region => (
                 <Badge
@@ -227,8 +227,8 @@ function FilterPanel({
                   className={cn(
                     "cursor-pointer transition-all",
                     filters.region.includes(region)
-                      ? "bg-green-500 text-white"
-                      : "bg-zinc-800 text-zinc-400 hover:bg-zinc-700"
+                      ? "bg-green-500 text-foreground"
+                      : "bg-muted text-muted-foreground hover:bg-zinc-700"
                   )}
                   onClick={() => toggleArrayFilter('region', region)}
                 >
@@ -240,23 +240,23 @@ function FilterPanel({
 
           {/* Budget range */}
           <div>
-            <label className="font-mono text-xs text-zinc-400 block mb-2">Budget Range (GHS)</label>
+            <label className="font-mono text-xs text-muted-foreground block mb-2">Budget Range (GHS)</label>
             <div className="flex items-center gap-2">
               <Input
                 type="number"
                 placeholder="Min"
-                className="h-8 text-xs bg-zinc-800 border-zinc-700"
+                className="h-8 text-xs bg-muted border-border"
                 value={filters.budgetMin || ''}
                 onChange={e => onFiltersChange({
                   ...filters,
                   budgetMin: e.target.value ? Number(e.target.value) : undefined,
                 })}
               />
-              <span className="text-zinc-600">–</span>
+              <span className="text-muted-foreground">–</span>
               <Input
                 type="number"
                 placeholder="Max"
-                className="h-8 text-xs bg-zinc-800 border-zinc-700"
+                className="h-8 text-xs bg-muted border-border"
                 value={filters.budgetMax || ''}
                 onChange={e => onFiltersChange({
                   ...filters,
@@ -271,7 +271,7 @@ function FilterPanel({
             <Button
               variant="ghost"
               size="sm"
-              className="w-full text-xs text-red-400 hover:text-red-300"
+              className="w-full text-xs text-red-600 dark:text-red-400 hover:text-red-300"
               onClick={onClear}
             >
               <X className="h-3 w-3 mr-1" />
@@ -304,11 +304,11 @@ function ProjectRow({
     : 0
 
   return (
-    <tr className="border-b border-zinc-800/50 hover:bg-zinc-800/50 transition-all cursor-pointer group">
+    <tr className="border-b border-border/50 hover:bg-muted/50 transition-all cursor-pointer group">
       {/* Project Info */}
       <td className="py-4 px-4">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-lg bg-zinc-800/50 overflow-hidden shrink-0 border border-zinc-700 group-hover:border-zinc-500 transition-colors">
+          <div className="w-10 h-10 rounded-lg bg-muted/50 overflow-hidden shrink-0 border border-border group-hover:border-zinc-500 transition-colors">
             {project.hero_image_url ? (
               <img
                 src={project.hero_image_url}
@@ -317,7 +317,7 @@ function ProjectRow({
               />
             ) : (
               <div className="w-full h-full flex items-center justify-center">
-                <Building2 className="h-4 w-4 text-zinc-500" />
+                <Building2 className="h-4 w-4 text-muted-foreground" />
               </div>
             )}
           </div>
@@ -325,7 +325,7 @@ function ProjectRow({
             <span className="font-sans text-sm font-medium text-zinc-100 block group-hover:text-blue-400 transition-colors">
               {project.name}
             </span>
-            <span className="font-mono text-[10px] text-zinc-500 tracking-wider capitalize">
+            <span className="font-mono text-[10px] text-muted-foreground tracking-wider capitalize">
               {project.property_type?.replace('_', ' ')}
             </span>
           </div>
@@ -334,7 +334,7 @@ function ProjectRow({
 
       {/* Location */}
       <td className="py-3 px-4">
-        <div className="flex items-center gap-1.5 text-zinc-400">
+        <div className="flex items-center gap-1.5 text-muted-foreground">
           <MapPin className="h-3 w-3" />
           <span className="font-mono text-xs">
             {project.district || project.region || '—'}
@@ -353,7 +353,7 @@ function ProjectRow({
       <td className="py-3 px-4">
         {project.total_budget ? (
           <div className="space-y-1">
-            <span className="font-mono text-xs text-zinc-300">
+            <span className="font-mono text-xs text-muted-foreground">
               GHS {(project.total_budget / 1000000).toFixed(1)}M
             </span>
             <div className="flex items-center gap-1.5">
@@ -367,13 +367,13 @@ function ProjectRow({
                   style={{ width: `${Math.min(budgetUtilization, 100)}%` }}
                 />
               </div>
-              <span className="font-mono text-[10px] text-zinc-500">
+              <span className="font-mono text-[10px] text-muted-foreground">
                 {budgetUtilization}%
               </span>
             </div>
           </div>
         ) : (
-          <span className="text-zinc-600">—</span>
+          <span className="text-muted-foreground">—</span>
         )}
       </td>
 
@@ -386,7 +386,7 @@ function ProjectRow({
               style={{ width: `${project.progress || 0}%` }}
             />
           </div>
-          <span className="font-mono text-xs text-zinc-400">
+          <span className="font-mono text-xs text-muted-foreground">
             {project.progress || 0}%
           </span>
         </div>
@@ -395,12 +395,12 @@ function ProjectRow({
       {/* Timeline */}
       <td className="py-3 px-4">
         {project.start_date ? (
-          <span className="font-mono text-xs text-zinc-400">
+          <span className="font-mono text-xs text-muted-foreground">
             {format(new Date(project.start_date), 'MMM yyyy')}
             {project.end_date && ` - ${format(new Date(project.end_date), 'MMM yyyy')}`}
           </span>
         ) : (
-          <span className="text-zinc-600">—</span>
+          <span className="text-muted-foreground">—</span>
         )}
       </td>
 
@@ -408,24 +408,24 @@ function ProjectRow({
       <td className="py-4 px-4 text-right">
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon" className="h-8 w-8 text-zinc-400 hover:text-white hover:bg-zinc-700">
+            <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-zinc-700">
               <MoreHorizontal className="h-4 w-4" />
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent className="bg-zinc-900 border-zinc-800 shadow-xl" align="end">
-            <DropdownMenuItem onClick={onView} className="text-xs hover:bg-zinc-800 focus:bg-zinc-800 cursor-pointer">
+          <DropdownMenuContent className="bg-card border-border shadow-xl" align="end">
+            <DropdownMenuItem onClick={onView} className="text-xs hover:bg-muted focus:bg-muted cursor-pointer">
               <Eye className="h-3.5 w-3.5 mr-2" />
               View Details
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={onEdit} className="text-xs hover:bg-zinc-800 focus:bg-zinc-800 cursor-pointer">
+            <DropdownMenuItem onClick={onEdit} className="text-xs hover:bg-muted focus:bg-muted cursor-pointer">
               <Edit className="h-3.5 w-3.5 mr-2" />
               Edit Project
             </DropdownMenuItem>
-            <DropdownMenuItem className="text-xs hover:bg-zinc-800 focus:bg-zinc-800 cursor-pointer">
+            <DropdownMenuItem className="text-xs hover:bg-muted focus:bg-muted cursor-pointer">
               <Download className="h-3.5 w-3.5 mr-2" />
               Export
             </DropdownMenuItem>
-            <DropdownMenuSeparator className="bg-zinc-800" />
+            <DropdownMenuSeparator className="bg-muted" />
             <DropdownMenuItem
               onClick={onDelete}
               className="text-xs text-red-500 hover:bg-red-500/10 focus:bg-red-500/10 cursor-pointer focus:text-red-500"
@@ -447,7 +447,7 @@ function TableSkeleton({ rows = 5 }: { rows?: number }) {
   return (
     <>
       {Array.from({ length: rows }).map((_, i) => (
-        <tr key={i} className="border-b border-zinc-800">
+        <tr key={i} className="border-b border-border">
           <td className="py-3 px-4">
             <div className="flex items-center gap-3">
               <Skeleton className="w-10 h-10 rounded" />
@@ -565,16 +565,16 @@ export function ProjectsTable({
   )
 
   return (
-    <div className={cn("border border-zinc-800 bg-zinc-950/50 shadow-2xl rounded-xl overflow-hidden backdrop-blur-sm", className)}>
+    <div className={cn("border border-border bg-background/50 shadow-2xl rounded-xl overflow-hidden backdrop-blur-sm", className)}>
       {/* Toolbar */}
-      <div className="flex items-center justify-between px-5 py-4 border-b border-zinc-800 bg-zinc-900/30">
+      <div className="flex items-center justify-between px-5 py-4 border-b border-border bg-card/30">
         <div className="flex items-center gap-4">
           {/* Search */}
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-500" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
               placeholder="Search projects by name, number..."
-              className="h-9 w-72 pl-9 text-sm bg-zinc-900/50 border-zinc-800 rounded-lg shadow-inner focus:ring-1 focus:ring-blue-500/50 transition-shadow"
+              className="h-9 w-72 pl-9 text-sm bg-card/50 border-border rounded-lg shadow-inner focus:ring-1 focus:ring-blue-500/50 transition-shadow"
               value={filters.search}
               onChange={e => {
                 setFilters({ ...filters, search: e.target.value })
@@ -583,7 +583,7 @@ export function ProjectsTable({
             />
           </div>
 
-          <div className="h-6 w-px bg-zinc-800"></div>
+          <div className="h-6 w-px bg-muted"></div>
 
           {/* Filters */}
           <FilterPanel
@@ -597,7 +597,7 @@ export function ProjectsTable({
         </div>
 
         <div className="flex items-center gap-3">
-          <Badge variant="outline" className="font-mono text-xs border-zinc-800 text-zinc-400 bg-zinc-900/50">
+          <Badge variant="outline" className="font-mono text-xs border-border text-muted-foreground bg-card/50">
             {totalCount} Total Projects
           </Badge>
         </div>
@@ -607,26 +607,26 @@ export function ProjectsTable({
       <div className="overflow-x-auto">
         <table className="w-full">
           <thead>
-            <tr className="border-b border-zinc-800 bg-zinc-900/40">
-              <th className="py-3 px-4 text-left font-sans text-[11px] uppercase tracking-wider text-zinc-500 font-medium">
+            <tr className="border-b border-border bg-card/40">
+              <th className="py-3 px-4 text-left font-sans text-[11px] uppercase tracking-wider text-muted-foreground font-medium">
                 <SortButton field="name">Project</SortButton>
               </th>
-              <th className="py-3 px-4 text-left font-sans text-[11px] uppercase tracking-wider text-zinc-500 font-medium">
+              <th className="py-3 px-4 text-left font-sans text-[11px] uppercase tracking-wider text-muted-foreground font-medium">
                 Location
               </th>
-              <th className="py-3 px-4 text-left font-sans text-[11px] uppercase tracking-wider text-zinc-500 font-medium">
+              <th className="py-3 px-4 text-left font-sans text-[11px] uppercase tracking-wider text-muted-foreground font-medium">
                 <SortButton field="status">Status</SortButton>
               </th>
-              <th className="py-3 px-4 text-left font-sans text-[11px] uppercase tracking-wider text-zinc-500 font-medium">
+              <th className="py-3 px-4 text-left font-sans text-[11px] uppercase tracking-wider text-muted-foreground font-medium">
                 <SortButton field="total_budget">Budget</SortButton>
               </th>
-              <th className="py-3 px-4 text-left font-sans text-[11px] uppercase tracking-wider text-zinc-500 font-medium">
+              <th className="py-3 px-4 text-left font-sans text-[11px] uppercase tracking-wider text-muted-foreground font-medium">
                 <SortButton field="progress">Progress</SortButton>
               </th>
-              <th className="py-3 px-4 text-left font-sans text-[11px] uppercase tracking-wider text-zinc-500 font-medium">
+              <th className="py-3 px-4 text-left font-sans text-[11px] uppercase tracking-wider text-muted-foreground font-medium">
                 Timeline
               </th>
-              <th className="py-3 px-4 text-right font-sans text-[11px] uppercase tracking-wider text-zinc-500 font-medium w-16">
+              <th className="py-3 px-4 text-right font-sans text-[11px] uppercase tracking-wider text-muted-foreground font-medium w-16">
                 <span className="sr-only">Actions</span>
               </th>
             </tr>
@@ -637,7 +637,7 @@ export function ProjectsTable({
             ) : projects.length === 0 ? (
               <tr>
                 <td colSpan={7} className="py-16 text-center">
-                  <div className="flex flex-col items-center gap-2 text-zinc-500">
+                  <div className="flex flex-col items-center gap-2 text-muted-foreground">
                     <Building2 className="h-8 w-8 opacity-50" />
                     <span className="font-mono text-sm">No projects found</span>
                     {(filters.search || filters.status.length > 0) && (
@@ -669,9 +669,9 @@ export function ProjectsTable({
       </div>
 
       {/* Pagination */}
-      <div className="flex items-center justify-between px-4 py-3 border-t border-zinc-800">
+      <div className="flex items-center justify-between px-4 py-3 border-t border-border">
         <div className="flex items-center gap-2">
-          <span className="font-mono text-xs text-zinc-500">Rows per page:</span>
+          <span className="font-mono text-xs text-muted-foreground">Rows per page:</span>
           <Select
             value={pageSize.toString()}
             onValueChange={v => {
@@ -679,10 +679,10 @@ export function ProjectsTable({
               setPage(1)
             }}
           >
-            <SelectTrigger className="h-7 w-16 text-xs bg-zinc-800 border-zinc-700">
+            <SelectTrigger className="h-7 w-16 text-xs bg-muted border-border">
               <SelectValue />
             </SelectTrigger>
-            <SelectContent className="bg-zinc-900 border-zinc-700">
+            <SelectContent className="bg-card border-border">
               {PAGE_SIZES.map(size => (
                 <SelectItem key={size} value={size.toString()} className="text-xs">
                   {size}
@@ -693,7 +693,7 @@ export function ProjectsTable({
         </div>
 
         <div className="flex items-center gap-2">
-          <span className="font-mono text-xs text-zinc-500">
+          <span className="font-mono text-xs text-muted-foreground">
             Page {page} of {totalPages || 1}
           </span>
           <div className="flex items-center gap-1">

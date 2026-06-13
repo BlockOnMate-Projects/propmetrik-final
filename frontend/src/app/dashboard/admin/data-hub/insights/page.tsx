@@ -60,10 +60,10 @@ export default function InsightsPage() {
 
     const getSeverityColor = (severity: string) => {
         switch (severity) {
-            case 'high': return 'text-red-400 bg-red-900/20 border-red-500/30'
-            case 'medium': return 'text-yellow-400 bg-yellow-900/20 border-yellow-500/30'
-            case 'low': return 'text-blue-400 bg-blue-900/20 border-blue-500/30'
-            default: return 'text-zinc-400 bg-zinc-800/20 border-zinc-700/30'
+            case 'high': return 'text-red-600 dark:text-red-400 bg-red-100 dark:bg-red-900/20 border-red-500/30'
+            case 'medium': return 'text-yellow-600 dark:text-yellow-400 bg-yellow-100 dark:bg-yellow-900/20 border-yellow-500/30'
+            case 'low': return 'text-blue-600 dark:text-blue-400 bg-blue-100 dark:bg-blue-900/20 border-blue-500/30'
+            default: return 'text-muted-foreground bg-muted/20 border-border/30'
         }
     }
 
@@ -78,11 +78,11 @@ export default function InsightsPage() {
     }
 
     return (
-        <div className="min-h-screen bg-black text-white p-4 pb-10">
+        <div className="min-h-screen bg-background text-foreground p-4 pb-10">
             {/* Header */}
             <div className="mb-6">
                 <h1 className="font-mono text-2xl text-amber-500 tracking-wider">AI-POWERED INSIGHTS DASHBOARD</h1>
-                <p className="font-mono text-[10px] text-zinc-500 mt-1">
+                <p className="font-mono text-[10px] text-muted-foreground mt-1">
                     AUTOMATED INSIGHTS • PREDICTIVE ANALYTICS • PATTERN RECOGNITION • SMART RECOMMENDATIONS
                 </p>
             </div>
@@ -129,15 +129,15 @@ export default function InsightsPage() {
             <div className="mb-6">
                 <TerminalPanel title="AI-Generated Insights">
                     <div className="space-y-3">
-                        {insights.length === 0 && <div className="text-zinc-500 text-sm p-4">No active insights detected.</div>}
+                        {insights.length === 0 && <div className="text-muted-foreground text-sm p-4">No active insights detected.</div>}
                         {insights.map((insight) => (
                             <div key={insight.id} className={`p-4 border ${getSeverityColor(insight.severity)}`}>
                                 <div className="flex items-start justify-between mb-3">
                                     <div className="flex items-center gap-3">
                                         {getTypeIcon(insight.type)}
                                         <div>
-                                            <div className="font-mono text-sm text-white mb-1">{insight.title}</div>
-                                            <div className="font-mono text-[10px] text-zinc-500">
+                                            <div className="font-mono text-sm text-foreground mb-1">{insight.title}</div>
+                                            <div className="font-mono text-[10px] text-muted-foreground">
                                                 {insight.type.toUpperCase()} • {insight.timestamp}
                                             </div>
                                         </div>
@@ -146,19 +146,19 @@ export default function InsightsPage() {
                                         <span className={`px-2 py-1 border font-mono text-[10px] ${getSeverityColor(insight.severity)}`}>
                                             {insight.severity.toUpperCase()}
                                         </span>
-                                        <span className="px-2 py-1 bg-zinc-800 text-zinc-400 font-mono text-[10px]">
+                                        <span className="px-2 py-1 bg-muted text-muted-foreground font-mono text-[10px]">
                                             {insight.confidence}% confidence
                                         </span>
                                     </div>
                                 </div>
 
-                                <p className="font-mono text-xs text-zinc-300 mb-3">
+                                <p className="font-mono text-xs text-muted-foreground mb-3">
                                     {insight.description}
                                 </p>
 
-                                <div className="p-3 bg-zinc-900/50 border border-zinc-800">
-                                    <div className="font-mono text-[10px] text-green-400 mb-1">RECOMMENDATION:</div>
-                                    <div className="font-mono text-xs text-zinc-300">{insight.recommendation}</div>
+                                <div className="p-3 bg-card/50 border border-border">
+                                    <div className="font-mono text-[10px] text-green-600 dark:text-green-400 mb-1">RECOMMENDATION:</div>
+                                    <div className="font-mono text-xs text-muted-foreground">{insight.recommendation}</div>
                                 </div>
                             </div>
                         ))}
@@ -170,30 +170,30 @@ export default function InsightsPage() {
             <div className="mb-6">
                 <TerminalPanel title="Predictive Analytics">
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                        {predictions.length === 0 && <div className="text-zinc-500 text-sm p-4 col-span-4">No predictions available.</div>}
+                        {predictions.length === 0 && <div className="text-muted-foreground text-sm p-4 col-span-4">No predictions available.</div>}
                         {predictions.map((pred) => (
-                            <div key={pred.metric} className="p-4 bg-zinc-800/30 border border-zinc-800">
-                                <div className="font-mono text-[10px] text-zinc-500 mb-2">{pred.metric}</div>
+                            <div key={pred.metric} className="p-4 bg-muted/30 border border-border">
+                                <div className="font-mono text-[10px] text-muted-foreground mb-2">{pred.metric}</div>
 
                                 <div className="mb-3">
-                                    <div className="font-mono text-xs text-zinc-500">Current</div>
-                                    <div className="font-mono text-2xl text-white">{pred.current.toLocaleString()}</div>
+                                    <div className="font-mono text-xs text-muted-foreground">Current</div>
+                                    <div className="font-mono text-2xl text-foreground">{pred.current.toLocaleString()}</div>
                                 </div>
 
                                 <div className="space-y-2 mb-3">
                                     <div className="flex items-center justify-between">
-                                        <span className="font-mono text-[10px] text-zinc-500">7-day forecast</span>
-                                        <span className="font-mono text-xs text-blue-400">{pred.predicted7d.toLocaleString()}</span>
+                                        <span className="font-mono text-[10px] text-muted-foreground">7-day forecast</span>
+                                        <span className="font-mono text-xs text-blue-600 dark:text-blue-400">{pred.predicted7d.toLocaleString()}</span>
                                     </div>
                                     <div className="flex items-center justify-between">
-                                        <span className="font-mono text-[10px] text-zinc-500">30-day forecast</span>
-                                        <span className="font-mono text-xs text-purple-400">{pred.predicted30d.toLocaleString()}</span>
+                                        <span className="font-mono text-[10px] text-muted-foreground">30-day forecast</span>
+                                        <span className="font-mono text-xs text-purple-600 dark:text-purple-400">{pred.predicted30d.toLocaleString()}</span>
                                     </div>
                                 </div>
 
                                 <div className="flex items-center justify-between">
-                                    <span className="font-mono text-[9px] text-zinc-600">Confidence: {pred.confidence}%</span>
-                                    <TrendingUp className={`w-3 h-3 ${pred.trend === 'up' ? 'text-green-400' : 'text-red-400'}`} />
+                                    <span className="font-mono text-[9px] text-muted-foreground">Confidence: {pred.confidence}%</span>
+                                    <TrendingUp className={`w-3 h-3 ${pred.trend === 'up' ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`} />
                                 </div>
                             </div>
                         ))}
@@ -206,19 +206,19 @@ export default function InsightsPage() {
                 {/* Pattern Recognition */}
                 <TerminalPanel title="Detected Patterns">
                     <div className="space-y-3">
-                        {patterns.length === 0 && <div className="text-zinc-500 text-sm p-4">No patterns detected yet.</div>}
+                        {patterns.length === 0 && <div className="text-muted-foreground text-sm p-4">No patterns detected yet.</div>}
                         {patterns.map((pattern: any, idx: number) => (
-                            <div key={idx} className="p-3 bg-zinc-800/30 border border-zinc-800">
+                            <div key={idx} className="p-3 bg-muted/30 border border-border">
                                 <div className="flex items-center justify-between mb-2">
-                                    <div className="font-mono text-sm text-white">{pattern.pattern}</div>
-                                    <span className="px-2 py-1 bg-green-900/30 text-green-400 font-mono text-[10px]">
+                                    <div className="font-mono text-sm text-foreground">{pattern.pattern}</div>
+                                    <span className="px-2 py-1 bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400 font-mono text-[10px]">
                                         {pattern.confidence}% confidence
                                     </span>
                                 </div>
-                                <p className="font-mono text-[10px] text-zinc-400 mb-2">
+                                <p className="font-mono text-[10px] text-muted-foreground mb-2">
                                     {pattern.description}
                                 </p>
-                                <div className="font-mono text-[9px] text-zinc-600">
+                                <div className="font-mono text-[9px] text-muted-foreground">
                                     Observed {pattern.occurrences} times
                                 </div>
                             </div>
@@ -229,25 +229,25 @@ export default function InsightsPage() {
                 {/* Recommendations */}
                 <TerminalPanel title="Smart Recommendations">
                     <div className="space-y-3">
-                        {recommendations.length === 0 && <div className="text-zinc-500 text-sm p-4">No recommendations available.</div>}
+                        {recommendations.length === 0 && <div className="text-muted-foreground text-sm p-4">No recommendations available.</div>}
                         {recommendations.map((rec: any, idx: number) => (
-                            <div key={idx} className="p-3 bg-zinc-800/30 border border-zinc-800">
+                            <div key={idx} className="p-3 bg-muted/30 border border-border">
                                 <div className="flex items-center justify-between mb-2">
                                     <div className="flex items-center gap-2">
-                                        <span className={`px-2 py-1 font-mono text-[10px] ${rec.priority === 'high' ? 'bg-red-900/30 text-red-400' :
-                                            rec.priority === 'medium' ? 'bg-yellow-900/30 text-yellow-400' :
-                                                'bg-blue-900/30 text-blue-400'
+                                        <span className={`px-2 py-1 font-mono text-[10px] ${rec.priority === 'high' ? 'bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400' :
+                                            rec.priority === 'medium' ? 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-600 dark:text-yellow-400' :
+                                                'bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400'
                                             }`}>
                                             {rec.priority.toUpperCase()}
                                         </span>
-                                        <span className="font-mono text-[10px] text-zinc-500">{rec.category}</span>
+                                        <span className="font-mono text-[10px] text-muted-foreground">{rec.category}</span>
                                     </div>
-                                    <span className="px-2 py-1 bg-zinc-700 text-zinc-400 font-mono text-[10px]">
+                                    <span className="px-2 py-1 bg-zinc-700 text-muted-foreground font-mono text-[10px]">
                                         {rec.effort} effort
                                     </span>
                                 </div>
-                                <div className="font-mono text-sm text-white mb-2">{rec.action}</div>
-                                <div className="font-mono text-[10px] text-green-400">
+                                <div className="font-mono text-sm text-foreground mb-2">{rec.action}</div>
+                                <div className="font-mono text-[10px] text-green-600 dark:text-green-400">
                                     Expected: {rec.expectedImpact}
                                 </div>
                             </div>

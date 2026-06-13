@@ -54,10 +54,10 @@ export default function PaymentSchedulePage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-mono font-bold text-white tracking-tight">
+          <h1 className="text-2xl font-mono font-bold text-foreground tracking-tight">
             PAYMENT SCHEDULE
           </h1>
-          <p className="text-zinc-500 font-mono text-xs mt-1">
+          <p className="text-muted-foreground font-mono text-xs mt-1">
             Milestone-based payment tracking, invoice linking &amp; progress monitoring
           </p>
         </div>
@@ -65,18 +65,18 @@ export default function PaymentSchedulePage() {
 
       {/* Project Selector */}
       <div className="flex items-center gap-3">
-        <Building2 className="h-4 w-4 text-zinc-400" />
-        <span className="font-mono text-xs text-zinc-500">PROJECT:</span>
+        <Building2 className="h-4 w-4 text-muted-foreground" />
+        <span className="font-mono text-xs text-muted-foreground">PROJECT:</span>
         <Select value={selectedProjectId} onValueChange={setSelectedProjectId}>
-          <SelectTrigger className="w-80 bg-zinc-900 border-zinc-700 text-zinc-100">
+          <SelectTrigger className="w-80 bg-card border-border text-zinc-100">
             <SelectValue placeholder="Select a project" />
           </SelectTrigger>
-          <SelectContent className="bg-zinc-900 border-zinc-700">
+          <SelectContent className="bg-card border-border">
             {projects.map((project) => (
               <SelectItem
                 key={project.id}
                 value={project.id}
-                className="text-zinc-100 focus:bg-zinc-800"
+                className="text-zinc-100 focus:bg-muted"
               >
                 {project.name}
               </SelectItem>
@@ -91,7 +91,7 @@ export default function PaymentSchedulePage() {
           <Loader2 className="h-8 w-8 animate-spin text-amber-500" />
         </div>
       ) : !selectedProjectId ? (
-        <div className="flex flex-col items-center justify-center py-16 text-zinc-600">
+        <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
           <DollarSign className="h-12 w-12 mb-3 opacity-50" />
           <p className="font-mono text-sm">Select a project to view payment schedule</p>
         </div>

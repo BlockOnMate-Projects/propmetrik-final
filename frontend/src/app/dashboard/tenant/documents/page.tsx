@@ -126,7 +126,7 @@ function DocumentsContent() {
   if (loading) {
     return (
       <div className="flex items-center justify-center py-24">
-        <Loader2 className="w-6 h-6 text-gray-400 animate-spin" />
+        <Loader2 className="w-6 h-6 text-muted-foreground animate-spin" />
       </div>
     );
   }
@@ -135,37 +135,37 @@ function DocumentsContent() {
     <div className="space-y-6 animate-fade-in">
       <div className="flex flex-col sm:flex-row sm:items-center gap-3">
         <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <input type="text" value={searchQuery} onChange={e => setSearchQuery(e.target.value)}
             placeholder="Search documents..."
-            className="w-full pl-9 pr-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500" />
+            className="w-full pl-9 pr-3 py-2.5 border border-border rounded-xl text-sm focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500" />
         </div>
         <div className="flex items-center gap-2">
           <div className="relative">
-            <Filter className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+            <Filter className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             <select value={categoryFilter} onChange={e => setCategoryFilter(e.target.value)}
-              className="pl-9 pr-8 py-2.5 border border-gray-200 rounded-xl text-sm bg-white focus:ring-2 focus:ring-cyan-500 appearance-none">
+              className="pl-9 pr-8 py-2.5 border border-border rounded-xl text-sm bg-card focus:ring-2 focus:ring-cyan-500 appearance-none">
               {CATEGORY_OPTIONS.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
             </select>
           </div>
           <button onClick={() => setShowUpload(true)}
-            className="flex items-center gap-2 px-4 py-2.5 bg-cyan-600 text-white rounded-xl text-sm font-medium hover:bg-cyan-700 transition-colors">
+            className="flex items-center gap-2 px-4 py-2.5 bg-cyan-600 text-foreground rounded-xl text-sm font-medium hover:bg-cyan-700 transition-colors">
             <Upload className="w-4 h-4" /> Upload
           </button>
         </div>
       </div>
 
       {filtered.length === 0 ? (
-        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-12 text-center">
+        <div className="bg-card rounded-2xl border border-gray-100 shadow-sm p-12 text-center">
           <FolderOpen className="w-10 h-10 text-gray-300 mx-auto mb-3" />
           <p className="text-sm font-medium text-gray-700">No documents found</p>
-          <p className="text-xs text-gray-400 mt-1">
+          <p className="text-xs text-muted-foreground mt-1">
             {searchQuery || categoryFilter ? 'Try adjusting your search or filter' : 'Documents shared with you will appear here'}
           </p>
         </div>
       ) : (
-        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-          <div className="hidden md:grid grid-cols-12 gap-4 px-4 py-2.5 bg-gray-50 border-b border-gray-100 text-xs font-medium text-gray-500 uppercase tracking-wider">
+        <div className="bg-card rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+          <div className="hidden md:grid grid-cols-12 gap-4 px-4 py-2.5 bg-muted border-b border-gray-100 text-xs font-medium text-muted-foreground uppercase tracking-wider">
             <div className="col-span-5">Document</div>
             <div className="col-span-2">Category</div>
             <div className="col-span-2">Size</div>
@@ -174,7 +174,7 @@ function DocumentsContent() {
           </div>
           <div className="divide-y divide-gray-50">
             {filtered.map(doc => (
-              <div key={doc.id} className="px-4 py-3 hover:bg-gray-50/50 transition-colors">
+              <div key={doc.id} className="px-4 py-3 hover:bg-muted/50 transition-colors">
                 <div className="md:grid md:grid-cols-12 md:gap-4 md:items-center space-y-2 md:space-y-0">
                   <div className="col-span-5 flex items-center gap-3">
                     <div className="w-9 h-9 rounded-lg bg-cyan-50 flex items-center justify-center text-cyan-600 flex-shrink-0">
@@ -182,28 +182,28 @@ function DocumentsContent() {
                     </div>
                     <div className="min-w-0">
                       <p className="text-sm font-medium text-gray-900 truncate">{doc.fileName || doc.filename || 'Untitled'}</p>
-                      {doc.description && <p className="text-xs text-gray-400 truncate">{doc.description}</p>}
+                      {doc.description && <p className="text-xs text-muted-foreground truncate">{doc.description}</p>}
                     </div>
                   </div>
                   <div className="col-span-2">
-                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-600 capitalize">
+                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-muted text-muted-foreground capitalize">
                       {doc.category || 'Other'}
                     </span>
                   </div>
-                  <div className="col-span-2 text-xs text-gray-500">{doc.fileSize ? formatFileSize(doc.fileSize) : '—'}</div>
-                  <div className="col-span-2 flex items-center gap-1.5 text-xs text-gray-500">
+                  <div className="col-span-2 text-xs text-muted-foreground">{doc.fileSize ? formatFileSize(doc.fileSize) : '—'}</div>
+                  <div className="col-span-2 flex items-center gap-1.5 text-xs text-muted-foreground">
                     <Calendar className="w-3 h-3" />
                     {doc.createdAt ? new Date(doc.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : '—'}
                   </div>
                   <div className="col-span-1 flex items-center justify-end gap-1">
                     {doc.previewUrl && (
                       <a href={doc.previewUrl} target="_blank" rel="noopener noreferrer"
-                        className="p-1.5 text-gray-400 hover:text-cyan-600 hover:bg-cyan-50 rounded-lg transition-colors">
+                        className="p-1.5 text-muted-foreground hover:text-cyan-600 hover:bg-cyan-50 rounded-lg transition-colors">
                         <Eye className="w-4 h-4" />
                       </a>
                     )}
                     <button onClick={() => handleDownload(doc)} disabled={downloading === doc.id}
-                      className="p-1.5 text-gray-400 hover:text-cyan-600 hover:bg-cyan-50 rounded-lg transition-colors disabled:opacity-50">
+                      className="p-1.5 text-muted-foreground hover:text-cyan-600 hover:bg-cyan-50 rounded-lg transition-colors disabled:opacity-50">
                       {downloading === doc.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
                     </button>
                   </div>
@@ -215,32 +215,32 @@ function DocumentsContent() {
       )}
 
       {showUpload && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={() => !uploading && setShowUpload(false)}>
-          <div className="bg-white rounded-2xl shadow-xl border border-gray-200 w-full max-w-md mx-4 p-6" onClick={e => e.stopPropagation()}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/50" onClick={() => !uploading && setShowUpload(false)}>
+          <div className="bg-card rounded-2xl shadow-xl border border-border w-full max-w-md mx-4 p-6" onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-base font-semibold text-gray-900">Upload Document</h3>
-              <button onClick={() => !uploading && setShowUpload(false)} className="p-1 text-gray-400 hover:text-gray-600 rounded">
+              <button onClick={() => !uploading && setShowUpload(false)} className="p-1 text-muted-foreground hover:text-muted-foreground rounded">
                 <X className="w-5 h-5" />
               </button>
             </div>
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1.5">File</label>
-                <div className="border-2 border-dashed border-gray-200 rounded-xl p-6 text-center hover:border-cyan-400 transition-colors cursor-pointer"
+                <div className="border-2 border-dashed border-border rounded-xl p-6 text-center hover:border-cyan-400 transition-colors cursor-pointer"
                   onClick={() => document.getElementById('doc-upload-input')?.click()}>
                   {uploadFile ? (
                     <div className="flex items-center justify-center gap-2">
                       {getFileIcon(uploadFile.name)}
                       <span className="text-sm text-gray-700">{uploadFile.name}</span>
-                      <button onClick={e => { e.stopPropagation(); setUploadFile(null); }} className="p-0.5 text-gray-400 hover:text-red-500">
+                      <button onClick={e => { e.stopPropagation(); setUploadFile(null); }} className="p-0.5 text-muted-foreground hover:text-red-500">
                         <X className="w-3.5 h-3.5" />
                       </button>
                     </div>
                   ) : (
                     <>
-                      <Upload className="w-6 h-6 text-gray-400 mx-auto mb-2" />
-                      <p className="text-sm text-gray-500">Click to select a file</p>
-                      <p className="text-xs text-gray-400 mt-1">PDF, DOC, DOCX, JPG, PNG, XLS up to 10MB</p>
+                      <Upload className="w-6 h-6 text-muted-foreground mx-auto mb-2" />
+                      <p className="text-sm text-muted-foreground">Click to select a file</p>
+                      <p className="text-xs text-muted-foreground mt-1">PDF, DOC, DOCX, JPG, PNG, XLS up to 10MB</p>
                     </>
                   )}
                   <input id="doc-upload-input" type="file" className="hidden"
@@ -251,17 +251,17 @@ function DocumentsContent() {
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1.5">Category</label>
                 <select value={uploadCategory} onChange={e => setUploadCategory(e.target.value)}
-                  className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm bg-white focus:ring-2 focus:ring-cyan-500 appearance-none">
+                  className="w-full px-4 py-2.5 border border-border rounded-xl text-sm bg-card focus:ring-2 focus:ring-cyan-500 appearance-none">
                   {CATEGORY_OPTIONS.filter(o => o.value).map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
                 </select>
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1.5">Description (optional)</label>
                 <textarea value={uploadDescription} onChange={e => setUploadDescription(e.target.value)} placeholder="Brief description..."
-                  rows={2} className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-cyan-500 resize-none" />
+                  rows={2} className="w-full px-4 py-2.5 border border-border rounded-xl text-sm focus:ring-2 focus:ring-cyan-500 resize-none" />
               </div>
               <button onClick={handleUpload} disabled={!uploadFile || uploading}
-                className="w-full py-2.5 bg-cyan-600 text-white rounded-xl text-sm font-medium hover:bg-cyan-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors">
+                className="w-full py-2.5 bg-cyan-600 text-foreground rounded-xl text-sm font-medium hover:bg-cyan-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors">
                 {uploading ? <span className="flex items-center justify-center gap-2"><Loader2 className="w-4 h-4 animate-spin" /> Uploading...</span> : 'Upload Document'}
               </button>
             </div>

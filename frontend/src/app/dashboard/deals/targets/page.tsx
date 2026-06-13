@@ -328,7 +328,7 @@ function LeaderboardTable({ entries }: { entries: LeaderboardEntry[] }) {
                         <TableCell>
                             <div className="flex items-center justify-center">
                                 {entry.rank === 1 && <Crown className="h-5 w-5 text-yellow-500" />}
-                                {entry.rank === 2 && <Medal className="h-5 w-5 text-gray-400" />}
+                                {entry.rank === 2 && <Medal className="h-5 w-5 text-muted-foreground" />}
                                 {entry.rank === 3 && <Medal className="h-5 w-5 text-amber-700" />}
                                 {entry.rank > 3 && <span className="text-muted-foreground">{entry.rank}</span>}
                             </div>

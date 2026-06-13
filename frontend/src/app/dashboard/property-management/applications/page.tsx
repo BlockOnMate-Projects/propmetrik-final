@@ -142,47 +142,47 @@ export default function ApplicationsPage() {
     const getStatusBadge = (status: ApplicationStatus) => {
         const config: Record<ApplicationStatus, { color: string; icon: React.ReactNode; label: string }> = {
             [ApplicationStatus.DRAFT]: { 
-                color: 'border-zinc-700 text-zinc-400 bg-zinc-800/20', 
+                color: 'border-border text-muted-foreground bg-muted/20', 
                 icon: <Clock className="h-3 w-3" />, 
                 label: 'Draft' 
             },
             [ApplicationStatus.SUBMITTED]: { 
-                color: 'border-blue-900 text-blue-400 bg-blue-900/20', 
+                color: 'border-blue-900 text-blue-600 dark:text-blue-400 bg-blue-100 dark:bg-blue-900/20', 
                 icon: <Send className="h-3 w-3" />, 
                 label: 'Submitted' 
             },
             [ApplicationStatus.UNDER_REVIEW]: { 
-                color: 'border-amber-900 text-amber-400 bg-amber-900/20', 
+                color: 'border-amber-900 text-amber-600 dark:text-amber-400 bg-amber-100 dark:bg-amber-900/20', 
                 icon: <Eye className="h-3 w-3" />, 
                 label: 'Under Review' 
             },
             [ApplicationStatus.APPROVED]: { 
-                color: 'border-green-900 text-green-400 bg-green-900/20', 
+                color: 'border-green-900 text-green-600 dark:text-green-400 bg-green-100 dark:bg-green-900/20', 
                 icon: <CheckCircle2 className="h-3 w-3" />, 
                 label: 'Approved' 
             },
             [ApplicationStatus.REJECTED]: { 
-                color: 'border-red-900 text-red-400 bg-red-900/20', 
+                color: 'border-red-900 text-red-600 dark:text-red-400 bg-red-100 dark:bg-red-900/20', 
                 icon: <XCircle className="h-3 w-3" />, 
                 label: 'Rejected' 
             },
             [ApplicationStatus.WITHDRAWN]: { 
-                color: 'border-zinc-700 text-zinc-500 bg-zinc-800/20', 
+                color: 'border-border text-muted-foreground bg-muted/20', 
                 icon: <X className="h-3 w-3" />, 
                 label: 'Withdrawn' 
             },
             [ApplicationStatus.LEASE_GENERATED]: {
-                color: 'border-emerald-900 text-emerald-400 bg-emerald-900/20',
+                color: 'border-emerald-900 text-emerald-600 dark:text-emerald-400 bg-emerald-100 dark:bg-emerald-900/20',
                 icon: <FileText className="h-3 w-3" />,
                 label: 'Lease Generated'
             },
             [ApplicationStatus.LEASE_SIGNED]: {
-                color: 'border-teal-900 text-teal-400 bg-teal-900/20',
+                color: 'border-teal-900 text-teal-600 dark:text-teal-400 bg-teal-100 dark:bg-teal-900/20',
                 icon: <CheckCircle2 className="h-3 w-3" />,
                 label: 'Lease Signed'
             },
             [ApplicationStatus.EXPIRED]: {
-                color: 'border-zinc-700 text-zinc-500 bg-zinc-800/20',
+                color: 'border-border text-muted-foreground bg-muted/20',
                 icon: <Clock className="h-3 w-3" />,
                 label: 'Expired'
             }
@@ -313,8 +313,8 @@ export default function ApplicationsPage() {
             {/* Page Header */}
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                 <div>
-                    <h1 className="text-2xl font-bold tracking-tight text-white font-mono uppercase">Applications</h1>
-                    <p className="text-zinc-400 mt-1">
+                    <h1 className="text-2xl font-bold tracking-tight text-foreground font-mono uppercase">Applications</h1>
+                    <p className="text-muted-foreground mt-1">
                         Manage tenant applications and onboarding workflow
                     </p>
                 </div>
@@ -330,58 +330,58 @@ export default function ApplicationsPage() {
             {/* Stats Cards */}
             {stats && (
                 <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-                    <Card className="bg-zinc-900/50 border-zinc-800">
+                    <Card className="bg-card/50 border-border">
                         <CardContent className="pt-4">
                             <div className="flex items-center justify-between">
                                 <div>
-                                    <p className="text-zinc-400 text-sm">Total</p>
-                                    <p className="text-2xl font-bold text-white">{stats.total}</p>
+                                    <p className="text-muted-foreground text-sm">Total</p>
+                                    <p className="text-2xl font-bold text-foreground">{stats.total}</p>
                                 </div>
-                                <ClipboardList className="h-8 w-8 text-zinc-600" />
+                                <ClipboardList className="h-8 w-8 text-muted-foreground" />
                             </div>
                         </CardContent>
                     </Card>
-                    <Card className="bg-zinc-900/50 border-zinc-800">
+                    <Card className="bg-card/50 border-border">
                         <CardContent className="pt-4">
                             <div className="flex items-center justify-between">
                                 <div>
-                                    <p className="text-zinc-400 text-sm">Submitted</p>
-                                    <p className="text-2xl font-bold text-blue-400">{stats.byStatus[ApplicationStatus.SUBMITTED] || 0}</p>
+                                    <p className="text-muted-foreground text-sm">Submitted</p>
+                                    <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">{stats.byStatus[ApplicationStatus.SUBMITTED] || 0}</p>
                                 </div>
                                 <Send className="h-8 w-8 text-blue-600" />
                             </div>
                         </CardContent>
                     </Card>
-                    <Card className="bg-zinc-900/50 border-zinc-800">
+                    <Card className="bg-card/50 border-border">
                         <CardContent className="pt-4">
                             <div className="flex items-center justify-between">
                                 <div>
-                                    <p className="text-zinc-400 text-sm">Under Review</p>
-                                    <p className="text-2xl font-bold text-amber-400">{stats.byStatus[ApplicationStatus.UNDER_REVIEW] || 0}</p>
+                                    <p className="text-muted-foreground text-sm">Under Review</p>
+                                    <p className="text-2xl font-bold text-amber-600 dark:text-amber-400">{stats.byStatus[ApplicationStatus.UNDER_REVIEW] || 0}</p>
                                 </div>
                                 <Eye className="h-8 w-8 text-amber-600" />
                             </div>
                         </CardContent>
                     </Card>
-                    <Card className="bg-zinc-900/50 border-zinc-800">
+                    <Card className="bg-card/50 border-border">
                         <CardContent className="pt-4">
                             <div className="flex items-center justify-between">
                                 <div>
-                                    <p className="text-zinc-400 text-sm">Approved</p>
-                                    <p className="text-2xl font-bold text-green-400">{stats.byStatus[ApplicationStatus.APPROVED] || 0}</p>
+                                    <p className="text-muted-foreground text-sm">Approved</p>
+                                    <p className="text-2xl font-bold text-green-600 dark:text-green-400">{stats.byStatus[ApplicationStatus.APPROVED] || 0}</p>
                                 </div>
                                 <CheckCircle2 className="h-8 w-8 text-green-600" />
                             </div>
                         </CardContent>
                     </Card>
-                    <Card className="bg-zinc-900/50 border-zinc-800">
+                    <Card className="bg-card/50 border-border">
                         <CardContent className="pt-4">
                             <div className="flex items-center justify-between">
                                 <div>
-                                    <p className="text-zinc-400 text-sm">Approval Rate</p>
-                                    <p className="text-2xl font-bold text-white">{stats.approvalRate.toFixed(0)}%</p>
+                                    <p className="text-muted-foreground text-sm">Approval Rate</p>
+                                    <p className="text-2xl font-bold text-foreground">{stats.approvalRate.toFixed(0)}%</p>
                                 </div>
-                                <TrendingUp className="h-8 w-8 text-zinc-600" />
+                                <TrendingUp className="h-8 w-8 text-muted-foreground" />
                             </div>
                         </CardContent>
                     </Card>
@@ -389,45 +389,45 @@ export default function ApplicationsPage() {
             )}
 
             {/* Search and Filters */}
-            <Card className="bg-zinc-900/50 border-zinc-800">
+            <Card className="bg-card/50 border-border">
                 <CardContent className="pt-4">
                     <div className="flex flex-col md:flex-row gap-4">
                         <div className="relative flex-1">
-                            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-zinc-500" />
+                            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                             <Input
                                 placeholder="Search by name, email, phone, or property..."
                                 value={searchQuery}
                                 onChange={(e) => setSearchQuery(e.target.value)}
-                                className="pl-10 bg-zinc-800 border-zinc-700 text-white"
+                                className="pl-10 bg-muted border-border text-foreground"
                             />
                         </div>
                         <Select value={statusFilter} onValueChange={setStatusFilter}>
-                            <SelectTrigger className="w-[180px] bg-zinc-800 border-zinc-700 text-white">
+                            <SelectTrigger className="w-[180px] bg-muted border-border text-foreground">
                                 <SelectValue placeholder="All Statuses" />
                             </SelectTrigger>
-                            <SelectContent className="bg-zinc-800 border-zinc-700 text-white">
-                                <SelectItem value="all" className="text-white hover:bg-zinc-700 focus:bg-zinc-700 focus:text-white">All Statuses</SelectItem>
-                                <SelectItem value={ApplicationStatus.SUBMITTED} className="text-white hover:bg-zinc-700 focus:bg-zinc-700 focus:text-white">Submitted</SelectItem>
-                                <SelectItem value={ApplicationStatus.UNDER_REVIEW} className="text-white hover:bg-zinc-700 focus:bg-zinc-700 focus:text-white">Under Review</SelectItem>
-                                <SelectItem value={ApplicationStatus.APPROVED} className="text-white hover:bg-zinc-700 focus:bg-zinc-700 focus:text-white">Approved</SelectItem>
-                                <SelectItem value={ApplicationStatus.REJECTED} className="text-white hover:bg-zinc-700 focus:bg-zinc-700 focus:text-white">Rejected</SelectItem>
-                                <SelectItem value={ApplicationStatus.DRAFT} className="text-white hover:bg-zinc-700 focus:bg-zinc-700 focus:text-white">Draft</SelectItem>
-                                <SelectItem value={ApplicationStatus.LEASE_GENERATED} className="text-white hover:bg-zinc-700 focus:bg-zinc-700 focus:text-white">Lease Generated</SelectItem>
+                            <SelectContent className="bg-muted border-border text-foreground">
+                                <SelectItem value="all" className="text-foreground hover:bg-zinc-700 focus:bg-zinc-700 focus:text-foreground">All Statuses</SelectItem>
+                                <SelectItem value={ApplicationStatus.SUBMITTED} className="text-foreground hover:bg-zinc-700 focus:bg-zinc-700 focus:text-foreground">Submitted</SelectItem>
+                                <SelectItem value={ApplicationStatus.UNDER_REVIEW} className="text-foreground hover:bg-zinc-700 focus:bg-zinc-700 focus:text-foreground">Under Review</SelectItem>
+                                <SelectItem value={ApplicationStatus.APPROVED} className="text-foreground hover:bg-zinc-700 focus:bg-zinc-700 focus:text-foreground">Approved</SelectItem>
+                                <SelectItem value={ApplicationStatus.REJECTED} className="text-foreground hover:bg-zinc-700 focus:bg-zinc-700 focus:text-foreground">Rejected</SelectItem>
+                                <SelectItem value={ApplicationStatus.DRAFT} className="text-foreground hover:bg-zinc-700 focus:bg-zinc-700 focus:text-foreground">Draft</SelectItem>
+                                <SelectItem value={ApplicationStatus.LEASE_GENERATED} className="text-foreground hover:bg-zinc-700 focus:bg-zinc-700 focus:text-foreground">Lease Generated</SelectItem>
                             </SelectContent>
                         </Select>
                         <Select value={propertyFilter} onValueChange={setPropertyFilter}>
-                            <SelectTrigger className="w-[200px] bg-zinc-800 border-zinc-700 text-white">
+                            <SelectTrigger className="w-[200px] bg-muted border-border text-foreground">
                                 <SelectValue placeholder="All Properties" />
                             </SelectTrigger>
-                            <SelectContent className="bg-zinc-800 border-zinc-700 text-white">
-                                <SelectItem value="all" className="text-white hover:bg-zinc-700 focus:bg-zinc-700 focus:text-white">All Properties</SelectItem>
+                            <SelectContent className="bg-muted border-border text-foreground">
+                                <SelectItem value="all" className="text-foreground hover:bg-zinc-700 focus:bg-zinc-700 focus:text-foreground">All Properties</SelectItem>
                                 {properties.map(p => (
-                                    <SelectItem key={p.id} value={p.id} className="text-white hover:bg-zinc-700 focus:bg-zinc-700 focus:text-white">{p.name}</SelectItem>
+                                    <SelectItem key={p.id} value={p.id} className="text-foreground hover:bg-zinc-700 focus:bg-zinc-700 focus:text-foreground">{p.name}</SelectItem>
                                 ))}
                             </SelectContent>
                         </Select>
                         {(statusFilter !== 'all' || propertyFilter !== 'all' || searchQuery) && (
-                            <Button variant="ghost" onClick={clearFilters} className="text-zinc-400">
+                            <Button variant="ghost" onClick={clearFilters} className="text-muted-foreground">
                                 <X className="h-4 w-4 mr-2" />
                                 Clear
                             </Button>
@@ -437,23 +437,23 @@ export default function ApplicationsPage() {
             </Card>
 
             {/* Applications Table */}
-            <Card className="bg-zinc-900/50 border-zinc-800">
+            <Card className="bg-card/50 border-border">
                 <CardContent className="p-0">
                     <Table>
                         <TableHeader>
-                            <TableRow className="border-zinc-800 hover:bg-transparent">
-                                <TableHead className="text-zinc-400">Applicant</TableHead>
-                                <TableHead className="text-zinc-400">Property</TableHead>
-                                <TableHead className="text-zinc-400">Status</TableHead>
-                                <TableHead className="text-zinc-400">Submitted</TableHead>
-                                <TableHead className="text-zinc-400">Move-in Date</TableHead>
-                                <TableHead className="text-zinc-400 text-right">Actions</TableHead>
+                            <TableRow className="border-border hover:bg-transparent">
+                                <TableHead className="text-muted-foreground">Applicant</TableHead>
+                                <TableHead className="text-muted-foreground">Property</TableHead>
+                                <TableHead className="text-muted-foreground">Status</TableHead>
+                                <TableHead className="text-muted-foreground">Submitted</TableHead>
+                                <TableHead className="text-muted-foreground">Move-in Date</TableHead>
+                                <TableHead className="text-muted-foreground text-right">Actions</TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
                             {filteredApplications.length === 0 ? (
                                 <TableRow>
-                                    <TableCell colSpan={6} className="text-center text-zinc-500 py-12">
+                                    <TableCell colSpan={6} className="text-center text-muted-foreground py-12">
                                         {searchQuery || statusFilter !== 'all' || propertyFilter !== 'all'
                                             ? 'No applications match your filters'
                                             : 'No applications yet. Generate an application link to get started.'}
@@ -461,22 +461,22 @@ export default function ApplicationsPage() {
                                 </TableRow>
                             ) : (
                                 filteredApplications.map(app => (
-                                    <TableRow key={app.id} className="border-zinc-800 hover:bg-zinc-800/50">
+                                    <TableRow key={app.id} className="border-border hover:bg-muted/50">
                                         <TableCell>
                                             <div>
                                                 <Link 
                                                     href={`/dashboard/property-management/applications/${app.id}`}
-                                                    className="font-medium text-white hover:text-blue-400 hover:underline cursor-pointer transition-colors"
+                                                    className="font-medium text-foreground hover:text-blue-400 hover:underline cursor-pointer transition-colors"
                                                 >
                                                     {app.applicantFullName}
                                                 </Link>
                                                 {app.tenantId && (
-                                                    <Badge variant="outline" className="ml-2 text-xs border-emerald-700 text-emerald-400 bg-emerald-900/20">
+                                                    <Badge variant="outline" className="ml-2 text-xs border-emerald-700 text-emerald-600 dark:text-emerald-400 bg-emerald-100 dark:bg-emerald-900/20">
                                                         <UserCheck className="h-3 w-3 mr-1" />
                                                         Tenant
                                                     </Badge>
                                                 )}
-                                                <div className="flex items-center gap-3 text-sm text-zinc-400 mt-1">
+                                                <div className="flex items-center gap-3 text-sm text-muted-foreground mt-1">
                                                     <span className="flex items-center gap-1">
                                                         <Mail className="h-3 w-3" />
                                                         {app.applicantEmail}
@@ -490,17 +490,17 @@ export default function ApplicationsPage() {
                                         </TableCell>
                                         <TableCell>
                                             <div className="flex items-center gap-2">
-                                                <Building2 className="h-4 w-4 text-zinc-500" />
-                                                <span className="text-white">{app.propertyName || 'Unknown Property'}</span>
+                                                <Building2 className="h-4 w-4 text-muted-foreground" />
+                                                <span className="text-foreground">{app.propertyName || 'Unknown Property'}</span>
                                             </div>
                                         </TableCell>
                                         <TableCell>{getStatusBadge(app.status)}</TableCell>
-                                        <TableCell className="text-zinc-400">
+                                        <TableCell className="text-muted-foreground">
                                             {app.submittedAt 
                                                 ? format(new Date(app.submittedAt), 'MMM d, yyyy')
                                                 : '-'}
                                         </TableCell>
-                                        <TableCell className="text-zinc-400">
+                                        <TableCell className="text-muted-foreground">
                                             {app.desiredMoveInDate 
                                                 ? format(new Date(app.desiredMoveInDate), 'MMM d, yyyy')
                                                 : '-'}
@@ -512,7 +512,7 @@ export default function ApplicationsPage() {
                                                         <MoreHorizontal className="h-4 w-4" />
                                                     </Button>
                                                 </DropdownMenuTrigger>
-                                                <DropdownMenuContent align="end" className="bg-zinc-800 border-zinc-700">
+                                                <DropdownMenuContent align="end" className="bg-muted border-border">
                                                     <DropdownMenuItem 
                                                         className="cursor-pointer"
                                                         onClick={() => router.push(`/dashboard/property-management/applications/${app.id}`)}
@@ -535,7 +535,7 @@ export default function ApplicationsPage() {
                                                         <>
                                                             <DropdownMenuSeparator className="bg-zinc-700" />
                                                             <DropdownMenuItem 
-                                                                className="cursor-pointer text-green-400"
+                                                                className="cursor-pointer text-green-600 dark:text-green-400"
                                                                 onClick={() => {
                                                                     setSelectedApp(app)
                                                                     setIsReviewDialogOpen(true)
@@ -545,7 +545,7 @@ export default function ApplicationsPage() {
                                                                 Approve
                                                             </DropdownMenuItem>
                                                             <DropdownMenuItem 
-                                                                className="cursor-pointer text-red-400"
+                                                                className="cursor-pointer text-red-600 dark:text-red-400"
                                                                 onClick={() => {
                                                                     setSelectedApp(app)
                                                                     setIsRejectDialogOpen(true)
@@ -561,7 +561,7 @@ export default function ApplicationsPage() {
                                                         <>
                                                             <DropdownMenuSeparator className="bg-zinc-700" />
                                                             <DropdownMenuItem 
-                                                                className="cursor-pointer text-emerald-400"
+                                                                className="cursor-pointer text-emerald-600 dark:text-emerald-400"
                                                                 onClick={() => handleConvertToTenant(app)}
                                                             >
                                                                 <UserCheck className="h-4 w-4 mr-2" />
@@ -574,7 +574,7 @@ export default function ApplicationsPage() {
                                                         <>
                                                             <DropdownMenuSeparator className="bg-zinc-700" />
                                                             <DropdownMenuItem
-                                                                className="cursor-pointer text-emerald-400"
+                                                                className="cursor-pointer text-emerald-600 dark:text-emerald-400"
                                                                 onClick={() => router.push(`/dashboard/property-management/tenants/${app.tenantId}`)}
                                                             >
                                                                 <UserCheck className="h-4 w-4 mr-2" />
@@ -585,7 +585,7 @@ export default function ApplicationsPage() {
 
                                                     <DropdownMenuSeparator className="bg-zinc-700" />
                                                     <DropdownMenuItem
-                                                        className="cursor-pointer text-red-400 focus:text-red-400"
+                                                        className="cursor-pointer text-red-600 dark:text-red-400 focus:text-red-400"
                                                         onClick={() => {
                                                             setSelectedApp(app)
                                                             setIsDeleteDialogOpen(true)
@@ -607,21 +607,21 @@ export default function ApplicationsPage() {
 
             {/* Approve Dialog */}
             <Dialog open={isReviewDialogOpen} onOpenChange={setIsReviewDialogOpen}>
-                <DialogContent className="bg-zinc-900 border-zinc-800">
+                <DialogContent className="bg-card border-border">
                     <DialogHeader>
-                        <DialogTitle className="text-white">Approve Application</DialogTitle>
-                        <DialogDescription className="text-zinc-400">
+                        <DialogTitle className="text-foreground">Approve Application</DialogTitle>
+                        <DialogDescription className="text-muted-foreground">
                             Approve application from {selectedApp?.applicantFullName}
                         </DialogDescription>
                     </DialogHeader>
                     <div className="space-y-4">
                         <div>
-                            <Label className="text-zinc-400">Approval Notes (Optional)</Label>
+                            <Label className="text-muted-foreground">Approval Notes (Optional)</Label>
                             <Textarea
                                 value={approvalNotes}
                                 onChange={(e) => setApprovalNotes(e.target.value)}
                                 placeholder="Add any notes about this approval..."
-                                className="bg-zinc-800 border-zinc-700 text-white mt-2"
+                                className="bg-muted border-border text-foreground mt-2"
                             />
                         </div>
                     </div>
@@ -643,21 +643,21 @@ export default function ApplicationsPage() {
 
             {/* Reject Dialog */}
             <Dialog open={isRejectDialogOpen} onOpenChange={setIsRejectDialogOpen}>
-                <DialogContent className="bg-zinc-900 border-zinc-800">
+                <DialogContent className="bg-card border-border">
                     <DialogHeader>
-                        <DialogTitle className="text-white">Reject Application</DialogTitle>
-                        <DialogDescription className="text-zinc-400">
+                        <DialogTitle className="text-foreground">Reject Application</DialogTitle>
+                        <DialogDescription className="text-muted-foreground">
                             Reject application from {selectedApp?.applicantFullName}
                         </DialogDescription>
                     </DialogHeader>
                     <div className="space-y-4">
                         <div>
-                            <Label className="text-zinc-400">Rejection Reason (Required)</Label>
+                            <Label className="text-muted-foreground">Rejection Reason (Required)</Label>
                             <Textarea
                                 value={rejectionReason}
                                 onChange={(e) => setRejectionReason(e.target.value)}
                                 placeholder="Enter the reason for rejection..."
-                                className="bg-zinc-800 border-zinc-700 text-white mt-2"
+                                className="bg-muted border-border text-foreground mt-2"
                                 required
                             />
                         </div>
@@ -680,14 +680,14 @@ export default function ApplicationsPage() {
 
             {/* Delete Dialog */}
             <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
-                <DialogContent className="bg-zinc-900 border-zinc-800">
+                <DialogContent className="bg-card border-border">
                     <DialogHeader>
-                        <DialogTitle className="text-white flex items-center gap-2">
+                        <DialogTitle className="text-foreground flex items-center gap-2">
                             <AlertTriangle className="h-5 w-5 text-red-500" />
                             Delete Application
                         </DialogTitle>
-                        <DialogDescription className="text-zinc-400">
-                            Delete the application from <span className="text-white font-medium">{selectedApp?.applicantFullName}</span>? This removes it from your applications list. It does not delete any tenant record already created from it.
+                        <DialogDescription className="text-muted-foreground">
+                            Delete the application from <span className="text-foreground font-medium">{selectedApp?.applicantFullName}</span>? This removes it from your applications list. It does not delete any tenant record already created from it.
                         </DialogDescription>
                     </DialogHeader>
                     <DialogFooter>
@@ -716,10 +716,10 @@ export default function ApplicationsPage() {
                     setLinkExpiryDays('30')
                 }
             }}>
-                <DialogContent className="bg-zinc-900 border-zinc-800">
+                <DialogContent className="bg-card border-border">
                     <DialogHeader>
-                        <DialogTitle className="text-white">Generate Application Link</DialogTitle>
-                        <DialogDescription className="text-zinc-400">
+                        <DialogTitle className="text-foreground">Generate Application Link</DialogTitle>
+                        <DialogDescription className="text-muted-foreground">
                             Create a link that tenants can use to apply for a property
                         </DialogDescription>
                     </DialogHeader>
@@ -728,37 +728,37 @@ export default function ApplicationsPage() {
                         <>
                             <div className="space-y-4">
                                 <div>
-                                    <Label className="text-zinc-400">Property</Label>
+                                    <Label className="text-muted-foreground">Property</Label>
                                     <Select value={linkPropertyId} onValueChange={setLinkPropertyId}>
-                                        <SelectTrigger className="bg-zinc-800 border-zinc-700 text-white mt-2">
+                                        <SelectTrigger className="bg-muted border-border text-foreground mt-2">
                                             <SelectValue placeholder="Select a property" />
                                         </SelectTrigger>
-                                        <SelectContent className="bg-zinc-800 border-zinc-700 text-white">
+                                        <SelectContent className="bg-muted border-border text-foreground">
                                             {properties.map(p => (
-                                                <SelectItem key={p.id} value={p.id} className="text-white hover:bg-zinc-700 focus:bg-zinc-700 focus:text-white">{p.name}</SelectItem>
+                                                <SelectItem key={p.id} value={p.id} className="text-foreground hover:bg-zinc-700 focus:bg-zinc-700 focus:text-foreground">{p.name}</SelectItem>
                                             ))}
                                         </SelectContent>
                                     </Select>
                                 </div>
                                 <div className="grid grid-cols-2 gap-4">
                                     <div>
-                                        <Label className="text-zinc-400">Max Uses (Optional)</Label>
+                                        <Label className="text-muted-foreground">Max Uses (Optional)</Label>
                                         <Input
                                             type="number"
                                             value={linkMaxUses}
                                             onChange={(e) => setLinkMaxUses(e.target.value)}
                                             placeholder="Unlimited"
-                                            className="bg-zinc-800 border-zinc-700 text-white mt-2"
+                                            className="bg-muted border-border text-foreground mt-2"
                                         />
                                     </div>
                                     <div>
-                                        <Label className="text-zinc-400">Expires In (Days)</Label>
+                                        <Label className="text-muted-foreground">Expires In (Days)</Label>
                                         <Input
                                             type="number"
                                             value={linkExpiryDays}
                                             onChange={(e) => setLinkExpiryDays(e.target.value)}
                                             placeholder="30"
-                                            className="bg-zinc-800 border-zinc-700 text-white mt-2"
+                                            className="bg-muted border-border text-foreground mt-2"
                                         />
                                     </div>
                                 </div>
@@ -780,13 +780,13 @@ export default function ApplicationsPage() {
                     ) : (
                         <>
                             <div className="space-y-4">
-                                <div className="p-4 bg-zinc-800 rounded-lg">
-                                    <p className="text-sm text-zinc-400 mb-2">Application Link (Tenant Portal)</p>
+                                <div className="p-4 bg-muted rounded-lg">
+                                    <p className="text-sm text-muted-foreground mb-2">Application Link (Tenant Portal)</p>
                                     <div className="flex items-center gap-2">
                                         <Input
                                             readOnly
                                             value={`${process.env.NEXT_PUBLIC_TENANT_PORTAL_URL || window.location.origin}/tenant/apply/${generatedLink.token}`}
-                                            className="bg-zinc-900 border-zinc-700 text-white font-mono text-sm"
+                                            className="bg-card border-border text-foreground font-mono text-sm"
                                         />
                                         <Button onClick={copyLink} variant="outline" className="shrink-0">
                                             Copy
@@ -795,12 +795,12 @@ export default function ApplicationsPage() {
                                 </div>
                                 <div className="grid grid-cols-2 gap-4 text-sm">
                                     <div>
-                                        <p className="text-zinc-500">Expires</p>
-                                        <p className="text-white">{format(new Date(generatedLink.expiresAt), 'MMM d, yyyy')}</p>
+                                        <p className="text-muted-foreground">Expires</p>
+                                        <p className="text-foreground">{format(new Date(generatedLink.expiresAt), 'MMM d, yyyy')}</p>
                                     </div>
                                     <div>
-                                        <p className="text-zinc-500">Max Uses</p>
-                                        <p className="text-white">{generatedLink.maxUses || 'Unlimited'}</p>
+                                        <p className="text-muted-foreground">Max Uses</p>
+                                        <p className="text-foreground">{generatedLink.maxUses || 'Unlimited'}</p>
                                     </div>
                                 </div>
                             </div>

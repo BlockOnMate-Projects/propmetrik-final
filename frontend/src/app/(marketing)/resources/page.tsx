@@ -29,7 +29,7 @@ export default function ResourcesPage() {
     const totalScreenshots = guides.reduce((sum, g) => sum + g.screenshotCount, 0);
 
     return (
-        <div className="min-h-screen bg-zinc-950">
+        <div className="min-h-screen bg-background">
             {/* Hero */}
             <section className="relative pt-32 pb-20 overflow-hidden">
                 {/* Background glow */}
@@ -47,13 +47,13 @@ export default function ResourcesPage() {
                             <BookOpen className="w-4 h-4" />
                             Platform Documentation
                         </div>
-                        <h1 className="text-5xl md:text-6xl font-black text-white mb-6 tracking-tight">
+                        <h1 className="text-5xl md:text-6xl font-black text-foreground mb-6 tracking-tight">
                             Resources &{' '}
                             <span className="text-transparent bg-clip-text bg-gradient-to-r from-amber-400 to-yellow-500">
                                 Guides
                             </span>
                         </h1>
-                        <p className="text-xl text-zinc-400 leading-relaxed mb-10">
+                        <p className="text-xl text-muted-foreground leading-relaxed mb-10">
                             Comprehensive how-to guides for every PropMetrik service.
                             Step-by-step instructions with annotated screenshots to help
                             you get the most out of the platform.
@@ -61,19 +61,19 @@ export default function ResourcesPage() {
 
                         {/* Stats */}
                         <div className="flex items-center justify-center gap-8 text-sm">
-                            <div className="flex items-center gap-2 text-zinc-400">
+                            <div className="flex items-center gap-2 text-muted-foreground">
                                 <FileText className="w-4 h-4 text-amber-500" />
-                                <span className="font-semibold text-white">{guides.length}</span> Guides
+                                <span className="font-semibold text-foreground">{guides.length}</span> Guides
                             </div>
                             <div className="w-px h-4 bg-zinc-700" />
-                            <div className="flex items-center gap-2 text-zinc-400">
+                            <div className="flex items-center gap-2 text-muted-foreground">
                                 <ImageIcon className="w-4 h-4 text-amber-500" />
-                                <span className="font-semibold text-white">{totalScreenshots}</span> Screenshots
+                                <span className="font-semibold text-foreground">{totalScreenshots}</span> Screenshots
                             </div>
                             <div className="w-px h-4 bg-zinc-700" />
-                            <div className="flex items-center gap-2 text-zinc-400">
+                            <div className="flex items-center gap-2 text-muted-foreground">
                                 <Sparkles className="w-4 h-4 text-amber-500" />
-                                <span className="font-semibold text-white">Step-by-Step</span> Instructions
+                                <span className="font-semibold text-foreground">Step-by-Step</span> Instructions
                             </div>
                         </div>
                     </motion.div>
@@ -81,10 +81,10 @@ export default function ResourcesPage() {
             </section>
 
             {/* Quick Start */}
-            <section className="py-4 border-y border-zinc-800/50">
+            <section className="py-4 border-y border-border/50">
                 <div className="max-w-[1440px] mx-auto px-4 md:px-8 lg:px-12">
-                    <div className="flex flex-wrap items-center justify-center gap-6 text-sm text-zinc-500">
-                        <span className="font-medium text-zinc-400">Quick start:</span>
+                    <div className="flex flex-wrap items-center justify-center gap-6 text-sm text-muted-foreground">
+                        <span className="font-medium text-muted-foreground">Quick start:</span>
                         <Link
                             href="/resources/authentication"
                             className="hover:text-amber-500 transition-colors"
@@ -133,9 +133,9 @@ export default function ResourcesPage() {
                                         href={`/resources/${guide.slug}`}
                                         className="group block h-full"
                                     >
-                                        <div className="relative h-full bg-zinc-800 border border-zinc-600/30 rounded-xl p-6 transition-all duration-300 hover:border-amber-500/50 hover:bg-zinc-700/80 hover:shadow-lg hover:shadow-amber-500/10">
+                                        <div className="relative h-full bg-muted border border-zinc-600/30 rounded-xl p-6 transition-all duration-300 hover:border-amber-500/50 hover:bg-zinc-700/80 hover:shadow-lg hover:shadow-amber-500/10">
                                             {/* Chapter number */}
-                                            <div className="absolute top-4 right-4 text-xs font-mono text-zinc-600">
+                                            <div className="absolute top-4 right-4 text-xs font-mono text-muted-foreground">
                                                 CH.{String(guide.chapter).padStart(2, '0')}
                                             </div>
 
@@ -145,18 +145,18 @@ export default function ResourcesPage() {
                                             </div>
 
                                             {/* Title */}
-                                            <h3 className="text-lg font-bold text-white mb-2 group-hover:text-amber-400 transition-colors">
+                                            <h3 className="text-lg font-bold text-foreground mb-2 group-hover:text-amber-400 transition-colors">
                                                 {guide.title}
                                             </h3>
 
                                             {/* Description */}
-                                            <p className="text-sm text-zinc-400 leading-relaxed mb-5">
+                                            <p className="text-sm text-muted-foreground leading-relaxed mb-5">
                                                 {guide.description}
                                             </p>
 
                                             {/* Footer */}
                                             <div className="flex items-center justify-between mt-auto">
-                                                <div className="flex items-center gap-1.5 text-xs text-zinc-500">
+                                                <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
                                                     <ImageIcon className="w-3.5 h-3.5" />
                                                     {guide.screenshotCount} screenshots
                                                 </div>
@@ -178,7 +178,7 @@ export default function ResourcesPage() {
             <PremiumCTASection
                 title="Ready to Get Started?"
                 description="Join thousands of real estate professionals using PropMetrik to make smarter, data-driven decisions across Ghana."
-                primaryCTA={{ text: 'Start Free Trial', href: '/signup' }}
+                primaryCTA={{ text: 'Get Started', href: '/signup' }}
                 secondaryCTA={{ text: 'Request Demo', href: '/contact' }}
             />
         </div>

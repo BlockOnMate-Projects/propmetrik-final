@@ -485,7 +485,7 @@ export function ContributorProfileCard({ profile, onViewDetails }: ContributorPr
         <div className="flex items-center justify-between">
           <CardTitle className="text-lg">Contributor Profile</CardTitle>
           <Badge 
-            className={`bg-gradient-to-r ${tierColors[profile.tier]} text-white`}
+            className={`bg-gradient-to-r ${tierColors[profile.tier]} text-foreground`}
           >
             {tierIcons[profile.tier]}
             <span className="ml-1 capitalize">{profile.tier}</span>
@@ -541,8 +541,8 @@ export function CreditRewardAnimation({ credits, onComplete }: CreditRewardAnima
   }, [onComplete]);
 
   return (
-    <div className="fixed inset-0 flex items-center justify-center bg-black/50 z-50">
-      <div className="bg-white rounded-2xl p-8 shadow-xl animate-bounce-in text-center">
+    <div className="fixed inset-0 flex items-center justify-center bg-background/50 z-50">
+      <div className="bg-card rounded-2xl p-8 shadow-xl animate-bounce-in text-center">
         <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-green-100 flex items-center justify-center">
           <CheckCircle className="h-8 w-8 text-green-600" />
         </div>

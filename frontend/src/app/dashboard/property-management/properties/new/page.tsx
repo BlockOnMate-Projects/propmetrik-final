@@ -188,18 +188,18 @@ export default function NewPropertyPage() {
         <div className="space-y-6 max-w-5xl mx-auto">
             <div className="flex items-center gap-4">
                 <Link href="/dashboard/property-management/properties">
-                    <Button variant="ghost" size="icon" className="text-zinc-400 hover:text-white">
+                    <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-foreground">
                         <ArrowLeft className="h-5 w-5" />
                     </Button>
                 </Link>
                 <div>
-                    <h1 className="text-2xl font-bold tracking-tight text-white font-mono">NEW PROPERTY</h1>
-                    <p className="text-sm text-zinc-500 font-mono">Add a new asset to portfolio</p>
+                    <h1 className="text-2xl font-bold tracking-tight text-foreground font-mono">NEW PROPERTY</h1>
+                    <p className="text-sm text-muted-foreground font-mono">Add a new asset to portfolio</p>
                 </div>
             </div>
 
             <form onSubmit={handleSubmit}>
-                <Card className="bg-zinc-900 border-zinc-800">
+                <Card className="bg-card border-border">
                     <CardHeader>
                         <CardTitle className="text-sm font-mono uppercase text-amber-500 flex items-center gap-2">
                             <Building2 className="h-4 w-4" />
@@ -208,7 +208,7 @@ export default function NewPropertyPage() {
                     </CardHeader>
                     <CardContent className="space-y-6">
                         {error && (
-                            <div className="bg-red-900/20 border border-red-900 text-red-500 p-3 rounded font-mono text-sm">
+                            <div className="bg-red-100 dark:bg-red-900/20 border border-red-900 text-red-500 p-3 rounded font-mono text-sm">
                                 {error}
                             </div>
                         )}
@@ -216,20 +216,20 @@ export default function NewPropertyPage() {
                         {/* Basic Info */}
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <div className="space-y-2">
-                                <Label className="text-xs font-mono uppercase text-zinc-400">Property Title *</Label>
+                                <Label className="text-xs font-mono uppercase text-muted-foreground">Property Title *</Label>
                                 <Input
                                     name="title"
                                     value={formData.title}
                                     onChange={handleChange}
                                     placeholder="e.g. Sunset Apartments Block A"
-                                    className="bg-black border-zinc-700 focus:border-amber-500 font-mono"
+                                    className="bg-background border-border focus:border-amber-500 font-mono"
                                     required
                                 />
                             </div>
                             <div className="space-y-2">
-                                <Label className="text-xs font-mono uppercase text-zinc-400">Property Type</Label>
+                                <Label className="text-xs font-mono uppercase text-muted-foreground">Property Type</Label>
                                 <Select value={formData.propertyType} onValueChange={(val) => handleSelectChange('propertyType', val)}>
-                                    <SelectTrigger className="bg-black border-zinc-700 font-mono">
+                                    <SelectTrigger className="bg-background border-border font-mono">
                                         <SelectValue />
                                     </SelectTrigger>
                                     <SelectContent>
@@ -246,12 +246,12 @@ export default function NewPropertyPage() {
                             </div>
 
                             <div className="space-y-2">
-                                <Label className="text-xs font-mono uppercase text-zinc-400">Structure</Label>
+                                <Label className="text-xs font-mono uppercase text-muted-foreground">Structure</Label>
                                 <Select
                                     value={isMultiUnit ? 'multi' : 'single'}
                                     onValueChange={(val) => setIsMultiUnit(val === 'multi')}
                                 >
-                                    <SelectTrigger className="bg-black border-zinc-700 font-mono">
+                                    <SelectTrigger className="bg-background border-border font-mono">
                                         <SelectValue />
                                     </SelectTrigger>
                                     <SelectContent>
@@ -272,19 +272,19 @@ export default function NewPropertyPage() {
 
                                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                                     <div className="space-y-2">
-                                        <Label className="text-xs font-mono uppercase text-zinc-400">Floors</Label>
+                                        <Label className="text-xs font-mono uppercase text-muted-foreground">Floors</Label>
                                         <Input
                                             type="number"
                                             min="1"
                                             value={floorsCount}
                                             onChange={(e) => setFloorsCount(e.target.value)}
-                                            className="bg-black border-zinc-700 font-mono text-amber-500 font-bold"
+                                            className="bg-background border-border font-mono text-amber-500 font-bold"
                                         />
                                     </div>
                                     <div className="space-y-2">
-                                        <Label className="text-xs font-mono uppercase text-zinc-400">Units Per Floor</Label>
+                                        <Label className="text-xs font-mono uppercase text-muted-foreground">Units Per Floor</Label>
                                         <Select value={unitsPerFloorMode} onValueChange={(v) => setUnitsPerFloorMode(v as 'same' | 'custom')}>
-                                            <SelectTrigger className="bg-black border-zinc-700 font-mono">
+                                            <SelectTrigger className="bg-background border-border font-mono">
                                                 <SelectValue />
                                             </SelectTrigger>
                                             <SelectContent>
@@ -294,9 +294,9 @@ export default function NewPropertyPage() {
                                         </Select>
                                     </div>
                                     <div className="space-y-2">
-                                        <Label className="text-xs font-mono uppercase text-zinc-400">Numbering</Label>
+                                        <Label className="text-xs font-mono uppercase text-muted-foreground">Numbering</Label>
                                         <Select value={numberingScheme} onValueChange={(v) => setNumberingScheme(v as NumberingScheme)}>
-                                            <SelectTrigger className="bg-black border-zinc-700 font-mono">
+                                            <SelectTrigger className="bg-background border-border font-mono">
                                                 <SelectValue />
                                             </SelectTrigger>
                                             <SelectContent>
@@ -310,22 +310,22 @@ export default function NewPropertyPage() {
 
                                 {unitsPerFloorMode === 'same' ? (
                                     <div className="space-y-2 max-w-[12rem]">
-                                        <Label className="text-xs font-mono uppercase text-zinc-400"># Units / Floor</Label>
+                                        <Label className="text-xs font-mono uppercase text-muted-foreground"># Units / Floor</Label>
                                         <Input
                                             type="number"
                                             min="1"
                                             value={unitsPerFloor}
                                             onChange={(e) => setUnitsPerFloor(e.target.value)}
-                                            className="bg-black border-zinc-700 font-mono text-amber-500 font-bold"
+                                            className="bg-background border-border font-mono text-amber-500 font-bold"
                                         />
                                     </div>
                                 ) : (
                                     <div className="space-y-2">
-                                        <Label className="text-xs font-mono uppercase text-zinc-400">Units on each floor</Label>
+                                        <Label className="text-xs font-mono uppercase text-muted-foreground">Units on each floor</Label>
                                         <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
                                             {Array.from({ length: floorsForCustom }, (_, i) => (
                                                 <div key={i} className="space-y-1">
-                                                    <span className="text-[10px] font-mono text-zinc-500">Floor {i + 1}</span>
+                                                    <span className="text-[10px] font-mono text-muted-foreground">Floor {i + 1}</span>
                                                     <Input
                                                         type="number"
                                                         min="1"
@@ -336,7 +336,7 @@ export default function NewPropertyPage() {
                                                             next[i] = e.target.value
                                                             setPerFloorCounts(next)
                                                         }}
-                                                        className="bg-black border-zinc-700 font-mono text-xs h-9"
+                                                        className="bg-background border-border font-mono text-xs h-9"
                                                     />
                                                 </div>
                                             ))}
@@ -349,7 +349,7 @@ export default function NewPropertyPage() {
                                         <Wand2 className="h-3 w-3 mr-2" />
                                         {units.length > 0 ? 'Regenerate Units' : 'Generate Units'}
                                     </Button>
-                                    <p className="text-[11px] font-mono text-zinc-500">
+                                    <p className="text-[11px] font-mono text-muted-foreground">
                                         Uses the default specs below as a starting point — edit each unit in the roster.
                                     </p>
                                 </div>
@@ -360,9 +360,9 @@ export default function NewPropertyPage() {
                         <div className="space-y-4">
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                 <div className="space-y-2">
-                                    <Label className="text-xs font-mono uppercase text-zinc-400">Region</Label>
+                                    <Label className="text-xs font-mono uppercase text-muted-foreground">Region</Label>
                                     <Select value={formData.region} onValueChange={(val) => handleSelectChange('region', val)}>
-                                        <SelectTrigger className="bg-black border-zinc-700 font-mono">
+                                        <SelectTrigger className="bg-background border-border font-mono">
                                             <SelectValue />
                                         </SelectTrigger>
                                         <SelectContent>
@@ -386,47 +386,47 @@ export default function NewPropertyPage() {
                                     </Select>
                                 </div>
                                 <div className="space-y-2">
-                                    <Label className="text-xs font-mono uppercase text-zinc-400">City/Town *</Label>
+                                    <Label className="text-xs font-mono uppercase text-muted-foreground">City/Town *</Label>
                                     <Input
                                         name="addressCity"
                                         value={formData.addressCity}
                                         onChange={handleChange}
                                         placeholder="e.g. Accra"
-                                        className="bg-black border-zinc-700 font-mono"
+                                        className="bg-background border-border font-mono"
                                         required
                                     />
                                 </div>
                             </div>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                 <div className="space-y-2">
-                                    <Label className="text-xs font-mono uppercase text-zinc-400">District/Area</Label>
+                                    <Label className="text-xs font-mono uppercase text-muted-foreground">District/Area</Label>
                                     <Input
                                         name="addressDistrict"
                                         value={formData.addressDistrict}
                                         onChange={handleChange}
                                         placeholder="e.g. Cantonments"
-                                        className="bg-black border-zinc-700 font-mono"
+                                        className="bg-background border-border font-mono"
                                     />
                                 </div>
                                 <div className="space-y-2">
-                                    <Label className="text-xs font-mono uppercase text-zinc-400">Digital Address (Ghana Post GPS)</Label>
+                                    <Label className="text-xs font-mono uppercase text-muted-foreground">Digital Address (Ghana Post GPS)</Label>
                                     <Input
                                         name="digitalAddress"
                                         value={formData.digitalAddress}
                                         onChange={handleChange}
                                         placeholder="e.g. GA-123-4567"
-                                        className="bg-black border-zinc-700 font-mono text-amber-500 placeholder:text-zinc-600"
+                                        className="bg-background border-border font-mono text-amber-500 placeholder:text-muted-foreground"
                                     />
                                 </div>
                             </div>
                             <div className="space-y-2">
-                                <Label className="text-xs font-mono uppercase text-zinc-400">Street Address</Label>
+                                <Label className="text-xs font-mono uppercase text-muted-foreground">Street Address</Label>
                                 <Input
                                     name="addressStreet"
                                     value={formData.addressStreet}
                                     onChange={handleChange}
                                     placeholder="e.g. 15 Independence Avenue"
-                                    className="bg-black border-zinc-700 font-mono"
+                                    className="bg-background border-border font-mono"
                                 />
                             </div>
                         </div>
@@ -434,48 +434,48 @@ export default function NewPropertyPage() {
                         {/* Specs */}
                         <div className="space-y-2">
                             {isMultiUnit && (
-                                <p className="text-[11px] font-mono text-zinc-500 uppercase">Default Unit Specs (seed each unit — edit individually below)</p>
+                                <p className="text-[11px] font-mono text-muted-foreground uppercase">Default Unit Specs (seed each unit — edit individually below)</p>
                             )}
                             <div className={`grid grid-cols-2 gap-6 ${isMultiUnit ? 'md:grid-cols-3' : 'md:grid-cols-4'}`}>
                                 <div className="space-y-2">
-                                    <Label className="text-xs font-mono uppercase text-zinc-400">Bedrooms</Label>
+                                    <Label className="text-xs font-mono uppercase text-muted-foreground">Bedrooms</Label>
                                     <Input
                                         name="bedrooms"
                                         type="number"
                                         value={formData.bedrooms}
                                         onChange={handleChange}
-                                        className="bg-black border-zinc-700 font-mono"
+                                        className="bg-background border-border font-mono"
                                     />
                                 </div>
                                 <div className="space-y-2">
-                                    <Label className="text-xs font-mono uppercase text-zinc-400">Bathrooms</Label>
+                                    <Label className="text-xs font-mono uppercase text-muted-foreground">Bathrooms</Label>
                                     <Input
                                         name="bathrooms"
                                         type="number"
                                         value={formData.bathrooms}
                                         onChange={handleChange}
-                                        className="bg-black border-zinc-700 font-mono"
+                                        className="bg-background border-border font-mono"
                                     />
                                 </div>
                                 <div className="space-y-2">
-                                    <Label className="text-xs font-mono uppercase text-zinc-400">Area (sqm)</Label>
+                                    <Label className="text-xs font-mono uppercase text-muted-foreground">Area (sqm)</Label>
                                     <Input
                                         name="totalAreaSqm"
                                         type="number"
                                         value={formData.totalAreaSqm}
                                         onChange={handleChange}
-                                        className="bg-black border-zinc-700 font-mono"
+                                        className="bg-background border-border font-mono"
                                     />
                                 </div>
                                 {!isMultiUnit && (
                                     <div className="space-y-2">
-                                        <Label className="text-xs font-mono uppercase text-zinc-400">Floors</Label>
+                                        <Label className="text-xs font-mono uppercase text-muted-foreground">Floors</Label>
                                         <Input
                                             name="floors"
                                             type="number"
                                             value={formData.floors}
                                             onChange={handleChange}
-                                            className="bg-black border-zinc-700 font-mono"
+                                            className="bg-background border-border font-mono"
                                         />
                                     </div>
                                 )}
@@ -485,7 +485,7 @@ export default function NewPropertyPage() {
                         {/* Financial */}
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                             <div className="space-y-2">
-                                <Label className="text-xs font-mono uppercase text-zinc-400">
+                                <Label className="text-xs font-mono uppercase text-muted-foreground">
                                     {isMultiUnit ? 'Default Rent (Per Unit)' : 'Rental Price *'}
                                 </Label>
                                 <Input
@@ -494,14 +494,14 @@ export default function NewPropertyPage() {
                                     value={formData.price}
                                     onChange={handleChange}
                                     placeholder="0.00"
-                                    className="bg-black border-zinc-700 font-mono font-bold text-amber-500"
+                                    className="bg-background border-border font-mono font-bold text-amber-500"
                                     required={!isMultiUnit}
                                 />
                             </div>
                             <div className="space-y-2">
-                                <Label className="text-xs font-mono uppercase text-zinc-400">Currency</Label>
+                                <Label className="text-xs font-mono uppercase text-muted-foreground">Currency</Label>
                                 <Select value={formData.priceCurrency} onValueChange={(val) => handleSelectChange('priceCurrency', val)}>
-                                    <SelectTrigger className="bg-black border-zinc-700 font-mono">
+                                    <SelectTrigger className="bg-background border-border font-mono">
                                         <SelectValue />
                                     </SelectTrigger>
                                     <SelectContent>
@@ -511,9 +511,9 @@ export default function NewPropertyPage() {
                                 </Select>
                             </div>
                             <div className="space-y-2">
-                                <Label className="text-xs font-mono uppercase text-zinc-400">Transaction Type</Label>
+                                <Label className="text-xs font-mono uppercase text-muted-foreground">Transaction Type</Label>
                                 <Select value={formData.transactionType} onValueChange={(val) => handleSelectChange('transactionType', val)}>
-                                    <SelectTrigger className="bg-black border-zinc-700 font-mono">
+                                    <SelectTrigger className="bg-background border-border font-mono">
                                         <SelectValue />
                                     </SelectTrigger>
                                     <SelectContent>
@@ -527,16 +527,16 @@ export default function NewPropertyPage() {
 
                         {/* Unit roster */}
                         {isMultiUnit && units.length > 0 && (
-                            <div className="space-y-3 rounded-lg border border-zinc-800 bg-black/40 p-4">
+                            <div className="space-y-3 rounded-lg border border-border bg-background/40 p-4">
                                 <div className="flex items-center justify-between">
                                     <div className="flex items-center gap-2 text-amber-500 font-mono text-xs uppercase">
                                         <Building2 className="h-4 w-4" />
                                         Unit Roster
-                                        <span className="text-zinc-500 normal-case">
+                                        <span className="text-muted-foreground normal-case">
                                             ({units.length} units{floorsCount ? ` across ${floorsForCustom} floor${floorsForCustom > 1 ? 's' : ''}` : ''})
                                         </span>
                                     </div>
-                                    <Button type="button" onClick={addUnit} variant="ghost" size="sm" className="text-zinc-400 hover:text-amber-500 font-mono text-xs h-7">
+                                    <Button type="button" onClick={addUnit} variant="ghost" size="sm" className="text-muted-foreground hover:text-amber-500 font-mono text-xs h-7">
                                         <Plus className="h-3 w-3 mr-1" /> Add Unit
                                     </Button>
                                 </div>
@@ -544,7 +544,7 @@ export default function NewPropertyPage() {
                                 <div className="overflow-x-auto">
                                     <table className="w-full text-xs font-mono">
                                         <thead>
-                                            <tr className="text-zinc-500 uppercase text-[10px]">
+                                            <tr className="text-muted-foreground uppercase text-[10px]">
                                                 <th className="text-left font-normal py-1 px-2">Unit #</th>
                                                 <th className="text-left font-normal py-1 px-2 w-16">Floor</th>
                                                 <th className="text-left font-normal py-1 px-2 w-20">Beds</th>
@@ -556,27 +556,27 @@ export default function NewPropertyPage() {
                                         </thead>
                                         <tbody>
                                             {units.map((u, idx) => (
-                                                <tr key={idx} className="border-t border-zinc-800/60">
+                                                <tr key={idx} className="border-t border-border/60">
                                                     <td className="py-1 px-2">
-                                                        <Input value={u.label} onChange={(e) => updateUnit(idx, 'label', e.target.value)} className="bg-black border-zinc-800 font-mono h-8 text-amber-500" />
+                                                        <Input value={u.label} onChange={(e) => updateUnit(idx, 'label', e.target.value)} className="bg-background border-border font-mono h-8 text-amber-500" />
                                                     </td>
                                                     <td className="py-1 px-2">
-                                                        <Input type="number" value={u.floorNumber} onChange={(e) => updateUnit(idx, 'floorNumber', e.target.value)} className="bg-black border-zinc-800 font-mono h-8" />
+                                                        <Input type="number" value={u.floorNumber} onChange={(e) => updateUnit(idx, 'floorNumber', e.target.value)} className="bg-background border-border font-mono h-8" />
                                                     </td>
                                                     <td className="py-1 px-2">
-                                                        <Input type="number" value={u.bedrooms} onChange={(e) => updateUnit(idx, 'bedrooms', e.target.value)} className="bg-black border-zinc-800 font-mono h-8" />
+                                                        <Input type="number" value={u.bedrooms} onChange={(e) => updateUnit(idx, 'bedrooms', e.target.value)} className="bg-background border-border font-mono h-8" />
                                                     </td>
                                                     <td className="py-1 px-2">
-                                                        <Input type="number" value={u.bathrooms} onChange={(e) => updateUnit(idx, 'bathrooms', e.target.value)} className="bg-black border-zinc-800 font-mono h-8" />
+                                                        <Input type="number" value={u.bathrooms} onChange={(e) => updateUnit(idx, 'bathrooms', e.target.value)} className="bg-background border-border font-mono h-8" />
                                                     </td>
                                                     <td className="py-1 px-2">
-                                                        <Input type="number" value={u.totalAreaSqm} onChange={(e) => updateUnit(idx, 'totalAreaSqm', e.target.value)} className="bg-black border-zinc-800 font-mono h-8" />
+                                                        <Input type="number" value={u.totalAreaSqm} onChange={(e) => updateUnit(idx, 'totalAreaSqm', e.target.value)} className="bg-background border-border font-mono h-8" />
                                                     </td>
                                                     <td className="py-1 px-2">
-                                                        <Input type="number" value={u.price} onChange={(e) => updateUnit(idx, 'price', e.target.value)} className="bg-black border-zinc-800 font-mono h-8" />
+                                                        <Input type="number" value={u.price} onChange={(e) => updateUnit(idx, 'price', e.target.value)} className="bg-background border-border font-mono h-8" />
                                                     </td>
                                                     <td className="py-1 px-2 text-center">
-                                                        <button type="button" onClick={() => removeUnit(idx)} className="text-zinc-600 hover:text-red-500">
+                                                        <button type="button" onClick={() => removeUnit(idx)} className="text-muted-foreground hover:text-red-500">
                                                             <Trash2 className="h-3.5 w-3.5" />
                                                         </button>
                                                     </td>
@@ -589,22 +589,22 @@ export default function NewPropertyPage() {
                         )}
 
                         <div className="space-y-2">
-                            <Label className="text-xs font-mono uppercase text-zinc-400">Description</Label>
+                            <Label className="text-xs font-mono uppercase text-muted-foreground">Description</Label>
                             <Textarea
                                 name="description"
                                 value={formData.description}
                                 onChange={handleChange}
-                                className="bg-black border-zinc-700 font-mono min-h-[100px]"
+                                className="bg-background border-border font-mono min-h-[100px]"
                             />
                         </div>
 
                         <div className="flex justify-end gap-4 pt-4">
                             <Link href="/dashboard/property-management/properties">
-                                <Button variant="outline" type="button" className="border-zinc-700 text-zinc-400 hover:text-white bg-transparent font-mono">
+                                <Button variant="outline" type="button" className="border-border text-muted-foreground hover:text-foreground bg-transparent font-mono">
                                     CANCEL
                                 </Button>
                             </Link>
-                            <Button type="submit" disabled={isLoading} className="bg-amber-600 hover:bg-amber-500 text-white font-bold font-mono">
+                            <Button type="submit" disabled={isLoading} className="bg-amber-600 hover:bg-amber-500 text-foreground font-bold font-mono">
                                 {isLoading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Save className="h-4 w-4 mr-2" />}
                                 SAVE PROPERTY
                             </Button>

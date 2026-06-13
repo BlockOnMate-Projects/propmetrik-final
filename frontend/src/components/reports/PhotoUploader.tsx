@@ -115,7 +115,7 @@ const CATEGORY_COLORS: Record<PhotoCategory, string> = {
   amenities: 'bg-purple-100 text-purple-800',
   neighbourhood: 'bg-orange-100 text-orange-800',
   damage: 'bg-red-100 text-red-800',
-  other: 'bg-gray-100 text-gray-800',
+  other: 'bg-muted text-gray-800',
 };
 
 // =====================================================
@@ -188,7 +188,7 @@ function SortablePhoto({ photo, onRemove, onCaptionChange, onCategoryChange }: S
     <div
       ref={setNodeRef}
       style={style}
-      className={`relative group bg-white rounded-lg border shadow-sm overflow-hidden ${
+      className={`relative group bg-card rounded-lg border shadow-sm overflow-hidden ${
         isDragging ? 'ring-2 ring-primary' : ''
       }`}
     >
@@ -196,9 +196,9 @@ function SortablePhoto({ photo, onRemove, onCaptionChange, onCategoryChange }: S
       <div
         {...attributes}
         {...listeners}
-        className="absolute top-2 left-2 z-10 p-1 bg-black/50 rounded cursor-grab active:cursor-grabbing"
+        className="absolute top-2 left-2 z-10 p-1 bg-background/50 rounded cursor-grab active:cursor-grabbing"
       >
-        <GripVertical className="h-4 w-4 text-white" />
+        <GripVertical className="h-4 w-4 text-foreground" />
       </div>
 
       {/* Remove Button */}
@@ -206,7 +206,7 @@ function SortablePhoto({ photo, onRemove, onCaptionChange, onCategoryChange }: S
         onClick={() => onRemove(photo.id)}
         className="absolute top-2 right-2 z-10 p-1 bg-red-500 rounded opacity-0 group-hover:opacity-100 transition-opacity"
       >
-        <X className="h-4 w-4 text-white" />
+        <X className="h-4 w-4 text-foreground" />
       </button>
 
       {/* Status Badge */}
@@ -232,14 +232,14 @@ function SortablePhoto({ photo, onRemove, onCaptionChange, onCategoryChange }: S
       </div>
 
       {/* Image Preview */}
-      <div className="aspect-video relative bg-gray-100">
+      <div className="aspect-video relative bg-muted">
         <img
           src={photo.preview}
           alt={photo.caption || 'Photo'}
           className="w-full h-full object-cover"
         />
         {photo.status === 'uploading' && (
-          <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
+          <div className="absolute inset-0 bg-background/50 flex items-center justify-center">
             <Progress value={photo.progress} className="w-2/3" />
           </div>
         )}
@@ -564,19 +564,19 @@ export function PhotoUploader({
           className={`border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-colors ${
             isDragActive
               ? 'border-primary bg-primary/5'
-              : 'border-gray-300 hover:border-primary/50 hover:bg-gray-50'
+              : 'border-gray-300 hover:border-primary/50 hover:bg-muted'
           }`}
         >
           <input {...getInputProps()} />
-          <Upload className="h-12 w-12 mx-auto text-gray-400 mb-4" />
+          <Upload className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
           {isDragActive ? (
             <p className="text-primary">Drop photos here...</p>
           ) : (
             <div className="space-y-2">
-              <p className="text-gray-600">
+              <p className="text-muted-foreground">
                 Drag and drop photos here, or click to select
               </p>
-              <p className="text-sm text-gray-400">
+              <p className="text-sm text-muted-foreground">
                 JPEG, PNG, WebP up to 10MB each • Max {maxPhotos} photos
               </p>
             </div>

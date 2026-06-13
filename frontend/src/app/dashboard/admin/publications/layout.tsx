@@ -34,7 +34,7 @@ export default function PublicationsLayout({
   return (
     <div className="-m-6">
       {/* ── Publications Tab Bar ── */}
-      <div className="border-b border-red-900/30 bg-zinc-950/80">
+      <div className="border-b border-red-900/30 bg-background/80">
         <div className="flex items-center px-6 gap-0 overflow-x-auto scrollbar-hide">
           {pubTabs.map((tab) => {
             const isActive = tab.exact
@@ -49,11 +49,11 @@ export default function PublicationsLayout({
                 className={cn(
                   'flex items-center gap-1.5 px-4 py-2 text-[11px] font-mono tracking-wide transition-all whitespace-nowrap border-b-2 -mb-px',
                   isActive
-                    ? 'border-red-500 text-white bg-red-900/10'
-                    : 'border-transparent text-zinc-500 hover:text-zinc-300 hover:bg-zinc-800/30'
+                    ? 'border-red-500 text-foreground bg-red-100 dark:bg-red-900/10'
+                    : 'border-transparent text-muted-foreground hover:text-muted-foreground hover:bg-amber-50 dark:hover:bg-amber-500/10'
                 )}
               >
-                <Icon className={cn('w-3.5 h-3.5', isActive ? 'text-red-400' : 'text-zinc-600')} />
+                <Icon className={cn('w-3.5 h-3.5', isActive ? 'text-red-600 dark:text-red-400' : 'text-muted-foreground')} />
                 {tab.name}
               </Link>
             )

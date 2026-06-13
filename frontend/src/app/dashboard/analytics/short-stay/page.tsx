@@ -115,8 +115,8 @@ function Panel({
   actions?: React.ReactNode
 }) {
   return (
-    <div className={cn('border border-zinc-800 bg-zinc-900/50', className)}>
-      <div className="flex items-center justify-between px-3 py-1.5 bg-zinc-800/50 border-b border-zinc-800">
+    <div className={cn('border border-border bg-card/50', className)}>
+      <div className="flex items-center justify-between px-3 py-1.5 bg-muted/50 border-b border-border">
         <span className="font-mono text-[10px] text-amber-500 tracking-wider">{title}</span>
         {actions}
       </div>
@@ -130,7 +130,7 @@ function MetricCard({
   value,
   subtext,
   icon: Icon,
-  color = 'text-white',
+  color = 'text-foreground',
 }: {
   label: string
   value: string
@@ -142,24 +142,24 @@ function MetricCard({
     <div className="text-center py-1">
       <div className="flex items-center justify-center gap-1 mb-1">
         <Icon className={cn('w-3.5 h-3.5', color)} />
-        <span className="font-mono text-[10px] text-zinc-500">{label}</span>
+        <span className="font-mono text-[10px] text-muted-foreground">{label}</span>
       </div>
       <div className={cn('font-mono text-2xl', color)}>{value}</div>
-      {subtext && <div className="font-mono text-[10px] text-zinc-500 mt-0.5">{subtext}</div>}
+      {subtext && <div className="font-mono text-[10px] text-muted-foreground mt-0.5">{subtext}</div>}
     </div>
   )
 }
 
 function GradeBadge({ grade }: { grade: string }) {
   const colors: Record<string, string> = {
-    high: 'text-green-400 bg-green-500/10 border-green-500/20',
-    medium: 'text-amber-400 bg-amber-500/10 border-amber-500/20',
-    low: 'text-red-400 bg-red-500/10 border-red-500/20',
+    high: 'text-green-600 dark:text-green-400 bg-green-500/10 border-green-500/20',
+    medium: 'text-amber-600 dark:text-amber-400 bg-amber-500/10 border-amber-500/20',
+    low: 'text-red-600 dark:text-red-400 bg-red-500/10 border-red-500/20',
   }
   return (
     <span className={cn(
       'px-1.5 py-0.5 font-mono text-[9px] border rounded',
-      colors[grade.toLowerCase()] || 'text-zinc-400 border-zinc-700'
+      colors[grade.toLowerCase()] || 'text-muted-foreground border-border'
     )}>
       {grade.toUpperCase()}
     </span>
@@ -190,7 +190,7 @@ function OccupancyBar({ rate }: { rate: number }) {
   const clamped = Math.min(Math.max(rate, 0), 100)
   return (
     <div className="flex items-center gap-2">
-      <div className="flex-1 h-1.5 bg-zinc-800 rounded overflow-hidden">
+      <div className="flex-1 h-1.5 bg-muted rounded overflow-hidden">
         <div
           className={cn(
             'h-full rounded',
@@ -199,7 +199,7 @@ function OccupancyBar({ rate }: { rate: number }) {
           style={{ width: `${clamped}%` }}
         />
       </div>
-      <span className="font-mono text-[10px] text-zinc-300 w-10 text-right">{clamped.toFixed(0)}%</span>
+      <span className="font-mono text-[10px] text-muted-foreground w-10 text-right">{clamped.toFixed(0)}%</span>
     </div>
   )
 }
@@ -245,21 +245,21 @@ export default function ShortStayAnalyticsPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-black text-white p-4">
+      <div className="min-h-screen bg-background text-foreground p-4">
         <div className="animate-pulse space-y-4">
-          <div className="h-8 bg-zinc-800 rounded w-72" />
+          <div className="h-8 bg-muted rounded w-72" />
           <div className="grid grid-cols-5 gap-3">
             {[...Array(5)].map((_, i) => (
-              <div key={i} className="h-24 bg-zinc-800/50 rounded border border-zinc-800" />
+              <div key={i} className="h-24 bg-muted/50 rounded border border-border" />
             ))}
           </div>
           <div className="grid grid-cols-12 gap-3">
-            <div className="col-span-8 h-64 bg-zinc-800/50 rounded border border-zinc-800" />
-            <div className="col-span-4 h-64 bg-zinc-800/50 rounded border border-zinc-800" />
+            <div className="col-span-8 h-64 bg-muted/50 rounded border border-border" />
+            <div className="col-span-4 h-64 bg-muted/50 rounded border border-border" />
           </div>
           <div className="grid grid-cols-12 gap-3">
-            <div className="col-span-6 h-72 bg-zinc-800/50 rounded border border-zinc-800" />
-            <div className="col-span-6 h-72 bg-zinc-800/50 rounded border border-zinc-800" />
+            <div className="col-span-6 h-72 bg-muted/50 rounded border border-border" />
+            <div className="col-span-6 h-72 bg-muted/50 rounded border border-border" />
           </div>
         </div>
       </div>
@@ -286,15 +286,15 @@ export default function ShortStayAnalyticsPage() {
   const adrTrendPoints = trends.map(t => num(t.adr_usd))
 
   return (
-    <div className="min-h-screen bg-black text-white p-4 pb-10">
+    <div className="min-h-screen bg-background text-foreground p-4 pb-10">
       {/* Header */}
       <div className="flex items-center justify-between mb-4">
         <div>
-          <h1 className="font-mono text-xl text-white flex items-center gap-2">
+          <h1 className="font-mono text-xl text-foreground flex items-center gap-2">
             <Building2 className="w-5 h-5 text-amber-500" />
             SHORT-STAY & TOURISM ANALYTICS
           </h1>
-          <p className="font-mono text-[10px] text-zinc-500">
+          <p className="font-mono text-[10px] text-muted-foreground">
             RevPAR · ADR · Occupancy · Investment Arbitrage — AirDNA-style Insights — Section 9.2
           </p>
         </div>
@@ -303,21 +303,21 @@ export default function ShortStayAnalyticsPage() {
           <div className="relative">
             <button
               onClick={() => setShowCityDropdown(!showCityDropdown)}
-              className="flex items-center gap-1.5 px-3 py-1.5 font-mono text-[10px] text-zinc-300 border border-zinc-700 hover:border-amber-500/50 transition-colors"
+              className="flex items-center gap-1.5 px-3 py-1.5 font-mono text-[10px] text-muted-foreground border border-border hover:border-amber-500/50 transition-colors"
             >
               <MapPin className="w-3 h-3 text-amber-500" />
               {selectedCity.toUpperCase()}
               <ChevronDown className="w-3 h-3" />
             </button>
             {showCityDropdown && (
-              <div className="absolute right-0 top-full mt-1 z-50 bg-zinc-900 border border-zinc-700 shadow-lg">
+              <div className="absolute right-0 top-full mt-1 z-50 bg-card border border-border shadow-lg">
                 {cities.map(city => (
                   <button
                     key={city}
                     onClick={() => { setSelectedCity(city); setShowCityDropdown(false) }}
                     className={cn(
                       'block w-full text-left px-3 py-1.5 font-mono text-[10px] transition-colors',
-                      city === selectedCity ? 'text-amber-500 bg-zinc-800' : 'text-zinc-400 hover:text-white hover:bg-zinc-800/50'
+                      city === selectedCity ? 'text-amber-500 bg-muted' : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
                     )}
                   >
                     {city.toUpperCase()}
@@ -328,7 +328,7 @@ export default function ShortStayAnalyticsPage() {
           </div>
           <button
             onClick={() => loadData()}
-            className="flex items-center gap-1.5 px-3 py-1.5 font-mono text-[10px] text-zinc-400 border border-zinc-700 hover:border-amber-500/50 hover:text-amber-500 transition-colors"
+            className="flex items-center gap-1.5 px-3 py-1.5 font-mono text-[10px] text-muted-foreground border border-border hover:border-amber-500/50 hover:text-amber-500 transition-colors"
           >
             <RefreshCw className="w-3 h-3" />
             REFRESH
@@ -344,7 +344,7 @@ export default function ShortStayAnalyticsPage() {
             value={avgRevpar > 0 ? `$${avgRevpar.toFixed(0)}` : '—'}
             subtext="USD / AVAILABLE NIGHT"
             icon={DollarSign}
-            color="text-green-400"
+            color="text-green-600 dark:text-green-400"
           />
         </Panel>
 
@@ -354,7 +354,7 @@ export default function ShortStayAnalyticsPage() {
             value={avgAdr > 0 ? `$${avgAdr.toFixed(0)}` : '—'}
             subtext={avgMedianPrice > 0 ? `MEDIAN: $${avgMedianPrice.toFixed(0)}` : undefined}
             icon={BarChart3}
-            color="text-blue-400"
+            color="text-blue-600 dark:text-blue-400"
           />
         </Panel>
 
@@ -364,7 +364,7 @@ export default function ShortStayAnalyticsPage() {
             value={avgOccupancy > 0 ? `${avgOccupancy.toFixed(1)}%` : '—'}
             subtext="ACROSS ALL NEIGHBORHOODS"
             icon={Percent}
-            color="text-amber-400"
+            color="text-amber-600 dark:text-amber-400"
           />
         </Panel>
 
@@ -374,7 +374,7 @@ export default function ShortStayAnalyticsPage() {
             value={totalListings > 0 ? totalListings.toLocaleString() : '—'}
             subtext={`IN ${selectedCity.toUpperCase()}`}
             icon={Home}
-            color="text-purple-400"
+            color="text-purple-600 dark:text-purple-400"
           />
         </Panel>
 
@@ -388,7 +388,7 @@ export default function ShortStayAnalyticsPage() {
             }
             subtext="USD / NIGHT"
             icon={Activity}
-            color="text-cyan-400"
+            color="text-cyan-600 dark:text-cyan-400"
           />
         </Panel>
       </div>
@@ -401,13 +401,13 @@ export default function ShortStayAnalyticsPage() {
             <div className="overflow-x-auto max-h-72 overflow-y-auto">
               <table className="w-full">
                 <thead>
-                  <tr className="border-b border-zinc-800">
-                    <th className="font-mono text-[10px] text-zinc-500 text-left py-1.5 px-2">NEIGHBORHOOD</th>
-                    <th className="font-mono text-[10px] text-zinc-500 text-right py-1.5 px-2">OCCUPANCY</th>
-                    <th className="font-mono text-[10px] text-zinc-500 text-right py-1.5 px-2">ADR</th>
-                    <th className="font-mono text-[10px] text-zinc-500 text-right py-1.5 px-2">RevPAR</th>
-                    <th className="font-mono text-[10px] text-zinc-500 text-right py-1.5 px-2">LISTINGS</th>
-                    <th className="font-mono text-[10px] text-zinc-500 text-center py-1.5 px-2">GRADE</th>
+                  <tr className="border-b border-border">
+                    <th className="font-mono text-[10px] text-muted-foreground text-left py-1.5 px-2">NEIGHBORHOOD</th>
+                    <th className="font-mono text-[10px] text-muted-foreground text-right py-1.5 px-2">OCCUPANCY</th>
+                    <th className="font-mono text-[10px] text-muted-foreground text-right py-1.5 px-2">ADR</th>
+                    <th className="font-mono text-[10px] text-muted-foreground text-right py-1.5 px-2">RevPAR</th>
+                    <th className="font-mono text-[10px] text-muted-foreground text-right py-1.5 px-2">LISTINGS</th>
+                    <th className="font-mono text-[10px] text-muted-foreground text-center py-1.5 px-2">GRADE</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -415,12 +415,12 @@ export default function ShortStayAnalyticsPage() {
                     <tr
                       key={i}
                       className={cn(
-                        'border-b border-zinc-800/50 hover:bg-zinc-800/20 cursor-pointer',
-                        b.neighborhood === selectedNeighborhood && 'bg-zinc-800/30'
+                        'border-b border-border/50 hover:bg-amber-50 dark:hover:bg-amber-500/10 cursor-pointer',
+                        b.neighborhood === selectedNeighborhood && 'bg-muted/30'
                       )}
                       onClick={() => setSelectedNeighborhood(b.neighborhood)}
                     >
-                      <td className="font-mono text-[10px] text-zinc-300 py-1.5 px-2">
+                      <td className="font-mono text-[10px] text-muted-foreground py-1.5 px-2">
                         <div className="flex items-center gap-1.5">
                           {b.neighborhood === selectedNeighborhood && (
                             <span className="w-1.5 h-1.5 bg-amber-500 rounded-full" />
@@ -431,20 +431,20 @@ export default function ShortStayAnalyticsPage() {
                       <td className="py-1.5 px-2">
                         <OccupancyBar rate={num(b.avg_occupancy_rate)} />
                       </td>
-                      <td className="font-mono text-[10px] text-white text-right py-1.5 px-2">
+                      <td className="font-mono text-[10px] text-foreground text-right py-1.5 px-2">
                         ${num(b.avg_adr_usd).toFixed(0)}
                       </td>
-                      <td className="font-mono text-[10px] text-green-400 text-right py-1.5 px-2">
+                      <td className="font-mono text-[10px] text-green-600 dark:text-green-400 text-right py-1.5 px-2">
                         ${num(b.avg_revpar_usd).toFixed(0)}
                       </td>
-                      <td className="font-mono text-[10px] text-zinc-300 text-right py-1.5 px-2">
+                      <td className="font-mono text-[10px] text-muted-foreground text-right py-1.5 px-2">
                         {b.total_active_listings ?? '—'}
                       </td>
                       <td className="text-center py-1.5 px-2">
                         {b.investment_grade ? (
                           <GradeBadge grade={b.investment_grade} />
                         ) : (
-                          <span className="font-mono text-[9px] text-zinc-600">—</span>
+                          <span className="font-mono text-[9px] text-muted-foreground">—</span>
                         )}
                       </td>
                     </tr>
@@ -453,7 +453,7 @@ export default function ShortStayAnalyticsPage() {
               </table>
             </div>
           ) : (
-            <div className="font-mono text-[10px] text-zinc-600 text-center py-8">
+            <div className="font-mono text-[10px] text-muted-foreground text-center py-8">
               No benchmark data for {selectedCity}
             </div>
           )}
@@ -473,7 +473,7 @@ export default function ShortStayAnalyticsPage() {
                     'px-1.5 py-0.5 font-mono text-[8px] border rounded transition-colors',
                     n === selectedNeighborhood
                       ? 'text-amber-500 border-amber-500/30 bg-amber-500/10'
-                      : 'text-zinc-600 border-zinc-700 hover:text-zinc-400'
+                      : 'text-muted-foreground border-border hover:text-muted-foreground'
                   )}
                 >
                   {n.slice(0, 3).toUpperCase()}
@@ -485,41 +485,41 @@ export default function ShortStayAnalyticsPage() {
           {trends.length > 0 ? (
             <div className="space-y-3">
               <div>
-                <div className="font-mono text-[9px] text-zinc-500 mb-1">OCCUPANCY RATE</div>
+                <div className="font-mono text-[9px] text-muted-foreground mb-1">OCCUPANCY RATE</div>
                 <MiniSparkline data={occupancyTrendPoints} height={60} color="#22c55e" />
               </div>
               <div>
-                <div className="font-mono text-[9px] text-zinc-500 mb-1">ADR (USD)</div>
+                <div className="font-mono text-[9px] text-muted-foreground mb-1">ADR (USD)</div>
                 <MiniSparkline data={adrTrendPoints} height={60} color="#3b82f6" />
               </div>
-              <div className="flex justify-between font-mono text-[9px] text-zinc-600">
+              <div className="flex justify-between font-mono text-[9px] text-muted-foreground">
                 <span>{trends[0]?.month || trends[0]?.metric_month}</span>
                 <span>{trends[trends.length - 1]?.month || trends[trends.length - 1]?.metric_month}</span>
               </div>
               {/* Latest values */}
-              <div className="grid grid-cols-3 gap-2 border-t border-zinc-800 pt-2">
+              <div className="grid grid-cols-3 gap-2 border-t border-border pt-2">
                 <div>
-                  <div className="font-mono text-[9px] text-zinc-500">LATEST OCC</div>
-                  <div className="font-mono text-sm text-green-400">
+                  <div className="font-mono text-[9px] text-muted-foreground">LATEST OCC</div>
+                  <div className="font-mono text-sm text-green-600 dark:text-green-400">
                     {num(trends[trends.length - 1]?.occupancy_rate).toFixed(1)}%
                   </div>
                 </div>
                 <div>
-                  <div className="font-mono text-[9px] text-zinc-500">LATEST ADR</div>
-                  <div className="font-mono text-sm text-blue-400">
+                  <div className="font-mono text-[9px] text-muted-foreground">LATEST ADR</div>
+                  <div className="font-mono text-sm text-blue-600 dark:text-blue-400">
                     ${num(trends[trends.length - 1]?.adr_usd).toFixed(0)}
                   </div>
                 </div>
                 <div>
-                  <div className="font-mono text-[9px] text-zinc-500">LATEST RevPAR</div>
-                  <div className="font-mono text-sm text-amber-400">
+                  <div className="font-mono text-[9px] text-muted-foreground">LATEST RevPAR</div>
+                  <div className="font-mono text-sm text-amber-600 dark:text-amber-400">
                     ${num(trends[trends.length - 1]?.revpar_usd).toFixed(0)}
                   </div>
                 </div>
               </div>
             </div>
           ) : (
-            <div className="font-mono text-[10px] text-zinc-600 text-center py-8">
+            <div className="font-mono text-[10px] text-muted-foreground text-center py-8">
               No trend data for {selectedNeighborhood}
             </div>
           )}
@@ -533,31 +533,31 @@ export default function ShortStayAnalyticsPage() {
           {opportunities.length > 0 ? (
             <div className="space-y-2">
               {opportunities.slice(0, 10).map((opp, i) => (
-                <div key={i} className="flex items-center gap-3 p-2 border border-zinc-800 hover:border-amber-500/30 transition-colors">
+                <div key={i} className="flex items-center gap-3 p-2 border border-border hover:border-amber-500/30 transition-colors">
                   <div className="flex-shrink-0 w-8 h-8 flex items-center justify-center">
                     <span className={cn(
                       'font-mono text-lg font-bold',
-                      num(opp.opportunity_score) >= 70 ? 'text-green-400' :
-                      num(opp.opportunity_score) >= 40 ? 'text-amber-400' :
-                      'text-red-400'
+                      num(opp.opportunity_score) >= 70 ? 'text-green-600 dark:text-green-400' :
+                      num(opp.opportunity_score) >= 40 ? 'text-amber-600 dark:text-amber-400' :
+                      'text-red-600 dark:text-red-400'
                     )}>
                       {num(opp.opportunity_score).toFixed(0)}
                     </span>
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between">
-                      <span className="font-mono text-[10px] text-white">{opp.neighborhood}</span>
+                      <span className="font-mono text-[10px] text-foreground">{opp.neighborhood}</span>
                       {opp.investment_grade && <GradeBadge grade={opp.investment_grade} />}
                     </div>
                     <div className="flex items-center gap-3 mt-0.5">
-                      <span className="font-mono text-[9px] text-green-400">
+                      <span className="font-mono text-[9px] text-green-600 dark:text-green-400">
                         RevPAR: ${num(opp.avg_revpar_usd).toFixed(0)}
                       </span>
-                      <span className="font-mono text-[9px] text-zinc-500">
+                      <span className="font-mono text-[9px] text-muted-foreground">
                         {opp.active_listings ?? 0} LISTINGS
                       </span>
                       {opp.avg_occupancy_rate != null && (
-                        <span className="font-mono text-[9px] text-blue-400">
+                        <span className="font-mono text-[9px] text-blue-600 dark:text-blue-400">
                           OCC: {num(opp.avg_occupancy_rate).toFixed(0)}%
                         </span>
                       )}
@@ -565,7 +565,7 @@ export default function ShortStayAnalyticsPage() {
                   </div>
                   {/* Opportunity Score Bar */}
                   <div className="w-20">
-                    <div className="w-full h-1.5 bg-zinc-800 rounded overflow-hidden">
+                    <div className="w-full h-1.5 bg-muted rounded overflow-hidden">
                       <div
                         className={cn(
                           'h-full rounded',
@@ -581,7 +581,7 @@ export default function ShortStayAnalyticsPage() {
               ))}
             </div>
           ) : (
-            <div className="font-mono text-[10px] text-zinc-600 text-center py-8">
+            <div className="font-mono text-[10px] text-muted-foreground text-center py-8">
               No investment opportunities identified for {selectedCity}
             </div>
           )}
@@ -593,49 +593,49 @@ export default function ShortStayAnalyticsPage() {
             <div className="overflow-x-auto max-h-72 overflow-y-auto">
               <table className="w-full">
                 <thead>
-                  <tr className="border-b border-zinc-800">
-                    <th className="font-mono text-[10px] text-zinc-500 text-left py-1.5 px-2">AREA</th>
-                    <th className="font-mono text-[10px] text-zinc-500 text-left py-1.5 px-2">PLATFORM</th>
-                    <th className="font-mono text-[10px] text-zinc-500 text-left py-1.5 px-2">TYPE</th>
-                    <th className="font-mono text-[10px] text-zinc-500 text-right py-1.5 px-2">OCC%</th>
-                    <th className="font-mono text-[10px] text-zinc-500 text-right py-1.5 px-2">ADR</th>
-                    <th className="font-mono text-[10px] text-zinc-500 text-right py-1.5 px-2">RevPAR</th>
-                    <th className="font-mono text-[10px] text-zinc-500 text-right py-1.5 px-2">#</th>
+                  <tr className="border-b border-border">
+                    <th className="font-mono text-[10px] text-muted-foreground text-left py-1.5 px-2">AREA</th>
+                    <th className="font-mono text-[10px] text-muted-foreground text-left py-1.5 px-2">PLATFORM</th>
+                    <th className="font-mono text-[10px] text-muted-foreground text-left py-1.5 px-2">TYPE</th>
+                    <th className="font-mono text-[10px] text-muted-foreground text-right py-1.5 px-2">OCC%</th>
+                    <th className="font-mono text-[10px] text-muted-foreground text-right py-1.5 px-2">ADR</th>
+                    <th className="font-mono text-[10px] text-muted-foreground text-right py-1.5 px-2">RevPAR</th>
+                    <th className="font-mono text-[10px] text-muted-foreground text-right py-1.5 px-2">#</th>
                   </tr>
                 </thead>
                 <tbody>
                   {metrics.slice(0, 20).map((m, i) => (
-                    <tr key={i} className="border-b border-zinc-800/50 hover:bg-zinc-800/20">
-                      <td className="font-mono text-[10px] text-zinc-300 py-1.5 px-2">{m.neighborhood}</td>
-                      <td className="font-mono text-[10px] text-zinc-400 py-1.5 px-2">
+                    <tr key={i} className="border-b border-border/50 hover:bg-amber-50 dark:hover:bg-amber-500/10">
+                      <td className="font-mono text-[10px] text-muted-foreground py-1.5 px-2">{m.neighborhood}</td>
+                      <td className="font-mono text-[10px] text-muted-foreground py-1.5 px-2">
                         <span className={cn(
                           'px-1 py-0.5 border rounded text-[8px]',
-                          m.platform === 'airbnb' ? 'text-pink-400 border-pink-500/20' :
-                          m.platform === 'booking' ? 'text-blue-400 border-blue-500/20' :
-                          'text-zinc-400 border-zinc-700'
+                          m.platform === 'airbnb' ? 'text-pink-600 dark:text-pink-400 border-pink-500/20' :
+                          m.platform === 'booking' ? 'text-blue-600 dark:text-blue-400 border-blue-500/20' :
+                          'text-muted-foreground border-border'
                         )}>
                           {(m.platform || 'ALL').toUpperCase()}
                         </span>
                       </td>
-                      <td className="font-mono text-[10px] text-zinc-400 py-1.5 px-2">
+                      <td className="font-mono text-[10px] text-muted-foreground py-1.5 px-2">
                         {(m.property_type || '—').slice(0, 10).toUpperCase()}
                       </td>
                       <td className="font-mono text-[10px] text-right py-1.5 px-2">
                         <span className={cn(
-                          num(m.occupancy_rate) >= 70 ? 'text-green-400' :
-                          num(m.occupancy_rate) >= 40 ? 'text-amber-400' :
-                          'text-red-400'
+                          num(m.occupancy_rate) >= 70 ? 'text-green-600 dark:text-green-400' :
+                          num(m.occupancy_rate) >= 40 ? 'text-amber-600 dark:text-amber-400' :
+                          'text-red-600 dark:text-red-400'
                         )}>
                           {num(m.occupancy_rate).toFixed(1)}%
                         </span>
                       </td>
-                      <td className="font-mono text-[10px] text-white text-right py-1.5 px-2">
+                      <td className="font-mono text-[10px] text-foreground text-right py-1.5 px-2">
                         ${num(m.adr_usd).toFixed(0)}
                       </td>
-                      <td className="font-mono text-[10px] text-green-400 text-right py-1.5 px-2">
+                      <td className="font-mono text-[10px] text-green-600 dark:text-green-400 text-right py-1.5 px-2">
                         ${num(m.revpar_usd).toFixed(0)}
                       </td>
-                      <td className="font-mono text-[10px] text-zinc-400 text-right py-1.5 px-2">
+                      <td className="font-mono text-[10px] text-muted-foreground text-right py-1.5 px-2">
                         {m.total_listings ?? 0}
                       </td>
                     </tr>
@@ -644,7 +644,7 @@ export default function ShortStayAnalyticsPage() {
               </table>
             </div>
           ) : (
-            <div className="font-mono text-[10px] text-zinc-600 text-center py-8">
+            <div className="font-mono text-[10px] text-muted-foreground text-center py-8">
               No metrics data for {selectedCity}
             </div>
           )}

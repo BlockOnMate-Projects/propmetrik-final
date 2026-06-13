@@ -141,30 +141,30 @@ export default function PortfolioBrochurePage() {
 
     if (loading) {
         return (
-            <div className="flex items-center justify-center h-screen bg-black text-white">
+            <div className="flex items-center justify-center h-screen bg-background text-foreground">
                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-amber-500"></div>
             </div>
         );
     }
 
     return (
-        <div className="min-h-screen bg-zinc-950 text-zinc-300 font-sans print:bg-white print:text-white">
+        <div className="min-h-screen bg-background text-muted-foreground font-sans print:bg-card print:text-foreground">
             {/* Action Bar - Hidden on Print */}
-            <div className="sticky top-0 z-50 bg-black/90 backdrop-blur-md border-b border-zinc-800 print:hidden">
-                <div className="px-4 py-3 border-b border-zinc-900">
+            <div className="sticky top-0 z-50 bg-background/90 backdrop-blur-md border-b border-border print:hidden">
+                <div className="px-4 py-3 border-b border-border">
                     <EnterpriseNav />
                 </div>
                 <div className="max-w-6xl mx-auto p-4">
                     <div className="flex items-center justify-between">
                         <div>
-                            <h1 className="text-lg font-bold text-white font-mono">MY PORTFOLIO REPORT</h1>
-                            <p className="text-xs text-zinc-500 font-mono">Personal property portfolio summary & performance</p>
+                            <h1 className="text-lg font-bold text-foreground font-mono">MY PORTFOLIO REPORT</h1>
+                            <p className="text-xs text-muted-foreground font-mono">Personal property portfolio summary & performance</p>
                         </div>
                         <div className="flex items-center gap-2">
                             <Button
                                 variant="outline"
                                 onClick={() => router.back()}
-                                className="border-zinc-800 text-zinc-400 hover:text-white bg-black font-mono text-xs"
+                                className="border-border text-muted-foreground hover:text-foreground bg-background font-mono text-xs"
                             >
                                 <ChevronLeft className="mr-2 h-4 w-4" />
                                 Back
@@ -172,7 +172,7 @@ export default function PortfolioBrochurePage() {
                             <Button
                                 onClick={handlePrint}
                                 disabled={exportingPdf}
-                                className="bg-amber-600 hover:bg-amber-500 text-white font-bold font-mono text-xs uppercase disabled:opacity-60"
+                                className="bg-amber-600 hover:bg-amber-500 text-foreground font-bold font-mono text-xs uppercase disabled:opacity-60"
                             >
                                 <Printer className="mr-2 h-4 w-4" />
                                 {exportingPdf ? 'Exporting PDF...' : 'Print / Export PDF'}
@@ -188,7 +188,7 @@ export default function PortfolioBrochurePage() {
                 {/* ============================================= */}
                 {/* PAGE 1: COVER PAGE */}
                 {/* ============================================= */}
-                <div className="bg-white text-zinc-900 shadow-2xl print:shadow-none min-h-[1100px] relative overflow-hidden">
+                <div className="bg-card text-zinc-900 shadow-2xl print:shadow-none min-h-[1100px] relative overflow-hidden">
                     <style dangerouslySetInnerHTML={{
                         __html: `
                         @media print {
@@ -210,16 +210,16 @@ export default function PortfolioBrochurePage() {
                         <div className="flex justify-between items-start">
                             <div className="flex items-center gap-3">
                                 <div className="w-12 h-12 bg-amber-500 rounded-lg flex items-center justify-center">
-                                    <Building2 className="h-7 w-7 text-white" />
+                                    <Building2 className="h-7 w-7 text-foreground" />
                                 </div>
                                 <div>
-                                    <h2 className="text-xl font-black text-white tracking-tight">PROPMETRIK</h2>
-                                    <p className="text-[10px] font-mono text-zinc-400 uppercase tracking-widest">Real Estate Intelligence</p>
+                                    <h2 className="text-xl font-black text-foreground tracking-tight">PROPMETRIK</h2>
+                                    <p className="text-[10px] font-mono text-muted-foreground uppercase tracking-widest">Real Estate Intelligence</p>
                                 </div>
                             </div>
                             <div className="text-right">
-                                <p className="text-[10px] font-mono text-zinc-500 uppercase">Document Date</p>
-                                <p className="text-sm font-bold text-white">{currentDate}</p>
+                                <p className="text-[10px] font-mono text-muted-foreground uppercase">Document Date</p>
+                                <p className="text-sm font-bold text-foreground">{currentDate}</p>
                             </div>
                         </div>
 
@@ -227,10 +227,10 @@ export default function PortfolioBrochurePage() {
                         <div className="flex-1 flex flex-col justify-center -mt-16">
                             <div className="border-l-4 border-amber-500 pl-8 mb-8">
                                 <p className="text-amber-500 font-mono text-sm uppercase tracking-widest mb-4">Personal Report</p>
-                                <h1 className="text-6xl font-black text-white leading-none mb-4">
+                                <h1 className="text-6xl font-black text-foreground leading-none mb-4">
                                     MY PORTFOLIO<br />SUMMARY
                                 </h1>
-                                <p className="text-xl text-zinc-400 font-light mt-6">
+                                <p className="text-xl text-muted-foreground font-light mt-6">
                                     Property Holdings Overview<br />
                                     <span className="text-amber-500 font-semibold">{currentQuarter}</span>
                                 </p>
@@ -238,17 +238,17 @@ export default function PortfolioBrochurePage() {
 
                             {/* Key Stats Preview */}
                             <div className="grid grid-cols-3 gap-6 mt-12">
-                                <div className="bg-white/5 backdrop-blur border border-white/10 rounded-xl p-6">
-                                    <p className="text-[10px] font-mono text-zinc-500 uppercase mb-2">Portfolio Value</p>
-                                    <p className="text-3xl font-black text-white">{formatCurrencyShort(totalValue)}</p>
+                                <div className="bg-card/5 backdrop-blur border border-white/10 rounded-xl p-6">
+                                    <p className="text-[10px] font-mono text-muted-foreground uppercase mb-2">Portfolio Value</p>
+                                    <p className="text-3xl font-black text-foreground">{formatCurrencyShort(totalValue)}</p>
                                 </div>
-                                <div className="bg-white/5 backdrop-blur border border-white/10 rounded-xl p-6">
-                                    <p className="text-[10px] font-mono text-zinc-500 uppercase mb-2">Total Assets</p>
-                                    <p className="text-3xl font-black text-white">{metrics?.totalProperties || 0}</p>
+                                <div className="bg-card/5 backdrop-blur border border-white/10 rounded-xl p-6">
+                                    <p className="text-[10px] font-mono text-muted-foreground uppercase mb-2">Total Assets</p>
+                                    <p className="text-3xl font-black text-foreground">{metrics?.totalProperties || 0}</p>
                                 </div>
-                                <div className="bg-white/5 backdrop-blur border border-white/10 rounded-xl p-6">
-                                    <p className="text-[10px] font-mono text-zinc-500 uppercase mb-2">Occupancy</p>
-                                    <p className="text-3xl font-black text-white">{metrics?.occupancyRate || 0}%</p>
+                                <div className="bg-card/5 backdrop-blur border border-white/10 rounded-xl p-6">
+                                    <p className="text-[10px] font-mono text-muted-foreground uppercase mb-2">Occupancy</p>
+                                    <p className="text-3xl font-black text-foreground">{metrics?.occupancyRate || 0}%</p>
                                 </div>
                             </div>
                         </div>
@@ -256,14 +256,14 @@ export default function PortfolioBrochurePage() {
                         {/* Footer */}
                         <div className="flex justify-between items-end">
                             <div>
-                                <p className="text-[9px] font-mono text-zinc-600 uppercase tracking-wider mb-1">
+                                <p className="text-[9px] font-mono text-muted-foreground uppercase tracking-wider mb-1">
                                     Generated via PROPMETRIK
                                 </p>
-                                <p className="text-[9px] font-mono text-zinc-600">
+                                <p className="text-[9px] font-mono text-muted-foreground">
                                     Your personal property portfolio report
                                 </p>
                             </div>
-                            <div className="p-3 bg-white rounded-lg">
+                            <div className="p-3 bg-card rounded-lg">
                                 <QRCodeSVG value="https://propmetrik.com/portfolio/verify" size={64} />
                             </div>
                         </div>
@@ -273,16 +273,16 @@ export default function PortfolioBrochurePage() {
                 {/* ============================================= */}
                 {/* PAGE 2: EXECUTIVE SUMMARY */}
                 {/* ============================================= */}
-                <div className="bg-white text-zinc-900 shadow-2xl print:shadow-none min-h-[1100px] p-16 print-page">
+                <div className="bg-card text-zinc-900 shadow-2xl print:shadow-none min-h-[1100px] p-16 print-page">
                     {/* Page Header */}
-                    <div className="flex justify-between items-center border-b-2 border-zinc-900 pb-4 mb-10">
+                    <div className="flex justify-between items-center border-b-2 border-border pb-4 mb-10">
                         <div className="flex items-center gap-2">
                             <div className="w-8 h-8 bg-amber-500 rounded flex items-center justify-center">
-                                <Target className="h-4 w-4 text-white" />
+                                <Target className="h-4 w-4 text-foreground" />
                             </div>
                             <h2 className="text-lg font-black uppercase tracking-tight">Portfolio Overview</h2>
                         </div>
-                        <p className="text-xs font-mono text-zinc-400">Page 2</p>
+                        <p className="text-xs font-mono text-muted-foreground">Page 2</p>
                     </div>
 
                     {/* Portfolio Summary */}
@@ -291,7 +291,7 @@ export default function PortfolioBrochurePage() {
                             <Briefcase className="h-4 w-4" />
                             Portfolio Summary
                         </h3>
-                        <div className="bg-zinc-50 border-l-4 border-amber-500 p-6 rounded-r-lg">
+                        <div className="bg-muted border-l-4 border-amber-500 p-6 rounded-r-lg">
                             <p className="text-sm text-zinc-700 leading-relaxed">
                                 Your property portfolio consists of {metrics?.totalProperties || 0} assets 
                                 across Ghana with a combined value of {formatCurrency(totalValue)}. 
@@ -320,7 +320,7 @@ export default function PortfolioBrochurePage() {
                                     </div>
                                     <div>
                                         <p className="text-xs font-bold text-zinc-900 uppercase">{item.title}</p>
-                                        <p className="text-xs text-zinc-500 mt-1">{item.desc}</p>
+                                        <p className="text-xs text-muted-foreground mt-1">{item.desc}</p>
                                     </div>
                                 </div>
                             ))}
@@ -334,25 +334,25 @@ export default function PortfolioBrochurePage() {
                             Portfolio Metrics
                         </h3>
                         <div className="grid grid-cols-4 gap-4">
-                            <div className="bg-zinc-900 text-white p-5 rounded-xl text-center">
+                            <div className="bg-card text-foreground p-5 rounded-xl text-center">
                                 <DollarSign className="h-6 w-6 mx-auto mb-2 text-amber-500" />
                                 <p className="text-2xl font-black">{formatCurrencyShort(totalValue)}</p>
-                                <p className="text-[9px] font-mono uppercase text-zinc-400 mt-1">Total Value</p>
+                                <p className="text-[9px] font-mono uppercase text-muted-foreground mt-1">Total Value</p>
                             </div>
                             <div className="bg-zinc-100 p-5 rounded-xl text-center">
-                                <Building2 className="h-6 w-6 mx-auto mb-2 text-zinc-600" />
+                                <Building2 className="h-6 w-6 mx-auto mb-2 text-muted-foreground" />
                                 <p className="text-2xl font-black text-zinc-900">{metrics?.totalProperties || 0}</p>
-                                <p className="text-[9px] font-mono uppercase text-zinc-500 mt-1">Properties</p>
+                                <p className="text-[9px] font-mono uppercase text-muted-foreground mt-1">Properties</p>
                             </div>
                             <div className="bg-zinc-100 p-5 rounded-xl text-center">
                                 <Percent className="h-6 w-6 mx-auto mb-2 text-emerald-600" />
                                 <p className="text-2xl font-black text-zinc-900">{metrics?.occupancyRate || 0}%</p>
-                                <p className="text-[9px] font-mono uppercase text-zinc-500 mt-1">Occupancy</p>
+                                <p className="text-[9px] font-mono uppercase text-muted-foreground mt-1">Occupancy</p>
                             </div>
                             <div className="bg-zinc-100 p-5 rounded-xl text-center">
                                 <TrendingUp className="h-6 w-6 mx-auto mb-2 text-amber-600" />
                                 <p className="text-2xl font-black text-zinc-900">{formatCurrencyShort(avgPropertyValue)}</p>
-                                <p className="text-[9px] font-mono uppercase text-zinc-500 mt-1">Avg Value</p>
+                                <p className="text-[9px] font-mono uppercase text-muted-foreground mt-1">Avg Value</p>
                             </div>
                         </div>
                     </div>
@@ -371,12 +371,12 @@ export default function PortfolioBrochurePage() {
                                     <div key={idx} className="border border-zinc-200 rounded-lg p-4">
                                         <div className="flex items-center gap-2 mb-3">
                                             <div className={`w-3 h-3 rounded-full ${colors[idx % 3]}`} />
-                                            <p className="text-[10px] font-bold uppercase text-zinc-500">
+                                            <p className="text-[10px] font-bold uppercase text-muted-foreground">
                                                 {type.type.replace(/_/g, ' ')}
                                             </p>
                                         </div>
                                         <p className="text-2xl font-black text-zinc-900">{type.count}</p>
-                                        <p className="text-xs text-zinc-500">{percentage}% of portfolio</p>
+                                        <p className="text-xs text-muted-foreground">{percentage}% of portfolio</p>
                                         <p className="text-xs font-mono text-amber-600 mt-2">{formatCurrency(type.value)}</p>
                                     </div>
                                 );
@@ -388,16 +388,16 @@ export default function PortfolioBrochurePage() {
                 {/* ============================================= */}
                 {/* PAGE 3: GEOGRAPHIC & MARKET ANALYSIS */}
                 {/* ============================================= */}
-                <div className="bg-white text-zinc-900 shadow-2xl print:shadow-none min-h-[1100px] p-16 print-page">
+                <div className="bg-card text-zinc-900 shadow-2xl print:shadow-none min-h-[1100px] p-16 print-page">
                     {/* Page Header */}
-                    <div className="flex justify-between items-center border-b-2 border-zinc-900 pb-4 mb-10">
+                    <div className="flex justify-between items-center border-b-2 border-border pb-4 mb-10">
                         <div className="flex items-center gap-2">
                             <div className="w-8 h-8 bg-amber-500 rounded flex items-center justify-center">
-                                <MapPin className="h-4 w-4 text-white" />
+                                <MapPin className="h-4 w-4 text-foreground" />
                             </div>
                             <h2 className="text-lg font-black uppercase tracking-tight">Geographic Distribution</h2>
                         </div>
-                        <p className="text-xs font-mono text-zinc-400">Page 3</p>
+                        <p className="text-xs font-mono text-muted-foreground">Page 3</p>
                     </div>
 
                     {/* Regional Overview */}
@@ -413,24 +413,24 @@ export default function PortfolioBrochurePage() {
                                                 <p className="text-lg font-bold text-zinc-900 capitalize">
                                                     {region.region.replace(/_/g, ' ')}
                                                 </p>
-                                                <p className="text-xs text-zinc-500">Primary Market</p>
+                                                <p className="text-xs text-muted-foreground">Primary Market</p>
                                             </div>
                                             <div className="text-right">
                                                 <p className="text-2xl font-black text-amber-600">{region.count}</p>
-                                                <p className="text-[10px] font-mono text-zinc-400 uppercase">Assets</p>
+                                                <p className="text-[10px] font-mono text-muted-foreground uppercase">Assets</p>
                                             </div>
                                         </div>
                                         <div className="grid grid-cols-3 gap-4 pt-4 border-t border-zinc-100">
                                             <div>
-                                                <p className="text-[10px] font-mono text-zinc-500 uppercase">Total Value</p>
+                                                <p className="text-[10px] font-mono text-muted-foreground uppercase">Total Value</p>
                                                 <p className="text-sm font-bold text-zinc-900">{formatCurrency(region.value)}</p>
                                             </div>
                                             <div>
-                                                <p className="text-[10px] font-mono text-zinc-500 uppercase">Portfolio %</p>
+                                                <p className="text-[10px] font-mono text-muted-foreground uppercase">Portfolio %</p>
                                                 <p className="text-sm font-bold text-zinc-900">{percentage}%</p>
                                             </div>
                                             <div>
-                                                <p className="text-[10px] font-mono text-zinc-500 uppercase">Avg Value</p>
+                                                <p className="text-[10px] font-mono text-muted-foreground uppercase">Avg Value</p>
                                                 <p className="text-sm font-bold text-zinc-900">{formatCurrency(region.value / region.count)}</p>
                                             </div>
                                         </div>
@@ -449,7 +449,7 @@ export default function PortfolioBrochurePage() {
                     {/* Market Dynamics */}
                     <div className="mb-10">
                         <h3 className="text-sm font-bold uppercase text-amber-600 mb-4">Market Dynamics</h3>
-                        <div className="bg-zinc-50 rounded-xl p-6">
+                        <div className="bg-muted rounded-xl p-6">
                             <div className="grid grid-cols-2 gap-8">
                                 <div>
                                     <h4 className="text-xs font-bold text-zinc-900 uppercase mb-3">Growth Drivers</h4>
@@ -460,7 +460,7 @@ export default function PortfolioBrochurePage() {
                                             'Government infrastructure investments',
                                             'Growing demand for quality residential & commercial space'
                                         ].map((item, idx) => (
-                                            <li key={idx} className="flex gap-2 text-xs text-zinc-600">
+                                            <li key={idx} className="flex gap-2 text-xs text-muted-foreground">
                                                 <CheckCircle2 className="h-3 w-3 text-emerald-500 flex-shrink-0 mt-0.5" />
                                                 {item}
                                             </li>
@@ -476,7 +476,7 @@ export default function PortfolioBrochurePage() {
                                             'Strong tenant quality and lease terms',
                                             'Active asset management approach'
                                         ].map((item, idx) => (
-                                            <li key={idx} className="flex gap-2 text-xs text-zinc-600">
+                                            <li key={idx} className="flex gap-2 text-xs text-muted-foreground">
                                                 <CheckCircle2 className="h-3 w-3 text-amber-500 flex-shrink-0 mt-0.5" />
                                                 {item}
                                             </li>
@@ -492,19 +492,19 @@ export default function PortfolioBrochurePage() {
                         <h3 className="text-sm font-bold uppercase text-amber-600 mb-4">Operational Performance</h3>
                         <div className="grid grid-cols-4 gap-4">
                             <div className="border border-zinc-200 rounded-lg p-4 text-center">
-                                <p className="text-[10px] font-mono text-zinc-500 uppercase mb-2">Monthly Income</p>
+                                <p className="text-[10px] font-mono text-muted-foreground uppercase mb-2">Monthly Income</p>
                                 <p className="text-xl font-black text-emerald-600">{formatCurrency(metrics?.monthlyIncome || 0)}</p>
                             </div>
                             <div className="border border-zinc-200 rounded-lg p-4 text-center">
-                                <p className="text-[10px] font-mono text-zinc-500 uppercase mb-2">Collection Rate</p>
+                                <p className="text-[10px] font-mono text-muted-foreground uppercase mb-2">Collection Rate</p>
                                 <p className="text-xl font-black text-zinc-900">{metrics?.collectionRate || 0}%</p>
                             </div>
                             <div className="border border-zinc-200 rounded-lg p-4 text-center">
-                                <p className="text-[10px] font-mono text-zinc-500 uppercase mb-2">Active Tenancies</p>
+                                <p className="text-[10px] font-mono text-muted-foreground uppercase mb-2">Active Tenancies</p>
                                 <p className="text-xl font-black text-zinc-900">{metrics?.activeTenancies || 0}</p>
                             </div>
                             <div className="border border-zinc-200 rounded-lg p-4 text-center">
-                                <p className="text-[10px] font-mono text-zinc-500 uppercase mb-2">Pending Work Orders</p>
+                                <p className="text-[10px] font-mono text-muted-foreground uppercase mb-2">Pending Work Orders</p>
                                 <p className="text-xl font-black text-amber-600">{metrics?.pendingWorkOrders || 0}</p>
                             </div>
                         </div>
@@ -514,23 +514,23 @@ export default function PortfolioBrochurePage() {
                 {/* ============================================= */}
                 {/* PAGE 4: ASSET SCHEDULE */}
                 {/* ============================================= */}
-                <div className="bg-white text-zinc-900 shadow-2xl print:shadow-none min-h-[1100px] p-16 print-page">
+                <div className="bg-card text-zinc-900 shadow-2xl print:shadow-none min-h-[1100px] p-16 print-page">
                     {/* Page Header */}
-                    <div className="flex justify-between items-center border-b-2 border-zinc-900 pb-4 mb-10">
+                    <div className="flex justify-between items-center border-b-2 border-border pb-4 mb-10">
                         <div className="flex items-center gap-2">
                             <div className="w-8 h-8 bg-amber-500 rounded flex items-center justify-center">
-                                <Home className="h-4 w-4 text-white" />
+                                <Home className="h-4 w-4 text-foreground" />
                             </div>
                             <h2 className="text-lg font-black uppercase tracking-tight">Asset Schedule</h2>
                         </div>
-                        <p className="text-xs font-mono text-zinc-400">Page 4</p>
+                        <p className="text-xs font-mono text-muted-foreground">Page 4</p>
                     </div>
 
                     {/* Asset Table */}
                     <div className="mb-8">
                         <table className="w-full border-collapse text-left">
                             <thead>
-                                <tr className="bg-zinc-900 text-white">
+                                <tr className="bg-card text-foreground">
                                     <th className="px-3 py-3 text-[9px] font-mono uppercase tracking-wider">Ref #</th>
                                     <th className="px-3 py-3 text-[9px] font-mono uppercase tracking-wider">Property</th>
                                     <th className="px-3 py-3 text-[9px] font-mono uppercase tracking-wider">Type</th>
@@ -541,17 +541,17 @@ export default function PortfolioBrochurePage() {
                             </thead>
                             <tbody className="text-xs">
                                 {properties.slice(0, 12).map((p, idx) => (
-                                    <tr key={p.id} className={`border-b border-zinc-100 ${idx % 2 === 1 ? 'bg-zinc-50/50' : ''}`}>
-                                        <td className="px-3 py-3 font-mono text-[10px] text-zinc-400 font-bold">
+                                    <tr key={p.id} className={`border-b border-zinc-100 ${idx % 2 === 1 ? 'bg-muted/50' : ''}`}>
+                                        <td className="px-3 py-3 font-mono text-[10px] text-muted-foreground font-bold">
                                             {p.referenceNumber || `PM-${String(idx + 1).padStart(3, '0')}`}
                                         </td>
                                         <td className="px-3 py-3">
                                             <p className="font-bold text-zinc-900 text-[11px]">{p.title}</p>
                                         </td>
-                                        <td className="px-3 py-3 text-[10px] text-zinc-500 uppercase">
+                                        <td className="px-3 py-3 text-[10px] text-muted-foreground uppercase">
                                             {p.propertyType?.replace(/_/g, ' ')}
                                         </td>
-                                        <td className="px-3 py-3 text-[10px] text-zinc-500">
+                                        <td className="px-3 py-3 text-[10px] text-muted-foreground">
                                             {p.addressCity}, {p.region?.replace(/_/g, ' ')}
                                         </td>
                                         <td className="px-3 py-3 text-right font-mono font-bold text-zinc-900">
@@ -561,7 +561,7 @@ export default function PortfolioBrochurePage() {
                                             <span className={`inline-block px-2 py-0.5 rounded text-[9px] font-bold uppercase ${
                                                 p.status === 'active' ? 'bg-emerald-100 text-emerald-700' :
                                                 p.status === 'pending' ? 'bg-amber-100 text-amber-700' :
-                                                'bg-zinc-100 text-zinc-600'
+                                                'bg-zinc-100 text-muted-foreground'
                                             }`}>
                                                 {p.status}
                                             </span>
@@ -582,34 +582,34 @@ export default function PortfolioBrochurePage() {
                             </tfoot>
                         </table>
                         {properties.length > 12 && (
-                            <p className="text-[10px] font-mono text-zinc-400 mt-2 text-center">
+                            <p className="text-[10px] font-mono text-muted-foreground mt-2 text-center">
                                 + {properties.length - 12} additional assets (see full appendix)
                             </p>
                         )}
                     </div>
 
                     {/* Portfolio Summary Box */}
-                    <div className="bg-zinc-900 text-white rounded-xl p-6">
+                    <div className="bg-card text-foreground rounded-xl p-6">
                         <div className="grid grid-cols-5 gap-4 text-center">
                             <div>
-                                <p className="text-[10px] font-mono text-zinc-400 uppercase mb-1">Total Assets</p>
+                                <p className="text-[10px] font-mono text-muted-foreground uppercase mb-1">Total Assets</p>
                                 <p className="text-xl font-black">{metrics?.totalProperties || 0}</p>
                             </div>
                             <div>
-                                <p className="text-[10px] font-mono text-zinc-400 uppercase mb-1">Residential</p>
+                                <p className="text-[10px] font-mono text-muted-foreground uppercase mb-1">Residential</p>
                                 <p className="text-xl font-black">{residentialCount + apartmentCount}</p>
                             </div>
                             <div>
-                                <p className="text-[10px] font-mono text-zinc-400 uppercase mb-1">Commercial</p>
+                                <p className="text-[10px] font-mono text-muted-foreground uppercase mb-1">Commercial</p>
                                 <p className="text-xl font-black">{commercialCount}</p>
                             </div>
                             <div>
-                                <p className="text-[10px] font-mono text-zinc-400 uppercase mb-1">Avg Price</p>
+                                <p className="text-[10px] font-mono text-muted-foreground uppercase mb-1">Avg Price</p>
                                 <p className="text-xl font-black text-amber-500">{formatCurrencyShort(avgPropertyValue)}</p>
                             </div>
                             <div>
-                                <p className="text-[10px] font-mono text-zinc-400 uppercase mb-1">Growth</p>
-                                <p className="text-xl font-black text-emerald-400">+{metrics?.valueTrend || 0}%</p>
+                                <p className="text-[10px] font-mono text-muted-foreground uppercase mb-1">Growth</p>
+                                <p className="text-xl font-black text-emerald-600 dark:text-emerald-400">+{metrics?.valueTrend || 0}%</p>
                             </div>
                         </div>
                     </div>
@@ -618,22 +618,22 @@ export default function PortfolioBrochurePage() {
                 {/* ============================================= */}
                 {/* PAGE 5: NOTES & INFO */}
                 {/* ============================================= */}
-                <div className="bg-white text-zinc-900 shadow-2xl print:shadow-none min-h-[1100px] p-16 print-page">
+                <div className="bg-card text-zinc-900 shadow-2xl print:shadow-none min-h-[1100px] p-16 print-page">
                     {/* Page Header */}
-                    <div className="flex justify-between items-center border-b-2 border-zinc-900 pb-4 mb-10">
+                    <div className="flex justify-between items-center border-b-2 border-border pb-4 mb-10">
                         <div className="flex items-center gap-2">
                             <div className="w-8 h-8 bg-amber-500 rounded flex items-center justify-center">
-                                <Shield className="h-4 w-4 text-white" />
+                                <Shield className="h-4 w-4 text-foreground" />
                             </div>
                             <h2 className="text-lg font-black uppercase tracking-tight">Notes & Information</h2>
                         </div>
-                        <p className="text-xs font-mono text-zinc-400">Page 5</p>
+                        <p className="text-xs font-mono text-muted-foreground">Page 5</p>
                     </div>
 
                     {/* Portfolio Considerations */}
                     <div className="mb-10">
                         <h3 className="text-sm font-bold uppercase text-amber-600 mb-4">Portfolio Considerations</h3>
-                        <div className="bg-zinc-50 rounded-lg p-6 space-y-4">
+                        <div className="bg-muted rounded-lg p-6 space-y-4">
                             {[
                                 { title: 'Data Accuracy', desc: 'Property values and metrics are based on your input data. Regular updates ensure accuracy.' },
                                 { title: 'Market Conditions', desc: 'Real estate values fluctuate. Consider periodic professional appraisals for significant holdings.' },
@@ -643,7 +643,7 @@ export default function PortfolioBrochurePage() {
                             ].map((item, idx) => (
                                 <div key={idx} className="border-b border-zinc-200 pb-3 last:border-0 last:pb-0">
                                     <p className="text-xs font-bold text-zinc-900 uppercase mb-1">{item.title}</p>
-                                    <p className="text-xs text-zinc-600">{item.desc}</p>
+                                    <p className="text-xs text-muted-foreground">{item.desc}</p>
                                 </div>
                             ))}
                         </div>
@@ -653,16 +653,16 @@ export default function PortfolioBrochurePage() {
                     <div className="mb-10">
                         <h3 className="text-sm font-bold uppercase text-amber-600 mb-4">Notes</h3>
                         <div className="border border-zinc-200 rounded-lg p-6">
-                            <p className="text-[10px] text-zinc-600 leading-relaxed mb-4">
+                            <p className="text-[10px] text-muted-foreground leading-relaxed mb-4">
                                 This portfolio report is generated based on the property data you have entered into the 
                                 PROPMETRIK platform. Property values shown are based on your input and may not reflect 
                                 current market conditions.
                             </p>
-                            <p className="text-[10px] text-zinc-600 leading-relaxed mb-4">
+                            <p className="text-[10px] text-muted-foreground leading-relaxed mb-4">
                                 Performance metrics are calculated based on recorded income, expenses, and occupancy data. 
                                 For accurate financial planning, please consult with qualified professionals.
                             </p>
-                            <p className="text-[10px] text-zinc-600 leading-relaxed">
+                            <p className="text-[10px] text-muted-foreground leading-relaxed">
                                 This report is for your personal use. You may share it with property managers, 
                                 financial advisors, or other stakeholders as needed.
                             </p>
@@ -670,23 +670,23 @@ export default function PortfolioBrochurePage() {
                     </div>
 
                     {/* Platform Info */}
-                    <div className="bg-zinc-900 text-white rounded-xl p-8">
+                    <div className="bg-card text-foreground rounded-xl p-8">
                         <h3 className="text-sm font-bold uppercase text-amber-500 mb-6">Powered by PROPMETRIK</h3>
                         <div className="grid grid-cols-2 gap-8">
                             <div>
-                                <p className="text-xs font-bold text-white uppercase mb-2">About This Report</p>
-                                <p className="text-xs text-zinc-400">This portfolio report was generated using PROPMETRIK&apos;s property management platform.</p>
-                                <p className="text-xs text-zinc-400 mt-4">All data reflects your current portfolio status as of the report date.</p>
+                                <p className="text-xs font-bold text-foreground uppercase mb-2">About This Report</p>
+                                <p className="text-xs text-muted-foreground">This portfolio report was generated using PROPMETRIK&apos;s property management platform.</p>
+                                <p className="text-xs text-muted-foreground mt-4">All data reflects your current portfolio status as of the report date.</p>
                             </div>
                             <div>
-                                <p className="text-xs text-zinc-400 mb-2">
-                                    <span className="text-white font-bold">Platform:</span> propmetrik.com
+                                <p className="text-xs text-muted-foreground mb-2">
+                                    <span className="text-foreground font-bold">Platform:</span> propmetrik.com
                                 </p>
-                                <p className="text-xs text-zinc-400 mb-2">
-                                    <span className="text-white font-bold">Report Type:</span> Portfolio Summary
+                                <p className="text-xs text-muted-foreground mb-2">
+                                    <span className="text-foreground font-bold">Report Type:</span> Portfolio Summary
                                 </p>
-                                <p className="text-xs text-zinc-400">
-                                    <span className="text-white font-bold">Format:</span> Standard Brochure
+                                <p className="text-xs text-muted-foreground">
+                                    <span className="text-foreground font-bold">Format:</span> Standard Brochure
                                 </p>
                             </div>
                         </div>
@@ -695,17 +695,17 @@ export default function PortfolioBrochurePage() {
                     {/* Document Footer */}
                     <div className="mt-12 pt-8 border-t border-zinc-200 flex justify-between items-center">
                         <div className="flex items-center gap-4">
-                            <div className="w-10 h-10 bg-zinc-900 rounded-lg flex items-center justify-center">
+                            <div className="w-10 h-10 bg-card rounded-lg flex items-center justify-center">
                                 <Building2 className="h-5 w-5 text-amber-500" />
                             </div>
                             <div>
                                 <p className="text-xs font-bold text-zinc-900">PROPMETRIK</p>
-                                <p className="text-[10px] text-zinc-500">Property Management Platform</p>
+                                <p className="text-[10px] text-muted-foreground">Property Management Platform</p>
                             </div>
                         </div>
                         <div className="text-right">
-                            <p className="text-[10px] font-mono text-zinc-400 uppercase">Report ID: PR-{new Date().getFullYear()}-{String(new Date().getMonth() + 1).padStart(2, '0')}</p>
-                            <p className="text-[10px] text-zinc-400">Generated: {currentDate}</p>
+                            <p className="text-[10px] font-mono text-muted-foreground uppercase">Report ID: PR-{new Date().getFullYear()}-{String(new Date().getMonth() + 1).padStart(2, '0')}</p>
+                            <p className="text-[10px] text-muted-foreground">Generated: {currentDate}</p>
                         </div>
                     </div>
                 </div>

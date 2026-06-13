@@ -178,13 +178,13 @@ export default function ApplicationForm({ property, token, units }: ApplicationF
     <div className="max-w-2xl mx-auto p-4 space-y-6">
       <div className="mb-6">
         <h1 className="text-2xl font-bold mb-2">Apply for {property.title}</h1>
-        <p className="text-gray-500">
+        <p className="text-muted-foreground">
           {property.addressStreet}, {property.addressCity}
           {selectedUnit && <span className="font-medium text-foreground"> · Unit {selectedUnit.unitNumber}</span>}
         </p>
         <div className="mt-4">
           <Progress value={progress} className="h-2" />
-          <div className="text-xs text-right mt-1 text-gray-500">Step {step} of {totalSteps}</div>
+          <div className="text-xs text-right mt-1 text-muted-foreground">Step {step} of {totalSteps}</div>
         </div>
       </div>
 
@@ -320,7 +320,7 @@ export default function ApplicationForm({ property, token, units }: ApplicationF
                   <Label>
                     Upload {formData.idType === 'passport' ? 'Passport Bio Page' : 'Ghana Card — Front & Back'} <span className="text-red-500">*</span>
                   </Label>
-                  <p className="text-xs text-gray-500">
+                  <p className="text-xs text-muted-foreground">
                     Take a clear photo or upload an image of your {formData.idType === 'passport' ? 'passport bio page' : 'Ghana Card (both sides)'}.
                   </p>
                   <div className={`grid gap-3 ${requiredSides.length > 1 ? 'grid-cols-2' : 'grid-cols-1'}`}>
@@ -341,9 +341,9 @@ export default function ApplicationForm({ property, token, units }: ApplicationF
                           {previews[side] ? (
                             <img src={previews[side]} alt={SIDE_LABELS[side]} className="max-h-24 object-contain rounded" />
                           ) : uploadingSide === side ? (
-                            <span className="text-xs text-gray-500">Uploading…</span>
+                            <span className="text-xs text-muted-foreground">Uploading…</span>
                           ) : (
-                            <span className="text-xs text-gray-500">{SIDE_LABELS[side]}<br />Tap to upload or scan</span>
+                            <span className="text-xs text-muted-foreground">{SIDE_LABELS[side]}<br />Tap to upload or scan</span>
                           )}
                           {uploaded && (
                             <span className="text-[10px] text-green-600 font-medium mt-1">✓ {SIDE_LABELS[side]} uploaded</span>

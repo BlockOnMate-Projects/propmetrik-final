@@ -97,7 +97,7 @@ export default function ProjectManagementPage() {
     return (
         <main>
             {/* ====== Hero ====== */}
-            <section className="relative pt-32 pb-24 overflow-hidden bg-zinc-950">
+            <section className="relative pt-32 pb-24 overflow-hidden dark bg-background">
                 <div className="absolute inset-0">
                     <motion.div
                         animate={{ scale: [1, 1.06, 1] }}
@@ -122,21 +122,21 @@ export default function ProjectManagementPage() {
                         <div className="inline-block px-3 py-1 mb-6 border border-primary/50 rounded-full text-xs font-medium tracking-wider uppercase bg-primary/10 text-primary">
                             Project Management
                         </div>
-                        <h1 className="text-5xl md:text-7xl font-bold tracking-tighter mb-8 text-white">
+                        <h1 className="text-5xl md:text-7xl font-bold tracking-tighter mb-8 text-foreground">
                             Build Smarter,{' '}
                             <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary to-yellow-400">
                                 Deliver Faster
                             </span>
                         </h1>
-                        <p className="text-xl md:text-2xl text-zinc-400 leading-relaxed max-w-3xl mb-12">
+                        <p className="text-xl md:text-2xl text-muted-foreground leading-relaxed max-w-3xl mb-12">
                             End-to-end construction and development project management — from feasibility study to final handover — purpose-built for Ghana&apos;s real estate market.
                         </p>
 
                         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-12">
-                            <div className="border border-zinc-800 rounded-lg px-4 py-3 text-sm font-medium text-zinc-300 text-center">Feasibility to handover</div>
-                            <div className="border border-zinc-800 rounded-lg px-4 py-3 text-sm font-medium text-zinc-300 text-center">Budgets & change orders</div>
-                            <div className="border border-zinc-800 rounded-lg px-4 py-3 text-sm font-medium text-zinc-300 text-center">Gantt & phase-gate</div>
-                            <div className="border border-zinc-800 rounded-lg px-4 py-3 text-sm font-medium text-zinc-300 text-center">Contractor management</div>
+                            <div className="border border-border rounded-lg px-4 py-3 text-sm font-medium text-muted-foreground text-center">Feasibility to handover</div>
+                            <div className="border border-border rounded-lg px-4 py-3 text-sm font-medium text-muted-foreground text-center">Budgets & change orders</div>
+                            <div className="border border-border rounded-lg px-4 py-3 text-sm font-medium text-muted-foreground text-center">Gantt & phase-gate</div>
+                            <div className="border border-border rounded-lg px-4 py-3 text-sm font-medium text-muted-foreground text-center">Contractor management</div>
                         </div>
 
                         <div className="flex flex-col sm:flex-row gap-4">
@@ -146,14 +146,14 @@ export default function ProjectManagementPage() {
                                     whileTap={{ scale: 0.98 }}
                                     className="bg-gradient-to-r from-primary to-yellow-400 text-zinc-950 px-8 py-4 font-bold tracking-wider uppercase hover:shadow-lg hover:shadow-primary/50 transition-shadow"
                                 >
-                                    Start Free Trial
+                                    Get Started
                                 </motion.button>
                             </Link>
                             <Link href="/pricing?category=project_management">
                                 <motion.button
                                     whileHover={{ scale: 1.02 }}
                                     whileTap={{ scale: 0.98 }}
-                                    className="px-8 py-4 border-2 border-zinc-700 text-white font-bold tracking-wider uppercase hover:border-primary hover:text-primary transition-colors"
+                                    className="px-8 py-4 border-2 border-border text-foreground font-bold tracking-wider uppercase hover:border-primary hover:text-primary transition-colors"
                                 >
                                     View Pricing
                                 </motion.button>
@@ -167,7 +167,7 @@ export default function ProjectManagementPage() {
             <ProjectLifecycleSection />
 
             {/* ====== Live Dashboard Visual ====== */}
-            <section className="py-24 bg-zinc-900">
+            <section className="py-24 bg-card">
                 <div className="container mx-auto px-4 md:px-6">
                     <motion.div
                         initial={{ opacity: 0, y: 20 }}
@@ -175,10 +175,10 @@ export default function ProjectManagementPage() {
                         viewport={{ once: true }}
                         className="text-center max-w-3xl mx-auto mb-12"
                     >
-                        <h2 className="text-3xl md:text-5xl font-bold text-white mb-4">
+                        <h2 className="text-3xl md:text-5xl font-bold text-foreground mb-4">
                             Real-Time Project Intelligence
                         </h2>
-                        <p className="text-lg text-zinc-400">
+                        <p className="text-lg text-muted-foreground">
                             Every task, budget line, and safety metric — visible in one live dashboard.
                         </p>
                     </motion.div>
@@ -195,7 +195,7 @@ export default function ProjectManagementPage() {
             </section>
 
             {/* ====== Capabilities ====== */}
-            <section className="py-24 bg-zinc-950">
+            <section className="py-24 bg-background">
                 <div className="container mx-auto px-4 md:px-6">
                     <motion.div
                         initial={{ opacity: 0, y: 20 }}
@@ -203,10 +203,10 @@ export default function ProjectManagementPage() {
                         viewport={{ once: true }}
                         className="text-center max-w-3xl mx-auto mb-16"
                     >
-                        <h2 className="text-4xl md:text-5xl font-bold text-white mb-6">
+                        <h2 className="text-4xl md:text-5xl font-bold text-foreground mb-6">
                             Everything You Need to Deliver
                         </h2>
-                        <p className="text-xl text-zinc-400">
+                        <p className="text-xl text-muted-foreground">
                             Purpose-built tools for Ghana&apos;s construction industry — not retrofitted software from overseas.
                         </p>
                     </motion.div>
@@ -220,13 +220,13 @@ export default function ProjectManagementPage() {
                                 viewport={{ once: true }}
                                 transition={{ delay: index * 0.08 }}
                                 whileHover={{ y: -5 }}
-                                className="bg-zinc-900 border border-zinc-800 rounded-lg p-8 hover:border-primary/50 transition-colors group"
+                                className="bg-card border border-border rounded-lg p-8 hover:border-primary/50 transition-colors group"
                             >
                                 <div className="w-12 h-12 rounded bg-primary/10 flex items-center justify-center text-primary mb-4 group-hover:bg-primary/20 transition-colors">
                                     {cap.icon}
                                 </div>
-                                <h3 className="text-xl font-bold text-white mb-3">{cap.title}</h3>
-                                <p className="text-zinc-400 text-sm leading-relaxed">{cap.description}</p>
+                                <h3 className="text-xl font-bold text-foreground mb-3">{cap.title}</h3>
+                                <p className="text-muted-foreground text-sm leading-relaxed">{cap.description}</p>
                             </motion.div>
                         ))}
                     </div>
@@ -234,7 +234,7 @@ export default function ProjectManagementPage() {
             </section>
 
             {/* Phase-by-phase detail callout — simplified since lifecycle section above covers the journey */}
-            <section className="py-20 bg-zinc-900">
+            <section className="py-20 bg-card">
                 <div className="container mx-auto px-4 md:px-6">
                     <div className="grid md:grid-cols-2 gap-12 items-center max-w-5xl mx-auto">
                         <motion.div
@@ -242,13 +242,13 @@ export default function ProjectManagementPage() {
                             whileInView={{ opacity: 1, x: 0 }}
                             viewport={{ once: true }}
                         >
-                            <h2 className="text-4xl md:text-5xl font-bold text-white mb-6">
+                            <h2 className="text-4xl md:text-5xl font-bold text-foreground mb-6">
                                 Phase-by-Phase{' '}
                                 <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary to-yellow-400">
                                     Control
                                 </span>
                             </h2>
-                            <p className="text-lg text-zinc-400 mb-8 leading-relaxed">
+                            <p className="text-lg text-muted-foreground mb-8 leading-relaxed">
                                 From planning through handover, every phase is tracked with dependencies, approvals, and gated milestones. No phase starts until the prior one is signed off.
                             </p>
                         </motion.div>
@@ -271,10 +271,10 @@ export default function ProjectManagementPage() {
                                     whileInView={{ opacity: 1, x: 0 }}
                                     viewport={{ once: true }}
                                     transition={{ delay: 0.1 + i * 0.08 }}
-                                    className="flex items-start gap-3 p-4 rounded-lg bg-zinc-950 border border-zinc-800 hover:border-primary/40 transition-colors"
+                                    className="flex items-start gap-3 p-4 rounded-lg bg-background border border-border hover:border-primary/40 transition-colors"
                                 >
                                     <CheckCircle2 className="w-5 h-5 text-primary shrink-0 mt-0.5" />
-                                    <span className="text-zinc-300 text-sm">{item}</span>
+                                    <span className="text-muted-foreground text-sm">{item}</span>
                                 </motion.div>
                             ))}
                         </motion.div>
@@ -283,7 +283,7 @@ export default function ProjectManagementPage() {
             </section>
 
             {/* ====== Use Cases ====== */}
-            <section className="py-24 bg-zinc-950">
+            <section className="py-24 bg-background">
                 <div className="container mx-auto px-4 md:px-6">
                     <motion.div
                         initial={{ opacity: 0, y: 20 }}
@@ -291,10 +291,10 @@ export default function ProjectManagementPage() {
                         viewport={{ once: true }}
                         className="text-center max-w-3xl mx-auto mb-16"
                     >
-                        <h2 className="text-4xl md:text-5xl font-bold text-white mb-6">
+                        <h2 className="text-4xl md:text-5xl font-bold text-foreground mb-6">
                             Built for Every Project Type
                         </h2>
-                        <p className="text-xl text-zinc-400">
+                        <p className="text-xl text-muted-foreground">
                             Whether 10 units or 10 storeys, our platform adapts to scope and complexity.
                         </p>
                     </motion.div>
@@ -307,13 +307,13 @@ export default function ProjectManagementPage() {
                                 whileInView={{ opacity: 1, y: 0 }}
                                 viewport={{ once: true }}
                                 transition={{ delay: index * 0.1 }}
-                                className="bg-zinc-900 border border-zinc-800 rounded-lg p-8 hover:border-primary/50 transition-colors"
+                                className="bg-card border border-border rounded-lg p-8 hover:border-primary/50 transition-colors"
                             >
-                                <h3 className="text-2xl font-bold text-white mb-3">{uc.title}</h3>
-                                <p className="text-zinc-400 mb-6 text-sm">{uc.description}</p>
+                                <h3 className="text-2xl font-bold text-foreground mb-3">{uc.title}</h3>
+                                <p className="text-muted-foreground mb-6 text-sm">{uc.description}</p>
                                 <ul className="space-y-3">
                                     {uc.features.map((feat, fi) => (
-                                        <li key={fi} className="flex items-start gap-2 text-sm text-zinc-300">
+                                        <li key={fi} className="flex items-start gap-2 text-sm text-muted-foreground">
                                             <CheckCircle2 className="w-5 h-5 text-primary shrink-0 mt-0.5" />
                                             <span>{feat}</span>
                                         </li>
@@ -326,7 +326,7 @@ export default function ProjectManagementPage() {
             </section>
 
             {/* ====== Integration Strip ====== */}
-            <section className="py-16 bg-zinc-900 border-y border-zinc-800">
+            <section className="py-16 bg-card border-y border-border">
                 <div className="container mx-auto px-4 md:px-6">
                     <motion.div
                         initial={{ opacity: 0 }}
@@ -334,7 +334,7 @@ export default function ProjectManagementPage() {
                         viewport={{ once: true }}
                         className="text-center mb-8"
                     >
-                        <p className="text-xs font-mono uppercase tracking-widest text-zinc-500">
+                        <p className="text-xs font-mono uppercase tracking-widest text-muted-foreground">
                             Integrated with the PROPMETRIK platform
                         </p>
                     </motion.div>
@@ -354,11 +354,11 @@ export default function ProjectManagementPage() {
                                 transition={{ delay: i * 0.1 }}
                                 className="text-center p-4"
                             >
-                                <div className="w-10 h-10 rounded-lg bg-zinc-800 flex items-center justify-center text-primary mx-auto mb-3">
+                                <div className="w-10 h-10 rounded-lg bg-muted flex items-center justify-center text-primary mx-auto mb-3">
                                     {item.icon}
                                 </div>
-                                <div className="text-sm font-bold text-white mb-1">{item.title}</div>
-                                <div className="text-xs text-zinc-500">{item.desc}</div>
+                                <div className="text-sm font-bold text-foreground mb-1">{item.title}</div>
+                                <div className="text-xs text-muted-foreground">{item.desc}</div>
                             </motion.div>
                         ))}
                     </div>
@@ -366,7 +366,7 @@ export default function ProjectManagementPage() {
             </section>
 
             {/* ====== How It Works ====== */}
-            <section className="py-24 bg-zinc-950">
+            <section className="py-24 bg-background">
                 <div className="container mx-auto px-4 md:px-6">
                     <motion.div
                         initial={{ opacity: 0, y: 20 }}
@@ -374,10 +374,10 @@ export default function ProjectManagementPage() {
                         viewport={{ once: true }}
                         className="text-center max-w-3xl mx-auto mb-16"
                     >
-                        <h2 className="text-4xl md:text-5xl font-bold text-white mb-6">
+                        <h2 className="text-4xl md:text-5xl font-bold text-foreground mb-6">
                             How It Works
                         </h2>
-                        <p className="text-xl text-zinc-400">
+                        <p className="text-xl text-muted-foreground">
                             Get from project kick-off to handover in four clear stages.
                         </p>
                     </motion.div>
@@ -386,7 +386,7 @@ export default function ProjectManagementPage() {
             </section>
 
             {/* ====== Pricing Teaser ====== */}
-            <section className="py-24 bg-zinc-900">
+            <section className="py-24 bg-card">
                 <div className="container mx-auto px-4 md:px-6">
                     <motion.div
                         initial={{ opacity: 0, y: 20 }}
@@ -394,10 +394,10 @@ export default function ProjectManagementPage() {
                         viewport={{ once: true }}
                         className="text-center max-w-3xl mx-auto mb-12"
                     >
-                        <h2 className="text-4xl md:text-5xl font-bold text-white mb-6">
+                        <h2 className="text-4xl md:text-5xl font-bold text-foreground mb-6">
                             Simple, Transparent Pricing
                         </h2>
-                        <p className="text-xl text-zinc-400">
+                        <p className="text-xl text-muted-foreground">
                             Choose the plan that matches your project volume.
                         </p>
                     </motion.div>
@@ -431,8 +431,8 @@ export default function ProjectManagementPage() {
                                 viewport={{ once: true }}
                                 transition={{ delay: i * 0.1 }}
                                 className={`relative rounded-xl p-8 border transition-colors ${plan.featured
-                                        ? 'bg-zinc-950 border-primary/50 ring-1 ring-primary/20'
-                                        : 'bg-zinc-950 border-zinc-800 hover:border-zinc-700'
+                                        ? 'bg-background border-primary/50 ring-1 ring-primary/20'
+                                        : 'bg-background border-border hover:border-border'
                                     }`}
                             >
                                 {plan.featured && (
@@ -440,15 +440,15 @@ export default function ProjectManagementPage() {
                                         Most Popular
                                     </div>
                                 )}
-                                <div className="text-xs text-zinc-500 uppercase tracking-wider mb-2">{plan.audience}</div>
-                                <h3 className="text-2xl font-bold text-white mb-1">{plan.tier}</h3>
-                                <div className="text-3xl font-bold text-white mb-1">
+                                <div className="text-xs text-muted-foreground uppercase tracking-wider mb-2">{plan.audience}</div>
+                                <h3 className="text-2xl font-bold text-foreground mb-1">{plan.tier}</h3>
+                                <div className="text-3xl font-bold text-foreground mb-1">
                                     {plan.price}
-                                    <span className="text-sm text-zinc-500 font-normal"> /month</span>
+                                    <span className="text-sm text-muted-foreground font-normal"> /month</span>
                                 </div>
                                 <ul className="mt-6 space-y-3">
                                     {plan.features.map((f, fi) => (
-                                        <li key={fi} className="flex items-start gap-2 text-sm text-zinc-300">
+                                        <li key={fi} className="flex items-start gap-2 text-sm text-muted-foreground">
                                             <CheckCircle2 className="w-4 h-4 text-primary shrink-0 mt-0.5" />
                                             <span>{f}</span>
                                         </li>
@@ -460,7 +460,7 @@ export default function ProjectManagementPage() {
                                         whileTap={{ scale: 0.98 }}
                                         className={`w-full mt-8 py-3 font-bold uppercase tracking-wider text-sm transition-colors ${plan.featured
                                                 ? 'bg-gradient-to-r from-primary to-yellow-400 text-zinc-950'
-                                                : 'border border-zinc-700 text-white hover:border-primary hover:text-primary'
+                                                : 'border border-border text-foreground hover:border-primary hover:text-primary'
                                             }`}
                                     >
                                         Get Started
@@ -477,7 +477,7 @@ export default function ProjectManagementPage() {
                 title="Ready to Modernize Your Next Project?"
                 description="Join developers across Ghana who trust PROPMETRIK to deliver on time, on budget, and with full visibility."
                 primaryCTA={{
-                    text: 'Start Free Trial',
+                    text: 'Get Started',
                     href: '/signup?category=project_management',
                 }}
                 secondaryCTA={{

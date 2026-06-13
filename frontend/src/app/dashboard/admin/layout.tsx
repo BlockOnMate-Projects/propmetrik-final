@@ -32,14 +32,14 @@ export default function AdminLayout({
   if (!role || !ADMIN_ROLES.includes(role)) return null
 
   return (
-    <div className="min-h-screen bg-black">
+    <div className="min-h-screen bg-background">
       {mounted ? <AdminTopNav /> : (
-        <div className="w-full bg-zinc-950 border-b border-red-900/50">
+        <div className="w-full bg-background border-b border-red-900/50">
           <div className="flex items-center h-8 px-4 bg-red-950/30 border-b border-red-900/30">
-            <span className="font-mono text-[11px] text-red-400 font-bold tracking-wider">PROPMETRIK ADMIN CONSOLE</span>
+            <span className="font-mono text-[11px] text-red-600 dark:text-red-400 font-bold tracking-wider">PROPMETRIK ADMIN CONSOLE</span>
           </div>
-          <div className="h-9 px-4 bg-zinc-950" />
-          <div className="h-8 px-4 bg-zinc-900/80" />
+          <div className="h-9 px-4 bg-background" />
+          <div className="h-8 px-4 bg-card/80" />
         </div>
       )}
       <main className="p-6">

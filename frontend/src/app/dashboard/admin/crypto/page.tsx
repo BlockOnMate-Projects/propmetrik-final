@@ -42,10 +42,10 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api/v1'
 
 const SUPPORTED_TOKENS = [
-    { symbol: 'USDT', name: 'Tether USD', color: 'text-green-400', bg: 'bg-green-900/30' },
-    { symbol: 'USDC', name: 'USD Coin', color: 'text-blue-400', bg: 'bg-blue-900/30' },
-    { symbol: 'WETH', name: 'Wrapped Ether', color: 'text-purple-400', bg: 'bg-purple-900/30' },
-    { symbol: 'WBTC', name: 'Wrapped Bitcoin', color: 'text-orange-400', bg: 'bg-orange-900/30' },
+    { symbol: 'USDT', name: 'Tether USD', color: 'text-green-600 dark:text-green-400', bg: 'bg-green-100 dark:bg-green-900/30' },
+    { symbol: 'USDC', name: 'USD Coin', color: 'text-blue-600 dark:text-blue-400', bg: 'bg-blue-100 dark:bg-blue-900/30' },
+    { symbol: 'WETH', name: 'Wrapped Ether', color: 'text-purple-600 dark:text-purple-400', bg: 'bg-purple-100 dark:bg-purple-900/30' },
+    { symbol: 'WBTC', name: 'Wrapped Bitcoin', color: 'text-orange-600 dark:text-orange-400', bg: 'bg-orange-100 dark:bg-orange-900/30' },
 ] as const
 
 const SUPPORTED_NETWORKS = [
@@ -206,9 +206,9 @@ const paymentTypeColor: Record<string, string> = {
 }
 
 const statusConfig: Record<string, { color: string; bg: string; icon: React.ElementType }> = {
-    success: { color: 'text-green-400', bg: 'bg-green-900/20 border-green-800', icon: CheckCircle2 },
-    pending: { color: 'text-yellow-400', bg: 'bg-yellow-900/20 border-yellow-800', icon: Clock },
-    failed: { color: 'text-red-400', bg: 'bg-red-900/20 border-red-800', icon: XCircle },
+    success: { color: 'text-green-600 dark:text-green-400', bg: 'bg-green-100 dark:bg-green-900/20 border-green-800', icon: CheckCircle2 },
+    pending: { color: 'text-yellow-600 dark:text-yellow-400', bg: 'bg-yellow-100 dark:bg-yellow-900/20 border-yellow-800', icon: Clock },
+    failed: { color: 'text-red-600 dark:text-red-400', bg: 'bg-red-100 dark:bg-red-900/20 border-red-800', icon: XCircle },
 }
 
 const explorerUrl = (chainId: number | undefined, txHash: string) => {
@@ -232,13 +232,13 @@ function StatCard({ title, value, subtitle, icon: Icon, color = 'text-red-500' }
     color?: string
 }) {
     return (
-        <div className="border border-zinc-800 bg-zinc-900/50 p-4">
+        <div className="border border-border bg-card/50 p-4">
             <div className="flex items-center justify-between mb-2">
-                <span className="font-mono text-[10px] text-zinc-500 uppercase tracking-wider">{title}</span>
+                <span className="font-mono text-[10px] text-muted-foreground uppercase tracking-wider">{title}</span>
                 <Icon className={`w-4 h-4 ${color}`} />
             </div>
-            <p className="font-mono text-xl text-white font-bold">{value}</p>
-            {subtitle && <p className="font-mono text-[10px] text-zinc-500 mt-1">{subtitle}</p>}
+            <p className="font-mono text-xl text-foreground font-bold">{value}</p>
+            {subtitle && <p className="font-mono text-[10px] text-muted-foreground mt-1">{subtitle}</p>}
         </div>
     )
 }
@@ -251,7 +251,7 @@ function CopiedButton({ text }: { text: string }) {
         setTimeout(() => setCopied(false), 2000)
     }
     return (
-        <button onClick={copy} className="text-zinc-600 hover:text-zinc-400 transition-colors">
+        <button onClick={copy} className="text-muted-foreground hover:text-muted-foreground transition-colors">
             {copied ? <Check className="w-3 h-3 text-green-500" /> : <Copy className="w-3 h-3" />}
         </button>
     )
@@ -426,20 +426,20 @@ export default function AdminCryptoPage() {
     // ─── Settlement wallet save handler ──────────────
     const SETTLEMENT_COINS = [
         // On-Chain (Polygon) — direct smart contract settlement
-        { key: 'usdt:polygon', symbol: 'USDT', chain: 'polygon', name: 'Tether USD', group: 'On-Chain (Polygon)', color: 'text-green-400', bg: 'bg-green-900/30', placeholder: '0x... (Polygon)' },
-        { key: 'usdc:polygon', symbol: 'USDC', chain: 'polygon', name: 'USD Coin', group: 'On-Chain (Polygon)', color: 'text-blue-400', bg: 'bg-blue-900/30', placeholder: '0x... (Polygon)' },
-        { key: 'weth:polygon', symbol: 'WETH', chain: 'polygon', name: 'Wrapped Ether', group: 'On-Chain (Polygon)', color: 'text-purple-400', bg: 'bg-purple-900/30', placeholder: '0x... (Polygon)' },
-        { key: 'wbtc:polygon', symbol: 'WBTC', chain: 'polygon', name: 'Wrapped Bitcoin', group: 'On-Chain (Polygon)', color: 'text-orange-400', bg: 'bg-orange-900/30', placeholder: '0x... (Polygon)' },
-        { key: 'pol:polygon', symbol: 'POL', chain: 'polygon', name: 'Polygon', group: 'On-Chain (Polygon)', color: 'text-violet-400', bg: 'bg-violet-900/30', placeholder: '0x... (Polygon)' },
+        { key: 'usdt:polygon', symbol: 'USDT', chain: 'polygon', name: 'Tether USD', group: 'On-Chain (Polygon)', color: 'text-green-600 dark:text-green-400', bg: 'bg-green-100 dark:bg-green-900/30', placeholder: '0x... (Polygon)' },
+        { key: 'usdc:polygon', symbol: 'USDC', chain: 'polygon', name: 'USD Coin', group: 'On-Chain (Polygon)', color: 'text-blue-600 dark:text-blue-400', bg: 'bg-blue-100 dark:bg-blue-900/30', placeholder: '0x... (Polygon)' },
+        { key: 'weth:polygon', symbol: 'WETH', chain: 'polygon', name: 'Wrapped Ether', group: 'On-Chain (Polygon)', color: 'text-purple-600 dark:text-purple-400', bg: 'bg-purple-100 dark:bg-purple-900/30', placeholder: '0x... (Polygon)' },
+        { key: 'wbtc:polygon', symbol: 'WBTC', chain: 'polygon', name: 'Wrapped Bitcoin', group: 'On-Chain (Polygon)', color: 'text-orange-600 dark:text-orange-400', bg: 'bg-orange-100 dark:bg-orange-900/30', placeholder: '0x... (Polygon)' },
+        { key: 'pol:polygon', symbol: 'POL', chain: 'polygon', name: 'Polygon', group: 'On-Chain (Polygon)', color: 'text-violet-600 dark:text-violet-400', bg: 'bg-violet-100 dark:bg-violet-900/30', placeholder: '0x... (Polygon)' },
         // Off-Chain (via NOWPayments) — multi-chain
-        { key: 'btc:bitcoin', symbol: 'BTC', chain: 'bitcoin', name: 'Bitcoin', group: 'Off-Chain (via NOWPayments)', color: 'text-orange-400', bg: 'bg-orange-900/30', placeholder: 'bc1... or 1... or 3...' },
-        { key: 'eth:ethereum', symbol: 'ETH', chain: 'ethereum', name: 'Ethereum', group: 'Off-Chain (via NOWPayments)', color: 'text-blue-300', bg: 'bg-blue-900/30', placeholder: '0x... (Ethereum mainnet)' },
-        { key: 'sol:solana', symbol: 'SOL', chain: 'solana', name: 'Solana', group: 'Off-Chain (via NOWPayments)', color: 'text-gradient-to-r from-purple-400 to-blue-400', bg: 'bg-purple-900/30', placeholder: 'Solana address...' },
+        { key: 'btc:bitcoin', symbol: 'BTC', chain: 'bitcoin', name: 'Bitcoin', group: 'Off-Chain (via NOWPayments)', color: 'text-orange-600 dark:text-orange-400', bg: 'bg-orange-100 dark:bg-orange-900/30', placeholder: 'bc1... or 1... or 3...' },
+        { key: 'eth:ethereum', symbol: 'ETH', chain: 'ethereum', name: 'Ethereum', group: 'Off-Chain (via NOWPayments)', color: 'text-blue-600 dark:text-blue-300', bg: 'bg-blue-100 dark:bg-blue-900/30', placeholder: '0x... (Ethereum mainnet)' },
+        { key: 'sol:solana', symbol: 'SOL', chain: 'solana', name: 'Solana', group: 'Off-Chain (via NOWPayments)', color: 'text-gradient-to-r from-purple-400 to-blue-400', bg: 'bg-purple-100 dark:bg-purple-900/30', placeholder: 'Solana address...' },
         { key: 'ltc:litecoin', symbol: 'LTC', chain: 'litecoin', name: 'Litecoin', group: 'Off-Chain (via NOWPayments)', color: 'text-gray-300', bg: 'bg-gray-900/30', placeholder: 'ltc1... or L... or M...' },
-        { key: 'trx:tron', symbol: 'TRX', chain: 'tron', name: 'Tron', group: 'Off-Chain (via NOWPayments)', color: 'text-red-400', bg: 'bg-red-900/30', placeholder: 'T... (Tron address)' },
-        { key: 'bnb:bsc', symbol: 'BNB', chain: 'bsc', name: 'BNB Chain', group: 'Off-Chain (via NOWPayments)', color: 'text-yellow-400', bg: 'bg-yellow-900/30', placeholder: '0x... (BSC)' },
-        { key: 'usdt:ethereum', symbol: 'USDT', chain: 'ethereum', name: 'Tether (ERC-20)', group: 'Off-Chain (via NOWPayments)', color: 'text-green-300', bg: 'bg-green-900/20', placeholder: '0x... (Ethereum)' },
-        { key: 'usdt:tron', symbol: 'USDT', chain: 'tron', name: 'Tether (TRC-20)', group: 'Off-Chain (via NOWPayments)', color: 'text-green-300', bg: 'bg-green-900/20', placeholder: 'T... (Tron)' },
+        { key: 'trx:tron', symbol: 'TRX', chain: 'tron', name: 'Tron', group: 'Off-Chain (via NOWPayments)', color: 'text-red-600 dark:text-red-400', bg: 'bg-red-100 dark:bg-red-900/30', placeholder: 'T... (Tron address)' },
+        { key: 'bnb:bsc', symbol: 'BNB', chain: 'bsc', name: 'BNB Chain', group: 'Off-Chain (via NOWPayments)', color: 'text-yellow-600 dark:text-yellow-400', bg: 'bg-yellow-100 dark:bg-yellow-900/30', placeholder: '0x... (BSC)' },
+        { key: 'usdt:ethereum', symbol: 'USDT', chain: 'ethereum', name: 'Tether (ERC-20)', group: 'Off-Chain (via NOWPayments)', color: 'text-green-600 dark:text-green-300', bg: 'bg-green-100 dark:bg-green-900/20', placeholder: '0x... (Ethereum)' },
+        { key: 'usdt:tron', symbol: 'USDT', chain: 'tron', name: 'Tether (TRC-20)', group: 'Off-Chain (via NOWPayments)', color: 'text-green-600 dark:text-green-300', bg: 'bg-green-100 dark:bg-green-900/20', placeholder: 'T... (Tron)' },
     ]
 
     const selectedSettlementCoin = SETTLEMENT_COINS.find(c => c.key === settlementCoinKey)
@@ -563,15 +563,15 @@ export default function AdminCryptoPage() {
     const s = metrics?.summary
 
     return (
-        <div className="min-h-screen bg-black text-white">
+        <div className="min-h-screen bg-background text-foreground">
             {/* Header */}
             <div className="flex items-center justify-between mb-6">
                 <div>
-                    <h1 className="font-mono text-lg font-bold tracking-wider text-white flex items-center gap-2">
+                    <h1 className="font-mono text-lg font-bold tracking-wider text-foreground flex items-center gap-2">
                         <Wallet className="w-5 h-5 text-red-500" />
                         CRYPTO PAYMENTS
                     </h1>
-                    <p className="font-mono text-[10px] text-zinc-500 mt-1 uppercase tracking-wider">
+                    <p className="font-mono text-[10px] text-muted-foreground mt-1 uppercase tracking-wider">
                         {cryptoStatus?.configured ? (
                             <>
                                 <span className="text-green-500">● CONNECTED</span> — {cryptoStatus.network} — {shortAddr(cryptoStatus.contractAddress || null)}
@@ -583,10 +583,10 @@ export default function AdminCryptoPage() {
                 </div>
                 <div className="flex items-center gap-2">
                     <Select value={period} onValueChange={(v) => setPeriod(v)}>
-                        <SelectTrigger className="bg-zinc-900 border-zinc-800 text-white font-mono text-[10px] h-8 w-24 uppercase">
+                        <SelectTrigger className="bg-card border-border text-foreground font-mono text-[10px] h-8 w-24 uppercase">
                             <SelectValue />
                         </SelectTrigger>
-                        <SelectContent className="bg-zinc-900 border-zinc-800 text-white font-mono text-xs">
+                        <SelectContent className="bg-card border-border text-foreground font-mono text-xs">
                             <SelectItem value="24h">24 Hours</SelectItem>
                             <SelectItem value="7d">7 Days</SelectItem>
                             <SelectItem value="30d">30 Days</SelectItem>
@@ -598,7 +598,7 @@ export default function AdminCryptoPage() {
                         variant="outline"
                         size="sm"
                         onClick={() => { loadMetrics(); loadStatus() }}
-                        className="border-zinc-800 text-zinc-400 hover:text-red-400 hover:border-red-900 font-mono text-[10px] h-8"
+                        className="border-border text-muted-foreground hover:text-red-400 hover:border-red-900 font-mono text-[10px] h-8"
                     >
                         <RefreshCw className="w-3 h-3" />
                     </Button>
@@ -606,20 +606,20 @@ export default function AdminCryptoPage() {
             </div>
 
             <Tabs value={activeTab} onValueChange={setActiveTab}>
-                <TabsList className="bg-zinc-900/50 border border-zinc-800 mb-6">
-                    <TabsTrigger value="overview" className="font-mono text-[10px] uppercase data-[state=active]:bg-red-600 data-[state=active]:text-white">
+                <TabsList className="bg-card/50 border border-border mb-6">
+                    <TabsTrigger value="overview" className="font-mono text-[10px] uppercase data-[state=active]:bg-red-600 data-[state=active]:text-foreground">
                         Overview
                     </TabsTrigger>
-                    <TabsTrigger value="transactions" className="font-mono text-[10px] uppercase data-[state=active]:bg-red-600 data-[state=active]:text-white">
+                    <TabsTrigger value="transactions" className="font-mono text-[10px] uppercase data-[state=active]:bg-red-600 data-[state=active]:text-foreground">
                         Transactions
                     </TabsTrigger>
-                    <TabsTrigger value="wallets" className="font-mono text-[10px] uppercase data-[state=active]:bg-red-600 data-[state=active]:text-white">
+                    <TabsTrigger value="wallets" className="font-mono text-[10px] uppercase data-[state=active]:bg-red-600 data-[state=active]:text-foreground">
                         Wallets
                     </TabsTrigger>
-                    <TabsTrigger value="calculator" className="font-mono text-[10px] uppercase data-[state=active]:bg-red-600 data-[state=active]:text-white">
+                    <TabsTrigger value="calculator" className="font-mono text-[10px] uppercase data-[state=active]:bg-red-600 data-[state=active]:text-foreground">
                         Fee Calculator
                     </TabsTrigger>
-                    <TabsTrigger value="platform" className="font-mono text-[10px] uppercase data-[state=active]:bg-red-600 data-[state=active]:text-white">
+                    <TabsTrigger value="platform" className="font-mono text-[10px] uppercase data-[state=active]:bg-red-600 data-[state=active]:text-foreground">
                         <Settings className="w-3 h-3 mr-1" /> Platform Config
                     </TabsTrigger>
                 </TabsList>
@@ -661,18 +661,18 @@ export default function AdminCryptoPage() {
                     {/* Volume by Type + Contract Info */}
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                         {/* Volume by Payment Type */}
-                        <div className="md:col-span-2 border border-zinc-800 bg-zinc-900/50">
-                            <div className="px-4 py-2 bg-zinc-800/50 border-b border-zinc-800">
+                        <div className="md:col-span-2 border border-border bg-card/50">
+                            <div className="px-4 py-2 bg-muted/50 border-b border-border">
                                 <span className="font-mono text-[10px] text-red-500 uppercase tracking-wider">Volume by Type</span>
                             </div>
                             <div className="p-4">
                                 {(metrics?.volumeByType?.length || 0) === 0 ? (
-                                    <p className="text-zinc-600 font-mono text-xs text-center py-8">No transactions in this period</p>
+                                    <p className="text-muted-foreground font-mono text-xs text-center py-8">No transactions in this period</p>
                                 ) : (
                                     <div className="space-y-3">
                                         {metrics?.volumeByType?.map(vt => {
                                             const Icon = paymentTypeIcon[vt.paymentType] || Activity
-                                            const color = paymentTypeColor[vt.paymentType] || 'text-zinc-500'
+                                            const color = paymentTypeColor[vt.paymentType] || 'text-muted-foreground'
                                             const useGHS = (vt.volumeUSDT || 0) === 0 && (vt.volumeGHS || 0) > 0
                                             const displayVol = useGHS ? formatGHS(vt.volumeGHS || 0) : formatUSDT(vt.volumeUSDT)
                                             const displayFee = useGHS ? formatGHS(vt.feesGHS || 0) : formatUSDT(vt.feesUSDT)
@@ -684,17 +684,17 @@ export default function AdminCryptoPage() {
                                                     <div className="flex items-center justify-between mb-1">
                                                         <div className="flex items-center gap-2">
                                                             <Icon className={`w-3.5 h-3.5 ${color}`} />
-                                                            <span className="font-mono text-xs text-white uppercase">{vt.paymentType}</span>
-                                                            <Badge variant="outline" className="font-mono text-[9px] border-zinc-700 text-zinc-400">
+                                                            <span className="font-mono text-xs text-foreground uppercase">{vt.paymentType}</span>
+                                                            <Badge variant="outline" className="font-mono text-[9px] border-border text-muted-foreground">
                                                                 {vt.count} tx
                                                             </Badge>
                                                         </div>
                                                         <div className="text-right">
-                                                            <span className="font-mono text-xs text-white">{displayVol}</span>
-                                                            <span className="font-mono text-[10px] text-zinc-500 ml-2">fee: {displayFee}</span>
+                                                            <span className="font-mono text-xs text-foreground">{displayVol}</span>
+                                                            <span className="font-mono text-[10px] text-muted-foreground ml-2">fee: {displayFee}</span>
                                                         </div>
                                                     </div>
-                                                    <div className="w-full bg-zinc-800 h-1.5 rounded-full">
+                                                    <div className="w-full bg-muted h-1.5 rounded-full">
                                                         <div
                                                             className={`h-1.5 rounded-full ${vt.paymentType === 'rent' ? 'bg-amber-500' : vt.paymentType === 'deal' ? 'bg-blue-500' : 'bg-green-500'}`}
                                                             style={{ width: `${pct}%` }}
@@ -709,32 +709,32 @@ export default function AdminCryptoPage() {
                         </div>
 
                         {/* Contract Status Card */}
-                        <div className="border border-zinc-800 bg-zinc-900/50">
-                            <div className="px-4 py-2 bg-zinc-800/50 border-b border-zinc-800">
+                        <div className="border border-border bg-card/50">
+                            <div className="px-4 py-2 bg-muted/50 border-b border-border">
                                 <span className="font-mono text-[10px] text-red-500 uppercase tracking-wider">Contract Status</span>
                             </div>
                             <div className="p-4 space-y-3">
                                 <div>
-                                    <p className="text-[10px] text-zinc-500 font-mono uppercase">Network</p>
-                                    <p className="text-xs text-white font-mono">{cryptoStatus?.network || 'Not configured'}</p>
+                                    <p className="text-[10px] text-muted-foreground font-mono uppercase">Network</p>
+                                    <p className="text-xs text-foreground font-mono">{cryptoStatus?.network || 'Not configured'}</p>
                                 </div>
                                 <div>
-                                    <p className="text-[10px] text-zinc-500 font-mono uppercase">Contract</p>
+                                    <p className="text-[10px] text-muted-foreground font-mono uppercase">Contract</p>
                                     <div className="flex items-center gap-2">
-                                        <p className="text-xs text-white font-mono">{shortAddr(cryptoStatus?.contractAddress || null)}</p>
+                                        <p className="text-xs text-foreground font-mono">{shortAddr(cryptoStatus?.contractAddress || null)}</p>
                                         {cryptoStatus?.contractAddress && <CopiedButton text={cryptoStatus.contractAddress} />}
                                     </div>
                                 </div>
                                 <div>
-                                    <p className="text-[10px] text-zinc-500 font-mono uppercase">Accepted Tokens</p>
+                                    <p className="text-[10px] text-muted-foreground font-mono uppercase">Accepted Tokens</p>
                                     {cryptoStatus?.acceptedTokens && cryptoStatus.acceptedTokens.length > 0 ? (
                                         <div className="space-y-1 mt-1">
                                             {cryptoStatus.acceptedTokens.map(t => (
                                                 <div key={t.symbol} className="flex items-center justify-between">
-                                                    <span className="font-mono text-xs text-white">{t.symbol}</span>
+                                                    <span className="font-mono text-xs text-foreground">{t.symbol}</span>
                                                     <div className="flex items-center gap-2">
-                                                        <span className="font-mono text-[9px] text-zinc-500">{shortAddr(t.address)}</span>
-                                                        <span className={`text-[9px] font-mono ${t.enabled ? 'text-green-400' : 'text-red-400'}`}>
+                                                        <span className="font-mono text-[9px] text-muted-foreground">{shortAddr(t.address)}</span>
+                                                        <span className={`text-[9px] font-mono ${t.enabled ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
                                                             {t.enabled ? '✓' : '✗'}
                                                         </span>
                                                     </div>
@@ -752,10 +752,10 @@ export default function AdminCryptoPage() {
                                     )}
                                 </div>
                                 <div>
-                                    <p className="text-[10px] text-zinc-500 font-mono uppercase">Supported Networks</p>
+                                    <p className="text-[10px] text-muted-foreground font-mono uppercase">Supported Networks</p>
                                     <div className="flex items-center gap-2 mt-1">
                                         {SUPPORTED_NETWORKS.map(net => (
-                                            <span key={net.name} className="flex items-center gap-1 font-mono text-xs text-white">
+                                            <span key={net.name} className="flex items-center gap-1 font-mono text-xs text-foreground">
                                                 <span className={`w-2 h-2 rounded-full ${net.color} inline-block`} />
                                                 {net.name}
                                             </span>
@@ -763,22 +763,22 @@ export default function AdminCryptoPage() {
                                     </div>
                                 </div>
                                 <div>
-                                    <p className="text-[10px] text-zinc-500 font-mono uppercase">Chain ID</p>
-                                    <p className="text-xs text-white font-mono">{cryptoStatus?.chainId || '—'}</p>
+                                    <p className="text-[10px] text-muted-foreground font-mono uppercase">Chain ID</p>
+                                    <p className="text-xs text-foreground font-mono">{cryptoStatus?.chainId || '—'}</p>
                                 </div>
                                 <div>
-                                    <p className="text-[10px] text-zinc-500 font-mono uppercase">Admin Signer</p>
-                                    <Badge variant="outline" className={`font-mono text-[9px] ${cryptoStatus?.hasAdminSigner ? 'border-green-800 text-green-400' : 'border-red-800 text-red-400'}`}>
+                                    <p className="text-[10px] text-muted-foreground font-mono uppercase">Admin Signer</p>
+                                    <Badge variant="outline" className={`font-mono text-[9px] ${cryptoStatus?.hasAdminSigner ? 'border-green-800 text-green-600 dark:text-green-400' : 'border-red-800 text-red-600 dark:text-red-400'}`}>
                                         {cryptoStatus?.hasAdminSigner ? '● Available' : '● Missing'}
                                     </Badge>
                                 </div>
                                 {cryptoStatus?.onChainFees && (
-                                    <div className="border-t border-zinc-800 pt-3">
-                                        <p className="text-[10px] text-zinc-500 font-mono uppercase mb-2">On-Chain Fee Config</p>
+                                    <div className="border-t border-border pt-3">
+                                        <p className="text-[10px] text-muted-foreground font-mono uppercase mb-2">On-Chain Fee Config</p>
                                         {Object.entries(cryptoStatus.onChainFees).map(([key, val]: [string, any]) => (
                                             <div key={key} className="flex items-center justify-between py-0.5">
-                                                <span className="text-[10px] text-zinc-400 font-mono uppercase">{key}</span>
-                                                <span className="text-[10px] text-white font-mono">
+                                                <span className="text-[10px] text-muted-foreground font-mono uppercase">{key}</span>
+                                                <span className="text-[10px] text-foreground font-mono">
                                                     {val?.bps ? `${val.bps}bps` : '—'} {val?.enabled ? '✓' : '✗'}
                                                 </span>
                                             </div>
@@ -790,12 +790,12 @@ export default function AdminCryptoPage() {
                     </div>
 
                     {/* Recent Transactions */}
-                    <div className="border border-zinc-800 bg-zinc-900/50">
-                        <div className="px-4 py-2 bg-zinc-800/50 border-b border-zinc-800 flex items-center justify-between">
+                    <div className="border border-border bg-card/50">
+                        <div className="px-4 py-2 bg-muted/50 border-b border-border flex items-center justify-between">
                             <span className="font-mono text-[10px] text-red-500 uppercase tracking-wider">Recent Transactions</span>
                             <button
                                 onClick={() => setActiveTab('transactions')}
-                                className="font-mono text-[10px] text-zinc-500 hover:text-red-400 transition-colors uppercase"
+                                className="font-mono text-[10px] text-muted-foreground hover:text-red-400 transition-colors uppercase"
                             >
                                 View All →
                             </button>
@@ -803,21 +803,21 @@ export default function AdminCryptoPage() {
                         <div className="overflow-x-auto">
                             <table className="w-full">
                                 <thead>
-                                    <tr className="border-b border-zinc-800">
-                                        <th className="text-left px-4 py-2 font-mono text-[10px] text-zinc-500 uppercase">Type</th>
-                                        <th className="text-left px-4 py-2 font-mono text-[10px] text-zinc-500 uppercase">Tx Hash</th>
-                                        <th className="text-left px-4 py-2 font-mono text-[10px] text-zinc-500 uppercase">From</th>
-                                        <th className="text-left px-4 py-2 font-mono text-[10px] text-zinc-500 uppercase">To</th>
-                                        <th className="text-right px-4 py-2 font-mono text-[10px] text-zinc-500 uppercase">Amount</th>
-                                        <th className="text-right px-4 py-2 font-mono text-[10px] text-zinc-500 uppercase">Fee</th>
-                                        <th className="text-center px-4 py-2 font-mono text-[10px] text-zinc-500 uppercase">Status</th>
-                                        <th className="text-right px-4 py-2 font-mono text-[10px] text-zinc-500 uppercase">Time</th>
+                                    <tr className="border-b border-border">
+                                        <th className="text-left px-4 py-2 font-mono text-[10px] text-muted-foreground uppercase">Type</th>
+                                        <th className="text-left px-4 py-2 font-mono text-[10px] text-muted-foreground uppercase">Tx Hash</th>
+                                        <th className="text-left px-4 py-2 font-mono text-[10px] text-muted-foreground uppercase">From</th>
+                                        <th className="text-left px-4 py-2 font-mono text-[10px] text-muted-foreground uppercase">To</th>
+                                        <th className="text-right px-4 py-2 font-mono text-[10px] text-muted-foreground uppercase">Amount</th>
+                                        <th className="text-right px-4 py-2 font-mono text-[10px] text-muted-foreground uppercase">Fee</th>
+                                        <th className="text-center px-4 py-2 font-mono text-[10px] text-muted-foreground uppercase">Status</th>
+                                        <th className="text-right px-4 py-2 font-mono text-[10px] text-muted-foreground uppercase">Time</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     {(metrics?.recentTransactions?.length || 0) === 0 ? (
                                         <tr>
-                                            <td colSpan={8} className="px-4 py-12 text-center font-mono text-xs text-zinc-600">
+                                            <td colSpan={8} className="px-4 py-12 text-center font-mono text-xs text-muted-foreground">
                                                 No crypto transactions yet
                                             </td>
                                         </tr>
@@ -827,46 +827,46 @@ export default function AdminCryptoPage() {
                                             const TypeIcon = paymentTypeIcon[tx.paymentType] || Activity
                                             const isNowPayments = tx.channel === 'crypto_nowpayments'
                                             return (
-                                                <tr key={tx.id} className="border-b border-zinc-800/50 hover:bg-zinc-800/30 transition-colors">
+                                                <tr key={tx.id} className="border-b border-border/50 hover:bg-amber-50 dark:hover:bg-amber-500/10 transition-colors">
                                                     <td className="px-4 py-2.5">
                                                         <div className="flex items-center gap-1.5">
-                                                            <TypeIcon className={`w-3 h-3 ${paymentTypeColor[tx.paymentType] || 'text-zinc-500'}`} />
-                                                            <span className="font-mono text-[10px] text-white uppercase">{tx.paymentType}</span>
+                                                            <TypeIcon className={`w-3 h-3 ${paymentTypeColor[tx.paymentType] || 'text-muted-foreground'}`} />
+                                                            <span className="font-mono text-[10px] text-foreground uppercase">{tx.paymentType}</span>
                                                         </div>
                                                     </td>
                                                     <td className="px-4 py-2.5">
                                                         {tx.txHash ? (
                                                             <div className="flex items-center gap-1.5">
-                                                                <span className="font-mono text-xs text-zinc-300">{shortAddr(tx.txHash)}</span>
+                                                                <span className="font-mono text-xs text-muted-foreground">{shortAddr(tx.txHash)}</span>
                                                                 <CopiedButton text={tx.txHash} />
                                                                 <a
                                                                     href={explorerUrl(cryptoStatus?.chainId, tx.txHash)}
                                                                     target="_blank"
                                                                     rel="noopener noreferrer"
-                                                                    className="text-zinc-600 hover:text-red-400"
+                                                                    className="text-muted-foreground hover:text-red-400"
                                                                 >
                                                                     <ExternalLink className="w-3 h-3" />
                                                                 </a>
                                                             </div>
                                                         ) : (
-                                                            <Badge variant="outline" className="font-mono text-[9px] border-cyan-700/40 text-cyan-400 bg-cyan-900/10">
+                                                            <Badge variant="outline" className="font-mono text-[9px] border-cyan-700/40 text-cyan-600 dark:text-cyan-400 bg-cyan-100 dark:bg-cyan-900/10">
                                                                 {isNowPayments ? 'NOWPayments' : 'No Hash'}
                                                             </Badge>
                                                         )}
                                                     </td>
                                                     <td className="px-4 py-2.5">
-                                                        <span className="font-mono text-[10px] text-zinc-400">{shortAddr(tx.payerWallet)}</span>
+                                                        <span className="font-mono text-[10px] text-muted-foreground">{shortAddr(tx.payerWallet)}</span>
                                                     </td>
                                                     <td className="px-4 py-2.5">
-                                                        <span className="font-mono text-[10px] text-zinc-400">{shortAddr(tx.recipientWallet)}</span>
+                                                        <span className="font-mono text-[10px] text-muted-foreground">{shortAddr(tx.recipientWallet)}</span>
                                                     </td>
                                                     <td className="px-4 py-2.5 text-right">
                                                         {tx.principalCrypto != null ? (
-                                                            <span className="font-mono text-xs text-white">{formatUSDT(tx.principalCrypto)}</span>
+                                                            <span className="font-mono text-xs text-foreground">{formatUSDT(tx.principalCrypto)}</span>
                                                         ) : tx.principalAmount != null ? (
-                                                            <span className="font-mono text-xs text-white">{formatGHS(tx.principalAmount / 100)}</span>
+                                                            <span className="font-mono text-xs text-foreground">{formatGHS(tx.principalAmount / 100)}</span>
                                                         ) : (
-                                                            <span className="font-mono text-xs text-zinc-600">—</span>
+                                                            <span className="font-mono text-xs text-muted-foreground">—</span>
                                                         )}
                                                     </td>
                                                     <td className="px-4 py-2.5 text-right">
@@ -875,7 +875,7 @@ export default function AdminCryptoPage() {
                                                         ) : tx.serviceFee != null ? (
                                                             <span className="font-mono text-[10px] text-amber-500">{formatGHS(tx.serviceFee / 100)}</span>
                                                         ) : (
-                                                            <span className="font-mono text-[10px] text-zinc-600">—</span>
+                                                            <span className="font-mono text-[10px] text-muted-foreground">—</span>
                                                         )}
                                                     </td>
                                                     <td className="px-4 py-2.5 text-center">
@@ -884,7 +884,7 @@ export default function AdminCryptoPage() {
                                                         </Badge>
                                                     </td>
                                                     <td className="px-4 py-2.5 text-right">
-                                                        <span className="font-mono text-[10px] text-zinc-500">
+                                                        <span className="font-mono text-[10px] text-muted-foreground">
                                                             {new Date(tx.createdAt).toLocaleString('en-GH', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
                                                         </span>
                                                     </td>
@@ -903,20 +903,20 @@ export default function AdminCryptoPage() {
                     {/* Filters */}
                     <div className="flex items-center gap-3 flex-wrap">
                         <div className="relative flex-1 min-w-[200px]">
-                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-zinc-500" />
+                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
                             <Input
                                 placeholder="Search by tx hash, wallet, reference..."
                                 value={txFilter.search}
                                 onChange={(e) => setTxFilter(f => ({ ...f, search: e.target.value }))}
                                 onKeyDown={(e) => e.key === 'Enter' && loadTransactions(1)}
-                                className="pl-9 bg-zinc-900 border-zinc-800 text-white font-mono text-xs h-9"
+                                className="pl-9 bg-card border-border text-foreground font-mono text-xs h-9"
                             />
                         </div>
                         <Select value={txFilter.status} onValueChange={(v) => setTxFilter(f => ({ ...f, status: v === 'all' ? '' : v }))}>
-                            <SelectTrigger className="bg-zinc-900 border-zinc-800 text-white font-mono text-[10px] h-9 w-32 uppercase">
+                            <SelectTrigger className="bg-card border-border text-foreground font-mono text-[10px] h-9 w-32 uppercase">
                                 <SelectValue placeholder="Status" />
                             </SelectTrigger>
-                            <SelectContent className="bg-zinc-900 border-zinc-800 text-white font-mono text-xs">
+                            <SelectContent className="bg-card border-border text-foreground font-mono text-xs">
                                 <SelectItem value="all">All Status</SelectItem>
                                 <SelectItem value="success">Success</SelectItem>
                                 <SelectItem value="pending">Pending</SelectItem>
@@ -924,10 +924,10 @@ export default function AdminCryptoPage() {
                             </SelectContent>
                         </Select>
                         <Select value={txFilter.paymentType} onValueChange={(v) => setTxFilter(f => ({ ...f, paymentType: v === 'all' ? '' : v }))}>
-                            <SelectTrigger className="bg-zinc-900 border-zinc-800 text-white font-mono text-[10px] h-9 w-32 uppercase">
+                            <SelectTrigger className="bg-card border-border text-foreground font-mono text-[10px] h-9 w-32 uppercase">
                                 <SelectValue placeholder="Type" />
                             </SelectTrigger>
-                            <SelectContent className="bg-zinc-900 border-zinc-800 text-white font-mono text-xs">
+                            <SelectContent className="bg-card border-border text-foreground font-mono text-xs">
                                 <SelectItem value="all">All Types</SelectItem>
                                 <SelectItem value="rent">Rent</SelectItem>
                                 <SelectItem value="deal">Deal</SelectItem>
@@ -936,14 +936,14 @@ export default function AdminCryptoPage() {
                         </Select>
                         <Button
                             onClick={() => loadTransactions(1)}
-                            className="bg-red-600 hover:bg-red-700 text-white font-mono text-[10px] h-9 uppercase"
+                            className="bg-red-600 hover:bg-red-700 text-foreground font-mono text-[10px] h-9 uppercase"
                         >
                             <Search className="w-3 h-3 mr-1" /> Search
                         </Button>
                     </div>
 
                     {/* Transactions Table */}
-                    <div className="border border-zinc-800 bg-zinc-900/50">
+                    <div className="border border-border bg-card/50">
                         <div className="overflow-x-auto">
                             {txLoading ? (
                                 <div className="flex items-center justify-center py-16">
@@ -952,23 +952,23 @@ export default function AdminCryptoPage() {
                             ) : (
                                 <table className="w-full">
                                     <thead>
-                                        <tr className="border-b border-zinc-800">
-                                            <th className="text-left px-4 py-2 font-mono text-[10px] text-zinc-500 uppercase">Reference</th>
-                                            <th className="text-left px-4 py-2 font-mono text-[10px] text-zinc-500 uppercase">Type</th>
-                                            <th className="text-left px-4 py-2 font-mono text-[10px] text-zinc-500 uppercase">Tx Hash</th>
-                                            <th className="text-left px-4 py-2 font-mono text-[10px] text-zinc-500 uppercase">Payer</th>
-                                            <th className="text-left px-4 py-2 font-mono text-[10px] text-zinc-500 uppercase">Recipient</th>
-                                            <th className="text-right px-4 py-2 font-mono text-[10px] text-zinc-500 uppercase">Principal</th>
-                                            <th className="text-right px-4 py-2 font-mono text-[10px] text-zinc-500 uppercase">Fee</th>
-                                            <th className="text-right px-4 py-2 font-mono text-[10px] text-zinc-500 uppercase">Rate</th>
-                                            <th className="text-center px-4 py-2 font-mono text-[10px] text-zinc-500 uppercase">Status</th>
-                                            <th className="text-right px-4 py-2 font-mono text-[10px] text-zinc-500 uppercase">Date</th>
+                                        <tr className="border-b border-border">
+                                            <th className="text-left px-4 py-2 font-mono text-[10px] text-muted-foreground uppercase">Reference</th>
+                                            <th className="text-left px-4 py-2 font-mono text-[10px] text-muted-foreground uppercase">Type</th>
+                                            <th className="text-left px-4 py-2 font-mono text-[10px] text-muted-foreground uppercase">Tx Hash</th>
+                                            <th className="text-left px-4 py-2 font-mono text-[10px] text-muted-foreground uppercase">Payer</th>
+                                            <th className="text-left px-4 py-2 font-mono text-[10px] text-muted-foreground uppercase">Recipient</th>
+                                            <th className="text-right px-4 py-2 font-mono text-[10px] text-muted-foreground uppercase">Principal</th>
+                                            <th className="text-right px-4 py-2 font-mono text-[10px] text-muted-foreground uppercase">Fee</th>
+                                            <th className="text-right px-4 py-2 font-mono text-[10px] text-muted-foreground uppercase">Rate</th>
+                                            <th className="text-center px-4 py-2 font-mono text-[10px] text-muted-foreground uppercase">Status</th>
+                                            <th className="text-right px-4 py-2 font-mono text-[10px] text-muted-foreground uppercase">Date</th>
                                         </tr>
                                     </thead>
                                     <tbody>
                                         {transactions.length === 0 ? (
                                             <tr>
-                                                <td colSpan={10} className="px-4 py-16 text-center font-mono text-xs text-zinc-600">
+                                                <td colSpan={10} className="px-4 py-16 text-center font-mono text-xs text-muted-foreground">
                                                     No crypto transactions found
                                                 </td>
                                             </tr>
@@ -978,44 +978,44 @@ export default function AdminCryptoPage() {
                                                 const TypeIcon = paymentTypeIcon[tx.paymentType] || Activity
                                                 const isNowPayments = tx.channel === 'crypto_nowpayments'
                                                 return (
-                                                    <tr key={tx.id} className="border-b border-zinc-800/50 hover:bg-zinc-800/30 transition-colors">
+                                                    <tr key={tx.id} className="border-b border-border/50 hover:bg-amber-50 dark:hover:bg-amber-500/10 transition-colors">
                                                         <td className="px-4 py-2.5">
-                                                            <span className="font-mono text-[10px] text-zinc-300">{tx.reference?.slice(0, 12)}...</span>
+                                                            <span className="font-mono text-[10px] text-muted-foreground">{tx.reference?.slice(0, 12)}...</span>
                                                         </td>
                                                         <td className="px-4 py-2.5">
                                                             <div className="flex items-center gap-1.5">
                                                                 <TypeIcon className={`w-3 h-3 ${paymentTypeColor[tx.paymentType]}`} />
-                                                                <span className="font-mono text-[10px] text-white uppercase">{tx.paymentType}</span>
+                                                                <span className="font-mono text-[10px] text-foreground uppercase">{tx.paymentType}</span>
                                                             </div>
                                                         </td>
                                                         <td className="px-4 py-2.5">
                                                             {tx.txHash ? (
                                                                 <div className="flex items-center gap-1.5">
-                                                                    <span className="font-mono text-xs text-zinc-300">{shortAddr(tx.txHash)}</span>
+                                                                    <span className="font-mono text-xs text-muted-foreground">{shortAddr(tx.txHash)}</span>
                                                                     <CopiedButton text={tx.txHash} />
                                                                     <a
                                                                         href={explorerUrl(cryptoStatus?.chainId, tx.txHash)}
                                                                         target="_blank"
                                                                         rel="noopener noreferrer"
-                                                                        className="text-zinc-600 hover:text-red-400"
+                                                                        className="text-muted-foreground hover:text-red-400"
                                                                     >
                                                                         <ExternalLink className="w-3 h-3" />
                                                                     </a>
                                                                 </div>
                                                             ) : (
-                                                                <Badge variant="outline" className="font-mono text-[9px] border-cyan-700/40 text-cyan-400 bg-cyan-900/10">
+                                                                <Badge variant="outline" className="font-mono text-[9px] border-cyan-700/40 text-cyan-600 dark:text-cyan-400 bg-cyan-100 dark:bg-cyan-900/10">
                                                                     {isNowPayments ? 'NOWPayments' : 'No Hash'}
                                                                 </Badge>
                                                             )}
                                                         </td>
                                                         <td className="px-4 py-2.5">
                                                             <div>
-                                                                <span className="font-mono text-[10px] text-zinc-400">{shortAddr(tx.payerWallet)}</span>
+                                                                <span className="font-mono text-[10px] text-muted-foreground">{shortAddr(tx.payerWallet)}</span>
                                                                 {tx.payerEmail && (
-                                                                    <p className="font-mono text-[9px] text-zinc-600">{tx.payerEmail}</p>
+                                                                    <p className="font-mono text-[9px] text-muted-foreground">{tx.payerEmail}</p>
                                                                 )}
                                                                 {!tx.payerWallet && tx.payCurrency && (
-                                                                    <Badge variant="outline" className="font-mono text-[9px] border-zinc-700 text-zinc-400 mt-0.5">
+                                                                    <Badge variant="outline" className="font-mono text-[9px] border-border text-muted-foreground mt-0.5">
                                                                         {tx.payCurrency}
                                                                     </Badge>
                                                                 )}
@@ -1023,27 +1023,27 @@ export default function AdminCryptoPage() {
                                                         </td>
                                                         <td className="px-4 py-2.5">
                                                             {tx.recipientWallet ? (
-                                                                <span className="font-mono text-[10px] text-zinc-400">{shortAddr(tx.recipientWallet)}</span>
+                                                                <span className="font-mono text-[10px] text-muted-foreground">{shortAddr(tx.recipientWallet)}</span>
                                                             ) : tx.recipientType === 'organization' ? (
                                                                 <div>
-                                                                    <span className="font-mono text-[10px] text-zinc-400">Organization</span>
+                                                                    <span className="font-mono text-[10px] text-muted-foreground">Organization</span>
                                                                     {tx.outcomeCurrency && (
-                                                                        <Badge variant="outline" className="font-mono text-[9px] border-green-800/40 text-green-400 bg-green-900/10 ml-1">
+                                                                        <Badge variant="outline" className="font-mono text-[9px] border-green-800/40 text-green-600 dark:text-green-400 bg-green-100 dark:bg-green-900/10 ml-1">
                                                                             → {tx.outcomeCurrency}
                                                                         </Badge>
                                                                     )}
                                                                 </div>
                                                             ) : (
-                                                                <span className="font-mono text-[10px] text-zinc-600">—</span>
+                                                                <span className="font-mono text-[10px] text-muted-foreground">—</span>
                                                             )}
                                                         </td>
                                                         <td className="px-4 py-2.5 text-right">
                                                             {tx.principalCrypto != null ? (
-                                                                <span className="font-mono text-xs text-white">{formatUSDT(tx.principalCrypto)}</span>
+                                                                <span className="font-mono text-xs text-foreground">{formatUSDT(tx.principalCrypto)}</span>
                                                             ) : tx.principalAmount != null ? (
-                                                                <span className="font-mono text-xs text-white">{formatGHS(tx.principalAmount / 100)}</span>
+                                                                <span className="font-mono text-xs text-foreground">{formatGHS(tx.principalAmount / 100)}</span>
                                                             ) : (
-                                                                <span className="font-mono text-xs text-zinc-600">—</span>
+                                                                <span className="font-mono text-xs text-muted-foreground">—</span>
                                                             )}
                                                         </td>
                                                         <td className="px-4 py-2.5 text-right">
@@ -1052,11 +1052,11 @@ export default function AdminCryptoPage() {
                                                             ) : tx.serviceFee != null ? (
                                                                 <span className="font-mono text-[10px] text-amber-500">{formatGHS(tx.serviceFee / 100)}</span>
                                                             ) : (
-                                                                <span className="font-mono text-[10px] text-zinc-600">—</span>
+                                                                <span className="font-mono text-[10px] text-muted-foreground">—</span>
                                                             )}
                                                         </td>
                                                         <td className="px-4 py-2.5 text-right">
-                                                            <span className="font-mono text-[10px] text-zinc-500">
+                                                            <span className="font-mono text-[10px] text-muted-foreground">
                                                                 {tx.exchangeRate ? `₵${tx.exchangeRate.toFixed(2)}/USD` : '—'}
                                                             </span>
                                                         </td>
@@ -1066,7 +1066,7 @@ export default function AdminCryptoPage() {
                                                             </Badge>
                                                         </td>
                                                         <td className="px-4 py-2.5 text-right">
-                                                            <span className="font-mono text-[10px] text-zinc-500">
+                                                            <span className="font-mono text-[10px] text-muted-foreground">
                                                                 {new Date(tx.createdAt).toLocaleString('en-GH', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
                                                             </span>
                                                         </td>
@@ -1081,8 +1081,8 @@ export default function AdminCryptoPage() {
 
                         {/* Pagination */}
                         {txTotal > 20 && (
-                            <div className="flex items-center justify-between px-4 py-3 border-t border-zinc-800">
-                                <span className="font-mono text-[10px] text-zinc-500">
+                            <div className="flex items-center justify-between px-4 py-3 border-t border-border">
+                                <span className="font-mono text-[10px] text-muted-foreground">
                                     Showing {(txPage - 1) * 20 + 1}–{Math.min(txPage * 20, txTotal)} of {txTotal}
                                 </span>
                                 <div className="flex items-center gap-2">
@@ -1091,7 +1091,7 @@ export default function AdminCryptoPage() {
                                         size="sm"
                                         disabled={txPage <= 1}
                                         onClick={() => loadTransactions(txPage - 1)}
-                                        className="border-zinc-800 text-zinc-400 font-mono text-[10px] h-7"
+                                        className="border-border text-muted-foreground font-mono text-[10px] h-7"
                                     >
                                         ← Prev
                                     </Button>
@@ -1100,7 +1100,7 @@ export default function AdminCryptoPage() {
                                         size="sm"
                                         disabled={txPage * 20 >= txTotal}
                                         onClick={() => loadTransactions(txPage + 1)}
-                                        className="border-zinc-800 text-zinc-400 font-mono text-[10px] h-7"
+                                        className="border-border text-muted-foreground font-mono text-[10px] h-7"
                                     >
                                         Next →
                                     </Button>
@@ -1112,8 +1112,8 @@ export default function AdminCryptoPage() {
 
                 {/* ━━━ WALLETS TAB ━━━ */}
                 <TabsContent value="wallets" className="space-y-4">
-                    <div className="border border-zinc-800 bg-zinc-900/50">
-                        <div className="px-4 py-2 bg-zinc-800/50 border-b border-zinc-800 flex items-center justify-between">
+                    <div className="border border-border bg-card/50">
+                        <div className="px-4 py-2 bg-muted/50 border-b border-border flex items-center justify-between">
                             <span className="font-mono text-[10px] text-red-500 uppercase tracking-wider">
                                 Registered Crypto Wallets ({walletTotal})
                             </span>
@@ -1121,7 +1121,7 @@ export default function AdminCryptoPage() {
                                 variant="outline"
                                 size="sm"
                                 onClick={loadWallets}
-                                className="border-zinc-800 text-zinc-400 hover:text-red-400 font-mono text-[10px] h-7"
+                                className="border-border text-muted-foreground hover:text-red-400 font-mono text-[10px] h-7"
                             >
                                 <RefreshCw className="w-3 h-3" />
                             </Button>
@@ -1133,44 +1133,44 @@ export default function AdminCryptoPage() {
                         ) : wallets.length === 0 ? (
                             <div className="py-16 text-center">
                                 <Wallet className="w-8 h-8 text-zinc-700 mx-auto mb-3" />
-                                <p className="font-mono text-xs text-zinc-500">No crypto wallets registered yet</p>
-                                <p className="font-mono text-[10px] text-zinc-600 mt-1">
+                                <p className="font-mono text-xs text-muted-foreground">No crypto wallets registered yet</p>
+                                <p className="font-mono text-[10px] text-muted-foreground mt-1">
                                     Users can configure wallets in their Payment Settings under the Crypto tab
                                 </p>
                             </div>
                         ) : (
                             <table className="w-full">
                                 <thead>
-                                    <tr className="border-b border-zinc-800">
-                                        <th className="text-left px-4 py-2 font-mono text-[10px] text-zinc-500 uppercase">Entity</th>
-                                        <th className="text-left px-4 py-2 font-mono text-[10px] text-zinc-500 uppercase">Organization</th>
-                                        <th className="text-left px-4 py-2 font-mono text-[10px] text-zinc-500 uppercase">Wallet Address</th>
-                                        <th className="text-left px-4 py-2 font-mono text-[10px] text-zinc-500 uppercase">Settlement</th>
-                                        <th className="text-center px-4 py-2 font-mono text-[10px] text-zinc-500 uppercase">Verified</th>
-                                        <th className="text-center px-4 py-2 font-mono text-[10px] text-zinc-500 uppercase">Active</th>
-                                        <th className="text-right px-4 py-2 font-mono text-[10px] text-zinc-500 uppercase">Registered</th>
+                                    <tr className="border-b border-border">
+                                        <th className="text-left px-4 py-2 font-mono text-[10px] text-muted-foreground uppercase">Entity</th>
+                                        <th className="text-left px-4 py-2 font-mono text-[10px] text-muted-foreground uppercase">Organization</th>
+                                        <th className="text-left px-4 py-2 font-mono text-[10px] text-muted-foreground uppercase">Wallet Address</th>
+                                        <th className="text-left px-4 py-2 font-mono text-[10px] text-muted-foreground uppercase">Settlement</th>
+                                        <th className="text-center px-4 py-2 font-mono text-[10px] text-muted-foreground uppercase">Verified</th>
+                                        <th className="text-center px-4 py-2 font-mono text-[10px] text-muted-foreground uppercase">Active</th>
+                                        <th className="text-right px-4 py-2 font-mono text-[10px] text-muted-foreground uppercase">Registered</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     {wallets.map(w => (
-                                        <tr key={w.id} className="border-b border-zinc-800/50 hover:bg-zinc-800/30 transition-colors">
+                                        <tr key={w.id} className="border-b border-border/50 hover:bg-amber-50 dark:hover:bg-amber-500/10 transition-colors">
                                             <td className="px-4 py-2.5">
-                                                <Badge variant="outline" className="font-mono text-[9px] border-zinc-700 text-zinc-300 uppercase">
+                                                <Badge variant="outline" className="font-mono text-[9px] border-border text-muted-foreground uppercase">
                                                     {w.entityType}
                                                 </Badge>
                                             </td>
                                             <td className="px-4 py-2.5">
-                                                <span className="font-mono text-xs text-white">{w.organizationName || w.accountName || '—'}</span>
+                                                <span className="font-mono text-xs text-foreground">{w.organizationName || w.accountName || '—'}</span>
                                             </td>
                                             <td className="px-4 py-2.5">
                                                 <div className="flex items-center gap-1.5">
-                                                    <span className="font-mono text-xs text-zinc-300">{shortAddr(w.walletAddress)}</span>
+                                                    <span className="font-mono text-xs text-muted-foreground">{shortAddr(w.walletAddress)}</span>
                                                     <CopiedButton text={w.walletAddress} />
                                                     <a
                                                         href={`https://polygonscan.com/address/${w.walletAddress}`}
                                                         target="_blank"
                                                         rel="noopener noreferrer"
-                                                        className="text-zinc-600 hover:text-red-400"
+                                                        className="text-muted-foreground hover:text-red-400"
                                                     >
                                                         <ExternalLink className="w-3 h-3" />
                                                     </a>
@@ -1179,15 +1179,15 @@ export default function AdminCryptoPage() {
                                             <td className="px-4 py-2.5">
                                                 {w.settlementCoin ? (
                                                     <div className="flex items-center gap-1">
-                                                        <Badge variant="outline" className="font-mono text-[9px] border-green-800/40 text-green-400 bg-green-900/10 uppercase">
+                                                        <Badge variant="outline" className="font-mono text-[9px] border-green-800/40 text-green-600 dark:text-green-400 bg-green-100 dark:bg-green-900/10 uppercase">
                                                             {w.settlementCoin}
                                                         </Badge>
                                                         {w.settlementChain && (
-                                                            <span className="font-mono text-[9px] text-zinc-600">{w.settlementChain}</span>
+                                                            <span className="font-mono text-[9px] text-muted-foreground">{w.settlementChain}</span>
                                                         )}
                                                     </div>
                                                 ) : (
-                                                    <span className="font-mono text-[10px] text-zinc-600">Not configured</span>
+                                                    <span className="font-mono text-[10px] text-muted-foreground">Not configured</span>
                                                 )}
                                             </td>
                                             <td className="px-4 py-2.5 text-center">
@@ -1198,12 +1198,12 @@ export default function AdminCryptoPage() {
                                                 )}
                                             </td>
                                             <td className="px-4 py-2.5 text-center">
-                                                <span className={`font-mono text-[10px] ${w.isActive ? 'text-green-400' : 'text-red-400'}`}>
+                                                <span className={`font-mono text-[10px] ${w.isActive ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
                                                     {w.isActive ? 'Active' : 'Inactive'}
                                                 </span>
                                             </td>
                                             <td className="px-4 py-2.5 text-right">
-                                                <span className="font-mono text-[10px] text-zinc-500">
+                                                <span className="font-mono text-[10px] text-muted-foreground">
                                                     {w.registeredAt ? new Date(w.registeredAt).toLocaleDateString('en-GH') : '—'}
                                                 </span>
                                             </td>
@@ -1219,28 +1219,28 @@ export default function AdminCryptoPage() {
                 <TabsContent value="calculator" className="space-y-4">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         {/* Input */}
-                        <Card className="bg-black border border-zinc-800">
+                        <Card className="bg-background border border-border">
                             <CardHeader>
                                 <CardTitle className="text-sm font-mono uppercase tracking-wider text-red-500 flex items-center gap-2">
                                     <Calculator className="h-4 w-4" />
                                     Fee Calculator
                                 </CardTitle>
-                                <CardDescription className="text-zinc-500 font-mono text-xs">
+                                <CardDescription className="text-muted-foreground font-mono text-xs">
                                     Enter a GHS amount to see real-time fee breakdown across all payment types
                                 </CardDescription>
                             </CardHeader>
                             <CardContent className="space-y-4">
                                 <div>
-                                    <label className="text-[10px] text-zinc-500 font-mono uppercase block mb-1.5">Payment Amount (GHS)</label>
+                                    <label className="text-[10px] text-muted-foreground font-mono uppercase block mb-1.5">Payment Amount (GHS)</label>
                                     <div className="relative">
-                                        <span className="absolute left-3 top-1/2 -translate-y-1/2 font-mono text-zinc-500 text-sm">₵</span>
+                                        <span className="absolute left-3 top-1/2 -translate-y-1/2 font-mono text-muted-foreground text-sm">₵</span>
                                         <Input
                                             type="number"
                                             value={calcAmount}
                                             onChange={(e) => setCalcAmount(e.target.value)}
                                             onKeyDown={(e) => e.key === 'Enter' && calculateFees()}
                                             placeholder="2500"
-                                            className="pl-8 bg-zinc-900 border-zinc-800 text-white font-mono text-lg h-12"
+                                            className="pl-8 bg-card border-border text-foreground font-mono text-lg h-12"
                                         />
                                     </div>
                                 </div>
@@ -1253,8 +1253,8 @@ export default function AdminCryptoPage() {
                                             onClick={() => { setCalcAmount(String(amt)); }}
                                             className={`px-3 py-1 rounded font-mono text-[10px] border transition-colors ${
                                                 calcAmount === String(amt)
-                                                    ? 'border-red-700 bg-red-900/30 text-red-400'
-                                                    : 'border-zinc-800 bg-zinc-900 text-zinc-400 hover:border-zinc-700'
+                                                    ? 'border-red-700 bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400'
+                                                    : 'border-border bg-card text-muted-foreground hover:border-border'
                                             }`}
                                         >
                                             ₵{amt.toLocaleString()}
@@ -1265,7 +1265,7 @@ export default function AdminCryptoPage() {
                                 <Button
                                     onClick={calculateFees}
                                     disabled={calcLoading || !calcAmount || parseFloat(calcAmount) <= 0}
-                                    className="w-full bg-red-600 hover:bg-red-700 disabled:bg-zinc-800 text-white font-mono text-xs uppercase font-bold h-10"
+                                    className="w-full bg-red-600 hover:bg-red-700 disabled:bg-muted text-foreground font-mono text-xs uppercase font-bold h-10"
                                 >
                                     {calcLoading ? (
                                         <><Loader2 className="w-3 h-3 animate-spin mr-2" /> Calculating...</>
@@ -1279,16 +1279,16 @@ export default function AdminCryptoPage() {
                         {/* Results */}
                         <div className="space-y-3">
                             {!calcResult ? (
-                                <div className="flex items-center justify-center h-full border border-zinc-800 bg-zinc-900/50 rounded-lg">
+                                <div className="flex items-center justify-center h-full border border-border bg-card/50 rounded-lg">
                                     <div className="text-center py-16">
                                         <BarChart3 className="w-8 h-8 text-zinc-700 mx-auto mb-3" />
-                                        <p className="font-mono text-xs text-zinc-500">Enter an amount and click Calculate</p>
+                                        <p className="font-mono text-xs text-muted-foreground">Enter an amount and click Calculate</p>
                                     </div>
                                 </div>
                             ) : (
                                 calcResult.map(br => {
                                     const Icon = paymentTypeIcon[br.paymentType] || Activity
-                                    const color = paymentTypeColor[br.paymentType] || 'text-zinc-500'
+                                    const color = paymentTypeColor[br.paymentType] || 'text-muted-foreground'
                                     const colorMap: Record<string, string> = {
                                         rent: 'border-amber-800 bg-amber-950/20',
                                         deal: 'border-blue-800 bg-blue-950/20',
@@ -1296,40 +1296,40 @@ export default function AdminCryptoPage() {
                                     }
 
                                     return (
-                                        <Card key={br.paymentType} className={`bg-black border ${colorMap[br.paymentType] || 'border-zinc-800'}`}>
+                                        <Card key={br.paymentType} className={`bg-background border ${colorMap[br.paymentType] || 'border-border'}`}>
                                             <CardContent className="py-4">
                                                 <div className="flex items-center gap-2 mb-3">
                                                     <Icon className={`w-4 h-4 ${color}`} />
-                                                    <span className="font-mono text-xs text-white uppercase font-bold">{br.paymentType}</span>
-                                                    <Badge variant="outline" className="font-mono text-[9px] border-zinc-700 text-zinc-400 ml-auto">
+                                                    <span className="font-mono text-xs text-foreground uppercase font-bold">{br.paymentType}</span>
+                                                    <Badge variant="outline" className="font-mono text-[9px] border-border text-muted-foreground ml-auto">
                                                         {br.feeMode}
                                                     </Badge>
                                                 </div>
                                                 <div className="grid grid-cols-3 gap-4">
                                                     <div>
-                                                        <p className="text-[9px] text-zinc-500 font-mono uppercase">Principal</p>
-                                                        <p className="text-sm text-white font-mono font-bold">{formatGHS(br.principalGHS)}</p>
+                                                        <p className="text-[9px] text-muted-foreground font-mono uppercase">Principal</p>
+                                                        <p className="text-sm text-foreground font-mono font-bold">{formatGHS(br.principalGHS)}</p>
                                                         {br.principalUSDT !== null && (
-                                                            <p className="text-[10px] text-zinc-500 font-mono">{formatUSDT(br.principalUSDT)}</p>
+                                                            <p className="text-[10px] text-muted-foreground font-mono">{formatUSDT(br.principalUSDT)}</p>
                                                         )}
                                                     </div>
                                                     <div>
-                                                        <p className="text-[9px] text-zinc-500 font-mono uppercase">Platform Fee</p>
+                                                        <p className="text-[9px] text-muted-foreground font-mono uppercase">Platform Fee</p>
                                                         <p className="text-sm text-amber-500 font-mono font-bold">{formatGHS(br.feeGHS)}</p>
                                                         {br.feeUSDT !== null && (
-                                                            <p className="text-[10px] text-zinc-500 font-mono">{formatUSDT(br.feeUSDT)}</p>
+                                                            <p className="text-[10px] text-muted-foreground font-mono">{formatUSDT(br.feeUSDT)}</p>
                                                         )}
                                                     </div>
                                                     <div>
-                                                        <p className="text-[9px] text-zinc-500 font-mono uppercase">Total</p>
-                                                        <p className="text-sm text-white font-mono font-bold">{formatGHS(br.totalGHS)}</p>
+                                                        <p className="text-[9px] text-muted-foreground font-mono uppercase">Total</p>
+                                                        <p className="text-sm text-foreground font-mono font-bold">{formatGHS(br.totalGHS)}</p>
                                                         {br.totalUSDT !== null && (
-                                                            <p className="text-[10px] text-zinc-500 font-mono">{formatUSDT(br.totalUSDT)}</p>
+                                                            <p className="text-[10px] text-muted-foreground font-mono">{formatUSDT(br.totalUSDT)}</p>
                                                         )}
                                                     </div>
                                                 </div>
                                                 {br.exchangeRate && (
-                                                    <p className="text-[9px] text-zinc-600 font-mono mt-2">
+                                                    <p className="text-[9px] text-muted-foreground font-mono mt-2">
                                                         Exchange rate: ₵{br.exchangeRate.toFixed(2)} / USD
                                                     </p>
                                                 )}
@@ -1351,7 +1351,7 @@ export default function AdminCryptoPage() {
                     ) : (
                         <>
                             {/* ── Platform Settlement Wallet ────────── */}
-                            <Card className="bg-black border border-zinc-800">
+                            <Card className="bg-background border border-border">
                                 <CardHeader>
                                     <div className="flex items-center justify-between">
                                         <div>
@@ -1359,7 +1359,7 @@ export default function AdminCryptoPage() {
                                                 <Wallet className="h-4 w-4" />
                                                 Platform Fee Settlement Wallet
                                             </CardTitle>
-                                            <CardDescription className="text-zinc-500 font-mono text-xs mt-1">
+                                            <CardDescription className="text-muted-foreground font-mono text-xs mt-1">
                                                 Select which coin and wallet address to receive all platform fees. All fees are auto-converted to your preferred currency.
                                             </CardDescription>
                                         </div>
@@ -1367,7 +1367,7 @@ export default function AdminCryptoPage() {
                                             variant="outline"
                                             size="sm"
                                             onClick={loadPlatformConfig}
-                                            className="border-zinc-800 text-zinc-400 hover:text-red-400 font-mono text-[10px] h-7"
+                                            className="border-border text-muted-foreground hover:text-red-400 font-mono text-[10px] h-7"
                                         >
                                             <RefreshCw className="w-3 h-3" />
                                         </Button>
@@ -1376,49 +1376,49 @@ export default function AdminCryptoPage() {
                                 <CardContent className="space-y-4">
                                     {/* Current Settlement Display */}
                                     {platformConfig?.settlement?.configured && !isEditingSettlement ? (
-                                        <div className="p-4 bg-zinc-900/80 border border-zinc-800 rounded-lg space-y-3">
+                                        <div className="p-4 bg-card/80 border border-border rounded-lg space-y-3">
                                             <div className="flex items-center justify-between">
                                                 <div className="space-y-2">
-                                                    <p className="text-[10px] text-zinc-500 font-mono uppercase mb-1">Current Fee Wallet</p>
+                                                    <p className="text-[10px] text-muted-foreground font-mono uppercase mb-1">Current Fee Wallet</p>
                                                     <div className="flex items-center gap-2">
                                                         <span className={`px-2 py-0.5 rounded font-mono text-[10px] font-bold ${
-                                                            SETTLEMENT_COINS.find(c => c.symbol.toLowerCase() === platformConfig.settlement?.coinSymbol)?.bg || 'bg-zinc-800'
+                                                            SETTLEMENT_COINS.find(c => c.symbol.toLowerCase() === platformConfig.settlement?.coinSymbol)?.bg || 'bg-muted'
                                                         } ${
-                                                            SETTLEMENT_COINS.find(c => c.symbol.toLowerCase() === platformConfig.settlement?.coinSymbol)?.color || 'text-zinc-300'
+                                                            SETTLEMENT_COINS.find(c => c.symbol.toLowerCase() === platformConfig.settlement?.coinSymbol)?.color || 'text-muted-foreground'
                                                         }`}>
                                                             {platformConfig.settlement.coinSymbol?.toUpperCase()}
                                                         </span>
-                                                        <span className="text-[10px] text-zinc-400 font-mono">
+                                                        <span className="text-[10px] text-muted-foreground font-mono">
                                                             on {platformConfig.settlement.chain}
                                                         </span>
                                                         {platformConfig.settlement.useNowPayments && (
-                                                            <Badge variant="outline" className="font-mono text-[8px] border-yellow-800 text-yellow-400 bg-yellow-900/20">
+                                                            <Badge variant="outline" className="font-mono text-[8px] border-yellow-800 text-yellow-600 dark:text-yellow-400 bg-yellow-100 dark:bg-yellow-900/20">
                                                                 via NOWPayments
                                                             </Badge>
                                                         )}
                                                         {!platformConfig.settlement.useNowPayments && (
-                                                            <Badge variant="outline" className="font-mono text-[8px] border-green-800 text-green-400 bg-green-900/20">
+                                                            <Badge variant="outline" className="font-mono text-[8px] border-green-800 text-green-600 dark:text-green-400 bg-green-100 dark:bg-green-900/20">
                                                                 <Shield className="h-2.5 w-2.5 mr-0.5" /> On-Chain
                                                             </Badge>
                                                         )}
                                                     </div>
                                                     <div className="flex items-center gap-2">
-                                                        <p className="text-sm text-white font-mono font-bold">
+                                                        <p className="text-sm text-foreground font-mono font-bold">
                                                             {platformConfig.settlement.walletAddress}
                                                         </p>
                                                         <CopiedButton text={platformConfig.settlement.walletAddress || ''} />
                                                     </div>
                                                     {platformConfig.settlement.updatedAt && (
-                                                        <p className="text-[9px] text-zinc-600 font-mono">
+                                                        <p className="text-[9px] text-muted-foreground font-mono">
                                                             Configured {new Date(platformConfig.settlement.updatedAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}
                                                         </p>
                                                     )}
                                                 </div>
-                                                <Badge variant="outline" className="font-mono text-[9px] border-green-800 text-green-400 bg-green-900/20 h-fit">
+                                                <Badge variant="outline" className="font-mono text-[9px] border-green-800 text-green-600 dark:text-green-400 bg-green-100 dark:bg-green-900/20 h-fit">
                                                     <CheckCircle2 className="h-3 w-3 mr-1" /> Configured
                                                 </Badge>
                                             </div>
-                                            <div className="pt-3 border-t border-zinc-800">
+                                            <div className="pt-3 border-t border-border">
                                                 <Button
                                                     variant="outline"
                                                     size="sm"
@@ -1433,7 +1433,7 @@ export default function AdminCryptoPage() {
                                                         setSettlementError(null)
                                                         setSettlementSuccess(null)
                                                     }}
-                                                    className="border-zinc-700 text-zinc-400 hover:text-red-400 font-mono text-[10px] uppercase"
+                                                    className="border-border text-muted-foreground hover:text-red-400 font-mono text-[10px] uppercase"
                                                 >
                                                     <Settings className="w-3 h-3 mr-1" /> Change Settlement Wallet
                                                 </Button>
@@ -1448,7 +1448,7 @@ export default function AdminCryptoPage() {
                                                 <div className="flex items-start gap-2 p-3 bg-yellow-950/20 border border-yellow-900/50 rounded-lg">
                                                     <AlertTriangle className="h-4 w-4 text-yellow-500 mt-0.5 flex-shrink-0" />
                                                     <div>
-                                                        <p className="text-yellow-400 font-mono text-xs font-bold">No Settlement Wallet Configured</p>
+                                                        <p className="text-yellow-600 dark:text-yellow-400 font-mono text-xs font-bold">No Settlement Wallet Configured</p>
                                                         <p className="text-yellow-600 font-mono text-[10px] mt-0.5">
                                                             Select your preferred coin and enter your wallet address. All platform fees will be auto-converted and sent to this wallet.
                                                         </p>
@@ -1458,8 +1458,8 @@ export default function AdminCryptoPage() {
 
                                             {/* Step 1: Select Coin */}
                                             <div className="space-y-2">
-                                                <p className="text-[10px] text-zinc-500 font-mono uppercase flex items-center gap-1">
-                                                    <span className="w-4 h-4 rounded-full bg-red-600 text-white flex items-center justify-center text-[8px] font-bold">1</span>
+                                                <p className="text-[10px] text-muted-foreground font-mono uppercase flex items-center gap-1">
+                                                    <span className="w-4 h-4 rounded-full bg-red-600 text-foreground flex items-center justify-center text-[8px] font-bold">1</span>
                                                     Select Payout Currency
                                                 </p>
                                                 <Select
@@ -1471,13 +1471,13 @@ export default function AdminCryptoPage() {
                                                         setSettlementSuccess(null)
                                                     }}
                                                 >
-                                                    <SelectTrigger className="bg-zinc-900 border-zinc-800 text-white font-mono text-sm h-10">
+                                                    <SelectTrigger className="bg-card border-border text-foreground font-mono text-sm h-10">
                                                         <SelectValue placeholder="Choose coin for fee collection..." />
                                                     </SelectTrigger>
-                                                    <SelectContent className="bg-zinc-900 border-zinc-800 text-white font-mono text-sm max-h-80">
+                                                    <SelectContent className="bg-card border-border text-foreground font-mono text-sm max-h-80">
                                                         {settlementGroups.map(group => (
                                                             <React.Fragment key={group}>
-                                                                <div className="px-3 py-1.5 text-[9px] text-zinc-500 uppercase tracking-wider font-bold border-b border-zinc-800 bg-zinc-950">
+                                                                <div className="px-3 py-1.5 text-[9px] text-muted-foreground uppercase tracking-wider font-bold border-b border-border bg-background">
                                                                     {group}
                                                                 </div>
                                                                 {SETTLEMENT_COINS.filter(c => c.group === group).map(coin => (
@@ -1486,8 +1486,8 @@ export default function AdminCryptoPage() {
                                                                             <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold ${coin.bg} ${coin.color}`}>
                                                                                 {coin.symbol}
                                                                             </span>
-                                                                            <span className="text-zinc-300">{coin.name}</span>
-                                                                            <span className="text-zinc-600 text-[10px]">({coin.chain})</span>
+                                                                            <span className="text-muted-foreground">{coin.name}</span>
+                                                                            <span className="text-muted-foreground text-[10px]">({coin.chain})</span>
                                                                         </div>
                                                                     </SelectItem>
                                                                 ))}
@@ -1500,8 +1500,8 @@ export default function AdminCryptoPage() {
                                             {/* Step 2: Enter Wallet Address */}
                                             {selectedSettlementCoin && (
                                                 <div className="space-y-2">
-                                                    <p className="text-[10px] text-zinc-500 font-mono uppercase flex items-center gap-1">
-                                                        <span className="w-4 h-4 rounded-full bg-red-600 text-white flex items-center justify-center text-[8px] font-bold">2</span>
+                                                    <p className="text-[10px] text-muted-foreground font-mono uppercase flex items-center gap-1">
+                                                        <span className="w-4 h-4 rounded-full bg-red-600 text-foreground flex items-center justify-center text-[8px] font-bold">2</span>
                                                         Enter {selectedSettlementCoin.symbol} Wallet Address
                                                     </p>
                                                     <input
@@ -1509,9 +1509,9 @@ export default function AdminCryptoPage() {
                                                         value={settlementAddress}
                                                         onChange={(e) => { setSettlementAddress(e.target.value.trim()); setSettlementError(null) }}
                                                         placeholder={selectedSettlementCoin.placeholder}
-                                                        className="w-full px-3 py-2 bg-zinc-900 border border-zinc-800 rounded-md text-white font-mono text-sm focus:ring-1 focus:ring-red-500 focus:border-red-500 outline-none"
+                                                        className="w-full px-3 py-2 bg-card border border-border rounded-md text-foreground font-mono text-sm focus:ring-1 focus:ring-red-500 focus:border-red-500 outline-none"
                                                     />
-                                                    <p className="text-[9px] text-zinc-600 font-mono">
+                                                    <p className="text-[9px] text-muted-foreground font-mono">
                                                         This wallet will receive all platform fees. Make sure you own this address and it supports {selectedSettlementCoin.symbol} on {selectedSettlementCoin.chain}.
                                                     </p>
                                                 </div>
@@ -1522,7 +1522,7 @@ export default function AdminCryptoPage() {
                                                 <Button
                                                     onClick={handleSaveSettlement}
                                                     disabled={settlementSaving || !selectedSettlementCoin || !settlementAddress}
-                                                    className="bg-red-600 hover:bg-red-700 disabled:bg-zinc-800 disabled:text-zinc-500 text-white font-mono text-[10px] uppercase font-bold h-10 px-8"
+                                                    className="bg-red-600 hover:bg-red-700 disabled:bg-muted disabled:text-muted-foreground text-foreground font-mono text-[10px] uppercase font-bold h-10 px-8"
                                                 >
                                                     {settlementSaving ? (
                                                         <><Loader2 className="w-3 h-3 animate-spin mr-1" /> Saving...</>
@@ -1534,7 +1534,7 @@ export default function AdminCryptoPage() {
                                                     <Button
                                                         variant="outline"
                                                         onClick={() => { setIsEditingSettlement(false); setSettlementError(null); setSettlementSuccess(null) }}
-                                                        className="border-zinc-800 text-zinc-400 hover:text-white font-mono text-[10px] uppercase h-10"
+                                                        className="border-border text-muted-foreground hover:text-foreground font-mono text-[10px] uppercase h-10"
                                                     >
                                                         Cancel
                                                     </Button>
@@ -1542,20 +1542,20 @@ export default function AdminCryptoPage() {
                                             </div>
 
                                             {settlementError && (
-                                                <div className="flex items-center gap-2 p-2 bg-red-950/30 border border-red-800 rounded text-red-400 text-xs font-mono">
+                                                <div className="flex items-center gap-2 p-2 bg-red-950/30 border border-red-800 rounded text-red-600 dark:text-red-400 text-xs font-mono">
                                                     <XCircle className="w-3 h-3 flex-shrink-0" /> {settlementError}
                                                 </div>
                                             )}
                                             {settlementSuccess && (
-                                                <div className="flex items-center gap-2 p-2 bg-green-950/30 border border-green-800 rounded text-green-400 text-xs font-mono">
+                                                <div className="flex items-center gap-2 p-2 bg-green-950/30 border border-green-800 rounded text-green-600 dark:text-green-400 text-xs font-mono">
                                                     <CheckCircle2 className="w-3 h-3 flex-shrink-0" /> {settlementSuccess}
                                                 </div>
                                             )}
 
                                             {/* Info */}
-                                            <div className="flex items-start gap-2 pt-3 border-t border-zinc-800">
+                                            <div className="flex items-start gap-2 pt-3 border-t border-border">
                                                 <Shield className="h-3.5 w-3.5 text-zinc-700 mt-0.5 flex-shrink-0" />
-                                                <p className="text-[9px] text-zinc-600 font-mono leading-relaxed">
+                                                <p className="text-[9px] text-muted-foreground font-mono leading-relaxed">
                                                     For Polygon tokens (USDT, USDC, WETH, WBTC, POL), the wallet is also updated on-chain via the smart contract and
                                                     the preferred token is set for automatic fee conversion. For off-chain coins (BTC, ETH, SOL, etc.),
                                                     fees are routed through NOWPayments to your wallet.
@@ -1572,7 +1572,7 @@ export default function AdminCryptoPage() {
                                     <CardContent className="flex items-start gap-3 py-4">
                                         <AlertTriangle className="h-5 w-5 text-yellow-500 mt-0.5 flex-shrink-0" />
                                         <div>
-                                            <p className="text-yellow-400 font-mono text-sm font-bold">Contract v1 Detected — Single Token (USDT Only)</p>
+                                            <p className="text-yellow-600 dark:text-yellow-400 font-mono text-sm font-bold">Contract v1 Detected — Single Token (USDT Only)</p>
                                             <p className="text-yellow-600 font-mono text-xs mt-1">
                                                 The deployed contract at {shortAddr(platformConfig.contractAddress || null)} does not support multi-token management.
                                                 Deploy the v2 contract to enable USDT, USDC, WETH, and WBTC token management from this panel.
@@ -1584,13 +1584,13 @@ export default function AdminCryptoPage() {
 
                             {/* ── Accepted Tokens ─────────────────── */}
                             {platformConfig && (
-                            <Card className="bg-black border border-zinc-800">
+                            <Card className="bg-background border border-border">
                                 <CardHeader>
                                     <CardTitle className="text-sm font-mono uppercase tracking-wider text-red-500 flex items-center gap-2">
                                         <Activity className="h-4 w-4" />
                                         Accepted Tokens (On-Chain)
                                     </CardTitle>
-                                    <CardDescription className="text-zinc-500 font-mono text-xs">
+                                    <CardDescription className="text-muted-foreground font-mono text-xs">
                                         {platformConfig.isMultiToken
                                             ? 'Tokens that can be used for payments. Toggle to enable/disable receiving fees in each token.'
                                             : 'Multi-token management requires the v2 contract. Current contract only supports USDT.'}
@@ -1599,57 +1599,57 @@ export default function AdminCryptoPage() {
                                 <CardContent className="space-y-4">
                                     {/* Tokens Table */}
                                     {platformConfig.acceptedTokens.length === 0 ? (
-                                        <div className="py-8 text-center border border-zinc-800 rounded-lg">
-                                            <p className="text-zinc-500 font-mono text-xs">No tokens registered on-chain yet</p>
-                                            <p className="text-zinc-600 font-mono text-[10px] mt-1">Use the form below to add tokens</p>
+                                        <div className="py-8 text-center border border-border rounded-lg">
+                                            <p className="text-muted-foreground font-mono text-xs">No tokens registered on-chain yet</p>
+                                            <p className="text-muted-foreground font-mono text-[10px] mt-1">Use the form below to add tokens</p>
                                         </div>
                                     ) : (
-                                        <div className="border border-zinc-800 rounded-lg overflow-hidden">
+                                        <div className="border border-border rounded-lg overflow-hidden">
                                             <table className="w-full">
                                                 <thead>
-                                                    <tr className="bg-zinc-900/80 border-b border-zinc-800">
-                                                        <th className="text-left px-4 py-2.5 font-mono text-[10px] text-zinc-500 uppercase">Token</th>
-                                                        <th className="text-left px-4 py-2.5 font-mono text-[10px] text-zinc-500 uppercase">Contract Address</th>
-                                                        <th className="text-center px-4 py-2.5 font-mono text-[10px] text-zinc-500 uppercase">Decimals</th>
-                                                        <th className="text-center px-4 py-2.5 font-mono text-[10px] text-zinc-500 uppercase">Status</th>
-                                                        <th className="text-center px-4 py-2.5 font-mono text-[10px] text-zinc-500 uppercase">Actions</th>
+                                                    <tr className="bg-card/80 border-b border-border">
+                                                        <th className="text-left px-4 py-2.5 font-mono text-[10px] text-muted-foreground uppercase">Token</th>
+                                                        <th className="text-left px-4 py-2.5 font-mono text-[10px] text-muted-foreground uppercase">Contract Address</th>
+                                                        <th className="text-center px-4 py-2.5 font-mono text-[10px] text-muted-foreground uppercase">Decimals</th>
+                                                        <th className="text-center px-4 py-2.5 font-mono text-[10px] text-muted-foreground uppercase">Status</th>
+                                                        <th className="text-center px-4 py-2.5 font-mono text-[10px] text-muted-foreground uppercase">Actions</th>
                                                     </tr>
                                                 </thead>
                                                 <tbody>
                                                     {platformConfig.acceptedTokens.map(token => {
                                                         const tokenMeta = SUPPORTED_TOKENS.find(t => t.symbol === token.symbol)
                                                         return (
-                                                            <tr key={token.address} className="border-b border-zinc-800/50 hover:bg-zinc-800/30">
+                                                            <tr key={token.address} className="border-b border-border/50 hover:bg-amber-50 dark:hover:bg-amber-500/10">
                                                                 <td className="px-4 py-3">
                                                                     <div className="flex items-center gap-2">
-                                                                        <span className={`px-2 py-0.5 rounded font-mono text-[10px] font-bold ${tokenMeta?.bg || 'bg-zinc-800'} ${tokenMeta?.color || 'text-zinc-300'}`}>
+                                                                        <span className={`px-2 py-0.5 rounded font-mono text-[10px] font-bold ${tokenMeta?.bg || 'bg-muted'} ${tokenMeta?.color || 'text-muted-foreground'}`}>
                                                                             {token.symbol}
                                                                         </span>
                                                                     </div>
                                                                 </td>
                                                                 <td className="px-4 py-3">
                                                                     <div className="flex items-center gap-1.5">
-                                                                        <span className="font-mono text-xs text-zinc-300">{shortAddr(token.address)}</span>
+                                                                        <span className="font-mono text-xs text-muted-foreground">{shortAddr(token.address)}</span>
                                                                         <CopiedButton text={token.address} />
                                                                         <a
                                                                             href={`https://${platformConfig.chainId === 137 ? 'polygonscan.com' : platformConfig.chainId === 1 ? 'etherscan.io' : 'amoy.polygonscan.com'}/token/${token.address}`}
                                                                             target="_blank"
                                                                             rel="noopener noreferrer"
-                                                                            className="text-zinc-600 hover:text-red-400"
+                                                                            className="text-muted-foreground hover:text-red-400"
                                                                         >
                                                                             <ExternalLink className="w-3 h-3" />
                                                                         </a>
                                                                     </div>
                                                                 </td>
                                                                 <td className="px-4 py-3 text-center">
-                                                                    <span className="font-mono text-xs text-zinc-400">{token.decimals}</span>
+                                                                    <span className="font-mono text-xs text-muted-foreground">{token.decimals}</span>
                                                                 </td>
                                                                 <td className="px-4 py-3 text-center">
                                                                     <Badge
                                                                         variant="outline"
                                                                         className={`font-mono text-[9px] ${token.enabled
-                                                                            ? 'border-green-800 text-green-400 bg-green-900/20'
-                                                                            : 'border-red-800 text-red-400 bg-red-900/20'
+                                                                            ? 'border-green-800 text-green-600 dark:text-green-400 bg-green-100 dark:bg-green-900/20'
+                                                                            : 'border-red-800 text-red-600 dark:text-red-400 bg-red-100 dark:bg-red-900/20'
                                                                         }`}
                                                                     >
                                                                         {token.enabled ? '● Enabled' : '● Disabled'}
@@ -1662,8 +1662,8 @@ export default function AdminCryptoPage() {
                                                                         onClick={() => handleToggleToken(token.address, !token.enabled)}
                                                                         disabled={tokenToggling === token.address}
                                                                         className={`font-mono text-[10px] h-7 ${token.enabled
-                                                                            ? 'border-red-800 text-red-400 hover:bg-red-950/30'
-                                                                            : 'border-green-800 text-green-400 hover:bg-green-950/30'
+                                                                            ? 'border-red-800 text-red-600 dark:text-red-400 hover:bg-red-950/30'
+                                                                            : 'border-green-800 text-green-600 dark:text-green-400 hover:bg-green-950/30'
                                                                         }`}
                                                                     >
                                                                         {tokenToggling === token.address ? (
@@ -1684,40 +1684,40 @@ export default function AdminCryptoPage() {
                                     )}
 
                                     {/* Add Token Form */}
-                                    <div className="pt-4 border-t border-zinc-800 space-y-3">
-                                        <p className="text-[10px] text-zinc-500 font-mono uppercase flex items-center gap-1.5">
+                                    <div className="pt-4 border-t border-border space-y-3">
+                                        <p className="text-[10px] text-muted-foreground font-mono uppercase flex items-center gap-1.5">
                                             <Plus className="w-3 h-3" /> Add New Token
                                         </p>
                                         <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
                                             <div className="md:col-span-2">
-                                                <label className="text-[9px] text-zinc-600 font-mono uppercase block mb-1">Token Contract Address *</label>
+                                                <label className="text-[9px] text-muted-foreground font-mono uppercase block mb-1">Token Contract Address *</label>
                                                 <input
                                                     type="text"
                                                     value={addTokenForm.address}
                                                     onChange={(e) => { setAddTokenForm(f => ({ ...f, address: e.target.value.trim() })); setTokenError(null) }}
                                                     placeholder="0x..."
                                                     maxLength={42}
-                                                    className="w-full px-3 py-2 bg-zinc-900 border border-zinc-800 rounded-md text-white font-mono text-sm focus:ring-1 focus:ring-red-500 focus:border-red-500 outline-none"
+                                                    className="w-full px-3 py-2 bg-card border border-border rounded-md text-foreground font-mono text-sm focus:ring-1 focus:ring-red-500 focus:border-red-500 outline-none"
                                                 />
                                             </div>
                                             <div>
-                                                <label className="text-[9px] text-zinc-600 font-mono uppercase block mb-1">Symbol *</label>
+                                                <label className="text-[9px] text-muted-foreground font-mono uppercase block mb-1">Symbol *</label>
                                                 <input
                                                     type="text"
                                                     value={addTokenForm.symbol}
                                                     onChange={(e) => setAddTokenForm(f => ({ ...f, symbol: e.target.value }))}
                                                     placeholder="e.g. USDT"
                                                     maxLength={10}
-                                                    className="w-full px-3 py-2 bg-zinc-900 border border-zinc-800 rounded-md text-white font-mono text-sm focus:ring-1 focus:ring-red-500 focus:border-red-500 outline-none uppercase"
+                                                    className="w-full px-3 py-2 bg-card border border-border rounded-md text-foreground font-mono text-sm focus:ring-1 focus:ring-red-500 focus:border-red-500 outline-none uppercase"
                                                 />
                                             </div>
                                             <div>
-                                                <label className="text-[9px] text-zinc-600 font-mono uppercase block mb-1">Decimals *</label>
+                                                <label className="text-[9px] text-muted-foreground font-mono uppercase block mb-1">Decimals *</label>
                                                 <Select value={addTokenForm.decimals} onValueChange={(v) => setAddTokenForm(f => ({ ...f, decimals: v }))}>
-                                                    <SelectTrigger className="bg-zinc-900 border-zinc-800 text-white font-mono text-sm h-[38px]">
+                                                    <SelectTrigger className="bg-card border-border text-foreground font-mono text-sm h-[38px]">
                                                         <SelectValue />
                                                     </SelectTrigger>
-                                                    <SelectContent className="bg-zinc-900 border-zinc-800 text-white font-mono text-sm">
+                                                    <SelectContent className="bg-card border-border text-foreground font-mono text-sm">
                                                         <SelectItem value="6">6 (USDT, USDC)</SelectItem>
                                                         <SelectItem value="8">8 (WBTC)</SelectItem>
                                                         <SelectItem value="18">18 (WETH, standard)</SelectItem>
@@ -1729,7 +1729,7 @@ export default function AdminCryptoPage() {
                                             <Button
                                                 onClick={handleAddToken}
                                                 disabled={addingToken || !addTokenForm.address || !addTokenForm.symbol}
-                                                className="bg-red-600 hover:bg-red-700 disabled:bg-zinc-800 disabled:text-zinc-500 text-white font-mono text-[10px] uppercase font-bold h-9 px-6"
+                                                className="bg-red-600 hover:bg-red-700 disabled:bg-muted disabled:text-muted-foreground text-foreground font-mono text-[10px] uppercase font-bold h-9 px-6"
                                             >
                                                 {addingToken ? (
                                                     <><Loader2 className="w-3 h-3 animate-spin mr-1" /> Adding...</>
@@ -1739,21 +1739,21 @@ export default function AdminCryptoPage() {
                                             </Button>
                                         </div>
                                         {tokenError && (
-                                            <div className="flex items-center gap-2 p-2 bg-red-950/30 border border-red-800 rounded text-red-400 text-xs font-mono">
+                                            <div className="flex items-center gap-2 p-2 bg-red-950/30 border border-red-800 rounded text-red-600 dark:text-red-400 text-xs font-mono">
                                                 <XCircle className="w-3 h-3 flex-shrink-0" /> {tokenError}
                                             </div>
                                         )}
                                         {tokenSuccess && (
-                                            <div className="flex items-center gap-2 p-2 bg-green-950/30 border border-green-800 rounded text-green-400 text-xs font-mono">
+                                            <div className="flex items-center gap-2 p-2 bg-green-950/30 border border-green-800 rounded text-green-600 dark:text-green-400 text-xs font-mono">
                                                 <CheckCircle2 className="w-3 h-3 flex-shrink-0" /> {tokenSuccess}
                                             </div>
                                         )}
                                     </div>
 
                                     {/* Info */}
-                                    <div className="flex items-start gap-2 pt-3 border-t border-zinc-800">
+                                    <div className="flex items-start gap-2 pt-3 border-t border-border">
                                         <Shield className="h-3.5 w-3.5 text-zinc-700 mt-0.5 flex-shrink-0" />
-                                        <p className="text-[9px] text-zinc-600 font-mono leading-relaxed">
+                                        <p className="text-[9px] text-muted-foreground font-mono leading-relaxed">
                                             Token management is an on-chain operation and requires the admin signer private key.
                                             Adding or toggling tokens sends a transaction to the PROPMETRIK smart contract.
                                             Only the contract owner (Safe multisig) can modify the token allowlist.

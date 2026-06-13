@@ -64,7 +64,7 @@ export default function PaymentCallbackPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center p-4">
-      <div className="bg-white rounded-2xl shadow-lg max-w-md w-full p-8 text-center">
+      <div className="bg-card rounded-2xl shadow-lg max-w-md w-full p-8 text-center">
         <div className="mb-6">
           {status === 'verifying' && (
             <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-cyan-50">
@@ -89,20 +89,20 @@ export default function PaymentCallbackPage() {
           {status === 'failed' && 'Payment Issue'}
         </h1>
 
-        <p className="text-gray-600 mb-4">{message}</p>
+        <p className="text-muted-foreground mb-4">{message}</p>
 
         {amount && status === 'success' && (
           <p className="text-lg font-semibold text-green-600 mb-4">{amount}</p>
         )}
 
         {status === 'failed' && (
-          <a href="/dashboard/tenant/payments" className="inline-block mt-4 px-6 py-2 bg-cyan-600 text-white rounded-xl font-medium hover:bg-cyan-700 transition-colors">
+          <a href="/dashboard/tenant/payments" className="inline-block mt-4 px-6 py-2 bg-cyan-600 text-foreground rounded-xl font-medium hover:bg-cyan-700 transition-colors">
             Return to Payments
           </a>
         )}
 
         {status === 'success' && (
-          <p className="text-sm text-gray-400">Redirecting to payments...</p>
+          <p className="text-sm text-muted-foreground">Redirecting to payments...</p>
         )}
       </div>
     </div>

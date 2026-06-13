@@ -493,13 +493,13 @@ function AdjustmentInput({
         onBlur={handleBlur}
         disabled={disabled}
         className={cn(
-          'w-14 px-1 py-0.5 bg-black border text-center font-mono text-[10px]',
-          disabled ? 'border-zinc-800 text-zinc-600' : 'border-zinc-700 text-white',
-          value > 0 ? 'text-green-400' : value < 0 ? 'text-red-400' : ''
+          'w-14 px-1 py-0.5 bg-background border text-center font-mono text-[10px]',
+          disabled ? 'border-border text-muted-foreground' : 'border-border text-foreground',
+          value > 0 ? 'text-green-600 dark:text-green-400' : value < 0 ? 'text-red-600 dark:text-red-400' : ''
         )}
         step="0.1"
       />
-      <span className="text-[10px] text-zinc-600">%</span>
+      <span className="text-[10px] text-muted-foreground">%</span>
     </div>
   );
 }
@@ -516,17 +516,17 @@ function CategoryHeader({
   return (
     <button
       onClick={onToggle}
-      className="w-full flex items-center justify-between px-3 py-2 bg-zinc-900/50 hover:bg-zinc-800/50 transition-colors border-b border-zinc-800"
+      className="w-full flex items-center justify-between px-3 py-2 bg-card/50 hover:bg-muted/50 transition-colors border-b border-border"
     >
       <div className="flex items-center gap-2">
         {expanded ? (
-          <ChevronUp className="w-3 h-3 text-zinc-500" />
+          <ChevronUp className="w-3 h-3 text-muted-foreground" />
         ) : (
-          <ChevronDown className="w-3 h-3 text-zinc-500" />
+          <ChevronDown className="w-3 h-3 text-muted-foreground" />
         )}
-        <span className="font-mono text-xs text-amber-400">{category.label}</span>
+        <span className="font-mono text-xs text-amber-600 dark:text-amber-400">{category.label}</span>
       </div>
-      <span className="font-mono text-[9px] text-zinc-600">{category.description}</span>
+      <span className="font-mono text-[9px] text-muted-foreground">{category.description}</span>
     </button>
   );
 }
@@ -645,8 +645,8 @@ export function RentalAdjustmentGrid({
     return (
       <TerminalPanel title="RENTAL ADJUSTMENTS" className={className}>
         <div className="py-8 text-center">
-          <Info className="w-6 h-6 text-zinc-600 mx-auto mb-2" />
-          <div className="font-mono text-xs text-zinc-500">
+          <Info className="w-6 h-6 text-muted-foreground mx-auto mb-2" />
+          <div className="font-mono text-xs text-muted-foreground">
             No rental comparables selected. Add comparables from the Rental Market Panel.
           </div>
         </div>
@@ -655,14 +655,14 @@ export function RentalAdjustmentGrid({
   }
 
   return (
-    <div className={cn('border border-zinc-800', className)}>
+    <div className={cn('border border-border', className)}>
       {/* Header */}
-      <div className="flex items-center justify-between px-4 py-3 bg-zinc-900/50 border-b border-zinc-800">
+      <div className="flex items-center justify-between px-4 py-3 bg-card/50 border-b border-border">
         <div className="flex items-center gap-3">
           <Calculator className="w-4 h-4 text-amber-500" />
           <div>
-            <div className="font-mono text-sm text-white">RENTAL ADJUSTMENTS</div>
-            <div className="font-mono text-[10px] text-zinc-500">
+            <div className="font-mono text-sm text-foreground">RENTAL ADJUSTMENTS</div>
+            <div className="font-mono text-[10px] text-muted-foreground">
               Apply Ghana market adjustments to rental comparables
             </div>
           </div>
@@ -671,7 +671,7 @@ export function RentalAdjustmentGrid({
           <button
             onClick={handleAutoCalculateAll}
             disabled={readOnly}
-            className="px-3 py-1.5 bg-amber-500 text-white font-mono text-[10px] hover:bg-amber-400 disabled:opacity-50 flex items-center gap-1"
+            className="px-3 py-1.5 bg-amber-500 text-foreground font-mono text-[10px] hover:bg-amber-400 disabled:opacity-50 flex items-center gap-1"
           >
             <Calculator className="w-3 h-3" />
             AUTO-CALCULATE ALL
@@ -684,22 +684,22 @@ export function RentalAdjustmentGrid({
         <table className="w-full min-w-[800px]">
           {/* Table Header */}
           <thead>
-            <tr className="bg-zinc-900/30 border-b border-zinc-800">
-              <th className="text-left p-3 font-mono text-[10px] text-zinc-500 w-48">
+            <tr className="bg-card/30 border-b border-border">
+              <th className="text-left p-3 font-mono text-[10px] text-muted-foreground w-48">
                 ATTRIBUTE
               </th>
-              <th className="text-center p-3 font-mono text-[10px] text-amber-500 border-l border-zinc-800 w-28">
+              <th className="text-center p-3 font-mono text-[10px] text-amber-500 border-l border-border w-28">
                 SUBJECT
               </th>
               {comparablesWithTotals.map((comp, idx) => (
                 <th 
                   key={comp.id} 
-                  className="text-center p-3 border-l border-zinc-800 min-w-[140px]"
+                  className="text-center p-3 border-l border-border min-w-[140px]"
                 >
-                  <div className="font-mono text-[10px] text-zinc-400">
+                  <div className="font-mono text-[10px] text-muted-foreground">
                     COMP {idx + 1}
                   </div>
-                  <div className="font-mono text-[9px] text-zinc-600 truncate max-w-[130px] mx-auto">
+                  <div className="font-mono text-[9px] text-muted-foreground truncate max-w-[130px] mx-auto">
                     {comp.title || comp.address_street || 'Unknown'}
                   </div>
                   <div className="flex items-center justify-center gap-1 mt-1">
@@ -707,21 +707,21 @@ export function RentalAdjustmentGrid({
                       onClick={() => handleAutoCalculate(comp.id)}
                       disabled={readOnly || comp.isLocked}
                       title="Auto-calculate adjustments"
-                      className="p-1 hover:bg-zinc-800 rounded disabled:opacity-30"
+                      className="p-1 hover:bg-muted rounded disabled:opacity-30"
                     >
-                      <Calculator className="w-3 h-3 text-zinc-500" />
+                      <Calculator className="w-3 h-3 text-muted-foreground" />
                     </button>
                     {onLockToggle && (
                       <button
                         onClick={() => onLockToggle(comp.id)}
                         disabled={readOnly}
                         title={comp.isLocked ? 'Unlock adjustments' : 'Lock adjustments'}
-                        className="p-1 hover:bg-zinc-800 rounded"
+                        className="p-1 hover:bg-muted rounded"
                       >
                         {comp.isLocked ? (
                           <Lock className="w-3 h-3 text-amber-500" />
                         ) : (
-                          <Unlock className="w-3 h-3 text-zinc-500" />
+                          <Unlock className="w-3 h-3 text-muted-foreground" />
                         )}
                       </button>
                     )}
@@ -739,7 +739,7 @@ export function RentalAdjustmentGrid({
               return (
                 <React.Fragment key={category.id}>
                   {/* Category Header Row */}
-                  <tr className="bg-zinc-900/50">
+                  <tr className="bg-card/50">
                     <td 
                       colSpan={2 + comparablesWithTotals.length}
                       className="p-0"
@@ -754,13 +754,13 @@ export function RentalAdjustmentGrid({
 
                   {/* Category Items */}
                   {!isCollapsed && category.items.map(item => (
-                    <tr key={item.id} className="border-b border-zinc-800/50 hover:bg-zinc-900/20">
+                    <tr key={item.id} className="border-b border-border/50 hover:bg-card/20">
                       {/* Item Label */}
                       <td className="p-2 pl-6">
-                        <div className="font-mono text-[10px] text-zinc-400">
+                        <div className="font-mono text-[10px] text-muted-foreground">
                           {item.label}
                           {item.maxAdjustment && (
-                            <span className="text-zinc-600 ml-1">
+                            <span className="text-muted-foreground ml-1">
                               (±{item.maxAdjustment}%)
                             </span>
                           )}
@@ -768,8 +768,8 @@ export function RentalAdjustmentGrid({
                       </td>
 
                       {/* Subject Value */}
-                      <td className="p-2 text-center border-l border-zinc-800">
-                        <span className="font-mono text-[10px] text-amber-400">
+                      <td className="p-2 text-center border-l border-border">
+                        <span className="font-mono text-[10px] text-amber-600 dark:text-amber-400">
                           {item.formatValue 
                             ? item.formatValue(item.getSubjectValue(subject))
                             : item.getSubjectValue(subject)?.toString() || '—'}
@@ -783,9 +783,9 @@ export function RentalAdjustmentGrid({
                         const hasAutoCalc = !!item.autoCalculate;
                         
                         return (
-                          <td key={comp.id} className="p-2 text-center border-l border-zinc-800">
+                          <td key={comp.id} className="p-2 text-center border-l border-border">
                             {/* Value */}
-                            <div className="font-mono text-[10px] text-zinc-400 mb-1">
+                            <div className="font-mono text-[10px] text-muted-foreground mb-1">
                               {item.formatValue 
                                 ? item.formatValue(compValue)
                                 : compValue?.toString() || '—'}
@@ -810,61 +810,61 @@ export function RentalAdjustmentGrid({
             })}
 
             {/* Totals Section */}
-            <tr className="bg-zinc-900/30 border-t-2 border-zinc-700">
-              <td className="p-3 font-mono text-xs text-zinc-400">
+            <tr className="bg-card/30 border-t-2 border-border">
+              <td className="p-3 font-mono text-xs text-muted-foreground">
                 GROSS ADJUSTMENT
               </td>
-              <td className="p-3 text-center border-l border-zinc-800">—</td>
+              <td className="p-3 text-center border-l border-border">—</td>
               {comparablesWithTotals.map(comp => (
-                <td key={comp.id} className="p-3 text-center border-l border-zinc-800">
+                <td key={comp.id} className="p-3 text-center border-l border-border">
                   <span className={cn(
                     'font-mono text-sm font-bold',
                     (comp.totalAdjustment || 0) > 25 || (comp.totalAdjustment || 0) < -25
-                      ? 'text-red-400' // Warning for excessive adjustment
+                      ? 'text-red-600 dark:text-red-400' // Warning for excessive adjustment
                       : (comp.totalAdjustment || 0) > 0 
-                        ? 'text-green-400' 
+                        ? 'text-green-600 dark:text-green-400' 
                         : (comp.totalAdjustment || 0) < 0 
-                          ? 'text-red-400' 
-                          : 'text-white'
+                          ? 'text-red-600 dark:text-red-400' 
+                          : 'text-foreground'
                   )}>
                     {(comp.totalAdjustment || 0) > 0 ? '+' : ''}
                     {(comp.totalAdjustment || 0).toFixed(1)}%
                   </span>
                   {Math.abs(comp.totalAdjustment || 0) > 25 && (
                     <div className="flex items-center justify-center mt-1">
-                      <AlertTriangle className="w-3 h-3 text-red-400" />
-                      <span className="font-mono text-[8px] text-red-400 ml-1">HIGH</span>
+                      <AlertTriangle className="w-3 h-3 text-red-600 dark:text-red-400" />
+                      <span className="font-mono text-[8px] text-red-600 dark:text-red-400 ml-1">HIGH</span>
                     </div>
                   )}
                 </td>
               ))}
             </tr>
 
-            <tr className="bg-zinc-900/50">
-              <td className="p-3 font-mono text-xs text-amber-400">
+            <tr className="bg-card/50">
+              <td className="p-3 font-mono text-xs text-amber-600 dark:text-amber-400">
                 ADJUSTED RENT
               </td>
-              <td className="p-3 text-center border-l border-zinc-800">—</td>
+              <td className="p-3 text-center border-l border-border">—</td>
               {comparablesWithTotals.map(comp => (
-                <td key={comp.id} className="p-3 text-center border-l border-zinc-800">
-                  <span className="font-mono text-sm text-green-400 font-bold">
+                <td key={comp.id} className="p-3 text-center border-l border-border">
+                  <span className="font-mono text-sm text-green-600 dark:text-green-400 font-bold">
                     ₵{(comp.adjustedRent || 0).toLocaleString('en-GH', { maximumFractionDigits: 0 })}
                   </span>
-                  <div className="font-mono text-[9px] text-zinc-500">
+                  <div className="font-mono text-[9px] text-muted-foreground">
                     /month
                   </div>
                 </td>
               ))}
             </tr>
 
-            <tr className="bg-zinc-900/50">
-              <td className="p-3 font-mono text-xs text-zinc-400">
+            <tr className="bg-card/50">
+              <td className="p-3 font-mono text-xs text-muted-foreground">
                 ADJUSTED ₵/m²
               </td>
-              <td className="p-3 text-center border-l border-zinc-800">—</td>
+              <td className="p-3 text-center border-l border-border">—</td>
               {comparablesWithTotals.map(comp => (
-                <td key={comp.id} className="p-3 text-center border-l border-zinc-800">
-                  <span className="font-mono text-xs text-zinc-400">
+                <td key={comp.id} className="p-3 text-center border-l border-border">
+                  <span className="font-mono text-xs text-muted-foreground">
                     {comp.adjustedRentPerSqm 
                       ? `₵${comp.adjustedRentPerSqm.toFixed(2)}/m²`
                       : '—'}
@@ -875,19 +875,19 @@ export function RentalAdjustmentGrid({
 
             {/* Weights (optional) */}
             {showWeights && (
-              <tr className="bg-zinc-900/30">
-                <td className="p-3 font-mono text-xs text-zinc-400">
+              <tr className="bg-card/30">
+                <td className="p-3 font-mono text-xs text-muted-foreground">
                   WEIGHT
                 </td>
-                <td className="p-3 text-center border-l border-zinc-800">—</td>
+                <td className="p-3 text-center border-l border-border">—</td>
                 {comparablesWithTotals.map(comp => (
-                  <td key={comp.id} className="p-3 text-center border-l border-zinc-800">
+                  <td key={comp.id} className="p-3 text-center border-l border-border">
                     <input
                       type="number"
                       value={(comp.weight ?? (comp.similarity_score / 100)).toFixed(2)}
                       onChange={(e) => onWeightChange?.(comp.id, parseFloat(e.target.value) || 0)}
                       disabled={readOnly}
-                      className="w-16 px-2 py-1 bg-black border border-zinc-700 text-white font-mono text-xs text-center"
+                      className="w-16 px-2 py-1 bg-background border border-border text-foreground font-mono text-xs text-center"
                       step="0.05"
                       min="0"
                       max="1"
@@ -901,33 +901,33 @@ export function RentalAdjustmentGrid({
       </div>
 
       {/* Summary Footer */}
-      <div className="px-4 py-3 bg-zinc-900/50 border-t border-zinc-800">
+      <div className="px-4 py-3 bg-card/50 border-t border-border">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-6">
             <div>
-              <div className="font-mono text-[10px] text-zinc-500">WEIGHTED AVG RENT</div>
-              <div className="font-mono text-lg text-amber-400">
+              <div className="font-mono text-[10px] text-muted-foreground">WEIGHTED AVG RENT</div>
+              <div className="font-mono text-lg text-amber-600 dark:text-amber-400">
                 ₵{weightedAverageRent.toLocaleString('en-GH', { maximumFractionDigits: 0 })}
-                <span className="text-sm text-zinc-500">/mo</span>
+                <span className="text-sm text-muted-foreground">/mo</span>
               </div>
             </div>
             <div>
-              <div className="font-mono text-[10px] text-zinc-500">MEDIAN RENT</div>
-              <div className="font-mono text-lg text-white">
+              <div className="font-mono text-[10px] text-muted-foreground">MEDIAN RENT</div>
+              <div className="font-mono text-lg text-foreground">
                 ₵{medianRent.toLocaleString('en-GH', { maximumFractionDigits: 0 })}
-                <span className="text-sm text-zinc-500">/mo</span>
+                <span className="text-sm text-muted-foreground">/mo</span>
               </div>
             </div>
             <div>
-              <div className="font-mono text-[10px] text-zinc-500">COMPARABLES</div>
-              <div className="font-mono text-lg text-white">
+              <div className="font-mono text-[10px] text-muted-foreground">COMPARABLES</div>
+              <div className="font-mono text-lg text-foreground">
                 {comparablesWithTotals.length}
               </div>
             </div>
           </div>
           <div className="flex items-center gap-2">
             <CheckCircle2 className="w-4 h-4 text-green-500" />
-            <span className="font-mono text-[10px] text-green-400">
+            <span className="font-mono text-[10px] text-green-600 dark:text-green-400">
               ADJUSTMENTS COMPLETE
             </span>
           </div>

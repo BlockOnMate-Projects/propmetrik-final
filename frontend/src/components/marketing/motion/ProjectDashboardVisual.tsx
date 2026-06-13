@@ -28,10 +28,10 @@ const STATUS_COLOR: Record<string, string> = {
 };
 
 const STATUS_TEXT: Record<string, string> = {
-    'on-track': 'text-emerald-400',
-    'at-risk': 'text-amber-400',
-    'behind': 'text-red-400',
-    'complete': 'text-blue-400',
+    'on-track': 'text-emerald-600 dark:text-emerald-400',
+    'at-risk': 'text-amber-600 dark:text-amber-400',
+    'behind': 'text-red-600 dark:text-red-400',
+    'complete': 'text-blue-600 dark:text-blue-400',
 };
 
 export default function ProjectDashboardVisual() {
@@ -57,18 +57,18 @@ export default function ProjectDashboardVisual() {
     }, []);
 
     return (
-        <div className="relative w-full rounded-xl overflow-hidden bg-zinc-950 border border-zinc-800 p-6">
+        <div className="relative w-full rounded-xl overflow-hidden bg-background border border-border p-6">
             {/* Header */}
             <div className="flex items-center justify-between mb-6">
                 <div>
-                    <div className="text-xs font-mono uppercase tracking-widest text-zinc-500 mb-1">Illustrative Dashboard</div>
-                    <div className="text-lg font-bold text-white">Accra Heights — 24-Unit Residential</div>
+                    <div className="text-xs font-mono uppercase tracking-widest text-muted-foreground mb-1">Illustrative Dashboard</div>
+                    <div className="text-lg font-bold text-foreground">Accra Heights — 24-Unit Residential</div>
                 </div>
                 <div className="flex gap-2">
                     {(['complete', 'on-track', 'at-risk', 'behind'] as const).map(s => (
                         <div key={s} className="flex items-center gap-1.5">
                             <div className={`w-2 h-2 rounded-full ${STATUS_COLOR[s]}`} />
-                            <span className="text-[10px] text-zinc-500 capitalize">{s.replace('-', ' ')}</span>
+                            <span className="text-[10px] text-muted-foreground capitalize">{s.replace('-', ' ')}</span>
                         </div>
                     ))}
                 </div>
@@ -84,17 +84,17 @@ export default function ProjectDashboardVisual() {
                         viewport={{ once: true }}
                         transition={{ delay: i * 0.08 }}
                         className={`grid grid-cols-[180px_1fr_60px] items-center gap-3 py-1.5 px-3 rounded-md transition-colors ${
-                            activeTask === i ? 'bg-zinc-900 ring-1 ring-amber-500/30' : ''
+                            activeTask === i ? 'bg-card ring-1 ring-amber-500/30' : ''
                         }`}
                     >
                         <div className="flex items-center gap-2">
                             <div className={`w-1.5 h-1.5 rounded-full shrink-0 ${STATUS_COLOR[task.status]}`} />
-                            <span className={`text-xs font-mono truncate ${activeTask === i ? 'text-white' : 'text-zinc-400'}`}>
+                            <span className={`text-xs font-mono truncate ${activeTask === i ? 'text-foreground' : 'text-muted-foreground'}`}>
                                 {task.name}
                             </span>
                         </div>
 
-                        <div className="relative h-5 bg-zinc-800 rounded overflow-hidden">
+                        <div className="relative h-5 bg-muted rounded overflow-hidden">
                             <motion.div
                                 initial={{ width: 0 }}
                                 whileInView={{ width: `${task.progress}%` }}
@@ -105,7 +105,7 @@ export default function ProjectDashboardVisual() {
                             />
                             {/* Phase label */}
                             <div className="absolute inset-0 flex items-center px-2">
-                                <span className="text-[9px] font-mono text-zinc-500">{task.phase}</span>
+                                <span className="text-[9px] font-mono text-muted-foreground">{task.phase}</span>
                             </div>
                         </div>
 
@@ -130,11 +130,11 @@ export default function ProjectDashboardVisual() {
                         whileInView={{ opacity: 1, y: 0 }}
                         viewport={{ once: true }}
                         transition={{ delay: 0.5 + i * 0.1 }}
-                        className="bg-zinc-900 border border-zinc-800 rounded-lg p-3 text-center"
+                        className="bg-card border border-border rounded-lg p-3 text-center"
                     >
-                        <div className="text-xl font-bold text-white font-mono">{kpi.value}</div>
-                        <div className="text-[10px] text-zinc-500 uppercase tracking-wider">{kpi.label}</div>
-                        <div className="text-[10px] text-zinc-600 mt-0.5">{kpi.sub}</div>
+                        <div className="text-xl font-bold text-foreground font-mono">{kpi.value}</div>
+                        <div className="text-[10px] text-muted-foreground uppercase tracking-wider">{kpi.label}</div>
+                        <div className="text-[10px] text-muted-foreground mt-0.5">{kpi.sub}</div>
                     </motion.div>
                 ))}
             </div>

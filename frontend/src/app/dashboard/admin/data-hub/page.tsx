@@ -159,27 +159,27 @@ export default function DataHubOverview() {
   }), [dataQualityScore])
 
   return (
-    <div className="min-h-screen bg-black text-white p-4 pb-10">
+    <div className="min-h-screen bg-background text-foreground p-4 pb-10">
       {/* Header */}
       <div className="mb-6">
         <div className="flex items-center justify-between">
           <div>
             <h1 className="font-mono text-2xl text-amber-500 tracking-wider">DATA HUB COMMAND CENTER</h1>
-            <p className="font-mono text-[10px] text-zinc-500 mt-1">
+            <p className="font-mono text-[10px] text-muted-foreground mt-1">
               REAL-TIME DATA PIPELINE MONITORING • LAST UPDATED: {mounted ? new Date().toLocaleTimeString() : '--:--:--'}
             </p>
           </div>
           <div className="flex items-center gap-2">
             <Link
               href="/dashboard/admin/data-hub/performance"
-              className="flex items-center gap-2 px-4 py-2 bg-zinc-900 border border-zinc-700 hover:border-amber-500 transition-colors font-mono text-xs text-zinc-300 hover:text-amber-400"
+              className="flex items-center gap-2 px-4 py-2 bg-card border border-border hover:border-amber-500 transition-colors font-mono text-xs text-muted-foreground hover:text-amber-400"
             >
               <Gauge className="w-4 h-4" />
               PERFORMANCE
             </Link>
-            <div className="flex items-center gap-1 px-3 py-1 bg-green-900/30 border border-green-500/50">
+            <div className="flex items-center gap-1 px-3 py-1 bg-green-100 dark:bg-green-900/30 border border-green-500/50">
               <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
-              <span className="font-mono text-[10px] text-green-400">SYSTEM OPERATIONAL</span>
+              <span className="font-mono text-[10px] text-green-600 dark:text-green-400">SYSTEM OPERATIONAL</span>
             </div>
           </div>
         </div>
@@ -292,70 +292,70 @@ export default function DataHubOverview() {
         <TerminalPanel title="System Health" status="live">
           <div className="space-y-4">
             {/* Database */}
-            <div className="flex items-center justify-between p-3 bg-zinc-800/30 border border-zinc-800">
+            <div className="flex items-center justify-between p-3 bg-muted/30 border border-border">
               <div className="flex items-center gap-3">
-                <Database className="w-5 h-5 text-green-400" />
+                <Database className="w-5 h-5 text-green-600 dark:text-green-400" />
                 <div>
-                  <div className="font-mono text-sm text-white">PostgreSQL</div>
-                  <div className="font-mono text-[10px] text-zinc-500">Primary Database</div>
+                  <div className="font-mono text-sm text-foreground">PostgreSQL</div>
+                  <div className="font-mono text-[10px] text-muted-foreground">Primary Database</div>
                 </div>
               </div>
               <div className="flex items-center gap-2">
-                <div className="font-mono text-xs text-green-400">
+                <div className="font-mono text-xs text-green-600 dark:text-green-400">
                   {systemHealth?.data?.database.uptime_percent}% uptime
                 </div>
-                <CheckCircle className={`w-4 h-4 ${systemHealth?.data?.database.status === 'healthy' ? 'text-green-400' : 'text-red-500'}`} />
+                <CheckCircle className={`w-4 h-4 ${systemHealth?.data?.database.status === 'healthy' ? 'text-green-600 dark:text-green-400' : 'text-red-500'}`} />
               </div>
             </div>
 
             {/* Queue System */}
-            <div className="flex items-center justify-between p-3 bg-zinc-800/30 border border-zinc-800">
+            <div className="flex items-center justify-between p-3 bg-muted/30 border border-border">
               <div className="flex items-center gap-3">
-                <Activity className="w-5 h-5 text-blue-400" />
+                <Activity className="w-5 h-5 text-blue-600 dark:text-blue-400" />
                 <div>
-                  <div className="font-mono text-sm text-white">Job Queue</div>
-                  <div className="font-mono text-[10px] text-zinc-500">BullMQ / Redis</div>
+                  <div className="font-mono text-sm text-foreground">Job Queue</div>
+                  <div className="font-mono text-[10px] text-muted-foreground">BullMQ / Redis</div>
                 </div>
               </div>
               <div className="flex items-center gap-2">
-                <div className="font-mono text-xs text-blue-400">
+                <div className="font-mono text-xs text-blue-600 dark:text-blue-400">
                   {systemHealth?.data?.queue.active_workers} active
                 </div>
-                <CheckCircle className={`w-4 h-4 ${systemHealth?.data?.queue.status === 'healthy' ? 'text-blue-400' : 'text-red-500'}`} />
+                <CheckCircle className={`w-4 h-4 ${systemHealth?.data?.queue.status === 'healthy' ? 'text-blue-600 dark:text-blue-400' : 'text-red-500'}`} />
               </div>
             </div>
 
             {/* Storage */}
-            <div className="flex items-center justify-between p-3 bg-zinc-800/30 border border-zinc-800">
+            <div className="flex items-center justify-between p-3 bg-muted/30 border border-border">
               <div className="flex items-center gap-3">
-                <HardDrive className="w-5 h-5 text-purple-400" />
+                <HardDrive className="w-5 h-5 text-purple-600 dark:text-purple-400" />
                 <div>
-                  <div className="font-mono text-sm text-white">MinIO Storage</div>
-                  <div className="font-mono text-[10px] text-zinc-500">Object Storage</div>
+                  <div className="font-mono text-sm text-foreground">MinIO Storage</div>
+                  <div className="font-mono text-[10px] text-muted-foreground">Object Storage</div>
                 </div>
               </div>
               <div className="flex items-center gap-2">
-                <div className="font-mono text-xs text-purple-400">
+                <div className="font-mono text-xs text-purple-600 dark:text-purple-400">
                   {(systemHealth?.data?.storage.used_bytes ? (systemHealth.data.storage.used_bytes / 1024 / 1024 / 1024).toFixed(1) + ' GB' : '0 GB')} / {(systemHealth?.data?.storage.total_bytes ? (systemHealth.data.storage.total_bytes / 1024 / 1024 / 1024 / 1024).toFixed(1) + ' TB' : '5 TB')}
                 </div>
-                <CheckCircle className={`w-4 h-4 ${systemHealth?.data?.storage.status === 'healthy' ? 'text-purple-400' : 'text-red-500'}`} />
+                <CheckCircle className={`w-4 h-4 ${systemHealth?.data?.storage.status === 'healthy' ? 'text-purple-600 dark:text-purple-400' : 'text-red-500'}`} />
               </div>
             </div>
 
             {/* API */}
-            <div className="flex items-center justify-between p-3 bg-zinc-800/30 border border-zinc-800">
+            <div className="flex items-center justify-between p-3 bg-muted/30 border border-border">
               <div className="flex items-center gap-3">
-                <Network className="w-5 h-5 text-amber-400" />
+                <Network className="w-5 h-5 text-amber-600 dark:text-amber-400" />
                 <div>
-                  <div className="font-mono text-sm text-white">API Gateway</div>
-                  <div className="font-mono text-[10px] text-zinc-500">FastAPI Backend</div>
+                  <div className="font-mono text-sm text-foreground">API Gateway</div>
+                  <div className="font-mono text-[10px] text-muted-foreground">FastAPI Backend</div>
                 </div>
               </div>
               <div className="flex items-center gap-2">
-                <div className="font-mono text-xs text-amber-400">
+                <div className="font-mono text-xs text-amber-600 dark:text-amber-400">
                   {systemHealth?.data?.api.avg_latency_ms}ms avg
                 </div>
-                <CheckCircle className={`w-4 h-4 ${systemHealth?.data?.api.status === 'healthy' ? 'text-amber-400' : 'text-red-500'}`} />
+                <CheckCircle className={`w-4 h-4 ${systemHealth?.data?.api.status === 'healthy' ? 'text-amber-600 dark:text-amber-400' : 'text-red-500'}`} />
               </div>
             </div>
           </div>
@@ -369,18 +369,18 @@ export default function DataHubOverview() {
             <Link
               key={tier.tier}
               href={`/dashboard/admin/data-hub/sources?tier=${tier.tier}`}
-              className="block p-4 bg-zinc-800/30 border border-zinc-800 hover:border-amber-500/50 transition-colors"
+              className="block p-4 bg-muted/30 border border-border hover:border-amber-500/50 transition-colors"
             >
               <div className="flex items-center justify-between mb-3">
                 <TierBadge tier={tier.tier} showLabel={false} />
-                <span className="font-mono text-xs text-zinc-500">
+                <span className="font-mono text-xs text-muted-foreground">
                   {tier.active || 0}/{(tier.total || tier.count || 0)}
                 </span>
               </div>
-              <div className="font-mono text-2xl text-white mb-1">
+              <div className="font-mono text-2xl text-foreground mb-1">
                 {formatNumber(tier.total_records || tier.total_properties || 0)}
               </div>
-              <div className="font-mono text-[10px] text-zinc-500 uppercase">
+              <div className="font-mono text-[10px] text-muted-foreground uppercase">
                 {tier.tier.replace('tier', 'Tier ').replace('_', ' ')}
               </div>
               <div className="mt-2 h-1 bg-zinc-700 overflow-hidden">
@@ -398,38 +398,38 @@ export default function DataHubOverview() {
       <div className="mt-6 grid grid-cols-2 md:grid-cols-4 gap-3">
         <Link
           href="/dashboard/admin/data-hub/analytics"
-          className="p-4 bg-zinc-900 border border-zinc-800 hover:border-amber-500 transition-colors group"
+          className="p-4 bg-card border border-border hover:border-amber-500 transition-colors group"
         >
           <TrendingUp className="w-6 h-6 text-amber-500 mb-2 group-hover:scale-110 transition-transform" />
-          <div className="font-mono text-sm text-white">Analytics</div>
-          <div className="font-mono text-[10px] text-zinc-500">Data insights</div>
+          <div className="font-mono text-sm text-foreground">Analytics</div>
+          <div className="font-mono text-[10px] text-muted-foreground">Data insights</div>
         </Link>
 
         <Link
           href="/dashboard/admin/data-hub/quality"
-          className="p-4 bg-zinc-900 border border-zinc-800 hover:border-amber-500 transition-colors group"
+          className="p-4 bg-card border border-border hover:border-amber-500 transition-colors group"
         >
-          <CheckCircle className="w-6 h-6 text-green-400 mb-2 group-hover:scale-110 transition-transform" />
-          <div className="font-mono text-sm text-white">Quality</div>
-          <div className="font-mono text-[10px] text-zinc-500">Data quality</div>
+          <CheckCircle className="w-6 h-6 text-green-600 dark:text-green-400 mb-2 group-hover:scale-110 transition-transform" />
+          <div className="font-mono text-sm text-foreground">Quality</div>
+          <div className="font-mono text-[10px] text-muted-foreground">Data quality</div>
         </Link>
 
         <Link
           href="/dashboard/admin/data-hub/lineage"
-          className="p-4 bg-zinc-900 border border-zinc-800 hover:border-amber-500 transition-colors group"
+          className="p-4 bg-card border border-border hover:border-amber-500 transition-colors group"
         >
-          <GitBranch className="w-6 h-6 text-blue-400 mb-2 group-hover:scale-110 transition-transform" />
-          <div className="font-mono text-sm text-white">Lineage</div>
-          <div className="font-mono text-[10px] text-zinc-500">Data flow</div>
+          <GitBranch className="w-6 h-6 text-blue-600 dark:text-blue-400 mb-2 group-hover:scale-110 transition-transform" />
+          <div className="font-mono text-sm text-foreground">Lineage</div>
+          <div className="font-mono text-[10px] text-muted-foreground">Data flow</div>
         </Link>
 
         <Link
           href="/dashboard/admin/data-hub/performance"
-          className="p-4 bg-zinc-900 border border-zinc-800 hover:border-amber-500 transition-colors group"
+          className="p-4 bg-card border border-border hover:border-amber-500 transition-colors group"
         >
-          <Zap className="w-6 h-6 text-purple-400 mb-2 group-hover:scale-110 transition-transform" />
-          <div className="font-mono text-sm text-white">Performance</div>
-          <div className="font-mono text-[10px] text-zinc-500">Metrics</div>
+          <Zap className="w-6 h-6 text-purple-600 dark:text-purple-400 mb-2 group-hover:scale-110 transition-transform" />
+          <div className="font-mono text-sm text-foreground">Performance</div>
+          <div className="font-mono text-[10px] text-muted-foreground">Metrics</div>
         </Link>
       </div>
     </div>

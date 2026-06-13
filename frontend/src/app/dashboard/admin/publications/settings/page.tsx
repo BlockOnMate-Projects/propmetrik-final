@@ -45,49 +45,49 @@ export default function PublicationsSettingsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="bg-zinc-900 border border-zinc-800 p-4">
-        <div className="text-sm text-zinc-300">
-          Publication settings and taxonomy reference. The <strong className="text-white">Category</strong> determines which website section (Insights or Press) a publication appears on when published.
+      <div className="bg-card border border-border p-4">
+        <div className="text-sm text-muted-foreground">
+          Publication settings and taxonomy reference. The <strong className="text-foreground">Category</strong> determines which website section (Insights or Press) a publication appears on when published.
         </div>
       </div>
 
       {loading ? (
-        <div className="h-56 bg-zinc-900 border border-zinc-800 animate-pulse" />
+        <div className="h-56 bg-card border border-border animate-pulse" />
       ) : !taxonomy ? (
-        <div className="bg-zinc-900 border border-zinc-800 p-6 text-zinc-500 font-mono text-sm">
+        <div className="bg-card border border-border p-6 text-muted-foreground font-mono text-sm">
           Failed to load publication settings.
         </div>
       ) : (
         <div className="space-y-6">
           {/* Category → Type Mapping */}
-          <div className="bg-zinc-900 border border-zinc-800 p-4">
-            <div className="text-[10px] font-mono text-zinc-500 uppercase tracking-wider mb-4">
+          <div className="bg-card border border-border p-4">
+            <div className="text-[10px] font-mono text-muted-foreground uppercase tracking-wider mb-4">
               Website Category Mapping
             </div>
 
             {/* Insights */}
             <div className="mb-6">
               <div className="flex items-center gap-2 mb-3">
-                <span className="px-2 py-0.5 text-[10px] font-mono font-bold uppercase bg-blue-900/30 text-blue-400 border border-blue-800 rounded">
+                <span className="px-2 py-0.5 text-[10px] font-mono font-bold uppercase bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 border border-blue-800 rounded">
                   Insights
                 </span>
-                <span className="text-[10px] text-zinc-600 font-mono">/insights/* — Research & thought leadership</span>
+                <span className="text-[10px] text-muted-foreground font-mono">/insights/* — Research & thought leadership</span>
               </div>
               <div className="overflow-x-auto">
                 <table className="w-full text-xs font-mono">
                   <thead>
-                    <tr className="border-b border-zinc-800">
-                      <th className="text-left py-2 pr-4 text-zinc-500">Publication Type</th>
-                      <th className="text-left py-2 pr-4 text-zinc-500">Description</th>
-                      <th className="text-left py-2 text-zinc-500">Website Path</th>
+                    <tr className="border-b border-border">
+                      <th className="text-left py-2 pr-4 text-muted-foreground">Publication Type</th>
+                      <th className="text-left py-2 pr-4 text-muted-foreground">Description</th>
+                      <th className="text-left py-2 text-muted-foreground">Website Path</th>
                     </tr>
                   </thead>
                   <tbody>
                     {insightsTypes.map((t) => (
-                      <tr key={t.value} className="border-b border-zinc-800/50">
-                        <td className="py-2 pr-4 text-white">{t.label}</td>
-                        <td className="py-2 pr-4 text-zinc-500">{t.description}</td>
-                        <td className="py-2 text-blue-400">{CATEGORY_MAP[t.value]?.website_path}</td>
+                      <tr key={t.value} className="border-b border-border/50">
+                        <td className="py-2 pr-4 text-foreground">{t.label}</td>
+                        <td className="py-2 pr-4 text-muted-foreground">{t.description}</td>
+                        <td className="py-2 text-blue-600 dark:text-blue-400">{CATEGORY_MAP[t.value]?.website_path}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -98,26 +98,26 @@ export default function PublicationsSettingsPage() {
             {/* Press */}
             <div>
               <div className="flex items-center gap-2 mb-3">
-                <span className="px-2 py-0.5 text-[10px] font-mono font-bold uppercase bg-amber-900/30 text-amber-400 border border-amber-800 rounded">
+                <span className="px-2 py-0.5 text-[10px] font-mono font-bold uppercase bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 border border-amber-800 rounded">
                   Press
                 </span>
-                <span className="text-[10px] text-zinc-600 font-mono">/press/* — Corporate communications & media</span>
+                <span className="text-[10px] text-muted-foreground font-mono">/press/* — Corporate communications & media</span>
               </div>
               <div className="overflow-x-auto">
                 <table className="w-full text-xs font-mono">
                   <thead>
-                    <tr className="border-b border-zinc-800">
-                      <th className="text-left py-2 pr-4 text-zinc-500">Publication Type</th>
-                      <th className="text-left py-2 pr-4 text-zinc-500">Description</th>
-                      <th className="text-left py-2 text-zinc-500">Website Path</th>
+                    <tr className="border-b border-border">
+                      <th className="text-left py-2 pr-4 text-muted-foreground">Publication Type</th>
+                      <th className="text-left py-2 pr-4 text-muted-foreground">Description</th>
+                      <th className="text-left py-2 text-muted-foreground">Website Path</th>
                     </tr>
                   </thead>
                   <tbody>
                     {pressTypes.map((t) => (
-                      <tr key={t.value} className="border-b border-zinc-800/50">
-                        <td className="py-2 pr-4 text-white">{t.label}</td>
-                        <td className="py-2 pr-4 text-zinc-500">{t.description}</td>
-                        <td className="py-2 text-amber-400">{CATEGORY_MAP[t.value]?.website_path}</td>
+                      <tr key={t.value} className="border-b border-border/50">
+                        <td className="py-2 pr-4 text-foreground">{t.label}</td>
+                        <td className="py-2 pr-4 text-muted-foreground">{t.description}</td>
+                        <td className="py-2 text-amber-600 dark:text-amber-400">{CATEGORY_MAP[t.value]?.website_path}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -135,13 +135,13 @@ export default function PublicationsSettingsPage() {
               { label: 'Access Tiers', items: taxonomy.access_tiers.map((x) => x.label) },
               { label: 'Statuses', items: taxonomy.statuses.map((x) => x.label) },
             ].map((section) => (
-              <div key={section.label} className="bg-zinc-900 border border-zinc-800 p-4">
-                <div className="text-[10px] font-mono text-zinc-500 uppercase tracking-wider mb-2">{section.label}</div>
+              <div key={section.label} className="bg-card border border-border p-4">
+                <div className="text-[10px] font-mono text-muted-foreground uppercase tracking-wider mb-2">{section.label}</div>
                 <div className="flex flex-wrap gap-2">
                   {section.items.map((item) => (
                     <span
                       key={item}
-                      className="px-2 py-1 text-xs font-mono bg-zinc-800 text-zinc-300 border border-zinc-700"
+                      className="px-2 py-1 text-xs font-mono bg-muted text-muted-foreground border border-border"
                     >
                       {item}
                     </span>

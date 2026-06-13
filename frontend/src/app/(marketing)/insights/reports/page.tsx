@@ -55,13 +55,13 @@ export default function InsightsReportsPage() {
   }, [items, activeTab, query]);
 
   return (
-    <main className="pt-32 pb-24 bg-zinc-950">
+    <main className="pt-32 pb-24 bg-background">
       <section className="pb-10">
         <div className="container mx-auto px-4 md:px-6">
           <div className="max-w-3xl">
             <div className="text-sm font-bold text-primary uppercase tracking-[0.2em] mb-4">In-Depth Analysis</div>
-            <h1 className="text-5xl md:text-7xl font-bold tracking-tight text-white mb-5">Reports</h1>
-            <p className="text-zinc-400 text-lg">
+            <h1 className="text-5xl md:text-7xl font-bold tracking-tight text-foreground mb-5">Reports</h1>
+            <p className="text-muted-foreground text-lg">
               Ghana Real Estate Perspective, Quarterly Outlooks, Capital Markets Reviews, Investment Forecasts, and Annual Flagship publications.
             </p>
           </div>
@@ -75,7 +75,7 @@ export default function InsightsReportsPage() {
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Search reports..."
-            className="w-full md:w-[520px] px-4 py-3 bg-zinc-900 border border-zinc-800 rounded-xl text-white placeholder-zinc-500 focus:outline-none focus:border-primary transition-colors"
+            className="w-full md:w-[520px] px-4 py-3 bg-card border border-border rounded-xl text-foreground placeholder-zinc-500 focus:outline-none focus:border-primary transition-colors"
           />
           <div className="flex flex-wrap gap-2 mt-5">
             {TABS.map((tab) => (
@@ -85,7 +85,7 @@ export default function InsightsReportsPage() {
                 className={`px-4 py-2 rounded-full text-sm border transition-colors ${
                   activeTab === tab.key
                     ? 'bg-primary text-zinc-950 border-primary'
-                    : 'bg-zinc-900 text-zinc-400 border-zinc-800 hover:border-zinc-600'
+                    : 'bg-card text-muted-foreground border-border hover:border-zinc-600'
                 }`}
               >
                 {tab.label}
@@ -100,27 +100,27 @@ export default function InsightsReportsPage() {
           {loading ? (
             <div className="space-y-4">
               {[...Array(4)].map((_, idx) => (
-                <div key={idx} className="bg-zinc-900 border border-zinc-800 rounded-lg p-6 animate-pulse">
-                  <div className="h-5 w-2/3 bg-zinc-800 rounded mb-2" />
-                  <div className="h-4 w-full bg-zinc-800 rounded" />
+                <div key={idx} className="bg-card border border-border rounded-lg p-6 animate-pulse">
+                  <div className="h-5 w-2/3 bg-muted rounded mb-2" />
+                  <div className="h-4 w-full bg-muted rounded" />
                 </div>
               ))}
             </div>
           ) : filtered.length === 0 ? (
-            <div className="text-center py-16 text-zinc-500">No reports found matching your criteria.</div>
+            <div className="text-center py-16 text-muted-foreground">No reports found matching your criteria.</div>
           ) : (
             <div className="space-y-4">
               {filtered.map((item) => (
                 <Link key={item.id} href={`/insights/${item.slug}`}>
-                  <div className="bg-zinc-900 border border-zinc-800 rounded-lg p-6 hover:border-primary/50 transition-colors">
+                  <div className="bg-card border border-border rounded-lg p-6 hover:border-primary/50 transition-colors">
                     <div className="flex items-center gap-3 mb-2">
-                      <span className="text-xs text-zinc-500">{formatDate(item.published_at)}</span>
-                      <span className="text-[10px] px-2 py-0.5 rounded-full bg-zinc-800 text-zinc-400 uppercase tracking-wider">
+                      <span className="text-xs text-muted-foreground">{formatDate(item.published_at)}</span>
+                      <span className="text-[10px] px-2 py-0.5 rounded-full bg-muted text-muted-foreground uppercase tracking-wider">
                         {TYPE_LABELS[item.type] || item.type}
                       </span>
                     </div>
-                    <h2 className="text-xl font-bold text-white mb-1">{item.title}</h2>
-                    {item.excerpt && <p className="text-sm text-zinc-400 line-clamp-2">{item.excerpt}</p>}
+                    <h2 className="text-xl font-bold text-foreground mb-1">{item.title}</h2>
+                    {item.excerpt && <p className="text-sm text-muted-foreground line-clamp-2">{item.excerpt}</p>}
                   </div>
                 </Link>
               ))}

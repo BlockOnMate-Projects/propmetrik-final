@@ -70,16 +70,16 @@ const milestones = [
 
 export default function AboutPage() {
     return (
-        <main className="bg-zinc-950 text-white">
+        <main className="bg-background text-foreground">
             {/* Hero */}
-            <section className="pt-40 pb-24 border-b border-zinc-900">
+            <section className="pt-40 pb-24 border-b border-border">
                 <div className="container mx-auto px-6 max-w-5xl">
                     <motion.div {...fade}>
                         <Eyebrow>About PROPMETRIK</Eyebrow>
                         <h1 className="text-5xl md:text-7xl font-bold tracking-tight leading-[1.05] mb-8 max-w-4xl">
                             Formalising real estate in Africa, one verified record at a time.
                         </h1>
-                        <p className="text-xl text-zinc-400 leading-relaxed max-w-2xl">
+                        <p className="text-xl text-muted-foreground leading-relaxed max-w-2xl">
                             PROPMETRIK is on a mission to digitise Ghana&apos;s real estate ecosystem through reliable
                             data, transparent valuations, and intelligent tools — built in Accra, for the region.
                         </p>
@@ -88,7 +88,7 @@ export default function AboutPage() {
             </section>
 
             {/* Vision / Problem / Approach */}
-            <section className="py-24 border-b border-zinc-900">
+            <section className="py-24 border-b border-border">
                 <div className="container mx-auto px-6 max-w-5xl">
                     <div className="grid md:grid-cols-3 gap-x-12 gap-y-12">
                         {story.map((s) => (
@@ -97,7 +97,7 @@ export default function AboutPage() {
                                     <div className="w-8 h-px bg-amber-500" />
                                     <span className="text-xs text-amber-500 font-bold uppercase tracking-wider">{s.label}</span>
                                 </div>
-                                <p className="text-zinc-300 leading-relaxed">{s.text}</p>
+                                <p className="text-muted-foreground leading-relaxed">{s.text}</p>
                             </motion.div>
                         ))}
                     </div>
@@ -105,14 +105,14 @@ export default function AboutPage() {
             </section>
 
             {/* Why Ghana */}
-            <section className="py-24 border-b border-zinc-900">
+            <section className="py-24 border-b border-border">
                 <div className="container mx-auto px-6 max-w-5xl">
                     <motion.div {...fade} className="max-w-3xl">
                         <Eyebrow>The opportunity</Eyebrow>
                         <h2 className="text-3xl md:text-5xl font-bold tracking-tight mb-6">
                             Why <span className="text-amber-500">Ghana</span>
                         </h2>
-                        <p className="text-lg text-zinc-400 leading-relaxed">
+                        <p className="text-lg text-muted-foreground leading-relaxed">
                             Ghana&apos;s real estate market is large and rapidly urbanising, yet most transactions
                             still lack verifiable data. The gap between market potential and information
                             infrastructure is wide — and closing it is the whole point of PROPMETRIK.
@@ -122,7 +122,7 @@ export default function AboutPage() {
             </section>
 
             {/* What we build */}
-            <section className="py-24 border-b border-zinc-900">
+            <section className="py-24 border-b border-border">
                 <div className="container mx-auto px-6 max-w-5xl">
                     <motion.div {...fade}>
                         <Eyebrow>What we build</Eyebrow>
@@ -130,15 +130,15 @@ export default function AboutPage() {
                             An integrated platform across the full real estate lifecycle.
                         </h2>
                     </motion.div>
-                    <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-px bg-zinc-900 border border-zinc-900 rounded-xl overflow-hidden">
+                    <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-px bg-card border border-border rounded-xl overflow-hidden">
                         {pillars.map((p) => (
                             <Link key={p.title} href={p.href}>
-                                <motion.div {...fade} className="bg-zinc-950 p-7 h-full hover:bg-zinc-900/60 transition-colors group">
+                                <motion.div {...fade} className="bg-background p-7 h-full hover:bg-card/60 transition-colors group">
                                     <div className="w-10 h-10 rounded-lg bg-amber-500/10 text-amber-500 flex items-center justify-center mb-4">
                                         {p.icon}
                                     </div>
-                                    <h3 className="text-base font-bold text-white mb-1.5 group-hover:text-amber-500 transition-colors">{p.title}</h3>
-                                    <p className="text-sm text-zinc-400 leading-relaxed">{p.body}</p>
+                                    <h3 className="text-base font-bold text-foreground mb-1.5 group-hover:text-amber-500 transition-colors">{p.title}</h3>
+                                    <p className="text-sm text-muted-foreground leading-relaxed">{p.body}</p>
                                 </motion.div>
                             </Link>
                         ))}
@@ -147,7 +147,7 @@ export default function AboutPage() {
             </section>
 
             {/* Our journey */}
-            <section className="py-24 border-b border-zinc-900">
+            <section className="py-24 border-b border-border">
                 <div className="container mx-auto px-6 max-w-5xl">
                     <motion.div {...fade}>
                         <Eyebrow>Our journey</Eyebrow>
@@ -155,13 +155,13 @@ export default function AboutPage() {
                             From founding to West Africa.
                         </h2>
                     </motion.div>
-                    <div className="space-y-px bg-zinc-900 border border-zinc-900 rounded-xl overflow-hidden">
+                    <div className="space-y-px bg-card border border-border rounded-xl overflow-hidden">
                         {milestones.map((m) => (
-                            <motion.div key={m.title} {...fade} className="bg-zinc-950 grid sm:grid-cols-[160px_1fr] gap-2 sm:gap-8 p-7">
+                            <motion.div key={m.title} {...fade} className="bg-background grid sm:grid-cols-[160px_1fr] gap-2 sm:gap-8 p-7">
                                 <div className="text-sm font-bold text-amber-500 uppercase tracking-wider">{m.year}</div>
                                 <div>
-                                    <h3 className="text-lg font-bold text-white mb-1">{m.title}</h3>
-                                    <p className="text-sm text-zinc-400 leading-relaxed">{m.body}</p>
+                                    <h3 className="text-lg font-bold text-foreground mb-1">{m.title}</h3>
+                                    <p className="text-sm text-muted-foreground leading-relaxed">{m.body}</p>
                                 </div>
                             </motion.div>
                         ))}
@@ -170,7 +170,7 @@ export default function AboutPage() {
             </section>
 
             {/* Values */}
-            <section className="py-24 border-b border-zinc-900">
+            <section className="py-24 border-b border-border">
                 <div className="container mx-auto px-6 max-w-5xl">
                     <motion.div {...fade}>
                         <Eyebrow>Our values</Eyebrow>
@@ -184,8 +184,8 @@ export default function AboutPage() {
                                 <div className="w-10 h-10 rounded-lg bg-amber-500/10 text-amber-500 flex items-center justify-center mb-4">
                                     {v.icon}
                                 </div>
-                                <h3 className="text-lg font-bold text-white mb-2">{v.title}</h3>
-                                <p className="text-sm text-zinc-400 leading-relaxed">{v.body}</p>
+                                <h3 className="text-lg font-bold text-foreground mb-2">{v.title}</h3>
+                                <p className="text-sm text-muted-foreground leading-relaxed">{v.body}</p>
                             </motion.div>
                         ))}
                     </div>
@@ -193,14 +193,14 @@ export default function AboutPage() {
             </section>
 
             {/* Founder */}
-            <section className="py-24 border-b border-zinc-900">
+            <section className="py-24 border-b border-border">
                 <div className="container mx-auto px-6 max-w-5xl">
                     <motion.div {...fade}>
                         <Eyebrow>Who&apos;s building it</Eyebrow>
                         <h2 className="text-3xl md:text-5xl font-bold tracking-tight mb-6 max-w-3xl">
                             Two founders, one mission.
                         </h2>
-                        <p className="text-lg text-zinc-400 leading-relaxed max-w-2xl mb-12">
+                        <p className="text-lg text-muted-foreground leading-relaxed max-w-2xl mb-12">
                             Standardising how property is valued, recorded, and transacted across Ghana and West Africa.
                         </p>
                     </motion.div>
@@ -212,20 +212,20 @@ export default function AboutPage() {
                             <motion.div
                                 key={f.name}
                                 {...fade}
-                                className="bg-zinc-900 border border-zinc-800 rounded-lg p-7 flex items-center gap-5"
+                                className="bg-card border border-border rounded-lg p-7 flex items-center gap-5"
                             >
                                 <div className="w-16 h-16 shrink-0 rounded-xl bg-gradient-to-br from-amber-500 to-yellow-400 flex items-center justify-center text-xl font-black text-zinc-950">
                                     {f.initials}
                                 </div>
                                 <div>
-                                    <h3 className="text-xl font-bold text-white">{f.name}</h3>
+                                    <h3 className="text-xl font-bold text-foreground">{f.name}</h3>
                                     <div className="text-amber-500 font-medium text-sm mb-2">{f.role}</div>
                                     {f.linkedin && (
                                         <a
                                             href={f.linkedin}
                                             target="_blank"
                                             rel="noreferrer"
-                                            className="inline-flex items-center gap-1.5 text-xs text-zinc-400 hover:text-amber-500 transition-colors"
+                                            className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-amber-500 transition-colors"
                                         >
                                             <Linkedin className="w-3.5 h-3.5" /> LinkedIn
                                         </a>
@@ -238,18 +238,18 @@ export default function AboutPage() {
             </section>
 
             {/* Built for */}
-            <section className="py-24 border-b border-zinc-900">
+            <section className="py-24 border-b border-border">
                 <div className="container mx-auto px-6 max-w-5xl">
                     <motion.div {...fade}>
                         <Eyebrow>Built for industry leaders</Eyebrow>
-                        <p className="text-zinc-400 mb-10 max-w-2xl">
+                        <p className="text-muted-foreground mb-10 max-w-2xl">
                             Designed for banks, government institutions, valuation firms, and developers across Ghana.
                         </p>
                     </motion.div>
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-px bg-zinc-900 border border-zinc-900 rounded-xl overflow-hidden">
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-px bg-card border border-border rounded-xl overflow-hidden">
                         {['Commercial Banks', 'Government Institutions', 'Valuation Firms', 'Property Developers'].map((p) => (
-                            <motion.div key={p} {...fade} className="bg-zinc-950 flex items-center justify-center h-24 px-4 text-center">
-                                <span className="text-sm text-zinc-400 font-medium">{p}</span>
+                            <motion.div key={p} {...fade} className="bg-background flex items-center justify-center h-24 px-4 text-center">
+                                <span className="text-sm text-muted-foreground font-medium">{p}</span>
                             </motion.div>
                         ))}
                     </div>

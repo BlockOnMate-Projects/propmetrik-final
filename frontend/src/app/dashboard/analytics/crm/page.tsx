@@ -160,8 +160,8 @@ function Panel({
   actions?: React.ReactNode;
 }) {
   return (
-    <div className={cn('border border-zinc-800 bg-zinc-900/50', className)}>
-      <div className="flex items-center justify-between px-3 py-1.5 bg-zinc-800/50 border-b border-zinc-800">
+    <div className={cn('border border-border bg-card/50', className)}>
+      <div className="flex items-center justify-between px-3 py-1.5 bg-muted/50 border-b border-border">
         <span className="font-mono text-[10px] text-amber-500 tracking-wider">{title}</span>
         {actions}
       </div>
@@ -189,13 +189,13 @@ function StatCard({
   return (
     <Panel title={label}>
       <div className="text-center py-2">
-        <div className="font-mono text-2xl text-white">
+        <div className="font-mono text-2xl text-foreground">
           {prefix}{typeof value === 'number' ? value.toLocaleString() : value}{suffix}
         </div>
         {change !== undefined && (
           <div className={cn(
             'font-mono text-xs mt-1 flex items-center justify-center gap-1',
-            change >= 0 ? 'text-green-400' : 'text-red-400'
+            change >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'
           )}>
             {change >= 0 ? <ArrowUpRight className="w-3 h-3" /> : <ArrowDownRight className="w-3 h-3" />}
             {Math.abs(change).toFixed(1)}% vs last period
@@ -217,16 +217,16 @@ function FunnelChart({ data }: { data: FunnelStage[] }) {
         return (
           <div key={stage.stageName} className="group">
             <div className="flex items-center gap-3">
-              <div className="w-24 font-mono text-[10px] text-zinc-400 truncate">
+              <div className="w-24 font-mono text-[10px] text-muted-foreground truncate">
                 {stage.stageName}
               </div>
-              <div className="flex-1 h-8 bg-zinc-800/50 relative overflow-hidden">
+              <div className="flex-1 h-8 bg-muted/50 relative overflow-hidden">
                 <div 
                   className="h-full bg-gradient-to-r from-amber-600 to-amber-500 transition-all duration-500"
                   style={{ width: `${widthPercent}%` }}
                 />
                 <div className="absolute inset-0 flex items-center px-3">
-                  <span className="font-mono text-xs text-white">
+                  <span className="font-mono text-xs text-foreground">
                     {stage.dealsCount} deals • ${(stage.dealsValue / 1000).toFixed(0)}K
                   </span>
                 </div>
@@ -234,15 +234,15 @@ function FunnelChart({ data }: { data: FunnelStage[] }) {
               <div className="w-20 text-right">
                 <span className={cn(
                   'font-mono text-[10px]',
-                  stage.conversionToNext >= 50 ? 'text-green-400' : 
-                  stage.conversionToNext >= 25 ? 'text-amber-400' : 'text-red-400'
+                  stage.conversionToNext >= 50 ? 'text-green-600 dark:text-green-400' : 
+                  stage.conversionToNext >= 25 ? 'text-amber-600 dark:text-amber-400' : 'text-red-600 dark:text-red-400'
                 )}>
                   {index < data.length - 1 ? `${stage.conversionToNext}%` : '—'}
                 </span>
               </div>
             </div>
             {index < data.length - 1 && (
-              <div className="ml-24 pl-3 flex items-center gap-1 text-zinc-600">
+              <div className="ml-24 pl-3 flex items-center gap-1 text-muted-foreground">
                 <ChevronRight className="w-3 h-3" />
                 <span className="font-mono text-[8px]">
                   {stage.dropoffRate}% drop-off • avg {stage.avgTimeInStage}d
@@ -267,10 +267,10 @@ function WinLossChart({ data }: { data: WinLossData[] }) {
     <div className="space-y-4">
       {data.slice(0, 6).map((item) => (
         <div key={item.period} className="space-y-1">
-          <div className="flex items-center justify-between font-mono text-[10px] text-zinc-400">
+          <div className="flex items-center justify-between font-mono text-[10px] text-muted-foreground">
             <span>{item.period}</span>
             <span className={cn(
-              item.winRate >= 50 ? 'text-green-400' : 'text-red-400'
+              item.winRate >= 50 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'
             )}>
               {item.winRate}% win rate
             </span>
@@ -281,7 +281,7 @@ function WinLossChart({ data }: { data: WinLossData[] }) {
               style={{ width: `${(item.won.value / maxValue) * 50}%` }}
             >
               {item.won.value > maxValue * 0.1 && (
-                <span className="font-mono text-[8px] text-white">
+                <span className="font-mono text-[8px] text-foreground">
                   ${(item.won.value / 1000).toFixed(0)}K
                 </span>
               )}
@@ -291,26 +291,26 @@ function WinLossChart({ data }: { data: WinLossData[] }) {
               style={{ width: `${(item.lost.value / maxValue) * 50}%` }}
             >
               {item.lost.value > maxValue * 0.1 && (
-                <span className="font-mono text-[8px] text-white">
+                <span className="font-mono text-[8px] text-foreground">
                   ${(item.lost.value / 1000).toFixed(0)}K
                 </span>
               )}
             </div>
           </div>
-          <div className="flex justify-between font-mono text-[8px] text-zinc-500">
+          <div className="flex justify-between font-mono text-[8px] text-muted-foreground">
             <span>{item.won.count} won • avg {item.avgTimeToWin}d</span>
             <span>{item.lost.count} lost • avg {item.avgTimeToLoss}d</span>
           </div>
         </div>
       ))}
-      <div className="flex items-center justify-center gap-4 pt-2 border-t border-zinc-800">
+      <div className="flex items-center justify-center gap-4 pt-2 border-t border-border">
         <div className="flex items-center gap-2">
           <div className="w-3 h-3 bg-green-500 rounded-sm" />
-          <span className="font-mono text-[10px] text-zinc-400">Won</span>
+          <span className="font-mono text-[10px] text-muted-foreground">Won</span>
         </div>
         <div className="flex items-center gap-2">
           <div className="w-3 h-3 bg-red-500 rounded-sm" />
-          <span className="font-mono text-[10px] text-zinc-400">Lost</span>
+          <span className="font-mono text-[10px] text-muted-foreground">Lost</span>
         </div>
       </div>
     </div>
@@ -326,10 +326,10 @@ function LeadSourceChart({ data }: { data: LeadSourceData[] }) {
       {data.map((source) => (
         <div key={source.source} className="space-y-1">
           <div className="flex items-center justify-between font-mono text-[10px]">
-            <span className="text-zinc-400">{source.source}</span>
+            <span className="text-muted-foreground">{source.source}</span>
             <span className={cn(
-              source.winRate >= 50 ? 'text-green-400' : 
-              source.winRate >= 30 ? 'text-amber-400' : 'text-red-400'
+              source.winRate >= 50 ? 'text-green-600 dark:text-green-400' : 
+              source.winRate >= 30 ? 'text-amber-600 dark:text-amber-400' : 'text-red-600 dark:text-red-400'
             )}>
               {source.winRate}%
             </span>
@@ -348,7 +348,7 @@ function LeadSourceChart({ data }: { data: LeadSourceData[] }) {
               style={{ width: `${((source.dealsCount - source.wonDeals - source.lostDeals) / maxDeals) * 100}%` }}
             />
           </div>
-          <div className="font-mono text-[8px] text-zinc-500">
+          <div className="font-mono text-[8px] text-muted-foreground">
             {source.dealsCount} deals • ${(source.totalValue / 1000).toFixed(0)}K total
           </div>
         </div>
@@ -366,29 +366,29 @@ function AgentLeaderboard({ data }: { data: AgentPerformance[] }) {
           key={agent.agentId}
           className={cn(
             'flex items-center gap-3 p-2 rounded',
-            index === 0 ? 'bg-amber-500/10 border border-amber-500/30' : 'bg-zinc-800/30'
+            index === 0 ? 'bg-amber-500/10 border border-amber-500/30' : 'bg-muted/30'
           )}
         >
           <div className={cn(
             'w-6 h-6 rounded flex items-center justify-center font-mono text-xs',
-            index === 0 ? 'bg-amber-500 text-white' :
-            index === 1 ? 'bg-zinc-400 text-white' :
-            index === 2 ? 'bg-amber-700 text-white' :
-            'bg-zinc-700 text-zinc-400'
+            index === 0 ? 'bg-amber-500 text-foreground' :
+            index === 1 ? 'bg-zinc-400 text-foreground' :
+            index === 2 ? 'bg-amber-700 text-foreground' :
+            'bg-zinc-700 text-muted-foreground'
           )}>
             {index + 1}
           </div>
           <div className="flex-1 min-w-0">
-            <div className="font-mono text-xs text-white truncate">{agent.agentName}</div>
-            <div className="font-mono text-[10px] text-zinc-500">
+            <div className="font-mono text-xs text-foreground truncate">{agent.agentName}</div>
+            <div className="font-mono text-[10px] text-muted-foreground">
               {agent.dealsWon} won • {agent.winRate}% rate
             </div>
           </div>
           <div className="text-right">
-            <div className="font-mono text-xs text-green-400">
+            <div className="font-mono text-xs text-green-600 dark:text-green-400">
               ${(agent.totalValue / 1000).toFixed(0)}K
             </div>
-            <div className="font-mono text-[10px] text-zinc-500">
+            <div className="font-mono text-[10px] text-muted-foreground">
               {agent.avgCycleTime}d avg
             </div>
           </div>
@@ -404,7 +404,7 @@ function CohortTable({ data }: { data: CohortData[] }) {
     <div className="overflow-x-auto">
       <table className="w-full font-mono text-xs">
         <thead>
-          <tr className="text-zinc-500 border-b border-zinc-800">
+          <tr className="text-muted-foreground border-b border-border">
             <th className="text-left py-2 pr-4">Cohort</th>
             <th className="text-right py-2 px-2">Deals</th>
             <th className="text-right py-2 px-2">Won</th>
@@ -416,24 +416,24 @@ function CohortTable({ data }: { data: CohortData[] }) {
         </thead>
         <tbody>
           {data.map((cohort) => (
-            <tr key={cohort.cohort} className="border-b border-zinc-800/50 hover:bg-zinc-800/30">
-              <td className="py-2 pr-4 text-white">{cohort.cohort}</td>
-              <td className="text-right py-2 px-2 text-zinc-300">{cohort.totalDeals}</td>
-              <td className="text-right py-2 px-2 text-green-400">{cohort.wonDeals}</td>
+            <tr key={cohort.cohort} className="border-b border-border/50 hover:bg-amber-50 dark:hover:bg-amber-500/10">
+              <td className="py-2 pr-4 text-foreground">{cohort.cohort}</td>
+              <td className="text-right py-2 px-2 text-muted-foreground">{cohort.totalDeals}</td>
+              <td className="text-right py-2 px-2 text-green-600 dark:text-green-400">{cohort.wonDeals}</td>
               <td className={cn(
                 'text-right py-2 px-2',
-                cohort.winRate >= 50 ? 'text-green-400' : 
-                cohort.winRate >= 30 ? 'text-amber-400' : 'text-red-400'
+                cohort.winRate >= 50 ? 'text-green-600 dark:text-green-400' : 
+                cohort.winRate >= 30 ? 'text-amber-600 dark:text-amber-400' : 'text-red-600 dark:text-red-400'
               )}>
                 {cohort.winRate}%
               </td>
-              <td className="text-right py-2 px-2 text-zinc-300">
+              <td className="text-right py-2 px-2 text-muted-foreground">
                 ${(cohort.totalValue / 1000).toFixed(0)}K
               </td>
-              <td className="text-right py-2 px-2 text-zinc-300">
+              <td className="text-right py-2 px-2 text-muted-foreground">
                 ${(cohort.avgDealSize / 1000).toFixed(0)}K
               </td>
-              <td className="text-right py-2 pl-2 text-zinc-400">
+              <td className="text-right py-2 pl-2 text-muted-foreground">
                 {cohort.avgCycleTime}d
               </td>
             </tr>
@@ -514,28 +514,28 @@ export default function CRMAnalyticsPage() {
     summary.thisMonth.winRate - summary.lastMonth.winRate : 0;
 
   return (
-    <div className="min-h-screen bg-black text-white p-4 pb-10">
+    <div className="min-h-screen bg-background text-foreground p-4 pb-10">
       {/* Header */}
       <div className="flex items-center justify-between mb-4">
         <div>
-          <h1 className="font-mono text-xl text-white flex items-center gap-2">
+          <h1 className="font-mono text-xl text-foreground flex items-center gap-2">
             <BarChart3 className="w-5 h-5 text-amber-500" />
             CRM ANALYTICS
           </h1>
-          <p className="font-mono text-[10px] text-zinc-500">
+          <p className="font-mono text-[10px] text-muted-foreground">
             Sales Performance, Pipeline Analytics & Team Insights
           </p>
         </div>
         <div className="flex items-center gap-3">
           {/* Period Selector */}
-          <div className="flex border border-zinc-700 rounded overflow-hidden">
+          <div className="flex border border-border rounded overflow-hidden">
             {(['week', 'month', 'quarter'] as const).map((p) => (
               <button
                 key={p}
                 onClick={() => setPeriod(p)}
                 className={cn(
                   'px-3 py-1.5 font-mono text-[10px] transition-colors',
-                  period === p ? 'bg-amber-500 text-white' : 'bg-zinc-800 text-zinc-400 hover:bg-zinc-700'
+                  period === p ? 'bg-amber-500 text-foreground' : 'bg-muted text-muted-foreground hover:bg-zinc-700'
                 )}
               >
                 {p.toUpperCase()}
@@ -546,14 +546,14 @@ export default function CRMAnalyticsPage() {
           {/* Export Buttons */}
           <button 
             onClick={() => analyticsApi.exportExcel()}
-            className="flex items-center gap-1.5 px-3 py-1.5 bg-zinc-800 hover:bg-zinc-700 font-mono text-[10px] text-zinc-300 border border-zinc-700 transition-colors"
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-muted hover:bg-zinc-700 font-mono text-[10px] text-muted-foreground border border-border transition-colors"
           >
             <Download className="w-3 h-3" />
             EXCEL
           </button>
           <button 
             onClick={() => analyticsApi.exportPDF()}
-            className="flex items-center gap-1.5 px-3 py-1.5 bg-zinc-800 hover:bg-zinc-700 font-mono text-[10px] text-zinc-300 border border-zinc-700 transition-colors"
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-muted hover:bg-zinc-700 font-mono text-[10px] text-muted-foreground border border-border transition-colors"
           >
             <Download className="w-3 h-3" />
             PDF
@@ -564,11 +564,11 @@ export default function CRMAnalyticsPage() {
             onClick={() => loadData()}
             disabled={isLoading}
             className={cn(
-              'p-1.5 bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 transition-colors',
+              'p-1.5 bg-muted hover:bg-zinc-700 border border-border transition-colors',
               isLoading && 'animate-spin'
             )}
           >
-            <RefreshCw className="w-4 h-4 text-zinc-400" />
+            <RefreshCw className="w-4 h-4 text-muted-foreground" />
           </button>
         </div>
       </div>
@@ -577,7 +577,7 @@ export default function CRMAnalyticsPage() {
       {isLoading && (
         <div className="flex items-center gap-2 mb-4">
           <RefreshCw className="w-4 h-4 text-amber-500 animate-spin" />
-          <span className="font-mono text-[10px] text-zinc-500">Loading analytics...</span>
+          <span className="font-mono text-[10px] text-muted-foreground">Loading analytics...</span>
         </div>
       )}
 
@@ -624,7 +624,7 @@ export default function CRMAnalyticsPage() {
                 title="SALES FUNNEL" 
                 className="h-full"
                 actions={
-                  <span className="font-mono text-[10px] text-zinc-500">
+                  <span className="font-mono text-[10px] text-muted-foreground">
                     conversion rates
                   </span>
                 }
@@ -633,8 +633,8 @@ export default function CRMAnalyticsPage() {
                   <FunnelChart data={funnel} />
                 ) : (
                   <div className="py-8 text-center">
-                    <Target className="w-8 h-8 text-zinc-600 mx-auto mb-2" />
-                    <p className="font-mono text-[10px] text-zinc-500">
+                    <Target className="w-8 h-8 text-muted-foreground mx-auto mb-2" />
+                    <p className="font-mono text-[10px] text-muted-foreground">
                       No pipeline data available
                     </p>
                   </div>
@@ -648,7 +648,7 @@ export default function CRMAnalyticsPage() {
                 title="WIN/LOSS ANALYSIS" 
                 className="h-full"
                 actions={
-                  <span className="font-mono text-[10px] text-zinc-500">
+                  <span className="font-mono text-[10px] text-muted-foreground">
                     by {period}
                   </span>
                 }
@@ -657,8 +657,8 @@ export default function CRMAnalyticsPage() {
                   <WinLossChart data={winLoss} />
                 ) : (
                   <div className="py-8 text-center">
-                    <PieChart className="w-8 h-8 text-zinc-600 mx-auto mb-2" />
-                    <p className="font-mono text-[10px] text-zinc-500">
+                    <PieChart className="w-8 h-8 text-muted-foreground mx-auto mb-2" />
+                    <p className="font-mono text-[10px] text-muted-foreground">
                       No data for this period
                     </p>
                   </div>
@@ -679,8 +679,8 @@ export default function CRMAnalyticsPage() {
                   <AgentLeaderboard data={agents} />
                 ) : (
                   <div className="py-8 text-center">
-                    <Users className="w-8 h-8 text-zinc-600 mx-auto mb-2" />
-                    <p className="font-mono text-[10px] text-zinc-500">
+                    <Users className="w-8 h-8 text-muted-foreground mx-auto mb-2" />
+                    <p className="font-mono text-[10px] text-muted-foreground">
                       No agent data available
                     </p>
                   </div>
@@ -694,7 +694,7 @@ export default function CRMAnalyticsPage() {
                 title="LEAD SOURCE PERFORMANCE" 
                 className="h-full"
                 actions={
-                  <span className="font-mono text-[10px] text-zinc-500">
+                  <span className="font-mono text-[10px] text-muted-foreground">
                     win rate by source
                   </span>
                 }
@@ -703,8 +703,8 @@ export default function CRMAnalyticsPage() {
                   <LeadSourceChart data={leadSources} />
                 ) : (
                   <div className="py-8 text-center">
-                    <Activity className="w-8 h-8 text-zinc-600 mx-auto mb-2" />
-                    <p className="font-mono text-[10px] text-zinc-500">
+                    <Activity className="w-8 h-8 text-muted-foreground mx-auto mb-2" />
+                    <p className="font-mono text-[10px] text-muted-foreground">
                       No lead source data
                     </p>
                   </div>
@@ -719,7 +719,7 @@ export default function CRMAnalyticsPage() {
                 className="h-full"
                 actions={
                   <div className="flex items-center gap-2">
-                    <span className="font-mono text-[10px] text-zinc-500 mr-2">group by:</span>
+                    <span className="font-mono text-[10px] text-muted-foreground mr-2">group by:</span>
                     {(['month', 'quarter', 'source', 'agent'] as const).map((g) => (
                       <button
                         key={g}
@@ -727,8 +727,8 @@ export default function CRMAnalyticsPage() {
                         className={cn(
                           'px-2 py-0.5 font-mono text-[9px] transition-colors rounded',
                           cohortGroupBy === g 
-                            ? 'bg-amber-500 text-white' 
-                            : 'bg-zinc-700 text-zinc-400 hover:bg-zinc-600'
+                            ? 'bg-amber-500 text-foreground' 
+                            : 'bg-zinc-700 text-muted-foreground hover:bg-zinc-600'
                         )}
                       >
                         {g.toUpperCase()}
@@ -741,8 +741,8 @@ export default function CRMAnalyticsPage() {
                   <CohortTable data={cohorts} />
                 ) : (
                   <div className="py-8 text-center">
-                    <BarChart3 className="w-8 h-8 text-zinc-600 mx-auto mb-2" />
-                    <p className="font-mono text-[10px] text-zinc-500">
+                    <BarChart3 className="w-8 h-8 text-muted-foreground mx-auto mb-2" />
+                    <p className="font-mono text-[10px] text-muted-foreground">
                       No cohort data available
                     </p>
                   </div>
@@ -758,12 +758,12 @@ export default function CRMAnalyticsPage() {
               actions={<Zap className="w-3 h-3 text-amber-500" />}
             >
               <div className="grid grid-cols-3 gap-4">
-                <div className="p-3 bg-zinc-800/30 rounded border border-zinc-700/50">
+                <div className="p-3 bg-muted/30 rounded border border-border/50">
                   <div className="flex items-center gap-2 mb-2">
-                    <TrendingUp className="w-4 h-4 text-green-400" />
-                    <span className="font-mono text-[10px] text-green-400">OPPORTUNITY</span>
+                    <TrendingUp className="w-4 h-4 text-green-600 dark:text-green-400" />
+                    <span className="font-mono text-[10px] text-green-600 dark:text-green-400">OPPORTUNITY</span>
                   </div>
-                  <p className="font-mono text-xs text-zinc-300">
+                  <p className="font-mono text-xs text-muted-foreground">
                     {leadSources.length > 0 && (
                       <>
                         <strong>{leadSources[0]?.source || 'Referrals'}</strong> has the highest win rate. 
@@ -773,12 +773,12 @@ export default function CRMAnalyticsPage() {
                     {leadSources.length === 0 && 'Connect lead sources to see optimization opportunities.'}
                   </p>
                 </div>
-                <div className="p-3 bg-zinc-800/30 rounded border border-zinc-700/50">
+                <div className="p-3 bg-muted/30 rounded border border-border/50">
                   <div className="flex items-center gap-2 mb-2">
-                    <Clock className="w-4 h-4 text-amber-400" />
-                    <span className="font-mono text-[10px] text-amber-400">BOTTLENECK</span>
+                    <Clock className="w-4 h-4 text-amber-600 dark:text-amber-400" />
+                    <span className="font-mono text-[10px] text-amber-600 dark:text-amber-400">BOTTLENECK</span>
                   </div>
-                  <p className="font-mono text-xs text-zinc-300">
+                  <p className="font-mono text-xs text-muted-foreground">
                     {funnel.length > 0 && funnel.find(s => s.dropoffRate > 30) ? (
                       <>
                         <strong>{funnel.find(s => s.dropoffRate > 30)?.stageName}</strong> stage has high drop-off. 
@@ -789,12 +789,12 @@ export default function CRMAnalyticsPage() {
                     )}
                   </p>
                 </div>
-                <div className="p-3 bg-zinc-800/30 rounded border border-zinc-700/50">
+                <div className="p-3 bg-muted/30 rounded border border-border/50">
                   <div className="flex items-center gap-2 mb-2">
-                    <Target className="w-4 h-4 text-blue-400" />
-                    <span className="font-mono text-[10px] text-blue-400">FORECAST</span>
+                    <Target className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+                    <span className="font-mono text-[10px] text-blue-600 dark:text-blue-400">FORECAST</span>
                   </div>
-                  <p className="font-mono text-xs text-zinc-300">
+                  <p className="font-mono text-xs text-muted-foreground">
                     Based on current pipeline and historical conversion, expect 
                     <strong> ${((summary?.pipeline?.totalValue || 0) * 0.3 / 1000).toFixed(0)}K</strong> in 
                     closed deals next month.

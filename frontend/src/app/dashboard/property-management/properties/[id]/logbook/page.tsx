@@ -135,7 +135,7 @@ export default function AssetLogbookPage() {
             case 'tenancy': return <Users className="h-4 w-4 text-blue-500" />
             case 'maintenance': return <Wrench className="h-4 w-4 text-purple-500" />
             case 'financial': return <DollarSign className="h-4 w-4 text-green-500" />
-            default: return <FileText className="h-4 w-4 text-zinc-500" />
+            default: return <FileText className="h-4 w-4 text-muted-foreground" />
         }
     }
 
@@ -143,7 +143,7 @@ export default function AssetLogbookPage() {
         return (
             <div className="flex flex-col items-center justify-center min-h-[400px] space-y-4">
                 <Loader2 className="h-10 w-10 text-amber-600 animate-spin" />
-                <p className="text-zinc-500 font-mono text-xs uppercase">Reconstructing Asset History...</p>
+                <p className="text-muted-foreground font-mono text-xs uppercase">Reconstructing Asset History...</p>
             </div>
         )
     }
@@ -156,24 +156,24 @@ export default function AssetLogbookPage() {
                     <Button
                         variant="ghost"
                         size="sm"
-                        className="text-zinc-500 hover:text-white"
+                        className="text-muted-foreground hover:text-foreground"
                         onClick={() => router.back()}
                     >
                         <ArrowLeft className="h-4 w-4 mr-2" />
                         BACK TO ASSET
                     </Button>
-                    <div className="h-4 w-px bg-zinc-800" />
-                    <h1 className="text-sm font-mono text-white uppercase tracking-widest flex items-center gap-2">
+                    <div className="h-4 w-px bg-muted" />
+                    <h1 className="text-sm font-mono text-foreground uppercase tracking-widest flex items-center gap-2">
                         <History className="h-4 w-4 text-amber-500" />
                         Asset Logbook: {property?.title}
                     </h1>
                 </div>
                 <div className="flex items-center gap-2">
-                    <Button variant="outline" size="sm" className="border-zinc-800 text-zinc-400 font-mono text-[10px] uppercase">
+                    <Button variant="outline" size="sm" className="border-border text-muted-foreground font-mono text-[10px] uppercase">
                         <Filter className="h-3 w-3 mr-2" />
                         Filter Log
                     </Button>
-                    <Button size="sm" className="bg-amber-600 hover:bg-amber-500 text-white font-bold font-mono text-[10px] uppercase">
+                    <Button size="sm" className="bg-amber-600 hover:bg-amber-500 text-foreground font-bold font-mono text-[10px] uppercase">
                         <Plus className="h-3 w-3 mr-2" />
                         Manual Entry
                     </Button>
@@ -181,44 +181,44 @@ export default function AssetLogbookPage() {
             </div>
 
             {/* Timeline */}
-            <Card className="bg-zinc-950 border-zinc-800 overflow-hidden relative">
-                <div className="absolute left-12 top-0 bottom-0 w-px bg-zinc-800 hidden md:block" />
+            <Card className="bg-background border-border overflow-hidden relative">
+                <div className="absolute left-12 top-0 bottom-0 w-px bg-muted hidden md:block" />
 
                 <CardContent className="p-0">
                     <div className="divide-y divide-zinc-900">
                         {logs.map((log) => (
-                            <div key={log.id} className="relative p-6 flex items-start gap-8 hover:bg-zinc-900/50 transition-colors group">
+                            <div key={log.id} className="relative p-6 flex items-start gap-8 hover:bg-card/50 transition-colors group">
                                 {/* Date Column */}
                                 <div className="w-24 shrink-0 pt-1 hidden md:block text-right">
-                                    <p className="text-[10px] font-bold text-zinc-400 font-mono uppercase leading-relaxed">
+                                    <p className="text-[10px] font-bold text-muted-foreground font-mono uppercase leading-relaxed">
                                         {format(log.date, 'dd MMM')}
                                         <br />
-                                        <span className="text-zinc-600 font-normal">{format(log.date, 'yyyy')}</span>
+                                        <span className="text-muted-foreground font-normal">{format(log.date, 'yyyy')}</span>
                                     </p>
                                 </div>
 
                                 {/* Icon Bubble */}
-                                <div className="h-10 w-10 shrink-0 bg-black border border-zinc-800 rounded-lg flex items-center justify-center relative z-10 group-hover:border-amber-900 transition-colors">
+                                <div className="h-10 w-10 shrink-0 bg-background border border-border rounded-lg flex items-center justify-center relative z-10 group-hover:border-amber-900 transition-colors">
                                     {getIcon(log.type)}
                                 </div>
 
                                 {/* Content */}
                                 <div className="flex-1 space-y-2">
                                     <div className="flex items-center justify-between">
-                                        <h3 className="text-sm font-bold text-white font-mono uppercase group-hover:text-amber-500 transition-colors tracking-tight">
+                                        <h3 className="text-sm font-bold text-foreground font-mono uppercase group-hover:text-amber-500 transition-colors tracking-tight">
                                             {log.title}
                                         </h3>
                                         <div className="flex items-center gap-2">
                                             {log.status && (
-                                                <Badge variant="outline" className="text-[8px] font-mono border-zinc-800 text-zinc-500 uppercase h-4 px-1">
+                                                <Badge variant="outline" className="text-[8px] font-mono border-border text-muted-foreground uppercase h-4 px-1">
                                                     {log.status}
                                                 </Badge>
                                             )}
                                             <Clock className="h-3 w-3 text-zinc-700" />
-                                            <span className="text-[9px] font-mono text-zinc-600">{format(log.date, 'HH:mm')}</span>
+                                            <span className="text-[9px] font-mono text-muted-foreground">{format(log.date, 'HH:mm')}</span>
                                         </div>
                                     </div>
-                                    <p className="text-xs text-zinc-500 font-mono leading-relaxed max-w-2xl">
+                                    <p className="text-xs text-muted-foreground font-mono leading-relaxed max-w-2xl">
                                         {log.description}
                                     </p>
                                 </div>

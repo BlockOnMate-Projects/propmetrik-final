@@ -59,21 +59,21 @@ import {
 // =====================================================
 
 const statusConfig: Record<ChangeOrderStatus, { bg: string; text: string; label: string; icon: React.ElementType }> = {
-  draft: { bg: 'bg-zinc-700/50', text: 'text-zinc-400', label: 'Draft', icon: FileEdit },
-  pending_approval: { bg: 'bg-amber-900/50', text: 'text-amber-400', label: 'Pending Approval', icon: Clock },
-  approved: { bg: 'bg-green-900/50', text: 'text-green-400', label: 'Approved', icon: CheckCircle2 },
-  rejected: { bg: 'bg-red-900/50', text: 'text-red-400', label: 'Rejected', icon: XCircle },
-  executed: { bg: 'bg-emerald-900/50', text: 'text-emerald-400', label: 'Executed', icon: PlayCircle },
-  void: { bg: 'bg-zinc-800/50', text: 'text-zinc-500', label: 'Void', icon: XCircle },
+  draft: { bg: 'bg-zinc-700/50', text: 'text-muted-foreground', label: 'Draft', icon: FileEdit },
+  pending_approval: { bg: 'bg-amber-100 dark:bg-amber-900/50', text: 'text-amber-600 dark:text-amber-400', label: 'Pending Approval', icon: Clock },
+  approved: { bg: 'bg-green-100 dark:bg-green-900/50', text: 'text-green-600 dark:text-green-400', label: 'Approved', icon: CheckCircle2 },
+  rejected: { bg: 'bg-red-100 dark:bg-red-900/50', text: 'text-red-600 dark:text-red-400', label: 'Rejected', icon: XCircle },
+  executed: { bg: 'bg-emerald-100 dark:bg-emerald-900/50', text: 'text-emerald-600 dark:text-emerald-400', label: 'Executed', icon: PlayCircle },
+  void: { bg: 'bg-muted/50', text: 'text-muted-foreground', label: 'Void', icon: XCircle },
 }
 
 const typeConfig: Record<ChangeOrderType, { label: string; color: string }> = {
-  addition: { label: 'Addition', color: 'text-green-400' },
-  deduction: { label: 'Deduction', color: 'text-blue-400' },
-  substitution: { label: 'Substitution', color: 'text-purple-400' },
-  scope_change: { label: 'Scope Change', color: 'text-orange-400' },
-  time_extension: { label: 'Time Extension', color: 'text-cyan-400' },
-  other: { label: 'Other', color: 'text-zinc-400' },
+  addition: { label: 'Addition', color: 'text-green-600 dark:text-green-400' },
+  deduction: { label: 'Deduction', color: 'text-blue-600 dark:text-blue-400' },
+  substitution: { label: 'Substitution', color: 'text-purple-600 dark:text-purple-400' },
+  scope_change: { label: 'Scope Change', color: 'text-orange-600 dark:text-orange-400' },
+  time_extension: { label: 'Time Extension', color: 'text-cyan-600 dark:text-cyan-400' },
+  other: { label: 'Other', color: 'text-muted-foreground' },
 }
 
 // =====================================================
@@ -220,14 +220,14 @@ export function ChangeOrdersTab({ projectId, organizationId, currency = 'GHS', o
       </div>
       
       {/* Filters */}
-      <div className="flex items-center gap-4 pb-4 border-b border-zinc-800">
+      <div className="flex items-center gap-4 pb-4 border-b border-border">
         <div className="flex items-center gap-2">
-          <Filter className="h-4 w-4 text-zinc-500" />
-          <span className="font-mono text-xs text-zinc-500">Filters:</span>
+          <Filter className="h-4 w-4 text-muted-foreground" />
+          <span className="font-mono text-xs text-muted-foreground">Filters:</span>
         </div>
         
         <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as ChangeOrderStatus | 'all')}>
-          <SelectTrigger className="w-44 h-8 font-mono text-xs bg-zinc-900 border-zinc-700">
+          <SelectTrigger className="w-44 h-8 font-mono text-xs bg-card border-border">
             <SelectValue placeholder="Status" />
           </SelectTrigger>
           <SelectContent>
@@ -239,7 +239,7 @@ export function ChangeOrdersTab({ projectId, organizationId, currency = 'GHS', o
         </Select>
         
         <Select value={typeFilter} onValueChange={(v) => setTypeFilter(v as ChangeOrderType | 'all')}>
-          <SelectTrigger className="w-44 h-8 font-mono text-xs bg-zinc-900 border-zinc-700">
+          <SelectTrigger className="w-44 h-8 font-mono text-xs bg-card border-border">
             <SelectValue placeholder="Type" />
           </SelectTrigger>
           <SelectContent>
@@ -253,18 +253,18 @@ export function ChangeOrdersTab({ projectId, organizationId, currency = 'GHS', o
       
       {/* Error Message */}
       {error && (
-        <div className="border border-red-800 bg-red-900/20 p-4 text-center">
-          <AlertTriangle className="h-6 w-6 text-red-400 mx-auto mb-2" />
-          <p className="font-mono text-sm text-red-400">{error}</p>
+        <div className="border border-red-800 bg-red-100 dark:bg-red-900/20 p-4 text-center">
+          <AlertTriangle className="h-6 w-6 text-red-600 dark:text-red-400 mx-auto mb-2" />
+          <p className="font-mono text-sm text-red-600 dark:text-red-400">{error}</p>
         </div>
       )}
       
       {/* Change Orders List */}
       {changeOrders.length === 0 ? (
-        <div className="text-center py-12 border border-zinc-800 bg-zinc-900/50">
+        <div className="text-center py-12 border border-border bg-card/50">
           <FileEdit className="h-12 w-12 text-zinc-700 mx-auto mb-4" />
-          <h3 className="font-mono text-sm text-white mb-2">No Change Orders Found</h3>
-          <p className="font-mono text-xs text-zinc-500">
+          <h3 className="font-mono text-sm text-foreground mb-2">No Change Orders Found</h3>
+          <p className="font-mono text-xs text-muted-foreground">
             Change orders from the project manager will appear here
           </p>
         </div>
@@ -280,7 +280,7 @@ export function ChangeOrdersTab({ projectId, organizationId, currency = 'GHS', o
             return (
               <div 
                 key={order.id}
-                className="border border-zinc-800 bg-zinc-900/50 hover:border-zinc-700 transition-colors"
+                className="border border-border bg-card/50 hover:border-border transition-colors"
               >
                 {/* Header */}
                 <div 
@@ -303,10 +303,10 @@ export function ChangeOrdersTab({ projectId, organizationId, currency = 'GHS', o
                         {type.label}
                       </span>
                     </div>
-                    <h4 className="font-mono text-sm text-white line-clamp-1">
+                    <h4 className="font-mono text-sm text-foreground line-clamp-1">
                       {order.title}
                     </h4>
-                    <p className="font-mono text-xs text-zinc-500 mt-1">
+                    <p className="font-mono text-xs text-muted-foreground mt-1">
                       From: {order.submitted_by_name || 'Project Manager'}
                     </p>
                   </div>
@@ -315,20 +315,20 @@ export function ChangeOrdersTab({ projectId, organizationId, currency = 'GHS', o
                   <div className="flex items-center gap-4 mr-4">
                     <div className="text-right">
                       <div className="flex items-center gap-1">
-                        <DollarSign className="h-3 w-3 text-zinc-500" />
+                        <DollarSign className="h-3 w-3 text-muted-foreground" />
                         <span className={cn(
                           "font-mono text-sm",
-                          order.cost_impact > 0 ? "text-red-400" : order.cost_impact < 0 ? "text-green-400" : "text-zinc-400"
+                          order.cost_impact > 0 ? "text-red-600 dark:text-red-400" : order.cost_impact < 0 ? "text-green-600 dark:text-green-400" : "text-muted-foreground"
                         )}>
                           {order.cost_impact > 0 ? '+' : ''}{formatCurrency(order.cost_impact, order.currency || currency)}
                         </span>
                       </div>
                       {order.schedule_impact_days !== undefined && order.schedule_impact_days !== 0 && (
                         <div className="flex items-center gap-1 mt-1">
-                          <Calendar className="h-3 w-3 text-zinc-500" />
+                          <Calendar className="h-3 w-3 text-muted-foreground" />
                           <span className={cn(
                             "font-mono text-xs",
-                            order.schedule_impact_days > 0 ? "text-red-400" : "text-green-400"
+                            order.schedule_impact_days > 0 ? "text-red-600 dark:text-red-400" : "text-green-600 dark:text-green-400"
                           )}>
                             {order.schedule_impact_days > 0 ? '+' : ''}{order.schedule_impact_days} days
                           </span>
@@ -342,7 +342,7 @@ export function ChangeOrdersTab({ projectId, organizationId, currency = 'GHS', o
                       <>
                         <Button
                           size="sm"
-                          className="h-8 font-mono text-xs bg-green-600 hover:bg-green-700 text-white"
+                          className="h-8 font-mono text-xs bg-green-600 hover:bg-green-700 text-foreground"
                           onClick={(e) => {
                             e.stopPropagation()
                             openApprovalDialog(order, 'approve')
@@ -354,7 +354,7 @@ export function ChangeOrdersTab({ projectId, organizationId, currency = 'GHS', o
                         <Button
                           size="sm"
                           variant="outline"
-                          className="h-8 font-mono text-xs border-red-600 text-red-400 hover:bg-red-900/50"
+                          className="h-8 font-mono text-xs border-red-600 text-red-600 dark:text-red-400 hover:bg-red-900/50"
                           onClick={(e) => {
                             e.stopPropagation()
                             openApprovalDialog(order, 'reject')
@@ -366,23 +366,23 @@ export function ChangeOrdersTab({ projectId, organizationId, currency = 'GHS', o
                       </>
                     )}
                     {isExpanded ? (
-                      <ChevronUp className="h-4 w-4 text-zinc-500" />
+                      <ChevronUp className="h-4 w-4 text-muted-foreground" />
                     ) : (
-                      <ChevronDown className="h-4 w-4 text-zinc-500" />
+                      <ChevronDown className="h-4 w-4 text-muted-foreground" />
                     )}
                   </div>
                 </div>
                 
                 {/* Expanded Content */}
                 {isExpanded && (
-                  <div className="border-t border-zinc-800 p-4 space-y-4">
+                  <div className="border-t border-border p-4 space-y-4">
                     {/* Description */}
                     {order.description && (
                       <div>
-                        <h5 className="font-mono text-[10px] text-zinc-500 uppercase tracking-wider mb-2">
+                        <h5 className="font-mono text-[10px] text-muted-foreground uppercase tracking-wider mb-2">
                           Description
                         </h5>
-                        <p className="font-mono text-sm text-zinc-300 whitespace-pre-wrap">
+                        <p className="font-mono text-sm text-muted-foreground whitespace-pre-wrap">
                           {order.description}
                         </p>
                       </div>
@@ -392,20 +392,20 @@ export function ChangeOrdersTab({ projectId, organizationId, currency = 'GHS', o
                     <div className="grid grid-cols-2 gap-4">
                       {order.reason && (
                         <div>
-                          <h5 className="font-mono text-[10px] text-zinc-500 uppercase tracking-wider mb-2">
+                          <h5 className="font-mono text-[10px] text-muted-foreground uppercase tracking-wider mb-2">
                             Reason
                           </h5>
-                          <p className="font-mono text-sm text-zinc-300">
+                          <p className="font-mono text-sm text-muted-foreground">
                             {order.reason}
                           </p>
                         </div>
                       )}
                       {order.justification && (
                         <div>
-                          <h5 className="font-mono text-[10px] text-zinc-500 uppercase tracking-wider mb-2">
+                          <h5 className="font-mono text-[10px] text-muted-foreground uppercase tracking-wider mb-2">
                             Justification
                           </h5>
-                          <p className="font-mono text-sm text-zinc-300">
+                          <p className="font-mono text-sm text-muted-foreground">
                             {order.justification}
                           </p>
                         </div>
@@ -413,25 +413,25 @@ export function ChangeOrdersTab({ projectId, organizationId, currency = 'GHS', o
                     </div>
                     
                     {/* Cost Breakdown */}
-                    <div className="grid grid-cols-3 gap-4 bg-zinc-800/30 p-4 border border-zinc-800">
+                    <div className="grid grid-cols-3 gap-4 bg-muted/30 p-4 border border-border">
                       <div>
-                        <span className="font-mono text-[10px] text-zinc-500">Original Amount</span>
-                        <p className="font-mono text-sm text-white">
+                        <span className="font-mono text-[10px] text-muted-foreground">Original Amount</span>
+                        <p className="font-mono text-sm text-foreground">
                           {formatCurrency(order.original_amount, order.currency || currency)}
                         </p>
                       </div>
                       <div>
-                        <span className="font-mono text-[10px] text-zinc-500">Cost Impact</span>
+                        <span className="font-mono text-[10px] text-muted-foreground">Cost Impact</span>
                         <p className={cn(
                           "font-mono text-sm",
-                          order.cost_impact > 0 ? "text-red-400" : order.cost_impact < 0 ? "text-green-400" : "text-white"
+                          order.cost_impact > 0 ? "text-red-600 dark:text-red-400" : order.cost_impact < 0 ? "text-green-600 dark:text-green-400" : "text-foreground"
                         )}>
                           {order.cost_impact > 0 ? '+' : ''}{formatCurrency(order.cost_impact, order.currency || currency)}
                         </p>
                       </div>
                       <div>
-                        <span className="font-mono text-[10px] text-zinc-500">Revised Amount</span>
-                        <p className="font-mono text-sm text-amber-400">
+                        <span className="font-mono text-[10px] text-muted-foreground">Revised Amount</span>
+                        <p className="font-mono text-sm text-amber-600 dark:text-amber-400">
                           {formatCurrency((order.revised_amount || order.original_amount + order.cost_impact), order.currency || currency)}
                         </p>
                       </div>
@@ -440,30 +440,30 @@ export function ChangeOrdersTab({ projectId, organizationId, currency = 'GHS', o
                     {/* Line Items */}
                     {order.items && order.items.length > 0 && (
                       <div>
-                        <h5 className="font-mono text-[10px] text-zinc-500 uppercase tracking-wider mb-2">
+                        <h5 className="font-mono text-[10px] text-muted-foreground uppercase tracking-wider mb-2">
                           Line Items
                         </h5>
-                        <div className="border border-zinc-800">
+                        <div className="border border-border">
                           <table className="w-full">
                             <thead>
-                              <tr className="bg-zinc-800/50">
-                                <th className="font-mono text-[10px] text-zinc-400 text-left p-2">Description</th>
-                                <th className="font-mono text-[10px] text-zinc-400 text-right p-2">Qty</th>
-                                <th className="font-mono text-[10px] text-zinc-400 text-right p-2">Unit Cost</th>
-                                <th className="font-mono text-[10px] text-zinc-400 text-right p-2">Total</th>
+                              <tr className="bg-muted/50">
+                                <th className="font-mono text-[10px] text-muted-foreground text-left p-2">Description</th>
+                                <th className="font-mono text-[10px] text-muted-foreground text-right p-2">Qty</th>
+                                <th className="font-mono text-[10px] text-muted-foreground text-right p-2">Unit Cost</th>
+                                <th className="font-mono text-[10px] text-muted-foreground text-right p-2">Total</th>
                               </tr>
                             </thead>
                             <tbody>
                               {order.items.map((item, idx) => (
-                                <tr key={item.id || idx} className="border-t border-zinc-800">
-                                  <td className="font-mono text-xs text-zinc-300 p-2">{item.description}</td>
-                                  <td className="font-mono text-xs text-zinc-400 text-right p-2">
+                                <tr key={item.id || idx} className="border-t border-border">
+                                  <td className="font-mono text-xs text-muted-foreground p-2">{item.description}</td>
+                                  <td className="font-mono text-xs text-muted-foreground text-right p-2">
                                     {item.quantity} {item.unit}
                                   </td>
-                                  <td className="font-mono text-xs text-zinc-400 text-right p-2">
+                                  <td className="font-mono text-xs text-muted-foreground text-right p-2">
                                     {item.unit_cost ? formatCurrency(item.unit_cost, order.currency || currency) : '-'}
                                   </td>
-                                  <td className="font-mono text-xs text-white text-right p-2">
+                                  <td className="font-mono text-xs text-foreground text-right p-2">
                                     {formatCurrency(item.total_cost, order.currency || currency)}
                                   </td>
                                 </tr>
@@ -477,7 +477,7 @@ export function ChangeOrdersTab({ projectId, organizationId, currency = 'GHS', o
                     {/* Attachments */}
                     {order.attachments && order.attachments.length > 0 && (
                       <div>
-                        <h5 className="font-mono text-[10px] text-zinc-500 uppercase tracking-wider mb-2">
+                        <h5 className="font-mono text-[10px] text-muted-foreground uppercase tracking-wider mb-2">
                           Attachments
                         </h5>
                         <div className="flex flex-wrap gap-2">
@@ -487,10 +487,10 @@ export function ChangeOrdersTab({ projectId, organizationId, currency = 'GHS', o
                               href={att.url}
                               target="_blank"
                               rel="noopener noreferrer"
-                              className="flex items-center gap-2 px-3 py-2 bg-zinc-800/50 border border-zinc-700 hover:border-amber-500/50 transition-colors"
+                              className="flex items-center gap-2 px-3 py-2 bg-muted/50 border border-border hover:border-amber-500/50 transition-colors"
                             >
-                              <Paperclip className="h-3 w-3 text-zinc-500" />
-                              <span className="font-mono text-xs text-zinc-300">{att.filename}</span>
+                              <Paperclip className="h-3 w-3 text-muted-foreground" />
+                              <span className="font-mono text-xs text-muted-foreground">{att.filename}</span>
                               <Download className="h-3 w-3 text-amber-500" />
                             </a>
                           ))}
@@ -500,11 +500,11 @@ export function ChangeOrdersTab({ projectId, organizationId, currency = 'GHS', o
                     
                     {/* Rejection Reason (if rejected) */}
                     {order.rejection_reason && (
-                      <div className="bg-red-900/20 border border-red-800/50 p-4">
-                        <h5 className="font-mono text-[10px] text-red-400 uppercase tracking-wider mb-2">
+                      <div className="bg-red-100 dark:bg-red-900/20 border border-red-800/50 p-4">
+                        <h5 className="font-mono text-[10px] text-red-600 dark:text-red-400 uppercase tracking-wider mb-2">
                           Rejection Reason
                         </h5>
-                        <p className="font-mono text-sm text-zinc-300 whitespace-pre-wrap">
+                        <p className="font-mono text-sm text-muted-foreground whitespace-pre-wrap">
                           {order.rejection_reason}
                         </p>
                       </div>
@@ -512,7 +512,7 @@ export function ChangeOrdersTab({ projectId, organizationId, currency = 'GHS', o
                     
                     {/* Approval Info */}
                     {order.approved_at && (
-                      <div className="flex items-center gap-4 text-zinc-500 font-mono text-xs">
+                      <div className="flex items-center gap-4 text-muted-foreground font-mono text-xs">
                         <span>Approved by {order.approved_by_name || 'Client'}</span>
                         <span>on {new Date(order.approved_at).toLocaleDateString('en-GB')}</span>
                       </div>
@@ -527,34 +527,34 @@ export function ChangeOrdersTab({ projectId, organizationId, currency = 'GHS', o
       
       {/* Approval Dialog */}
       <Dialog open={showApprovalDialog} onOpenChange={setShowApprovalDialog}>
-        <DialogContent className="bg-zinc-900 border-zinc-700 max-w-lg">
+        <DialogContent className="bg-card border-border max-w-lg">
           <DialogHeader>
-            <DialogTitle className="font-mono text-white">
+            <DialogTitle className="font-mono text-foreground">
               {approvalAction === 'approve' ? 'Approve' : 'Reject'} Change Order
             </DialogTitle>
-            <DialogDescription className="font-mono text-zinc-400">
+            <DialogDescription className="font-mono text-muted-foreground">
               {selectedOrder?.co_number}: {selectedOrder?.title}
             </DialogDescription>
           </DialogHeader>
           
           <div className="space-y-4">
             {/* Impact Summary */}
-            <div className="bg-zinc-800/50 border border-zinc-700 p-4">
+            <div className="bg-muted/50 border border-border p-4">
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <span className="font-mono text-[10px] text-zinc-500">Cost Impact</span>
+                  <span className="font-mono text-[10px] text-muted-foreground">Cost Impact</span>
                   <p className={cn(
                     "font-mono text-lg",
-                    (selectedOrder?.cost_impact || 0) > 0 ? "text-red-400" : (selectedOrder?.cost_impact || 0) < 0 ? "text-green-400" : "text-white"
+                    (selectedOrder?.cost_impact || 0) > 0 ? "text-red-600 dark:text-red-400" : (selectedOrder?.cost_impact || 0) < 0 ? "text-green-600 dark:text-green-400" : "text-foreground"
                   )}>
                     {(selectedOrder?.cost_impact || 0) > 0 ? '+' : ''}{formatCurrency(selectedOrder?.cost_impact || 0, currency)}
                   </p>
                 </div>
                 <div>
-                  <span className="font-mono text-[10px] text-zinc-500">Schedule Impact</span>
+                  <span className="font-mono text-[10px] text-muted-foreground">Schedule Impact</span>
                   <p className={cn(
                     "font-mono text-lg",
-                    (selectedOrder?.schedule_impact_days || 0) > 0 ? "text-red-400" : "text-white"
+                    (selectedOrder?.schedule_impact_days || 0) > 0 ? "text-red-600 dark:text-red-400" : "text-foreground"
                   )}>
                     {(selectedOrder?.schedule_impact_days || 0) > 0 ? '+' : ''}{selectedOrder?.schedule_impact_days || 0} days
                   </p>
@@ -564,7 +564,7 @@ export function ChangeOrdersTab({ projectId, organizationId, currency = 'GHS', o
             
             {/* Comments */}
             <div>
-              <label className="font-mono text-xs text-zinc-400 mb-2 block">
+              <label className="font-mono text-xs text-muted-foreground mb-2 block">
                 {approvalAction === 'approve' ? 'Comments (Optional)' : 'Rejection Reason *'}
               </label>
               <Textarea
@@ -575,7 +575,7 @@ export function ChangeOrdersTab({ projectId, organizationId, currency = 'GHS', o
                     ? "Add any notes for the project manager..."
                     : "Explain the reason for rejection..."
                 }
-                className="bg-zinc-800 border-zinc-700 font-mono text-sm min-h-[100px]"
+                className="bg-muted border-border font-mono text-sm min-h-[100px]"
               />
             </div>
           </div>
@@ -597,7 +597,7 @@ export function ChangeOrdersTab({ projectId, organizationId, currency = 'GHS', o
                 approvalAction === 'approve'
                   ? "bg-green-600 hover:bg-green-700"
                   : "bg-red-600 hover:bg-red-700",
-                "text-white"
+                "text-foreground"
               )}
             >
               {isSubmitting ? (
@@ -640,16 +640,16 @@ function StatCard({
   isText?: boolean
 }) {
   const colorClasses = {
-    zinc: 'text-white',
-    blue: 'text-blue-400',
-    amber: 'text-amber-400',
-    red: 'text-red-400',
-    green: 'text-green-400',
+    zinc: 'text-foreground',
+    blue: 'text-blue-600 dark:text-blue-400',
+    amber: 'text-amber-600 dark:text-amber-400',
+    red: 'text-red-600 dark:text-red-400',
+    green: 'text-green-600 dark:text-green-400',
   }
   
   return (
-    <div className="border border-zinc-800 bg-zinc-900/50 p-4">
-      <div className="font-mono text-[10px] text-zinc-500 uppercase tracking-wider mb-1">
+    <div className="border border-border bg-card/50 p-4">
+      <div className="font-mono text-[10px] text-muted-foreground uppercase tracking-wider mb-1">
         {label}
       </div>
       <div className={cn(

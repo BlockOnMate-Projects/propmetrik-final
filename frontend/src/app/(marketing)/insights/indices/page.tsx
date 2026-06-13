@@ -43,13 +43,13 @@ export default function InsightsIndicesPage() {
   }, [items, query]);
 
   return (
-    <main className="pt-32 pb-24 bg-zinc-950">
+    <main className="pt-32 pb-24 bg-background">
       <section className="pb-10">
         <div className="container mx-auto px-4 md:px-6">
           <div className="max-w-3xl">
             <div className="text-sm font-bold text-primary uppercase tracking-[0.2em] mb-4">Proprietary Benchmarks</div>
-            <h1 className="text-5xl md:text-7xl font-bold tracking-tight text-white mb-5">Indices &amp; Data</h1>
-            <p className="text-zinc-400 text-lg">
+            <h1 className="text-5xl md:text-7xl font-bold tracking-tight text-foreground mb-5">Indices &amp; Data</h1>
+            <p className="text-muted-foreground text-lg">
               PROPMETRIK&apos;s proprietary indices — GHPI, GHAI, CCI, GCPI — with historical time-series, methodology papers,
               and analyst commentary on each release.
             </p>
@@ -64,10 +64,10 @@ export default function InsightsIndicesPage() {
             {Object.entries(INDEX_LABELS).map(([key, name]) => (
               <div
                 key={key}
-                className="bg-zinc-900 border border-zinc-800 rounded-lg p-5 hover:border-primary/50 transition-colors"
+                className="bg-card border border-border rounded-lg p-5 hover:border-primary/50 transition-colors"
               >
                 <div className="text-xs text-primary font-bold uppercase tracking-wider mb-1">{key.toUpperCase()}</div>
-                <div className="text-white font-bold text-sm">{name}</div>
+                <div className="text-foreground font-bold text-sm">{name}</div>
               </div>
             ))}
           </div>
@@ -81,7 +81,7 @@ export default function InsightsIndicesPage() {
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Search index updates..."
-            className="w-full md:w-[520px] px-4 py-3 bg-zinc-900 border border-zinc-800 rounded-xl text-white placeholder-zinc-500 focus:outline-none focus:border-primary transition-colors"
+            className="w-full md:w-[520px] px-4 py-3 bg-card border border-border rounded-xl text-foreground placeholder-zinc-500 focus:outline-none focus:border-primary transition-colors"
           />
         </div>
       </section>
@@ -91,22 +91,22 @@ export default function InsightsIndicesPage() {
           {loading ? (
             <div className="space-y-4">
               {[...Array(4)].map((_, idx) => (
-                <div key={idx} className="bg-zinc-900 border border-zinc-800 rounded-lg p-6 animate-pulse">
-                  <div className="h-5 w-2/3 bg-zinc-800 rounded mb-2" />
-                  <div className="h-4 w-full bg-zinc-800 rounded" />
+                <div key={idx} className="bg-card border border-border rounded-lg p-6 animate-pulse">
+                  <div className="h-5 w-2/3 bg-muted rounded mb-2" />
+                  <div className="h-4 w-full bg-muted rounded" />
                 </div>
               ))}
             </div>
           ) : filtered.length === 0 ? (
-            <div className="text-center py-16 text-zinc-500">No index updates found.</div>
+            <div className="text-center py-16 text-muted-foreground">No index updates found.</div>
           ) : (
             <div className="space-y-4">
               {filtered.map((item) => (
                 <Link key={item.id} href={`/insights/${item.slug}`}>
-                  <div className="bg-zinc-900 border border-zinc-800 rounded-lg p-6 hover:border-primary/50 transition-colors">
-                    <div className="text-xs text-zinc-500 mb-2">{formatDate(item.published_at)}</div>
-                    <h2 className="text-xl font-bold text-white mb-1">{item.title}</h2>
-                    {item.excerpt && <p className="text-sm text-zinc-400 line-clamp-2">{item.excerpt}</p>}
+                  <div className="bg-card border border-border rounded-lg p-6 hover:border-primary/50 transition-colors">
+                    <div className="text-xs text-muted-foreground mb-2">{formatDate(item.published_at)}</div>
+                    <h2 className="text-xl font-bold text-foreground mb-1">{item.title}</h2>
+                    {item.excerpt && <p className="text-sm text-muted-foreground line-clamp-2">{item.excerpt}</p>}
                   </div>
                 </Link>
               ))}

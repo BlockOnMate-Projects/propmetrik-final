@@ -33,20 +33,20 @@ import { WorkOrder, WorkOrderStatus, Vendor } from '@/types/property-management'
 import { format } from 'date-fns'
 
 const statusConfig: Record<string, { label: string; className: string }> = {
-    open: { label: 'Open', className: 'bg-blue-900/40 text-blue-500 border-blue-900' },
-    assigned: { label: 'Assigned', className: 'bg-cyan-900/40 text-cyan-500 border-cyan-900' },
-    in_progress: { label: 'In Progress', className: 'bg-amber-900/40 text-amber-500 border-amber-900' },
-    pending_approval: { label: 'Pending Approval', className: 'bg-purple-900/40 text-purple-500 border-purple-900' },
-    completed: { label: 'Completed', className: 'bg-green-900/40 text-green-500 border-green-900' },
-    cancelled: { label: 'Cancelled', className: 'bg-red-900/40 text-red-500 border-red-900' },
+    open: { label: 'Open', className: 'bg-blue-100 dark:bg-blue-900/40 text-blue-500 border-blue-900' },
+    assigned: { label: 'Assigned', className: 'bg-cyan-100 dark:bg-cyan-900/40 text-cyan-500 border-cyan-900' },
+    in_progress: { label: 'In Progress', className: 'bg-amber-100 dark:bg-amber-900/40 text-amber-500 border-amber-900' },
+    pending_approval: { label: 'Pending Approval', className: 'bg-purple-100 dark:bg-purple-900/40 text-purple-500 border-purple-900' },
+    completed: { label: 'Completed', className: 'bg-green-100 dark:bg-green-900/40 text-green-500 border-green-900' },
+    cancelled: { label: 'Cancelled', className: 'bg-red-100 dark:bg-red-900/40 text-red-500 border-red-900' },
 }
 
 const priorityConfig: Record<string, { label: string; className: string }> = {
-    low: { label: 'Low', className: 'border-zinc-700 text-zinc-400' },
-    medium: { label: 'Medium', className: 'border-yellow-900 text-yellow-500 bg-yellow-900/10' },
-    high: { label: 'High', className: 'border-orange-900 text-orange-500 bg-orange-900/10' },
-    urgent: { label: 'Urgent', className: 'border-red-900 text-red-500 bg-red-900/10' },
-    critical: { label: 'Critical', className: 'border-red-900 text-red-400 bg-red-900/20' },
+    low: { label: 'Low', className: 'border-border text-muted-foreground' },
+    medium: { label: 'Medium', className: 'border-yellow-900 text-yellow-500 bg-yellow-100 dark:bg-yellow-900/10' },
+    high: { label: 'High', className: 'border-orange-900 text-orange-500 bg-orange-100 dark:bg-orange-900/10' },
+    urgent: { label: 'Urgent', className: 'border-red-900 text-red-500 bg-red-100 dark:bg-red-900/10' },
+    critical: { label: 'Critical', className: 'border-red-900 text-red-600 dark:text-red-400 bg-red-100 dark:bg-red-900/20' },
 }
 
 export default function WorkOrderDetailsPage({ params }: { params: Promise<{ id: string }> }) {
@@ -167,7 +167,7 @@ export default function WorkOrderDetailsPage({ params }: { params: Promise<{ id:
             <div className="space-y-4 text-center py-24">
                 <p className="text-red-500 font-mono">{error || 'Work order not found'}</p>
                 <Link href="/dashboard/property-management/maintenance">
-                    <Button variant="outline" className="border-zinc-800 text-zinc-400">Back to Maintenance</Button>
+                    <Button variant="outline" className="border-border text-muted-foreground">Back to Maintenance</Button>
                 </Link>
             </div>
         )
@@ -184,18 +184,18 @@ export default function WorkOrderDetailsPage({ params }: { params: Promise<{ id:
             <div className="flex items-center justify-between">
                 <div className="flex items-center gap-4">
                     <Link href="/dashboard/property-management/maintenance">
-                        <Button variant="ghost" size="icon" className="h-8 w-8 text-zinc-400 hover:text-white">
+                        <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground">
                             <ArrowLeft className="h-4 w-4" />
                         </Button>
                     </Link>
                     <div>
                         <div className="flex items-center gap-3">
-                            <h1 className="text-2xl font-bold tracking-tight text-white font-mono">
+                            <h1 className="text-2xl font-bold tracking-tight text-foreground font-mono">
                                 {workOrder.referenceNumber || workOrder.id.substring(0, 8).toUpperCase()}
                             </h1>
                             <Badge className={st.className}>{st.label}</Badge>
                         </div>
-                        <p className="text-sm text-zinc-400 font-mono">Maintenance Request Details</p>
+                        <p className="text-sm text-muted-foreground font-mono">Maintenance Request Details</p>
                     </div>
                 </div>
                 {!isTerminal && (
@@ -203,7 +203,7 @@ export default function WorkOrderDetailsPage({ params }: { params: Promise<{ id:
                         {!workOrder.assignedVendorId && (
                             <Button
                                 variant="outline"
-                                className="border-cyan-800 text-cyan-400 hover:text-white hover:bg-cyan-900/30"
+                                className="border-cyan-800 text-cyan-600 dark:text-cyan-400 hover:text-foreground hover:bg-cyan-900/30"
                                 onClick={() => setShowAssignModal(true)}
                             >
                                 <User className="mr-2 h-4 w-4" />
@@ -211,7 +211,7 @@ export default function WorkOrderDetailsPage({ params }: { params: Promise<{ id:
                             </Button>
                         )}
                         <Button
-                            className="bg-green-600 hover:bg-green-500 text-white"
+                            className="bg-green-600 hover:bg-green-500 text-foreground"
                             onClick={() => setShowCompleteModal(true)}
                         >
                             <CheckCircle2 className="mr-2 h-4 w-4" />
@@ -225,12 +225,12 @@ export default function WorkOrderDetailsPage({ params }: { params: Promise<{ id:
                 {/* Left Column: Ticket Info */}
                 <div className="md:col-span-2 space-y-6">
                     {/* Summary Card */}
-                    <Card className="bg-zinc-900 border-zinc-800">
+                    <Card className="bg-card border-border">
                         <CardHeader>
                             <div className="flex justify-between items-start">
                                 <div>
-                                    <CardTitle className="text-xl font-bold text-white mb-1">{workOrder.title}</CardTitle>
-                                    <div className="flex items-center gap-2 text-sm text-zinc-400">
+                                    <CardTitle className="text-xl font-bold text-foreground mb-1">{workOrder.title}</CardTitle>
+                                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
                                         <MapPin className="h-3 w-3" />
                                         {workOrder.property?.title || workOrder.propertyId?.substring(0, 8)}
                                     </div>
@@ -241,8 +241,8 @@ export default function WorkOrderDetailsPage({ params }: { params: Promise<{ id:
                         <CardContent className="space-y-6">
                             {workOrder.description && (
                                 <div>
-                                    <h3 className="text-sm font-medium text-zinc-300 mb-2">Description</h3>
-                                    <p className="text-sm text-zinc-400 leading-relaxed bg-zinc-950/50 p-4 rounded-md border border-zinc-800">
+                                    <h3 className="text-sm font-medium text-muted-foreground mb-2">Description</h3>
+                                    <p className="text-sm text-muted-foreground leading-relaxed bg-background/50 p-4 rounded-md border border-border">
                                         {workOrder.description}
                                     </p>
                                 </div>
@@ -250,16 +250,16 @@ export default function WorkOrderDetailsPage({ params }: { params: Promise<{ id:
 
                             <div className="grid grid-cols-2 gap-4">
                                 <div className="space-y-1">
-                                    <label className="text-xs text-zinc-500 uppercase font-mono">Category</label>
-                                    <div className="flex items-center gap-2 text-zinc-300 text-sm font-medium">
-                                        <Wrench className="h-4 w-4 text-zinc-500" />
+                                    <label className="text-xs text-muted-foreground uppercase font-mono">Category</label>
+                                    <div className="flex items-center gap-2 text-muted-foreground text-sm font-medium">
+                                        <Wrench className="h-4 w-4 text-muted-foreground" />
                                         {workOrder.category?.replace(/_/g, ' ').toUpperCase()}
                                     </div>
                                 </div>
                                 <div className="space-y-1">
-                                    <label className="text-xs text-zinc-500 uppercase font-mono">Reported</label>
-                                    <div className="flex items-center gap-2 text-zinc-300 text-sm font-medium">
-                                        <Calendar className="h-4 w-4 text-zinc-500" />
+                                    <label className="text-xs text-muted-foreground uppercase font-mono">Reported</label>
+                                    <div className="flex items-center gap-2 text-muted-foreground text-sm font-medium">
+                                        <Calendar className="h-4 w-4 text-muted-foreground" />
                                         {workOrder.dateReported
                                             ? format(new Date(workOrder.dateReported), 'dd MMM yyyy')
                                             : workOrder.createdAt
@@ -268,16 +268,16 @@ export default function WorkOrderDetailsPage({ params }: { params: Promise<{ id:
                                     </div>
                                 </div>
                                 <div className="space-y-1">
-                                    <label className="text-xs text-zinc-500 uppercase font-mono">Vendor</label>
-                                    <div className="flex items-center gap-2 text-zinc-300 text-sm font-medium">
-                                        <User className="h-4 w-4 text-zinc-500" />
+                                    <label className="text-xs text-muted-foreground uppercase font-mono">Vendor</label>
+                                    <div className="flex items-center gap-2 text-muted-foreground text-sm font-medium">
+                                        <User className="h-4 w-4 text-muted-foreground" />
                                         {vendorName || 'Unassigned'}
                                     </div>
                                 </div>
                                 <div className="space-y-1">
-                                    <label className="text-xs text-zinc-500 uppercase font-mono">Scheduled</label>
-                                    <div className="flex items-center gap-2 text-zinc-300 text-sm font-medium">
-                                        <Clock className="h-4 w-4 text-zinc-500" />
+                                    <label className="text-xs text-muted-foreground uppercase font-mono">Scheduled</label>
+                                    <div className="flex items-center gap-2 text-muted-foreground text-sm font-medium">
+                                        <Clock className="h-4 w-4 text-muted-foreground" />
                                         {workOrder.scheduledDate
                                             ? format(new Date(workOrder.scheduledDate), 'dd MMM yyyy')
                                             : '—'}
@@ -286,18 +286,18 @@ export default function WorkOrderDetailsPage({ params }: { params: Promise<{ id:
                             </div>
 
                             {workOrder.estimatedCost && (
-                                <div className="pt-2 border-t border-zinc-800">
+                                <div className="pt-2 border-t border-border">
                                     <div className="grid grid-cols-2 gap-4">
                                         <div className="space-y-1">
-                                            <label className="text-xs text-zinc-500 uppercase font-mono">Estimated Cost</label>
-                                            <div className="text-zinc-300 text-sm font-medium font-mono">
+                                            <label className="text-xs text-muted-foreground uppercase font-mono">Estimated Cost</label>
+                                            <div className="text-muted-foreground text-sm font-medium font-mono">
                                                 GHS {Number(workOrder.estimatedCost).toLocaleString()}
                                             </div>
                                         </div>
                                         {workOrder.actualCost && (
                                             <div className="space-y-1">
-                                                <label className="text-xs text-zinc-500 uppercase font-mono">Actual Cost</label>
-                                                <div className="text-zinc-300 text-sm font-medium font-mono">
+                                                <label className="text-xs text-muted-foreground uppercase font-mono">Actual Cost</label>
+                                                <div className="text-muted-foreground text-sm font-medium font-mono">
                                                     GHS {Number(workOrder.actualCost).toLocaleString()}
                                                 </div>
                                             </div>
@@ -307,9 +307,9 @@ export default function WorkOrderDetailsPage({ params }: { params: Promise<{ id:
                             )}
 
                             {workOrder.completionNotes && (
-                                <div className="pt-2 border-t border-zinc-800">
-                                    <label className="text-xs text-zinc-500 uppercase font-mono">Completion Notes</label>
-                                    <p className="text-sm text-zinc-400 mt-1">{workOrder.completionNotes}</p>
+                                <div className="pt-2 border-t border-border">
+                                    <label className="text-xs text-muted-foreground uppercase font-mono">Completion Notes</label>
+                                    <p className="text-sm text-muted-foreground mt-1">{workOrder.completionNotes}</p>
                                 </div>
                             )}
                         </CardContent>
@@ -317,67 +317,67 @@ export default function WorkOrderDetailsPage({ params }: { params: Promise<{ id:
 
                     {/* Assign Vendor Panel */}
                     {showAssignModal && (
-                        <Card className="bg-zinc-900 border-cyan-800">
+                        <Card className="bg-card border-cyan-800">
                             <CardHeader>
-                                <CardTitle className="text-base text-white">Assign Vendor</CardTitle>
-                                <CardDescription className="text-zinc-500 font-mono text-xs">
+                                <CardTitle className="text-base text-foreground">Assign Vendor</CardTitle>
+                                <CardDescription className="text-muted-foreground font-mono text-xs">
                                     Select a vendor to handle this work order
                                 </CardDescription>
                             </CardHeader>
                             <CardContent className="space-y-4">
                                 <Select value={selectedVendorId} onValueChange={setSelectedVendorId}>
-                                    <SelectTrigger className="bg-black border-zinc-700 text-zinc-200">
+                                    <SelectTrigger className="bg-background border-border text-zinc-200">
                                         <SelectValue placeholder="Select a vendor..." />
                                     </SelectTrigger>
-                                    <SelectContent className="bg-zinc-900 border-zinc-700">
+                                    <SelectContent className="bg-card border-border">
                                         {vendors.map(v => (
-                                            <SelectItem key={v.id} value={v.id} className="text-zinc-200 focus:bg-zinc-800 focus:text-white">
+                                            <SelectItem key={v.id} value={v.id} className="text-zinc-200 focus:bg-muted focus:text-foreground">
                                                 {v.businessName} — {v.contactPerson}
                                             </SelectItem>
                                         ))}
                                         {vendors.length === 0 && (
-                                            <SelectItem value="none" disabled className="text-zinc-500">
+                                            <SelectItem value="none" disabled className="text-muted-foreground">
                                                 No vendors found
                                             </SelectItem>
                                         )}
                                     </SelectContent>
                                 </Select>
                                 <div className="space-y-2">
-                                    <Label className="text-zinc-400 font-mono text-xs uppercase">Scheduled Visit Date</Label>
+                                    <Label className="text-muted-foreground font-mono text-xs uppercase">Scheduled Visit Date</Label>
                                     <Input
                                         type="date"
                                         value={assignDate}
                                         onChange={e => setAssignDate(e.target.value)}
-                                        className="bg-black border-zinc-700 text-zinc-200"
+                                        className="bg-background border-border text-zinc-200"
                                     />
                                 </div>
                                 <div className="grid grid-cols-2 gap-3">
                                     <div className="space-y-2">
-                                        <Label className="text-zinc-400 font-mono text-xs uppercase">From</Label>
+                                        <Label className="text-muted-foreground font-mono text-xs uppercase">From</Label>
                                         <Input
                                             type="time"
                                             value={assignTimeStart}
                                             onChange={e => setAssignTimeStart(e.target.value)}
-                                            className="bg-black border-zinc-700 text-zinc-200"
+                                            className="bg-background border-border text-zinc-200"
                                         />
                                     </div>
                                     <div className="space-y-2">
-                                        <Label className="text-zinc-400 font-mono text-xs uppercase">To</Label>
+                                        <Label className="text-muted-foreground font-mono text-xs uppercase">To</Label>
                                         <Input
                                             type="time"
                                             value={assignTimeEnd}
                                             onChange={e => setAssignTimeEnd(e.target.value)}
-                                            className="bg-black border-zinc-700 text-zinc-200"
+                                            className="bg-background border-border text-zinc-200"
                                         />
                                     </div>
                                 </div>
-                                <p className="text-xs text-zinc-600 font-mono">The vendor is notified by email/SMS and the tenant sees who is coming and when.</p>
+                                <p className="text-xs text-muted-foreground font-mono">The vendor is notified by email/SMS and the tenant sees who is coming and when.</p>
                                 <div className="flex gap-2 justify-end">
-                                    <Button variant="ghost" className="text-zinc-400" onClick={() => { setShowAssignModal(false); setSelectedVendorId('') }}>
+                                    <Button variant="ghost" className="text-muted-foreground" onClick={() => { setShowAssignModal(false); setSelectedVendorId('') }}>
                                         Cancel
                                     </Button>
                                     <Button
-                                        className="bg-cyan-600 hover:bg-cyan-500 text-white"
+                                        className="bg-cyan-600 hover:bg-cyan-500 text-foreground"
                                         onClick={handleAssign}
                                         disabled={!selectedVendorId || actionLoading}
                                     >
@@ -391,39 +391,39 @@ export default function WorkOrderDetailsPage({ params }: { params: Promise<{ id:
 
                     {/* Complete Work Order Panel */}
                     {showCompleteModal && (
-                        <Card className="bg-zinc-900 border-green-800">
+                        <Card className="bg-card border-green-800">
                             <CardHeader>
-                                <CardTitle className="text-base text-white">Complete Work Order</CardTitle>
-                                <CardDescription className="text-zinc-500 font-mono text-xs">
+                                <CardTitle className="text-base text-foreground">Complete Work Order</CardTitle>
+                                <CardDescription className="text-muted-foreground font-mono text-xs">
                                     Enter completion details
                                 </CardDescription>
                             </CardHeader>
                             <CardContent className="space-y-4">
                                 <div className="space-y-2">
-                                    <Label className="text-zinc-400 font-mono text-xs uppercase">Actual Cost (GHS)</Label>
+                                    <Label className="text-muted-foreground font-mono text-xs uppercase">Actual Cost (GHS)</Label>
                                     <Input
                                         type="number"
                                         placeholder="0.00"
                                         value={actualCost}
                                         onChange={e => setActualCost(e.target.value)}
-                                        className="bg-black border-zinc-700 text-zinc-200"
+                                        className="bg-background border-border text-zinc-200"
                                     />
                                 </div>
                                 <div className="space-y-2">
-                                    <Label className="text-zinc-400 font-mono text-xs uppercase">Completion Notes</Label>
+                                    <Label className="text-muted-foreground font-mono text-xs uppercase">Completion Notes</Label>
                                     <Textarea
                                         placeholder="Describe the work completed..."
                                         value={completionNotes}
                                         onChange={e => setCompletionNotes(e.target.value)}
-                                        className="bg-black border-zinc-700 text-zinc-200 min-h-[80px]"
+                                        className="bg-background border-border text-zinc-200 min-h-[80px]"
                                     />
                                 </div>
                                 <div className="flex gap-2 justify-end">
-                                    <Button variant="ghost" className="text-zinc-400" onClick={() => { setShowCompleteModal(false); setCompletionNotes(''); setActualCost('') }}>
+                                    <Button variant="ghost" className="text-muted-foreground" onClick={() => { setShowCompleteModal(false); setCompletionNotes(''); setActualCost('') }}>
                                         Cancel
                                     </Button>
                                     <Button
-                                        className="bg-green-600 hover:bg-green-500 text-white"
+                                        className="bg-green-600 hover:bg-green-500 text-foreground"
                                         onClick={handleComplete}
                                         disabled={!completionNotes || !actualCost || actionLoading}
                                     >
@@ -439,34 +439,34 @@ export default function WorkOrderDetailsPage({ params }: { params: Promise<{ id:
                 {/* Right Column: Details & Actions */}
                 <div className="space-y-6">
                     {/* Vendor Card */}
-                    <Card className="bg-zinc-900 border-zinc-800">
+                    <Card className="bg-card border-border">
                         <CardHeader className="pb-3">
                             <div className="flex justify-between items-center">
-                                <CardTitle className="text-base text-white">Assigned Vendor</CardTitle>
+                                <CardTitle className="text-base text-foreground">Assigned Vendor</CardTitle>
                             </div>
                         </CardHeader>
                         <CardContent>
                             {vendorName ? (
                                 <div className="flex items-center gap-3 mb-4">
-                                    <div className="h-10 w-10 rounded bg-blue-900/20 flex items-center justify-center text-blue-500 font-bold border border-blue-900/30">
+                                    <div className="h-10 w-10 rounded bg-blue-100 dark:bg-blue-900/20 flex items-center justify-center text-blue-500 font-bold border border-blue-900/30">
                                         {vendorName.substring(0, 2).toUpperCase()}
                                     </div>
                                     <div>
                                         <div className="text-zinc-200 font-medium">{vendorName}</div>
                                         {workOrder.vendor?.phonePrimary && (
-                                            <div className="text-xs text-zinc-500">{workOrder.vendor.phonePrimary}</div>
+                                            <div className="text-xs text-muted-foreground">{workOrder.vendor.phonePrimary}</div>
                                         )}
                                     </div>
                                 </div>
                             ) : (
                                 <div className="text-center py-4">
                                     <User className="h-8 w-8 text-zinc-700 mx-auto mb-2" />
-                                    <p className="text-zinc-500 text-sm font-mono">No vendor assigned</p>
+                                    <p className="text-muted-foreground text-sm font-mono">No vendor assigned</p>
                                     {!isTerminal && (
                                         <Button
                                             variant="outline"
                                             size="sm"
-                                            className="mt-3 border-cyan-800 text-cyan-400 hover:text-white hover:bg-cyan-900/30"
+                                            className="mt-3 border-cyan-800 text-cyan-600 dark:text-cyan-400 hover:text-foreground hover:bg-cyan-900/30"
                                             onClick={() => setShowAssignModal(true)}
                                         >
                                             Assign Vendor
@@ -478,7 +478,7 @@ export default function WorkOrderDetailsPage({ params }: { params: Promise<{ id:
                                 <Button
                                     variant="outline"
                                     size="sm"
-                                    className="w-full border-zinc-800 text-zinc-300 mt-2"
+                                    className="w-full border-border text-muted-foreground mt-2"
                                     onClick={() => setShowAssignModal(true)}
                                 >
                                     Reassign Vendor
@@ -489,24 +489,24 @@ export default function WorkOrderDetailsPage({ params }: { params: Promise<{ id:
 
                     {/* Status Actions */}
                     {!isTerminal && (
-                        <Card className="bg-zinc-900 border-zinc-800">
+                        <Card className="bg-card border-border">
                             <CardHeader className="pb-3">
-                                <CardTitle className="text-base text-white">Update Status</CardTitle>
+                                <CardTitle className="text-base text-foreground">Update Status</CardTitle>
                             </CardHeader>
                             <CardContent className="space-y-2">
                                 <Select value={workOrder.status} onValueChange={handleStatusChange}>
-                                    <SelectTrigger className="bg-black border-zinc-700 text-zinc-200">
+                                    <SelectTrigger className="bg-background border-border text-zinc-200">
                                         <SelectValue />
                                     </SelectTrigger>
-                                    <SelectContent className="bg-zinc-900 border-zinc-700">
+                                    <SelectContent className="bg-card border-border">
                                         {Object.entries(statusConfig).map(([key, cfg]) => (
-                                            <SelectItem key={key} value={key} className="text-zinc-200 focus:bg-zinc-800 focus:text-white">
+                                            <SelectItem key={key} value={key} className="text-zinc-200 focus:bg-muted focus:text-foreground">
                                                 {cfg.label}
                                             </SelectItem>
                                         ))}
                                     </SelectContent>
                                 </Select>
-                                <Separator className="my-2 bg-zinc-800" />
+                                <Separator className="my-2 bg-muted" />
                                 <Button
                                     variant="ghost"
                                     className="w-full text-red-500 hover:text-red-400 hover:bg-red-900/10"
@@ -520,10 +520,10 @@ export default function WorkOrderDetailsPage({ params }: { params: Promise<{ id:
 
                     {/* Completed Badge */}
                     {isTerminal && (
-                        <Card className="bg-zinc-900 border-zinc-800">
+                        <Card className="bg-card border-border">
                             <CardContent className="py-6 text-center">
                                 <CheckCircle2 className={`h-10 w-10 mx-auto mb-2 ${workOrder.status === WorkOrderStatus.COMPLETED ? 'text-green-500' : 'text-red-500'}`} />
-                                <p className="text-zinc-300 font-mono text-sm">
+                                <p className="text-muted-foreground font-mono text-sm">
                                     This work order is <span className="font-bold">{workOrder.status === WorkOrderStatus.COMPLETED ? 'completed' : 'cancelled'}</span>
                                 </p>
                             </CardContent>

@@ -18,7 +18,7 @@ export function FieldError({
 }) {
   if (!errors || !errors[field]?.length) return null
   return (
-    <p className="text-[10px] text-red-400 font-mono mt-0.5">
+    <p className="text-[10px] text-red-600 dark:text-red-400 font-mono mt-0.5">
       {errors[field][0]}
     </p>
   )
@@ -41,12 +41,12 @@ export function FormErrorSummary({
 
   return (
     <div className="bg-red-500/10 border border-red-500/20 rounded px-3 py-2 mb-3">
-      <p className="text-[10px] text-red-400 font-mono font-medium mb-1 uppercase tracking-wider">
+      <p className="text-[10px] text-red-600 dark:text-red-400 font-mono font-medium mb-1 uppercase tracking-wider">
         Please fix the following:
       </p>
       <ul className="list-disc list-inside space-y-0.5">
         {messages.map((msg, i) => (
-          <li key={i} className="text-[10px] text-red-400/80 font-mono">{msg}</li>
+          <li key={i} className="text-[10px] text-red-600 dark:text-red-400/80 font-mono">{msg}</li>
         ))}
       </ul>
     </div>

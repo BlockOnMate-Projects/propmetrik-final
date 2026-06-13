@@ -243,22 +243,22 @@ export default function ValuationDetailPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-black text-white flex items-center justify-center">
+      <div className="min-h-screen bg-background text-foreground flex items-center justify-center">
         <Loader2 className="w-8 h-8 text-amber-500 animate-spin" />
-        <span className="ml-3 font-mono text-sm text-zinc-400">Loading valuation...</span>
+        <span className="ml-3 font-mono text-sm text-muted-foreground">Loading valuation...</span>
       </div>
     )
   }
 
   if (error || !valuation) {
     return (
-      <div className="min-h-screen bg-black text-white p-4">
+      <div className="min-h-screen bg-background text-foreground p-4">
         <AlertBanner
           type="error"
           title="Error loading valuation"
           message={error || 'Valuation not found'}
           action={
-            <Link href="/dashboard/valuations" className="font-mono text-xs text-red-400 hover:text-red-300">
+            <Link href="/dashboard/valuations" className="font-mono text-xs text-red-600 dark:text-red-400 hover:text-red-300">
               ← BACK
             </Link>
           }
@@ -270,24 +270,24 @@ export default function ValuationDetailPage() {
   const property = valuation.property
 
   return (
-    <div className="min-h-screen bg-black text-white p-4 pb-10">
+    <div className="min-h-screen bg-background text-foreground p-4 pb-10">
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-4">
           <Link
             href="/dashboard/valuations"
-            className="p-2 hover:bg-zinc-800 transition-colors"
+            className="p-2 hover:bg-muted transition-colors"
           >
-            <ArrowLeft className="w-4 h-4 text-zinc-400" />
+            <ArrowLeft className="w-4 h-4 text-muted-foreground" />
           </Link>
           <div>
             <div className="flex items-center gap-3">
-              <h1 className="font-mono text-xl text-white">
+              <h1 className="font-mono text-xl text-foreground">
                 VAL-{valuationId.slice(0, 8).toUpperCase()}
               </h1>
               <StatusBadge status={valuation.status} size="md" />
             </div>
-            <p className="font-mono text-[10px] text-zinc-500">
+            <p className="font-mono text-[10px] text-muted-foreground">
               {property?.title || property?.address || 'Property Valuation'}
             </p>
           </div>
@@ -295,7 +295,7 @@ export default function ValuationDetailPage() {
         <div className="flex items-center gap-3">
           <button 
             onClick={handleEdit}
-            className="flex items-center gap-2 px-3 py-2 bg-zinc-800 text-zinc-400 font-mono text-xs hover:text-white transition-colors"
+            className="flex items-center gap-2 px-3 py-2 bg-muted text-muted-foreground font-mono text-xs hover:text-foreground transition-colors"
             disabled={loading}
           >
             <Edit className="w-3 h-3" />
@@ -304,7 +304,7 @@ export default function ValuationDetailPage() {
           <button 
             onClick={handleSaveProgress}
             disabled={loading || saving || !valuation}
-            className="flex items-center gap-2 px-4 py-2 bg-amber-500 text-white font-mono text-xs font-bold hover:bg-amber-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            className="flex items-center gap-2 px-4 py-2 bg-amber-500 text-foreground font-mono text-xs font-bold hover:bg-amber-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {saving ? (
               <Loader2 className="w-3 h-3 animate-spin" />
@@ -332,7 +332,7 @@ export default function ValuationDetailPage() {
                 <button
                   onClick={() => goToStep(stepPosition)}
                   className={`flex flex-col items-center gap-2 p-3 transition-colors ${
-                    status === 'upcoming' ? 'opacity-50 cursor-not-allowed' : 'hover:bg-zinc-800/50 cursor-pointer'
+                    status === 'upcoming' ? 'opacity-50 cursor-not-allowed' : 'hover:bg-muted/50 cursor-pointer'
                   }`}
                   disabled={status === 'upcoming'}
                 >
@@ -340,22 +340,22 @@ export default function ValuationDetailPage() {
                     w-10 h-10 flex items-center justify-center border-2 transition-colors
                     ${isCompleted ? 'border-green-500 bg-green-500/20' : ''}
                     ${isCurrent ? 'border-amber-500 bg-amber-500/20' : ''}
-                    ${status === 'upcoming' ? 'border-zinc-700 bg-zinc-800' : ''}
+                    ${status === 'upcoming' ? 'border-border bg-muted' : ''}
                   `}>
                     {isCompleted ? (
-                      <CheckCircle2 className="w-5 h-5 text-green-400" />
+                      <CheckCircle2 className="w-5 h-5 text-green-600 dark:text-green-400" />
                     ) : (
-                      <StepIcon className={`w-5 h-5 ${isCurrent ? 'text-amber-400' : 'text-zinc-500'}`} />
+                      <StepIcon className={`w-5 h-5 ${isCurrent ? 'text-amber-600 dark:text-amber-400' : 'text-muted-foreground'}`} />
                     )}
                   </div>
                   <div className="text-center">
                     <div className={`font-mono text-[10px] ${
-                      isCurrent ? 'text-amber-500' : isCompleted ? 'text-green-400' : 'text-zinc-500'
+                      isCurrent ? 'text-amber-500' : isCompleted ? 'text-green-600 dark:text-green-400' : 'text-muted-foreground'
                     }`}>
                       STEP {step.id}
                     </div>
                     <div className={`font-mono text-[10px] ${
-                      isCurrent ? 'text-white' : isCompleted ? 'text-zinc-300' : 'text-zinc-600'
+                      isCurrent ? 'text-foreground' : isCompleted ? 'text-muted-foreground' : 'text-muted-foreground'
                     }`}>
                       {step.label.toUpperCase()}
                     </div>
@@ -378,9 +378,9 @@ export default function ValuationDetailPage() {
         <TerminalPanel title="PROPERTY SUMMARY" className="col-span-2">
           <div className="grid grid-cols-3 gap-6">
             <div>
-              <div className="font-mono text-[10px] text-zinc-500 mb-1">ADDRESS</div>
-              <div className="font-mono text-sm text-white">{property?.address || property?.address_street || property?.location || '—'}</div>
-              <div className="font-mono text-xs text-zinc-400">
+              <div className="font-mono text-[10px] text-muted-foreground mb-1">ADDRESS</div>
+              <div className="font-mono text-sm text-foreground">{property?.address || property?.address_street || property?.location || '—'}</div>
+              <div className="font-mono text-xs text-muted-foreground">
                 {property?.city || property?.address_city ? (
                   <>
                     {property?.city || property?.address_city}
@@ -392,12 +392,12 @@ export default function ValuationDetailPage() {
               </div>
             </div>
             <div>
-              <div className="font-mono text-[10px] text-zinc-500 mb-1">TYPE</div>
+              <div className="font-mono text-[10px] text-muted-foreground mb-1">TYPE</div>
               <PropertyTypeBadge type={property?.property_type || (property as any)?.propertyType || 'residential'} />
             </div>
             <div>
-              <div className="font-mono text-[10px] text-zinc-500 mb-1">SIZE</div>
-              <div className="font-mono text-lg text-white">
+              <div className="font-mono text-[10px] text-muted-foreground mb-1">SIZE</div>
+              <div className="font-mono text-lg text-foreground">
                 {(() => {
                   const prop = property as any
                   const size = prop?.land_area_sqm || prop?.landArea || prop?.plot_size || prop?.plotSize
@@ -406,16 +406,16 @@ export default function ValuationDetailPage() {
               </div>
             </div>
             <div>
-              <div className="font-mono text-[10px] text-zinc-500 mb-1">BEDROOMS</div>
-              <div className="font-mono text-lg text-white">{property?.bedrooms || '—'}</div>
+              <div className="font-mono text-[10px] text-muted-foreground mb-1">BEDROOMS</div>
+              <div className="font-mono text-lg text-foreground">{property?.bedrooms || '—'}</div>
             </div>
             <div>
-              <div className="font-mono text-[10px] text-zinc-500 mb-1">BATHROOMS</div>
-              <div className="font-mono text-lg text-white">{property?.bathrooms || '—'}</div>
+              <div className="font-mono text-[10px] text-muted-foreground mb-1">BATHROOMS</div>
+              <div className="font-mono text-lg text-foreground">{property?.bathrooms || '—'}</div>
             </div>
             <div>
-              <div className="font-mono text-[10px] text-zinc-500 mb-1">YEAR BUILT</div>
-              <div className="font-mono text-lg text-white">{property?.year_built || (property as any)?.yearBuilt || '—'}</div>
+              <div className="font-mono text-[10px] text-muted-foreground mb-1">YEAR BUILT</div>
+              <div className="font-mono text-lg text-foreground">{property?.year_built || (property as any)?.yearBuilt || '—'}</div>
             </div>
           </div>
         </TerminalPanel>
@@ -427,19 +427,19 @@ export default function ValuationDetailPage() {
               {valuation?.final_value_ghs ? (
                 <div>
                   <Currency value={valuation.final_value_ghs} size="lg" />
-                  <div className="font-mono text-[10px] text-zinc-500 mt-1">FINAL VALUE</div>
+                  <div className="font-mono text-[10px] text-muted-foreground mt-1">FINAL VALUE</div>
                 </div>
               ) : (
                 <>
-                  <div className="font-mono text-2xl text-zinc-600">—</div>
-                  <div className="font-mono text-[10px] text-zinc-500 mt-1">PENDING</div>
+                  <div className="font-mono text-2xl text-muted-foreground">—</div>
+                  <div className="font-mono text-[10px] text-muted-foreground mt-1">PENDING</div>
                 </>
               )}
             </div>
             <div>
               <div className="flex justify-between items-center mb-1">
-                <span className="font-mono text-[10px] text-zinc-500">CONFIDENCE</span>
-                <span className="font-mono text-[10px] text-zinc-400">
+                <span className="font-mono text-[10px] text-muted-foreground">CONFIDENCE</span>
+                <span className="font-mono text-[10px] text-muted-foreground">
                   {valuation.confidence_score ? `${(valuation.confidence_score * 100).toFixed(0)}%` : 'N/A'}
                 </span>
               </div>
@@ -448,19 +448,19 @@ export default function ValuationDetailPage() {
               )}
             </div>
             {((valuation as any).valuationRange || (valuation as any).value_range_low_ghs) && (
-              <div className="pt-2 border-t border-zinc-800">
-                <div className="font-mono text-[10px] text-zinc-500 mb-2">VALUE RANGE</div>
+              <div className="pt-2 border-t border-border">
+                <div className="font-mono text-[10px] text-muted-foreground mb-2">VALUE RANGE</div>
                 <div className="flex justify-between">
                   <div>
-                    <div className="font-mono text-[10px] text-zinc-500">LOW</div>
+                    <div className="font-mono text-[10px] text-muted-foreground">LOW</div>
                     <Currency value={(valuation as any).valuationRange?.low || (valuation as any).value_range_low_ghs} size="sm" />
                   </div>
                   <div className="text-center">
-                    <div className="font-mono text-[10px] text-zinc-500">MID</div>
+                    <div className="font-mono text-[10px] text-muted-foreground">MID</div>
                     <Currency value={(valuation as any).valuationRange?.mid || (valuation as any).final_market_value_ghs} size="sm" />
                   </div>
                   <div className="text-right">
-                    <div className="font-mono text-[10px] text-zinc-500">HIGH</div>
+                    <div className="font-mono text-[10px] text-muted-foreground">HIGH</div>
                     <Currency value={(valuation as any).valuationRange?.high || (valuation as any).value_range_high_ghs} size="sm" />
                   </div>
                 </div>
@@ -475,10 +475,10 @@ export default function ValuationDetailPage() {
         <TerminalPanel title="METHOD RESULTS" className="col-span-3">
           <div className="grid grid-cols-3 gap-4">
             {Object.entries(valuation.method_results).map(([method, result]: [string, any]) => (
-              <div key={method} className="p-4 bg-zinc-800/30 border border-zinc-700">
+              <div key={method} className="p-4 bg-muted/30 border border-border">
                 <div className="flex items-center justify-between mb-3">
                   <MethodBadge method={method} isPrimary={method === valuation?.primary_method} />
-                  <span className="font-mono text-[10px] text-zinc-500">
+                  <span className="font-mono text-[10px] text-muted-foreground">
                     {(result.weight * 100).toFixed(0)}%
                   </span>
                 </div>
@@ -504,15 +504,15 @@ export default function ValuationDetailPage() {
               const rooms = plan.rooms || [];
 
               return (
-                <div key={plan.id} className="p-3 bg-zinc-800/30 border border-zinc-700">
+                <div key={plan.id} className="p-3 bg-muted/30 border border-border">
                   <div className="flex items-center justify-between mb-2">
-                    <span className="font-mono text-xs text-white">{floorLabel}</span>
-                    <Maximize className="w-3 h-3 text-zinc-500" />
+                    <span className="font-mono text-xs text-foreground">{floorLabel}</span>
+                    <Maximize className="w-3 h-3 text-muted-foreground" />
                   </div>
-                  <div className="font-mono text-lg text-amber-400">
+                  <div className="font-mono text-lg text-amber-600 dark:text-amber-400">
                     {totalArea > 0 ? `${totalArea.toLocaleString()} sqm` : '—'}
                   </div>
-                  <div className="font-mono text-[10px] text-zinc-500">{rooms.length} rooms</div>
+                  <div className="font-mono text-[10px] text-muted-foreground">{rooms.length} rooms</div>
                 </div>
               );
             })}
@@ -535,27 +535,27 @@ export default function ValuationDetailPage() {
 
               return (
                 <>
-                  <div className="p-3 bg-zinc-800/30 border border-zinc-700">
-                    <div className="font-mono text-[10px] text-zinc-500 mb-1">LEGALLY PERMISSIBLE</div>
-                    <div className={`font-mono text-sm ${legallyPermissible ? 'text-green-400' : 'text-red-400'}`}>
+                  <div className="p-3 bg-muted/30 border border-border">
+                    <div className="font-mono text-[10px] text-muted-foreground mb-1">LEGALLY PERMISSIBLE</div>
+                    <div className={`font-mono text-sm ${legallyPermissible ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
                       {legallyPermissible ? '✓ PASS' : '✗ FAIL'}
                     </div>
                   </div>
-                  <div className="p-3 bg-zinc-800/30 border border-zinc-700">
-                    <div className="font-mono text-[10px] text-zinc-500 mb-1">PHYSICALLY POSSIBLE</div>
-                    <div className={`font-mono text-sm ${physicallyPossible ? 'text-green-400' : 'text-red-400'}`}>
+                  <div className="p-3 bg-muted/30 border border-border">
+                    <div className="font-mono text-[10px] text-muted-foreground mb-1">PHYSICALLY POSSIBLE</div>
+                    <div className={`font-mono text-sm ${physicallyPossible ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
                       {physicallyPossible ? '✓ PASS' : '✗ FAIL'}
                     </div>
                   </div>
-                  <div className="p-3 bg-zinc-800/30 border border-zinc-700">
-                    <div className="font-mono text-[10px] text-zinc-500 mb-1">FINANCIALLY FEASIBLE</div>
-                    <div className={`font-mono text-sm ${financiallyFeasible ? 'text-green-400' : 'text-red-400'}`}>
+                  <div className="p-3 bg-muted/30 border border-border">
+                    <div className="font-mono text-[10px] text-muted-foreground mb-1">FINANCIALLY FEASIBLE</div>
+                    <div className={`font-mono text-sm ${financiallyFeasible ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
                       {financiallyFeasible ? '✓ PASS' : '✗ FAIL'}
                     </div>
                   </div>
-                  <div className="p-3 bg-zinc-800/30 border border-zinc-700">
-                    <div className="font-mono text-[10px] text-zinc-500 mb-1">MAXIMALLY PRODUCTIVE</div>
-                    <div className={`font-mono text-sm ${maximallyProductive ? 'text-green-400' : 'text-red-400'}`}>
+                  <div className="p-3 bg-muted/30 border border-border">
+                    <div className="font-mono text-[10px] text-muted-foreground mb-1">MAXIMALLY PRODUCTIVE</div>
+                    <div className={`font-mono text-sm ${maximallyProductive ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
                       {maximallyProductive ? '✓ PASS' : '✗ FAIL'}
                     </div>
                   </div>
@@ -567,9 +567,9 @@ export default function ValuationDetailPage() {
             const hbu = hbuAnalysis as any;
             const recommendedUse = hbu.recommendedUse ?? hbu.hbu_conclusion ?? hbu.hbu_as_improved ?? hbu.hbu_as_vacant ?? null;
             return recommendedUse && recommendedUse !== 'Pending Analysis' ? (
-              <div className="mt-4 pt-4 border-t border-zinc-800">
-                <div className="font-mono text-[10px] text-zinc-500 mb-1">RECOMMENDED USE</div>
-                <div className="font-mono text-sm text-amber-400">{recommendedUse}</div>
+              <div className="mt-4 pt-4 border-t border-border">
+                <div className="font-mono text-[10px] text-muted-foreground mb-1">RECOMMENDED USE</div>
+                <div className="font-mono text-sm text-amber-600 dark:text-amber-400">{recommendedUse}</div>
               </div>
             ) : null;
           })()}
@@ -586,7 +586,7 @@ export default function ValuationDetailPage() {
           return (
             <button
               onClick={() => router.push(`/dashboard/valuations/${valuationId}/${resumePath}`)}
-              className="flex items-center gap-2 px-6 py-3 bg-amber-500 text-white font-mono text-sm font-bold hover:bg-amber-400 transition-colors"
+              className="flex items-center gap-2 px-6 py-3 bg-amber-500 text-foreground font-mono text-sm font-bold hover:bg-amber-400 transition-colors"
             >
               CONTINUE: {resumeLabel}
               <ChevronRight className="w-4 h-4" />

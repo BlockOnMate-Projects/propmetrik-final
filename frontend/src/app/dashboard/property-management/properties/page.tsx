@@ -149,7 +149,7 @@ export default function PropertiesPage() {
             {successMessage && (
                 <div className="bg-emerald-500/10 border border-emerald-500/30 rounded-lg p-4 flex items-center gap-3">
                     <CheckCircle className="h-5 w-5 text-emerald-500" />
-                    <span className="text-emerald-400 font-mono text-sm">{successMessage}</span>
+                    <span className="text-emerald-600 dark:text-emerald-400 font-mono text-sm">{successMessage}</span>
                 </div>
             )}
 
@@ -192,7 +192,7 @@ export default function PropertiesPage() {
                             {searchTerm && <button className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground" onClick={() => setSearchTerm('')}><X className="h-3 w-3" /></button>}
                         </div>
                     </div>
-                    {(searchTerm || hasActiveFilters) && <p className="text-[10px] text-zinc-500 font-mono mt-2">Showing {filteredProperties.length} of {properties.length} properties</p>}
+                    {(searchTerm || hasActiveFilters) && <p className="text-[10px] text-muted-foreground font-mono mt-2">Showing {filteredProperties.length} of {properties.length} properties</p>}
                 </CardHeader>
                 <CardContent>
                     {error && <div className="text-red-500 text-sm font-mono mb-4 p-3 bg-red-500/10 border border-red-500/30 rounded-lg flex items-center gap-2"><AlertCircle className="h-4 w-4" />{error}</div>}
@@ -253,7 +253,7 @@ export default function PropertiesPage() {
                                                 )}
                                                 <p className="text-[9px] text-muted-foreground font-mono">{property.referenceNumber}</p>
                                             </div>
-                                            <Badge variant="outline" className={`text-[10px] font-mono uppercase ${property.status === 'active' ? 'border-emerald-900 text-emerald-500 bg-emerald-900/10' : property.status === 'vacant' ? 'border-primary/50 text-primary bg-primary/10' : property.status === 'maintenance' ? 'border-destructive/50 text-destructive bg-destructive/10' : 'border-border text-muted-foreground'}`}>{property.status}</Badge>
+                                            <Badge variant="outline" className={`text-[10px] font-mono uppercase ${property.status === 'active' ? 'border-emerald-900 text-emerald-500 bg-emerald-100 dark:bg-emerald-900/10' : property.status === 'vacant' ? 'border-primary/50 text-primary bg-primary/10' : property.status === 'maintenance' ? 'border-destructive/50 text-destructive bg-destructive/10' : 'border-border text-muted-foreground'}`}>{property.status}</Badge>
                                             <DropdownMenu>
                                                 <DropdownMenuTrigger asChild><Button variant="ghost" className="h-8 w-8 p-0 text-muted-foreground hover:text-foreground"><MoreVertical className="h-4 w-4" /></Button></DropdownMenuTrigger>
                                                 <DropdownMenuContent align="end" className="bg-card border-border text-foreground">
@@ -298,7 +298,7 @@ export default function PropertiesPage() {
                                                                     <span className="text-[9px] font-normal text-muted-foreground/70">{ghsEquivalent(unit.price, unit.priceCurrency)}</span>
                                                                 )}
                                                             </span>
-                                                            <Badge variant="outline" className={`text-[9px] font-mono uppercase ${unit.status === 'active' ? 'border-emerald-900 text-emerald-500 bg-emerald-900/10' : unit.status === 'vacant' ? 'border-primary/50 text-primary bg-primary/10' : 'border-border text-muted-foreground'}`}>{unit.status}</Badge>
+                                                            <Badge variant="outline" className={`text-[9px] font-mono uppercase ${unit.status === 'active' ? 'border-emerald-900 text-emerald-500 bg-emerald-100 dark:bg-emerald-900/10' : unit.status === 'vacant' ? 'border-primary/50 text-primary bg-primary/10' : 'border-border text-muted-foreground'}`}>{unit.status}</Badge>
                                                         </div>
                                                     </Link>
                                                 ))
@@ -318,11 +318,11 @@ export default function PropertiesPage() {
                         </div>
                     )}
                     {filteredProperties.length > 0 && (
-                        <div className="flex items-center justify-between mt-6 pt-4 border-t border-zinc-800">
-                            <p className="text-[10px] font-mono text-zinc-500">Showing {filteredProperties.length} of {properties.length} properties</p>
+                        <div className="flex items-center justify-between mt-6 pt-4 border-t border-border">
+                            <p className="text-[10px] font-mono text-muted-foreground">Showing {filteredProperties.length} of {properties.length} properties</p>
                             <div className="flex items-center gap-3">
                                 <RateStamp fx={fx} />
-                                <p className="text-[10px] font-mono text-zinc-500">Total Value: <span className="text-amber-500 font-bold">{formatCurrency(filteredProperties.reduce((sum, p) => sum + toGHS(p.price || 0, p.priceCurrency), 0))}</span></p>
+                                <p className="text-[10px] font-mono text-muted-foreground">Total Value: <span className="text-amber-500 font-bold">{formatCurrency(filteredProperties.reduce((sum, p) => sum + toGHS(p.price || 0, p.priceCurrency), 0))}</span></p>
                             </div>
                         </div>
                     )}
@@ -330,56 +330,56 @@ export default function PropertiesPage() {
             </Card>
 
             <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
-                <DialogContent className="bg-zinc-900 border-zinc-800 text-white max-w-md">
+                <DialogContent className="bg-card border-border text-foreground max-w-md">
                     <DialogHeader>
                         <DialogTitle className="font-mono uppercase text-red-500 flex items-center gap-2"><AlertCircle className="h-5 w-5" />Delete Property</DialogTitle>
-                        <DialogDescription className="text-zinc-400 font-mono text-xs">Are you sure you want to delete <span className="text-white font-bold">{propertyToDelete?.title}</span>? This will permanently remove the property and all associated data.</DialogDescription>
+                        <DialogDescription className="text-muted-foreground font-mono text-xs">Are you sure you want to delete <span className="text-foreground font-bold">{propertyToDelete?.title}</span>? This will permanently remove the property and all associated data.</DialogDescription>
                     </DialogHeader>
                     <DialogFooter className="mt-4">
-                        <Button variant="outline" className="border-zinc-700 text-zinc-400 hover:text-white font-mono text-xs" onClick={() => { setShowDeleteDialog(false); setPropertyToDelete(null) }}>Cancel</Button>
+                        <Button variant="outline" className="border-border text-muted-foreground hover:text-foreground font-mono text-xs" onClick={() => { setShowDeleteDialog(false); setPropertyToDelete(null) }}>Cancel</Button>
                         <Button variant="destructive" className="bg-red-600 hover:bg-red-500 font-mono text-xs" onClick={handleDeleteProperty} disabled={isDeleting}>{isDeleting ? <><Loader2 className="h-3 w-3 mr-2 animate-spin" />Deleting...</> : <><Trash2 className="h-3 w-3 mr-2" />Delete Property</>}</Button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
 
             <Sheet open={showFilterSheet} onOpenChange={setShowFilterSheet}>
-                <SheetContent className="bg-zinc-900 border-zinc-800 text-white">
+                <SheetContent className="bg-card border-border text-foreground">
                     <SheetHeader>
                         <SheetTitle className="font-mono uppercase text-amber-500">Filter Properties</SheetTitle>
-                        <SheetDescription className="text-zinc-500 font-mono text-xs">Narrow down your property list by status or type.</SheetDescription>
+                        <SheetDescription className="text-muted-foreground font-mono text-xs">Narrow down your property list by status or type.</SheetDescription>
                     </SheetHeader>
                     <div className="space-y-6 py-6">
                         <div className="space-y-2">
-                            <Label className="text-xs font-mono text-zinc-400">Status</Label>
+                            <Label className="text-xs font-mono text-muted-foreground">Status</Label>
                             <Select value={statusFilter} onValueChange={setStatusFilter}>
-                                <SelectTrigger className="bg-black border-zinc-800 text-white font-mono text-xs"><SelectValue placeholder="All statuses" /></SelectTrigger>
-                                <SelectContent className="bg-black border-zinc-800">
-                                    <SelectItem value="all" className="text-zinc-300 font-mono text-xs">All statuses</SelectItem>
-                                    <SelectItem value="active" className="text-zinc-300 font-mono text-xs">Active</SelectItem>
-                                    <SelectItem value="vacant" className="text-zinc-300 font-mono text-xs">Vacant</SelectItem>
-                                    <SelectItem value="maintenance" className="text-zinc-300 font-mono text-xs">Maintenance</SelectItem>
-                                    <SelectItem value="inactive" className="text-zinc-300 font-mono text-xs">Inactive</SelectItem>
+                                <SelectTrigger className="bg-background border-border text-foreground font-mono text-xs"><SelectValue placeholder="All statuses" /></SelectTrigger>
+                                <SelectContent className="bg-background border-border">
+                                    <SelectItem value="all" className="text-muted-foreground font-mono text-xs">All statuses</SelectItem>
+                                    <SelectItem value="active" className="text-muted-foreground font-mono text-xs">Active</SelectItem>
+                                    <SelectItem value="vacant" className="text-muted-foreground font-mono text-xs">Vacant</SelectItem>
+                                    <SelectItem value="maintenance" className="text-muted-foreground font-mono text-xs">Maintenance</SelectItem>
+                                    <SelectItem value="inactive" className="text-muted-foreground font-mono text-xs">Inactive</SelectItem>
                                 </SelectContent>
                             </Select>
                         </div>
                         <div className="space-y-2">
-                            <Label className="text-xs font-mono text-zinc-400">Property Type</Label>
+                            <Label className="text-xs font-mono text-muted-foreground">Property Type</Label>
                             <Select value={typeFilter} onValueChange={setTypeFilter}>
-                                <SelectTrigger className="bg-black border-zinc-800 text-white font-mono text-xs"><SelectValue placeholder="All types" /></SelectTrigger>
-                                <SelectContent className="bg-black border-zinc-800">
-                                    <SelectItem value="all" className="text-zinc-300 font-mono text-xs">All types</SelectItem>
-                                    <SelectItem value="residential_house" className="text-zinc-300 font-mono text-xs">Residential House</SelectItem>
-                                    <SelectItem value="apartment_flat" className="text-zinc-300 font-mono text-xs">Apartment / Flat</SelectItem>
-                                    <SelectItem value="commercial_office" className="text-zinc-300 font-mono text-xs">Commercial Office</SelectItem>
-                                    <SelectItem value="industrial" className="text-zinc-300 font-mono text-xs">Industrial</SelectItem>
-                                    <SelectItem value="land" className="text-zinc-300 font-mono text-xs">Land</SelectItem>
-                                    <SelectItem value="mixed_use" className="text-zinc-300 font-mono text-xs">Mixed Use</SelectItem>
+                                <SelectTrigger className="bg-background border-border text-foreground font-mono text-xs"><SelectValue placeholder="All types" /></SelectTrigger>
+                                <SelectContent className="bg-background border-border">
+                                    <SelectItem value="all" className="text-muted-foreground font-mono text-xs">All types</SelectItem>
+                                    <SelectItem value="residential_house" className="text-muted-foreground font-mono text-xs">Residential House</SelectItem>
+                                    <SelectItem value="apartment_flat" className="text-muted-foreground font-mono text-xs">Apartment / Flat</SelectItem>
+                                    <SelectItem value="commercial_office" className="text-muted-foreground font-mono text-xs">Commercial Office</SelectItem>
+                                    <SelectItem value="industrial" className="text-muted-foreground font-mono text-xs">Industrial</SelectItem>
+                                    <SelectItem value="land" className="text-muted-foreground font-mono text-xs">Land</SelectItem>
+                                    <SelectItem value="mixed_use" className="text-muted-foreground font-mono text-xs">Mixed Use</SelectItem>
                                 </SelectContent>
                             </Select>
                         </div>
                         <div className="pt-4 flex gap-2">
-                            <Button variant="outline" className="flex-1 border-zinc-700 text-zinc-400 hover:text-white font-mono text-xs" onClick={() => { clearFilters(); setShowFilterSheet(false) }}>Clear Filters</Button>
-                            <Button className="flex-1 bg-amber-600 hover:bg-amber-500 text-white font-bold font-mono text-xs" onClick={() => setShowFilterSheet(false)}>Apply Filters</Button>
+                            <Button variant="outline" className="flex-1 border-border text-muted-foreground hover:text-foreground font-mono text-xs" onClick={() => { clearFilters(); setShowFilterSheet(false) }}>Clear Filters</Button>
+                            <Button className="flex-1 bg-amber-600 hover:bg-amber-500 text-foreground font-bold font-mono text-xs" onClick={() => setShowFilterSheet(false)}>Apply Filters</Button>
                         </div>
                     </div>
                 </SheetContent>

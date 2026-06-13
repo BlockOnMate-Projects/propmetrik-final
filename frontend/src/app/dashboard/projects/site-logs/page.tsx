@@ -353,14 +353,14 @@ export default function SiteLogsPage() {
       {/* Header */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-white tracking-tight">Site Logs</h1>
-          <p className="text-zinc-400 text-sm mt-1">Daily reports, inspections, and field documentation.</p>
+          <h1 className="text-2xl font-bold text-foreground tracking-tight">Site Logs</h1>
+          <p className="text-muted-foreground text-sm mt-1">Daily reports, inspections, and field documentation.</p>
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="outline" size="icon" className="border-zinc-700" onClick={fetchSiteLogs}>
+          <Button variant="outline" size="icon" className="border-border" onClick={fetchSiteLogs}>
             <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
           </Button>
-          <Button className="bg-amber-600 hover:bg-amber-700 text-white" onClick={openNewDialog}>
+          <Button className="bg-amber-600 hover:bg-amber-700 text-foreground" onClick={openNewDialog}>
             <Plus className="h-4 w-4 mr-2" /> New Site Log
           </Button>
         </div>
@@ -368,56 +368,56 @@ export default function SiteLogsPage() {
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
-        <Card className="bg-zinc-900 border-zinc-800">
+        <Card className="bg-card border-border">
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-zinc-400 text-xs uppercase tracking-wider">Total Logs</p>
-                <p className="text-2xl font-bold text-white mt-1">{stats.totalLogs}</p>
+                <p className="text-muted-foreground text-xs uppercase tracking-wider">Total Logs</p>
+                <p className="text-2xl font-bold text-foreground mt-1">{stats.totalLogs}</p>
               </div>
               <ClipboardList className="h-5 w-5 text-amber-500" />
             </div>
           </CardContent>
         </Card>
-        <Card className="bg-zinc-900 border-zinc-800">
+        <Card className="bg-card border-border">
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-zinc-400 text-xs uppercase tracking-wider">Total Labor</p>
-                <p className="text-2xl font-bold text-blue-400 mt-1">{stats.totalLabor}</p>
+                <p className="text-muted-foreground text-xs uppercase tracking-wider">Total Labor</p>
+                <p className="text-2xl font-bold text-blue-600 dark:text-blue-400 mt-1">{stats.totalLabor}</p>
               </div>
               <Users className="h-5 w-5 text-blue-500" />
             </div>
           </CardContent>
         </Card>
-        <Card className="bg-zinc-900 border-zinc-800">
+        <Card className="bg-card border-border">
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-zinc-400 text-xs uppercase tracking-wider">Avg. Informal</p>
-                <p className="text-2xl font-bold text-purple-400 mt-1">{stats.avgInformalLabor}</p>
+                <p className="text-muted-foreground text-xs uppercase tracking-wider">Avg. Informal</p>
+                <p className="text-2xl font-bold text-purple-600 dark:text-purple-400 mt-1">{stats.avgInformalLabor}</p>
               </div>
               <Hammer className="h-5 w-5 text-purple-500" />
             </div>
           </CardContent>
         </Card>
-        <Card className="bg-zinc-900 border-zinc-800">
+        <Card className="bg-card border-border">
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-zinc-400 text-xs uppercase tracking-wider">Site Photos</p>
-                <p className="text-2xl font-bold text-emerald-400 mt-1">{stats.totalPhotos}</p>
+                <p className="text-muted-foreground text-xs uppercase tracking-wider">Site Photos</p>
+                <p className="text-2xl font-bold text-emerald-600 dark:text-emerald-400 mt-1">{stats.totalPhotos}</p>
               </div>
               <Camera className="h-5 w-5 text-emerald-500" />
             </div>
           </CardContent>
         </Card>
-        <Card className="bg-zinc-900 border-zinc-800">
+        <Card className="bg-card border-border">
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-zinc-400 text-xs uppercase tracking-wider">With Incidents</p>
-                <p className="text-2xl font-bold text-yellow-400 mt-1">{stats.logsWithIncidents}</p>
+                <p className="text-muted-foreground text-xs uppercase tracking-wider">With Incidents</p>
+                <p className="text-2xl font-bold text-yellow-600 dark:text-yellow-400 mt-1">{stats.logsWithIncidents}</p>
               </div>
               <AlertTriangle className="h-5 w-5 text-yellow-500" />
             </div>
@@ -429,17 +429,17 @@ export default function SiteLogsPage() {
       <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
         <div className="flex items-center gap-2 flex-1">
           <div className="relative flex-1 max-w-md">
-            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-zinc-500" />
+            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
             <Input
               placeholder="Search logs..."
-              className="pl-9 bg-zinc-900 border-zinc-800"
+              className="pl-9 bg-card border-border"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
             />
           </div>
           <Select value={selectedProjectId} onValueChange={setSelectedProjectId}>
-            <SelectTrigger className="w-[200px] bg-zinc-900 border-zinc-800">
-              <Building2 className="h-4 w-4 mr-2 text-zinc-500" />
+            <SelectTrigger className="w-[200px] bg-card border-border">
+              <Building2 className="h-4 w-4 mr-2 text-muted-foreground" />
               <SelectValue placeholder="All Projects" />
             </SelectTrigger>
             <SelectContent>
@@ -460,11 +460,11 @@ export default function SiteLogsPage() {
           <Loader2 className="h-8 w-8 animate-spin text-amber-500" />
         </div>
       ) : filteredLogs.length === 0 ? (
-        <Card className="bg-zinc-900 border-zinc-800">
+        <Card className="bg-card border-border">
           <CardContent className="py-12 text-center">
             <ClipboardList className="h-12 w-12 mx-auto text-zinc-700 mb-4" />
-            <h3 className="text-lg font-semibold text-white mb-2">No Site Logs Found</h3>
-            <p className="text-zinc-400 mb-4">
+            <h3 className="text-lg font-semibold text-foreground mb-2">No Site Logs Found</h3>
+            <p className="text-muted-foreground mb-4">
               {search || selectedProjectId !== 'all' 
                 ? 'Try adjusting your filters' 
                 : 'Create your first site log to get started'}
@@ -479,40 +479,40 @@ export default function SiteLogsPage() {
           {filteredLogs.map((log) => {
             const WeatherIcon = weatherIcons[log.weatherCondition || 'sunny'] || Sun;
             return (
-              <Card key={log.id} className="bg-zinc-900 border-zinc-800 hover:border-zinc-700 transition-colors">
+              <Card key={log.id} className="bg-card border-border hover:border-border transition-colors">
                 <CardContent className="p-6">
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
                       <div className="flex items-center gap-4 mb-3 flex-wrap">
                         <div className="flex items-center gap-2">
-                          <Calendar className="h-4 w-4 text-zinc-500" />
-                          <span className="text-white font-semibold">
+                          <Calendar className="h-4 w-4 text-muted-foreground" />
+                          <span className="text-foreground font-semibold">
                             {new Date(log.reportDate).toLocaleDateString('en-GB', { weekday: 'short', month: 'short', day: 'numeric' })}
                           </span>
                         </div>
                         {log.weatherCondition && (
-                          <Badge className="bg-zinc-800 text-zinc-300 gap-1">
+                          <Badge className="bg-muted text-muted-foreground gap-1">
                             <WeatherIcon className="h-3 w-3" />
                             {weatherLabels[log.weatherCondition]} {log.temperatureCelsius && `${log.temperatureCelsius}°C`}
                           </Badge>
                         )}
-                        <Badge className="bg-blue-900/50 text-blue-400 gap-1">
+                        <Badge className="bg-blue-100 dark:bg-blue-900/50 text-blue-600 dark:text-blue-400 gap-1">
                           <Users className="h-3 w-3" />
                           {log.informalLaborCount} informal workers
                         </Badge>
                         {log.photoCount > 0 && (
-                          <Badge className="bg-emerald-900/50 text-emerald-400 gap-1">
+                          <Badge className="bg-emerald-100 dark:bg-emerald-900/50 text-emerald-600 dark:text-emerald-400 gap-1">
                             <Camera className="h-3 w-3" />
                             {log.photoCount} photos
                           </Badge>
                         )}
                       </div>
-                      <div className="flex items-center gap-2 text-sm text-zinc-400 mb-2">
+                      <div className="flex items-center gap-2 text-sm text-muted-foreground mb-2">
                         <MapPin className="h-3 w-3" />
                         {log.projectName || 'Unknown Project'}
                       </div>
                       {log.workPerformed && (
-                        <p className="text-zinc-300 text-sm leading-relaxed mb-3 line-clamp-2">
+                        <p className="text-muted-foreground text-sm leading-relaxed mb-3 line-clamp-2">
                           {log.workPerformed}
                         </p>
                       )}
@@ -524,8 +524,8 @@ export default function SiteLogsPage() {
                       )}
                     </div>
                   </div>
-                  <div className="flex items-center justify-between mt-4 pt-4 border-t border-zinc-800">
-                    <div className="flex items-center gap-2 text-xs text-zinc-500">
+                  <div className="flex items-center justify-between mt-4 pt-4 border-t border-border">
+                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
                       <Clock className="h-3 w-3" />
                       {log.submittedByName ? `Logged by ${log.submittedByName}` : 'Logged'} 
                       {' '}at {new Date(log.createdAt).toLocaleTimeString()}
@@ -534,7 +534,7 @@ export default function SiteLogsPage() {
                       <Button 
                         variant="outline" 
                         size="sm" 
-                        className="border-zinc-700 text-zinc-300"
+                        className="border-border text-muted-foreground"
                         onClick={() => openViewSheet(log)}
                       >
                         <Eye className="h-3 w-3 mr-1" /> View
@@ -542,7 +542,7 @@ export default function SiteLogsPage() {
                       <Button 
                         variant="outline" 
                         size="sm" 
-                        className="border-zinc-700 text-zinc-300"
+                        className="border-border text-muted-foreground"
                         onClick={() => openEditDialog(log)}
                       >
                         <Edit className="h-3 w-3 mr-1" /> Edit
@@ -550,7 +550,7 @@ export default function SiteLogsPage() {
                       <Button 
                         variant="outline" 
                         size="sm" 
-                        className="border-zinc-700 text-red-400 hover:text-red-300 hover:border-red-700"
+                        className="border-border text-red-600 dark:text-red-400 hover:text-red-300 hover:border-red-700"
                         onClick={() => openDeleteDialog(log)}
                       >
                         <Trash2 className="h-3 w-3" />
@@ -573,12 +573,12 @@ export default function SiteLogsPage() {
           setShowEditDialog(false);
         }
       }}>
-        <DialogContent className="bg-zinc-900 border-zinc-800 max-w-2xl">
+        <DialogContent className="bg-card border-border max-w-2xl">
           <DialogHeader>
-            <DialogTitle className="text-white">
+            <DialogTitle className="text-foreground">
               {showEditDialog ? 'Edit Site Log' : 'Create Daily Site Log'}
             </DialogTitle>
-            <DialogDescription className="text-zinc-400">
+            <DialogDescription className="text-muted-foreground">
               Record today&apos;s activities, labor, and any incidents.
             </DialogDescription>
           </DialogHeader>
@@ -586,12 +586,12 @@ export default function SiteLogsPage() {
             <div className="space-y-4 mt-4">
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label className="text-zinc-300">Project *</Label>
+                  <Label className="text-muted-foreground">Project *</Label>
                   <Select 
                     value={formData.projectId} 
                     onValueChange={(value) => setFormData({...formData, projectId: value})}
                   >
-                    <SelectTrigger className="bg-zinc-800 border-zinc-700">
+                    <SelectTrigger className="bg-muted border-border">
                       <SelectValue placeholder="Select project" />
                     </SelectTrigger>
                     <SelectContent>
@@ -604,23 +604,23 @@ export default function SiteLogsPage() {
                   </Select>
                 </div>
                 <div className="space-y-2">
-                  <Label className="text-zinc-300">Date *</Label>
+                  <Label className="text-muted-foreground">Date *</Label>
                   <Input 
                     type="date" 
                     value={formData.reportDate}
                     onChange={(e) => setFormData({...formData, reportDate: e.target.value})}
-                    className="bg-zinc-800 border-zinc-700" 
+                    className="bg-muted border-border" 
                   />
                 </div>
               </div>
               <div className="grid grid-cols-3 gap-4">
                 <div className="space-y-2">
-                  <Label className="text-zinc-300">Weather</Label>
+                  <Label className="text-muted-foreground">Weather</Label>
                   <Select 
                     value={formData.weatherCondition}
                     onValueChange={(value) => setFormData({...formData, weatherCondition: value})}
                   >
-                    <SelectTrigger className="bg-zinc-800 border-zinc-700">
+                    <SelectTrigger className="bg-muted border-border">
                       <SelectValue placeholder="Select" />
                     </SelectTrigger>
                     <SelectContent>
@@ -632,51 +632,51 @@ export default function SiteLogsPage() {
                   </Select>
                 </div>
                 <div className="space-y-2">
-                  <Label className="text-zinc-300">Temperature (°C)</Label>
+                  <Label className="text-muted-foreground">Temperature (°C)</Label>
                   <Input 
                     type="number" 
                     placeholder="30" 
                     value={formData.temperatureCelsius}
                     onChange={(e) => setFormData({...formData, temperatureCelsius: e.target.value})}
-                    className="bg-zinc-800 border-zinc-700" 
+                    className="bg-muted border-border" 
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label className="text-zinc-300">Informal Labor</Label>
+                  <Label className="text-muted-foreground">Informal Labor</Label>
                   <Input 
                     type="number" 
                     placeholder="0" 
                     value={formData.informalLaborCount}
                     onChange={(e) => setFormData({...formData, informalLaborCount: e.target.value})}
-                    className="bg-zinc-800 border-zinc-700" 
+                    className="bg-muted border-border" 
                   />
                 </div>
               </div>
               <div className="space-y-2">
-                <Label className="text-zinc-300">Work Performed</Label>
+                <Label className="text-muted-foreground">Work Performed</Label>
                 <Textarea 
                   placeholder="Describe work activities completed today..."
                   value={formData.workPerformed}
                   onChange={(e) => setFormData({...formData, workPerformed: e.target.value})}
-                  className="bg-zinc-800 border-zinc-700 min-h-[100px]"
+                  className="bg-muted border-border min-h-[100px]"
                 />
               </div>
               <div className="space-y-2">
-                <Label className="text-zinc-300">Informal Labor Notes</Label>
+                <Label className="text-muted-foreground">Informal Labor Notes</Label>
                 <Input 
                   placeholder="Notes about informal/casual labor"
                   value={formData.informalLaborNotes}
                   onChange={(e) => setFormData({...formData, informalLaborNotes: e.target.value})}
-                  className="bg-zinc-800 border-zinc-700"
+                  className="bg-muted border-border"
                 />
               </div>
               <div className="space-y-2">
-                <Label className="text-zinc-300">Incidents / Delays</Label>
+                <Label className="text-muted-foreground">Incidents / Delays</Label>
                 <Textarea 
                   placeholder="Any incidents, delays, or issues to report (optional)"
                   value={formData.incidentsOrDelays}
                   onChange={(e) => setFormData({...formData, incidentsOrDelays: e.target.value})}
-                  className="bg-zinc-800 border-zinc-700"
+                  className="bg-muted border-border"
                 />
               </div>
             </div>
@@ -684,14 +684,14 @@ export default function SiteLogsPage() {
               <Button 
                 type="button"
                 variant="outline" 
-                className="border-zinc-700" 
+                className="border-border" 
                 onClick={() => { setShowNewDialog(false); setShowEditDialog(false); }}
               >
                 Cancel
               </Button>
               <Button 
                 type="submit"
-                className="bg-amber-600 hover:bg-amber-700 text-white"
+                className="bg-amber-600 hover:bg-amber-700 text-foreground"
                 disabled={submitting}
               >
                 {submitting && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
@@ -704,10 +704,10 @@ export default function SiteLogsPage() {
 
       {/* View Sheet */}
       <Sheet open={showViewSheet} onOpenChange={setShowViewSheet}>
-        <SheetContent className="bg-zinc-900 border-zinc-800 w-full sm:max-w-lg">
+        <SheetContent className="bg-card border-border w-full sm:max-w-lg">
           <SheetHeader>
-            <SheetTitle className="text-white">Site Log Details</SheetTitle>
-            <SheetDescription className="text-zinc-400">
+            <SheetTitle className="text-foreground">Site Log Details</SheetTitle>
+            <SheetDescription className="text-muted-foreground">
               {selectedLog && new Date(selectedLog.reportDate).toLocaleDateString('en-GB', { 
                 weekday: 'long', 
                 year: 'numeric', 
@@ -719,41 +719,41 @@ export default function SiteLogsPage() {
           {selectedLog && (
             <div className="mt-6 space-y-6">
               <div>
-                <Label className="text-zinc-500 text-xs uppercase">Project</Label>
-                <p className="text-white mt-1">{selectedLog.projectName}</p>
+                <Label className="text-muted-foreground text-xs uppercase">Project</Label>
+                <p className="text-foreground mt-1">{selectedLog.projectName}</p>
               </div>
               
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <Label className="text-zinc-500 text-xs uppercase">Weather</Label>
-                  <p className="text-white mt-1">
+                  <Label className="text-muted-foreground text-xs uppercase">Weather</Label>
+                  <p className="text-foreground mt-1">
                     {weatherLabels[selectedLog.weatherCondition || 'sunny']} 
                     {selectedLog.temperatureCelsius && ` - ${selectedLog.temperatureCelsius}°C`}
                   </p>
                 </div>
                 <div>
-                  <Label className="text-zinc-500 text-xs uppercase">Informal Labor</Label>
-                  <p className="text-white mt-1">{selectedLog.informalLaborCount} workers</p>
+                  <Label className="text-muted-foreground text-xs uppercase">Informal Labor</Label>
+                  <p className="text-foreground mt-1">{selectedLog.informalLaborCount} workers</p>
                 </div>
               </div>
 
               {selectedLog.informalLaborNotes && (
                 <div>
-                  <Label className="text-zinc-500 text-xs uppercase">Labor Notes</Label>
-                  <p className="text-zinc-300 mt-1">{selectedLog.informalLaborNotes}</p>
+                  <Label className="text-muted-foreground text-xs uppercase">Labor Notes</Label>
+                  <p className="text-muted-foreground mt-1">{selectedLog.informalLaborNotes}</p>
                 </div>
               )}
 
               {selectedLog.workPerformed && (
                 <div>
-                  <Label className="text-zinc-500 text-xs uppercase">Work Performed</Label>
-                  <p className="text-zinc-300 mt-1">{selectedLog.workPerformed}</p>
+                  <Label className="text-muted-foreground text-xs uppercase">Work Performed</Label>
+                  <p className="text-muted-foreground mt-1">{selectedLog.workPerformed}</p>
                 </div>
               )}
 
               {selectedLog.incidentsOrDelays && (
                 <div>
-                  <Label className="text-zinc-500 text-xs uppercase">Incidents / Delays</Label>
+                  <Label className="text-muted-foreground text-xs uppercase">Incidents / Delays</Label>
                   <div className="mt-1 p-3 rounded-lg bg-yellow-950/20 border border-yellow-900/30">
                     <p className="text-yellow-200/80">{selectedLog.incidentsOrDelays}</p>
                   </div>
@@ -762,26 +762,26 @@ export default function SiteLogsPage() {
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <Label className="text-zinc-500 text-xs uppercase">Source</Label>
-                  <p className="text-white mt-1 capitalize">{selectedLog.submissionSource}</p>
+                  <Label className="text-muted-foreground text-xs uppercase">Source</Label>
+                  <p className="text-foreground mt-1 capitalize">{selectedLog.submissionSource}</p>
                 </div>
                 <div>
-                  <Label className="text-zinc-500 text-xs uppercase">Photos</Label>
-                  <p className="text-white mt-1">{selectedLog.photoCount}</p>
+                  <Label className="text-muted-foreground text-xs uppercase">Photos</Label>
+                  <p className="text-foreground mt-1">{selectedLog.photoCount}</p>
                 </div>
               </div>
 
-              <div className="pt-4 border-t border-zinc-800 flex gap-2">
+              <div className="pt-4 border-t border-border flex gap-2">
                 <Button 
                   variant="outline" 
-                  className="flex-1 border-zinc-700"
+                  className="flex-1 border-border"
                   onClick={() => { setShowViewSheet(false); openEditDialog(selectedLog); }}
                 >
                   <Edit className="h-4 w-4 mr-2" /> Edit
                 </Button>
                 <Button 
                   variant="outline" 
-                  className="border-zinc-700 text-red-400 hover:text-red-300"
+                  className="border-border text-red-600 dark:text-red-400 hover:text-red-300"
                   onClick={() => { setShowViewSheet(false); openDeleteDialog(selectedLog); }}
                 >
                   <Trash2 className="h-4 w-4" />
@@ -794,23 +794,23 @@ export default function SiteLogsPage() {
 
       {/* Delete Confirmation Dialog */}
       <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
-        <DialogContent className="bg-zinc-900 border-zinc-800">
+        <DialogContent className="bg-card border-border">
           <DialogHeader>
-            <DialogTitle className="text-white">Delete Site Log</DialogTitle>
-            <DialogDescription className="text-zinc-400">
+            <DialogTitle className="text-foreground">Delete Site Log</DialogTitle>
+            <DialogDescription className="text-muted-foreground">
               Are you sure you want to delete this site log? This action cannot be undone.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter className="mt-4">
             <Button 
               variant="outline" 
-              className="border-zinc-700" 
+              className="border-border" 
               onClick={() => setShowDeleteDialog(false)}
             >
               Cancel
             </Button>
             <Button 
-              className="bg-red-600 hover:bg-red-700 text-white"
+              className="bg-red-600 hover:bg-red-700 text-foreground"
               onClick={handleDelete}
               disabled={submitting}
             >

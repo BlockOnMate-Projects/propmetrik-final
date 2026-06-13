@@ -43,8 +43,8 @@ export function TerminalPanel({
   timestamp
 }: PanelProps) {
   return (
-    <div className={cn('border border-zinc-800 bg-zinc-900/50', className)}>
-      <div className="flex items-center justify-between px-3 py-1.5 bg-zinc-800/50 border-b border-zinc-800">
+    <div className={cn('border border-border bg-card/50', className)}>
+      <div className="flex items-center justify-between px-3 py-1.5 bg-muted/50 border-b border-border">
         <div className="flex items-center gap-2">
           <span className="font-mono text-[10px] text-amber-500 tracking-wider uppercase">{title}</span>
           {status === 'live' && (
@@ -65,7 +65,7 @@ export function TerminalPanel({
         </div>
         <div className="flex items-center gap-3">
           {timestamp && (
-            <span className="font-mono text-[9px] text-zinc-500">{timestamp}</span>
+            <span className="font-mono text-[9px] text-muted-foreground">{timestamp}</span>
           )}
           {action}
         </div>
@@ -105,30 +105,30 @@ export function Metric({
   };
 
   const colorClasses = {
-    default: 'text-white',
+    default: 'text-foreground',
     amber: 'text-amber-500',
-    green: 'text-green-400',
-    red: 'text-red-400',
-    blue: 'text-blue-400',
+    green: 'text-green-600 dark:text-green-400',
+    red: 'text-red-600 dark:text-red-400',
+    blue: 'text-blue-600 dark:text-blue-400',
   };
 
   return (
     <div className="text-center">
       <div className={cn('font-mono', sizeClasses[size], colorClasses[color])}>
         {typeof value === 'number' ? value.toLocaleString('en-US') : value}
-        {unit && <span className="text-zinc-500 text-sm ml-1">{unit}</span>}
+        {unit && <span className="text-muted-foreground text-sm ml-1">{unit}</span>}
       </div>
-      <div className="font-mono text-[10px] text-zinc-500 uppercase">{label}</div>
+      <div className="font-mono text-[10px] text-muted-foreground uppercase">{label}</div>
       {change !== undefined && (
         <div className={cn(
           'font-mono text-[10px] mt-1 flex items-center justify-center gap-1',
-          change > 0 ? 'text-green-400' : change < 0 ? 'text-red-400' : 'text-zinc-500'
+          change > 0 ? 'text-green-600 dark:text-green-400' : change < 0 ? 'text-red-600 dark:text-red-400' : 'text-muted-foreground'
         )}>
           {change > 0 ? <TrendingUp className="w-3 h-3" /> :
             change < 0 ? <TrendingDown className="w-3 h-3" /> :
               <Minus className="w-3 h-3" />}
           <span>{change > 0 ? '+' : ''}{change}%</span>
-          {changeLabel && <span className="text-zinc-500">{changeLabel}</span>}
+          {changeLabel && <span className="text-muted-foreground">{changeLabel}</span>}
         </div>
       )}
     </div>
@@ -158,21 +158,21 @@ interface StatusBadgeProps {
 }
 
 const statusConfig: Record<string, { bg: string; text: string; label: string }> = {
-  draft: { bg: 'bg-zinc-800', text: 'text-zinc-400', label: 'DRAFT' },
-  in_progress: { bg: 'bg-blue-900/50', text: 'text-blue-400', label: 'IN PROGRESS' },
-  pending_review: { bg: 'bg-yellow-900/50', text: 'text-yellow-400', label: 'PENDING REVIEW' },
-  under_review: { bg: 'bg-purple-900/50', text: 'text-purple-400', label: 'UNDER REVIEW' },
-  approved: { bg: 'bg-green-900/50', text: 'text-green-400', label: 'APPROVED' },
-  completed: { bg: 'bg-green-900/50', text: 'text-green-400', label: 'COMPLETED' },
-  rejected: { bg: 'bg-red-900/50', text: 'text-red-400', label: 'REJECTED' },
-  pending: { bg: 'bg-yellow-900/50', text: 'text-yellow-400', label: 'PENDING' },
-  active: { bg: 'bg-green-900/50', text: 'text-green-400', label: 'ACTIVE' },
-  paused: { bg: 'bg-orange-900/50', text: 'text-orange-400', label: 'PAUSED' },
-  error: { bg: 'bg-red-900/50', text: 'text-red-400', label: 'ERROR' },
+  draft: { bg: 'bg-muted', text: 'text-muted-foreground', label: 'DRAFT' },
+  in_progress: { bg: 'bg-blue-100 dark:bg-blue-900/50', text: 'text-blue-600 dark:text-blue-400', label: 'IN PROGRESS' },
+  pending_review: { bg: 'bg-yellow-100 dark:bg-yellow-900/50', text: 'text-yellow-600 dark:text-yellow-400', label: 'PENDING REVIEW' },
+  under_review: { bg: 'bg-purple-100 dark:bg-purple-900/50', text: 'text-purple-600 dark:text-purple-400', label: 'UNDER REVIEW' },
+  approved: { bg: 'bg-green-100 dark:bg-green-900/50', text: 'text-green-600 dark:text-green-400', label: 'APPROVED' },
+  completed: { bg: 'bg-green-100 dark:bg-green-900/50', text: 'text-green-600 dark:text-green-400', label: 'COMPLETED' },
+  rejected: { bg: 'bg-red-100 dark:bg-red-900/50', text: 'text-red-600 dark:text-red-400', label: 'REJECTED' },
+  pending: { bg: 'bg-yellow-100 dark:bg-yellow-900/50', text: 'text-yellow-600 dark:text-yellow-400', label: 'PENDING' },
+  active: { bg: 'bg-green-100 dark:bg-green-900/50', text: 'text-green-600 dark:text-green-400', label: 'ACTIVE' },
+  paused: { bg: 'bg-orange-100 dark:bg-orange-900/50', text: 'text-orange-600 dark:text-orange-400', label: 'PAUSED' },
+  error: { bg: 'bg-red-100 dark:bg-red-900/50', text: 'text-red-600 dark:text-red-400', label: 'ERROR' },
 };
 
 export function StatusBadge({ status, size = 'sm' }: StatusBadgeProps) {
-  const config = statusConfig[status] || { bg: 'bg-zinc-800', text: 'text-zinc-400', label: status.toUpperCase() };
+  const config = statusConfig[status] || { bg: 'bg-muted', text: 'text-muted-foreground', label: status.toUpperCase() };
 
   return (
     <span className={cn(
@@ -198,9 +198,9 @@ interface PriorityBadgeProps {
 
 const priorityConfig: Record<string, { text: string; label: string }> = {
   critical: { text: 'text-red-500', label: 'CRIT' },
-  high: { text: 'text-red-400', label: 'HIGH' },
-  medium: { text: 'text-yellow-400', label: 'MED' },
-  low: { text: 'text-zinc-400', label: 'LOW' },
+  high: { text: 'text-red-600 dark:text-red-400', label: 'HIGH' },
+  medium: { text: 'text-yellow-600 dark:text-yellow-400', label: 'MED' },
+  low: { text: 'text-muted-foreground', label: 'LOW' },
 };
 
 export function PriorityBadge({ priority }: PriorityBadgeProps) {
@@ -237,7 +237,7 @@ export function ConfidenceBar({ score, showValue = true, size = 'sm' }: Confiden
   return (
     <div className="flex items-center gap-2">
       <div className={cn(
-        'flex-1 bg-zinc-800 overflow-hidden',
+        'flex-1 bg-muted overflow-hidden',
         size === 'sm' ? 'h-1.5' : 'h-2'
       )}>
         <div
@@ -246,7 +246,7 @@ export function ConfidenceBar({ score, showValue = true, size = 'sm' }: Confiden
         />
       </div>
       {showValue && (
-        <span className="font-mono text-[10px] text-zinc-400 w-8">
+        <span className="font-mono text-[10px] text-muted-foreground w-8">
           {normalized.toFixed(0)}%
         </span>
       )}
@@ -287,14 +287,14 @@ export function DataTable<T extends Record<string, unknown>>({
     return (
       <div className="flex items-center justify-center py-12">
         <Loader2 className="w-6 h-6 text-amber-500 animate-spin" />
-        <span className="ml-2 font-mono text-xs text-zinc-500">Loading...</span>
+        <span className="ml-2 font-mono text-xs text-muted-foreground">Loading...</span>
       </div>
     );
   }
 
   if (data.length === 0) {
     return (
-      <div className="flex items-center justify-center py-12 text-zinc-500 font-mono text-xs">
+      <div className="flex items-center justify-center py-12 text-muted-foreground font-mono text-xs">
         {emptyMessage}
       </div>
     );
@@ -303,7 +303,7 @@ export function DataTable<T extends Record<string, unknown>>({
   return (
     <table className="w-full">
       <thead>
-        <tr className="text-[10px] font-mono text-zinc-500 border-b border-zinc-800">
+        <tr className="text-[10px] font-mono text-muted-foreground border-b border-border">
           {columns.map((col) => (
             <th
               key={String(col.key)}
@@ -324,8 +324,8 @@ export function DataTable<T extends Record<string, unknown>>({
             key={String(row[rowKey]) || idx}
             onClick={() => onRowClick?.(row)}
             className={cn(
-              'border-b border-zinc-800/50',
-              onRowClick && 'hover:bg-zinc-800/30 cursor-pointer'
+              'border-b border-border/50',
+              onRowClick && 'hover:bg-amber-50 dark:hover:bg-amber-500/10 cursor-pointer'
             )}
           >
             {columns.map((col) => {
@@ -436,11 +436,11 @@ export function StepIndicator({ steps, orientation = 'horizontal' }: StepIndicat
   const getStepIcon = (status: Step['status']) => {
     switch (status) {
       case 'completed':
-        return <CheckCircle2 className="w-4 h-4 text-green-400" />;
+        return <CheckCircle2 className="w-4 h-4 text-green-600 dark:text-green-400" />;
       case 'current':
         return <Clock className="w-4 h-4 text-amber-500" />;
       case 'error':
-        return <XCircle className="w-4 h-4 text-red-400" />;
+        return <XCircle className="w-4 h-4 text-red-600 dark:text-red-400" />;
       default:
         return <div className="w-4 h-4 rounded-full border border-zinc-600" />;
     }
@@ -464,8 +464,8 @@ export function StepIndicator({ steps, orientation = 'horizontal' }: StepIndicat
               <span className={cn(
                 'font-mono text-xs',
                 step.status === 'current' ? 'text-amber-500' :
-                  step.status === 'completed' ? 'text-green-400' :
-                    step.status === 'error' ? 'text-red-400' : 'text-zinc-500'
+                  step.status === 'completed' ? 'text-green-600 dark:text-green-400' :
+                    step.status === 'error' ? 'text-red-600 dark:text-red-400' : 'text-muted-foreground'
               )}>
                 {step.label}
               </span>
@@ -485,14 +485,14 @@ export function StepIndicator({ steps, orientation = 'horizontal' }: StepIndicat
             <span className={cn(
               'font-mono text-[10px]',
               step.status === 'current' ? 'text-amber-500' :
-                step.status === 'completed' ? 'text-green-400' :
-                  step.status === 'error' ? 'text-red-400' : 'text-zinc-500'
+                step.status === 'completed' ? 'text-green-600 dark:text-green-400' :
+                  step.status === 'error' ? 'text-red-600 dark:text-red-400' : 'text-muted-foreground'
             )}>
               {step.label}
             </span>
           </div>
           {i < steps.length - 1 && (
-            <ChevronRight className="w-3 h-3 text-zinc-600" />
+            <ChevronRight className="w-3 h-3 text-muted-foreground" />
           )}
         </React.Fragment>
       ))}
@@ -522,7 +522,7 @@ export function Currency({
   // Handle null/undefined values and ensure numeric type
   const numValue = typeof value === 'string' ? parseFloat(value) : value;
   if (numValue == null || isNaN(numValue)) {
-    return <span className="text-zinc-500">—</span>;
+    return <span className="text-muted-foreground">—</span>;
   }
 
   const symbol = currency === 'GHS' ? '₵' : '$';
@@ -547,7 +547,7 @@ export function Currency({
   };
 
   return (
-    <span className={cn('font-mono text-green-400', sizeClasses[size])}>
+    <span className={cn('font-mono text-green-600 dark:text-green-400', sizeClasses[size])}>
       {showSign && numValue > 0 && '+'}
       {symbol}{displayValue}
     </span>
@@ -569,22 +569,22 @@ interface AlertBannerProps {
 
 const alertConfig: Record<AlertType, { bg: string; border: string; icon: React.ReactNode }> = {
   info: {
-    bg: 'bg-blue-900/20',
+    bg: 'bg-blue-100 dark:bg-blue-900/20',
     border: 'border-blue-500/50',
     icon: <div className="w-2 h-2 bg-blue-500 rounded-full" />
   },
   warning: {
-    bg: 'bg-yellow-900/20',
+    bg: 'bg-yellow-100 dark:bg-yellow-900/20',
     border: 'border-yellow-500/50',
     icon: <AlertTriangle className="w-4 h-4 text-yellow-500" />
   },
   error: {
-    bg: 'bg-red-900/20',
+    bg: 'bg-red-100 dark:bg-red-900/20',
     border: 'border-red-500/50',
     icon: <XCircle className="w-4 h-4 text-red-500" />
   },
   success: {
-    bg: 'bg-green-900/20',
+    bg: 'bg-green-100 dark:bg-green-900/20',
     border: 'border-green-500/50',
     icon: <CheckCircle2 className="w-4 h-4 text-green-500" />
   },
@@ -601,8 +601,8 @@ export function AlertBanner({ type, title, message, action }: AlertBannerProps) 
     )}>
       {config.icon}
       <div className="flex-1">
-        <div className="font-mono text-xs text-white">{title}</div>
-        {message && <div className="font-mono text-[10px] text-zinc-400">{message}</div>}
+        <div className="font-mono text-xs text-foreground">{title}</div>
+        {message && <div className="font-mono text-[10px] text-muted-foreground">{message}</div>}
       </div>
       {action}
     </div>
@@ -622,10 +622,10 @@ export function KeyboardShortcut({ keys }: KeyboardShortcutProps) {
     <span className="inline-flex items-center gap-0.5">
       {keys.map((key, i) => (
         <React.Fragment key={i}>
-          <kbd className="px-1.5 py-0.5 bg-zinc-800 border border-zinc-700 text-zinc-400 font-mono text-[10px] rounded">
+          <kbd className="px-1.5 py-0.5 bg-muted border border-border text-muted-foreground font-mono text-[10px] rounded">
             {key}
           </kbd>
-          {i < keys.length - 1 && <span className="text-zinc-600">+</span>}
+          {i < keys.length - 1 && <span className="text-muted-foreground">+</span>}
         </React.Fragment>
       ))}
     </span>
@@ -652,15 +652,15 @@ export function FilterTabs({ options, value, onChange }: FilterTabsProps) {
           className={cn(
             'px-3 py-1.5 font-mono text-xs transition-colors',
             value === option.value
-              ? 'bg-amber-500 text-white font-bold'
-              : 'bg-zinc-800 text-zinc-400 hover:text-white'
+              ? 'bg-amber-500 text-foreground font-bold'
+              : 'bg-muted text-muted-foreground hover:text-foreground'
           )}
         >
           {option.label}
           {option.count !== undefined && (
             <span className={cn(
               'ml-1.5',
-              value === option.value ? 'text-white/60' : 'text-zinc-500'
+              value === option.value ? 'text-foreground/60' : 'text-muted-foreground'
             )}>
               {option.count}
             </span>
@@ -682,12 +682,12 @@ interface PropertyTypeBadgeProps {
 }
 
 const propertyTypeConfig: Record<string, { bg: string; text: string; label: string }> = {
-  residential: { bg: 'bg-blue-900/50', text: 'text-blue-400', label: 'RESIDENTIAL' },
-  commercial: { bg: 'bg-purple-900/50', text: 'text-purple-400', label: 'COMMERCIAL' },
-  industrial: { bg: 'bg-orange-900/50', text: 'text-orange-400', label: 'INDUSTRIAL' },
-  land: { bg: 'bg-green-900/50', text: 'text-green-400', label: 'LAND' },
-  mixed_use: { bg: 'bg-cyan-900/50', text: 'text-cyan-400', label: 'MIXED USE' },
-  specialized: { bg: 'bg-pink-900/50', text: 'text-pink-400', label: 'SPECIALIZED' },
+  residential: { bg: 'bg-blue-100 dark:bg-blue-900/50', text: 'text-blue-600 dark:text-blue-400', label: 'RESIDENTIAL' },
+  commercial: { bg: 'bg-purple-100 dark:bg-purple-900/50', text: 'text-purple-600 dark:text-purple-400', label: 'COMMERCIAL' },
+  industrial: { bg: 'bg-orange-100 dark:bg-orange-900/50', text: 'text-orange-600 dark:text-orange-400', label: 'INDUSTRIAL' },
+  land: { bg: 'bg-green-100 dark:bg-green-900/50', text: 'text-green-600 dark:text-green-400', label: 'LAND' },
+  mixed_use: { bg: 'bg-cyan-100 dark:bg-cyan-900/50', text: 'text-cyan-600 dark:text-cyan-400', label: 'MIXED USE' },
+  specialized: { bg: 'bg-pink-100 dark:bg-pink-900/50', text: 'text-pink-600 dark:text-pink-400', label: 'SPECIALIZED' },
 };
 
 export function PropertyTypeBadge({ type }: PropertyTypeBadgeProps) {
@@ -730,8 +730,8 @@ export function MethodBadge({ method, isPrimary }: MethodBadgeProps) {
     <span className={cn(
       'px-1.5 py-0.5 font-mono text-[10px]',
       isPrimary
-        ? 'bg-amber-500/20 text-amber-400 border border-amber-500/50'
-        : 'bg-zinc-800 text-zinc-400'
+        ? 'bg-amber-500/20 text-amber-600 dark:text-amber-400 border border-amber-500/50'
+        : 'bg-muted text-muted-foreground'
     )}>
       {methodLabels[method] || method.toUpperCase()}
     </span>
@@ -766,20 +766,20 @@ export function DataMetricCard({
   status
 }: DataMetricCardProps) {
   const colorClasses = {
-    blue: 'text-blue-400',
-    green: 'text-green-400',
-    amber: 'text-amber-400',
-    red: 'text-red-400',
-    purple: 'text-purple-400',
-    yellow: 'text-yellow-400',
+    blue: 'text-blue-600 dark:text-blue-400',
+    green: 'text-green-600 dark:text-green-400',
+    amber: 'text-amber-600 dark:text-amber-400',
+    red: 'text-red-600 dark:text-red-400',
+    purple: 'text-purple-600 dark:text-purple-400',
+    yellow: 'text-yellow-600 dark:text-yellow-400',
   };
 
   return (
-    <div className="border border-zinc-800 bg-zinc-900/50 p-4">
+    <div className="border border-border bg-card/50 p-4">
       <div className="flex items-start justify-between mb-3">
         <div className="flex items-center gap-2">
           {Icon && <Icon className={cn('w-4 h-4', colorClasses[color])} />}
-          <span className="font-mono text-[10px] text-zinc-500 uppercase">{title}</span>
+          <span className="font-mono text-[10px] text-muted-foreground uppercase">{title}</span>
         </div>
         {status && (
           <div className="flex items-center gap-1">
@@ -800,20 +800,20 @@ export function DataMetricCard({
       </div>
       
       {subtitle && (
-        <div className="font-mono text-[10px] text-zinc-500 mb-2">{subtitle}</div>
+        <div className="font-mono text-[10px] text-muted-foreground mb-2">{subtitle}</div>
       )}
       
       <div className="flex items-center justify-between">
         {trend !== undefined && (
           <div className={cn(
             'font-mono text-[10px] flex items-center gap-1',
-            trend > 0 ? 'text-green-400' : trend < 0 ? 'text-red-400' : 'text-zinc-500'
+            trend > 0 ? 'text-green-600 dark:text-green-400' : trend < 0 ? 'text-red-600 dark:text-red-400' : 'text-muted-foreground'
           )}>
             {trend > 0 ? <TrendingUp className="w-3 h-3" /> : 
              trend < 0 ? <TrendingDown className="w-3 h-3" /> : 
              <Minus className="w-3 h-3" />}
             <span>{trend > 0 ? '+' : ''}{trend}%</span>
-            {trendLabel && <span className="text-zinc-500">{trendLabel}</span>}
+            {trendLabel && <span className="text-muted-foreground">{trendLabel}</span>}
           </div>
         )}
         
@@ -839,15 +839,15 @@ interface TierBadgeProps {
 }
 
 const tierConfig: Record<string, { bg: string; text: string; label: string; short: string }> = {
-  tier1_government: { bg: 'bg-blue-900/50', text: 'text-blue-400', label: 'GOVERNMENT', short: 'T1' },
-  tier2_financial: { bg: 'bg-green-900/50', text: 'text-green-400', label: 'FINANCIAL', short: 'T2' },
-  tier3_partners: { bg: 'bg-purple-900/50', text: 'text-purple-400', label: 'PARTNERS', short: 'T3' },
-  tier4_contributions: { bg: 'bg-yellow-900/50', text: 'text-yellow-400', label: 'CONTRIBUTIONS', short: 'T4' },
-  tier5_public_web: { bg: 'bg-orange-900/50', text: 'text-orange-400', label: 'WEB SCRAPED', short: 'T5' },
+  tier1_government: { bg: 'bg-blue-100 dark:bg-blue-900/50', text: 'text-blue-600 dark:text-blue-400', label: 'GOVERNMENT', short: 'T1' },
+  tier2_financial: { bg: 'bg-green-100 dark:bg-green-900/50', text: 'text-green-600 dark:text-green-400', label: 'FINANCIAL', short: 'T2' },
+  tier3_partners: { bg: 'bg-purple-100 dark:bg-purple-900/50', text: 'text-purple-600 dark:text-purple-400', label: 'PARTNERS', short: 'T3' },
+  tier4_contributions: { bg: 'bg-yellow-100 dark:bg-yellow-900/50', text: 'text-yellow-600 dark:text-yellow-400', label: 'CONTRIBUTIONS', short: 'T4' },
+  tier5_public_web: { bg: 'bg-orange-100 dark:bg-orange-900/50', text: 'text-orange-600 dark:text-orange-400', label: 'WEB SCRAPED', short: 'T5' },
 };
 
 export function TierBadge({ tier, showLabel = true }: TierBadgeProps) {
-  const config = tierConfig[tier] || { bg: 'bg-zinc-800', text: 'text-zinc-400', label: tier.toUpperCase(), short: 'T?' };
+  const config = tierConfig[tier] || { bg: 'bg-muted', text: 'text-muted-foreground', label: tier.toUpperCase(), short: 'T?' };
 
   return (
     <span className={cn(
@@ -884,12 +884,12 @@ export function LiveDataFeed({ items, maxItems = 10, autoScroll = true }: LiveDa
 
   const getTypeColor = (type: DataFeedItem['type']) => {
     switch (type) {
-      case 'success': return 'text-green-400';
-      case 'error': return 'text-red-400';
-      case 'warning': return 'text-yellow-400';
-      case 'ingestion': return 'text-blue-400';
-      case 'job': return 'text-purple-400';
-      default: return 'text-zinc-400';
+      case 'success': return 'text-green-600 dark:text-green-400';
+      case 'error': return 'text-red-600 dark:text-red-400';
+      case 'warning': return 'text-yellow-600 dark:text-yellow-400';
+      case 'ingestion': return 'text-blue-600 dark:text-blue-400';
+      case 'job': return 'text-purple-600 dark:text-purple-400';
+      default: return 'text-muted-foreground';
     }
   };
 
@@ -907,11 +907,11 @@ export function LiveDataFeed({ items, maxItems = 10, autoScroll = true }: LiveDa
   return (
     <div className="space-y-1 font-mono text-xs">
       {displayItems.map((item) => (
-        <div key={item.id} className="flex items-start gap-2 py-1 border-b border-zinc-800/50">
+        <div key={item.id} className="flex items-start gap-2 py-1 border-b border-border/50">
           <span className={cn('flex-shrink-0', getTypeColor(item.type))}>
             {getTypeIcon(item.type)}
           </span>
-          <span className="text-zinc-500 text-[10px] flex-shrink-0 w-16" suppressHydrationWarning>
+          <span className="text-muted-foreground text-[10px] flex-shrink-0 w-16" suppressHydrationWarning>
             {new Date(item.timestamp).toLocaleTimeString('en-US', { 
               hour: '2-digit', 
               minute: '2-digit',
@@ -920,11 +920,11 @@ export function LiveDataFeed({ items, maxItems = 10, autoScroll = true }: LiveDa
             })}
           </span>
           {item.source && (
-            <span className="text-zinc-600 text-[10px] flex-shrink-0">
+            <span className="text-muted-foreground text-[10px] flex-shrink-0">
               [{item.source}]
             </span>
           )}
-          <span className="text-zinc-300 text-[10px] flex-1 truncate">
+          <span className="text-muted-foreground text-[10px] flex-1 truncate">
             {item.message}
           </span>
         </div>
@@ -956,11 +956,11 @@ export function DataQualityIndicator({
   breakdown 
 }: DataQualityIndicatorProps) {
   const getQualityColor = (val: number) => {
-    if (val >= 90) return { bg: 'bg-green-500', text: 'text-green-400', label: 'EXCELLENT' };
-    if (val >= 75) return { bg: 'bg-blue-500', text: 'text-blue-400', label: 'GOOD' };
-    if (val >= 60) return { bg: 'bg-yellow-500', text: 'text-yellow-400', label: 'FAIR' };
-    if (val >= 40) return { bg: 'bg-orange-500', text: 'text-orange-400', label: 'POOR' };
-    return { bg: 'bg-red-500', text: 'text-red-400', label: 'CRITICAL' };
+    if (val >= 90) return { bg: 'bg-green-500', text: 'text-green-600 dark:text-green-400', label: 'EXCELLENT' };
+    if (val >= 75) return { bg: 'bg-blue-500', text: 'text-blue-600 dark:text-blue-400', label: 'GOOD' };
+    if (val >= 60) return { bg: 'bg-yellow-500', text: 'text-yellow-600 dark:text-yellow-400', label: 'FAIR' };
+    if (val >= 40) return { bg: 'bg-orange-500', text: 'text-orange-600 dark:text-orange-400', label: 'POOR' };
+    return { bg: 'bg-red-500', text: 'text-red-600 dark:text-red-400', label: 'CRITICAL' };
   };
 
   const quality = getQualityColor(score);
@@ -969,47 +969,47 @@ export function DataQualityIndicator({
     <div className="space-y-3">
       <div>
         <div className="flex items-center justify-between mb-2">
-          <span className="font-mono text-[10px] text-zinc-500 uppercase">{label}</span>
+          <span className="font-mono text-[10px] text-muted-foreground uppercase">{label}</span>
           <span className={cn('font-mono text-xs font-bold', quality.text)}>
             {quality.label}
           </span>
         </div>
         <div className="flex items-center gap-3">
-          <div className="flex-1 h-2 bg-zinc-800 overflow-hidden">
+          <div className="flex-1 h-2 bg-muted overflow-hidden">
             <div 
               className={cn('h-full transition-all', quality.bg)}
               style={{ width: `${score}%` }}
             />
           </div>
-          <span className="font-mono text-sm text-white w-12 text-right">
+          <span className="font-mono text-sm text-foreground w-12 text-right">
             {score.toFixed(0)}%
           </span>
         </div>
       </div>
 
       {showBreakdown && breakdown && (
-        <div className="grid grid-cols-2 gap-2 pt-2 border-t border-zinc-800">
+        <div className="grid grid-cols-2 gap-2 pt-2 border-t border-border">
           {breakdown.completeness !== undefined && (
             <div>
-              <div className="font-mono text-[9px] text-zinc-500 mb-1">COMPLETENESS</div>
+              <div className="font-mono text-[9px] text-muted-foreground mb-1">COMPLETENESS</div>
               <ConfidenceBar score={breakdown.completeness} size="sm" />
             </div>
           )}
           {breakdown.accuracy !== undefined && (
             <div>
-              <div className="font-mono text-[9px] text-zinc-500 mb-1">ACCURACY</div>
+              <div className="font-mono text-[9px] text-muted-foreground mb-1">ACCURACY</div>
               <ConfidenceBar score={breakdown.accuracy} size="sm" />
             </div>
           )}
           {breakdown.timeliness !== undefined && (
             <div>
-              <div className="font-mono text-[9px] text-zinc-500 mb-1">TIMELINESS</div>
+              <div className="font-mono text-[9px] text-muted-foreground mb-1">TIMELINESS</div>
               <ConfidenceBar score={breakdown.timeliness} size="sm" />
             </div>
           )}
           {breakdown.consistency !== undefined && (
             <div>
-              <div className="font-mono text-[9px] text-zinc-500 mb-1">CONSISTENCY</div>
+              <div className="font-mono text-[9px] text-muted-foreground mb-1">CONSISTENCY</div>
               <ConfidenceBar score={breakdown.consistency} size="sm" />
             </div>
           )}
@@ -1039,14 +1039,14 @@ export function AnalyticsChart({
   timeRange 
 }: AnalyticsChartProps) {
   return (
-    <div className="border border-zinc-800 bg-zinc-900/50">
-      <div className="flex items-center justify-between px-3 py-2 border-b border-zinc-800">
+    <div className="border border-border bg-card/50">
+      <div className="flex items-center justify-between px-3 py-2 border-b border-border">
         <div className="flex items-center gap-3">
           <span className="font-mono text-[10px] text-amber-500 uppercase tracking-wider">
             {title}
           </span>
           {timeRange && (
-            <span className="font-mono text-[9px] text-zinc-500">
+            <span className="font-mono text-[9px] text-muted-foreground">
               {timeRange}
             </span>
           )}

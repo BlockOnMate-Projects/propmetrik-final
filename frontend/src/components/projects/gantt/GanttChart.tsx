@@ -128,7 +128,7 @@ function CustomTooltip({ task, fontSize, fontFamily }: {
   const milestone = (task as any).__milestone as GanttMilestone | undefined
 
   return (
-    <div className="bg-zinc-900 border border-zinc-700 rounded-lg p-3 shadow-xl min-w-[200px]">
+    <div className="bg-card border border-border rounded-lg p-3 shadow-xl min-w-[200px]">
       <p className="font-mono text-xs font-medium text-zinc-100 mb-1">{task.name}</p>
       {task.type !== 'milestone' && (
         <>
@@ -148,12 +148,12 @@ function CustomTooltip({ task, fontSize, fontFamily }: {
             <span className="font-mono text-[10px] text-zinc-200">{task.progress}%</span>
           </div>
           {phase?.isCriticalPath && (
-            <Badge variant="outline" className="mt-1 bg-red-500/20 text-red-400 text-[9px] border-0">
+            <Badge variant="outline" className="mt-1 bg-red-500/20 text-red-600 dark:text-red-400 text-[9px] border-0">
               Critical Path
             </Badge>
           )}
           {phase && phase.slackDays > 0 && (
-            <p className="font-mono text-[10px] text-zinc-500 mt-0.5">
+            <p className="font-mono text-[10px] text-muted-foreground mt-0.5">
               Slack: {phase.slackDays} days
             </p>
           )}
@@ -165,7 +165,7 @@ function CustomTooltip({ task, fontSize, fontFamily }: {
         </p>
       )}
       {milestone?.isGhanaSpecific && (
-        <Badge variant="outline" className="mt-1 bg-amber-500/20 text-amber-400 text-[9px] border-0">
+        <Badge variant="outline" className="mt-1 bg-amber-500/20 text-amber-600 dark:text-amber-400 text-[9px] border-0">
           Ghana Specific
         </Badge>
       )}
@@ -358,9 +358,9 @@ export function GanttChart({
   // ── Render ──
   if (isLoading) {
     return (
-      <div className={cn("border border-zinc-800 bg-zinc-900/50 p-4", className)}>
+      <div className={cn("border border-border bg-card/50 p-4", className)}>
         <div className="flex items-center justify-center h-64">
-          <Loader2 className="h-8 w-8 animate-spin text-zinc-500" />
+          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
         </div>
       </div>
     )
@@ -368,11 +368,11 @@ export function GanttChart({
 
   if (!data || tasks.length === 0) {
     return (
-      <div className={cn("border border-zinc-800 bg-zinc-900/50 p-4", className)}>
-        <div className="flex flex-col items-center justify-center h-64 text-zinc-500">
+      <div className={cn("border border-border bg-card/50 p-4", className)}>
+        <div className="flex flex-col items-center justify-center h-64 text-muted-foreground">
           <RotateCcw className="h-8 w-8 mb-2 opacity-50" />
           <span className="font-mono text-sm">No timeline data available</span>
-          <span className="font-mono text-xs text-zinc-600 mt-1">
+          <span className="font-mono text-xs text-muted-foreground mt-1">
             Add phases to see the Gantt chart
           </span>
         </div>
@@ -381,20 +381,20 @@ export function GanttChart({
   }
 
   return (
-    <div className={cn("border border-zinc-800 bg-zinc-900/50 overflow-hidden", className)}>
+    <div className={cn("border border-border bg-card/50 overflow-hidden", className)}>
       {/* Toolbar */}
-      <div className="flex items-center justify-between px-4 py-2 bg-zinc-800/50 border-b border-zinc-800">
+      <div className="flex items-center justify-between px-4 py-2 bg-muted/50 border-b border-border">
         <div className="flex items-center gap-2">
           <span className="font-mono text-xs text-amber-500 tracking-wider">
             PROJECT TIMELINE
           </span>
           {data.hasBaseline && showBaseline && (
-            <Badge variant="secondary" className="bg-zinc-700 text-zinc-300 text-[10px]">
+            <Badge variant="secondary" className="bg-zinc-700 text-muted-foreground text-[10px]">
               Baseline Shown
             </Badge>
           )}
           {data.criticalPath.length > 0 && (
-            <Badge variant="outline" className="bg-red-900/30 text-red-400 text-[10px] border-0">
+            <Badge variant="outline" className="bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 text-[10px] border-0">
               Critical Path: {data.criticalPath.length} phases
             </Badge>
           )}
@@ -451,7 +451,7 @@ export function GanttChart({
       </div>
 
       {/* Legend */}
-      <div className="flex items-center gap-4 px-4 py-2 border-t border-zinc-800 bg-zinc-900">
+      <div className="flex items-center gap-4 px-4 py-2 border-t border-border bg-card">
         <div className="flex items-center gap-1.5">
           <div className="w-3 h-3 bg-red-500 rounded" />
           <span className="font-mono text-[10px] text-zinc-200">Critical Path</span>

@@ -29,7 +29,7 @@ export default function PropertyShowcase({
     }, [stats.length]);
 
     return (
-        <div className="relative w-full aspect-video rounded-lg overflow-hidden bg-zinc-900">
+        <div className="relative w-full aspect-video rounded-lg overflow-hidden bg-card">
             {/* Background Image with Animation */}
             <motion.div
                 animate={{
@@ -63,10 +63,10 @@ export default function PropertyShowcase({
                                 scale: currentStat === index ? 1.05 : 1
                             }}
                             transition={{ duration: 0.5 }}
-                            className="bg-zinc-900/80 backdrop-blur-sm border border-zinc-800 rounded-lg p-4"
+                            className="bg-card/80 backdrop-blur-sm border border-border rounded-lg p-4"
                         >
-                            <div className="text-2xl font-bold text-white mb-1">{stat.value}</div>
-                            <div className="text-xs text-zinc-400 uppercase tracking-wider">{stat.label}</div>
+                            <div className="text-2xl font-bold text-foreground mb-1">{stat.value}</div>
+                            <div className="text-xs text-muted-foreground uppercase tracking-wider">{stat.label}</div>
                         </motion.div>
                     ))}
                 </div>

@@ -77,13 +77,13 @@ import { Pagination } from '@/components/ui/pagination-controls';
 
 // Status configuration
 const statusConfig: Record<ChangeOrderStatus, { label: string; bg: string; text: string }> = {
-  draft: { label: 'Draft', bg: 'bg-zinc-500/20', text: 'text-zinc-400' },
-  pending_review: { label: 'Pending Review', bg: 'bg-orange-500/20', text: 'text-orange-400' },
-  pending_approval: { label: 'Pending Approval', bg: 'bg-yellow-500/20', text: 'text-yellow-400' },
-  approved: { label: 'Approved', bg: 'bg-green-500/20', text: 'text-green-400' },
-  rejected: { label: 'Rejected', bg: 'bg-red-500/20', text: 'text-red-400' },
-  executed: { label: 'Executed', bg: 'bg-blue-500/20', text: 'text-blue-400' },
-  void: { label: 'Void', bg: 'bg-zinc-600/20', text: 'text-zinc-500' },
+  draft: { label: 'Draft', bg: 'bg-zinc-500/20', text: 'text-muted-foreground' },
+  pending_review: { label: 'Pending Review', bg: 'bg-orange-500/20', text: 'text-orange-600 dark:text-orange-400' },
+  pending_approval: { label: 'Pending Approval', bg: 'bg-yellow-500/20', text: 'text-yellow-600 dark:text-yellow-400' },
+  approved: { label: 'Approved', bg: 'bg-green-500/20', text: 'text-green-600 dark:text-green-400' },
+  rejected: { label: 'Rejected', bg: 'bg-red-500/20', text: 'text-red-600 dark:text-red-400' },
+  executed: { label: 'Executed', bg: 'bg-blue-500/20', text: 'text-blue-600 dark:text-blue-400' },
+  void: { label: 'Void', bg: 'bg-zinc-600/20', text: 'text-muted-foreground' },
 };
 
 function ChangeOrdersContent() {
@@ -370,7 +370,7 @@ function ChangeOrdersContent() {
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div>
           {projectId && (
-            <Link href={`/dashboard/projects/projects/${projectId}`} className="inline-flex items-center gap-1 text-zinc-500 hover:text-zinc-300 text-sm mb-2 transition-colors">
+            <Link href={`/dashboard/projects/projects/${projectId}`} className="inline-flex items-center gap-1 text-muted-foreground hover:text-muted-foreground text-sm mb-2 transition-colors">
               <ArrowLeft className="h-3 w-3" />Back to Project
             </Link>
           )}
@@ -379,13 +379,13 @@ function ChangeOrdersContent() {
               <FileStack className="h-5 w-5 text-purple-500" />
             </div>
             <div>
-              <h1 className="text-2xl font-bold text-white tracking-tight">Change Orders</h1>
-              <p className="text-zinc-400 text-sm">Manage project changes, cost and schedule impacts</p>
+              <h1 className="text-2xl font-bold text-foreground tracking-tight">Change Orders</h1>
+              <p className="text-muted-foreground text-sm">Manage project changes, cost and schedule impacts</p>
             </div>
           </div>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" className="border-zinc-700 text-zinc-300" onClick={fetchData}>
+          <Button variant="outline" className="border-border text-muted-foreground" onClick={fetchData}>
             <RefreshCw className="h-4 w-4 mr-2" />Refresh
           </Button>
           <Button className="bg-purple-600 hover:bg-purple-700" onClick={() => setShowCreateDialog(true)}>
@@ -396,36 +396,36 @@ function ChangeOrdersContent() {
 
       {/* Stats Cards */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-        <Card className="bg-zinc-900 border-zinc-800">
+        <Card className="bg-card border-border">
           <CardContent className="pt-6 pb-4">
-            <p className="text-xs uppercase tracking-wider text-zinc-500">Total COs</p>
-            <p className="text-2xl font-bold text-white mt-1">{changeOrders.length}</p>
+            <p className="text-xs uppercase tracking-wider text-muted-foreground">Total COs</p>
+            <p className="text-2xl font-bold text-foreground mt-1">{changeOrders.length}</p>
           </CardContent>
         </Card>
-        <Card className="bg-zinc-900 border-zinc-800">
+        <Card className="bg-card border-border">
           <CardContent className="pt-6 pb-4">
-            <p className="text-xs uppercase tracking-wider text-zinc-500">Pending</p>
-            <p className="text-2xl font-bold text-yellow-400 mt-1">{pendingCount}</p>
+            <p className="text-xs uppercase tracking-wider text-muted-foreground">Pending</p>
+            <p className="text-2xl font-bold text-yellow-600 dark:text-yellow-400 mt-1">{pendingCount}</p>
           </CardContent>
         </Card>
-        <Card className={`bg-zinc-900 border-zinc-800 ${totalCostImpact > 0 ? 'border-red-500/30' : totalCostImpact < 0 ? 'border-green-500/30' : ''}`}>
+        <Card className={`bg-card border-border ${totalCostImpact > 0 ? 'border-red-500/30' : totalCostImpact < 0 ? 'border-green-500/30' : ''}`}>
           <CardContent className="pt-6 pb-4">
-            <p className="text-xs uppercase tracking-wider text-zinc-500">Approved Cost Impact</p>
+            <p className="text-xs uppercase tracking-wider text-muted-foreground">Approved Cost Impact</p>
             <div className="flex items-center gap-2 mt-1">
-              <p className={`text-2xl font-bold ${totalCostImpact > 0 ? 'text-red-400' : totalCostImpact < 0 ? 'text-green-400' : 'text-white'}`}>
+              <p className={`text-2xl font-bold ${totalCostImpact > 0 ? 'text-red-600 dark:text-red-400' : totalCostImpact < 0 ? 'text-green-600 dark:text-green-400' : 'text-foreground'}`}>
                 {formatCurrency(totalCostImpact)}
               </p>
               {totalCostImpact !== 0 && (
-                totalCostImpact > 0 ? <TrendingUp className="h-4 w-4 text-red-400" /> : <TrendingDown className="h-4 w-4 text-green-400" />
+                totalCostImpact > 0 ? <TrendingUp className="h-4 w-4 text-red-600 dark:text-red-400" /> : <TrendingDown className="h-4 w-4 text-green-600 dark:text-green-400" />
               )}
             </div>
           </CardContent>
         </Card>
-        <Card className={`bg-zinc-900 border-zinc-800 ${totalScheduleImpact > 0 ? 'border-orange-500/30' : ''}`}>
+        <Card className={`bg-card border-border ${totalScheduleImpact > 0 ? 'border-orange-500/30' : ''}`}>
           <CardContent className="pt-6 pb-4">
-            <p className="text-xs uppercase tracking-wider text-zinc-500">Schedule Impact</p>
+            <p className="text-xs uppercase tracking-wider text-muted-foreground">Schedule Impact</p>
             <div className="flex items-center gap-2 mt-1">
-              <p className={`text-2xl font-bold ${totalScheduleImpact > 0 ? 'text-orange-400' : 'text-white'}`}>
+              <p className={`text-2xl font-bold ${totalScheduleImpact > 0 ? 'text-orange-600 dark:text-orange-400' : 'text-foreground'}`}>
                 {totalScheduleImpact > 0 ? `+${totalScheduleImpact}` : totalScheduleImpact} days
               </p>
             </div>
@@ -436,11 +436,11 @@ function ChangeOrdersContent() {
       {/* Filters */}
       <div className="flex flex-col sm:flex-row gap-3">
         <div className="relative flex-1 max-w-md">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-500" />
-          <Input placeholder="Search change orders..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="pl-10 bg-zinc-900 border-zinc-800 text-white placeholder:text-zinc-500" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input placeholder="Search change orders..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="pl-10 bg-card border-border text-foreground placeholder:text-muted-foreground" />
         </div>
         <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as ChangeOrderStatus | 'all')}>
-          <SelectTrigger className="w-[180px] bg-zinc-900 border-zinc-800"><SelectValue placeholder="All Statuses" /></SelectTrigger>
+          <SelectTrigger className="w-[180px] bg-card border-border"><SelectValue placeholder="All Statuses" /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All Statuses</SelectItem>
             {Object.entries(statusConfig).map(([value, config]) => (<SelectItem key={value} value={value}>{config.label}</SelectItem>))}
@@ -450,7 +450,7 @@ function ChangeOrdersContent() {
 
       {/* Tabs and Table */}
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="bg-zinc-800 border-zinc-700">
+        <TabsList className="bg-muted border-border">
           <TabsTrigger value="all">All ({changeOrders.length})</TabsTrigger>
           <TabsTrigger value="awaiting-me" className="data-[state=active]:text-amber-400">Awaiting Me</TabsTrigger>
           <TabsTrigger value="pending">Pending ({pendingCount})</TabsTrigger>
@@ -462,29 +462,29 @@ function ChangeOrdersContent() {
           {loading ? (
             <div className="flex items-center justify-center py-12"><Loader2 className="h-8 w-8 animate-spin text-purple-500" /></div>
           ) : filteredCOs.length === 0 ? (
-            <Card className="bg-zinc-900 border-zinc-800">
+            <Card className="bg-card border-border">
               <CardContent className="py-12 text-center">
-                <FileStack className="h-12 w-12 text-zinc-600 mx-auto mb-4" />
-                <h3 className="text-lg font-medium text-white mb-2">No Change Orders Found</h3>
-                <p className="text-zinc-400 text-sm mb-4">{activeTab === 'all' ? 'Create your first change order to get started' : 'No change orders match the current filter'}</p>
+                <FileStack className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                <h3 className="text-lg font-medium text-foreground mb-2">No Change Orders Found</h3>
+                <p className="text-muted-foreground text-sm mb-4">{activeTab === 'all' ? 'Create your first change order to get started' : 'No change orders match the current filter'}</p>
                 <Button onClick={() => setShowCreateDialog(true)} className="bg-purple-600 hover:bg-purple-700"><Plus className="h-4 w-4 mr-2" />New Change Order</Button>
               </CardContent>
             </Card>
           ) : (
-            <Card className="bg-zinc-900 border-zinc-800">
+            <Card className="bg-card border-border">
               <CardContent className="p-0">
                 <Table>
                   <TableHeader>
-                    <TableRow className="border-zinc-800 hover:bg-transparent">
-                      <TableHead className="text-zinc-400">CO #</TableHead>
-                      <TableHead className="text-zinc-400">Title</TableHead>
-                      <TableHead className="text-zinc-400">Reason</TableHead>
-                      <TableHead className="text-zinc-400">Status</TableHead>
-                      <TableHead className="text-zinc-400">Ball in Court</TableHead>
-                      <TableHead className="text-zinc-400 text-right">Cost Impact</TableHead>
-                      <TableHead className="text-zinc-400 text-right">Schedule</TableHead>
-                      <TableHead className="text-zinc-400">Date</TableHead>
-                      <TableHead className="text-zinc-400 text-right">Actions</TableHead>
+                    <TableRow className="border-border hover:bg-transparent">
+                      <TableHead className="text-muted-foreground">CO #</TableHead>
+                      <TableHead className="text-muted-foreground">Title</TableHead>
+                      <TableHead className="text-muted-foreground">Reason</TableHead>
+                      <TableHead className="text-muted-foreground">Status</TableHead>
+                      <TableHead className="text-muted-foreground">Ball in Court</TableHead>
+                      <TableHead className="text-muted-foreground text-right">Cost Impact</TableHead>
+                      <TableHead className="text-muted-foreground text-right">Schedule</TableHead>
+                      <TableHead className="text-muted-foreground">Date</TableHead>
+                      <TableHead className="text-muted-foreground text-right">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -493,40 +493,40 @@ function ChangeOrdersContent() {
                       const costImpact = co.cost_impact || 0;
                       const scheduleImpact = co.schedule_impact_days || 0;
                       return (
-                        <TableRow key={co.id} className="border-zinc-800 hover:bg-zinc-800/50 cursor-pointer" onClick={() => handleViewCO(co)}>
-                          <TableCell className="font-mono text-purple-400">
+                        <TableRow key={co.id} className="border-border hover:bg-muted/50 cursor-pointer" onClick={() => handleViewCO(co)}>
+                          <TableCell className="font-mono text-purple-600 dark:text-purple-400">
                             <span className="flex items-center gap-1.5">
                               {co.co_number}
                               {co.esign_status === 'completed' && (
-                                <CheckCircle2 className="h-3.5 w-3.5 text-green-400" aria-label="E-signed" />
+                                <CheckCircle2 className="h-3.5 w-3.5 text-green-600 dark:text-green-400" aria-label="E-signed" />
                               )}
                               {co.esign_status === 'sent' && (
-                                <Loader2 className="h-3.5 w-3.5 text-blue-400 animate-spin" aria-label="Out for signature" />
+                                <Loader2 className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400 animate-spin" aria-label="Out for signature" />
                               )}
                             </span>
                           </TableCell>
                           <TableCell>
-                            <span className="font-medium text-white truncate max-w-[200px] block">{co.title}</span>
+                            <span className="font-medium text-foreground truncate max-w-[200px] block">{co.title}</span>
                           </TableCell>
-                          <TableCell className="text-zinc-300 text-sm truncate max-w-[150px]">{co.reason ? humanize(co.reason) : '—'}</TableCell>
+                          <TableCell className="text-muted-foreground text-sm truncate max-w-[150px]">{co.reason ? humanize(co.reason) : '—'}</TableCell>
                           <TableCell><Badge className={`${status.bg} ${status.text} border-0`}>{status.label}</Badge></TableCell>
                           <TableCell className="text-sm">
                             {co.ball_in_court_name
-                              ? <span className="inline-flex items-center rounded-md bg-amber-500/10 text-amber-300 px-2 py-0.5 text-xs">{co.ball_in_court_name}</span>
-                              : <span className="text-zinc-600">—</span>}
+                              ? <span className="inline-flex items-center rounded-md bg-amber-500/10 text-amber-600 dark:text-amber-300 px-2 py-0.5 text-xs">{co.ball_in_court_name}</span>
+                              : <span className="text-muted-foreground">—</span>}
                           </TableCell>
-                          <TableCell className={`text-right font-mono ${costImpact > 0 ? 'text-red-400' : costImpact < 0 ? 'text-green-400' : 'text-zinc-400'}`}>
+                          <TableCell className={`text-right font-mono ${costImpact > 0 ? 'text-red-600 dark:text-red-400' : costImpact < 0 ? 'text-green-600 dark:text-green-400' : 'text-muted-foreground'}`}>
                             {formatCurrency(costImpact)}
                           </TableCell>
-                          <TableCell className={`text-right ${scheduleImpact > 0 ? 'text-orange-400' : 'text-zinc-400'}`}>
+                          <TableCell className={`text-right ${scheduleImpact > 0 ? 'text-orange-600 dark:text-orange-400' : 'text-muted-foreground'}`}>
                             {scheduleImpact > 0 ? `+${scheduleImpact}d` : scheduleImpact === 0 ? '—' : `${scheduleImpact}d`}
                           </TableCell>
-                          <TableCell className="text-zinc-400 text-sm">{formatDate(co.created_at)}</TableCell>
+                          <TableCell className="text-muted-foreground text-sm">{formatDate(co.created_at)}</TableCell>
                           <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
                             <div className="flex items-center justify-end gap-1">
                               <Button
                                 variant="ghost" size="icon"
-                                className="h-8 w-8 text-zinc-400 hover:text-white hover:bg-zinc-700"
+                                className="h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-zinc-700"
                                 title="View PDF"
                                 disabled={docBusyId === co.id}
                                 onClick={() => handleViewDocument(co)}
@@ -535,7 +535,7 @@ function ChangeOrdersContent() {
                               </Button>
                               <Button
                                 variant="ghost" size="icon"
-                                className="h-8 w-8 text-zinc-400 hover:text-white hover:bg-zinc-700"
+                                className="h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-zinc-700"
                                 title="Download PDF"
                                 disabled={docBusyId === co.id}
                                 onClick={() => handleDownloadDocument(co)}
@@ -544,7 +544,7 @@ function ChangeOrdersContent() {
                               </Button>
                               <Button
                                 variant="ghost" size="icon"
-                                className="h-8 w-8 text-zinc-400 hover:text-red-400 hover:bg-red-950/40"
+                                className="h-8 w-8 text-muted-foreground hover:text-red-400 hover:bg-red-950/40"
                                 title={co.status === 'executed' ? 'Executed orders must be voided, not deleted' : 'Delete'}
                                 disabled={docBusyId === co.id || co.status === 'executed'}
                                 onClick={() => handleDeleteRow(co)}
@@ -568,20 +568,20 @@ function ChangeOrdersContent() {
 
       {/* Create Change Order Dialog */}
       <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
-        <DialogContent className="bg-zinc-900 border-zinc-800 max-w-lg">
+        <DialogContent className="bg-card border-border max-w-lg">
           <DialogHeader>
-            <DialogTitle className="text-white">Create Change Order</DialogTitle>
-            <DialogDescription className="text-zinc-400">Submit a new change order request</DialogDescription>
+            <DialogTitle className="text-foreground">Create Change Order</DialogTitle>
+            <DialogDescription className="text-muted-foreground">Submit a new change order request</DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <Label className="text-zinc-300">Title *</Label>
-              <Input placeholder="Change order title" value={formData.title || ''} onChange={(e) => setFormData({ ...formData, title: e.target.value })} className="bg-zinc-800 border-zinc-700" />
+              <Label className="text-muted-foreground">Title *</Label>
+              <Input placeholder="Change order title" value={formData.title || ''} onChange={(e) => setFormData({ ...formData, title: e.target.value })} className="bg-muted border-border" />
             </div>
             <div className="space-y-2">
-              <Label className="text-zinc-300">Reason *</Label>
+              <Label className="text-muted-foreground">Reason *</Label>
               <Select value={formData.reason || ''} onValueChange={(value) => setFormData({ ...formData, reason: value })}>
-                <SelectTrigger className="bg-zinc-800 border-zinc-700">
+                <SelectTrigger className="bg-muted border-border">
                   <SelectValue placeholder="Select a reason" />
                 </SelectTrigger>
                 <SelectContent>
@@ -602,21 +602,21 @@ function ChangeOrdersContent() {
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label className="text-zinc-300">Cost Impact ($)</Label>
-                <Input type="number" placeholder="0" value={formData.cost_impact || ''} onChange={(e) => setFormData({ ...formData, cost_impact: parseFloat(e.target.value) || 0 })} className="bg-zinc-800 border-zinc-700" />
+                <Label className="text-muted-foreground">Cost Impact ($)</Label>
+                <Input type="number" placeholder="0" value={formData.cost_impact || ''} onChange={(e) => setFormData({ ...formData, cost_impact: parseFloat(e.target.value) || 0 })} className="bg-muted border-border" />
               </div>
               <div className="space-y-2">
-                <Label className="text-zinc-300">Schedule Impact (Days)</Label>
-                <Input type="number" placeholder="0" value={formData.schedule_impact_days || ''} onChange={(e) => setFormData({ ...formData, schedule_impact_days: parseInt(e.target.value) || 0 })} className="bg-zinc-800 border-zinc-700" />
+                <Label className="text-muted-foreground">Schedule Impact (Days)</Label>
+                <Input type="number" placeholder="0" value={formData.schedule_impact_days || ''} onChange={(e) => setFormData({ ...formData, schedule_impact_days: parseInt(e.target.value) || 0 })} className="bg-muted border-border" />
               </div>
             </div>
             <div className="space-y-2">
-              <Label className="text-zinc-300">Description *</Label>
-              <Textarea placeholder="Detailed description of the change..." value={formData.description || ''} onChange={(e) => setFormData({ ...formData, description: e.target.value })} className="bg-zinc-800 border-zinc-700 min-h-[100px]" />
+              <Label className="text-muted-foreground">Description *</Label>
+              <Textarea placeholder="Detailed description of the change..." value={formData.description || ''} onChange={(e) => setFormData({ ...formData, description: e.target.value })} className="bg-muted border-border min-h-[100px]" />
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setShowCreateDialog(false)} className="border-zinc-700">Cancel</Button>
+            <Button variant="outline" onClick={() => setShowCreateDialog(false)} className="border-border">Cancel</Button>
             <Button onClick={handleCreateChangeOrder} disabled={creating} className="bg-purple-600 hover:bg-purple-700">
               {creating ? (<><Loader2 className="h-4 w-4 mr-2 animate-spin" />Creating...</>) : (<><Plus className="h-4 w-4 mr-2" />Create CO</>)}
             </Button>
@@ -626,59 +626,59 @@ function ChangeOrdersContent() {
 
       {/* Change Order Detail Sheet */}
       <Sheet open={showDetailSheet} onOpenChange={setShowDetailSheet}>
-        <SheetContent className="bg-zinc-900 border-zinc-800 w-full sm:max-w-lg">
+        <SheetContent className="bg-card border-border w-full sm:max-w-lg">
           <SheetHeader>
-            <SheetTitle className="text-white flex items-center gap-2">
-              <span className="font-mono text-purple-400">{selectedCO?.co_number}</span>
+            <SheetTitle className="text-foreground flex items-center gap-2">
+              <span className="font-mono text-purple-600 dark:text-purple-400">{selectedCO?.co_number}</span>
               {selectedCO && (() => { const cfg = statusConfig[selectedCO.status] || statusConfig.draft; return <Badge className={`${cfg.bg} ${cfg.text} border-0`}>{cfg.label}</Badge>; })()}
             </SheetTitle>
           </SheetHeader>
           {selectedCO && (
             <div className="mt-6 space-y-6">
               <div>
-                <h3 className="text-lg font-medium text-white mb-2">{selectedCO.title}</h3>
-                <p className="text-sm text-zinc-400">{humanize(selectedCO.reason)}</p>
+                <h3 className="text-lg font-medium text-foreground mb-2">{selectedCO.title}</h3>
+                <p className="text-sm text-muted-foreground">{humanize(selectedCO.reason)}</p>
               </div>
               
               {/* Impact Cards */}
               <div className="grid grid-cols-2 gap-4">
-                <div className={`p-4 rounded-lg border ${(selectedCO.cost_impact || 0) > 0 ? 'bg-red-500/10 border-red-500/30' : (selectedCO.cost_impact || 0) < 0 ? 'bg-green-500/10 border-green-500/30' : 'bg-zinc-800/50 border-zinc-700'}`}>
-                  <div className="flex items-center gap-2 text-sm text-zinc-400 mb-1">
+                <div className={`p-4 rounded-lg border ${(selectedCO.cost_impact || 0) > 0 ? 'bg-red-500/10 border-red-500/30' : (selectedCO.cost_impact || 0) < 0 ? 'bg-green-500/10 border-green-500/30' : 'bg-muted/50 border-border'}`}>
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground mb-1">
                     <DollarSign className="h-4 w-4" />Cost Impact
                   </div>
-                  <p className={`text-xl font-bold ${(selectedCO.cost_impact || 0) > 0 ? 'text-red-400' : (selectedCO.cost_impact || 0) < 0 ? 'text-green-400' : 'text-white'}`}>
+                  <p className={`text-xl font-bold ${(selectedCO.cost_impact || 0) > 0 ? 'text-red-600 dark:text-red-400' : (selectedCO.cost_impact || 0) < 0 ? 'text-green-600 dark:text-green-400' : 'text-foreground'}`}>
                     {formatCurrency(selectedCO.cost_impact)}
                   </p>
                 </div>
-                <div className={`p-4 rounded-lg border ${(selectedCO.schedule_impact_days || 0) > 0 ? 'bg-orange-500/10 border-orange-500/30' : 'bg-zinc-800/50 border-zinc-700'}`}>
-                  <div className="flex items-center gap-2 text-sm text-zinc-400 mb-1">
+                <div className={`p-4 rounded-lg border ${(selectedCO.schedule_impact_days || 0) > 0 ? 'bg-orange-500/10 border-orange-500/30' : 'bg-muted/50 border-border'}`}>
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground mb-1">
                     <Calendar className="h-4 w-4" />Schedule Impact
                   </div>
-                  <p className={`text-xl font-bold ${(selectedCO.schedule_impact_days || 0) > 0 ? 'text-orange-400' : 'text-white'}`}>
+                  <p className={`text-xl font-bold ${(selectedCO.schedule_impact_days || 0) > 0 ? 'text-orange-600 dark:text-orange-400' : 'text-foreground'}`}>
                     {(selectedCO.schedule_impact_days || 0) > 0 ? `+${selectedCO.schedule_impact_days}` : selectedCO.schedule_impact_days || 0} days
                   </p>
                 </div>
               </div>
               
               {selectedCO.description && (
-                <div className="p-4 rounded-lg bg-zinc-800/50 border border-zinc-800">
-                  <h4 className="text-sm font-medium text-zinc-400 mb-2">Description</h4>
+                <div className="p-4 rounded-lg bg-muted/50 border border-border">
+                  <h4 className="text-sm font-medium text-muted-foreground mb-2">Description</h4>
                   <p className="text-zinc-200 text-sm whitespace-pre-wrap">{selectedCO.description}</p>
                 </div>
               )}
               
               <div className="grid grid-cols-2 gap-4 text-sm">
-                <div className="space-y-1"><p className="text-zinc-500">Requested By</p><p className="text-zinc-200">{selectedCO.requested_by_name || '—'}</p></div>
-                <div className="space-y-1"><p className="text-zinc-500">Approved By</p><p className="text-zinc-200">{selectedCO.approved_by_name || '—'}</p></div>
-                <div className="space-y-1"><p className="text-zinc-500">Created</p><p className="text-zinc-200">{formatDate(selectedCO.created_at)}</p></div>
-                <div className="space-y-1"><p className="text-zinc-500">Updated</p><p className="text-zinc-200">{formatDate(selectedCO.updated_at)}</p></div>
+                <div className="space-y-1"><p className="text-muted-foreground">Requested By</p><p className="text-zinc-200">{selectedCO.requested_by_name || '—'}</p></div>
+                <div className="space-y-1"><p className="text-muted-foreground">Approved By</p><p className="text-zinc-200">{selectedCO.approved_by_name || '—'}</p></div>
+                <div className="space-y-1"><p className="text-muted-foreground">Created</p><p className="text-zinc-200">{formatDate(selectedCO.created_at)}</p></div>
+                <div className="space-y-1"><p className="text-muted-foreground">Updated</p><p className="text-zinc-200">{formatDate(selectedCO.updated_at)}</p></div>
               </div>
               
               {/* Action Buttons */}
-              <div className="pt-4 border-t border-zinc-800 space-y-3">
+              <div className="pt-4 border-t border-border space-y-3">
                 {selectedCO.status === 'draft' && (
                   <Button
-                    className="w-full bg-amber-600 hover:bg-amber-700 text-white"
+                    className="w-full bg-amber-600 hover:bg-amber-700 text-foreground"
                     onClick={handleSubmitForApproval}
                     disabled={submitting}
                   >
@@ -687,12 +687,12 @@ function ChangeOrdersContent() {
                   </Button>
                 )}
                 {selectedCO.esign_status === 'completed' ? (
-                  <div className="w-full flex items-center justify-center gap-2 rounded-md bg-green-600/10 text-green-400 border border-green-600/30 py-2 text-sm font-medium">
+                  <div className="w-full flex items-center justify-center gap-2 rounded-md bg-green-600/10 text-green-600 dark:text-green-400 border border-green-600/30 py-2 text-sm font-medium">
                     <CheckCircle2 className="h-4 w-4" /> E-signed &amp; completed
                   </div>
                 ) : selectedCO.esign_status === 'sent' ? (
                   <div className="w-full space-y-2">
-                    <div className="w-full flex items-center justify-center gap-2 rounded-md bg-blue-600/10 text-blue-400 border border-blue-600/30 py-2 text-sm font-medium">
+                    <div className="w-full flex items-center justify-center gap-2 rounded-md bg-blue-600/10 text-blue-600 dark:text-blue-400 border border-blue-600/30 py-2 text-sm font-medium">
                       <Loader2 className="h-4 w-4 animate-spin" /> Out for signature — awaiting signers
                     </div>
                     <Button variant="outline" className="w-full" onClick={handleRequestESign} disabled={esigning}>
@@ -701,7 +701,7 @@ function ChangeOrdersContent() {
                   </div>
                 ) : (selectedCO.status === 'pending_review' || selectedCO.status === 'pending_approval' || selectedCO.status === 'approved') ? (
                   <Button
-                    className="w-full bg-blue-600 hover:bg-blue-700 text-white"
+                    className="w-full bg-blue-600 hover:bg-blue-700 text-foreground"
                     onClick={handleRequestESign}
                     disabled={esigning}
                   >
@@ -711,7 +711,7 @@ function ChangeOrdersContent() {
                 ) : null}
                 {selectedCO.status === 'approved' && (
                   <Button 
-                    className="w-full bg-green-600 hover:bg-green-700 text-white" 
+                    className="w-full bg-green-600 hover:bg-green-700 text-foreground" 
                     onClick={handleExecute}
                     disabled={submitting}
                   >
@@ -722,7 +722,7 @@ function ChangeOrdersContent() {
                 {(selectedCO.status === 'draft' || selectedCO.status === 'pending_review' || selectedCO.status === 'rejected') && (
                   <Button
                     variant="outline"
-                    className="w-full border-red-600 text-red-400 hover:bg-red-900/30"
+                    className="w-full border-red-600 text-red-600 dark:text-red-400 hover:bg-red-900/30"
                     onClick={handleDelete}
                     disabled={deleting}
                   >

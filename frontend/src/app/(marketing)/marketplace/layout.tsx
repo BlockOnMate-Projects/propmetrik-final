@@ -7,7 +7,7 @@ export default function MarketplaceLayout({
 }) {
   // This layout overrides parent to exclude ServicesFooter and Footer
   return (
-    <div className="flex flex-col min-h-screen bg-slate-950 text-white">
+    <div className="flex flex-col min-h-screen bg-slate-950 text-foreground">
       <TopNav />
       <main className="flex-1">
         {children}

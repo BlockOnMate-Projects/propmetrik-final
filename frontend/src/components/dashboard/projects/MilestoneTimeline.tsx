@@ -25,11 +25,11 @@ interface MilestoneTimelineProps {
 }
 
 const statusConfig: Record<string, { color: string; bgColor: string; borderColor: string }> = {
-  pending: { color: 'text-zinc-400', bgColor: 'bg-zinc-500', borderColor: 'border-zinc-500' },
-  in_progress: { color: 'text-blue-400', bgColor: 'bg-blue-500', borderColor: 'border-blue-500' },
-  completed: { color: 'text-green-400', bgColor: 'bg-green-500', borderColor: 'border-green-500' },
-  overdue: { color: 'text-red-400', bgColor: 'bg-red-500', borderColor: 'border-red-500' },
-  cancelled: { color: 'text-zinc-600', bgColor: 'bg-zinc-600', borderColor: 'border-zinc-600' },
+  pending: { color: 'text-muted-foreground', bgColor: 'bg-zinc-500', borderColor: 'border-zinc-500' },
+  in_progress: { color: 'text-blue-600 dark:text-blue-400', bgColor: 'bg-blue-500', borderColor: 'border-blue-500' },
+  completed: { color: 'text-green-600 dark:text-green-400', bgColor: 'bg-green-500', borderColor: 'border-green-500' },
+  overdue: { color: 'text-red-600 dark:text-red-400', bgColor: 'bg-red-500', borderColor: 'border-red-500' },
+  cancelled: { color: 'text-muted-foreground', bgColor: 'bg-zinc-600', borderColor: 'border-zinc-600' },
 };
 
 export function MilestoneTimeline({ milestones, className, onMilestoneClick }: MilestoneTimelineProps) {
@@ -116,8 +116,8 @@ export function MilestoneTimeline({ milestones, className, onMilestoneClick }: M
     return (
       <div className={cn("flex flex-col items-center justify-center py-16 text-center", className)}>
         <Flag className="h-12 w-12 text-zinc-700 mb-4" />
-        <p className="text-zinc-500 text-sm">No milestones to display</p>
-        <p className="text-zinc-600 text-xs mt-1">Create milestones to see them on the timeline</p>
+        <p className="text-muted-foreground text-sm">No milestones to display</p>
+        <p className="text-muted-foreground text-xs mt-1">Create milestones to see them on the timeline</p>
       </div>
     );
   }
@@ -127,52 +127,52 @@ export function MilestoneTimeline({ milestones, className, onMilestoneClick }: M
       <div className={cn("relative", className)}>
         {/* Header with legend */}
         <div className="flex items-center justify-between mb-6">
-          <h4 className="text-sm font-medium text-zinc-300">Milestone Timeline</h4>
+          <h4 className="text-sm font-medium text-muted-foreground">Milestone Timeline</h4>
           <div className="flex items-center gap-4 text-xs">
             <div className="flex items-center gap-1.5">
               <div className="w-2 h-2 rounded-full bg-zinc-500" />
-              <span className="text-zinc-500">Pending</span>
+              <span className="text-muted-foreground">Pending</span>
             </div>
             <div className="flex items-center gap-1.5">
               <div className="w-2 h-2 rounded-full bg-blue-500" />
-              <span className="text-zinc-500">In Progress</span>
+              <span className="text-muted-foreground">In Progress</span>
             </div>
             <div className="flex items-center gap-1.5">
               <div className="w-2 h-2 rounded-full bg-green-500" />
-              <span className="text-zinc-500">Completed</span>
+              <span className="text-muted-foreground">Completed</span>
             </div>
             <div className="flex items-center gap-1.5">
               <div className="w-2 h-2 rounded-full bg-red-500" />
-              <span className="text-zinc-500">Overdue</span>
+              <span className="text-muted-foreground">Overdue</span>
             </div>
           </div>
         </div>
 
         {/* Timeline container */}
-        <div className="relative bg-zinc-900/50 rounded-lg border border-zinc-800 p-4">
+        <div className="relative bg-card/50 rounded-lg border border-border p-4">
           {/* Month markers */}
-          <div className="relative h-6 mb-2 border-b border-zinc-800">
+          <div className="relative h-6 mb-2 border-b border-border">
             {monthMarkers.map((marker, i) => (
               <div
                 key={i}
                 className="absolute top-0 flex flex-col items-start"
                 style={{ left: `${marker.position}%` }}
               >
-                <span className="text-[10px] text-zinc-500 font-mono whitespace-nowrap">
+                <span className="text-[10px] text-muted-foreground font-mono whitespace-nowrap">
                   {marker.label}
                 </span>
-                <div className="w-px h-full bg-zinc-800 absolute top-6" />
+                <div className="w-px h-full bg-muted absolute top-6" />
               </div>
             ))}
           </div>
 
           {/* Timeline track */}
-          <div className="relative h-16 bg-zinc-800/30 rounded">
+          <div className="relative h-16 bg-muted/30 rounded">
             {/* Grid lines */}
             {monthMarkers.map((marker, i) => (
               <div
                 key={i}
-                className="absolute top-0 bottom-0 w-px bg-zinc-800"
+                className="absolute top-0 bottom-0 w-px bg-muted"
                 style={{ left: `${marker.position}%` }}
               />
             ))}
@@ -183,7 +183,7 @@ export function MilestoneTimeline({ milestones, className, onMilestoneClick }: M
                 className="absolute top-0 bottom-0 w-0.5 bg-amber-500 z-10"
                 style={{ left: `${todayPosition}%` }}
               >
-                <div className="absolute -top-5 left-1/2 -translate-x-1/2 bg-amber-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded whitespace-nowrap">
+                <div className="absolute -top-5 left-1/2 -translate-x-1/2 bg-amber-500 text-foreground text-[9px] font-bold px-1.5 py-0.5 rounded whitespace-nowrap">
                   TODAY
                 </div>
               </div>
@@ -222,35 +222,35 @@ export function MilestoneTimeline({ milestones, className, onMilestoneClick }: M
                       <div className={cn(
                         "w-4 h-4 rounded-full border-2 flex items-center justify-center",
                         config.bgColor,
-                        "border-zinc-900"
+                        "border-border"
                       )}>
                         {milestone.status === 'completed' ? (
-                          <CheckCircle2 className="w-2.5 h-2.5 text-white" />
+                          <CheckCircle2 className="w-2.5 h-2.5 text-foreground" />
                         ) : isOverdue ? (
-                          <AlertTriangle className="w-2.5 h-2.5 text-white" />
+                          <AlertTriangle className="w-2.5 h-2.5 text-foreground" />
                         ) : (
-                          <Flag className="w-2 h-2 text-white" />
+                          <Flag className="w-2 h-2 text-foreground" />
                         )}
                       </div>
                     </button>
                   </TooltipTrigger>
                   <TooltipContent 
                     side="top" 
-                    className="bg-zinc-800 border-zinc-700 text-white max-w-xs"
+                    className="bg-muted border-border text-foreground max-w-xs"
                   >
                     <div className="space-y-1">
                       <p className="font-medium text-sm">{milestone.name}</p>
-                      <div className="flex items-center gap-2 text-xs text-zinc-400">
+                      <div className="flex items-center gap-2 text-xs text-muted-foreground">
                         <Calendar className="w-3 h-3" />
                         <span>{format(date, 'MMM d, yyyy')}</span>
                         {isOverdue && (
-                          <span className="text-red-400 font-medium">
+                          <span className="text-red-600 dark:text-red-400 font-medium">
                             ({differenceInDays(new Date(), date)} days overdue)
                           </span>
                         )}
                       </div>
                       {milestone.description && (
-                        <p className="text-xs text-zinc-500 line-clamp-2">{milestone.description}</p>
+                        <p className="text-xs text-muted-foreground line-clamp-2">{milestone.description}</p>
                       )}
                     </div>
                   </TooltipContent>
@@ -273,7 +273,7 @@ export function MilestoneTimeline({ milestones, className, onMilestoneClick }: M
               return (
                 <button
                   key={milestone.id}
-                  className="w-full flex items-center gap-3 p-2 rounded-lg bg-zinc-800/50 hover:bg-zinc-800 transition-colors text-left"
+                  className="w-full flex items-center gap-3 p-2 rounded-lg bg-muted/50 hover:bg-muted transition-colors text-left"
                   onClick={() => onMilestoneClick?.(milestone)}
                 >
                   <div className={cn(
@@ -281,11 +281,11 @@ export function MilestoneTimeline({ milestones, className, onMilestoneClick }: M
                     config.bgColor
                   )} />
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm text-white truncate">{milestone.name}</p>
+                    <p className="text-sm text-foreground truncate">{milestone.name}</p>
                   </div>
                   <div className={cn("text-xs shrink-0", config.color)}>
                     {format(date, 'MMM d')}
-                    {isOverdue && <span className="ml-1 text-red-400">(overdue)</span>}
+                    {isOverdue && <span className="ml-1 text-red-600 dark:text-red-400">(overdue)</span>}
                   </div>
                 </button>
               );

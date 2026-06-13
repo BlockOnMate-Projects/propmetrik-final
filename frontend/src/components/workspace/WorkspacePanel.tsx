@@ -30,7 +30,7 @@ export function WorkspaceFloatingButton({ onClick, unreadCount = 0 }: WorkspaceF
                 'flex items-center gap-2 px-4 py-3 rounded-2xl shadow-2xl',
                 'bg-gradient-to-br from-emerald-500 to-teal-600',
                 'hover:from-emerald-400 hover:to-teal-500',
-                'text-white font-medium text-sm',
+                'text-foreground font-medium text-sm',
                 'transition-all duration-300 hover:scale-105 active:scale-95',
                 'shadow-emerald-500/30 hover:shadow-emerald-500/50'
             )}
@@ -38,7 +38,7 @@ export function WorkspaceFloatingButton({ onClick, unreadCount = 0 }: WorkspaceF
             <MessageSquare className="w-4 h-4" />
             <span>Workspace</span>
             {unreadCount > 0 && (
-                <span className="flex items-center justify-center min-w-[20px] h-5 px-1 rounded-full bg-white text-emerald-700 text-xs font-bold">
+                <span className="flex items-center justify-center min-w-[20px] h-5 px-1 rounded-full bg-card text-emerald-700 text-xs font-bold">
                     {unreadCount > 99 ? '99+' : unreadCount}
                 </span>
             )}

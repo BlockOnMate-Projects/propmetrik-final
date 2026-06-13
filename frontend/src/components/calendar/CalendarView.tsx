@@ -220,7 +220,7 @@ export function CalendarView({
           {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
             <div
               key={day}
-              className="px-2 py-2 text-center text-sm font-medium text-gray-500 bg-gray-50"
+              className="px-2 py-2 text-center text-sm font-medium text-muted-foreground bg-muted"
             >
               {day}
             </div>
@@ -240,20 +240,20 @@ export function CalendarView({
                   <div
                     key={dayIndex}
                     className={`min-h-[100px] border-r p-1 cursor-pointer transition-colors ${
-                      !isCurrentMonth ? 'bg-gray-50' : 'bg-white'
+                      !isCurrentMonth ? 'bg-muted' : 'bg-card'
                     } ${isSelected ? 'ring-2 ring-blue-500 ring-inset' : ''} ${
                       isToday(day) ? 'bg-blue-50' : ''
-                    } hover:bg-gray-50`}
+                    } hover:bg-muted`}
                     onClick={() => handleDateClick(day)}
                   >
                     <div className="flex items-center justify-between mb-1">
                       <span
                         className={`inline-flex items-center justify-center w-6 h-6 text-sm rounded-full ${
                           isToday(day)
-                            ? 'bg-blue-600 text-white font-semibold'
+                            ? 'bg-blue-600 text-foreground font-semibold'
                             : isCurrentMonth
                             ? 'text-gray-900'
-                            : 'text-gray-400'
+                            : 'text-muted-foreground'
                         }`}
                       >
                         {format(day, 'd')}
@@ -267,7 +267,7 @@ export function CalendarView({
                           }}
                           className="opacity-0 group-hover:opacity-100 p-1 rounded hover:bg-gray-200"
                         >
-                          <Plus className="h-3 w-3 text-gray-500" />
+                          <Plus className="h-3 w-3 text-muted-foreground" />
                         </button>
                       )}
                     </div>
@@ -290,7 +290,7 @@ export function CalendarView({
                       })}
                       
                       {dayEvents.length > 3 && (
-                        <div className="px-1.5 text-xs text-gray-500">
+                        <div className="px-1.5 text-xs text-muted-foreground">
                           +{dayEvents.length - 3} more
                         </div>
                       )}
@@ -314,7 +314,7 @@ export function CalendarView({
     return (
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
         {sortedEvents.length === 0 ? (
-          <div className="text-center py-12 text-gray-500">
+          <div className="text-center py-12 text-muted-foreground">
             <CalendarIcon className="h-12 w-12 mx-auto mb-4 opacity-50" />
             <p>No events scheduled</p>
             <p className="text-sm">Events for the next 2 weeks will appear here</p>
@@ -330,7 +330,7 @@ export function CalendarView({
                 className={`flex items-start gap-4 p-4 rounded-lg border ${colors.border} ${colors.bg} cursor-pointer hover:shadow-md transition-shadow`}
                 onClick={() => onEventClick?.(event)}
               >
-                <div className={`p-2 rounded-lg bg-white ${colors.text}`}>
+                <div className={`p-2 rounded-lg bg-card ${colors.text}`}>
                   {icon}
                 </div>
                 
@@ -339,7 +339,7 @@ export function CalendarView({
                     <div>
                       <h3 className="font-medium text-gray-900">{event.title}</h3>
                       {event.description && (
-                        <p className="text-sm text-gray-600 mt-0.5">{event.description}</p>
+                        <p className="text-sm text-muted-foreground mt-0.5">{event.description}</p>
                       )}
                     </div>
                     <span
@@ -349,7 +349,7 @@ export function CalendarView({
                     </span>
                   </div>
                   
-                  <div className="flex items-center gap-4 mt-2 text-sm text-gray-500">
+                  <div className="flex items-center gap-4 mt-2 text-sm text-muted-foreground">
                     <span className="flex items-center gap-1">
                       <CalendarIcon className="h-4 w-4" />
                       {format(new Date(event.startTime), 'EEE, MMM d')}
@@ -369,7 +369,7 @@ export function CalendarView({
                   
                   {(event.metadata as Record<string, string | undefined>)?.dealTitle && (
                     <div className="mt-2 text-sm">
-                      <span className="text-gray-500">Deal:</span>{' '}
+                      <span className="text-muted-foreground">Deal:</span>{' '}
                       <span className="text-gray-900">{String((event.metadata as Record<string, string>)?.dealTitle || '')}</span>
                     </div>
                   )}
@@ -383,25 +383,25 @@ export function CalendarView({
   };
   
   return (
-    <div className={`flex flex-col bg-white rounded-lg shadow ${className}`}>
+    <div className={`flex flex-col bg-card rounded-lg shadow ${className}`}>
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-3 border-b">
         <div className="flex items-center gap-2">
           <button
             onClick={navigatePrev}
-            className="p-1.5 rounded-lg hover:bg-gray-100"
+            className="p-1.5 rounded-lg hover:bg-muted"
           >
             <ChevronLeft className="h-5 w-5" />
           </button>
           <button
             onClick={navigateNext}
-            className="p-1.5 rounded-lg hover:bg-gray-100"
+            className="p-1.5 rounded-lg hover:bg-muted"
           >
             <ChevronRight className="h-5 w-5" />
           </button>
           <button
             onClick={goToToday}
-            className="px-3 py-1.5 text-sm font-medium rounded-lg hover:bg-gray-100"
+            className="px-3 py-1.5 text-sm font-medium rounded-lg hover:bg-muted"
           >
             Today
           </button>
@@ -419,8 +419,8 @@ export function CalendarView({
                 onClick={() => setViewMode(mode)}
                 className={`px-3 py-1.5 text-sm capitalize ${
                   viewMode === mode
-                    ? 'bg-blue-600 text-white'
-                    : 'bg-white text-gray-600 hover:bg-gray-50'
+                    ? 'bg-blue-600 text-foreground'
+                    : 'bg-card text-muted-foreground hover:bg-muted'
                 }`}
               >
                 {mode}
@@ -431,7 +431,7 @@ export function CalendarView({
           {onCreateEvent && (
             <button
               onClick={() => onCreateEvent(new Date())}
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 text-foreground rounded-lg hover:bg-blue-700"
             >
               <Plus className="h-4 w-4" />
               Add Event
@@ -488,7 +488,7 @@ export function UpcomingEventsWidget({ maxItems = 5 }: { maxItems?: number }) {
   
   if (events.length === 0) {
     return (
-      <div className="text-center py-6 text-gray-500">
+      <div className="text-center py-6 text-muted-foreground">
         <CalendarIcon className="h-8 w-8 mx-auto mb-2 opacity-50" />
         <p className="text-sm">No upcoming events</p>
       </div>
@@ -504,7 +504,7 @@ export function UpcomingEventsWidget({ maxItems = 5 }: { maxItems?: number }) {
         return (
           <div
             key={event.id}
-            className="flex items-center gap-3 p-3 rounded-lg hover:bg-gray-50 cursor-pointer"
+            className="flex items-center gap-3 p-3 rounded-lg hover:bg-muted cursor-pointer"
           >
             <div className={`p-2 rounded-lg ${colors.bg} ${colors.text}`}>
               {icon}
@@ -513,7 +513,7 @@ export function UpcomingEventsWidget({ maxItems = 5 }: { maxItems?: number }) {
               <p className="text-sm font-medium text-gray-900 truncate">
                 {event.title}
               </p>
-              <p className="text-xs text-gray-500">
+              <p className="text-xs text-muted-foreground">
                 {format(new Date(event.startTime), 'EEE, MMM d • h:mm a')}
               </p>
             </div>

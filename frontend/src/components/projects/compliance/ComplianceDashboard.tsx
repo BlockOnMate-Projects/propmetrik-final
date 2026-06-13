@@ -180,7 +180,7 @@ export function ComplianceDashboard({
           <CardContent>
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
               {expiring_soon.map((permit) => (
-                <div key={permit.id} className="bg-white dark:bg-gray-800 rounded-lg p-3 shadow-sm">
+                <div key={permit.id} className="bg-card dark:bg-gray-800 rounded-lg p-3 shadow-sm">
                   <p className="font-medium text-sm">{permit.permit_name}</p>
                   <p className="text-xs text-muted-foreground mt-1">
                     Expires: {permit.expiration_date 
@@ -256,7 +256,7 @@ function ComplianceScoreCard({ score }: { score: ComplianceDashboardData['score'
     medium: 'text-yellow-600 bg-yellow-100 dark:bg-yellow-900/30',
     high: 'text-orange-600 bg-orange-100 dark:bg-orange-900/30',
     critical: 'text-red-600 bg-red-100 dark:bg-red-900/30',
-    unknown: 'text-gray-600 bg-gray-100 dark:bg-gray-900/30',
+    unknown: 'text-muted-foreground bg-muted dark:bg-gray-900/30',
   };
 
   const progressColors = {
@@ -401,7 +401,7 @@ function PermitStatusIcon({ status }: { status: string }) {
     case 'expired':
       return <XCircle className="h-5 w-5 text-red-500" />;
     case 'not_required':
-      return <CheckCircle2 className="h-5 w-5 text-gray-400" />;
+      return <CheckCircle2 className="h-5 w-5 text-muted-foreground" />;
     default:
       return <Clock className="h-5 w-5 text-yellow-500" />;
   }
@@ -409,8 +409,8 @@ function PermitStatusIcon({ status }: { status: string }) {
 
 function PermitStatusBadge({ status }: { status: string }) {
   const statusConfig: Record<string, { label: string; className: string }> = {
-    not_required: { label: 'Not Required', className: 'bg-gray-100 text-gray-700' },
-    not_started: { label: 'Not Started', className: 'bg-gray-100 text-gray-700' },
+    not_required: { label: 'Not Required', className: 'bg-muted text-gray-700' },
+    not_started: { label: 'Not Started', className: 'bg-muted text-gray-700' },
     documents_gathering: { label: 'Gathering Docs', className: 'bg-blue-100 text-blue-700' },
     application_submitted: { label: 'Submitted', className: 'bg-blue-100 text-blue-700' },
     under_review: { label: 'Under Review', className: 'bg-yellow-100 text-yellow-700' },
@@ -422,7 +422,7 @@ function PermitStatusBadge({ status }: { status: string }) {
     renewed: { label: 'Renewed', className: 'bg-green-100 text-green-700' },
   };
 
-  const config = statusConfig[status] || { label: status, className: 'bg-gray-100 text-gray-700' };
+  const config = statusConfig[status] || { label: status, className: 'bg-muted text-gray-700' };
 
   return (
     <Badge className={cn('font-medium', config.className)}>

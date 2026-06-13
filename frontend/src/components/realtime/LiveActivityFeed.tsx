@@ -46,7 +46,7 @@ interface LiveActivityFeedProps {
 
 const activityIcons: Record<string, React.ReactNode> = {
   'deal.created': <FileText className="h-4 w-4 text-blue-500" />,
-  'deal.updated': <FileText className="h-4 w-4 text-gray-500" />,
+  'deal.updated': <FileText className="h-4 w-4 text-muted-foreground" />,
   'deal.stage_changed': <ArrowRight className="h-4 w-4 text-purple-500" />,
   'activity.created': <Clock className="h-4 w-4 text-green-500" />,
   'task.created': <CheckCircle className="h-4 w-4 text-orange-500" />,
@@ -55,7 +55,7 @@ const activityIcons: Record<string, React.ReactNode> = {
   'viewing.confirmed': <Calendar className="h-4 w-4 text-green-500" />,
   'document.signed': <FileText className="h-4 w-4 text-green-500" />,
   notification: <Bell className="h-4 w-4 text-yellow-500" />,
-  default: <Clock className="h-4 w-4 text-gray-400" />,
+  default: <Clock className="h-4 w-4 text-muted-foreground" />,
 };
 
 function getActivityIcon(type: string): React.ReactNode {
@@ -176,7 +176,7 @@ export function LiveActivityFeed({
   
   if (activities.length === 0) {
     return (
-      <div className="text-center py-8 text-gray-500">
+      <div className="text-center py-8 text-muted-foreground">
         <Clock className="h-8 w-8 mx-auto mb-2 opacity-50" />
         <p>No recent activity</p>
         <p className="text-sm">Updates will appear here in real-time</p>
@@ -200,7 +200,7 @@ export function LiveActivityFeed({
             className={`flex items-start gap-3 p-2 rounded-lg transition-colors ${
               activity.isNew
                 ? 'bg-blue-50 animate-highlight'
-                : 'hover:bg-gray-50'
+                : 'hover:bg-muted'
             } ${onActivityClick ? 'cursor-pointer' : ''}`}
             onClick={() => onActivityClick?.(activity)}
           >
@@ -213,18 +213,18 @@ export function LiveActivityFeed({
                 {activity.title}
               </p>
               {activity.description && (
-                <p className="text-sm text-gray-500 truncate">
+                <p className="text-sm text-muted-foreground truncate">
                   {activity.description}
                 </p>
               )}
               <div className="flex items-center gap-2 mt-1">
                 {activity.userName && (
-                  <span className="text-xs text-gray-400 flex items-center gap-1">
+                  <span className="text-xs text-muted-foreground flex items-center gap-1">
                     <User className="h-3 w-3" />
                     {activity.userName}
                   </span>
                 )}
-                <span className="text-xs text-gray-400">
+                <span className="text-xs text-muted-foreground">
                   {formatDistanceToNow(activity.timestamp, { addSuffix: true })}
                 </span>
               </div>

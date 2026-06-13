@@ -13,6 +13,7 @@ import { pool } from '../database';
 import { logger } from '../utils/logger';
 import config from '../config';
 import { keycloakAdminService } from '../services/keycloakAdminService';
+import { sendWelcomeEmail } from '../services/email/welcomeEmail';
 
 const router = Router();
 
@@ -173,6 +174,11 @@ router.post('/signup', async (req: Request, res: Response) => {
       hasOrganization: !!organizationId,
     });
 
+    // Welcome email (best-effort — never blocks signup)
+    sendWelcomeEmail({ userId, email: normalizedEmail, firstName, organizationId }).catch((mailErr: any) =>
+      logger.warn('Welcome email failed (non-blocking)', { email: normalizedEmail, error: mailErr?.message })
+    );
+
     res.status(201).json({
       success: true,
       token,
@@ -205,6 +211,106 @@ router.post('/signup', async (req: Request, res: Response) => {
   } finally {
     client.release();
   }
+});
+
+// ============================================================================
+// Email verification
+// ============================================================================
+
+/**
+ * GET /api/v1/auth/verify-email?token=...
+ * Confirm a user's email from the link in the welcome email. Idempotent.
+ */
+router.get('/verify-email', async (req: Request, res: Response) => {
+  const token = (req.query.token as string) || '';
+  if (!token) {
+    return res.status(400).json({ success: false, message: 'Missing verification token' });
+  }
+  try {
+    const payload = jwt.verify(token, JWT_SECRET) as any;
+    if (payload?.purpose !== 'email_verify' || !payload?.userId) {
+      return res.status(400).json({ success: false, message: 'Invalid verification link' });
+    }
+
+    const { rows } = await pool.query(
+      `UPDATE users SET email_verified = true, updated_at = NOW()
+       WHERE id = $1 RETURNING email, keycloak_id`,
+      [payload.userId]
+    );
+    if (!rows[0]) {
+      return res.status(404).json({ success: false, message: 'Account not found' });
+    }
+
+    // Best-effort: mirror to Keycloak so the IdP also shows the email verified.
+    if (rows[0].keycloak_id && keycloakAdminService.enabled) {
+      try {
+        const adminToken = await keycloakAdminService.getAdminToken();
+        const axios = (await import('axios')).default;
+        const kcUrl = (config.keycloak?.url || '').replace(/\/$/, '');
+        await axios.put(
+          `${kcUrl}/admin/realms/${config.keycloak.realm}/users/${rows[0].keycloak_id}`,
+          { emailVerified: true },
+          { headers: { Authorization: `Bearer ${adminToken}` }, timeout: 10000 }
+        );
+      } catch (kcErr: any) {
+        logger.warn('verify-email: Keycloak sync failed (non-blocking)', { error: kcErr?.message });
+      }
+    }
+
+    logger.info('Email verified', { userId: payload.userId, email: rows[0].email });
+    return res.json({ success: true, message: 'Email verified' });
+  } catch (err: any) {
+    return res.status(400).json({
+      success: false,
+      message: 'This verification link is invalid or has expired. Please request a new one.',
+    });
+  }
+});
+
+/**
+ * POST /api/v1/auth/resend-verification  { email }
+ * Re-send the verification email. Always returns 200 (no account enumeration).
+ */
+router.post('/resend-verification', async (req: Request, res: Response) => {
+  const email = ((req.body?.email as string) || '').toLowerCase().trim();
+  const generic = { success: true, message: 'If that account exists and is unverified, a new link is on its way.' };
+  if (!email) return res.json(generic);
+  try {
+    const { rows } = await pool.query(
+      'SELECT id, first_name, email_verified FROM users WHERE email = $1',
+      [email]
+    );
+    const user = rows[0];
+    if (user && !user.email_verified) {
+      const appUrl = config.app?.frontendUrl || 'https://propmetrik.com';
+      const verifyToken = jwt.sign(
+        { purpose: 'email_verify', userId: user.id, email },
+        JWT_SECRET,
+        { expiresIn: '3d' }
+      );
+      const verifyUrl = `${appUrl}/verify-email?token=${verifyToken}`;
+      const { notify } = await import('../../shared-services/notifications/notify');
+      await notify({
+        recipients: { audience: 'staff', userId: user.id, email, name: user.first_name },
+        category: 'system',
+        type: 'account.verify_email',
+        title: 'Confirm your email — PROPMETRIK',
+        body: 'Please confirm your email address to secure your account.',
+        channels: { inApp: false, email: true },
+        email: {
+          subject: 'Confirm your email — PROPMETRIK',
+          html: `<div style="font-family:Arial,sans-serif;max-width:480px;margin:0 auto;color:#18181b">
+            <p>Confirm your email address to secure your PROPMETRIK account.</p>
+            <p style="margin:24px 0"><a href="${verifyUrl}" style="background:#f59e0b;color:#0a0a0a;text-decoration:none;padding:12px 22px;border-radius:10px;font-weight:bold">Verify email</a></p>
+            <p style="color:#71717a;font-size:13px">This link expires in 3 days. If you didn't request it, you can ignore this email.</p></div>`,
+          text: `Confirm your email: ${verifyUrl}`,
+        },
+      }).catch(() => {});
+    }
+  } catch (err: any) {
+    logger.warn('resend-verification failed (non-blocking)', { error: err?.message });
+  }
+  return res.json(generic);
 });
 
 // ============================================================================

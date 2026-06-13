@@ -117,8 +117,8 @@ function Panel({
   actions?: React.ReactNode
 }) {
   return (
-    <div className={cn('border border-zinc-800 bg-zinc-900/50', className)}>
-      <div className="flex items-center justify-between px-3 py-1.5 bg-zinc-800/50 border-b border-zinc-800">
+    <div className={cn('border border-border bg-card/50', className)}>
+      <div className="flex items-center justify-between px-3 py-1.5 bg-muted/50 border-b border-border">
         <span className="font-mono text-[10px] text-amber-500 tracking-wider">{title}</span>
         {actions}
       </div>
@@ -146,10 +146,10 @@ function MiniBarChart({ data, positive }: { data: number[]; positive: boolean })
 }
 
 function ChangeIndicator({ value, suffix = '%' }: { value: number | null; suffix?: string }) {
-  if (value === null || value === undefined) return <span className="text-zinc-600">—</span>
+  if (value === null || value === undefined) return <span className="text-muted-foreground">—</span>
   const positive = value >= 0
   return (
-    <span className={cn('inline-flex items-center gap-0.5 font-mono text-xs', positive ? 'text-green-400' : 'text-red-400')}>
+    <span className={cn('inline-flex items-center gap-0.5 font-mono text-xs', positive ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400')}>
       {positive ? <ArrowUpRight className="w-3 h-3" /> : <ArrowDownRight className="w-3 h-3" />}
       {positive ? '+' : ''}{value.toFixed(1)}{suffix}
     </span>
@@ -159,12 +159,12 @@ function ChangeIndicator({ value, suffix = '%' }: { value: number | null; suffix
 function VolatilityBadge({ level }: { level: string | null }) {
   if (!level) return null
   const colors: Record<string, string> = {
-    low: 'text-green-400 bg-green-500/10 border-green-500/20',
-    medium: 'text-amber-400 bg-amber-500/10 border-amber-500/20',
-    high: 'text-red-400 bg-red-500/10 border-red-500/20',
+    low: 'text-green-600 dark:text-green-400 bg-green-500/10 border-green-500/20',
+    medium: 'text-amber-600 dark:text-amber-400 bg-amber-500/10 border-amber-500/20',
+    high: 'text-red-600 dark:text-red-400 bg-red-500/10 border-red-500/20',
   }
   return (
-    <span className={cn('px-1.5 py-0.5 font-mono text-[9px] border rounded', colors[level] || 'text-zinc-400 border-zinc-700')}>
+    <span className={cn('px-1.5 py-0.5 font-mono text-[9px] border rounded', colors[level] || 'text-muted-foreground border-border')}>
       {level.toUpperCase()}
     </span>
   )
@@ -173,13 +173,13 @@ function VolatilityBadge({ level }: { level: string | null }) {
 function SupplyBadge({ status }: { status: string | null }) {
   if (!status) return null
   const colors: Record<string, string> = {
-    adequate: 'text-green-400 bg-green-500/10 border-green-500/20',
-    moderate: 'text-amber-400 bg-amber-500/10 border-amber-500/20',
-    shortage: 'text-orange-400 bg-orange-500/10 border-orange-500/20',
-    critical: 'text-red-400 bg-red-500/10 border-red-500/20',
+    adequate: 'text-green-600 dark:text-green-400 bg-green-500/10 border-green-500/20',
+    moderate: 'text-amber-600 dark:text-amber-400 bg-amber-500/10 border-amber-500/20',
+    shortage: 'text-orange-600 dark:text-orange-400 bg-orange-500/10 border-orange-500/20',
+    critical: 'text-red-600 dark:text-red-400 bg-red-500/10 border-red-500/20',
   }
   return (
-    <span className={cn('px-1.5 py-0.5 font-mono text-[9px] border rounded', colors[status] || 'text-zinc-400 border-zinc-700')}>
+    <span className={cn('px-1.5 py-0.5 font-mono text-[9px] border rounded', colors[status] || 'text-muted-foreground border-border')}>
       {status.toUpperCase()}
     </span>
   )
@@ -230,17 +230,17 @@ export default function ConstructionAnalyticsPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-black text-white p-4">
+      <div className="min-h-screen bg-background text-foreground p-4">
         <div className="animate-pulse space-y-4">
-          <div className="h-8 bg-zinc-800 rounded w-64" />
+          <div className="h-8 bg-muted rounded w-64" />
           <div className="grid grid-cols-4 gap-3">
             {[...Array(4)].map((_, i) => (
-              <div key={i} className="h-24 bg-zinc-800/50 rounded border border-zinc-800" />
+              <div key={i} className="h-24 bg-muted/50 rounded border border-border" />
             ))}
           </div>
           <div className="grid grid-cols-12 gap-3">
-            <div className="col-span-8 h-64 bg-zinc-800/50 rounded border border-zinc-800" />
-            <div className="col-span-4 h-64 bg-zinc-800/50 rounded border border-zinc-800" />
+            <div className="col-span-8 h-64 bg-muted/50 rounded border border-border" />
+            <div className="col-span-4 h-64 bg-muted/50 rounded border border-border" />
           </div>
         </div>
       </div>
@@ -251,21 +251,21 @@ export default function ConstructionAnalyticsPage() {
   const trendPositive = cci ? (cci.components.materials.change_yoy >= 0) : true
 
   return (
-    <div className="min-h-screen bg-black text-white p-4 pb-10">
+    <div className="min-h-screen bg-background text-foreground p-4 pb-10">
       {/* Header */}
       <div className="flex items-center justify-between mb-4">
         <div>
-          <h1 className="font-mono text-xl text-white flex items-center gap-2">
+          <h1 className="font-mono text-xl text-foreground flex items-center gap-2">
             <Hammer className="w-5 h-5 text-amber-500" />
             CONSTRUCTION COST INDEX
           </h1>
-          <p className="font-mono text-[10px] text-zinc-500">
+          <p className="font-mono text-[10px] text-muted-foreground">
             Ghana Construction & Labour Cost Analytics — Section 1
           </p>
         </div>
         <button
           onClick={() => loadData()}
-          className="flex items-center gap-1.5 px-3 py-1.5 font-mono text-[10px] text-zinc-400 border border-zinc-700 hover:border-amber-500/50 hover:text-amber-500 transition-colors"
+          className="flex items-center gap-1.5 px-3 py-1.5 font-mono text-[10px] text-muted-foreground border border-border hover:border-amber-500/50 hover:text-amber-500 transition-colors"
         >
           <RefreshCw className="w-3 h-3" />
           REFRESH
@@ -276,7 +276,7 @@ export default function ConstructionAnalyticsPage() {
       <div className="grid grid-cols-4 gap-3 mb-4">
         <Panel title="NATIONAL CCI">
           <div className="text-center">
-            <div className="font-mono text-3xl text-white">
+            <div className="font-mono text-3xl text-foreground">
               {cci ? cci.national_index.toLocaleString(undefined, { minimumFractionDigits: 2 }) : '—'}
             </div>
             <div className="mt-1">
@@ -291,10 +291,10 @@ export default function ConstructionAnalyticsPage() {
         <Panel title="MATERIALS INDEX">
           <div className="text-center py-1">
             <div className="flex items-center justify-center gap-1 mb-1">
-              <Package className="w-3.5 h-3.5 text-blue-400" />
-              <span className="font-mono text-[10px] text-zinc-500">{((cci?.components.materials.weight ?? 0.55) * 100).toFixed(0)}% WEIGHT</span>
+              <Package className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
+              <span className="font-mono text-[10px] text-muted-foreground">{((cci?.components.materials.weight ?? 0.55) * 100).toFixed(0)}% WEIGHT</span>
             </div>
-            <div className="font-mono text-2xl text-white">
+            <div className="font-mono text-2xl text-foreground">
               {cci?.components.materials.value?.toFixed(2) ?? '—'}
             </div>
             <ChangeIndicator value={cci?.components.materials.change_mom ?? null} suffix="% MoM" />
@@ -304,10 +304,10 @@ export default function ConstructionAnalyticsPage() {
         <Panel title="LABOR INDEX">
           <div className="text-center py-1">
             <div className="flex items-center justify-center gap-1 mb-1">
-              <Users className="w-3.5 h-3.5 text-green-400" />
-              <span className="font-mono text-[10px] text-zinc-500">{((cci?.components.labor.weight ?? 0.35) * 100).toFixed(0)}% WEIGHT</span>
+              <Users className="w-3.5 h-3.5 text-green-600 dark:text-green-400" />
+              <span className="font-mono text-[10px] text-muted-foreground">{((cci?.components.labor.weight ?? 0.35) * 100).toFixed(0)}% WEIGHT</span>
             </div>
-            <div className="font-mono text-2xl text-white">
+            <div className="font-mono text-2xl text-foreground">
               {cci?.components.labor.value?.toFixed(2) ?? '—'}
             </div>
             <ChangeIndicator value={cci?.components.labor.change_mom ?? null} suffix="% MoM" />
@@ -317,10 +317,10 @@ export default function ConstructionAnalyticsPage() {
         <Panel title="OVERHEAD INDEX">
           <div className="text-center py-1">
             <div className="flex items-center justify-center gap-1 mb-1">
-              <Building2 className="w-3.5 h-3.5 text-purple-400" />
-              <span className="font-mono text-[10px] text-zinc-500">{((cci?.components.overhead.weight ?? 0.10) * 100).toFixed(0)}% WEIGHT</span>
+              <Building2 className="w-3.5 h-3.5 text-purple-600 dark:text-purple-400" />
+              <span className="font-mono text-[10px] text-muted-foreground">{((cci?.components.overhead.weight ?? 0.10) * 100).toFixed(0)}% WEIGHT</span>
             </div>
-            <div className="font-mono text-2xl text-white">
+            <div className="font-mono text-2xl text-foreground">
               {cci?.components.overhead.value?.toFixed(2) ?? '—'}
             </div>
             <ChangeIndicator value={cci?.components.overhead.change_mom ?? null} suffix="% MoM" />
@@ -334,7 +334,7 @@ export default function ConstructionAnalyticsPage() {
         <Panel title="REGIONAL COST COMPARISON" className="col-span-8">
           <table className="w-full">
             <thead>
-              <tr className="text-[10px] font-mono text-zinc-500 border-b border-zinc-800">
+              <tr className="text-[10px] font-mono text-muted-foreground border-b border-border">
                 <th className="text-left pb-2">REGION</th>
                 <th className="text-right pb-2">MULTIPLIER</th>
                 <th className="text-right pb-2">MATERIALS</th>
@@ -346,26 +346,26 @@ export default function ConstructionAnalyticsPage() {
             </thead>
             <tbody className="font-mono text-xs">
               {regional.map((r) => (
-                <tr key={r.region} className="border-b border-zinc-800/50 hover:bg-zinc-800/30">
-                  <td className="py-2 text-white flex items-center gap-1.5">
-                    <MapPin className="w-3 h-3 text-zinc-500" />
+                <tr key={r.region} className="border-b border-border/50 hover:bg-amber-50 dark:hover:bg-amber-500/10">
+                  <td className="py-2 text-foreground flex items-center gap-1.5">
+                    <MapPin className="w-3 h-3 text-muted-foreground" />
                     {formatRegion(r.region)}
                   </td>
-                  <td className={cn('py-2 text-right', r.multiplier >= 1.0 ? 'text-amber-400' : 'text-zinc-300')}>
+                  <td className={cn('py-2 text-right', r.multiplier >= 1.0 ? 'text-amber-600 dark:text-amber-400' : 'text-muted-foreground')}>
                     {r.multiplier.toFixed(2)}x
                   </td>
-                  <td className="py-2 text-right text-zinc-300">₵{r.cost_components.materials.toLocaleString()}</td>
-                  <td className="py-2 text-right text-zinc-300">₵{r.cost_components.labor.toLocaleString()}</td>
-                  <td className="py-2 text-right text-zinc-300">₵{r.cost_components.transport.toLocaleString()}</td>
+                  <td className="py-2 text-right text-muted-foreground">₵{r.cost_components.materials.toLocaleString()}</td>
+                  <td className="py-2 text-right text-muted-foreground">₵{r.cost_components.labor.toLocaleString()}</td>
+                  <td className="py-2 text-right text-muted-foreground">₵{r.cost_components.transport.toLocaleString()}</td>
                   <td className="py-2 text-right">
                     <div className="inline-flex items-center gap-1">
-                      <div className="w-12 h-1.5 bg-zinc-800 rounded-full overflow-hidden">
+                      <div className="w-12 h-1.5 bg-muted rounded-full overflow-hidden">
                         <div
                           className={cn('h-full rounded-full', r.infrastructure_score >= 70 ? 'bg-green-500' : r.infrastructure_score >= 50 ? 'bg-amber-500' : 'bg-red-500')}
                           style={{ width: `${r.infrastructure_score}%` }}
                         />
                       </div>
-                      <span className="text-zinc-400">{r.infrastructure_score}</span>
+                      <span className="text-muted-foreground">{r.infrastructure_score}</span>
                     </div>
                   </td>
                   <td className="py-2 text-right">
@@ -375,7 +375,7 @@ export default function ConstructionAnalyticsPage() {
               ))}
               {regional.length === 0 && (
                 <tr>
-                  <td colSpan={7} className="py-8 text-center text-zinc-600 font-mono text-xs">
+                  <td colSpan={7} className="py-8 text-center text-muted-foreground font-mono text-xs">
                     No regional data available
                   </td>
                 </tr>
@@ -392,20 +392,20 @@ export default function ConstructionAnalyticsPage() {
               const pct = (point.value / max) * 100
               return (
                 <div key={i} className="flex items-center gap-2">
-                  <span className="w-16 font-mono text-[9px] text-zinc-500 shrink-0">
+                  <span className="w-16 font-mono text-[9px] text-muted-foreground shrink-0">
                     {new Date(point.date).toLocaleDateString('en-GB', { month: 'short', year: '2-digit' })}
                   </span>
-                  <div className="flex-1 h-3 bg-zinc-800 rounded-sm overflow-hidden">
+                  <div className="flex-1 h-3 bg-muted rounded-sm overflow-hidden">
                     <div className="h-full bg-amber-500/70 rounded-sm" style={{ width: `${pct}%` }} />
                   </div>
-                  <span className="w-16 text-right font-mono text-[10px] text-zinc-300">
+                  <span className="w-16 text-right font-mono text-[10px] text-muted-foreground">
                     {point.value.toFixed(1)}
                   </span>
                 </div>
               )
             })}
             {(!cci?.historical_trend || cci.historical_trend.length === 0) && (
-              <div className="h-48 flex items-center justify-center text-zinc-600 font-mono text-xs">
+              <div className="h-48 flex items-center justify-center text-muted-foreground font-mono text-xs">
                 No historical data
               </div>
             )}
@@ -419,7 +419,7 @@ export default function ConstructionAnalyticsPage() {
         <Panel title="MATERIAL COST ANALYTICS" className="col-span-7">
           <table className="w-full">
             <thead>
-              <tr className="text-[10px] font-mono text-zinc-500 border-b border-zinc-800">
+              <tr className="text-[10px] font-mono text-muted-foreground border-b border-border">
                 <th className="text-left pb-2">MATERIAL</th>
                 <th className="text-right pb-2">PRICE</th>
                 <th className="text-right pb-2">LOCAL %</th>
@@ -431,18 +431,18 @@ export default function ConstructionAnalyticsPage() {
             <tbody className="font-mono text-xs">
               {materials.flatMap((group) =>
                 group.items.map((item, idx) => (
-                  <tr key={`${group.category}-${idx}`} className="border-b border-zinc-800/50 hover:bg-zinc-800/30">
+                  <tr key={`${group.category}-${idx}`} className="border-b border-border/50 hover:bg-amber-50 dark:hover:bg-amber-500/10">
                     <td className="py-1.5">
-                      <div className="text-white">{item.sub_category || item.category}</div>
+                      <div className="text-foreground">{item.sub_category || item.category}</div>
                       {idx === 0 && (
-                        <div className="text-[9px] text-zinc-600 uppercase">{group.category}</div>
+                        <div className="text-[9px] text-muted-foreground uppercase">{group.category}</div>
                       )}
                     </td>
-                    <td className="py-1.5 text-right text-green-400">
+                    <td className="py-1.5 text-right text-green-600 dark:text-green-400">
                       ₵{item.unit_price.toLocaleString()}{item.unit ? `/${item.unit}` : ''}
                     </td>
-                    <td className="py-1.5 text-right text-zinc-400">{item.local_pct ?? '—'}%</td>
-                    <td className="py-1.5 text-right text-zinc-400">{item.import_pct ?? '—'}%</td>
+                    <td className="py-1.5 text-right text-muted-foreground">{item.local_pct ?? '—'}%</td>
+                    <td className="py-1.5 text-right text-muted-foreground">{item.import_pct ?? '—'}%</td>
                     <td className="py-1.5 text-right">
                       <VolatilityBadge level={item.price_volatility} />
                     </td>
@@ -454,7 +454,7 @@ export default function ConstructionAnalyticsPage() {
               )}
               {materials.length === 0 && (
                 <tr>
-                  <td colSpan={6} className="py-8 text-center text-zinc-600 font-mono text-xs">
+                  <td colSpan={6} className="py-8 text-center text-muted-foreground font-mono text-xs">
                     No material data available
                   </td>
                 </tr>
@@ -467,7 +467,7 @@ export default function ConstructionAnalyticsPage() {
         <Panel title="LABOR MARKET ANALYTICS" className="col-span-5">
           <table className="w-full">
             <thead>
-              <tr className="text-[10px] font-mono text-zinc-500 border-b border-zinc-800">
+              <tr className="text-[10px] font-mono text-muted-foreground border-b border-border">
                 <th className="text-left pb-2">TRADE</th>
                 <th className="text-left pb-2">LEVEL</th>
                 <th className="text-right pb-2">DAILY</th>
@@ -478,11 +478,11 @@ export default function ConstructionAnalyticsPage() {
             </thead>
             <tbody className="font-mono text-xs">
               {labor.map((r, i) => (
-                <tr key={i} className="border-b border-zinc-800/50 hover:bg-zinc-800/30">
-                  <td className="py-1.5 text-white capitalize">{r.category}</td>
-                  <td className="py-1.5 text-zinc-400 capitalize">{r.skill_level.replace('_', ' ')}</td>
-                  <td className="py-1.5 text-right text-zinc-300">₵{r.daily_rate.toLocaleString()}</td>
-                  <td className="py-1.5 text-right text-zinc-300">
+                <tr key={i} className="border-b border-border/50 hover:bg-amber-50 dark:hover:bg-amber-500/10">
+                  <td className="py-1.5 text-foreground capitalize">{r.category}</td>
+                  <td className="py-1.5 text-muted-foreground capitalize">{r.skill_level.replace('_', ' ')}</td>
+                  <td className="py-1.5 text-right text-muted-foreground">₵{r.daily_rate.toLocaleString()}</td>
+                  <td className="py-1.5 text-right text-muted-foreground">
                     {r.monthly_rate ? `₵${r.monthly_rate.toLocaleString()}` : '—'}
                   </td>
                   <td className="py-1.5 text-right">
@@ -495,7 +495,7 @@ export default function ConstructionAnalyticsPage() {
               ))}
               {labor.length === 0 && (
                 <tr>
-                  <td colSpan={6} className="py-8 text-center text-zinc-600 font-mono text-xs">
+                  <td colSpan={6} className="py-8 text-center text-muted-foreground font-mono text-xs">
                     No labor data available
                   </td>
                 </tr>
@@ -524,14 +524,14 @@ export default function ConstructionAnalyticsPage() {
                 <AlertTriangle
                   className={cn(
                     'w-4 h-4 mt-0.5 shrink-0',
-                    alert.severity === 'critical' ? 'text-red-400' : alert.severity === 'warning' ? 'text-amber-400' : 'text-blue-400',
+                    alert.severity === 'critical' ? 'text-red-600 dark:text-red-400' : alert.severity === 'warning' ? 'text-amber-600 dark:text-amber-400' : 'text-blue-600 dark:text-blue-400',
                   )}
                 />
                 <div className="flex-1 min-w-0">
-                  <div className="font-mono text-xs text-white">{alert.title}</div>
-                  <div className="font-mono text-[10px] text-zinc-400 mt-0.5">{alert.message}</div>
+                  <div className="font-mono text-xs text-foreground">{alert.title}</div>
+                  <div className="font-mono text-[10px] text-muted-foreground mt-0.5">{alert.message}</div>
                 </div>
-                <span className="font-mono text-[9px] text-zinc-600 shrink-0">
+                <span className="font-mono text-[9px] text-muted-foreground shrink-0">
                   {new Date(alert.created_at).toLocaleDateString('en-GB')}
                 </span>
               </div>

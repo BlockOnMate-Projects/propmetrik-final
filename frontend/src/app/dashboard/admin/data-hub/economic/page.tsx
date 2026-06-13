@@ -75,16 +75,16 @@ export default function EconomicDataPage() {
   const currentIndicator = indicatorTypes.find((t) => t.value === selectedIndicator)
 
   const getChangeColor = (change: number | undefined) => {
-    if (change === undefined) return 'text-zinc-400'
-    return change >= 0 ? 'text-green-400' : 'text-red-400'
+    if (change === undefined) return 'text-muted-foreground'
+    return change >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'
   }
 
   return (
-    <div className="min-h-screen bg-black text-white p-4 pb-10">
+    <div className="min-h-screen bg-background text-foreground p-4 pb-10">
       {/* Header */}
       <div className="mb-6">
         <h1 className="font-mono text-2xl text-amber-500 tracking-wider">ECONOMIC INDICATORS DASHBOARD</h1>
-        <p className="font-mono text-[10px] text-zinc-500 mt-1">
+        <p className="font-mono text-[10px] text-muted-foreground mt-1">
           GHANA ECONOMIC DATA • BANK OF GHANA • REAL-TIME MARKET INDICATORS
         </p>
       </div>
@@ -133,7 +133,7 @@ export default function EconomicDataPage() {
           action={
             <div className="flex items-center gap-2">
               <Select value={selectedIndicator} onValueChange={setSelectedIndicator}>
-                <SelectTrigger className="w-48 bg-zinc-800 border-zinc-700 font-mono text-xs">
+                <SelectTrigger className="w-48 bg-muted border-border font-mono text-xs">
                   <SelectValue placeholder="Select indicator" />
                 </SelectTrigger>
                 <SelectContent>
@@ -147,10 +147,10 @@ export default function EconomicDataPage() {
               <button
                 onClick={() => seedMutation.mutate()}
                 disabled={seedMutation.isPending}
-                className="p-2 bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 hover:border-amber-500 transition-colors disabled:opacity-50"
+                className="p-2 bg-muted hover:bg-zinc-700 border border-border hover:border-amber-500 transition-colors disabled:opacity-50"
               >
                 <RefreshCw className={cn(
-                  'w-4 h-4 text-zinc-400',
+                  'w-4 h-4 text-muted-foreground',
                   seedMutation.isPending && 'animate-spin'
                 )} />
               </button>
@@ -165,11 +165,11 @@ export default function EconomicDataPage() {
             <div className="h-80 flex items-center justify-center">
               <div className="text-center">
                 <Activity className="w-12 h-12 mx-auto mb-4 text-zinc-700" />
-                <p className="font-mono text-sm text-zinc-500 mb-4">No data available</p>
+                <p className="font-mono text-sm text-muted-foreground mb-4">No data available</p>
                 <button
                   onClick={() => seedMutation.mutate()}
                   disabled={seedMutation.isPending}
-                  className="px-4 py-2 bg-amber-500 text-white font-mono text-xs hover:bg-amber-400 transition-colors disabled:opacity-50"
+                  className="px-4 py-2 bg-amber-500 text-foreground font-mono text-xs hover:bg-amber-400 transition-colors disabled:opacity-50"
                 >
                   SEED DATA
                 </button>
@@ -241,9 +241,9 @@ export default function EconomicDataPage() {
               { label: 'EUR/GHS', value: snapshot?.data?.exchange_rate_eur },
               { label: 'GBP/GHS', value: snapshot?.data?.exchange_rate_gbp },
             ].map((rate) => (
-              <div key={rate.label} className="flex items-center justify-between p-3 bg-zinc-800/30 border border-zinc-800">
-                <span className="font-mono text-xs text-zinc-400">{rate.label}</span>
-                <span className="font-mono text-sm text-white">
+              <div key={rate.label} className="flex items-center justify-between p-3 bg-muted/30 border border-border">
+                <span className="font-mono text-xs text-muted-foreground">{rate.label}</span>
+                <span className="font-mono text-sm text-foreground">
                   {parseFloat(rate.value as any)?.toFixed(2) || '-'}
                 </span>
               </div>
@@ -255,8 +255,8 @@ export default function EconomicDataPage() {
         <TerminalPanel title="Housing Affordability">
           <div className="text-center p-8">
             <div className="text-4xl font-mono text-zinc-700 mb-2">-</div>
-            <div className="font-mono text-[10px] text-zinc-500">Affordability Index</div>
-            <div className="font-mono text-[10px] text-zinc-600 mt-4">
+            <div className="font-mono text-[10px] text-muted-foreground">Affordability Index</div>
+            <div className="font-mono text-[10px] text-muted-foreground mt-4">
               Requires property price and income data
             </div>
           </div>
@@ -265,21 +265,21 @@ export default function EconomicDataPage() {
         {/* Data Source Info */}
         <TerminalPanel title="Data Source">
           <div className="space-y-3">
-            <div className="flex items-center justify-between p-3 bg-zinc-800/30 border border-zinc-800">
-              <span className="font-mono text-xs text-zinc-400">Last Updated</span>
-              <span className="font-mono text-xs text-white">
+            <div className="flex items-center justify-between p-3 bg-muted/30 border border-border">
+              <span className="font-mono text-xs text-muted-foreground">Last Updated</span>
+              <span className="font-mono text-xs text-foreground">
                 {snapshot?.data?.date
                   ? new Date(snapshot.data.date).toLocaleDateString('en-GB')
                   : 'Unknown'}
               </span>
             </div>
-            <div className="flex items-center justify-between p-3 bg-zinc-800/30 border border-zinc-800">
-              <span className="font-mono text-xs text-zinc-400">Primary Source</span>
-              <span className="font-mono text-xs text-white">Bank of Ghana</span>
+            <div className="flex items-center justify-between p-3 bg-muted/30 border border-border">
+              <span className="font-mono text-xs text-muted-foreground">Primary Source</span>
+              <span className="font-mono text-xs text-foreground">Bank of Ghana</span>
             </div>
-            <div className="flex items-center justify-between p-3 bg-zinc-800/30 border border-zinc-800">
-              <span className="font-mono text-xs text-zinc-400">Update Frequency</span>
-              <span className="font-mono text-xs text-white">Daily</span>
+            <div className="flex items-center justify-between p-3 bg-muted/30 border border-border">
+              <span className="font-mono text-xs text-muted-foreground">Update Frequency</span>
+              <span className="font-mono text-xs text-foreground">Daily</span>
             </div>
           </div>
         </TerminalPanel>

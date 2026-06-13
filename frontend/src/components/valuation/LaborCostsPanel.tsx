@@ -46,16 +46,16 @@ interface LaborCostsPanelProps {
 
 // Trade category display configuration
 const TRADE_CONFIG: Record<string, { label: string; icon: React.ComponentType<{ className?: string }>; color: string }> = {
-  mason: { label: 'Mason', icon: Grid3X3, color: 'text-orange-400' },
-  carpenter: { label: 'Carpenter', icon: Hammer, color: 'text-amber-400' },
-  plumber: { label: 'Plumber', icon: Droplets, color: 'text-blue-400' },
-  electrician: { label: 'Electrician', icon: Zap, color: 'text-yellow-400' },
-  painter: { label: 'Painter', icon: PaintBucket, color: 'text-purple-400' },
-  tiler: { label: 'Tiler', icon: Grid3X3, color: 'text-cyan-400' },
+  mason: { label: 'Mason', icon: Grid3X3, color: 'text-orange-600 dark:text-orange-400' },
+  carpenter: { label: 'Carpenter', icon: Hammer, color: 'text-amber-600 dark:text-amber-400' },
+  plumber: { label: 'Plumber', icon: Droplets, color: 'text-blue-600 dark:text-blue-400' },
+  electrician: { label: 'Electrician', icon: Zap, color: 'text-yellow-600 dark:text-yellow-400' },
+  painter: { label: 'Painter', icon: PaintBucket, color: 'text-purple-600 dark:text-purple-400' },
+  tiler: { label: 'Tiler', icon: Grid3X3, color: 'text-cyan-600 dark:text-cyan-400' },
   steel_fixer: { label: 'Steel Fixer', icon: Wrench, color: 'text-slate-400' },
-  foreman: { label: 'Foreman', icon: UserCog, color: 'text-emerald-400' },
-  general_laborer: { label: 'General Labor', icon: User, color: 'text-zinc-400' },
-  welder: { label: 'Welder', icon: Wrench, color: 'text-red-400' },
+  foreman: { label: 'Foreman', icon: UserCog, color: 'text-emerald-600 dark:text-emerald-400' },
+  general_laborer: { label: 'General Labor', icon: User, color: 'text-muted-foreground' },
+  welder: { label: 'Welder', icon: Wrench, color: 'text-red-600 dark:text-red-400' },
 }
 
 // =====================================================
@@ -66,21 +66,21 @@ function TrendIndicator({ change }: { change: number | null }) {
   const val = change ?? 0
   if (val > 0) {
     return (
-      <div className="flex items-center gap-1 text-red-400 font-mono text-[10px]">
+      <div className="flex items-center gap-1 text-red-600 dark:text-red-400 font-mono text-[10px]">
         <TrendingUp className="w-3 h-3" />
         +{val.toFixed(1)}%
       </div>
     )
   } else if (val < 0) {
     return (
-      <div className="flex items-center gap-1 text-green-400 font-mono text-[10px]">
+      <div className="flex items-center gap-1 text-green-600 dark:text-green-400 font-mono text-[10px]">
         <TrendingDown className="w-3 h-3" />
         {val.toFixed(1)}%
       </div>
     )
   }
   return (
-    <div className="flex items-center gap-1 text-zinc-500 font-mono text-[10px]">
+    <div className="flex items-center gap-1 text-muted-foreground font-mono text-[10px]">
       <Minus className="w-3 h-3" />
       0.0%
     </div>
@@ -97,7 +97,7 @@ function LastUpdatedBadge({ date }: { date?: string }) {
   })
   
   return (
-    <span className="flex items-center gap-1 text-zinc-500 font-mono text-[9px]">
+    <span className="flex items-center gap-1 text-muted-foreground font-mono text-[9px]">
       <Clock className="w-2.5 h-2.5" />
       {formatted}
     </span>
@@ -105,7 +105,7 @@ function LastUpdatedBadge({ date }: { date?: string }) {
 }
 
 function getTradeConfig(category: string) {
-  return TRADE_CONFIG[category] || { label: category.replace(/_/g, ' '), icon: HardHat, color: 'text-zinc-400' }
+  return TRADE_CONFIG[category] || { label: category.replace(/_/g, ' '), icon: HardHat, color: 'text-muted-foreground' }
 }
 
 // Fallback labor rates when database is unavailable
@@ -199,10 +199,10 @@ export function LaborCostsPanel({
   const unskilledRates = laborRates.filter(r => r.labor_category === 'general_laborer')
 
   return (
-    <div className={cn("border border-zinc-800 bg-zinc-900/50", className)}>
+    <div className={cn("border border-border bg-card/50", className)}>
       {/* Header */}
       <div 
-        className="flex items-center justify-between px-3 py-2 border-b border-zinc-800 cursor-pointer hover:bg-zinc-800/30"
+        className="flex items-center justify-between px-3 py-2 border-b border-border cursor-pointer hover:bg-amber-50 dark:hover:bg-amber-500/10"
         onClick={() => setCollapsed(!collapsed)}
       >
         <div className="flex items-center gap-2">
@@ -225,12 +225,12 @@ export function LaborCostsPanel({
             className="p-1 hover:bg-zinc-700 rounded transition-colors"
             title="Refresh data"
           >
-            <RefreshCw className={cn("w-3 h-3 text-zinc-400", loading && "animate-spin")} />
+            <RefreshCw className={cn("w-3 h-3 text-muted-foreground", loading && "animate-spin")} />
           </button>
           {collapsed ? (
-            <ChevronDown className="w-4 h-4 text-zinc-400" />
+            <ChevronDown className="w-4 h-4 text-muted-foreground" />
           ) : (
-            <ChevronUp className="w-4 h-4 text-zinc-400" />
+            <ChevronUp className="w-4 h-4 text-muted-foreground" />
           )}
         </div>
       </div>
@@ -241,7 +241,7 @@ export function LaborCostsPanel({
           {loading ? (
             <div className="flex items-center justify-center py-6">
               <Loader2 className="w-5 h-5 animate-spin text-amber-500" />
-              <span className="ml-2 text-xs text-zinc-400">Loading labor rates...</span>
+              <span className="ml-2 text-xs text-muted-foreground">Loading labor rates...</span>
             </div>
           ) : error && laborRates.length === 0 ? (
             <div className="flex items-center gap-2 text-yellow-500 text-xs py-4 justify-center">
@@ -253,7 +253,7 @@ export function LaborCostsPanel({
               {/* Skilled Trades Section */}
               {skilledRates.length > 0 && (
                 <div>
-                  <div className="font-mono text-[10px] text-zinc-500 uppercase mb-2 flex items-center gap-1">
+                  <div className="font-mono text-[10px] text-muted-foreground uppercase mb-2 flex items-center gap-1">
                     <HardHat className="w-3 h-3" />
                     Skilled Trades ({skilledRates.length})
                   </div>
@@ -264,7 +264,7 @@ export function LaborCostsPanel({
                       return (
                         <div 
                           key={rate.id}
-                          className="flex items-center justify-between p-2 bg-zinc-800/50 border border-zinc-700/50 rounded"
+                          className="flex items-center justify-between p-2 bg-muted/50 border border-border/50 rounded"
                         >
                           <div className="flex items-center gap-2">
                             <Icon className={cn("w-4 h-4", config.color)} />
@@ -272,7 +272,7 @@ export function LaborCostsPanel({
                               <span className="font-mono text-xs text-zinc-200">
                                 {config.label}
                               </span>
-                              <span className="font-mono text-[9px] text-zinc-500 ml-2 capitalize">
+                              <span className="font-mono text-[9px] text-muted-foreground ml-2 capitalize">
                                 {rate.skill_level}
                               </span>
                             </div>
@@ -280,10 +280,10 @@ export function LaborCostsPanel({
                           <div className="flex items-center gap-3">
                             <TrendIndicator change={rate.rate_change_percent} />
                             <div className="text-right">
-                              <span className="font-mono text-sm text-white">
+                              <span className="font-mono text-sm text-foreground">
                                 ₵{(rate.rate_ghs ?? 0).toLocaleString()}
                               </span>
-                              <span className="font-mono text-[9px] text-zinc-500 ml-1">/day</span>
+                              <span className="font-mono text-[9px] text-muted-foreground ml-1">/day</span>
                             </div>
                           </div>
                         </div>
@@ -296,7 +296,7 @@ export function LaborCostsPanel({
               {/* Unskilled Labor Section */}
               {unskilledRates.length > 0 && (
                 <div>
-                  <div className="font-mono text-[10px] text-zinc-500 uppercase mb-2 flex items-center gap-1">
+                  <div className="font-mono text-[10px] text-muted-foreground uppercase mb-2 flex items-center gap-1">
                     <User className="w-3 h-3" />
                     General Labor
                   </div>
@@ -307,7 +307,7 @@ export function LaborCostsPanel({
                       return (
                         <div 
                           key={rate.id}
-                          className="flex items-center justify-between p-2 bg-zinc-800/50 border border-zinc-700/50 rounded"
+                          className="flex items-center justify-between p-2 bg-muted/50 border border-border/50 rounded"
                         >
                           <div className="flex items-center gap-2">
                             <Icon className={cn("w-4 h-4", config.color)} />
@@ -318,10 +318,10 @@ export function LaborCostsPanel({
                           <div className="flex items-center gap-3">
                             <TrendIndicator change={rate.rate_change_percent} />
                             <div className="text-right">
-                              <span className="font-mono text-sm text-white">
+                              <span className="font-mono text-sm text-foreground">
                                 ₵{(rate.rate_ghs ?? 0).toLocaleString()}
                               </span>
-                              <span className="font-mono text-[9px] text-zinc-500 ml-1">/day</span>
+                              <span className="font-mono text-[9px] text-muted-foreground ml-1">/day</span>
                             </div>
                           </div>
                         </div>
@@ -332,32 +332,32 @@ export function LaborCostsPanel({
               )}
 
               {/* Summary Stats */}
-              <div className="pt-3 border-t border-zinc-800 space-y-2">
+              <div className="pt-3 border-t border-border space-y-2">
                 <div className="flex items-center justify-between">
                   <div>
-                    <div className="font-mono text-[10px] text-zinc-500">LABOR FACTOR</div>
-                    <div className="font-mono text-[9px] text-zinc-500">
+                    <div className="font-mono text-[10px] text-muted-foreground">LABOR FACTOR</div>
+                    <div className="font-mono text-[9px] text-muted-foreground">
                       vs 2020 baseline (₵{baseLaborRate}/day)
                     </div>
                   </div>
                   <div className={cn(
                     "font-mono text-lg font-bold",
-                    laborFactor > 1.2 ? 'text-red-400' : laborFactor > 1 ? 'text-yellow-400' : 'text-green-400'
+                    laborFactor > 1.2 ? 'text-red-600 dark:text-red-400' : laborFactor > 1 ? 'text-yellow-600 dark:text-yellow-400' : 'text-green-600 dark:text-green-400'
                   )}>
                     {laborFactor.toFixed(2)}x
                   </div>
                 </div>
 
-                <div className="flex items-center justify-between pt-2 border-t border-zinc-800/50">
-                  <span className="font-mono text-[10px] text-zinc-500">AVG DAILY RATE</span>
-                  <span className="font-mono text-sm text-amber-400">
+                <div className="flex items-center justify-between pt-2 border-t border-border/50">
+                  <span className="font-mono text-[10px] text-muted-foreground">AVG DAILY RATE</span>
+                  <span className="font-mono text-sm text-amber-600 dark:text-amber-400">
                     ₵{Math.round(avgRate).toLocaleString()}
                   </span>
                 </div>
 
                 <div className="flex items-center justify-between">
-                  <span className="font-mono text-[10px] text-zinc-500">TOTAL TRADES</span>
-                  <span className="font-mono text-sm text-zinc-300">
+                  <span className="font-mono text-[10px] text-muted-foreground">TOTAL TRADES</span>
+                  <span className="font-mono text-sm text-muted-foreground">
                     {laborRates.length}
                   </span>
                 </div>

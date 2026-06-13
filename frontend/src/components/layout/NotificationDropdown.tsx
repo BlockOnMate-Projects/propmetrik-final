@@ -135,12 +135,12 @@ export function NotificationDropdown() {
       {/* Bell trigger */}
       <button
         onClick={() => setOpen(o => !o)}
-        className="relative flex items-center justify-center h-7 w-7 rounded hover:bg-zinc-800 transition-colors"
+        className="relative flex items-center justify-center h-7 w-7 rounded hover:bg-muted transition-colors"
         aria-label="Notifications"
       >
-        <Bell className="h-3.5 w-3.5 text-zinc-400" />
+        <Bell className="h-3.5 w-3.5 text-muted-foreground" />
         {unreadCount > 0 && (
-          <span className="absolute -top-0.5 -right-0.5 flex h-3.5 min-w-[14px] items-center justify-center rounded-full bg-red-500 px-1 text-[9px] font-mono font-bold text-white">
+          <span className="absolute -top-0.5 -right-0.5 flex h-3.5 min-w-[14px] items-center justify-center rounded-full bg-red-500 px-1 text-[9px] font-mono font-bold text-foreground">
             {unreadCount > 99 ? '99+' : unreadCount}
           </span>
         )}
@@ -148,22 +148,22 @@ export function NotificationDropdown() {
 
       {/* Dropdown */}
       {open && (
-        <div className="absolute right-0 top-full mt-1 w-[380px] bg-black border border-zinc-800 rounded-md shadow-2xl z-50 overflow-hidden">
+        <div className="absolute right-0 top-full mt-1 w-[380px] bg-background border border-border rounded-md shadow-2xl z-50 overflow-hidden">
           {/* Header */}
-          <div className="flex items-center justify-between px-3 py-2 border-b border-zinc-800">
+          <div className="flex items-center justify-between px-3 py-2 border-b border-border">
             <span className="font-mono text-xs text-amber-500 uppercase tracking-wider">Notifications</span>
             <div className="flex items-center gap-2">
               {unreadCount > 0 && (
                 <button
                   onClick={handleMarkAllRead}
-                  className="text-[10px] font-mono text-zinc-500 hover:text-amber-400 transition-colors flex items-center gap-1"
+                  className="text-[10px] font-mono text-muted-foreground hover:text-amber-400 transition-colors flex items-center gap-1"
                 >
                   <CheckCheck className="h-3 w-3" /> Mark all read
                 </button>
               )}
               <button
                 onClick={() => { router.push('/dashboard/notifications'); setOpen(false) }}
-                className="text-[10px] font-mono text-zinc-500 hover:text-amber-400 transition-colors"
+                className="text-[10px] font-mono text-muted-foreground hover:text-amber-400 transition-colors"
               >
                 View all
               </button>
@@ -177,17 +177,17 @@ export function NotificationDropdown() {
                 <Loader2 className="h-5 w-5 text-amber-600 animate-spin" />
               </div>
             ) : notifications.length === 0 ? (
-              <div className="text-center py-8 text-zinc-500 font-mono text-xs">
+              <div className="text-center py-8 text-muted-foreground font-mono text-xs">
                 <Bell className="h-6 w-6 text-zinc-700 mx-auto mb-2" />
                 No notifications
               </div>
             ) : (
-              <div className="divide-y divide-zinc-800/50">
+              <div className="divide-y divide-border/50">
                 {notifications.map(notif => (
                   <div
                     key={notif.id}
                     onClick={() => handleClick(notif)}
-                    className={`px-3 py-2.5 hover:bg-zinc-900/50 cursor-pointer transition-colors border-l-2 ${PRIORITY_COLORS[notif.priority] || 'border-l-zinc-800'} ${!notif.is_read ? 'bg-zinc-900/30' : ''}`}
+                    className={`px-3 py-2.5 hover:bg-card/50 cursor-pointer transition-colors border-l-2 ${PRIORITY_COLORS[notif.priority] || 'border-l-zinc-800'} ${!notif.is_read ? 'bg-card/30' : ''}`}
                   >
                     <div className="flex items-start gap-2">
                       {/* Category dot */}
@@ -195,27 +195,27 @@ export function NotificationDropdown() {
 
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center justify-between gap-2">
-                          <span className={`text-xs font-mono truncate ${!notif.is_read ? 'text-zinc-200 font-medium' : 'text-zinc-400'}`}>
+                          <span className={`text-xs font-mono truncate ${!notif.is_read ? 'text-zinc-200 font-medium' : 'text-muted-foreground'}`}>
                             {notif.title}
                           </span>
-                          <span className="text-[9px] font-mono text-zinc-600 whitespace-nowrap">{timeAgo(notif.created_at)}</span>
+                          <span className="text-[9px] font-mono text-muted-foreground whitespace-nowrap">{timeAgo(notif.created_at)}</span>
                         </div>
                         {notif.summary && (
-                          <p className="text-[10px] text-zinc-500 font-mono mt-0.5 line-clamp-2">{notif.summary}</p>
+                          <p className="text-[10px] text-muted-foreground font-mono mt-0.5 line-clamp-2">{notif.summary}</p>
                         )}
                         {!notif.summary && notif.body && (
-                          <p className="text-[10px] text-zinc-500 font-mono mt-0.5 line-clamp-2">{notif.body}</p>
+                          <p className="text-[10px] text-muted-foreground font-mono mt-0.5 line-clamp-2">{notif.body}</p>
                         )}
 
                         {/* Actions */}
                         <div className="flex items-center gap-1 mt-1">
-                          <Badge variant="outline" className="text-[8px] font-mono uppercase border-zinc-800 text-zinc-600 px-1 py-0">
+                          <Badge variant="outline" className="text-[8px] font-mono uppercase border-border text-muted-foreground px-1 py-0">
                             {notif.category}
                           </Badge>
                           {!notif.is_read && (
                             <button
                               onClick={(e) => handleMarkAsRead(notif.id, e)}
-                              className="ml-auto text-zinc-600 hover:text-amber-400 transition-colors p-0.5"
+                              className="ml-auto text-muted-foreground hover:text-amber-400 transition-colors p-0.5"
                               title="Mark as read"
                             >
                               <Check className="h-3 w-3" />
@@ -223,7 +223,7 @@ export function NotificationDropdown() {
                           )}
                           <button
                             onClick={(e) => handleArchive(notif.id, e)}
-                            className="text-zinc-600 hover:text-zinc-400 transition-colors p-0.5"
+                            className="text-muted-foreground hover:text-muted-foreground transition-colors p-0.5"
                             title="Archive"
                           >
                             <Archive className="h-3 w-3" />

@@ -125,27 +125,27 @@ function StepIndicator({ currentStep, onStepClick }: { currentStep: number; onSt
             >
               <div className={cn(
                 "w-8 h-8 rounded-full flex items-center justify-center font-mono text-xs transition-colors",
-                isCompleted && "bg-green-600 text-white",
-                isCurrent && "bg-amber-600 text-white",
-                !isCompleted && !isCurrent && "bg-zinc-800 text-zinc-500"
+                isCompleted && "bg-green-600 text-foreground",
+                isCurrent && "bg-amber-600 text-foreground",
+                !isCompleted && !isCurrent && "bg-muted text-muted-foreground"
               )}>
                 {isCompleted ? <Check className="h-4 w-4" /> : step.id}
               </div>
               <div className="ml-3 hidden sm:block text-left">
                 <div className={cn(
                   "font-mono text-xs",
-                  isCurrent ? "text-amber-500" : isCompleted ? "text-green-400" : "text-zinc-500"
+                  isCurrent ? "text-amber-500" : isCompleted ? "text-green-600 dark:text-green-400" : "text-muted-foreground"
                 )}>
                   {step.name}
                 </div>
-                <div className="font-mono text-[10px] text-zinc-600">{step.description}</div>
+                <div className="font-mono text-[10px] text-muted-foreground">{step.description}</div>
               </div>
             </button>
 
             {index < STEPS.length - 1 && (
               <div className={cn(
                 "flex-1 h-px mx-4",
-                isCompleted ? "bg-green-600" : "bg-zinc-800"
+                isCompleted ? "bg-green-600" : "bg-muted"
               )} />
             )}
           </React.Fragment>
@@ -164,8 +164,8 @@ function Panel({ title, children, className }: {
   className?: string
 }) {
   return (
-    <div className={cn('border border-zinc-800 bg-zinc-900/50', className)}>
-      <div className="flex items-center justify-between px-4 py-2 bg-zinc-800/50 border-b border-zinc-800">
+    <div className={cn('border border-border bg-card/50', className)}>
+      <div className="flex items-center justify-between px-4 py-2 bg-muted/50 border-b border-border">
         <span className="font-mono text-xs text-amber-500 tracking-wider">{title}</span>
       </div>
       <div className="p-4">{children}</div>
@@ -185,13 +185,13 @@ function FormField({ label, required, error, hint, children }: {
 }) {
   return (
     <div className="space-y-1.5">
-      <Label className="font-mono text-xs text-zinc-400">
+      <Label className="font-mono text-xs text-muted-foreground">
         {label}
-        {required && <span className="text-red-400 ml-1">*</span>}
+        {required && <span className="text-red-600 dark:text-red-400 ml-1">*</span>}
       </Label>
       {children}
-      {hint && !error && <p className="font-mono text-[10px] text-zinc-500">{hint}</p>}
-      {error && <p className="font-mono text-[10px] text-red-400">{error}</p>}
+      {hint && !error && <p className="font-mono text-[10px] text-muted-foreground">{hint}</p>}
+      {error && <p className="font-mono text-[10px] text-red-600 dark:text-red-400">{error}</p>}
     </div>
   )
 }
@@ -202,7 +202,7 @@ function FormField({ label, required, error, hint, children }: {
 function AutoSaveIndicator({ lastSaved, isSaving }: { lastSaved: string | null; isSaving: boolean }) {
   if (isSaving) {
     return (
-      <div className="flex items-center gap-1.5 text-zinc-500">
+      <div className="flex items-center gap-1.5 text-muted-foreground">
         <Loader2 className="h-3 w-3 animate-spin" />
         <span className="font-mono text-[10px]">Saving...</span>
       </div>
@@ -534,20 +534,20 @@ export default function EnhancedProjectWizard() {
   }
 
   return (
-    <div className="min-h-screen bg-zinc-950 text-white p-6">
+    <div className="min-h-screen bg-background text-foreground p-6">
       {/* Header */}
       <div className="mb-6">
         <div className="flex items-center justify-between">
           <div>
             <button
               onClick={() => router.push('/dashboard/projects')}
-              className="flex items-center gap-2 font-mono text-[10px] text-zinc-500 hover:text-amber-500 mb-4"
+              className="flex items-center gap-2 font-mono text-[10px] text-muted-foreground hover:text-amber-500 mb-4"
             >
               <ArrowLeft className="h-3 w-3" />
               Back to Projects
             </button>
             <h1 className="font-mono text-xl tracking-tight">CREATE NEW PROJECT</h1>
-            <p className="font-mono text-[10px] text-zinc-500 mt-1">
+            <p className="font-mono text-[10px] text-muted-foreground mt-1">
               Step {currentStep} of {STEPS.length}
             </p>
           </div>
@@ -559,7 +559,7 @@ export default function EnhancedProjectWizard() {
                 variant="ghost"
                 size="sm"
                 onClick={sendResumeLink}
-                className="font-mono text-xs text-zinc-400"
+                className="font-mono text-xs text-muted-foreground"
               >
                 <Mail className="h-3 w-3 mr-1.5" />
                 Email Resume Link
@@ -574,8 +574,8 @@ export default function EnhancedProjectWizard() {
 
       {/* Error Message */}
       {error && (
-        <div className="border border-red-800 bg-red-900/20 p-3 mb-6 max-w-4xl mx-auto">
-          <p className="font-mono text-xs text-red-400">{error}</p>
+        <div className="border border-red-800 bg-red-100 dark:bg-red-900/20 p-3 mb-6 max-w-4xl mx-auto">
+          <p className="font-mono text-xs text-red-600 dark:text-red-400">{error}</p>
         </div>
       )}
 
@@ -591,7 +591,7 @@ export default function EnhancedProjectWizard() {
                     value={formData.projectName}
                     onChange={(e) => handleChange('projectName', e.target.value)}
                     placeholder="e.g., Cantonments Heights Residences"
-                    className="bg-zinc-900 border-zinc-800 font-mono text-sm"
+                    className="bg-card border-border font-mono text-sm"
                   />
                 </FormField>
 
@@ -608,21 +608,21 @@ export default function EnhancedProjectWizard() {
                           className={cn(
                             "p-4 border transition-colors text-left",
                             isSelected
-                              ? "border-amber-500 bg-amber-900/20"
-                              : "border-zinc-800 bg-zinc-900/50 hover:border-zinc-700"
+                              ? "border-amber-500 bg-amber-100 dark:bg-amber-900/20"
+                              : "border-border bg-card/50 hover:border-border"
                           )}
                         >
                           <Icon className={cn(
                             "h-5 w-5 mb-2",
-                            isSelected ? "text-amber-500" : "text-zinc-500"
+                            isSelected ? "text-amber-500" : "text-muted-foreground"
                           )} />
                           <div className={cn(
                             "font-mono text-xs font-medium",
-                            isSelected ? "text-amber-500" : "text-zinc-300"
+                            isSelected ? "text-amber-500" : "text-muted-foreground"
                           )}>
                             {type.label}
                           </div>
-                          <div className="font-mono text-[10px] text-zinc-500 mt-0.5">
+                          <div className="font-mono text-[10px] text-muted-foreground mt-0.5">
                             {type.description}
                           </div>
                         </button>
@@ -636,7 +636,7 @@ export default function EnhancedProjectWizard() {
                     value={formData.description}
                     onChange={(e) => handleChange('description', e.target.value)}
                     placeholder="Describe the project..."
-                    className="bg-zinc-900 border-zinc-800 font-mono text-sm min-h-[100px]"
+                    className="bg-card border-border font-mono text-sm min-h-[100px]"
                   />
                 </FormField>
 
@@ -645,7 +645,7 @@ export default function EnhancedProjectWizard() {
                     value={formData.projectManagerId || 'unassigned'}
                     onValueChange={(value) => handleChange('projectManagerId', value === 'unassigned' ? '' : value)}
                   >
-                    <SelectTrigger className="bg-zinc-900 border-zinc-800 font-mono text-sm">
+                    <SelectTrigger className="bg-card border-border font-mono text-sm">
                       <SelectValue placeholder="Select project manager" />
                     </SelectTrigger>
                     <SelectContent>
@@ -670,7 +670,7 @@ export default function EnhancedProjectWizard() {
                     value={formData.developerName}
                     onChange={(e) => handleChange('developerName', e.target.value)}
                     placeholder="Full name or company name"
-                    className="bg-zinc-900 border-zinc-800 font-mono text-sm"
+                    className="bg-card border-border font-mono text-sm"
                   />
                 </FormField>
                 <div className="grid grid-cols-2 gap-4">
@@ -679,7 +679,7 @@ export default function EnhancedProjectWizard() {
                       value={formData.developerContact}
                       onChange={(e) => handleChange('developerContact', e.target.value)}
                       placeholder="+233 XX XXX XXXX"
-                      className="bg-zinc-900 border-zinc-800 font-mono text-sm"
+                      className="bg-card border-border font-mono text-sm"
                     />
                   </FormField>
                   <FormField label="Email">
@@ -688,7 +688,7 @@ export default function EnhancedProjectWizard() {
                       value={formData.developerEmail}
                       onChange={(e) => handleChange('developerEmail', e.target.value)}
                       placeholder="owner@example.com"
-                      className="bg-zinc-900 border-zinc-800 font-mono text-sm"
+                      className="bg-card border-border font-mono text-sm"
                     />
                   </FormField>
                 </div>
@@ -706,7 +706,7 @@ export default function EnhancedProjectWizard() {
             </Panel>
 
             <Panel title="PROJECT PLAN — PHASES & MILESTONES">
-              <p className="text-xs text-zinc-400 mb-3">
+              <p className="text-xs text-muted-foreground mb-3">
                 A structured Ghana construction plan (phases + statutory milestones like EPA/building permits,
                 inspections and the habitation certificate) is applied automatically based on the project type.
                 Pick a different framework below to override it — you can edit every phase and milestone after setup.
@@ -745,7 +745,7 @@ export default function EnhancedProjectWizard() {
                     value={formData.landTenure}
                     onValueChange={(value) => handleChange('landTenure', value as any)}
                   >
-                    <SelectTrigger className="bg-zinc-900 border-zinc-800 font-mono text-sm">
+                    <SelectTrigger className="bg-card border-border font-mono text-sm">
                       <SelectValue placeholder="Select tenure type" />
                     </SelectTrigger>
                     <SelectContent>
@@ -762,7 +762,7 @@ export default function EnhancedProjectWizard() {
                      onValueChange={(v) => handleChange('assembly', v)}
                      disabled={!assemblies.length}
                   >
-                     <SelectTrigger className="bg-zinc-900 border-zinc-800 font-mono text-sm">
+                     <SelectTrigger className="bg-card border-border font-mono text-sm">
                         <SelectValue placeholder={assemblies.length ? "Select Assembly" : "Select Region first"} />
                      </SelectTrigger>
                      <SelectContent>
@@ -779,7 +779,7 @@ export default function EnhancedProjectWizard() {
                      onValueChange={(v) => handleChange('traditionalAuthority', v)}
                      disabled={!authorities.length}
                   >
-                     <SelectTrigger className="bg-zinc-900 border-zinc-800 font-mono text-sm">
+                     <SelectTrigger className="bg-card border-border font-mono text-sm">
                         <SelectValue placeholder={authorities.length ? "Select Authority" : "Select Region first"} />
                      </SelectTrigger>
                      <SelectContent>
@@ -800,7 +800,7 @@ export default function EnhancedProjectWizard() {
                     value={formData.landAreaSqm || ''}
                     onChange={(e) => handleChange('landAreaSqm', parseFloat(e.target.value) || 0)}
                     placeholder="e.g., 5000"
-                    className="bg-zinc-900 border-zinc-800 font-mono text-sm"
+                    className="bg-card border-border font-mono text-sm"
                   />
                 </FormField>
                 <FormField label="Total Built Area (sqm)" hint="Gross floor area">
@@ -809,7 +809,7 @@ export default function EnhancedProjectWizard() {
                     value={formData.totalBuiltAreaSqm || ''}
                     onChange={(e) => handleChange('totalBuiltAreaSqm', parseFloat(e.target.value) || 0)}
                     placeholder="e.g., 10000"
-                    className="bg-zinc-900 border-zinc-800 font-mono text-sm"
+                    className="bg-card border-border font-mono text-sm"
                   />
                 </FormField>
               </div>
@@ -827,7 +827,7 @@ export default function EnhancedProjectWizard() {
                     type="date"
                     value={formData.plannedStartDate}
                     onChange={(e) => handleChange('plannedStartDate', e.target.value)}
-                    className="bg-zinc-900 border-zinc-800 font-mono text-sm"
+                    className="bg-card border-border font-mono text-sm"
                   />
                 </FormField>
                 <FormField label="Planned End Date" required error={errors.plannedEndDate}>
@@ -835,7 +835,7 @@ export default function EnhancedProjectWizard() {
                     type="date"
                     value={formData.plannedEndDate}
                     onChange={(e) => handleChange('plannedEndDate', e.target.value)}
-                    className="bg-zinc-900 border-zinc-800 font-mono text-sm"
+                    className="bg-card border-border font-mono text-sm"
                   />
                 </FormField>
               </div>
@@ -850,7 +850,7 @@ export default function EnhancedProjectWizard() {
                         value={formData.currency}
                         onValueChange={(v) => handleChange('currency', v)}
                       >
-                        <SelectTrigger className="w-24 bg-zinc-900 border-zinc-800 font-mono text-sm">
+                        <SelectTrigger className="w-24 bg-card border-border font-mono text-sm">
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
@@ -865,12 +865,12 @@ export default function EnhancedProjectWizard() {
                         value={formData.totalBudget || ''}
                         onChange={(e) => handleChange('totalBudget', parseFloat(e.target.value) || 0)}
                         placeholder="e.g., 5000000"
-                        className="flex-1 bg-zinc-900 border-zinc-800 font-mono text-sm"
+                        className="flex-1 bg-card border-border font-mono text-sm"
                       />
                     </div>
                   </FormField>
                 </div>
-                <p className="text-xs text-zinc-500 font-mono">
+                <p className="text-xs text-muted-foreground font-mono">
                   Enter your estimated total project budget. This will be used for budget tracking and reporting.
                 </p>
               </div>
@@ -907,16 +907,16 @@ export default function EnhancedProjectWizard() {
                   <h3 className="font-mono text-xs text-amber-500 mb-3">PROJECT INFORMATION</h3>
                   <div className="grid grid-cols-2 gap-4 text-sm">
                     <div>
-                      <span className="font-mono text-[10px] text-zinc-500">Project Name</span>
+                      <span className="font-mono text-[10px] text-muted-foreground">Project Name</span>
                       <p className="font-mono text-zinc-200">{formData.projectName}</p>
                     </div>
                     <div>
-                      <span className="font-mono text-[10px] text-zinc-500">Type</span>
+                      <span className="font-mono text-[10px] text-muted-foreground">Type</span>
                       <p className="font-mono text-zinc-200 capitalize">{formData.projectType.replace('_', ' ')}</p>
                     </div>
                     {formData.developerName && (
                       <div>
-                        <span className="font-mono text-[10px] text-zinc-500">Property Owner</span>
+                        <span className="font-mono text-[10px] text-muted-foreground">Property Owner</span>
                         <p className="font-mono text-zinc-200">{formData.developerName}</p>
                       </div>
                     )}
@@ -929,31 +929,31 @@ export default function EnhancedProjectWizard() {
                     <h3 className="font-mono text-xs text-amber-500 mb-3">LOCATION</h3>
                     <div className="grid grid-cols-2 gap-4 text-sm">
                       <div>
-                        <span className="font-mono text-[10px] text-zinc-500">Region</span>
+                        <span className="font-mono text-[10px] text-muted-foreground">Region</span>
                         <p className="font-mono text-zinc-200">{formData.location.region}</p>
                       </div>
                       <div>
-                        <span className="font-mono text-[10px] text-zinc-500">District</span>
+                        <span className="font-mono text-[10px] text-muted-foreground">District</span>
                         <p className="font-mono text-zinc-200">{formData.location.district}</p>
                       </div>
                       {formData.location.gpsCode && (
                         <div>
-                          <span className="font-mono text-[10px] text-zinc-500">GPS Code</span>
+                          <span className="font-mono text-[10px] text-muted-foreground">GPS Code</span>
                           <p className="font-mono text-zinc-200">{formData.location.gpsCode}</p>
                         </div>
                       )}
                       <div>
-                        <span className="font-mono text-[10px] text-zinc-500">Land Tenure</span>
+                        <span className="font-mono text-[10px] text-muted-foreground">Land Tenure</span>
                         <p className="font-mono text-zinc-200 capitalize">{formData.landTenure}</p>
                       </div>
                       <div>
-                        <span className="font-mono text-[10px] text-zinc-500">District Assembly</span>
+                        <span className="font-mono text-[10px] text-muted-foreground">District Assembly</span>
                         <p className="font-mono text-zinc-200">
                           {assemblies.find(a => a.id === formData.assembly)?.assembly_name || formData.assembly || '-'}
                         </p>
                       </div>
                       <div>
-                        <span className="font-mono text-[10px] text-zinc-500">Traditional Authority</span>
+                        <span className="font-mono text-[10px] text-muted-foreground">Traditional Authority</span>
                         <p className="font-mono text-zinc-200">
                           {authorities.find(a => a.id === formData.traditionalAuthority)?.name || formData.traditionalAuthority || '-'}
                         </p>
@@ -967,11 +967,11 @@ export default function EnhancedProjectWizard() {
                   <h3 className="font-mono text-xs text-amber-500 mb-3">FINANCIALS</h3>
                   <div className="grid grid-cols-2 gap-4 text-sm">
                     <div>
-                      <span className="font-mono text-[10px] text-zinc-500">Total Budget</span>
-                      <p className="font-mono text-green-400">{formatCurrency(formData.totalBudget, formData.currency)}</p>
+                      <span className="font-mono text-[10px] text-muted-foreground">Total Budget</span>
+                      <p className="font-mono text-green-600 dark:text-green-400">{formatCurrency(formData.totalBudget, formData.currency)}</p>
                     </div>
                     <div>
-                      <span className="font-mono text-[10px] text-zinc-500">Timeline</span>
+                      <span className="font-mono text-[10px] text-muted-foreground">Timeline</span>
                       <p className="font-mono text-zinc-200">
                         {formData.plannedStartDate && formData.plannedEndDate
                           ? `${new Date(formData.plannedStartDate).toLocaleDateString('en-GB')} - ${new Date(formData.plannedEndDate).toLocaleDateString('en-GB')}`
@@ -981,7 +981,7 @@ export default function EnhancedProjectWizard() {
                     </div>
                     {formData.fundingSources.length > 0 && (
                       <div className="col-span-2">
-                        <span className="font-mono text-[10px] text-zinc-500">Funding Sources</span>
+                        <span className="font-mono text-[10px] text-muted-foreground">Funding Sources</span>
                         <p className="font-mono text-zinc-200">{formData.fundingSources.join(', ')}</p>
                       </div>
                     )}
@@ -994,12 +994,12 @@ export default function EnhancedProjectWizard() {
                     <h3 className="font-mono text-xs text-amber-500 mb-3">UNIT MIX</h3>
                     <div className="space-y-2">
                       {formData.unitMix.map((unit, i) => (
-                        <div key={i} className="flex items-center justify-between py-2 border-b border-zinc-800">
-                          <span className="font-mono text-sm text-zinc-300">{unit.unitType}</span>
+                        <div key={i} className="flex items-center justify-between py-2 border-b border-border">
+                          <span className="font-mono text-sm text-muted-foreground">{unit.unitType}</span>
                           <div className="flex items-center gap-4 text-sm">
-                            <span className="font-mono text-zinc-500">{unit.count} units</span>
-                            <span className="font-mono text-zinc-500">{unit.avgSizeSqm} sqm</span>
-                            <span className="font-mono text-green-400">{formatCurrency(unit.basePrice ?? 0, formData.currency)}</span>
+                            <span className="font-mono text-muted-foreground">{unit.count} units</span>
+                            <span className="font-mono text-muted-foreground">{unit.avgSizeSqm} sqm</span>
+                            <span className="font-mono text-green-600 dark:text-green-400">{formatCurrency(unit.basePrice ?? 0, formData.currency)}</span>
                           </div>
                         </div>
                       ))}
@@ -1018,7 +1018,7 @@ export default function EnhancedProjectWizard() {
         )}
 
         {/* Navigation */}
-        <div className="flex items-center justify-between mt-8 pt-6 border-t border-zinc-800">
+        <div className="flex items-center justify-between mt-8 pt-6 border-t border-border">
           <Button
             variant="ghost"
             onClick={goBack}
@@ -1032,7 +1032,7 @@ export default function EnhancedProjectWizard() {
           {currentStep < 5 ? (
             <Button
               onClick={goNext}
-              className="bg-amber-600 hover:bg-amber-700 text-white font-mono text-xs"
+              className="bg-amber-600 hover:bg-amber-700 text-foreground font-mono text-xs"
             >
               Continue
               <ArrowRight className="h-4 w-4 ml-2" />
@@ -1041,7 +1041,7 @@ export default function EnhancedProjectWizard() {
             <Button
               onClick={handleSubmit}
               disabled={isSubmitting}
-              className="bg-green-600 hover:bg-green-700 text-white font-mono text-xs"
+              className="bg-green-600 hover:bg-green-700 text-foreground font-mono text-xs"
             >
               {isSubmitting ? (
                 <>

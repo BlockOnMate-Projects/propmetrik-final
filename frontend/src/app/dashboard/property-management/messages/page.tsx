@@ -206,19 +206,19 @@ export default function LandlordMessagesPage() {
 
   return (
     <div className="p-4 h-[calc(100vh-140px)]">
-      <Card className="h-full border-zinc-800 bg-zinc-950 overflow-hidden">
+      <Card className="h-full border-border bg-background overflow-hidden">
         <div className="flex h-full">
           {/* ─── Left sidebar: one entry per tenant ─── */}
-          <div className={`w-full md:w-80 lg:w-96 border-r border-zinc-800 flex flex-col ${activeTenancyId ? 'hidden md:flex' : 'flex'}`}>
-            <div className="px-4 py-3 border-b border-zinc-800">
+          <div className={`w-full md:w-80 lg:w-96 border-r border-border flex flex-col ${activeTenancyId ? 'hidden md:flex' : 'flex'}`}>
+            <div className="px-4 py-3 border-b border-border">
               <h3 className="text-sm font-mono font-bold text-amber-500 mb-3">TENANT MESSAGES</h3>
               <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                 <Input
                   value={search}
                   onChange={e => setSearch(e.target.value)}
                   placeholder="Search tenants..."
-                  className="pl-9 bg-zinc-900 border-zinc-800 text-zinc-300 text-sm h-9"
+                  className="pl-9 bg-card border-border text-muted-foreground text-sm h-9"
                 />
               </div>
             </div>
@@ -226,24 +226,24 @@ export default function LandlordMessagesPage() {
             <div className="flex-1 overflow-y-auto">
               {loadingConvos ? (
                 <div className="flex items-center justify-center py-12">
-                  <Loader2 className="w-5 h-5 text-zinc-500 animate-spin" />
+                  <Loader2 className="w-5 h-5 text-muted-foreground animate-spin" />
                 </div>
               ) : filtered.length === 0 ? (
                 <div className="p-8 text-center">
-                  <Inbox className="w-8 h-8 text-zinc-600 mx-auto mb-2" />
-                  <p className="text-sm text-zinc-500">No conversations yet</p>
-                  <p className="text-xs text-zinc-600 mt-1">Messages from tenants will appear here</p>
+                  <Inbox className="w-8 h-8 text-muted-foreground mx-auto mb-2" />
+                  <p className="text-sm text-muted-foreground">No conversations yet</p>
+                  <p className="text-xs text-muted-foreground mt-1">Messages from tenants will appear here</p>
                 </div>
               ) : filtered.map(pane => (
                 <button
                   key={pane.tenancyId}
                   onClick={() => handleSelect(pane.tenancyId)}
-                  className={`w-full px-4 py-3 flex items-start gap-3 text-left border-b border-zinc-800/50 transition-colors ${
-                    activeTenancyId === pane.tenancyId ? 'bg-amber-500/10' : 'hover:bg-zinc-900'
+                  className={`w-full px-4 py-3 flex items-start gap-3 text-left border-b border-border/50 transition-colors ${
+                    activeTenancyId === pane.tenancyId ? 'bg-amber-500/10' : 'hover:bg-card'
                   }`}
                 >
                   <Avatar className="w-9 h-9 flex-shrink-0">
-                    <AvatarFallback className="bg-zinc-800 text-amber-500 text-xs font-bold">
+                    <AvatarFallback className="bg-muted text-amber-500 text-xs font-bold">
                       {pane.tenantName.charAt(0).toUpperCase()}
                     </AvatarFallback>
                   </Avatar>
@@ -251,16 +251,16 @@ export default function LandlordMessagesPage() {
                     <div className="flex items-center justify-between">
                       <p className="text-sm font-medium text-zinc-200 truncate">{pane.tenantName}</p>
                       {pane.lastMessageAt && (
-                        <span className="text-[10px] text-zinc-500 flex-shrink-0 ml-2">{formatTime(pane.lastMessageAt)}</span>
+                        <span className="text-[10px] text-muted-foreground flex-shrink-0 ml-2">{formatTime(pane.lastMessageAt)}</span>
                       )}
                     </div>
                     {pane.propertyTitle && (
-                      <p className="text-[10px] text-zinc-600 truncate">{pane.propertyTitle}</p>
+                      <p className="text-[10px] text-muted-foreground truncate">{pane.propertyTitle}</p>
                     )}
-                    <p className="text-xs text-zinc-500 truncate mt-0.5">{pane.lastMessage || 'No messages yet'}</p>
+                    <p className="text-xs text-muted-foreground truncate mt-0.5">{pane.lastMessage || 'No messages yet'}</p>
                   </div>
                   {pane.unreadCount > 0 && (
-                    <Badge variant="default" className="bg-amber-500 text-white text-[10px] font-bold px-1.5 py-0.5 min-w-[20px] justify-center">
+                    <Badge variant="default" className="bg-amber-500 text-foreground text-[10px] font-bold px-1.5 py-0.5 min-w-[20px] justify-center">
                       {pane.unreadCount}
                     </Badge>
                   )}
@@ -274,18 +274,18 @@ export default function LandlordMessagesPage() {
             {activePane ? (
               <>
                 {/* Header */}
-                <div className="px-4 py-3 border-b border-zinc-800 flex items-center gap-3">
-                  <Button variant="ghost" size="icon" onClick={() => setActiveTenancyId(null)} className="md:hidden text-zinc-400">
+                <div className="px-4 py-3 border-b border-border flex items-center gap-3">
+                  <Button variant="ghost" size="icon" onClick={() => setActiveTenancyId(null)} className="md:hidden text-muted-foreground">
                     <ArrowLeft className="w-5 h-5" />
                   </Button>
                   <Avatar className="w-8 h-8">
-                    <AvatarFallback className="bg-zinc-800 text-amber-500 text-xs font-bold">
+                    <AvatarFallback className="bg-muted text-amber-500 text-xs font-bold">
                       {activePane.tenantName.charAt(0).toUpperCase()}
                     </AvatarFallback>
                   </Avatar>
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium text-zinc-200">{activePane.tenantName}</p>
-                    <p className="text-xs text-zinc-500">{activePane.propertyTitle || 'Tenant'}</p>
+                    <p className="text-xs text-muted-foreground">{activePane.propertyTitle || 'Tenant'}</p>
                   </div>
                 </div>
 
@@ -293,10 +293,10 @@ export default function LandlordMessagesPage() {
                 <div className="flex-1 overflow-y-auto p-4 space-y-4">
                   {loadingMsgs ? (
                     <div className="flex items-center justify-center py-12">
-                      <Loader2 className="w-5 h-5 text-zinc-500 animate-spin" />
+                      <Loader2 className="w-5 h-5 text-muted-foreground animate-spin" />
                     </div>
                   ) : messages.length === 0 ? (
-                    <div className="flex items-center justify-center py-12 text-sm text-zinc-500">No messages yet</div>
+                    <div className="flex items-center justify-center py-12 text-sm text-muted-foreground">No messages yet</div>
                   ) : messages.map((msg, idx) => {
                     const isLandlord = msg.senderType === 'landlord'
                     const showDate = idx === 0 || new Date(msg.createdAt).toDateString() !== new Date(messages[idx - 1].createdAt).toDateString()
@@ -309,14 +309,14 @@ export default function LandlordMessagesPage() {
                       <div key={msg.id}>
                         {showDate && (
                           <div className="flex items-center justify-center my-4">
-                            <span className="text-[10px] font-mono text-zinc-600 bg-zinc-900 px-3 py-1 rounded-full border border-zinc-800">
+                            <span className="text-[10px] font-mono text-muted-foreground bg-card px-3 py-1 rounded-full border border-border">
                               {new Date(msg.createdAt).toLocaleDateString('en-GB', { weekday: 'long', month: 'short', day: 'numeric' })}
                             </span>
                           </div>
                         )}
                         {showSubject && subject && (
                           <div className="flex items-center justify-center my-2">
-                            <span className="text-[10px] font-mono text-amber-500/60 bg-amber-900/20 px-3 py-0.5 rounded-full border border-amber-900/30">
+                            <span className="text-[10px] font-mono text-amber-500/60 bg-amber-100 dark:bg-amber-900/20 px-3 py-0.5 rounded-full border border-amber-900/30">
                               Re: {subject}
                             </span>
                           </div>
@@ -324,25 +324,25 @@ export default function LandlordMessagesPage() {
                         <div className={`flex ${isLandlord ? 'justify-end' : 'justify-start'}`}>
                           <div className="max-w-[80%]">
                             {!isLandlord && (
-                              <p className="text-[10px] font-medium text-zinc-500 mb-1 ml-1">
+                              <p className="text-[10px] font-medium text-muted-foreground mb-1 ml-1">
                                 {activePane.tenantName}
                               </p>
                             )}
                             <div className={`px-4 py-2.5 rounded-2xl ${
                               isLandlord
-                                ? 'bg-amber-500 text-white rounded-br-md'
-                                : 'bg-zinc-800 text-zinc-200 rounded-bl-md'
+                                ? 'bg-amber-500 text-foreground rounded-br-md'
+                                : 'bg-muted text-zinc-200 rounded-bl-md'
                             }`}>
                               <p className="text-sm leading-relaxed whitespace-pre-wrap">{msg.content}</p>
                             </div>
                             <div className={`flex items-center gap-1 mt-0.5 ${isLandlord ? 'justify-end' : 'justify-start'} px-1`}>
-                              <span className="text-[10px] text-zinc-500">
+                              <span className="text-[10px] text-muted-foreground">
                                 {new Date(msg.createdAt).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}
                               </span>
                               {isLandlord && (
                                 msg.isRead
-                                  ? <CheckCheck className="w-3 h-3 text-amber-400" />
-                                  : <Check className="w-3 h-3 text-zinc-500" />
+                                  ? <CheckCheck className="w-3 h-3 text-amber-600 dark:text-amber-400" />
+                                  : <Check className="w-3 h-3 text-muted-foreground" />
                               )}
                             </div>
                           </div>
@@ -354,7 +354,7 @@ export default function LandlordMessagesPage() {
                 </div>
 
                 {/* Compose */}
-                <div className="px-4 py-3 border-t border-zinc-800">
+                <div className="px-4 py-3 border-t border-border">
                   <div className="flex items-end gap-2">
                     <Textarea
                       value={newMessage}
@@ -362,12 +362,12 @@ export default function LandlordMessagesPage() {
                       onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend() } }}
                       placeholder="Type a reply..."
                       rows={1}
-                      className="flex-1 bg-zinc-900 border-zinc-800 text-zinc-300 text-sm resize-none min-h-[42px] max-h-[120px]"
+                      className="flex-1 bg-card border-border text-muted-foreground text-sm resize-none min-h-[42px] max-h-[120px]"
                     />
                     <Button
                       onClick={handleSend}
                       disabled={!newMessage.trim() || sending}
-                      className="bg-amber-500 hover:bg-amber-600 text-white h-[42px]"
+                      className="bg-amber-500 hover:bg-amber-600 text-foreground h-[42px]"
                     >
                       {sending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
                     </Button>
@@ -377,11 +377,11 @@ export default function LandlordMessagesPage() {
             ) : (
               <div className="flex-1 flex items-center justify-center">
                 <div className="text-center">
-                  <div className="w-16 h-16 bg-zinc-900 rounded-full flex items-center justify-center mx-auto mb-4 border border-zinc-800">
-                    <MessageSquare className="w-7 h-7 text-zinc-600" />
+                  <div className="w-16 h-16 bg-card rounded-full flex items-center justify-center mx-auto mb-4 border border-border">
+                    <MessageSquare className="w-7 h-7 text-muted-foreground" />
                   </div>
-                  <p className="text-sm font-medium text-zinc-400">Select a conversation</p>
-                  <p className="text-xs text-zinc-600 mt-1">Messages from your tenants will appear here</p>
+                  <p className="text-sm font-medium text-muted-foreground">Select a conversation</p>
+                  <p className="text-xs text-muted-foreground mt-1">Messages from your tenants will appear here</p>
                 </div>
               </div>
             )}

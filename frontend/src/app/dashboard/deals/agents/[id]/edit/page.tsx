@@ -275,7 +275,7 @@ export default function EditAgentPage() {
             </div>
 
             {error && (
-                <div className="mb-6 p-4 bg-red-900/20 border border-red-800 text-red-400 font-mono text-sm">
+                <div className="mb-6 p-4 bg-red-100 dark:bg-red-900/20 border border-red-800 text-red-600 dark:text-red-400 font-mono text-sm">
                     {error}
                 </div>
             )}
@@ -449,7 +449,7 @@ export default function EditAgentPage() {
                                 className={cn(
                                     "px-3 py-1.5 font-mono text-xs transition-colors border",
                                     formData.regions_covered.includes(region)
-                                        ? "bg-green-600/20 text-green-400 border-green-600"
+                                        ? "bg-green-600/20 text-green-600 dark:text-green-400 border-green-600"
                                         : "bg-muted text-muted-foreground border-border hover:border-border"
                                 )}
                             >
@@ -470,7 +470,7 @@ export default function EditAgentPage() {
                                 className={cn(
                                     "px-3 py-1.5 font-mono text-xs transition-colors border",
                                     formData.languages.includes(lang.toLowerCase())
-                                        ? "bg-purple-600/20 text-purple-400 border-purple-600"
+                                        ? "bg-purple-600/20 text-purple-600 dark:text-purple-400 border-purple-600"
                                         : "bg-muted text-muted-foreground border-border hover:border-border"
                                 )}
                             >

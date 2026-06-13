@@ -489,27 +489,27 @@ export default function DRCMethodPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-black text-white flex items-center justify-center">
+      <div className="min-h-screen bg-background text-foreground flex items-center justify-center">
         <Loader2 className="w-8 h-8 text-amber-500 animate-spin" />
-        <span className="ml-3 font-mono text-sm text-zinc-400">Loading DRC method...</span>
+        <span className="ml-3 font-mono text-sm text-muted-foreground">Loading DRC method...</span>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-black text-white p-4 pb-10">
+    <div className="min-h-screen bg-background text-foreground p-4 pb-10">
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-4">
-          <Link href={getBackPath()} className="p-2 hover:bg-zinc-800 transition-colors">
-            <ArrowLeft className="w-4 h-4 text-zinc-400" />
+          <Link href={getBackPath()} className="p-2 hover:bg-muted transition-colors">
+            <ArrowLeft className="w-4 h-4 text-muted-foreground" />
           </Link>
           <div>
             <div className="flex items-center gap-3">
-              <h1 className="font-mono text-xl text-white">DRC METHOD</h1>
+              <h1 className="font-mono text-xl text-foreground">DRC METHOD</h1>
               <MethodBadge method="DRC" />
             </div>
-            <p className="font-mono text-xs text-zinc-500">Depreciated Replacement Cost for Specialized Assets</p>
+            <p className="font-mono text-xs text-muted-foreground">Depreciated Replacement Cost for Specialized Assets</p>
           </div>
         </div>
         <div className="flex items-center gap-3">
@@ -527,11 +527,11 @@ export default function DRCMethodPage() {
             <div className="p-4 space-y-4">
               {/* Asset Type Dropdown */}
               <div>
-                <label className="font-mono text-[10px] text-zinc-500 block mb-1">BUILDING FUNCTION</label>
+                <label className="font-mono text-[10px] text-muted-foreground block mb-1">BUILDING FUNCTION</label>
                 <select
                   value={assetType}
                   onChange={(e) => { setAssetType(e.target.value); setUseCustomCost(false) }}
-                  className="w-full bg-black border border-zinc-700 p-2.5 font-mono text-sm text-white appearance-none cursor-pointer hover:border-zinc-500 focus:border-amber-500 focus:outline-none"
+                  className="w-full bg-background border border-border p-2.5 font-mono text-sm text-foreground appearance-none cursor-pointer hover:border-zinc-500 focus:border-amber-500 focus:outline-none"
                 >
                   {(() => {
                     const functionIds = Object.keys(costsByFunction).length > 0
@@ -548,7 +548,7 @@ export default function DRCMethodPage() {
 
               {/* Quality Level Selector */}
               <div>
-                <label className="font-mono text-[10px] text-zinc-500 block mb-1">QUALITY LEVEL</label>
+                <label className="font-mono text-[10px] text-muted-foreground block mb-1">QUALITY LEVEL</label>
                 <div className="grid grid-cols-4 gap-2">
                   {(['basic', 'standard', 'premium', 'luxury'] as const).map(level => {
                     const cost = costsByFunction[assetType]?.[level]
@@ -559,19 +559,19 @@ export default function DRCMethodPage() {
                         disabled={!cost && Object.keys(costsByFunction).length > 0}
                         className={`p-3 border text-center transition-colors ${
                           qualityLevel === level
-                            ? 'bg-amber-500/20 border-amber-500 text-amber-400'
+                            ? 'bg-amber-500/20 border-amber-500 text-amber-600 dark:text-amber-400'
                             : cost || Object.keys(costsByFunction).length === 0
-                              ? 'bg-zinc-900 border-zinc-700 text-zinc-400 hover:border-zinc-500'
-                              : 'bg-zinc-900/50 border-zinc-800 text-zinc-600 cursor-not-allowed'
+                              ? 'bg-card border-border text-muted-foreground hover:border-zinc-500'
+                              : 'bg-card/50 border-border text-muted-foreground cursor-not-allowed'
                         }`}
                       >
                         <div className="font-mono text-[10px] font-bold uppercase">{level === 'basic' ? 'Basic' : level}</div>
                         {cost ? (
-                          <div className="font-mono text-[10px] text-zinc-500 mt-1">
+                          <div className="font-mono text-[10px] text-muted-foreground mt-1">
                             GH₵ {cost.toLocaleString()}/sqm
                           </div>
                         ) : Object.keys(costsByFunction).length > 0 ? (
-                          <div className="font-mono text-[10px] text-zinc-600 mt-1">N/A</div>
+                          <div className="font-mono text-[10px] text-muted-foreground mt-1">N/A</div>
                         ) : null}
                       </button>
                     )
@@ -580,9 +580,9 @@ export default function DRCMethodPage() {
               </div>
 
               {/* Selected cost summary */}
-              <div className="flex items-center justify-between p-2 bg-zinc-900/50 border border-zinc-800">
-                <span className="font-mono text-[10px] text-zinc-500">Selected Rate</span>
-                <span className="font-mono text-sm text-amber-400 font-bold">
+              <div className="flex items-center justify-between p-2 bg-card/50 border border-border">
+                <span className="font-mono text-[10px] text-muted-foreground">Selected Rate</span>
+                <span className="font-mono text-sm text-amber-600 dark:text-amber-400 font-bold">
                   GH₵ {replacementCostPerSqm.toLocaleString()}/sqm
                 </span>
               </div>
@@ -595,11 +595,11 @@ export default function DRCMethodPage() {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <div className="flex justify-between items-center mb-1">
-                    <label className="font-mono text-[10px] text-zinc-500">GFA (SQM)</label>
+                    <label className="font-mono text-[10px] text-muted-foreground">GFA (SQM)</label>
                     <span className={`font-mono text-[9px] px-1.5 py-0.5 ${
-                      gfaSource === 'property' ? 'bg-green-500/20 text-green-400' :
-                      gfaSource === 'estimated' ? 'bg-amber-500/20 text-amber-400' :
-                      'bg-blue-500/20 text-blue-400'
+                      gfaSource === 'property' ? 'bg-green-500/20 text-green-600 dark:text-green-400' :
+                      gfaSource === 'estimated' ? 'bg-amber-500/20 text-amber-600 dark:text-amber-400' :
+                      'bg-blue-500/20 text-blue-600 dark:text-blue-400'
                     }`}>
                       {gfaSource === 'property' ? 'FROM PROPERTY' :
                        gfaSource === 'estimated' ? 'ESTIMATED' : 'USER'}
@@ -609,18 +609,18 @@ export default function DRCMethodPage() {
                     type="number"
                     value={gfa}
                     readOnly
-                    className={`w-full bg-black border p-2 font-mono text-sm text-white cursor-not-allowed opacity-80 ${
-                      gfaSource === 'estimated' ? 'border-amber-500/50' : 'border-zinc-700'
+                    className={`w-full bg-background border p-2 font-mono text-sm text-foreground cursor-not-allowed opacity-80 ${
+                      gfaSource === 'estimated' ? 'border-amber-500/50' : 'border-border'
                     }`}
                   />
                   {gfaSource === 'estimated' && (
-                    <div className="font-mono text-[9px] text-amber-400 mt-1">
+                    <div className="font-mono text-[9px] text-amber-600 dark:text-amber-400 mt-1">
                       ⚠️ No GFA in property data. Estimated from land area (40% FAR).
                     </div>
                   )}
                 </div>
                 <div>
-                  <label className="font-mono text-[10px] text-zinc-500 block mb-1">
+                  <label className="font-mono text-[10px] text-muted-foreground block mb-1">
                     REPLACEMENT COST/SQM (GH₵)
                   </label>
                   <input
@@ -630,14 +630,14 @@ export default function DRCMethodPage() {
                       setUseCustomCost(true)
                       setReplacementCostPerSqm(Number(e.target.value))
                     }}
-                    className="w-full bg-black border border-zinc-700 p-2 font-mono text-sm text-white"
+                    className="w-full bg-background border border-border p-2 font-mono text-sm text-foreground"
                   />
                 </div>
               </div>
 
-              <div className="flex items-center justify-between p-3 bg-zinc-900 border border-zinc-700">
-                <span className="font-mono text-sm text-zinc-400">Gross Replacement Cost</span>
-                <span className="font-mono text-lg text-white font-bold">
+              <div className="flex items-center justify-between p-3 bg-card border border-border">
+                <span className="font-mono text-sm text-muted-foreground">Gross Replacement Cost</span>
+                <span className="font-mono text-lg text-foreground font-bold">
                   GH₵ {grossReplacementCost.toLocaleString()}
                 </span>
               </div>
@@ -648,15 +648,15 @@ export default function DRCMethodPage() {
           <TerminalPanel title="MODERN EQUIVALENT ASSET (MEA)">
             <div className="p-4 space-y-4">
               <div className="flex items-start gap-3 p-3 bg-blue-500/10 border border-blue-500/30">
-                <Info className="w-4 h-4 text-blue-400 mt-0.5" />
-                <div className="font-mono text-xs text-blue-300">
+                <Info className="w-4 h-4 text-blue-600 dark:text-blue-400 mt-0.5" />
+                <div className="font-mono text-xs text-blue-600 dark:text-blue-300">
                   MEA considers whether a modern equivalent would be built to the same specification. 
                   A library may need less space due to digital resources (factor &lt; 1.0).
                 </div>
               </div>
 
               <div className="flex items-center gap-4">
-                <label className="font-mono text-xs text-zinc-400">MEA Factor:</label>
+                <label className="font-mono text-xs text-muted-foreground">MEA Factor:</label>
                 <input
                   type="range"
                   min="0.5"
@@ -666,14 +666,14 @@ export default function DRCMethodPage() {
                   onChange={(e) => setMeaFactor(Number(e.target.value))}
                   className="flex-1"
                 />
-                <span className="font-mono text-sm text-amber-400 w-16 text-right">
+                <span className="font-mono text-sm text-amber-600 dark:text-amber-400 w-16 text-right">
                   {(meaFactor * 100).toFixed(0)}%
                 </span>
               </div>
 
-              <div className="flex items-center justify-between p-3 bg-zinc-900 border border-zinc-700">
-                <span className="font-mono text-sm text-zinc-400">MEA-Adjusted Cost</span>
-                <span className="font-mono text-lg text-white font-bold">
+              <div className="flex items-center justify-between p-3 bg-card border border-border">
+                <span className="font-mono text-sm text-muted-foreground">MEA-Adjusted Cost</span>
+                <span className="font-mono text-lg text-foreground font-bold">
                   GH₵ {meaAdjustedCost.toLocaleString()}
                 </span>
               </div>
@@ -685,30 +685,30 @@ export default function DRCMethodPage() {
             <div className="p-4 space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="font-mono text-[10px] text-zinc-500 block mb-1">EFFECTIVE AGE (YEARS)</label>
+                  <label className="font-mono text-[10px] text-muted-foreground block mb-1">EFFECTIVE AGE (YEARS)</label>
                   <input
                     type="number"
                     value={effectiveAge}
                     onChange={(e) => setEffectiveAge(Number(e.target.value))}
-                    className="w-full bg-black border border-zinc-700 p-2 font-mono text-sm text-white"
+                    className="w-full bg-background border border-border p-2 font-mono text-sm text-foreground"
                   />
                 </div>
                 <div>
-                  <label className="font-mono text-[10px] text-zinc-500 block mb-1">USEFUL LIFE (YEARS)</label>
+                  <label className="font-mono text-[10px] text-muted-foreground block mb-1">USEFUL LIFE (YEARS)</label>
                   <input
                     type="number"
                     value={usefulLife}
                     disabled
-                    className="w-full bg-zinc-900 border border-zinc-700 p-2 font-mono text-sm text-zinc-500"
+                    className="w-full bg-card border border-border p-2 font-mono text-sm text-muted-foreground"
                   />
                 </div>
               </div>
 
               <div className="space-y-4">
                 {/* Physical Depreciation */}
-                <div className="p-3 bg-zinc-900/50 border border-zinc-800">
+                <div className="p-3 bg-card/50 border border-border">
                   <div className="flex justify-between items-center mb-2">
-                    <label className="font-mono text-xs text-zinc-400">Physical Depreciation</label>
+                    <label className="font-mono text-xs text-muted-foreground">Physical Depreciation</label>
                     <div className="flex items-center gap-2">
                       <button
                         onClick={() => {
@@ -717,8 +717,8 @@ export default function DRCMethodPage() {
                         }}
                         className={`px-2 py-1 font-mono text-[9px] transition-all ${
                           physicalDepMode === 'system'
-                            ? 'bg-green-500/20 text-green-400 border border-green-500/50'
-                            : 'bg-zinc-800 text-zinc-500 border border-zinc-700'
+                            ? 'bg-green-500/20 text-green-600 dark:text-green-400 border border-green-500/50'
+                            : 'bg-muted text-muted-foreground border border-border'
                         }`}
                       >
                         SYS
@@ -727,13 +727,13 @@ export default function DRCMethodPage() {
                         onClick={() => setPhysicalDepMode('user')}
                         className={`px-2 py-1 font-mono text-[9px] transition-all ${
                           physicalDepMode === 'user'
-                            ? 'bg-amber-500/20 text-amber-400 border border-amber-500/50'
-                            : 'bg-zinc-800 text-zinc-500 border border-zinc-700'
+                            ? 'bg-amber-500/20 text-amber-600 dark:text-amber-400 border border-amber-500/50'
+                            : 'bg-muted text-muted-foreground border border-border'
                         }`}
                       >
                         USER
                       </button>
-                      <span className="font-mono text-sm text-amber-400">{appliedPhysicalDep.toFixed(1)}%</span>
+                      <span className="font-mono text-sm text-amber-600 dark:text-amber-400">{appliedPhysicalDep.toFixed(1)}%</span>
                     </div>
                   </div>
                   <input
@@ -749,13 +749,13 @@ export default function DRCMethodPage() {
                     disabled={physicalDepMode === 'system'}
                   />
                   <div className="flex justify-between mt-1">
-                    <span className="font-mono text-[10px] text-zinc-500">
+                    <span className="font-mono text-[10px] text-muted-foreground">
                       {physicalDepMode === 'system' 
                         ? `System: Age-Life method (${effectiveAge}y / ${usefulLife}y)`
                         : 'User override'}
                     </span>
                     {systemPhysicalDep > 0 && physicalDepMode === 'user' && (
-                      <span className="font-mono text-[10px] text-zinc-500">
+                      <span className="font-mono text-[10px] text-muted-foreground">
                         System: {systemPhysicalDep.toFixed(1)}%
                       </span>
                     )}
@@ -763,9 +763,9 @@ export default function DRCMethodPage() {
                 </div>
 
                 {/* Functional Obsolescence */}
-                <div className="p-3 bg-zinc-900/50 border border-zinc-800">
+                <div className="p-3 bg-card/50 border border-border">
                   <div className="flex justify-between items-center mb-2">
-                    <label className="font-mono text-xs text-zinc-400">Functional Obsolescence</label>
+                    <label className="font-mono text-xs text-muted-foreground">Functional Obsolescence</label>
                     <div className="flex items-center gap-2">
                       <button
                         onClick={() => {
@@ -774,8 +774,8 @@ export default function DRCMethodPage() {
                         }}
                         className={`px-2 py-1 font-mono text-[9px] transition-all ${
                           functionalObsMode === 'system'
-                            ? 'bg-green-500/20 text-green-400 border border-green-500/50'
-                            : 'bg-zinc-800 text-zinc-500 border border-zinc-700'
+                            ? 'bg-green-500/20 text-green-600 dark:text-green-400 border border-green-500/50'
+                            : 'bg-muted text-muted-foreground border border-border'
                         }`}
                       >
                         SYS
@@ -784,13 +784,13 @@ export default function DRCMethodPage() {
                         onClick={() => setFunctionalObsMode('user')}
                         className={`px-2 py-1 font-mono text-[9px] transition-all ${
                           functionalObsMode === 'user'
-                            ? 'bg-amber-500/20 text-amber-400 border border-amber-500/50'
-                            : 'bg-zinc-800 text-zinc-500 border border-zinc-700'
+                            ? 'bg-amber-500/20 text-amber-600 dark:text-amber-400 border border-amber-500/50'
+                            : 'bg-muted text-muted-foreground border border-border'
                         }`}
                       >
                         USER
                       </button>
-                      <span className="font-mono text-sm text-amber-400">{functionalObsolescence.toFixed(1)}%</span>
+                      <span className="font-mono text-sm text-amber-600 dark:text-amber-400">{functionalObsolescence.toFixed(1)}%</span>
                     </div>
                   </div>
                   <input
@@ -806,13 +806,13 @@ export default function DRCMethodPage() {
                     disabled={functionalObsMode === 'system'}
                   />
                   <div className="flex justify-between mt-1">
-                    <span className="font-mono text-[10px] text-zinc-500">
+                    <span className="font-mono text-[10px] text-muted-foreground">
                       {functionalObsMode === 'system' 
                         ? 'System: Auto-detection from property specs'
                         : 'User override'}
                     </span>
                     {systemFunctionalObs > 0 && functionalObsMode === 'user' && (
-                      <span className="font-mono text-[10px] text-zinc-500">
+                      <span className="font-mono text-[10px] text-muted-foreground">
                         System: {systemFunctionalObs.toFixed(1)}%
                       </span>
                     )}
@@ -820,9 +820,9 @@ export default function DRCMethodPage() {
                 </div>
 
                 {/* External/Economic Obsolescence */}
-                <div className="p-3 bg-zinc-900/50 border border-zinc-800">
+                <div className="p-3 bg-card/50 border border-border">
                   <div className="flex justify-between items-center mb-2">
-                    <label className="font-mono text-xs text-zinc-400">External Obsolescence</label>
+                    <label className="font-mono text-xs text-muted-foreground">External Obsolescence</label>
                     <div className="flex items-center gap-2">
                       <button
                         onClick={() => {
@@ -831,8 +831,8 @@ export default function DRCMethodPage() {
                         }}
                         className={`px-2 py-1 font-mono text-[9px] transition-all ${
                           economicObsMode === 'system'
-                            ? 'bg-green-500/20 text-green-400 border border-green-500/50'
-                            : 'bg-zinc-800 text-zinc-500 border border-zinc-700'
+                            ? 'bg-green-500/20 text-green-600 dark:text-green-400 border border-green-500/50'
+                            : 'bg-muted text-muted-foreground border border-border'
                         }`}
                       >
                         SYS
@@ -841,13 +841,13 @@ export default function DRCMethodPage() {
                         onClick={() => setEconomicObsMode('user')}
                         className={`px-2 py-1 font-mono text-[9px] transition-all ${
                           economicObsMode === 'user'
-                            ? 'bg-amber-500/20 text-amber-400 border border-amber-500/50'
-                            : 'bg-zinc-800 text-zinc-500 border border-zinc-700'
+                            ? 'bg-amber-500/20 text-amber-600 dark:text-amber-400 border border-amber-500/50'
+                            : 'bg-muted text-muted-foreground border border-border'
                         }`}
                       >
                         USER
                       </button>
-                      <span className="font-mono text-sm text-amber-400">{economicObsolescence.toFixed(1)}%</span>
+                      <span className="font-mono text-sm text-amber-600 dark:text-amber-400">{economicObsolescence.toFixed(1)}%</span>
                     </div>
                   </div>
                   <input
@@ -863,13 +863,13 @@ export default function DRCMethodPage() {
                     disabled={economicObsMode === 'system'}
                   />
                   <div className="flex justify-between mt-1">
-                    <span className="font-mono text-[10px] text-zinc-500">
+                    <span className="font-mono text-[10px] text-muted-foreground">
                       {economicObsMode === 'system' 
                         ? 'System: Location & market factors'
                         : 'User override'}
                     </span>
                     {systemExternalObs > 0 && economicObsMode === 'user' && (
-                      <span className="font-mono text-[10px] text-zinc-500">
+                      <span className="font-mono text-[10px] text-muted-foreground">
                         System: {systemExternalObs.toFixed(1)}%
                       </span>
                     )}
@@ -878,8 +878,8 @@ export default function DRCMethodPage() {
               </div>
 
               <div className="flex items-center justify-between p-3 bg-red-500/10 border border-red-500/30">
-                <span className="font-mono text-sm text-red-400">Total Depreciation</span>
-                <span className="font-mono text-lg text-red-400 font-bold">
+                <span className="font-mono text-sm text-red-600 dark:text-red-400">Total Depreciation</span>
+                <span className="font-mono text-lg text-red-600 dark:text-red-400 font-bold">
                   -{totalDepreciation.toFixed(1)}% (GH₵ {depreciationAmount.toLocaleString()})
                 </span>
               </div>
@@ -893,7 +893,7 @@ export default function DRCMethodPage() {
           <TerminalPanel title="LAND VALUE">
             <div className="p-4 space-y-3">
               {/* Mode Toggle */}
-              <div className="flex gap-1 p-1 bg-zinc-900 border border-zinc-700">
+              <div className="flex gap-1 p-1 bg-card border border-border">
                 <button
                   onClick={() => {
                     setLandValueMode('system')
@@ -901,8 +901,8 @@ export default function DRCMethodPage() {
                   }}
                   className={`flex-1 py-2 px-3 font-mono text-[10px] transition-all ${
                     landValueMode === 'system'
-                      ? 'bg-amber-500 text-white'
-                      : 'text-zinc-500 hover:text-white'
+                      ? 'bg-amber-500 text-foreground'
+                      : 'text-muted-foreground hover:text-foreground'
                   }`}
                 >
                   <Calculator className="w-3 h-3 inline mr-1" />
@@ -915,8 +915,8 @@ export default function DRCMethodPage() {
                   }}
                   className={`flex-1 py-2 px-3 font-mono text-[10px] transition-all ${
                     landValueMode === 'user'
-                      ? 'bg-amber-500 text-white'
-                      : 'text-zinc-500 hover:text-white'
+                      ? 'bg-amber-500 text-foreground'
+                      : 'text-muted-foreground hover:text-foreground'
                   }`}
                 >
                   USER-ENTERED
@@ -924,52 +924,52 @@ export default function DRCMethodPage() {
               </div>
 
               {landValueLoading ? (
-                <div className="flex items-center gap-2 p-3 bg-zinc-900 border border-zinc-700">
+                <div className="flex items-center gap-2 p-3 bg-card border border-border">
                   <Loader2 className="w-4 h-4 animate-spin text-amber-500" />
-                  <span className="font-mono text-xs text-zinc-400">Loading land value...</span>
+                  <span className="font-mono text-xs text-muted-foreground">Loading land value...</span>
                 </div>
               ) : landValueMode === 'system' ? (
                 /* System-Calculated Mode */
                 <div className="space-y-2">
                   {systemLandValue > 0 ? (
                     <>
-                      <div className="p-3 bg-zinc-900 border border-green-500/30">
-                        <div className="font-mono text-2xl text-white mb-1">
+                      <div className="p-3 bg-card border border-green-500/30">
+                        <div className="font-mono text-2xl text-foreground mb-1">
                           GH₵ {systemLandValue.toLocaleString()}
                         </div>
                         {landValueMethods.length > 0 && (
-                          <div className="font-mono text-[10px] text-zinc-400">
+                          <div className="font-mono text-[10px] text-muted-foreground">
                             Methods: {landValueMethods.join(' + ')}
                           </div>
                         )}
                         {landValueConfidence > 0 && (
                           <div className="flex items-center gap-2 mt-2">
-                            <div className="flex-1 h-1 bg-zinc-800 rounded">
+                            <div className="flex-1 h-1 bg-muted rounded">
                               <div 
                                 className="h-1 bg-green-500 rounded" 
                                 style={{ width: `${landValueConfidence * 100}%` }}
                               />
                             </div>
-                            <span className="font-mono text-[10px] text-green-400">
+                            <span className="font-mono text-[10px] text-green-600 dark:text-green-400">
                               {(landValueConfidence * 100).toFixed(0)}%
                             </span>
                           </div>
                         )}
                       </div>
-                      <div className="font-mono text-[10px] text-zinc-500">
+                      <div className="font-mono text-[10px] text-muted-foreground">
                         Land value from system-wide 3-method reconciliation
                       </div>
                     </>
                   ) : landValueCalculating ? (
                     /* Auto-calculating in progress */
-                    <div className="p-3 bg-zinc-900 border border-amber-500/30">
+                    <div className="p-3 bg-card border border-amber-500/30">
                       <div className="flex items-center gap-2">
                         <Loader2 className="w-4 h-4 animate-spin text-amber-500" />
-                        <span className="font-mono text-xs text-amber-400">
+                        <span className="font-mono text-xs text-amber-600 dark:text-amber-400">
                           Auto-calculating land value...
                         </span>
                       </div>
-                      <p className="font-mono text-[10px] text-zinc-500 mt-2">
+                      <p className="font-mono text-[10px] text-muted-foreground mt-2">
                         Using Comparable Sales & Residual methods
                       </p>
                     </div>
@@ -978,12 +978,12 @@ export default function DRCMethodPage() {
                     <div className="space-y-2">
                       <div className="p-3 bg-amber-500/10 border border-amber-500/30">
                         <div className="flex items-center gap-2 mb-2">
-                          <AlertTriangle className="w-4 h-4 text-amber-400" />
-                          <span className="font-mono text-xs text-amber-400">
+                          <AlertTriangle className="w-4 h-4 text-amber-600 dark:text-amber-400" />
+                          <span className="font-mono text-xs text-amber-600 dark:text-amber-400">
                             Could not calculate land value
                           </span>
                         </div>
-                        <p className="font-mono text-[10px] text-zinc-400">
+                        <p className="font-mono text-[10px] text-muted-foreground">
                           Insufficient data for Comparable/Residual methods. Switch to User-Entered.
                         </p>
                       </div>
@@ -1001,30 +1001,30 @@ export default function DRCMethodPage() {
                       setUserLandValue(val)
                       setLandValue(val)
                     }}
-                    className="w-full bg-black border border-amber-500/50 p-3 font-mono text-lg text-white"
+                    className="w-full bg-background border border-amber-500/50 p-3 font-mono text-lg text-foreground"
                     placeholder="Enter land value (GH₵)"
                   />
-                  <div className="font-mono text-[10px] text-zinc-500">
+                  <div className="font-mono text-[10px] text-muted-foreground">
                     Manual land value entry. Should be supported by market evidence.
                   </div>
                   {systemLandValue > 0 && userLandValue > 0 && (
                     <div className={`p-2 border ${
                       Math.abs((userLandValue - systemLandValue) / systemLandValue) > 0.2
                         ? 'bg-red-500/10 border-red-500/30'
-                        : 'bg-zinc-900 border-zinc-700'
+                        : 'bg-card border-border'
                     }`}>
-                      <div className="font-mono text-[10px] text-zinc-400">
+                      <div className="font-mono text-[10px] text-muted-foreground">
                         System value: GH₵ {systemLandValue.toLocaleString()}
                         <span className={`ml-2 ${
                           Math.abs((userLandValue - systemLandValue) / systemLandValue) > 0.2
-                            ? 'text-red-400'
-                            : 'text-green-400'
+                            ? 'text-red-600 dark:text-red-400'
+                            : 'text-green-600 dark:text-green-400'
                         }`}>
                           ({((userLandValue - systemLandValue) / systemLandValue * 100).toFixed(1)}% variance)
                         </span>
                       </div>
                       {Math.abs((userLandValue - systemLandValue) / systemLandValue) > 0.2 && (
-                        <div className="font-mono text-[10px] text-red-400 mt-1">
+                        <div className="font-mono text-[10px] text-red-600 dark:text-red-400 mt-1">
                           ⚠️ Variance &gt;20% requires justification
                         </div>
                       )}
@@ -1040,46 +1040,46 @@ export default function DRCMethodPage() {
             <div className="p-4 space-y-3">
               {/* Show Python result indicator if available */}
               {pythonResult && (
-                <div className="flex items-center gap-2 pb-2 mb-2 border-b border-zinc-700">
+                <div className="flex items-center gap-2 pb-2 mb-2 border-b border-border">
                   <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
-                  <span className="font-mono text-[10px] text-green-400">RICS-COMPLIANT CALCULATION</span>
+                  <span className="font-mono text-[10px] text-green-600 dark:text-green-400">RICS-COMPLIANT CALCULATION</span>
                 </div>
               )}
-              <div className="flex justify-between py-2 border-b border-zinc-800">
-                <span className="font-mono text-xs text-zinc-500">Gross Replacement Cost</span>
-                <span className="font-mono text-sm text-white">
+              <div className="flex justify-between py-2 border-b border-border">
+                <span className="font-mono text-xs text-muted-foreground">Gross Replacement Cost</span>
+                <span className="font-mono text-sm text-foreground">
                   GH₵ {(pythonResult?.details?.gross_replacement_cost || grossReplacementCost).toLocaleString()}
                 </span>
               </div>
-              <div className="flex justify-between py-2 border-b border-zinc-800">
-                <span className="font-mono text-xs text-zinc-500">MEA Adjustment ({(meaFactor * 100).toFixed(0)}%)</span>
-                <span className="font-mono text-sm text-amber-400">
+              <div className="flex justify-between py-2 border-b border-border">
+                <span className="font-mono text-xs text-muted-foreground">MEA Adjustment ({(meaFactor * 100).toFixed(0)}%)</span>
+                <span className="font-mono text-sm text-amber-600 dark:text-amber-400">
                   GH₵ {(pythonResult?.details?.mea_adjusted_grc || meaAdjustedCost).toLocaleString()}
                 </span>
               </div>
-              <div className="flex justify-between py-2 border-b border-zinc-800">
-                <span className="font-mono text-xs text-zinc-500">
+              <div className="flex justify-between py-2 border-b border-border">
+                <span className="font-mono text-xs text-muted-foreground">
                   Less: Depreciation ({(pythonResult?.details?.depreciation?.total?.rate || totalDepreciation).toFixed(1)}%)
                 </span>
-                <span className="font-mono text-sm text-red-400">
+                <span className="font-mono text-sm text-red-600 dark:text-red-400">
                   -GH₵ {(pythonResult?.details?.depreciation?.total?.amount || depreciationAmount).toLocaleString()}
                 </span>
               </div>
-              <div className="flex justify-between py-2 border-b border-zinc-800">
-                <span className="font-mono text-xs text-zinc-500">Depreciated Replacement Cost</span>
-                <span className="font-mono text-sm text-white">
+              <div className="flex justify-between py-2 border-b border-border">
+                <span className="font-mono text-xs text-muted-foreground">Depreciated Replacement Cost</span>
+                <span className="font-mono text-sm text-foreground">
                   GH₵ {(pythonResult?.details?.depreciated_building_value || depreciatedReplacementCost).toLocaleString()}
                 </span>
               </div>
-              <div className="flex justify-between py-2 border-b border-zinc-800">
-                <span className="font-mono text-xs text-zinc-500">Plus: Land Value</span>
-                <span className="font-mono text-sm text-green-400">
+              <div className="flex justify-between py-2 border-b border-border">
+                <span className="font-mono text-xs text-muted-foreground">Plus: Land Value</span>
+                <span className="font-mono text-sm text-green-600 dark:text-green-400">
                   +GH₵ {(pythonResult?.details?.land_value || landValue).toLocaleString()}
                 </span>
               </div>
               <div className="flex justify-between py-3 bg-amber-500/20 -mx-4 px-4">
-                <span className="font-mono text-sm text-amber-400 font-bold">TOTAL DRC VALUE</span>
-                <span className="font-mono text-xl text-amber-400 font-bold">
+                <span className="font-mono text-sm text-amber-600 dark:text-amber-400 font-bold">TOTAL DRC VALUE</span>
+                <span className="font-mono text-xl text-amber-600 dark:text-amber-400 font-bold">
                   GH₵ {(pythonResult?.estimated_value || totalValue).toLocaleString()}
                 </span>
               </div>
@@ -1091,19 +1091,19 @@ export default function DRCMethodPage() {
             <div className="p-4 space-y-2">
               <div className="flex items-start gap-2 text-xs">
                 <AlertTriangle className="w-3 h-3 text-amber-500 mt-0.5" />
-                <span className="font-mono text-zinc-400">
+                <span className="font-mono text-muted-foreground">
                   DRC is a last resort method when no market evidence exists
                 </span>
               </div>
               <div className="flex items-start gap-2 text-xs">
-                <Landmark className="w-3 h-3 text-blue-400 mt-0.5" />
-                <span className="font-mono text-zinc-400">
+                <Landmark className="w-3 h-3 text-blue-600 dark:text-blue-400 mt-0.5" />
+                <span className="font-mono text-muted-foreground">
                   MEA reflects modern functional requirements
                 </span>
               </div>
               <div className="flex items-start gap-2 text-xs">
-                <TrendingDown className="w-3 h-3 text-red-400 mt-0.5" />
-                <span className="font-mono text-zinc-400">
+                <TrendingDown className="w-3 h-3 text-red-600 dark:text-red-400 mt-0.5" />
+                <span className="font-mono text-muted-foreground">
                   Depreciation includes physical, functional & economic factors
                 </span>
               </div>
@@ -1116,14 +1116,14 @@ export default function DRCMethodPage() {
       <div className="mt-6 flex justify-between">
         <Link
           href={getBackPath()}
-          className="px-6 py-3 bg-zinc-800 text-zinc-400 font-mono text-sm hover:text-white transition-colors"
+          className="px-6 py-3 bg-muted text-muted-foreground font-mono text-sm hover:text-foreground transition-colors"
         >
           ← BACK
         </Link>
         <button
           onClick={handleSave}
           disabled={saving || totalValue <= 0}
-          className="px-6 py-3 bg-amber-500 text-white font-mono text-sm font-bold hover:bg-amber-400 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-2"
+          className="px-6 py-3 bg-amber-500 text-foreground font-mono text-sm font-bold hover:bg-amber-400 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-2"
         >
           {saving && <Loader2 className="w-4 h-4 animate-spin" />}
           {(() => {

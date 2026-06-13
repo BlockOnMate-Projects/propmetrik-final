@@ -60,11 +60,11 @@ const TYPE_WEBSITE_PATH: Record<string, string> = {
 };
 
 const STATUS_COLORS: Record<string, string> = {
-  draft: 'bg-zinc-700 text-zinc-300',
-  review: 'bg-yellow-900/50 text-yellow-400',
-  published: 'bg-green-900/50 text-green-400',
-  archived: 'bg-red-900/50 text-red-400',
-  scheduled: 'bg-blue-900/50 text-blue-400',
+  draft: 'bg-zinc-700 text-muted-foreground',
+  review: 'bg-yellow-100 dark:bg-yellow-900/50 text-yellow-600 dark:text-yellow-400',
+  published: 'bg-green-100 dark:bg-green-900/50 text-green-600 dark:text-green-400',
+  archived: 'bg-red-100 dark:bg-red-900/50 text-red-600 dark:text-red-400',
+  scheduled: 'bg-blue-100 dark:bg-blue-900/50 text-blue-600 dark:text-blue-400',
 };
 
 const SECTORS = [
@@ -283,8 +283,8 @@ export default function EditPublicationPage() {
   if (loading) {
     return (
       <div className="max-w-5xl mx-auto space-y-6">
-        <div className="h-8 w-48 bg-zinc-800 rounded animate-pulse" />
-        <div className="h-96 bg-zinc-900 border border-zinc-800 rounded animate-pulse" />
+        <div className="h-8 w-48 bg-muted rounded animate-pulse" />
+        <div className="h-96 bg-card border border-border rounded animate-pulse" />
       </div>
     );
   }
@@ -296,12 +296,12 @@ export default function EditPublicationPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <h1 className="text-lg font-bold text-white font-mono truncate max-w-[400px]">
+          <h1 className="text-lg font-bold text-foreground font-mono truncate max-w-[400px]">
             {publication.title}
           </h1>
           <span
             className={`px-2 py-0.5 text-[10px] font-mono font-bold uppercase rounded ${
-              STATUS_COLORS[publication.status] || 'bg-zinc-700 text-zinc-300'
+              STATUS_COLORS[publication.status] || 'bg-zinc-700 text-muted-foreground'
             }`}
           >
             {publication.status}
@@ -309,8 +309,8 @@ export default function EditPublicationPage() {
           <span
             className={`px-2 py-0.5 text-[10px] font-mono font-bold uppercase border rounded ${
               TYPE_CATEGORY[publication.type] === 'press'
-                ? 'bg-amber-900/30 text-amber-400 border-amber-800'
-                : 'bg-blue-900/30 text-blue-400 border-blue-800'
+                ? 'bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 border-amber-800'
+                : 'bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 border-blue-800'
             }`}
             title={`Will appear at ${TYPE_WEBSITE_PATH[publication.type] || '/insights'}`}
           >
@@ -321,7 +321,7 @@ export default function EditPublicationPage() {
           <button
             onClick={handleSave}
             disabled={saving}
-            className="px-3 py-1.5 text-xs font-mono text-zinc-300 border border-zinc-700 rounded hover:border-white hover:text-white disabled:opacity-50 transition-colors"
+            className="px-3 py-1.5 text-xs font-mono text-muted-foreground border border-border rounded hover:border-white hover:text-foreground disabled:opacity-50 transition-colors"
           >
             {saving ? 'Saving...' : 'Save Draft'}
           </button>
@@ -329,7 +329,7 @@ export default function EditPublicationPage() {
             <button
               onClick={handlePublish}
               disabled={saving}
-              className="px-3 py-1.5 text-xs font-mono font-bold text-white bg-red-600 rounded hover:bg-red-500 disabled:opacity-50 transition-colors"
+              className="px-3 py-1.5 text-xs font-mono font-bold text-foreground bg-red-600 rounded hover:bg-red-500 disabled:opacity-50 transition-colors"
             >
               Publish
             </button>
@@ -339,7 +339,7 @@ export default function EditPublicationPage() {
               href={`/insights/${publication.slug}`}
               target="_blank"
               rel="noopener noreferrer"
-              className="px-3 py-1.5 text-xs font-mono text-green-400 border border-green-800 rounded hover:bg-green-900/30"
+              className="px-3 py-1.5 text-xs font-mono text-green-600 dark:text-green-400 border border-green-800 rounded hover:bg-green-900/30"
             >
               View Live ({TYPE_WEBSITE_PATH[publication.type] || '/insights'}) →
             </a>
@@ -348,15 +348,15 @@ export default function EditPublicationPage() {
       </div>
 
       {/* Tabs */}
-      <div className="flex items-center gap-1 border-b border-zinc-800">
+      <div className="flex items-center gap-1 border-b border-border">
         {(['content', 'meta', 'charts', 'seo'] as const).map((tab) => (
           <button
             key={tab}
             onClick={() => setActiveTab(tab)}
             className={`px-4 py-2 text-xs font-mono capitalize transition-colors ${
               activeTab === tab
-                ? 'text-white border-b-2 border-red-600'
-                : 'text-zinc-500 hover:text-zinc-300'
+                ? 'text-foreground border-b-2 border-red-600'
+                : 'text-muted-foreground hover:text-muted-foreground'
             }`}
           >
             {tab}
@@ -368,47 +368,47 @@ export default function EditPublicationPage() {
       {activeTab === 'content' && (
         <div className="space-y-4">
           <div>
-            <label className="block text-xs font-mono text-zinc-500 uppercase tracking-wider mb-2">
+            <label className="block text-xs font-mono text-muted-foreground uppercase tracking-wider mb-2">
               Title
             </label>
             <input
               type="text"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              className="w-full px-4 py-3 bg-zinc-900 border border-zinc-800 rounded text-white focus:outline-none focus:border-red-600 font-mono"
+              className="w-full px-4 py-3 bg-card border border-border rounded text-foreground focus:outline-none focus:border-red-600 font-mono"
             />
           </div>
           <div>
-            <label className="block text-xs font-mono text-zinc-500 uppercase tracking-wider mb-2">
+            <label className="block text-xs font-mono text-muted-foreground uppercase tracking-wider mb-2">
               Subtitle
             </label>
             <input
               type="text"
               value={subtitle}
               onChange={(e) => setSubtitle(e.target.value)}
-              className="w-full px-3 py-2 bg-zinc-900 border border-zinc-800 rounded text-white text-sm focus:outline-none focus:border-red-600 font-mono"
+              className="w-full px-3 py-2 bg-card border border-border rounded text-foreground text-sm focus:outline-none focus:border-red-600 font-mono"
             />
           </div>
           <div>
-            <label className="block text-xs font-mono text-zinc-500 uppercase tracking-wider mb-2">
+            <label className="block text-xs font-mono text-muted-foreground uppercase tracking-wider mb-2">
               Excerpt
             </label>
             <textarea
               value={excerpt}
               onChange={(e) => setExcerpt(e.target.value)}
               rows={3}
-              className="w-full px-4 py-2 bg-zinc-900 border border-zinc-800 rounded text-white text-sm focus:outline-none focus:border-red-600 font-mono resize-none"
+              className="w-full px-4 py-2 bg-card border border-border rounded text-foreground text-sm focus:outline-none focus:border-red-600 font-mono resize-none"
             />
           </div>
 
           {/* Key Findings */}
           <div>
-            <label className="block text-xs font-mono text-zinc-500 uppercase tracking-wider mb-2">
+            <label className="block text-xs font-mono text-muted-foreground uppercase tracking-wider mb-2">
               Key Findings
             </label>
             {keyFindings.map((kf, i) => (
               <div key={i} className="flex items-center gap-2 mb-2">
-                <span className="text-xs text-zinc-600 font-mono w-6">
+                <span className="text-xs text-muted-foreground font-mono w-6">
                   {i + 1}.
                 </span>
                 <input
@@ -419,7 +419,7 @@ export default function EditPublicationPage() {
                       p.map((x, j) => (j === i ? e.target.value : x))
                     )
                   }
-                  className="flex-1 px-3 py-1.5 bg-zinc-900 border border-zinc-800 rounded text-white text-sm focus:outline-none focus:border-red-600 font-mono"
+                  className="flex-1 px-3 py-1.5 bg-card border border-border rounded text-foreground text-sm focus:outline-none focus:border-red-600 font-mono"
                 />
                 <button
                   onClick={() =>
@@ -433,7 +433,7 @@ export default function EditPublicationPage() {
             ))}
             <button
               onClick={() => setKeyFindings((p) => [...p, ''])}
-              className="text-xs font-mono text-zinc-500 hover:text-white"
+              className="text-xs font-mono text-muted-foreground hover:text-foreground"
             >
               + Add Finding
             </button>
@@ -442,31 +442,31 @@ export default function EditPublicationPage() {
           {/* Content Blocks */}
           <div>
             <div className="flex items-center justify-between mb-3">
-              <label className="text-xs font-mono text-zinc-500 uppercase tracking-wider">
+              <label className="text-xs font-mono text-muted-foreground uppercase tracking-wider">
                 Content Blocks ({contentBlocks.length})
               </label>
               <div className="flex gap-2">
                 <button
                   onClick={() => addBlock('heading')}
-                  className="text-[10px] font-mono text-zinc-500 hover:text-white border border-zinc-700 px-2 py-1 rounded"
+                  className="text-[10px] font-mono text-muted-foreground hover:text-foreground border border-border px-2 py-1 rounded"
                 >
                   + Heading
                 </button>
                 <button
                   onClick={() => addBlock('text')}
-                  className="text-[10px] font-mono text-zinc-500 hover:text-white border border-zinc-700 px-2 py-1 rounded"
+                  className="text-[10px] font-mono text-muted-foreground hover:text-foreground border border-border px-2 py-1 rounded"
                 >
                   + Text
                 </button>
                 <button
                   onClick={() => addBlock('callout')}
-                  className="text-[10px] font-mono text-zinc-500 hover:text-white border border-zinc-700 px-2 py-1 rounded"
+                  className="text-[10px] font-mono text-muted-foreground hover:text-foreground border border-border px-2 py-1 rounded"
                 >
                   + Callout
                 </button>
                 <button
                   onClick={() => addBlock('quote')}
-                  className="text-[10px] font-mono text-zinc-500 hover:text-white border border-zinc-700 px-2 py-1 rounded"
+                  className="text-[10px] font-mono text-muted-foreground hover:text-foreground border border-border px-2 py-1 rounded"
                 >
                   + Quote
                 </button>
@@ -477,14 +477,14 @@ export default function EditPublicationPage() {
               {contentBlocks.map((block, idx) => (
                 <div
                   key={block.id}
-                  className={`bg-zinc-900 border rounded p-4 ${
+                  className={`bg-card border rounded p-4 ${
                     block.type === 'chart'
                       ? 'border-blue-800'
                       : block.type === 'callout'
                       ? 'border-amber-800'
                       : block.type === 'quote'
                       ? 'border-zinc-600'
-                      : 'border-zinc-800'
+                      : 'border-border'
                   }`}
                 >
                   <div className="flex items-center justify-between mb-2">
@@ -492,20 +492,20 @@ export default function EditPublicationPage() {
                       <span
                         className={`text-[10px] font-mono px-1.5 py-0.5 rounded ${
                           block.type === 'chart'
-                            ? 'bg-blue-900/50 text-blue-400'
+                            ? 'bg-blue-100 dark:bg-blue-900/50 text-blue-600 dark:text-blue-400'
                             : block.type === 'callout'
-                            ? 'bg-amber-900/50 text-amber-400'
+                            ? 'bg-amber-100 dark:bg-amber-900/50 text-amber-600 dark:text-amber-400'
                             : block.type === 'heading'
-                            ? 'bg-purple-900/50 text-purple-400'
+                            ? 'bg-purple-100 dark:bg-purple-900/50 text-purple-600 dark:text-purple-400'
                             : block.type === 'quote'
-                            ? 'bg-zinc-700 text-zinc-400'
-                            : 'bg-zinc-800 text-zinc-400'
+                            ? 'bg-zinc-700 text-muted-foreground'
+                            : 'bg-muted text-muted-foreground'
                         }`}
                       >
                         {block.type}
                       </span>
                       {block.aiGenerated && (
-                        <span className="text-[10px] font-mono text-purple-400">
+                        <span className="text-[10px] font-mono text-purple-600 dark:text-purple-400">
                           AI
                         </span>
                       )}
@@ -514,14 +514,14 @@ export default function EditPublicationPage() {
                       <button
                         onClick={() => moveBlock(idx, -1)}
                         disabled={idx === 0}
-                        className="text-xs text-zinc-600 hover:text-white disabled:opacity-30 px-1"
+                        className="text-xs text-muted-foreground hover:text-foreground disabled:opacity-30 px-1"
                       >
                         ↑
                       </button>
                       <button
                         onClick={() => moveBlock(idx, 1)}
                         disabled={idx === contentBlocks.length - 1}
-                        className="text-xs text-zinc-600 hover:text-white disabled:opacity-30 px-1"
+                        className="text-xs text-muted-foreground hover:text-foreground disabled:opacity-30 px-1"
                       >
                         ↓
                       </button>
@@ -529,7 +529,7 @@ export default function EditPublicationPage() {
                         <button
                           onClick={() => regenerateSection(block.id)}
                           disabled={aiLoading}
-                          className="text-[10px] font-mono text-purple-400 hover:text-purple-300 px-1"
+                          className="text-[10px] font-mono text-purple-600 dark:text-purple-400 hover:text-purple-300 px-1"
                         >
                           ⟳ AI
                         </button>
@@ -544,9 +544,9 @@ export default function EditPublicationPage() {
                   </div>
 
                   {block.type === 'chart' ? (
-                    <div className="text-sm text-blue-400 font-mono">
+                    <div className="text-sm text-blue-600 dark:text-blue-400 font-mono">
                       📊 {block.content}
-                      <div className="text-[10px] text-zinc-600 mt-1">
+                      <div className="text-[10px] text-muted-foreground mt-1">
                         {(block.metadata as Record<string, unknown>)?.endpoint as string}
                       </div>
                     </div>
@@ -559,7 +559,7 @@ export default function EditPublicationPage() {
                           ? 1
                           : Math.max(3, block.content.split('\n').length + 1)
                       }
-                      className="w-full bg-transparent text-white text-sm font-mono focus:outline-none resize-y"
+                      className="w-full bg-transparent text-foreground text-sm font-mono focus:outline-none resize-y"
                       placeholder={
                         block.type === 'heading'
                           ? 'Section heading...'
@@ -581,78 +581,78 @@ export default function EditPublicationPage() {
       {/* ── Meta Tab ─────────────────────────────────────── */}
       {activeTab === 'meta' && (
         <div className="space-y-6">
-          <div className="bg-zinc-900 border border-zinc-800 rounded p-6 space-y-4">
-            <h3 className="text-sm font-mono text-white font-bold">
+          <div className="bg-card border border-border rounded p-6 space-y-4">
+            <h3 className="text-sm font-mono text-foreground font-bold">
               Publication Info
             </h3>
             <div className="grid grid-cols-2 gap-4 text-xs font-mono">
               <div>
-                <span className="text-zinc-600">Type:</span>{' '}
-                <span className="text-white">
+                <span className="text-muted-foreground">Type:</span>{' '}
+                <span className="text-foreground">
                   {TYPE_LABELS[publication.type] || publication.type}
                 </span>
               </div>
               <div>
-                <span className="text-zinc-600">Category:</span>{' '}
+                <span className="text-muted-foreground">Category:</span>{' '}
                 <span className={`px-2 py-0.5 text-[10px] font-bold uppercase border rounded ${
                   TYPE_CATEGORY[publication.type] === 'press'
-                    ? 'bg-amber-900/30 text-amber-400 border-amber-800'
-                    : 'bg-blue-900/30 text-blue-400 border-blue-800'
+                    ? 'bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 border-amber-800'
+                    : 'bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 border-blue-800'
                 }`}>
                   {TYPE_CATEGORY[publication.type] || 'insights'}
                 </span>
               </div>
               <div>
-                <span className="text-zinc-600">Website Path:</span>{' '}
-                <span className="text-zinc-400">
+                <span className="text-muted-foreground">Website Path:</span>{' '}
+                <span className="text-muted-foreground">
                   {TYPE_WEBSITE_PATH[publication.type] || '/insights'}
                 </span>
               </div>
               <div>
-                <span className="text-zinc-600">Status:</span>{' '}
-                <span className="text-white capitalize">
+                <span className="text-muted-foreground">Status:</span>{' '}
+                <span className="text-foreground capitalize">
                   {publication.status}
                 </span>
               </div>
               <div>
-                <span className="text-zinc-600">Created:</span>{' '}
-                <span className="text-white">
+                <span className="text-muted-foreground">Created:</span>{' '}
+                <span className="text-foreground">
                   {new Date(publication.created_at).toLocaleString()}
                 </span>
               </div>
               <div>
-                <span className="text-zinc-600">Updated:</span>{' '}
-                <span className="text-white">
+                <span className="text-muted-foreground">Updated:</span>{' '}
+                <span className="text-foreground">
                   {new Date(publication.updated_at).toLocaleString()}
                 </span>
               </div>
               {publication.published_at && (
                 <div>
-                  <span className="text-zinc-600">Published:</span>{' '}
-                  <span className="text-white">
+                  <span className="text-muted-foreground">Published:</span>{' '}
+                  <span className="text-foreground">
                     {new Date(publication.published_at).toLocaleString()}
                   </span>
                 </div>
               )}
               <div>
-                <span className="text-zinc-600">Words:</span>{' '}
-                <span className="text-white">{publication.word_count}</span>
+                <span className="text-muted-foreground">Words:</span>{' '}
+                <span className="text-foreground">{publication.word_count}</span>
               </div>
               <div>
-                <span className="text-zinc-600">Reading Time:</span>{' '}
-                <span className="text-white">
+                <span className="text-muted-foreground">Reading Time:</span>{' '}
+                <span className="text-foreground">
                   {publication.reading_time_minutes} min
                 </span>
               </div>
               <div>
-                <span className="text-zinc-600">Slug:</span>{' '}
-                <span className="text-white">{publication.slug}</span>
+                <span className="text-muted-foreground">Slug:</span>{' '}
+                <span className="text-foreground">{publication.slug}</span>
               </div>
             </div>
           </div>
 
           <div>
-            <label className="block text-xs font-mono text-zinc-500 uppercase tracking-wider mb-2">
+            <label className="block text-xs font-mono text-muted-foreground uppercase tracking-wider mb-2">
               Access Tier
             </label>
             <div className="flex gap-3">
@@ -662,8 +662,8 @@ export default function EditPublicationPage() {
                   onClick={() => setAccessTier(t)}
                   className={`px-4 py-2 text-xs font-mono border rounded capitalize transition-colors ${
                     accessTier === t
-                      ? 'border-red-600 bg-red-900/20 text-white'
-                      : 'border-zinc-800 bg-zinc-900 text-zinc-400 hover:border-zinc-600'
+                      ? 'border-red-600 bg-red-100 dark:bg-red-900/20 text-foreground'
+                      : 'border-border bg-card text-muted-foreground hover:border-zinc-600'
                   }`}
                 >
                   {t}
@@ -709,7 +709,7 @@ export default function EditPublicationPage() {
       {activeTab === 'charts' && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <div>
-            <h3 className="text-xs font-mono text-zinc-500 uppercase tracking-wider mb-3">
+            <h3 className="text-xs font-mono text-muted-foreground uppercase tracking-wider mb-3">
               Embedded Charts ({contentBlocks.filter((b) => b.type === 'chart').length})
             </h3>
             <div className="space-y-2">
@@ -718,12 +718,12 @@ export default function EditPublicationPage() {
                 .map((block) => (
                   <div
                     key={block.id}
-                    className="bg-zinc-900 border border-blue-800 rounded p-3"
+                    className="bg-card border border-blue-800 rounded p-3"
                   >
-                    <div className="text-xs text-white font-mono font-bold">
+                    <div className="text-xs text-foreground font-mono font-bold">
                       📊 {block.content}
                     </div>
-                    <div className="text-[10px] text-zinc-600 font-mono">
+                    <div className="text-[10px] text-muted-foreground font-mono">
                       {(block.metadata as Record<string, unknown>)?.endpoint as string}
                     </div>
                     <button
@@ -735,7 +735,7 @@ export default function EditPublicationPage() {
                   </div>
                 ))}
               {contentBlocks.filter((b) => b.type === 'chart').length === 0 && (
-                <div className="text-xs text-zinc-500 font-mono text-center py-8 bg-zinc-900 border border-zinc-800 rounded">
+                <div className="text-xs text-muted-foreground font-mono text-center py-8 bg-card border border-border rounded">
                   No charts inserted yet. Pick from the catalog →
                 </div>
               )}
@@ -743,12 +743,12 @@ export default function EditPublicationPage() {
           </div>
 
           <div>
-            <h3 className="text-xs font-mono text-zinc-500 uppercase tracking-wider mb-3">
+            <h3 className="text-xs font-mono text-muted-foreground uppercase tracking-wider mb-3">
               Chart Catalog
             </h3>
-            <div className="bg-zinc-900 border border-zinc-800 rounded max-h-[500px] overflow-y-auto">
+            <div className="bg-card border border-border rounded max-h-[500px] overflow-y-auto">
               {chartsCatalog.length === 0 ? (
-                <div className="p-4 text-xs text-zinc-500 font-mono text-center">
+                <div className="p-4 text-xs text-muted-foreground font-mono text-center">
                   Loading catalog...
                 </div>
               ) : (
@@ -761,12 +761,12 @@ export default function EditPublicationPage() {
                   return (
                     <div
                       key={chart.id}
-                      className="p-3 border-b border-zinc-800 last:border-0"
+                      className="p-3 border-b border-border last:border-0"
                     >
-                      <div className="text-xs text-white font-mono font-bold">
+                      <div className="text-xs text-foreground font-mono font-bold">
                         {chart.title}
                       </div>
-                      <div className="text-[10px] text-zinc-500 font-mono">
+                      <div className="text-[10px] text-muted-foreground font-mono">
                         {chart.category} · {chart.chartType}
                       </div>
                       <button
@@ -775,7 +775,7 @@ export default function EditPublicationPage() {
                         className={`mt-1 text-[10px] font-mono ${
                           isAdded
                             ? 'text-green-500'
-                            : 'text-blue-400 hover:text-blue-300'
+                            : 'text-blue-600 dark:text-blue-400 hover:text-blue-300'
                         }`}
                       >
                         {isAdded ? '✓ Added' : '+ Insert'}
@@ -793,20 +793,20 @@ export default function EditPublicationPage() {
       {activeTab === 'seo' && (
         <div className="space-y-6">
           <div className="flex items-center justify-between">
-            <h3 className="text-sm font-mono text-white font-bold">
+            <h3 className="text-sm font-mono text-foreground font-bold">
               SEO Metadata
             </h3>
             <button
               onClick={generateSeo}
               disabled={aiLoading}
-              className="text-xs font-mono text-purple-400 hover:text-purple-300 border border-purple-800 px-3 py-1.5 rounded"
+              className="text-xs font-mono text-purple-600 dark:text-purple-400 hover:text-purple-300 border border-purple-800 px-3 py-1.5 rounded"
             >
               {aiLoading ? '⟳ Generating...' : '⟳ Auto-generate with AI'}
             </button>
           </div>
 
           <div>
-            <label className="block text-xs font-mono text-zinc-500 uppercase tracking-wider mb-2">
+            <label className="block text-xs font-mono text-muted-foreground uppercase tracking-wider mb-2">
               SEO Title
             </label>
             <input
@@ -814,15 +814,15 @@ export default function EditPublicationPage() {
               value={seoTitle}
               onChange={(e) => setSeoTitle(e.target.value)}
               placeholder="Defaults to publication title if left blank"
-              className="w-full px-4 py-2 bg-zinc-900 border border-zinc-800 rounded text-white text-sm focus:outline-none focus:border-red-600 font-mono"
+              className="w-full px-4 py-2 bg-card border border-border rounded text-foreground text-sm focus:outline-none focus:border-red-600 font-mono"
             />
-            <div className="text-[10px] text-zinc-600 font-mono mt-1">
+            <div className="text-[10px] text-muted-foreground font-mono mt-1">
               {seoTitle.length}/60 characters
             </div>
           </div>
 
           <div>
-            <label className="block text-xs font-mono text-zinc-500 uppercase tracking-wider mb-2">
+            <label className="block text-xs font-mono text-muted-foreground uppercase tracking-wider mb-2">
               SEO Description
             </label>
             <textarea
@@ -830,26 +830,26 @@ export default function EditPublicationPage() {
               onChange={(e) => setSeoDescription(e.target.value)}
               rows={3}
               placeholder="Defaults to excerpt if left blank"
-              className="w-full px-4 py-2 bg-zinc-900 border border-zinc-800 rounded text-white text-sm focus:outline-none focus:border-red-600 font-mono resize-none"
+              className="w-full px-4 py-2 bg-card border border-border rounded text-foreground text-sm focus:outline-none focus:border-red-600 font-mono resize-none"
             />
-            <div className="text-[10px] text-zinc-600 font-mono mt-1">
+            <div className="text-[10px] text-muted-foreground font-mono mt-1">
               {seoDescription.length}/160 characters
             </div>
           </div>
 
           {/* Preview */}
           <div>
-            <label className="block text-xs font-mono text-zinc-500 uppercase tracking-wider mb-2">
+            <label className="block text-xs font-mono text-muted-foreground uppercase tracking-wider mb-2">
               Google Preview
             </label>
-            <div className="bg-white rounded p-4">
+            <div className="bg-card rounded p-4">
               <div className="text-blue-800 text-lg font-medium truncate">
                 {seoTitle || title}
               </div>
               <div className="text-green-700 text-xs">
                 propmetrik.com/insights/{publication.slug}
               </div>
-              <div className="text-zinc-600 text-sm mt-1 line-clamp-2">
+              <div className="text-muted-foreground text-sm mt-1 line-clamp-2">
                 {seoDescription || excerpt || 'No description set'}
               </div>
             </div>
@@ -858,11 +858,11 @@ export default function EditPublicationPage() {
       )}
 
       {/* Save Bar */}
-      <div className="flex items-center justify-end gap-3 pt-4 border-t border-zinc-800">
+      <div className="flex items-center justify-end gap-3 pt-4 border-t border-border">
         <button
           onClick={handleSave}
           disabled={saving}
-          className="px-4 py-2 text-xs font-mono text-zinc-300 border border-zinc-700 rounded hover:border-white hover:text-white disabled:opacity-50 transition-colors"
+          className="px-4 py-2 text-xs font-mono text-muted-foreground border border-border rounded hover:border-white hover:text-foreground disabled:opacity-50 transition-colors"
         >
           {saving ? 'Saving...' : 'Save Changes'}
         </button>
@@ -870,7 +870,7 @@ export default function EditPublicationPage() {
           <button
             onClick={handlePublish}
             disabled={saving}
-            className="px-4 py-2 text-xs font-mono font-bold text-white bg-red-600 rounded hover:bg-red-500 disabled:opacity-50 transition-colors"
+            className="px-4 py-2 text-xs font-mono font-bold text-foreground bg-red-600 rounded hover:bg-red-500 disabled:opacity-50 transition-colors"
           >
             Publish
           </button>
@@ -894,7 +894,7 @@ function TagSelector({
 }) {
   return (
     <div>
-      <label className="block text-xs font-mono text-zinc-500 uppercase tracking-wider mb-2">
+      <label className="block text-xs font-mono text-muted-foreground uppercase tracking-wider mb-2">
         {label}{' '}
         <span className="text-zinc-700">({selected.length})</span>
       </label>
@@ -905,8 +905,8 @@ function TagSelector({
             onClick={() => onToggle(opt)}
             className={`px-3 py-1 text-xs font-mono rounded border transition-colors ${
               selected.includes(opt)
-                ? 'border-red-600 bg-red-900/20 text-white'
-                : 'border-zinc-800 bg-zinc-900 text-zinc-400 hover:border-zinc-600'
+                ? 'border-red-600 bg-red-100 dark:bg-red-900/20 text-foreground'
+                : 'border-border bg-card text-muted-foreground hover:border-zinc-600'
             }`}
           >
             {opt}

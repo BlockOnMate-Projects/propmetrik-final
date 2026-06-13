@@ -126,8 +126,8 @@ function Panel({
   actions?: React.ReactNode
 }) {
   return (
-    <div className={cn('border border-zinc-800 bg-zinc-900/50', className)}>
-      <div className="flex items-center justify-between px-3 py-1.5 bg-zinc-800/50 border-b border-zinc-800">
+    <div className={cn('border border-border bg-card/50', className)}>
+      <div className="flex items-center justify-between px-3 py-1.5 bg-muted/50 border-b border-border">
         <span className="font-mono text-[10px] text-amber-500 tracking-wider">{title}</span>
         {actions}
       </div>
@@ -141,7 +141,7 @@ function MetricCard({
   value,
   subtext,
   icon: Icon,
-  color = 'text-white',
+  color = 'text-foreground',
 }: {
   label: string
   value: string
@@ -153,27 +153,27 @@ function MetricCard({
     <div className="text-center py-1">
       <div className="flex items-center justify-center gap-1 mb-1">
         <Icon className={cn('w-3.5 h-3.5', color)} />
-        <span className="font-mono text-[10px] text-zinc-500">{label}</span>
+        <span className="font-mono text-[10px] text-muted-foreground">{label}</span>
       </div>
       <div className={cn('font-mono text-2xl', color)}>{value}</div>
-      {subtext && <div className="font-mono text-[10px] text-zinc-500 mt-0.5">{subtext}</div>}
+      {subtext && <div className="font-mono text-[10px] text-muted-foreground mt-0.5">{subtext}</div>}
     </div>
   )
 }
 
 function SeverityBadge({ severity }: { severity: string }) {
   const colors: Record<string, string> = {
-    none: 'text-green-400 bg-green-500/10 border-green-500/20',
-    low: 'text-blue-400 bg-blue-500/10 border-blue-500/20',
-    medium: 'text-amber-400 bg-amber-500/10 border-amber-500/20',
-    high: 'text-orange-400 bg-orange-500/10 border-orange-500/20',
-    critical: 'text-red-400 bg-red-500/10 border-red-500/20',
+    none: 'text-green-600 dark:text-green-400 bg-green-500/10 border-green-500/20',
+    low: 'text-blue-600 dark:text-blue-400 bg-blue-500/10 border-blue-500/20',
+    medium: 'text-amber-600 dark:text-amber-400 bg-amber-500/10 border-amber-500/20',
+    high: 'text-orange-600 dark:text-orange-400 bg-orange-500/10 border-orange-500/20',
+    critical: 'text-red-600 dark:text-red-400 bg-red-500/10 border-red-500/20',
   }
   return (
     <span
       className={cn(
         'px-1.5 py-0.5 font-mono text-[9px] border rounded',
-        colors[severity] || 'text-zinc-400 border-zinc-700'
+        colors[severity] || 'text-muted-foreground border-border'
       )}
     >
       {severity.toUpperCase()}
@@ -188,7 +188,7 @@ function TrendIndicator({ direction, rate }: { direction: string; rate: number }
     <span
       className={cn(
         'inline-flex items-center gap-0.5 font-mono text-xs',
-        isImproving ? 'text-green-400' : isDegrading ? 'text-red-400' : 'text-zinc-400'
+        isImproving ? 'text-green-600 dark:text-green-400' : isDegrading ? 'text-red-600 dark:text-red-400' : 'text-muted-foreground'
       )}
     >
       {isImproving ? (
@@ -230,15 +230,15 @@ function ConfidenceBar({ high, medium, low }: { high: number; medium: number; lo
   const lPct = (low / total) * 100
   return (
     <div className="space-y-1.5">
-      <div className="flex h-3 rounded overflow-hidden border border-zinc-700">
+      <div className="flex h-3 rounded overflow-hidden border border-border">
         <div className="bg-green-500/80" style={{ width: `${hPct}%` }} />
         <div className="bg-amber-500/80" style={{ width: `${mPct}%` }} />
         <div className="bg-red-500/80" style={{ width: `${lPct}%` }} />
       </div>
       <div className="flex justify-between font-mono text-[9px]">
-        <span className="text-green-400">HIGH {hPct.toFixed(0)}%</span>
-        <span className="text-amber-400">MED {mPct.toFixed(0)}%</span>
-        <span className="text-red-400">LOW {lPct.toFixed(0)}%</span>
+        <span className="text-green-600 dark:text-green-400">HIGH {hPct.toFixed(0)}%</span>
+        <span className="text-amber-600 dark:text-amber-400">MED {mPct.toFixed(0)}%</span>
+        <span className="text-red-600 dark:text-red-400">LOW {lPct.toFixed(0)}%</span>
       </div>
     </div>
   )
@@ -285,17 +285,17 @@ export default function MLAnalyticsDashboardPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-black text-white p-4">
+      <div className="min-h-screen bg-background text-foreground p-4">
         <div className="animate-pulse space-y-4">
-          <div className="h-8 bg-zinc-800 rounded w-72" />
+          <div className="h-8 bg-muted rounded w-72" />
           <div className="grid grid-cols-6 gap-3">
             {[...Array(6)].map((_, i) => (
-              <div key={i} className="h-24 bg-zinc-800/50 rounded border border-zinc-800" />
+              <div key={i} className="h-24 bg-muted/50 rounded border border-border" />
             ))}
           </div>
           <div className="grid grid-cols-12 gap-3">
-            <div className="col-span-8 h-64 bg-zinc-800/50 rounded border border-zinc-800" />
-            <div className="col-span-4 h-64 bg-zinc-800/50 rounded border border-zinc-800" />
+            <div className="col-span-8 h-64 bg-muted/50 rounded border border-border" />
+            <div className="col-span-4 h-64 bg-muted/50 rounded border border-border" />
           </div>
         </div>
       </div>
@@ -305,15 +305,15 @@ export default function MLAnalyticsDashboardPage() {
   const trendPoints = trend?.data_points?.map((d) => d.value) || []
 
   return (
-    <div className="min-h-screen bg-black text-white p-4 pb-10">
+    <div className="min-h-screen bg-background text-foreground p-4 pb-10">
       {/* Header */}
       <div className="flex items-center justify-between mb-4">
         <div>
-          <h1 className="font-mono text-xl text-white flex items-center gap-2">
+          <h1 className="font-mono text-xl text-foreground flex items-center gap-2">
             <Brain className="w-5 h-5 text-amber-500" />
             ML MODEL ANALYTICS
           </h1>
-          <p className="font-mono text-[10px] text-zinc-500">
+          <p className="font-mono text-[10px] text-muted-foreground">
             AVM Performance, Confidence, Drift Detection & Ensemble Monitoring — Section 8
           </p>
         </div>
@@ -326,16 +326,16 @@ export default function MLAnalyticsDashboardPage() {
                   summary.ml_service_status === 'healthy' ? 'bg-green-500' : 'bg-red-500'
                 )}
               />
-              <span className="text-zinc-400">
+              <span className="text-muted-foreground">
                 ML SERVICE {summary.ml_service_status?.toUpperCase() || 'UNKNOWN'}
               </span>
-              <span className="text-zinc-600 mx-1">|</span>
-              <span className="text-zinc-400">v{summary.model_version}</span>
+              <span className="text-muted-foreground mx-1">|</span>
+              <span className="text-muted-foreground">v{summary.model_version}</span>
             </div>
           )}
           <button
             onClick={() => loadData()}
-            className="flex items-center gap-1.5 px-3 py-1.5 font-mono text-[10px] text-zinc-400 border border-zinc-700 hover:border-amber-500/50 hover:text-amber-500 transition-colors"
+            className="flex items-center gap-1.5 px-3 py-1.5 font-mono text-[10px] text-muted-foreground border border-border hover:border-amber-500/50 hover:text-amber-500 transition-colors"
           >
             <RefreshCw className="w-3 h-3" />
             REFRESH
@@ -351,7 +351,7 @@ export default function MLAnalyticsDashboardPage() {
             value={performance ? `GH₵${performance.mae.toLocaleString(undefined, { maximumFractionDigits: 0 })}` : '—'}
             subtext={performance ? `RMSE: GH₵${performance.rmse.toLocaleString(undefined, { maximumFractionDigits: 0 })}` : undefined}
             icon={Target}
-            color="text-blue-400"
+            color="text-blue-600 dark:text-blue-400"
           />
         </Panel>
 
@@ -361,7 +361,7 @@ export default function MLAnalyticsDashboardPage() {
             value={performance ? `${performance.mape.toFixed(2)}%` : '—'}
             subtext={performance ? `Median: ${performance.median_error.toFixed(2)}%` : undefined}
             icon={BarChart3}
-            color="text-cyan-400"
+            color="text-cyan-600 dark:text-cyan-400"
           />
         </Panel>
 
@@ -371,7 +371,7 @@ export default function MLAnalyticsDashboardPage() {
             value={performance ? performance.r2.toFixed(4) : '—'}
             subtext={performance ? `P90 Error: ${performance.p90_error.toFixed(1)}%` : undefined}
             icon={TrendingUp}
-            color="text-green-400"
+            color="text-green-600 dark:text-green-400"
           />
         </Panel>
 
@@ -381,7 +381,7 @@ export default function MLAnalyticsDashboardPage() {
             value={performance ? `${performance.within_10_pct.toFixed(1)}%` : '—'}
             subtext={performance ? `±20%: ${performance.within_20_pct.toFixed(1)}%` : undefined}
             icon={CheckCircle2}
-            color="text-amber-400"
+            color="text-amber-600 dark:text-amber-400"
           />
         </Panel>
 
@@ -391,7 +391,7 @@ export default function MLAnalyticsDashboardPage() {
             value={summary ? `${(summary.avg_confidence * 100).toFixed(1)}%` : '—'}
             subtext={confidence ? `${confidence.total_predictions.toLocaleString()} predictions` : undefined}
             icon={Gauge}
-            color="text-purple-400"
+            color="text-purple-600 dark:text-purple-400"
           />
         </Panel>
 
@@ -399,17 +399,17 @@ export default function MLAnalyticsDashboardPage() {
           <div className="text-center py-1">
             <div className="flex items-center justify-center gap-1 mb-1">
               {drift?.drift_detected ? (
-                <AlertTriangle className="w-3.5 h-3.5 text-orange-400" />
+                <AlertTriangle className="w-3.5 h-3.5 text-orange-600 dark:text-orange-400" />
               ) : (
-                <Shield className="w-3.5 h-3.5 text-green-400" />
+                <Shield className="w-3.5 h-3.5 text-green-600 dark:text-green-400" />
               )}
-              <span className="font-mono text-[10px] text-zinc-500">MODEL HEALTH</span>
+              <span className="font-mono text-[10px] text-muted-foreground">MODEL HEALTH</span>
             </div>
             <div className="font-mono text-lg">
               <SeverityBadge severity={drift?.drift_severity || 'none'} />
             </div>
             {drift?.retrain_required && (
-              <div className="font-mono text-[9px] text-red-400 mt-1">RETRAIN REQUIRED</div>
+              <div className="font-mono text-[9px] text-red-600 dark:text-red-400 mt-1">RETRAIN REQUIRED</div>
             )}
           </div>
         </Panel>
@@ -421,14 +421,14 @@ export default function MLAnalyticsDashboardPage() {
         <Panel title="PERFORMANCE TREND" className="col-span-8">
           <div className="space-y-3">
             <div className="flex items-center justify-between">
-              <span className="font-mono text-[10px] text-zinc-400">
+              <span className="font-mono text-[10px] text-muted-foreground">
                 {trend?.metric_name?.toUpperCase() || 'MAPE'} OVER TIME
               </span>
               {trend && <TrendIndicator direction={trend.trend_direction} rate={trend.change_rate} />}
             </div>
             <MiniSparkline data={trendPoints} height={120} />
             {trend?.data_points && trend.data_points.length > 0 && (
-              <div className="flex justify-between font-mono text-[9px] text-zinc-600">
+              <div className="flex justify-between font-mono text-[9px] text-muted-foreground">
                 <span>{trend.data_points[0]?.date}</span>
                 <span>{trend.data_points[trend.data_points.length - 1]?.date}</span>
               </div>
@@ -448,21 +448,21 @@ export default function MLAnalyticsDashboardPage() {
                 />
                 <div className="space-y-1.5">
                   <div className="flex justify-between font-mono text-[10px]">
-                    <span className="text-zinc-500">MEAN</span>
-                    <span className="text-white">{(confidence.mean_confidence * 100).toFixed(1)}%</span>
+                    <span className="text-muted-foreground">MEAN</span>
+                    <span className="text-foreground">{(confidence.mean_confidence * 100).toFixed(1)}%</span>
                   </div>
                   <div className="flex justify-between font-mono text-[10px]">
-                    <span className="text-zinc-500">MEDIAN</span>
-                    <span className="text-white">{(confidence.median_confidence * 100).toFixed(1)}%</span>
+                    <span className="text-muted-foreground">MEDIAN</span>
+                    <span className="text-foreground">{(confidence.median_confidence * 100).toFixed(1)}%</span>
                   </div>
                   <div className="flex justify-between font-mono text-[10px]">
-                    <span className="text-zinc-500">TOTAL</span>
-                    <span className="text-white">{confidence.total_predictions.toLocaleString()}</span>
+                    <span className="text-muted-foreground">TOTAL</span>
+                    <span className="text-foreground">{confidence.total_predictions.toLocaleString()}</span>
                   </div>
                 </div>
                 {confidence.histogram.length > 0 && (
                   <div className="space-y-1">
-                    <div className="font-mono text-[9px] text-zinc-500">HISTOGRAM</div>
+                    <div className="font-mono text-[9px] text-muted-foreground">HISTOGRAM</div>
                     <div className="flex items-end gap-0.5 h-12">
                       {confidence.histogram.map((bin, i) => (
                         <div key={i} className="flex-1 flex flex-col items-center gap-0.5">
@@ -473,7 +473,7 @@ export default function MLAnalyticsDashboardPage() {
                         </div>
                       ))}
                     </div>
-                    <div className="flex justify-between font-mono text-[8px] text-zinc-600">
+                    <div className="flex justify-between font-mono text-[8px] text-muted-foreground">
                       <span>{confidence.histogram[0]?.bin}</span>
                       <span>{confidence.histogram[confidence.histogram.length - 1]?.bin}</span>
                     </div>
@@ -481,7 +481,7 @@ export default function MLAnalyticsDashboardPage() {
                 )}
               </>
             )}
-            {!confidence && <div className="font-mono text-[10px] text-zinc-600 text-center py-4">No data</div>}
+            {!confidence && <div className="font-mono text-[10px] text-muted-foreground text-center py-4">No data</div>}
           </div>
         </Panel>
       </div>
@@ -496,43 +496,43 @@ export default function MLAnalyticsDashboardPage() {
                 {ensemble.weights.map((w) => (
                   <div key={w.model_name} className="space-y-0.5">
                     <div className="flex justify-between font-mono text-[10px]">
-                      <span className="text-zinc-300">{w.model_name}</span>
-                      <span className="text-amber-400">{(w.weight * 100).toFixed(1)}%</span>
+                      <span className="text-muted-foreground">{w.model_name}</span>
+                      <span className="text-amber-600 dark:text-amber-400">{(w.weight * 100).toFixed(1)}%</span>
                     </div>
-                    <div className="w-full h-1.5 bg-zinc-800 rounded overflow-hidden">
+                    <div className="w-full h-1.5 bg-muted rounded overflow-hidden">
                       <div
                         className="h-full bg-amber-500/70 rounded"
                         style={{ width: `${w.contribution_pct}%` }}
                       />
                     </div>
-                    <div className="flex justify-between font-mono text-[9px] text-zinc-600">
+                    <div className="flex justify-between font-mono text-[9px] text-muted-foreground">
                       <span>MAE: GH₵{w.individual_mae.toLocaleString(undefined, { maximumFractionDigits: 0 })}</span>
                       <span>R²: {w.individual_r2.toFixed(4)}</span>
                     </div>
                   </div>
                 ))}
               </div>
-              <div className="border-t border-zinc-800 pt-2 space-y-1">
+              <div className="border-t border-border pt-2 space-y-1">
                 <div className="flex justify-between font-mono text-[10px]">
-                  <span className="text-zinc-500">ENSEMBLE MAE</span>
-                  <span className="text-green-400">GH₵{ensemble.ensemble_mae.toLocaleString(undefined, { maximumFractionDigits: 0 })}</span>
+                  <span className="text-muted-foreground">ENSEMBLE MAE</span>
+                  <span className="text-green-600 dark:text-green-400">GH₵{ensemble.ensemble_mae.toLocaleString(undefined, { maximumFractionDigits: 0 })}</span>
                 </div>
                 <div className="flex justify-between font-mono text-[10px]">
-                  <span className="text-zinc-500">ENSEMBLE R²</span>
-                  <span className="text-green-400">{ensemble.ensemble_r2.toFixed(4)}</span>
+                  <span className="text-muted-foreground">ENSEMBLE R²</span>
+                  <span className="text-green-600 dark:text-green-400">{ensemble.ensemble_r2.toFixed(4)}</span>
                 </div>
                 <div className="flex justify-between font-mono text-[10px]">
-                  <span className="text-zinc-500">IMPROVEMENT</span>
-                  <span className="text-green-400">+{ensemble.improvement_over_best_single.toFixed(2)}%</span>
+                  <span className="text-muted-foreground">IMPROVEMENT</span>
+                  <span className="text-green-600 dark:text-green-400">+{ensemble.improvement_over_best_single.toFixed(2)}%</span>
                 </div>
                 <div className="flex justify-between font-mono text-[10px]">
-                  <span className="text-zinc-500">DIVERSITY INDEX</span>
-                  <span className="text-white">{ensemble.diversity_index.toFixed(3)}</span>
+                  <span className="text-muted-foreground">DIVERSITY INDEX</span>
+                  <span className="text-foreground">{ensemble.diversity_index.toFixed(3)}</span>
                 </div>
               </div>
             </div>
           ) : (
-            <div className="font-mono text-[10px] text-zinc-600 text-center py-4">No ensemble data</div>
+            <div className="font-mono text-[10px] text-muted-foreground text-center py-4">No ensemble data</div>
           )}
         </Panel>
 
@@ -542,54 +542,54 @@ export default function MLAnalyticsDashboardPage() {
             <div className="space-y-3">
               <div className="space-y-1.5">
                 <div className="flex justify-between font-mono text-[10px]">
-                  <span className="text-zinc-500">STATUS</span>
+                  <span className="text-muted-foreground">STATUS</span>
                   <SeverityBadge severity={drift.drift_severity} />
                 </div>
                 <div className="flex justify-between font-mono text-[10px]">
-                  <span className="text-zinc-500">DETECTED</span>
-                  <span className={drift.drift_detected ? 'text-orange-400' : 'text-green-400'}>
+                  <span className="text-muted-foreground">DETECTED</span>
+                  <span className={drift.drift_detected ? 'text-orange-600 dark:text-orange-400' : 'text-green-600 dark:text-green-400'}>
                     {drift.drift_detected ? 'YES' : 'NO'}
                   </span>
                 </div>
                 {drift.drift_type && (
                   <div className="flex justify-between font-mono text-[10px]">
-                    <span className="text-zinc-500">TYPE</span>
-                    <span className="text-white">{drift.drift_type.toUpperCase()}</span>
+                    <span className="text-muted-foreground">TYPE</span>
+                    <span className="text-foreground">{drift.drift_type.toUpperCase()}</span>
                   </div>
                 )}
                 <div className="flex justify-between font-mono text-[10px]">
-                  <span className="text-zinc-500">RETRAIN</span>
-                  <span className={drift.retrain_required ? 'text-red-400' : 'text-green-400'}>
+                  <span className="text-muted-foreground">RETRAIN</span>
+                  <span className={drift.retrain_required ? 'text-red-600 dark:text-red-400' : 'text-green-600 dark:text-green-400'}>
                     {drift.retrain_required ? 'REQUIRED' : 'NOT NEEDED'}
                   </span>
                 </div>
                 <div className="flex justify-between font-mono text-[10px]">
-                  <span className="text-zinc-500">DATE</span>
-                  <span className="text-zinc-300">{drift.detection_date}</span>
+                  <span className="text-muted-foreground">DATE</span>
+                  <span className="text-muted-foreground">{drift.detection_date}</span>
                 </div>
               </div>
               {drift.recommendation && (
-                <div className="border-t border-zinc-800 pt-2">
-                  <div className="font-mono text-[9px] text-zinc-500 mb-1">RECOMMENDATION</div>
-                  <div className="font-mono text-[10px] text-zinc-300 leading-relaxed">
+                <div className="border-t border-border pt-2">
+                  <div className="font-mono text-[9px] text-muted-foreground mb-1">RECOMMENDATION</div>
+                  <div className="font-mono text-[10px] text-muted-foreground leading-relaxed">
                     {drift.recommendation}
                   </div>
                 </div>
               )}
               {drift.metrics && Object.keys(drift.metrics).length > 0 && (
-                <div className="border-t border-zinc-800 pt-2 space-y-1">
-                  <div className="font-mono text-[9px] text-zinc-500">DRIFT METRICS</div>
+                <div className="border-t border-border pt-2 space-y-1">
+                  <div className="font-mono text-[9px] text-muted-foreground">DRIFT METRICS</div>
                   {Object.entries(drift.metrics).map(([key, val]) => (
                     <div key={key} className="flex justify-between font-mono text-[10px]">
-                      <span className="text-zinc-500">{key.replace(/_/g, ' ').toUpperCase()}</span>
-                      <span className="text-white">{typeof val === 'number' ? val.toFixed(4) : String(val)}</span>
+                      <span className="text-muted-foreground">{key.replace(/_/g, ' ').toUpperCase()}</span>
+                      <span className="text-foreground">{typeof val === 'number' ? val.toFixed(4) : String(val)}</span>
                     </div>
                   ))}
                 </div>
               )}
             </div>
           ) : (
-            <div className="font-mono text-[10px] text-zinc-600 text-center py-4">No drift data</div>
+            <div className="font-mono text-[10px] text-muted-foreground text-center py-4">No drift data</div>
           )}
         </Panel>
 
@@ -602,52 +602,52 @@ export default function MLAnalyticsDashboardPage() {
                 label: 'FEATURE IMPORTANCE',
                 desc: 'SHAP values & rankings',
                 icon: Layers,
-                color: 'text-blue-400',
+                color: 'text-blue-600 dark:text-blue-400',
               },
               {
                 href: '/dashboard/analytics/ml/monitoring',
                 label: 'MODEL MONITORING',
                 desc: 'Drift & segment analysis',
                 icon: Shield,
-                color: 'text-purple-400',
+                color: 'text-purple-600 dark:text-purple-400',
               },
               {
                 href: '/dashboard/analytics/ml/forecasting',
                 label: 'PRICE FORECASTING',
                 desc: 'Regional forecasts',
                 icon: TrendingUp,
-                color: 'text-green-400',
+                color: 'text-green-600 dark:text-green-400',
               },
             ].map((item) => (
               <Link key={item.href} href={item.href}>
-                <div className="flex items-center gap-3 p-2 border border-zinc-800 hover:border-amber-500/30 hover:bg-zinc-800/30 transition-colors group cursor-pointer">
+                <div className="flex items-center gap-3 p-2 border border-border hover:border-amber-500/30 hover:bg-amber-50 dark:hover:bg-amber-500/10 transition-colors group cursor-pointer">
                   <item.icon className={cn('w-4 h-4', item.color)} />
                   <div className="flex-1 min-w-0">
-                    <div className="font-mono text-[10px] text-white group-hover:text-amber-400 transition-colors">
+                    <div className="font-mono text-[10px] text-foreground group-hover:text-amber-400 transition-colors">
                       {item.label}
                     </div>
-                    <div className="font-mono text-[9px] text-zinc-600">{item.desc}</div>
+                    <div className="font-mono text-[9px] text-muted-foreground">{item.desc}</div>
                   </div>
-                  <ChevronRight className="w-3 h-3 text-zinc-600 group-hover:text-amber-500 transition-colors" />
+                  <ChevronRight className="w-3 h-3 text-muted-foreground group-hover:text-amber-500 transition-colors" />
                 </div>
               </Link>
             ))}
 
             {/* Prediction Stats */}
             {summary && (
-              <div className="border-t border-zinc-800 pt-2 mt-3 space-y-1">
-                <div className="font-mono text-[9px] text-zinc-500">30-DAY STATS</div>
+              <div className="border-t border-border pt-2 mt-3 space-y-1">
+                <div className="font-mono text-[9px] text-muted-foreground">30-DAY STATS</div>
                 <div className="flex justify-between font-mono text-[10px]">
-                  <span className="text-zinc-500">PREDICTIONS</span>
-                  <span className="text-white">{summary.total_predictions_30d.toLocaleString()}</span>
+                  <span className="text-muted-foreground">PREDICTIONS</span>
+                  <span className="text-foreground">{summary.total_predictions_30d.toLocaleString()}</span>
                 </div>
                 <div className="flex justify-between font-mono text-[10px]">
-                  <span className="text-zinc-500">AVG CONFIDENCE</span>
-                  <span className="text-white">{(summary.avg_confidence * 100).toFixed(1)}%</span>
+                  <span className="text-muted-foreground">AVG CONFIDENCE</span>
+                  <span className="text-foreground">{(summary.avg_confidence * 100).toFixed(1)}%</span>
                 </div>
                 <div className="flex justify-between font-mono text-[10px]">
-                  <span className="text-zinc-500">DRIFT ALERTS</span>
-                  <span className={summary.active_drift_alerts > 0 ? 'text-orange-400' : 'text-green-400'}>
+                  <span className="text-muted-foreground">DRIFT ALERTS</span>
+                  <span className={summary.active_drift_alerts > 0 ? 'text-orange-600 dark:text-orange-400' : 'text-green-600 dark:text-green-400'}>
                     {summary.active_drift_alerts}
                   </span>
                 </div>
@@ -663,11 +663,11 @@ export default function MLAnalyticsDashboardPage() {
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead>
-                <tr className="border-b border-zinc-800">
-                  <th className="font-mono text-[10px] text-zinc-500 text-left py-1.5 px-2">METRIC</th>
-                  <th className="font-mono text-[10px] text-zinc-500 text-right py-1.5 px-2">VALUE</th>
-                  <th className="font-mono text-[10px] text-zinc-500 text-right py-1.5 px-2">TARGET</th>
-                  <th className="font-mono text-[10px] text-zinc-500 text-right py-1.5 px-2">STATUS</th>
+                <tr className="border-b border-border">
+                  <th className="font-mono text-[10px] text-muted-foreground text-left py-1.5 px-2">METRIC</th>
+                  <th className="font-mono text-[10px] text-muted-foreground text-right py-1.5 px-2">VALUE</th>
+                  <th className="font-mono text-[10px] text-muted-foreground text-right py-1.5 px-2">TARGET</th>
+                  <th className="font-mono text-[10px] text-muted-foreground text-right py-1.5 px-2">STATUS</th>
                 </tr>
               </thead>
               <tbody>
@@ -680,15 +680,15 @@ export default function MLAnalyticsDashboardPage() {
                   { metric: '±20% Accuracy', value: `${performance.within_20_pct.toFixed(1)}%`, target: '> 90%', pass: performance.within_20_pct > 90 },
                   { metric: 'Sample Size', value: performance.sample_size.toLocaleString(), target: '> 100', pass: performance.sample_size > 100 },
                 ].map((row) => (
-                  <tr key={row.metric} className="border-b border-zinc-800/50 hover:bg-zinc-800/20">
-                    <td className="font-mono text-[10px] text-zinc-300 py-1.5 px-2">{row.metric}</td>
-                    <td className="font-mono text-[10px] text-white text-right py-1.5 px-2">{row.value}</td>
-                    <td className="font-mono text-[10px] text-zinc-500 text-right py-1.5 px-2">{row.target}</td>
+                  <tr key={row.metric} className="border-b border-border/50 hover:bg-amber-50 dark:hover:bg-amber-500/10">
+                    <td className="font-mono text-[10px] text-muted-foreground py-1.5 px-2">{row.metric}</td>
+                    <td className="font-mono text-[10px] text-foreground text-right py-1.5 px-2">{row.value}</td>
+                    <td className="font-mono text-[10px] text-muted-foreground text-right py-1.5 px-2">{row.target}</td>
                     <td className="text-right py-1.5 px-2">
                       {row.pass ? (
                         <CheckCircle2 className="w-3.5 h-3.5 text-green-500 inline" />
                       ) : (
-                        <AlertTriangle className="w-3.5 h-3.5 text-orange-400 inline" />
+                        <AlertTriangle className="w-3.5 h-3.5 text-orange-600 dark:text-orange-400 inline" />
                       )}
                     </td>
                   </tr>

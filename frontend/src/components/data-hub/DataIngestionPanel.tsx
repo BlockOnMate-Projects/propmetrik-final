@@ -64,8 +64,8 @@ export function DataIngestionPanel() {
 
     const getStatusIcon = (isActive: boolean) => {
         return isActive ?
-            <CheckCircle className="h-4 w-4 text-green-400" /> :
-            <Clock className="h-4 w-4 text-yellow-400" />
+            <CheckCircle className="h-4 w-4 text-green-600 dark:text-green-400" /> :
+            <Clock className="h-4 w-4 text-yellow-600 dark:text-yellow-400" />
     }
 
     const renderSourceGrid = (sources: DataSource[] = []) => {
@@ -82,10 +82,10 @@ export function DataIngestionPanel() {
                                 <div className="flex items-center gap-3">
                                     <div className="p-2.5 rounded-lg bg-muted">
                                         {source.tier.includes('government') ?
-                                            <Landmark className="h-5 w-5 text-blue-400" /> :
+                                            <Landmark className="h-5 w-5 text-blue-600 dark:text-blue-400" /> :
                                             source.tier.includes('financial') ?
-                                            <Briefcase className="h-5 w-5 text-green-400" /> :
-                                            <Users className="h-5 w-5 text-purple-400" />
+                                            <Briefcase className="h-5 w-5 text-green-600 dark:text-green-400" /> :
+                                            <Users className="h-5 w-5 text-purple-600 dark:text-purple-400" />
                                         }
                                     </div>
                                     <div>
@@ -152,7 +152,7 @@ export function DataIngestionPanel() {
                             <div className="divide-y">
                                 {recentUploads && recentUploads.length > 0 ? (
                                     recentUploads.map((upload: any) => (
-                                        <div key={upload.id} className="flex items-center justify-between p-4 bg-card/50 hover:bg-muted/30 transition-colors">
+                                        <div key={upload.id} className="flex items-center justify-between p-4 bg-card/50 hover:bg-amber-50 dark:hover:bg-amber-500/10 transition-colors">
                                             <div className="flex items-center gap-4">
                                                 <div className="p-2 rounded-full bg-muted">
                                                     <FileText className="h-4 w-4 text-muted-foreground" />

@@ -70,12 +70,12 @@ const TEMPLATE_CATEGORIES: { value: DocumentTemplateCategory; label: string }[] 
 
 const getCategoryColor = (category: DocumentTemplateCategory) => {
     switch (category) {
-        case 'offer_letter': return 'bg-blue-900/50 text-blue-400 border-blue-800'
-        case 'agreement': return 'bg-amber-900/50 text-amber-400 border-amber-800'
-        case 'contract': return 'bg-green-900/50 text-green-400 border-green-800'
-        case 'receipt': return 'bg-purple-900/50 text-purple-400 border-purple-800'
-        case 'disclosure': return 'bg-red-900/50 text-red-400 border-red-800'
-        case 'commission': return 'bg-cyan-900/50 text-cyan-400 border-cyan-800'
+        case 'offer_letter': return 'bg-blue-100 dark:bg-blue-900/50 text-blue-600 dark:text-blue-400 border-blue-800'
+        case 'agreement': return 'bg-amber-100 dark:bg-amber-900/50 text-amber-600 dark:text-amber-400 border-amber-800'
+        case 'contract': return 'bg-green-100 dark:bg-green-900/50 text-green-600 dark:text-green-400 border-green-800'
+        case 'receipt': return 'bg-purple-100 dark:bg-purple-900/50 text-purple-600 dark:text-purple-400 border-purple-800'
+        case 'disclosure': return 'bg-red-100 dark:bg-red-900/50 text-red-600 dark:text-red-400 border-red-800'
+        case 'commission': return 'bg-cyan-100 dark:bg-cyan-900/50 text-cyan-600 dark:text-cyan-400 border-cyan-800'
         default: return 'bg-muted text-muted-foreground border-border'
     }
 }
@@ -389,7 +389,7 @@ export default function DocumentTemplatesPage() {
                                                     setTemplateToDelete(template)
                                                     setIsDeleteDialogOpen(true)
                                                 }}
-                                                className="text-red-400"
+                                                className="text-red-600 dark:text-red-400"
                                             >
                                                 <Trash2 className="h-4 w-4 mr-2" />
                                                 Delete
@@ -411,7 +411,7 @@ export default function DocumentTemplatesPage() {
                                         {template.country_code}
                                     </Badge>
                                     {!template.is_active && (
-                                        <Badge className="text-[10px] bg-red-900/50 text-red-400">
+                                        <Badge className="text-[10px] bg-red-100 dark:bg-red-900/50 text-red-600 dark:text-red-400">
                                             Inactive
                                         </Badge>
                                     )}
@@ -620,7 +620,7 @@ export default function DocumentTemplatesPage() {
                             Template preview with sample merge fields
                         </DialogDescription>
                     </DialogHeader>
-                    <div className="bg-white rounded-lg p-8 overflow-auto max-h-[60vh]">
+                    <div className="bg-card rounded-lg p-8 overflow-auto max-h-[60vh]">
                         {templateToPreview?.html_content ? (
                             <div 
                                 dangerouslySetInnerHTML={{ __html: templateToPreview.html_content }}

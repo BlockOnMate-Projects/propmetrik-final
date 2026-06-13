@@ -119,8 +119,8 @@ function Panel({
   actions?: React.ReactNode
 }) {
   return (
-    <div className={cn('border border-zinc-800 bg-zinc-900/50', className)}>
-      <div className="flex items-center justify-between px-3 py-1.5 bg-zinc-800/50 border-b border-zinc-800">
+    <div className={cn('border border-border bg-card/50', className)}>
+      <div className="flex items-center justify-between px-3 py-1.5 bg-muted/50 border-b border-border">
         <span className="font-mono text-[10px] text-amber-500 tracking-wider">{title}</span>
         {actions}
       </div>
@@ -168,17 +168,17 @@ function formatPropertyType(pt: string): string {
 function temperatureColor(temp: string): string {
   switch (temp) {
     case 'hot':
-      return 'text-red-400'
+      return 'text-red-600 dark:text-red-400'
     case 'warm':
-      return 'text-amber-400'
+      return 'text-amber-600 dark:text-amber-400'
     case 'balanced':
-      return 'text-green-400'
+      return 'text-green-600 dark:text-green-400'
     case 'cool':
-      return 'text-blue-400'
+      return 'text-blue-600 dark:text-blue-400'
     case 'cold':
-      return 'text-cyan-400'
+      return 'text-cyan-600 dark:text-cyan-400'
     default:
-      return 'text-zinc-400'
+      return 'text-muted-foreground'
   }
 }
 
@@ -236,19 +236,19 @@ export default function MarketAnalyticsPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-black text-white p-4">
+      <div className="min-h-screen bg-background text-foreground p-4">
         <div className="animate-pulse space-y-4">
-          <div className="h-8 bg-zinc-800 rounded w-72" />
+          <div className="h-8 bg-muted rounded w-72" />
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
             {[...Array(6)].map((_, i) => (
-              <div key={i} className="h-24 bg-zinc-800/50 rounded border border-zinc-800" />
+              <div key={i} className="h-24 bg-muted/50 rounded border border-border" />
             ))}
           </div>
           <div className="grid grid-cols-1 md:grid-cols-12 gap-3">
-            <div className="md:col-span-8 h-64 bg-zinc-800/50 rounded border border-zinc-800" />
-            <div className="md:col-span-4 h-64 bg-zinc-800/50 rounded border border-zinc-800" />
-            <div className="md:col-span-6 h-48 bg-zinc-800/50 rounded border border-zinc-800" />
-            <div className="md:col-span-6 h-48 bg-zinc-800/50 rounded border border-zinc-800" />
+            <div className="md:col-span-8 h-64 bg-muted/50 rounded border border-border" />
+            <div className="md:col-span-4 h-64 bg-muted/50 rounded border border-border" />
+            <div className="md:col-span-6 h-48 bg-muted/50 rounded border border-border" />
+            <div className="md:col-span-6 h-48 bg-muted/50 rounded border border-border" />
           </div>
         </div>
       </div>
@@ -256,19 +256,19 @@ export default function MarketAnalyticsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-black text-white p-4 pb-10">
+    <div className="min-h-screen bg-background text-foreground p-4 pb-10">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
         <div>
-          <h1 className="font-mono text-lg sm:text-xl text-white">MARKET ANALYTICS</h1>
-          <p className="font-mono text-[10px] text-zinc-500">
+          <h1 className="font-mono text-lg sm:text-xl text-foreground">MARKET ANALYTICS</h1>
+          <p className="font-mono text-[10px] text-muted-foreground">
             Real Estate Market Intelligence & Price Indices
           </p>
         </div>
         <div className="flex items-center gap-2 sm:gap-4">
           <button
             onClick={() => loadData()}
-            className="flex items-center gap-1.5 px-3 py-1.5 font-mono text-[10px] text-zinc-400 hover:text-amber-500 border border-zinc-800 hover:border-zinc-700 transition-colors"
+            className="flex items-center gap-1.5 px-3 py-1.5 font-mono text-[10px] text-muted-foreground hover:text-amber-500 border border-border hover:border-border transition-colors"
           >
             <RefreshCw className="w-3 h-3" /> REFRESH
           </button>
@@ -286,50 +286,50 @@ export default function MarketAnalyticsPage() {
         <Panel title="AVG PRICE">
           <div className="text-center">
             <DollarSign className="w-4 h-4 mx-auto mb-1 text-amber-500" />
-            <div className="font-mono text-2xl text-white">
+            <div className="font-mono text-2xl text-foreground">
               {avgPrice > 0 ? formatCurrency(avgPrice) : '—'}
             </div>
-            <div className="font-mono text-[10px] text-zinc-500 mt-1">ALL REGIONS</div>
+            <div className="font-mono text-[10px] text-muted-foreground mt-1">ALL REGIONS</div>
           </div>
         </Panel>
         <Panel title="YoY GROWTH">
           <div className="text-center">
             {avgYoY >= 0 ? (
-              <ArrowUpRight className="w-4 h-4 mx-auto mb-1 text-green-400" />
+              <ArrowUpRight className="w-4 h-4 mx-auto mb-1 text-green-600 dark:text-green-400" />
             ) : (
-              <ArrowDownRight className="w-4 h-4 mx-auto mb-1 text-red-400" />
+              <ArrowDownRight className="w-4 h-4 mx-auto mb-1 text-red-600 dark:text-red-400" />
             )}
-            <div className={cn('font-mono text-2xl', avgYoY >= 0 ? 'text-green-400' : 'text-red-400')}>
+            <div className={cn('font-mono text-2xl', avgYoY >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400')}>
               {avgYoY !== 0 ? `${avgYoY >= 0 ? '+' : ''}${avgYoY.toFixed(1)}%` : '—'}
             </div>
-            <div className="font-mono text-[10px] text-zinc-500 mt-1">YEAR OVER YEAR</div>
+            <div className="font-mono text-[10px] text-muted-foreground mt-1">YEAR OVER YEAR</div>
           </div>
         </Panel>
         <Panel title="MONTHLY VOLUME">
           <div className="text-center">
             <BarChart3 className="w-4 h-4 mx-auto mb-1 text-amber-500" />
-            <div className="font-mono text-2xl text-white">
+            <div className="font-mono text-2xl text-foreground">
               {totalTxns > 0 ? totalTxns.toLocaleString() : '—'}
             </div>
-            <div className="font-mono text-[10px] text-zinc-500 mt-1">TRANSACTIONS</div>
+            <div className="font-mono text-[10px] text-muted-foreground mt-1">TRANSACTIONS</div>
           </div>
         </Panel>
         <Panel title="ACTIVE LISTINGS">
           <div className="text-center">
-            <Layers className="w-4 h-4 mx-auto mb-1 text-amber-400" />
-            <div className="font-mono text-2xl text-amber-400">
+            <Layers className="w-4 h-4 mx-auto mb-1 text-amber-600 dark:text-amber-400" />
+            <div className="font-mono text-2xl text-amber-600 dark:text-amber-400">
               {totalActive > 0 ? totalActive.toLocaleString() : '—'}
             </div>
-            <div className="font-mono text-[10px] text-zinc-500 mt-1">ON MARKET</div>
+            <div className="font-mono text-[10px] text-muted-foreground mt-1">ON MARKET</div>
           </div>
         </Panel>
         <Panel title="NEW LISTINGS">
           <div className="text-center">
-            <Home className="w-4 h-4 mx-auto mb-1 text-blue-400" />
-            <div className="font-mono text-2xl text-blue-400">
+            <Home className="w-4 h-4 mx-auto mb-1 text-blue-600 dark:text-blue-400" />
+            <div className="font-mono text-2xl text-blue-600 dark:text-blue-400">
               {totalNew > 0 ? totalNew.toLocaleString() : '—'}
             </div>
-            <div className="font-mono text-[10px] text-zinc-500 mt-1">THIS PERIOD</div>
+            <div className="font-mono text-[10px] text-muted-foreground mt-1">THIS PERIOD</div>
           </div>
         </Panel>
         <Panel title="MARKET STATUS">
@@ -338,7 +338,7 @@ export default function MarketAnalyticsPage() {
             <div className={cn('font-mono text-lg', temperatureColor(topTemp))}>
               {topTemp.toUpperCase()}
             </div>
-            <div className="font-mono text-[10px] text-zinc-500 mt-1">
+            <div className="font-mono text-[10px] text-muted-foreground mt-1">
               {supplyDemand.length > 0
                 ? `${supplyDemand[0].inventory_months.toFixed(1)} MO. SUPPLY`
                 : 'LOADING'}
@@ -355,7 +355,7 @@ export default function MarketAnalyticsPage() {
             <div className="overflow-x-auto">
             <table className="w-full min-w-[500px]">
               <thead>
-                <tr className="text-[10px] font-mono text-zinc-500 border-b border-zinc-800">
+                <tr className="text-[10px] font-mono text-muted-foreground border-b border-border">
                   <th className="text-left pb-2">REGION</th>
                   <th className="text-left pb-2">TYPE</th>
                   <th className="text-right pb-2">AVG PRICE</th>
@@ -366,15 +366,15 @@ export default function MarketAnalyticsPage() {
               </thead>
               <tbody className="font-mono text-xs">
                 {priceIndex.map((item, i) => (
-                  <tr key={i} className="border-b border-zinc-800/50 hover:bg-zinc-800/30">
-                    <td className="py-2 text-white">{formatRegion(item.region)}</td>
-                    <td className="py-2 text-zinc-400">{formatPropertyType(item.property_type)}</td>
-                    <td className="py-2 text-right text-green-400">{formatCurrency(item.avg_price)}</td>
-                    <td className="py-2 text-right text-zinc-300">{formatCurrency(item.median_price)}</td>
-                    <td className={cn('py-2 text-right', item.change_yoy >= 0 ? 'text-green-400' : 'text-red-400')}>
+                  <tr key={i} className="border-b border-border/50 hover:bg-amber-50 dark:hover:bg-amber-500/10">
+                    <td className="py-2 text-foreground">{formatRegion(item.region)}</td>
+                    <td className="py-2 text-muted-foreground">{formatPropertyType(item.property_type)}</td>
+                    <td className="py-2 text-right text-green-600 dark:text-green-400">{formatCurrency(item.avg_price)}</td>
+                    <td className="py-2 text-right text-muted-foreground">{formatCurrency(item.median_price)}</td>
+                    <td className={cn('py-2 text-right', item.change_yoy >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400')}>
                       {item.change_yoy !== 0 ? `${item.change_yoy >= 0 ? '+' : ''}${item.change_yoy.toFixed(1)}%` : '—'}
                     </td>
-                    <td className="py-2 text-right text-zinc-300">{item.transaction_count}</td>
+                    <td className="py-2 text-right text-muted-foreground">{item.transaction_count}</td>
                   </tr>
                 ))}
               </tbody>
@@ -382,9 +382,9 @@ export default function MarketAnalyticsPage() {
             </div>
           ) : (
             <div className="text-center py-8">
-              <Activity className="w-5 h-5 mx-auto mb-2 text-zinc-600" />
-              <div className="font-mono text-xs text-zinc-500">No price index data available</div>
-              <div className="font-mono text-[10px] text-zinc-600 mt-1">
+              <Activity className="w-5 h-5 mx-auto mb-2 text-muted-foreground" />
+              <div className="font-mono text-xs text-muted-foreground">No price index data available</div>
+              <div className="font-mono text-[10px] text-muted-foreground mt-1">
                 Data aggregates from property transactions
               </div>
             </div>
@@ -396,26 +396,26 @@ export default function MarketAnalyticsPage() {
           {transactions.length > 0 ? (
             <div className="space-y-3">
               {transactions.map((txn) => (
-                <div key={txn.id} className="p-2 border border-zinc-800/50 hover:border-zinc-700">
+                <div key={txn.id} className="p-2 border border-border/50 hover:border-border">
                   <div className="flex justify-between items-start">
                     <div>
-                      <div className="font-mono text-xs text-white">{txn.location}</div>
-                      <div className="font-mono text-[10px] text-zinc-500">
+                      <div className="font-mono text-xs text-foreground">{txn.location}</div>
+                      <div className="font-mono text-[10px] text-muted-foreground">
                         {formatPropertyType(txn.property_type)}
                         {txn.bedrooms ? ` · ${txn.bedrooms} BR` : ''}
                       </div>
                     </div>
                     <div className="text-right">
-                      <div className="font-mono text-xs text-green-400">{formatCurrency(txn.final_price)}</div>
+                      <div className="font-mono text-xs text-green-600 dark:text-green-400">{formatCurrency(txn.final_price)}</div>
                       {txn.price_per_sqm && (
-                        <div className="font-mono text-[10px] text-zinc-500">
+                        <div className="font-mono text-[10px] text-muted-foreground">
                           GH₵{txn.price_per_sqm.toLocaleString()}/sqm
                         </div>
                       )}
                     </div>
                   </div>
                   <div className="flex justify-between mt-1">
-                    <span className="font-mono text-[10px] text-zinc-600">{txn.transaction_date}</span>
+                    <span className="font-mono text-[10px] text-muted-foreground">{txn.transaction_date}</span>
                     <span className="font-mono text-[9px] text-amber-500/70 uppercase">{txn.transaction_type}</span>
                   </div>
                 </div>
@@ -423,8 +423,8 @@ export default function MarketAnalyticsPage() {
             </div>
           ) : (
             <div className="text-center py-8">
-              <Activity className="w-5 h-5 mx-auto mb-2 text-zinc-600" />
-              <div className="font-mono text-xs text-zinc-500">No recent transactions</div>
+              <Activity className="w-5 h-5 mx-auto mb-2 text-muted-foreground" />
+              <div className="font-mono text-xs text-muted-foreground">No recent transactions</div>
             </div>
           )}
         </Panel>
@@ -435,7 +435,7 @@ export default function MarketAnalyticsPage() {
             <div className="overflow-x-auto">
             <table className="w-full min-w-[400px]">
               <thead>
-                <tr className="text-[10px] font-mono text-zinc-500 border-b border-zinc-800">
+                <tr className="text-[10px] font-mono text-muted-foreground border-b border-border">
                   <th className="text-left pb-2">REGION</th>
                   <th className="text-right pb-2">SUPPLY</th>
                   <th className="text-right pb-2">SOLD 30D</th>
@@ -446,12 +446,12 @@ export default function MarketAnalyticsPage() {
               </thead>
               <tbody className="font-mono text-xs">
                 {supplyDemand.map((sd, i) => (
-                  <tr key={i} className="border-b border-zinc-800/50 hover:bg-zinc-800/30">
-                    <td className="py-1.5 text-white">{formatRegion(sd.region)}</td>
-                    <td className="py-1.5 text-right text-zinc-300">{sd.total_supply}</td>
-                    <td className="py-1.5 text-right text-green-400">{sd.sold_30d}</td>
-                    <td className="py-1.5 text-right text-zinc-300">{sd.inventory_months.toFixed(1)}</td>
-                    <td className="py-1.5 text-right text-zinc-400">{sd.avg_days_on_market.toFixed(0)}d</td>
+                  <tr key={i} className="border-b border-border/50 hover:bg-amber-50 dark:hover:bg-amber-500/10">
+                    <td className="py-1.5 text-foreground">{formatRegion(sd.region)}</td>
+                    <td className="py-1.5 text-right text-muted-foreground">{sd.total_supply}</td>
+                    <td className="py-1.5 text-right text-green-600 dark:text-green-400">{sd.sold_30d}</td>
+                    <td className="py-1.5 text-right text-muted-foreground">{sd.inventory_months.toFixed(1)}</td>
+                    <td className="py-1.5 text-right text-muted-foreground">{sd.avg_days_on_market.toFixed(0)}d</td>
                     <td className={cn('py-1.5 text-right font-bold', temperatureColor(sd.market_temperature))}>
                       {sd.market_temperature.toUpperCase()}
                     </td>
@@ -462,8 +462,8 @@ export default function MarketAnalyticsPage() {
             </div>
           ) : (
             <div className="text-center py-8">
-              <Activity className="w-5 h-5 mx-auto mb-2 text-zinc-600" />
-              <div className="font-mono text-xs text-zinc-500">No supply/demand data available</div>
+              <Activity className="w-5 h-5 mx-auto mb-2 text-muted-foreground" />
+              <div className="font-mono text-xs text-muted-foreground">No supply/demand data available</div>
             </div>
           )}
         </Panel>
@@ -474,14 +474,14 @@ export default function MarketAnalyticsPage() {
             <div className="space-y-2">
               {distribution.map((b) => (
                 <div key={b.bucket} className="flex items-center gap-3">
-                  <div className="w-28 font-mono text-[10px] text-zinc-400 truncate">{b.bucket}</div>
-                  <div className="flex-1 h-4 bg-zinc-800 relative">
+                  <div className="w-28 font-mono text-[10px] text-muted-foreground truncate">{b.bucket}</div>
+                  <div className="flex-1 h-4 bg-muted relative">
                     <div
                       className="h-full bg-amber-500/80"
                       style={{ width: `${Math.min(b.pct, 100)}%` }}
                     />
                   </div>
-                  <div className="w-16 text-right font-mono text-xs text-white">
+                  <div className="w-16 text-right font-mono text-xs text-foreground">
                     {b.pct}% ({b.count})
                   </div>
                 </div>
@@ -489,8 +489,8 @@ export default function MarketAnalyticsPage() {
             </div>
           ) : (
             <div className="text-center py-8">
-              <BarChart3 className="w-5 h-5 mx-auto mb-2 text-zinc-600" />
-              <div className="font-mono text-xs text-zinc-500">No distribution data yet</div>
+              <BarChart3 className="w-5 h-5 mx-auto mb-2 text-muted-foreground" />
+              <div className="font-mono text-xs text-muted-foreground">No distribution data yet</div>
             </div>
           )}
         </Panel>
@@ -501,10 +501,10 @@ export default function MarketAnalyticsPage() {
             <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-12 gap-2">
               {priceHistory.map((h, i) => (
                 <div key={i} className="text-center">
-                  <div className="font-mono text-[9px] text-zinc-600 mb-1">
+                  <div className="font-mono text-[9px] text-muted-foreground mb-1">
                     {h.period.slice(5)}
                   </div>
-                  <div className="h-16 bg-zinc-800/50 relative flex items-end justify-center px-0.5">
+                  <div className="h-16 bg-muted/50 relative flex items-end justify-center px-0.5">
                     <div
                       className="w-full bg-amber-500/70 rounded-sm"
                       style={{
@@ -517,14 +517,14 @@ export default function MarketAnalyticsPage() {
                       }}
                     />
                   </div>
-                  <div className="font-mono text-[9px] text-zinc-500 mt-1">
+                  <div className="font-mono text-[9px] text-muted-foreground mt-1">
                     {h.transaction_count}
                   </div>
                   {h.change_mom !== 0 && (
                     <div
                       className={cn(
                         'font-mono text-[8px]',
-                        h.change_mom >= 0 ? 'text-green-400' : 'text-red-400'
+                        h.change_mom >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'
                       )}
                     >
                       {h.change_mom >= 0 ? '+' : ''}
@@ -543,7 +543,7 @@ export default function MarketAnalyticsPage() {
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead>
-                  <tr className="text-[10px] font-mono text-zinc-500 border-b border-zinc-800">
+                  <tr className="text-[10px] font-mono text-muted-foreground border-b border-border">
                     <th className="text-left pb-2">REGION</th>
                     <th className="text-left pb-2">TYPE</th>
                     <th className="text-right pb-2">TXNS</th>
@@ -557,20 +557,20 @@ export default function MarketAnalyticsPage() {
                 </thead>
                 <tbody className="font-mono text-xs">
                   {activity.map((a, i) => (
-                    <tr key={i} className="border-b border-zinc-800/50 hover:bg-zinc-800/30">
-                      <td className="py-1.5 text-white">{formatRegion(a.region)}</td>
-                      <td className="py-1.5 text-zinc-400">
+                    <tr key={i} className="border-b border-border/50 hover:bg-amber-50 dark:hover:bg-amber-500/10">
+                      <td className="py-1.5 text-foreground">{formatRegion(a.region)}</td>
+                      <td className="py-1.5 text-muted-foreground">
                         {a.property_type ? formatPropertyType(a.property_type) : 'All'}
                       </td>
-                      <td className="py-1.5 text-right text-zinc-300">{a.transaction_count}</td>
-                      <td className="py-1.5 text-right text-green-400">{formatCurrency(a.transaction_value)}</td>
-                      <td className="py-1.5 text-right text-zinc-300">{formatCurrency(a.avg_transaction_value)}</td>
-                      <td className="py-1.5 text-right text-amber-400">{a.active_listings}</td>
-                      <td className="py-1.5 text-right text-blue-400">{a.new_listings}</td>
-                      <td className="py-1.5 text-right text-zinc-400">{a.avg_days_on_market.toFixed(0)}d</td>
+                      <td className="py-1.5 text-right text-muted-foreground">{a.transaction_count}</td>
+                      <td className="py-1.5 text-right text-green-600 dark:text-green-400">{formatCurrency(a.transaction_value)}</td>
+                      <td className="py-1.5 text-right text-muted-foreground">{formatCurrency(a.avg_transaction_value)}</td>
+                      <td className="py-1.5 text-right text-amber-600 dark:text-amber-400">{a.active_listings}</td>
+                      <td className="py-1.5 text-right text-blue-600 dark:text-blue-400">{a.new_listings}</td>
+                      <td className="py-1.5 text-right text-muted-foreground">{a.avg_days_on_market.toFixed(0)}d</td>
                       <td className={cn(
                         'py-1.5 text-right',
-                        a.avg_discount_pct > 0 ? 'text-red-400' : 'text-zinc-400'
+                        a.avg_discount_pct > 0 ? 'text-red-600 dark:text-red-400' : 'text-muted-foreground'
                       )}>
                         {a.avg_discount_pct > 0 ? `-${a.avg_discount_pct.toFixed(1)}%` : '—'}
                       </td>

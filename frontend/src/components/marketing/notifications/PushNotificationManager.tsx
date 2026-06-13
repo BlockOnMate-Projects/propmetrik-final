@@ -136,8 +136,8 @@ export function PushNotificationManager() {
   // Not supported
   if (!isSupported) {
     return (
-      <div className="bg-gray-100 rounded-lg p-4">
-        <div className="flex items-center text-gray-500">
+      <div className="bg-muted rounded-lg p-4">
+        <div className="flex items-center text-muted-foreground">
           <BellOff className="h-5 w-5 mr-2" />
           <span className="text-sm">Push notifications are not supported in this browser</span>
         </div>
@@ -165,7 +165,7 @@ export function PushNotificationManager() {
   // Not subscribed
   if (!subscription) {
     return (
-      <div className="bg-white border border-gray-200 rounded-lg p-4">
+      <div className="bg-card border border-border rounded-lg p-4">
         <div className="flex items-start justify-between">
           <div className="flex items-start">
             <div className="p-2 bg-amber-100 rounded-lg mr-3">
@@ -173,7 +173,7 @@ export function PushNotificationManager() {
             </div>
             <div>
               <h4 className="font-medium text-gray-900">Enable Notifications</h4>
-              <p className="text-sm text-gray-500 mt-1">
+              <p className="text-sm text-muted-foreground mt-1">
                 Get notified about project updates, budget alerts, and team messages.
               </p>
             </div>
@@ -189,7 +189,7 @@ export function PushNotificationManager() {
         <button
           onClick={handleEnableNotifications}
           disabled={isLoading}
-          className="mt-4 w-full py-2.5 bg-amber-500 text-white font-medium rounded-lg flex items-center justify-center disabled:opacity-50"
+          className="mt-4 w-full py-2.5 bg-amber-500 text-foreground font-medium rounded-lg flex items-center justify-center disabled:opacity-50"
         >
           {isLoading ? (
             <Loader2 className="h-5 w-5 animate-spin" />
@@ -206,7 +206,7 @@ export function PushNotificationManager() {
 
   // Subscribed - show settings
   return (
-    <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
+    <div className="bg-card border border-border rounded-lg overflow-hidden">
       {/* Header */}
       <div className="p-4 border-b border-gray-100">
         <div className="flex items-center justify-between">
@@ -216,14 +216,14 @@ export function PushNotificationManager() {
             </div>
             <div>
               <h4 className="font-medium text-gray-900">Notifications Enabled</h4>
-              <p className="text-sm text-gray-500">Receiving push notifications</p>
+              <p className="text-sm text-muted-foreground">Receiving push notifications</p>
             </div>
           </div>
           <button
             onClick={() => setShowSettings(!showSettings)}
-            className="p-2 hover:bg-gray-100 rounded-lg"
+            className="p-2 hover:bg-muted rounded-lg"
           >
-            <Settings className="h-5 w-5 text-gray-500" />
+            <Settings className="h-5 w-5 text-muted-foreground" />
           </button>
         </div>
       </div>
@@ -265,7 +265,7 @@ export function PushNotificationManager() {
       )}
 
       {/* Disable button */}
-      <div className="p-4 bg-gray-50">
+      <div className="p-4 bg-muted">
         <button
           onClick={handleDisableNotifications}
           disabled={isLoading}
@@ -294,7 +294,7 @@ function PreferenceToggle({ label, description, enabled, onChange }: PreferenceT
     <div className="px-4 py-3 flex items-center justify-between">
       <div className="flex-1 mr-4">
         <p className="text-sm font-medium text-gray-900">{label}</p>
-        <p className="text-xs text-gray-500">{description}</p>
+        <p className="text-xs text-muted-foreground">{description}</p>
       </div>
       <button
         onClick={onChange}
@@ -303,7 +303,7 @@ function PreferenceToggle({ label, description, enabled, onChange }: PreferenceT
         }`}
       >
         <span
-          className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${
+          className={`absolute top-0.5 left-0.5 w-5 h-5 bg-card rounded-full shadow transition-transform ${
             enabled ? 'translate-x-5' : ''
           }`}
         />
@@ -326,12 +326,12 @@ export function NotificationPromptBanner() {
   }
 
   return (
-    <div className="fixed bottom-20 left-4 right-4 z-40 bg-white rounded-lg shadow-lg border border-gray-200 p-4 md:left-auto md:right-4 md:max-w-sm">
+    <div className="fixed bottom-20 left-4 right-4 z-40 bg-card rounded-lg shadow-lg border border-border p-4 md:left-auto md:right-4 md:max-w-sm">
       <button
         onClick={() => setDismissed(true)}
-        className="absolute top-2 right-2 p-1 hover:bg-gray-100 rounded"
+        className="absolute top-2 right-2 p-1 hover:bg-muted rounded"
       >
-        <X className="h-4 w-4 text-gray-400" />
+        <X className="h-4 w-4 text-muted-foreground" />
       </button>
       
       <div className="flex items-start">
@@ -340,7 +340,7 @@ export function NotificationPromptBanner() {
         </div>
         <div className="flex-1 min-w-0">
           <h4 className="text-sm font-medium text-gray-900">Stay Updated</h4>
-          <p className="text-xs text-gray-500 mt-0.5 line-clamp-2">
+          <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">
             Enable notifications to get alerts about project updates and team messages.
           </p>
         </div>
@@ -349,13 +349,13 @@ export function NotificationPromptBanner() {
       <div className="mt-3 flex gap-2">
         <button
           onClick={() => setDismissed(true)}
-          className="flex-1 py-2 text-sm text-gray-600 font-medium hover:bg-gray-100 rounded-lg"
+          className="flex-1 py-2 text-sm text-muted-foreground font-medium hover:bg-muted rounded-lg"
         >
           Not now
         </button>
         <a
           href="/settings/notifications"
-          className="flex-1 py-2 bg-amber-500 text-white text-sm font-medium rounded-lg text-center"
+          className="flex-1 py-2 bg-amber-500 text-foreground text-sm font-medium rounded-lg text-center"
         >
           Enable
         </a>

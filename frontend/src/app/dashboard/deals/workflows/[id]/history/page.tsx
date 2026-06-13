@@ -46,11 +46,11 @@ interface WorkflowExecution {
 
 const statusConfig: Record<string, { color: string; bgColor: string; icon: any; label: string }> = {
   pending: { color: 'text-muted-foreground', bgColor: 'bg-muted', icon: Clock, label: 'Pending' },
-  running: { color: 'text-blue-400', bgColor: 'bg-blue-900/30', icon: RefreshCw, label: 'Running' },
-  completed: { color: 'text-green-400', bgColor: 'bg-green-900/30', icon: CheckCircle, label: 'Completed' },
-  failed: { color: 'text-red-400', bgColor: 'bg-red-900/30', icon: XCircle, label: 'Failed' },
+  running: { color: 'text-blue-600 dark:text-blue-400', bgColor: 'bg-blue-100 dark:bg-blue-900/30', icon: RefreshCw, label: 'Running' },
+  completed: { color: 'text-green-600 dark:text-green-400', bgColor: 'bg-green-100 dark:bg-green-900/30', icon: CheckCircle, label: 'Completed' },
+  failed: { color: 'text-red-600 dark:text-red-400', bgColor: 'bg-red-100 dark:bg-red-900/30', icon: XCircle, label: 'Failed' },
   cancelled: { color: 'text-muted-foreground', bgColor: 'bg-muted', icon: StopCircle, label: 'Cancelled' },
-  waiting: { color: 'text-yellow-400', bgColor: 'bg-yellow-900/30', icon: Clock, label: 'Waiting' }
+  waiting: { color: 'text-yellow-600 dark:text-yellow-400', bgColor: 'bg-yellow-100 dark:bg-yellow-900/30', icon: Clock, label: 'Waiting' }
 };
 
 export default function WorkflowHistoryPage() {
@@ -207,7 +207,7 @@ export default function WorkflowHistoryPage() {
             </p>
           </div>
         ) : (
-          <div className="divide-y divide-zinc-800">
+          <div className="divide-y divide-border">
             {executions.map((execution) => {
               const config = statusConfig[execution.status] || statusConfig.pending;
               const StatusIcon = config.icon;
@@ -251,7 +251,7 @@ export default function WorkflowHistoryPage() {
                               e.stopPropagation();
                               cancelExecution(execution.id);
                             }}
-                            className="px-3 py-1 text-sm text-red-400 hover:bg-red-900/30 rounded font-mono"
+                            className="px-3 py-1 text-sm text-red-600 dark:text-red-400 hover:bg-red-900/30 rounded font-mono"
                           >
                             Cancel
                           </button>
@@ -265,10 +265,10 @@ export default function WorkflowHistoryPage() {
                     </div>
 
                     {execution.error_message && (
-                      <div className="mt-3 p-3 bg-red-900/20 border border-red-900/50 rounded-lg">
+                      <div className="mt-3 p-3 bg-red-100 dark:bg-red-900/20 border border-red-900/50 rounded-lg">
                         <div className="flex items-start gap-2">
-                          <AlertTriangle className="w-4 h-4 text-red-400 mt-0.5" />
-                          <p className="text-sm text-red-400">{execution.error_message}</p>
+                          <AlertTriangle className="w-4 h-4 text-red-600 dark:text-red-400 mt-0.5" />
+                          <p className="text-sm text-red-600 dark:text-red-400">{execution.error_message}</p>
                         </div>
                       </div>
                     )}
@@ -286,13 +286,13 @@ export default function WorkflowHistoryPage() {
                               className="flex items-start gap-3 p-3 bg-card rounded-lg border border-border"
                             >
                               <div className={`w-6 h-6 rounded-full flex items-center justify-center ${
-                                log.status === 'success' ? 'bg-green-900/30' :
-                                log.status === 'failed' ? 'bg-red-900/30' : 'bg-muted'
+                                log.status === 'success' ? 'bg-green-100 dark:bg-green-900/30' :
+                                log.status === 'failed' ? 'bg-red-100 dark:bg-red-900/30' : 'bg-muted'
                               }`}>
                                 {log.status === 'success' ? (
-                                  <CheckCircle className="w-4 h-4 text-green-400" />
+                                  <CheckCircle className="w-4 h-4 text-green-600 dark:text-green-400" />
                                 ) : log.status === 'failed' ? (
-                                  <XCircle className="w-4 h-4 text-red-400" />
+                                  <XCircle className="w-4 h-4 text-red-600 dark:text-red-400" />
                                 ) : (
                                   <Clock className="w-4 h-4 text-muted-foreground" />
                                 )}
@@ -312,7 +312,7 @@ export default function WorkflowHistoryPage() {
                                   </div>
                                 )}
                                 {log.error && (
-                                  <p className="mt-1 text-sm text-red-400">{log.error}</p>
+                                  <p className="mt-1 text-sm text-red-600 dark:text-red-400">{log.error}</p>
                                 )}
                               </div>
                             </div>

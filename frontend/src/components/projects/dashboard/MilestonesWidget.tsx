@@ -54,28 +54,28 @@ const STATUS_CONFIG = {
     icon: Clock,
     bg: 'bg-blue-500/10',
     border: 'border-blue-500/30',
-    text: 'text-blue-400',
+    text: 'text-blue-600 dark:text-blue-400',
     label: 'Pending',
   },
   completed: {
     icon: CheckCircle,
     bg: 'bg-green-500/10',
     border: 'border-green-500/30',
-    text: 'text-green-400',
+    text: 'text-green-600 dark:text-green-400',
     label: 'Completed',
   },
   missed: {
     icon: XCircle,
     bg: 'bg-red-500/10',
     border: 'border-red-500/30',
-    text: 'text-red-400',
+    text: 'text-red-600 dark:text-red-400',
     label: 'Missed',
   },
   rescheduled: {
     icon: AlertTriangle,
     bg: 'bg-amber-500/10',
     border: 'border-amber-500/30',
-    text: 'text-amber-400',
+    text: 'text-amber-600 dark:text-amber-400',
     label: 'Rescheduled',
   },
 }
@@ -128,7 +128,7 @@ function MilestoneItem({
         "flex items-start gap-3 p-3 border rounded transition-colors",
         isOverdue ? 'bg-red-500/5 border-red-500/30' : config.bg,
         isOverdue ? '' : config.border,
-        onClick && "cursor-pointer hover:bg-zinc-800/50"
+        onClick && "cursor-pointer hover:bg-muted/50"
       )}
     >
       {/* Status icon */}
@@ -138,7 +138,7 @@ function MilestoneItem({
       )}>
         <StatusIcon className={cn(
           "h-4 w-4",
-          isOverdue ? 'text-red-400' : config.text
+          isOverdue ? 'text-red-600 dark:text-red-400' : config.text
         )} />
       </div>
 
@@ -146,13 +146,13 @@ function MilestoneItem({
       <div className="flex-1 min-w-0">
         {/* Project and phase */}
         <div className="flex items-center gap-2 mb-0.5">
-          <span className="font-mono text-[10px] text-zinc-500 truncate">
+          <span className="font-mono text-[10px] text-muted-foreground truncate">
             {milestone.project_name}
           </span>
           {milestone.phase_name && (
             <>
-              <span className="text-zinc-600">•</span>
-              <span className="font-mono text-[10px] text-zinc-600 truncate">
+              <span className="text-muted-foreground">•</span>
+              <span className="font-mono text-[10px] text-muted-foreground truncate">
                 {milestone.phase_name}
               </span>
             </>
@@ -169,7 +169,7 @@ function MilestoneItem({
           {milestone.milestone_type && (
             <Badge 
               variant="secondary" 
-              className="text-[9px] h-4 px-1.5 bg-zinc-800 text-zinc-400"
+              className="text-[9px] h-4 px-1.5 bg-muted text-muted-foreground"
             >
               {TYPE_LABELS[milestone.milestone_type] || milestone.milestone_type}
             </Badge>
@@ -177,7 +177,7 @@ function MilestoneItem({
           {milestone.is_ghana_specific && (
             <Badge 
               variant="secondary" 
-              className="text-[9px] h-4 px-1.5 bg-amber-500/20 text-amber-400"
+              className="text-[9px] h-4 px-1.5 bg-amber-500/20 text-amber-600 dark:text-amber-400"
             >
               <MapPin className="h-2.5 w-2.5 mr-0.5" />
               Ghana
@@ -190,14 +190,14 @@ function MilestoneItem({
       <div className="text-right shrink-0">
         <div className={cn(
           "font-mono text-xs font-medium",
-          isOverdue ? 'text-red-400' : 
-          daysUntil <= 3 ? 'text-amber-400' : 'text-zinc-300'
+          isOverdue ? 'text-red-600 dark:text-red-400' : 
+          daysUntil <= 3 ? 'text-amber-600 dark:text-amber-400' : 'text-muted-foreground'
         )}>
           {getDateLabel()}
         </div>
         <div className={cn(
           "font-mono text-[10px]",
-          isOverdue ? 'text-red-400/70' : 'text-zinc-500'
+          isOverdue ? 'text-red-600 dark:text-red-400/70' : 'text-muted-foreground'
         )}>
           {getUrgencyLabel()}
         </div>
@@ -221,11 +221,11 @@ function MilestoneGroup({
   return (
     <div>
       <div className="flex items-center gap-2 mb-2">
-        <Calendar className="h-3 w-3 text-zinc-500" />
-        <span className="font-mono text-[10px] text-zinc-500 uppercase tracking-wider">
+        <Calendar className="h-3 w-3 text-muted-foreground" />
+        <span className="font-mono text-[10px] text-muted-foreground uppercase tracking-wider">
           {label}
         </span>
-        <div className="flex-1 h-px bg-zinc-800" />
+        <div className="flex-1 h-px bg-muted" />
       </div>
       <div className="space-y-2">
         {milestones.map((milestone) => (
@@ -283,16 +283,16 @@ export function MilestonesWidget({
   const totalCount = milestones.filter(m => m.status === 'pending').length
 
   return (
-    <div className={cn("border border-zinc-800 bg-zinc-900/50", className)}>
+    <div className={cn("border border-border bg-card/50", className)}>
       {/* Header */}
-      <div className="flex items-center justify-between px-4 py-2 bg-zinc-800/50 border-b border-zinc-800">
+      <div className="flex items-center justify-between px-4 py-2 bg-muted/50 border-b border-border">
         <div className="flex items-center gap-2">
           <Flag className="h-4 w-4 text-amber-500" />
           <span className="font-mono text-xs text-amber-500 tracking-wider">
             UPCOMING MILESTONES
           </span>
           {totalCount > 0 && (
-            <Badge variant="secondary" className="bg-zinc-700 text-zinc-300 text-[10px]">
+            <Badge variant="secondary" className="bg-zinc-700 text-muted-foreground text-[10px]">
               {totalCount}
             </Badge>
           )}
@@ -303,7 +303,7 @@ export function MilestonesWidget({
             variant="ghost"
             size="sm"
             onClick={onViewAll}
-            className="text-xs text-zinc-500 hover:text-zinc-300 h-7"
+            className="text-xs text-muted-foreground hover:text-muted-foreground h-7"
           >
             View All
             <ChevronRight className="h-3 w-3 ml-1" />
@@ -315,10 +315,10 @@ export function MilestonesWidget({
       <div className="p-3">
         {isLoading ? (
           <div className="flex items-center justify-center py-8">
-            <Loader2 className="h-6 w-6 animate-spin text-zinc-500" />
+            <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
           </div>
         ) : totalCount === 0 ? (
-          <div className="flex flex-col items-center justify-center py-8 text-zinc-500">
+          <div className="flex flex-col items-center justify-center py-8 text-muted-foreground">
             <CheckCircle className="h-8 w-8 mb-2 opacity-50" />
             <span className="font-mono text-xs">No upcoming milestones</span>
             <span className="font-mono text-[10px]">All milestones are complete</span>
@@ -362,10 +362,10 @@ export function MilestonesWidget({
 
       {/* Footer - show count of hidden */}
       {milestones.length > maxVisible && (
-        <div className="px-4 py-2 border-t border-zinc-800 text-center">
+        <div className="px-4 py-2 border-t border-border text-center">
           <Button
             variant="ghost"
-            className="text-xs text-zinc-500 hover:text-zinc-300"
+            className="text-xs text-muted-foreground hover:text-muted-foreground"
             onClick={onViewAll}
           >
             +{milestones.length - maxVisible} more milestones

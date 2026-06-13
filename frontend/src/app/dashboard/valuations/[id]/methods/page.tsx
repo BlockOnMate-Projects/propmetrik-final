@@ -430,16 +430,16 @@ export default function MethodSelectionPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-black text-white flex items-center justify-center">
+      <div className="min-h-screen bg-background text-foreground flex items-center justify-center">
         <Loader2 className="w-8 h-8 text-amber-500 animate-spin" />
-        <span className="ml-3 font-mono text-sm text-zinc-400">Loading method selection...</span>
+        <span className="ml-3 font-mono text-sm text-muted-foreground">Loading method selection...</span>
       </div>
     )
   }
 
   if (error || !valuation) {
     return (
-      <div className="min-h-screen bg-black text-white p-4">
+      <div className="min-h-screen bg-background text-foreground p-4">
         <AlertBanner type="error" title="Error" message={error || 'Valuation not found'} />
       </div>
     )
@@ -449,22 +449,22 @@ export default function MethodSelectionPage() {
   const activeMethod = activeMethodDetail ? VALUATION_METHODS.find(m => m.id === activeMethodDetail) : null
 
   return (
-    <div className="min-h-screen bg-black text-white p-4 pb-10">
+    <div className="min-h-screen bg-background text-foreground p-4 pb-10">
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-4">
           <Link
             href={`/dashboard/valuations/${valuationId}`}
-            className="p-2 hover:bg-zinc-800 transition-colors"
+            className="p-2 hover:bg-muted transition-colors"
           >
-            <ArrowLeft className="w-4 h-4 text-zinc-400" />
+            <ArrowLeft className="w-4 h-4 text-muted-foreground" />
           </Link>
           <div>
             <div className="flex items-center gap-3">
-              <h1 className="font-mono text-xl text-white">STEP 3: METHOD SELECTION</h1>
+              <h1 className="font-mono text-xl text-foreground">STEP 3: METHOD SELECTION</h1>
               <StatusBadge status="in_progress" />
             </div>
-            <p className="font-mono text-[10px] text-zinc-500">
+            <p className="font-mono text-[10px] text-muted-foreground">
               Select Valuation Approaches • VAL-{valuationId.slice(0, 8).toUpperCase()}
             </p>
           </div>
@@ -473,7 +473,7 @@ export default function MethodSelectionPage() {
           <button
             onClick={handleSaveAndContinue}
             disabled={saving || selectedMethods.length === 0}
-            className="flex items-center gap-2 px-4 py-2 bg-amber-500 text-white font-mono text-xs font-bold hover:bg-amber-400 transition-colors disabled:opacity-50"
+            className="flex items-center gap-2 px-4 py-2 bg-amber-500 text-foreground font-mono text-xs font-bold hover:bg-amber-400 transition-colors disabled:opacity-50"
           >
             {saving ? (
               <>
@@ -506,15 +506,15 @@ export default function MethodSelectionPage() {
       </div>
 
       {/* Recommendation Banner */}
-      <div className="mb-6 p-4 bg-amber-900/20 border border-amber-500/30 flex items-start gap-3">
-        <Info className="w-5 h-5 text-amber-400 flex-shrink-0 mt-0.5" />
+      <div className="mb-6 p-4 bg-amber-100 dark:bg-amber-900/20 border border-amber-500/30 flex items-start gap-3">
+        <Info className="w-5 h-5 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" />
         <div>
-          <div className="font-mono text-sm text-amber-400">Recommended for {propertyType.toUpperCase()}</div>
-          <div className="font-mono text-xs text-zinc-400 mt-1">
+          <div className="font-mono text-sm text-amber-600 dark:text-amber-400">Recommended for {propertyType.toUpperCase()}</div>
+          <div className="font-mono text-xs text-muted-foreground mt-1">
             Based on property type and market conditions, we recommend: {' '}
             {recommendedMethods.map((m, i) => (
               <span key={m}>
-                <span className="text-amber-400">
+                <span className="text-amber-600 dark:text-amber-400">
                   {VALUATION_METHODS.find(method => method.id === m)?.shortName}
                 </span>
                 {i < recommendedMethods.length - 1 ? ', ' : ''}
@@ -543,35 +543,35 @@ export default function MethodSelectionPage() {
                   ? isPrimary 
                     ? 'border-amber-500 bg-amber-500/10' 
                     : 'border-green-500/50 bg-green-500/5'
-                  : 'border-zinc-800 hover:border-zinc-700'
+                  : 'border-border hover:border-border'
               }`}
             >
               <div className="p-4">
                 <div className="flex items-start justify-between mb-3">
-                  <div className={isSelected ? (isPrimary ? 'text-amber-400' : 'text-green-400') : 'text-zinc-500'}>
+                  <div className={isSelected ? (isPrimary ? 'text-amber-600 dark:text-amber-400' : 'text-green-600 dark:text-green-400') : 'text-muted-foreground'}>
                     {method.icon}
                   </div>
                   <div className="flex items-center gap-2">
                     {isRecommended && (
-                      <span className="font-mono text-[9px] px-1.5 py-0.5 bg-amber-500/20 text-amber-400">
+                      <span className="font-mono text-[9px] px-1.5 py-0.5 bg-amber-500/20 text-amber-600 dark:text-amber-400">
                         REC
                       </span>
                     )}
                     {isPrimary && (
-                      <span className="font-mono text-[9px] px-1.5 py-0.5 bg-amber-500 text-white font-bold">
+                      <span className="font-mono text-[9px] px-1.5 py-0.5 bg-amber-500 text-foreground font-bold">
                         PRIMARY
                       </span>
                     )}
                   </div>
                 </div>
 
-                <div className="font-mono text-sm text-white mb-1">{method.name}</div>
-                <div className="font-mono text-[10px] text-zinc-500 mb-3 line-clamp-2">{method.description}</div>
+                <div className="font-mono text-sm text-foreground mb-1">{method.name}</div>
+                <div className="font-mono text-[10px] text-muted-foreground mb-3 line-clamp-2">{method.description}</div>
 
                 <div className="mb-3">
                   <div className="flex justify-between items-center mb-1">
-                    <span className="font-mono text-[9px] text-zinc-500">APPLICABILITY</span>
-                    <span className="font-mono text-[9px] text-zinc-400">{applicability}%</span>
+                    <span className="font-mono text-[9px] text-muted-foreground">APPLICABILITY</span>
+                    <span className="font-mono text-[9px] text-muted-foreground">{applicability}%</span>
                   </div>
                   <ConfidenceBar score={applicability} showValue={false} />
                 </div>
@@ -581,39 +581,39 @@ export default function MethodSelectionPage() {
                     onClick={() => toggleMethod(method.id)}
                     className={`flex-1 py-2 font-mono text-xs transition-colors ${
                       isSelected
-                        ? 'bg-zinc-700 text-white'
-                        : 'bg-zinc-800 text-zinc-400 hover:text-white'
+                        ? 'bg-zinc-700 text-foreground'
+                        : 'bg-muted text-muted-foreground hover:text-foreground'
                     }`}
                   >
                     {isSelected ? 'SELECTED ✓' : 'SELECT'}
                   </button>
                   <button
                     onClick={() => setActiveMethodDetail(method.id)}
-                    className="px-3 py-2 bg-zinc-800 text-zinc-400 font-mono text-xs hover:text-white transition-colors"
+                    className="px-3 py-2 bg-muted text-muted-foreground font-mono text-xs hover:text-foreground transition-colors"
                   >
                     INFO
                   </button>
                 </div>
 
                 {isSelected && (
-                  <div className="mt-3 pt-3 border-t border-zinc-800">
+                  <div className="mt-3 pt-3 border-t border-border">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
-                        <span className="font-mono text-[10px] text-zinc-500">WEIGHT:</span>
+                        <span className="font-mono text-[10px] text-muted-foreground">WEIGHT:</span>
                         <input
                           type="number"
                           min="0"
                           max="100"
                           value={methodWeights[method.id]}
                           onChange={(e) => updateWeight(method.id, parseInt(e.target.value) || 0)}
-                          className="w-14 px-2 py-1 bg-zinc-800 border border-zinc-700 text-white font-mono text-xs text-center focus:outline-none focus:border-amber-500/50"
+                          className="w-14 px-2 py-1 bg-muted border border-border text-foreground font-mono text-xs text-center focus:outline-none focus:border-amber-500/50"
                         />
-                        <span className="font-mono text-[10px] text-zinc-500">%</span>
+                        <span className="font-mono text-[10px] text-muted-foreground">%</span>
                       </div>
                       {!isPrimary && (
                         <button
                           onClick={() => handleSetPrimary(method.id)}
-                          className="font-mono text-[10px] text-amber-400 hover:text-amber-300"
+                          className="font-mono text-[10px] text-amber-600 dark:text-amber-400 hover:text-amber-300"
                         >
                           SET PRIMARY
                         </button>
@@ -637,17 +637,17 @@ export default function MethodSelectionPage() {
                 return (
                   <div key={methodId} className="flex items-center gap-2">
                     <MethodBadge method={methodId} isPrimary={methodId === primaryMethod} />
-                    <span className="font-mono text-xs text-zinc-400">{methodWeights[methodId]}%</span>
+                    <span className="font-mono text-xs text-muted-foreground">{methodWeights[methodId]}%</span>
                   </div>
                 )
               })}
             </div>
             <div className={`font-mono text-sm ${
-              Math.abs(totalWeight - 100) <= 1 ? 'text-green-400' : 'text-red-400'
+              Math.abs(totalWeight - 100) <= 1 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'
             }`}>
               TOTAL: {totalWeight}%
               {Math.abs(totalWeight - 100) > 1 && (
-                <span className="text-red-400 ml-2">⚠ Must equal 100%</span>
+                <span className="text-red-600 dark:text-red-400 ml-2">⚠ Must equal 100%</span>
               )}
             </div>
           </div>
@@ -656,31 +656,31 @@ export default function MethodSelectionPage() {
 
       {/* Method Detail Modal */}
       {activeMethod && (
-        <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4">
-          <div className="bg-zinc-900 border border-zinc-800 max-w-2xl w-full max-h-[80vh] overflow-y-auto">
-            <div className="flex items-center justify-between p-4 border-b border-zinc-800">
+        <div className="fixed inset-0 bg-background/80 z-50 flex items-center justify-center p-4">
+          <div className="bg-card border border-border max-w-2xl w-full max-h-[80vh] overflow-y-auto">
+            <div className="flex items-center justify-between p-4 border-b border-border">
               <div className="flex items-center gap-3">
-                <div className="text-amber-400">{activeMethod.icon}</div>
-                <div className="font-mono text-lg text-white">{activeMethod.name}</div>
+                <div className="text-amber-600 dark:text-amber-400">{activeMethod.icon}</div>
+                <div className="font-mono text-lg text-foreground">{activeMethod.name}</div>
               </div>
               <button
                 onClick={() => setActiveMethodDetail(null)}
-                className="font-mono text-xs text-zinc-400 hover:text-white"
+                className="font-mono text-xs text-muted-foreground hover:text-foreground"
               >
                 CLOSE ✕
               </button>
             </div>
             <div className="p-4 space-y-4">
               <div>
-                <div className="font-mono text-[10px] text-zinc-500 mb-1">DESCRIPTION</div>
-                <div className="font-mono text-sm text-zinc-300">{activeMethod.description}</div>
+                <div className="font-mono text-[10px] text-muted-foreground mb-1">DESCRIPTION</div>
+                <div className="font-mono text-sm text-muted-foreground">{activeMethod.description}</div>
               </div>
 
               <div>
-                <div className="font-mono text-[10px] text-zinc-500 mb-2">DATA REQUIREMENTS</div>
+                <div className="font-mono text-[10px] text-muted-foreground mb-2">DATA REQUIREMENTS</div>
                 <ul className="space-y-1">
                   {activeMethod.dataRequirements.map((req, i) => (
-                    <li key={i} className="flex items-center gap-2 font-mono text-xs text-zinc-400">
+                    <li key={i} className="flex items-center gap-2 font-mono text-xs text-muted-foreground">
                       <span className="w-1 h-1 bg-amber-500 rounded-full" />
                       {req}
                     </li>
@@ -693,8 +693,8 @@ export default function MethodSelectionPage() {
                   <div className="font-mono text-[10px] text-green-500 mb-2">ADVANTAGES</div>
                   <ul className="space-y-1">
                     {activeMethod.advantages.map((adv, i) => (
-                      <li key={i} className="flex items-center gap-2 font-mono text-xs text-zinc-400">
-                        <CheckCircle2 className="w-3 h-3 text-green-400 flex-shrink-0" />
+                      <li key={i} className="flex items-center gap-2 font-mono text-xs text-muted-foreground">
+                        <CheckCircle2 className="w-3 h-3 text-green-600 dark:text-green-400 flex-shrink-0" />
                         {adv}
                       </li>
                     ))}
@@ -704,7 +704,7 @@ export default function MethodSelectionPage() {
                   <div className="font-mono text-[10px] text-red-500 mb-2">LIMITATIONS</div>
                   <ul className="space-y-1">
                     {activeMethod.limitations.map((lim, i) => (
-                      <li key={i} className="flex items-center gap-2 font-mono text-xs text-zinc-400">
+                      <li key={i} className="flex items-center gap-2 font-mono text-xs text-muted-foreground">
                         <span className="w-1 h-1 bg-red-500 rounded-full flex-shrink-0" />
                         {lim}
                       </li>
@@ -714,11 +714,11 @@ export default function MethodSelectionPage() {
               </div>
 
               <div>
-                <div className="font-mono text-[10px] text-zinc-500 mb-2">APPLICABILITY BY PROPERTY TYPE</div>
+                <div className="font-mono text-[10px] text-muted-foreground mb-2">APPLICABILITY BY PROPERTY TYPE</div>
                 <div className="grid grid-cols-3 gap-2">
                   {Object.entries(activeMethod.applicability).map(([type, score]) => (
-                    <div key={type} className="p-2 bg-zinc-800/50 border border-zinc-700">
-                      <div className="font-mono text-[10px] text-zinc-500 mb-1">{type.toUpperCase()}</div>
+                    <div key={type} className="p-2 bg-muted/50 border border-border">
+                      <div className="font-mono text-[10px] text-muted-foreground mb-1">{type.toUpperCase()}</div>
                       <ConfidenceBar score={score} />
                     </div>
                   ))}
@@ -736,7 +736,7 @@ export default function MethodSelectionPage() {
           onChange={(e) => setSelectionNotes(e.target.value)}
           placeholder="Document your reasoning for selecting these valuation methods..."
           rows={3}
-          className="w-full px-3 py-2 bg-zinc-900 border border-zinc-800 text-white font-mono text-sm placeholder-zinc-600 focus:outline-none focus:border-amber-500/50 resize-none"
+          className="w-full px-3 py-2 bg-card border border-border text-foreground font-mono text-sm placeholder-zinc-600 focus:outline-none focus:border-amber-500/50 resize-none"
         />
       </TerminalPanel>
 
@@ -744,14 +744,14 @@ export default function MethodSelectionPage() {
       <div className="mt-6 flex justify-between">
         <Link
           href={`/dashboard/valuations/${valuationId}/hbu`}
-          className="px-6 py-3 bg-zinc-800 text-zinc-400 font-mono text-sm hover:text-white transition-colors"
+          className="px-6 py-3 bg-muted text-muted-foreground font-mono text-sm hover:text-foreground transition-colors"
         >
           ← BACK TO HBU ANALYSIS
         </Link>
         <button
           onClick={handleSaveAndContinue}
           disabled={saving || selectedMethods.length === 0}
-          className="flex items-center gap-2 px-6 py-3 bg-amber-500 text-white font-mono text-sm font-bold hover:bg-amber-400 transition-colors disabled:opacity-50"
+          className="flex items-center gap-2 px-6 py-3 bg-amber-500 text-foreground font-mono text-sm font-bold hover:bg-amber-400 transition-colors disabled:opacity-50"
         >
           {saving ? (
             <>

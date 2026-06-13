@@ -164,35 +164,35 @@ export default function ReportsPage() {
             {/* Page Header */}
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                 <div>
-                    <h1 className="text-2xl font-bold tracking-tight text-white font-mono">REPORTS</h1>
-                    <p className="text-sm text-zinc-500 font-mono">Enterprise analytics and reporting</p>
+                    <h1 className="text-2xl font-bold tracking-tight text-foreground font-mono">REPORTS</h1>
+                    <p className="text-sm text-muted-foreground font-mono">Enterprise analytics and reporting</p>
                 </div>
                 <div className="flex items-center gap-2">
-                    <div className="flex items-center gap-2 bg-black border border-zinc-800 rounded px-2 py-1">
-                        <Calendar className="h-4 w-4 text-zinc-500" />
+                    <div className="flex items-center gap-2 bg-background border border-border rounded px-2 py-1">
+                        <Calendar className="h-4 w-4 text-muted-foreground" />
                         <Input
                             type="date"
                             value={startDate}
                             onChange={(e) => setStartDate(e.target.value)}
-                            className="w-32 bg-transparent border-0 text-xs text-zinc-400 font-mono"
+                            className="w-32 bg-transparent border-0 text-xs text-muted-foreground font-mono"
                         />
-                        <span className="text-zinc-600">to</span>
+                        <span className="text-muted-foreground">to</span>
                         <Input
                             type="date"
                             value={endDate}
                             onChange={(e) => setEndDate(e.target.value)}
-                            className="w-32 bg-transparent border-0 text-xs text-zinc-400 font-mono"
+                            className="w-32 bg-transparent border-0 text-xs text-muted-foreground font-mono"
                         />
                     </div>
                     <Button
                         variant="outline"
                         onClick={() => loadReport(activeTab)}
-                        className="border-zinc-800 text-zinc-400 hover:text-amber-500 hover:border-amber-900 bg-black font-mono text-xs uppercase"
+                        className="border-border text-muted-foreground hover:text-amber-500 hover:border-amber-900 bg-background font-mono text-xs uppercase"
                     >
                         <RefreshCw className="mr-2 h-3 w-3" />
                         Refresh
                     </Button>
-                    <Button className="bg-amber-600 hover:bg-amber-500 text-white font-bold font-mono text-xs uppercase">
+                    <Button className="bg-amber-600 hover:bg-amber-500 text-foreground font-bold font-mono text-xs uppercase">
                         <Download className="mr-2 h-3 w-3" />
                         Export
                     </Button>
@@ -201,24 +201,24 @@ export default function ReportsPage() {
 
             {/* Report Tabs */}
             <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-                <TabsList className="bg-zinc-900 border border-zinc-800 w-full justify-start overflow-x-auto">
-                    <TabsTrigger value="aged-receivables" className="data-[state=active]:bg-black data-[state=active]:text-amber-500 text-zinc-500 font-mono text-xs uppercase">
+                <TabsList className="bg-card border border-border w-full justify-start overflow-x-auto">
+                    <TabsTrigger value="aged-receivables" className="data-[state=active]:bg-background data-[state=active]:text-amber-500 text-muted-foreground font-mono text-xs uppercase">
                         <DollarSign className="mr-2 h-3 w-3" />
                         Aged Receivables
                     </TabsTrigger>
-                    <TabsTrigger value="vacancy" className="data-[state=active]:bg-black data-[state=active]:text-amber-500 text-zinc-500 font-mono text-xs uppercase">
+                    <TabsTrigger value="vacancy" className="data-[state=active]:bg-background data-[state=active]:text-amber-500 text-muted-foreground font-mono text-xs uppercase">
                         <Building2 className="mr-2 h-3 w-3" />
                         Vacancy
                     </TabsTrigger>
-                    <TabsTrigger value="performance" className="data-[state=active]:bg-black data-[state=active]:text-amber-500 text-zinc-500 font-mono text-xs uppercase">
+                    <TabsTrigger value="performance" className="data-[state=active]:bg-background data-[state=active]:text-amber-500 text-muted-foreground font-mono text-xs uppercase">
                         <TrendingUp className="mr-2 h-3 w-3" />
                         Performance
                     </TabsTrigger>
-                    <TabsTrigger value="turnover" className="data-[state=active]:bg-black data-[state=active]:text-amber-500 text-zinc-500 font-mono text-xs uppercase">
+                    <TabsTrigger value="turnover" className="data-[state=active]:bg-background data-[state=active]:text-amber-500 text-muted-foreground font-mono text-xs uppercase">
                         <Users className="mr-2 h-3 w-3" />
                         Tenant Turnover
                     </TabsTrigger>
-                    <TabsTrigger value="maintenance" className="data-[state=active]:bg-black data-[state=active]:text-amber-500 text-zinc-500 font-mono text-xs uppercase">
+                    <TabsTrigger value="maintenance" className="data-[state=active]:bg-background data-[state=active]:text-amber-500 text-muted-foreground font-mono text-xs uppercase">
                         <Wrench className="mr-2 h-3 w-3" />
                         Maintenance
                     </TabsTrigger>
@@ -229,7 +229,7 @@ export default function ReportsPage() {
                     <Card className="bg-red-950/30 border border-red-800 mt-4">
                         <CardContent className="flex items-center gap-3 py-4">
                             <AlertCircle className="h-5 w-5 text-red-500" />
-                            <p className="text-red-400 font-mono text-sm">{error}</p>
+                            <p className="text-red-600 dark:text-red-400 font-mono text-sm">{error}</p>
                             <Button variant="link" onClick={() => loadReport(activeTab)} className="text-amber-500 ml-auto">
                                 Retry
                             </Button>
@@ -249,42 +249,42 @@ export default function ReportsPage() {
                     <TabsContent value="aged-receivables" className="mt-4 space-y-4">
                         {/* Summary Cards */}
                         <div className="grid gap-4 md:grid-cols-4">
-                            <Card className="bg-black border border-zinc-800">
+                            <Card className="bg-background border border-border">
                                 <CardHeader className="pb-2">
                                     <CardTitle className="text-xs font-mono uppercase tracking-wider text-amber-500">Total Outstanding</CardTitle>
                                 </CardHeader>
                                 <CardContent>
-                                    <div className="text-2xl font-bold text-white font-mono">
+                                    <div className="text-2xl font-bold text-foreground font-mono">
                                         {formatCurrency(agedReceivables.summary?.totalOutstanding || 0)}
                                     </div>
                                 </CardContent>
                             </Card>
-                            <Card className="bg-black border border-zinc-800">
+                            <Card className="bg-background border border-border">
                                 <CardHeader className="pb-2">
                                     <CardTitle className="text-xs font-mono uppercase tracking-wider text-green-500">Current (0-30)</CardTitle>
                                 </CardHeader>
                                 <CardContent>
-                                    <div className="text-2xl font-bold text-white font-mono">
+                                    <div className="text-2xl font-bold text-foreground font-mono">
                                         {formatCurrency(agedReceivables.summary?.current || 0)}
                                     </div>
                                 </CardContent>
                             </Card>
-                            <Card className="bg-black border border-zinc-800">
+                            <Card className="bg-background border border-border">
                                 <CardHeader className="pb-2">
                                     <CardTitle className="text-xs font-mono uppercase tracking-wider text-yellow-500">Overdue (31-60)</CardTitle>
                                 </CardHeader>
                                 <CardContent>
-                                    <div className="text-2xl font-bold text-white font-mono">
+                                    <div className="text-2xl font-bold text-foreground font-mono">
                                         {formatCurrency(agedReceivables.summary?.days30to60 || 0)}
                                     </div>
                                 </CardContent>
                             </Card>
-                            <Card className="bg-black border border-zinc-800">
+                            <Card className="bg-background border border-border">
                                 <CardHeader className="pb-2">
                                     <CardTitle className="text-xs font-mono uppercase tracking-wider text-red-500">Critical (90+)</CardTitle>
                                 </CardHeader>
                                 <CardContent>
-                                    <div className="text-2xl font-bold text-white font-mono">
+                                    <div className="text-2xl font-bold text-foreground font-mono">
                                         {formatCurrency(agedReceivables.summary?.over90Days || 0)}
                                     </div>
                                 </CardContent>
@@ -292,38 +292,38 @@ export default function ReportsPage() {
                         </div>
 
                         {/* Details Table */}
-                        <Card className="bg-black border border-zinc-800">
+                        <Card className="bg-background border border-border">
                             <CardHeader>
                                 <CardTitle className="text-sm font-mono uppercase text-amber-500">Receivables by Tenant</CardTitle>
                             </CardHeader>
                             <CardContent>
                                 <Table>
                                     <TableHeader>
-                                        <TableRow className="border-zinc-800 hover:bg-zinc-900">
-                                            <TableHead className="text-zinc-500 font-mono text-xs uppercase">Tenant</TableHead>
-                                            <TableHead className="text-zinc-500 font-mono text-xs uppercase">Property</TableHead>
-                                            <TableHead className="text-zinc-500 font-mono text-xs uppercase text-right">Current</TableHead>
-                                            <TableHead className="text-zinc-500 font-mono text-xs uppercase text-right">31-60</TableHead>
-                                            <TableHead className="text-zinc-500 font-mono text-xs uppercase text-right">61-90</TableHead>
-                                            <TableHead className="text-zinc-500 font-mono text-xs uppercase text-right">90+</TableHead>
-                                            <TableHead className="text-zinc-500 font-mono text-xs uppercase text-right">Total</TableHead>
+                                        <TableRow className="border-border hover:bg-card">
+                                            <TableHead className="text-muted-foreground font-mono text-xs uppercase">Tenant</TableHead>
+                                            <TableHead className="text-muted-foreground font-mono text-xs uppercase">Property</TableHead>
+                                            <TableHead className="text-muted-foreground font-mono text-xs uppercase text-right">Current</TableHead>
+                                            <TableHead className="text-muted-foreground font-mono text-xs uppercase text-right">31-60</TableHead>
+                                            <TableHead className="text-muted-foreground font-mono text-xs uppercase text-right">61-90</TableHead>
+                                            <TableHead className="text-muted-foreground font-mono text-xs uppercase text-right">90+</TableHead>
+                                            <TableHead className="text-muted-foreground font-mono text-xs uppercase text-right">Total</TableHead>
                                         </TableRow>
                                     </TableHeader>
                                     <TableBody>
                                         {agedReceivables.data?.map((row, i) => (
-                                            <TableRow key={i} className="border-zinc-800 hover:bg-zinc-900/50">
-                                                <TableCell className="font-mono text-sm text-white">{row.tenantName}</TableCell>
-                                                <TableCell className="font-mono text-xs text-zinc-400">{row.propertyTitle}</TableCell>
-                                                <TableCell className="font-mono text-xs text-right text-green-400">{formatCurrency(row.current)}</TableCell>
-                                                <TableCell className="font-mono text-xs text-right text-yellow-400">{formatCurrency(row.days30to60)}</TableCell>
-                                                <TableCell className="font-mono text-xs text-right text-orange-400">{formatCurrency(row.days60to90)}</TableCell>
-                                                <TableCell className="font-mono text-xs text-right text-red-400">{formatCurrency(row.over90Days)}</TableCell>
-                                                <TableCell className="font-mono text-sm text-right text-white font-bold">{formatCurrency(row.totalOwed)}</TableCell>
+                                            <TableRow key={i} className="border-border hover:bg-card/50">
+                                                <TableCell className="font-mono text-sm text-foreground">{row.tenantName}</TableCell>
+                                                <TableCell className="font-mono text-xs text-muted-foreground">{row.propertyTitle}</TableCell>
+                                                <TableCell className="font-mono text-xs text-right text-green-600 dark:text-green-400">{formatCurrency(row.current)}</TableCell>
+                                                <TableCell className="font-mono text-xs text-right text-yellow-600 dark:text-yellow-400">{formatCurrency(row.days30to60)}</TableCell>
+                                                <TableCell className="font-mono text-xs text-right text-orange-600 dark:text-orange-400">{formatCurrency(row.days60to90)}</TableCell>
+                                                <TableCell className="font-mono text-xs text-right text-red-600 dark:text-red-400">{formatCurrency(row.over90Days)}</TableCell>
+                                                <TableCell className="font-mono text-sm text-right text-foreground font-bold">{formatCurrency(row.totalOwed)}</TableCell>
                                             </TableRow>
                                         ))}
                                         {(!agedReceivables.data || agedReceivables.data.length === 0) && (
                                             <TableRow>
-                                                <TableCell colSpan={7} className="text-center text-zinc-500 py-8 font-mono">
+                                                <TableCell colSpan={7} className="text-center text-muted-foreground py-8 font-mono">
                                                     No outstanding receivables
                                                 </TableCell>
                                             </TableRow>
@@ -339,66 +339,66 @@ export default function ReportsPage() {
                 {!isLoading && !error && (
                     <TabsContent value="vacancy" className="mt-4 space-y-4">
                         <div className="grid gap-4 md:grid-cols-4">
-                            <Card className="bg-black border border-zinc-800">
+                            <Card className="bg-background border border-border">
                                 <CardHeader className="pb-2">
                                     <CardTitle className="text-xs font-mono uppercase tracking-wider text-amber-500">Total Properties</CardTitle>
                                 </CardHeader>
                                 <CardContent>
-                                    <div className="text-2xl font-bold text-white font-mono">{vacancyData.data?.length || 0}</div>
+                                    <div className="text-2xl font-bold text-foreground font-mono">{vacancyData.data?.length || 0}</div>
                                 </CardContent>
                             </Card>
-                            <Card className="bg-black border border-zinc-800">
+                            <Card className="bg-background border border-border">
                                 <CardHeader className="pb-2">
                                     <CardTitle className="text-xs font-mono uppercase tracking-wider text-green-500">Active</CardTitle>
                                 </CardHeader>
                                 <CardContent>
-                                    <div className="text-2xl font-bold text-white font-mono">
+                                    <div className="text-2xl font-bold text-foreground font-mono">
                                         {vacancyData.data?.filter(p => p.status === 'active').length || 0}
                                     </div>
                                 </CardContent>
                             </Card>
-                            <Card className="bg-black border border-zinc-800">
+                            <Card className="bg-background border border-border">
                                 <CardHeader className="pb-2">
                                     <CardTitle className="text-xs font-mono uppercase tracking-wider text-red-500">Vacant Units</CardTitle>
                                 </CardHeader>
                                 <CardContent>
-                                    <div className="text-2xl font-bold text-white font-mono">{vacancyData.summary?.totalVacantUnits || 0}</div>
+                                    <div className="text-2xl font-bold text-foreground font-mono">{vacancyData.summary?.totalVacantUnits || 0}</div>
                                 </CardContent>
                             </Card>
-                            <Card className="bg-black border border-zinc-800">
+                            <Card className="bg-background border border-border">
                                 <CardHeader className="pb-2">
                                     <CardTitle className="text-xs font-mono uppercase tracking-wider text-amber-500">Vacancy Rate</CardTitle>
                                 </CardHeader>
                                 <CardContent>
-                                    <div className="text-2xl font-bold text-white font-mono">{formatPercent(vacancyData.summary?.vacancyRate)}</div>
+                                    <div className="text-2xl font-bold text-foreground font-mono">{formatPercent(vacancyData.summary?.vacancyRate)}</div>
                                 </CardContent>
                             </Card>
                         </div>
 
-                        <Card className="bg-black border border-zinc-800">
+                        <Card className="bg-background border border-border">
                             <CardHeader>
                                 <CardTitle className="text-sm font-mono uppercase text-amber-500">Property Vacancy Status</CardTitle>
                             </CardHeader>
                             <CardContent>
                                 <Table>
                                     <TableHeader>
-                                        <TableRow className="border-zinc-800">
-                                            <TableHead className="text-zinc-500 font-mono text-xs uppercase">Property</TableHead>
-                                            <TableHead className="text-zinc-500 font-mono text-xs uppercase">Type</TableHead>
-                                            <TableHead className="text-zinc-500 font-mono text-xs uppercase text-right">Monthly Rent</TableHead>
-                                            <TableHead className="text-zinc-500 font-mono text-xs uppercase text-center">Days Vacant</TableHead>
-                                            <TableHead className="text-zinc-500 font-mono text-xs uppercase text-right">Lost Revenue</TableHead>
-                                            <TableHead className="text-zinc-500 font-mono text-xs uppercase text-center">Status</TableHead>
+                                        <TableRow className="border-border">
+                                            <TableHead className="text-muted-foreground font-mono text-xs uppercase">Property</TableHead>
+                                            <TableHead className="text-muted-foreground font-mono text-xs uppercase">Type</TableHead>
+                                            <TableHead className="text-muted-foreground font-mono text-xs uppercase text-right">Monthly Rent</TableHead>
+                                            <TableHead className="text-muted-foreground font-mono text-xs uppercase text-center">Days Vacant</TableHead>
+                                            <TableHead className="text-muted-foreground font-mono text-xs uppercase text-right">Lost Revenue</TableHead>
+                                            <TableHead className="text-muted-foreground font-mono text-xs uppercase text-center">Status</TableHead>
                                         </TableRow>
                                     </TableHeader>
                                     <TableBody>
                                         {vacancyData.data?.map((prop, i) => (
-                                            <TableRow key={i} className="border-zinc-800 hover:bg-zinc-900/50">
-                                                <TableCell className="font-mono text-sm text-white">{prop.propertyTitle}</TableCell>
-                                                <TableCell className="font-mono text-xs text-zinc-400">{prop.propertyType?.replace(/_/g, ' ')}</TableCell>
-                                                <TableCell className="font-mono text-xs text-right text-zinc-400">{formatCurrency(prop.monthlyRent)}</TableCell>
-                                                <TableCell className="font-mono text-xs text-center text-zinc-400">{prop.daysVacant}</TableCell>
-                                                <TableCell className="font-mono text-xs text-right text-red-400">{formatCurrency(prop.lostRevenue)}</TableCell>
+                                            <TableRow key={i} className="border-border hover:bg-card/50">
+                                                <TableCell className="font-mono text-sm text-foreground">{prop.propertyTitle}</TableCell>
+                                                <TableCell className="font-mono text-xs text-muted-foreground">{prop.propertyType?.replace(/_/g, ' ')}</TableCell>
+                                                <TableCell className="font-mono text-xs text-right text-muted-foreground">{formatCurrency(prop.monthlyRent)}</TableCell>
+                                                <TableCell className="font-mono text-xs text-center text-muted-foreground">{prop.daysVacant}</TableCell>
+                                                <TableCell className="font-mono text-xs text-right text-red-600 dark:text-red-400">{formatCurrency(prop.lostRevenue)}</TableCell>
                                                 <TableCell className="text-center">
                                                     <Badge variant={prop.status === 'active' ? 'default' : 'destructive'} className="font-mono text-xs">
                                                         {prop.status}
@@ -408,7 +408,7 @@ export default function ReportsPage() {
                                         ))}
                                         {(!vacancyData.data || vacancyData.data.length === 0) && (
                                             <TableRow>
-                                                <TableCell colSpan={6} className="text-center text-zinc-500 py-8 font-mono">
+                                                <TableCell colSpan={6} className="text-center text-muted-foreground py-8 font-mono">
                                                     No vacancy data available
                                                 </TableCell>
                                             </TableRow>
@@ -424,74 +424,74 @@ export default function ReportsPage() {
                 {!isLoading && !error && (
                     <TabsContent value="performance" className="mt-4 space-y-4">
                         <div className="grid gap-4 md:grid-cols-4">
-                            <Card className="bg-black border border-zinc-800">
+                            <Card className="bg-background border border-border">
                                 <CardHeader className="pb-2">
                                     <CardTitle className="text-xs font-mono uppercase tracking-wider text-green-500">Total Income</CardTitle>
                                 </CardHeader>
                                 <CardContent>
-                                    <div className="text-2xl font-bold text-white font-mono">
+                                    <div className="text-2xl font-bold text-foreground font-mono">
                                         {formatCurrency(performanceData.reduce((sum, p) => sum + (p.totalIncome || 0), 0))}
                                     </div>
                                 </CardContent>
                             </Card>
-                            <Card className="bg-black border border-zinc-800">
+                            <Card className="bg-background border border-border">
                                 <CardHeader className="pb-2">
                                     <CardTitle className="text-xs font-mono uppercase tracking-wider text-red-500">Total Expenses</CardTitle>
                                 </CardHeader>
                                 <CardContent>
-                                    <div className="text-2xl font-bold text-white font-mono">
+                                    <div className="text-2xl font-bold text-foreground font-mono">
                                         {formatCurrency(performanceData.reduce((sum, p) => sum + (p.totalExpenses || 0), 0))}
                                     </div>
                                 </CardContent>
                             </Card>
-                            <Card className="bg-black border border-zinc-800">
+                            <Card className="bg-background border border-border">
                                 <CardHeader className="pb-2">
                                     <CardTitle className="text-xs font-mono uppercase tracking-wider text-amber-500">Net Operating Income</CardTitle>
                                 </CardHeader>
                                 <CardContent>
-                                    <div className="text-2xl font-bold text-white font-mono">
+                                    <div className="text-2xl font-bold text-foreground font-mono">
                                         {formatCurrency(performanceData.reduce((sum, p) => sum + (p.netOperatingIncome || 0), 0))}
                                     </div>
                                 </CardContent>
                             </Card>
-                            <Card className="bg-black border border-zinc-800">
+                            <Card className="bg-background border border-border">
                                 <CardHeader className="pb-2">
                                     <CardTitle className="text-xs font-mono uppercase tracking-wider text-amber-500">Properties</CardTitle>
                                 </CardHeader>
                                 <CardContent>
-                                    <div className="text-2xl font-bold text-white font-mono">{performanceData.length}</div>
+                                    <div className="text-2xl font-bold text-foreground font-mono">{performanceData.length}</div>
                                 </CardContent>
                             </Card>
                         </div>
 
-                        <Card className="bg-black border border-zinc-800">
+                        <Card className="bg-background border border-border">
                             <CardHeader>
                                 <CardTitle className="text-sm font-mono uppercase text-amber-500">Performance by Property</CardTitle>
                             </CardHeader>
                             <CardContent>
                                 <Table>
                                     <TableHeader>
-                                        <TableRow className="border-zinc-800">
-                                            <TableHead className="text-zinc-500 font-mono text-xs uppercase">Property</TableHead>
-                                            <TableHead className="text-zinc-500 font-mono text-xs uppercase text-right">Income</TableHead>
-                                            <TableHead className="text-zinc-500 font-mono text-xs uppercase text-right">Expenses</TableHead>
-                                            <TableHead className="text-zinc-500 font-mono text-xs uppercase text-right">NOI</TableHead>
-                                            <TableHead className="text-zinc-500 font-mono text-xs uppercase text-right">Avg Rent</TableHead>
+                                        <TableRow className="border-border">
+                                            <TableHead className="text-muted-foreground font-mono text-xs uppercase">Property</TableHead>
+                                            <TableHead className="text-muted-foreground font-mono text-xs uppercase text-right">Income</TableHead>
+                                            <TableHead className="text-muted-foreground font-mono text-xs uppercase text-right">Expenses</TableHead>
+                                            <TableHead className="text-muted-foreground font-mono text-xs uppercase text-right">NOI</TableHead>
+                                            <TableHead className="text-muted-foreground font-mono text-xs uppercase text-right">Avg Rent</TableHead>
                                         </TableRow>
                                     </TableHeader>
                                     <TableBody>
                                         {performanceData.map((prop, i) => (
-                                            <TableRow key={i} className="border-zinc-800 hover:bg-zinc-900/50">
-                                                <TableCell className="font-mono text-sm text-white">{prop.propertyTitle}</TableCell>
-                                                <TableCell className="font-mono text-xs text-right text-green-400">{formatCurrency(prop.totalIncome)}</TableCell>
-                                                <TableCell className="font-mono text-xs text-right text-red-400">{formatCurrency(prop.totalExpenses)}</TableCell>
-                                                <TableCell className="font-mono text-sm text-right text-amber-400 font-bold">{formatCurrency(prop.netOperatingIncome)}</TableCell>
+                                            <TableRow key={i} className="border-border hover:bg-card/50">
+                                                <TableCell className="font-mono text-sm text-foreground">{prop.propertyTitle}</TableCell>
+                                                <TableCell className="font-mono text-xs text-right text-green-600 dark:text-green-400">{formatCurrency(prop.totalIncome)}</TableCell>
+                                                <TableCell className="font-mono text-xs text-right text-red-600 dark:text-red-400">{formatCurrency(prop.totalExpenses)}</TableCell>
+                                                <TableCell className="font-mono text-sm text-right text-amber-600 dark:text-amber-400 font-bold">{formatCurrency(prop.netOperatingIncome)}</TableCell>
                                                 <TableCell className="font-mono text-xs text-right">{formatCurrency(prop.averageRent)}</TableCell>
                                             </TableRow>
                                         ))}
                                         {performanceData.length === 0 && (
                                             <TableRow>
-                                                <TableCell colSpan={5} className="text-center text-zinc-500 py-8 font-mono">
+                                                <TableCell colSpan={5} className="text-center text-muted-foreground py-8 font-mono">
                                                     No performance data available
                                                 </TableCell>
                                             </TableRow>
@@ -507,70 +507,70 @@ export default function ReportsPage() {
                 {!isLoading && !error && (
                     <TabsContent value="turnover" className="mt-4 space-y-4">
                         <div className="grid gap-4 md:grid-cols-4">
-                            <Card className="bg-black border border-zinc-800">
+                            <Card className="bg-background border border-border">
                                 <CardHeader className="pb-2">
                                     <CardTitle className="text-xs font-mono uppercase tracking-wider text-green-500">Total Move-Ins</CardTitle>
                                 </CardHeader>
                                 <CardContent>
-                                    <div className="text-2xl font-bold text-white font-mono flex items-center">
+                                    <div className="text-2xl font-bold text-foreground font-mono flex items-center">
                                         {turnoverData.reduce((sum, t) => sum + (t.moveIns || 0), 0)}
                                         <ArrowUpRight className="h-5 w-5 text-green-500 ml-2" />
                                     </div>
                                 </CardContent>
                             </Card>
-                            <Card className="bg-black border border-zinc-800">
+                            <Card className="bg-background border border-border">
                                 <CardHeader className="pb-2">
                                     <CardTitle className="text-xs font-mono uppercase tracking-wider text-red-500">Total Move-Outs</CardTitle>
                                 </CardHeader>
                                 <CardContent>
-                                    <div className="text-2xl font-bold text-white font-mono flex items-center">
+                                    <div className="text-2xl font-bold text-foreground font-mono flex items-center">
                                         {turnoverData.reduce((sum, t) => sum + (t.moveOuts || 0), 0)}
                                         <ArrowDownRight className="h-5 w-5 text-red-500 ml-2" />
                                     </div>
                                 </CardContent>
                             </Card>
-                            <Card className="bg-black border border-zinc-800">
+                            <Card className="bg-background border border-border">
                                 <CardHeader className="pb-2">
                                     <CardTitle className="text-xs font-mono uppercase tracking-wider text-amber-500">Net Change</CardTitle>
                                 </CardHeader>
                                 <CardContent>
-                                    <div className="text-2xl font-bold text-white font-mono">
+                                    <div className="text-2xl font-bold text-foreground font-mono">
                                         {turnoverData.reduce((sum, t) => sum + (t.netChange || 0), 0)}
                                     </div>
                                 </CardContent>
                             </Card>
-                            <Card className="bg-black border border-zinc-800">
+                            <Card className="bg-background border border-border">
                                 <CardHeader className="pb-2">
                                     <CardTitle className="text-xs font-mono uppercase tracking-wider text-amber-500">Periods</CardTitle>
                                 </CardHeader>
                                 <CardContent>
-                                    <div className="text-2xl font-bold text-white font-mono">{turnoverData.length}</div>
+                                    <div className="text-2xl font-bold text-foreground font-mono">{turnoverData.length}</div>
                                 </CardContent>
                             </Card>
                         </div>
 
-                        <Card className="bg-black border border-zinc-800">
+                        <Card className="bg-background border border-border">
                             <CardHeader>
                                 <CardTitle className="text-sm font-mono uppercase text-amber-500">Turnover by Period</CardTitle>
                             </CardHeader>
                             <CardContent>
                                 <Table>
                                     <TableHeader>
-                                        <TableRow className="border-zinc-800">
-                                            <TableHead className="text-zinc-500 font-mono text-xs uppercase">Period</TableHead>
-                                            <TableHead className="text-zinc-500 font-mono text-xs uppercase text-center">Move-Ins</TableHead>
-                                            <TableHead className="text-zinc-500 font-mono text-xs uppercase text-center">Move-Outs</TableHead>
-                                            <TableHead className="text-zinc-500 font-mono text-xs uppercase text-center">Net Change</TableHead>
-                                            <TableHead className="text-zinc-500 font-mono text-xs uppercase text-right">Turnover Rate</TableHead>
+                                        <TableRow className="border-border">
+                                            <TableHead className="text-muted-foreground font-mono text-xs uppercase">Period</TableHead>
+                                            <TableHead className="text-muted-foreground font-mono text-xs uppercase text-center">Move-Ins</TableHead>
+                                            <TableHead className="text-muted-foreground font-mono text-xs uppercase text-center">Move-Outs</TableHead>
+                                            <TableHead className="text-muted-foreground font-mono text-xs uppercase text-center">Net Change</TableHead>
+                                            <TableHead className="text-muted-foreground font-mono text-xs uppercase text-right">Turnover Rate</TableHead>
                                         </TableRow>
                                     </TableHeader>
                                     <TableBody>
                                         {turnoverData.map((period, i) => (
-                                            <TableRow key={i} className="border-zinc-800 hover:bg-zinc-900/50">
-                                                <TableCell className="font-mono text-sm text-white">{period.period}</TableCell>
-                                                <TableCell className="font-mono text-xs text-center text-green-400">{period.moveIns}</TableCell>
-                                                <TableCell className="font-mono text-xs text-center text-red-400">{period.moveOuts}</TableCell>
-                                                <TableCell className="font-mono text-xs text-center text-zinc-400">{period.netChange}</TableCell>
+                                            <TableRow key={i} className="border-border hover:bg-card/50">
+                                                <TableCell className="font-mono text-sm text-foreground">{period.period}</TableCell>
+                                                <TableCell className="font-mono text-xs text-center text-green-600 dark:text-green-400">{period.moveIns}</TableCell>
+                                                <TableCell className="font-mono text-xs text-center text-red-600 dark:text-red-400">{period.moveOuts}</TableCell>
+                                                <TableCell className="font-mono text-xs text-center text-muted-foreground">{period.netChange}</TableCell>
                                                 <TableCell className="font-mono text-sm text-right">
                                                     <Badge variant={period.turnoverRate > 30 ? 'destructive' : 'default'} className="font-mono">
                                                         {formatPercent(period.turnoverRate)}
@@ -580,7 +580,7 @@ export default function ReportsPage() {
                                         ))}
                                         {turnoverData.length === 0 && (
                                             <TableRow>
-                                                <TableCell colSpan={5} className="text-center text-zinc-500 py-8 font-mono">
+                                                <TableCell colSpan={5} className="text-center text-muted-foreground py-8 font-mono">
                                                     No turnover data available
                                                 </TableCell>
                                             </TableRow>
@@ -596,63 +596,63 @@ export default function ReportsPage() {
                 {!isLoading && !error && (
                     <TabsContent value="maintenance" className="mt-4 space-y-4">
                         <div className="grid gap-4 md:grid-cols-4">
-                            <Card className="bg-black border border-zinc-800">
+                            <Card className="bg-background border border-border">
                                 <CardHeader className="pb-2">
                                     <CardTitle className="text-xs font-mono uppercase tracking-wider text-amber-500">Total Work Orders</CardTitle>
                                 </CardHeader>
                                 <CardContent>
-                                    <div className="text-2xl font-bold text-white font-mono">{maintenanceData?.totalWorkOrders || 0}</div>
+                                    <div className="text-2xl font-bold text-foreground font-mono">{maintenanceData?.totalWorkOrders || 0}</div>
                                 </CardContent>
                             </Card>
-                            <Card className="bg-black border border-zinc-800">
+                            <Card className="bg-background border border-border">
                                 <CardHeader className="pb-2">
                                     <CardTitle className="text-xs font-mono uppercase tracking-wider text-yellow-500">Open</CardTitle>
                                 </CardHeader>
                                 <CardContent>
-                                    <div className="text-2xl font-bold text-white font-mono">{maintenanceData?.openOrders || 0}</div>
+                                    <div className="text-2xl font-bold text-foreground font-mono">{maintenanceData?.openOrders || 0}</div>
                                 </CardContent>
                             </Card>
-                            <Card className="bg-black border border-zinc-800">
+                            <Card className="bg-background border border-border">
                                 <CardHeader className="pb-2">
                                     <CardTitle className="text-xs font-mono uppercase tracking-wider text-green-500">Completed</CardTitle>
                                 </CardHeader>
                                 <CardContent>
-                                    <div className="text-2xl font-bold text-white font-mono">{maintenanceData?.completedOrders || 0}</div>
+                                    <div className="text-2xl font-bold text-foreground font-mono">{maintenanceData?.completedOrders || 0}</div>
                                 </CardContent>
                             </Card>
-                            <Card className="bg-black border border-zinc-800">
+                            <Card className="bg-background border border-border">
                                 <CardHeader className="pb-2">
                                     <CardTitle className="text-xs font-mono uppercase tracking-wider text-amber-500">Total Cost</CardTitle>
                                 </CardHeader>
                                 <CardContent>
-                                    <div className="text-2xl font-bold text-white font-mono">{formatCurrency(maintenanceData?.totalCost || 0)}</div>
+                                    <div className="text-2xl font-bold text-foreground font-mono">{formatCurrency(maintenanceData?.totalCost || 0)}</div>
                                 </CardContent>
                             </Card>
                         </div>
 
                         <div className="grid gap-4 md:grid-cols-2">
-                            <Card className="bg-black border border-zinc-800">
+                            <Card className="bg-background border border-border">
                                 <CardHeader>
                                     <CardTitle className="text-sm font-mono uppercase text-amber-500">Cost By Category</CardTitle>
                                 </CardHeader>
                                 <CardContent>
                                     <Table>
                                         <TableHeader>
-                                            <TableRow className="border-zinc-800">
-                                                <TableHead className="text-zinc-500 font-mono text-xs uppercase">Category</TableHead>
-                                                <TableHead className="text-zinc-500 font-mono text-xs uppercase text-right">Cost</TableHead>
+                                            <TableRow className="border-border">
+                                                <TableHead className="text-muted-foreground font-mono text-xs uppercase">Category</TableHead>
+                                                <TableHead className="text-muted-foreground font-mono text-xs uppercase text-right">Cost</TableHead>
                                             </TableRow>
                                         </TableHeader>
                                         <TableBody>
                                             {maintenanceData?.costByCategory && Object.entries(maintenanceData.costByCategory).map(([cat, cost], i) => (
-                                                <TableRow key={i} className="border-zinc-800 hover:bg-zinc-900/50">
-                                                    <TableCell className="font-mono text-sm text-white capitalize">{cat?.replace(/_/g, ' ')}</TableCell>
-                                                    <TableCell className="font-mono text-xs text-right text-amber-400">{formatCurrency(cost as number)}</TableCell>
+                                                <TableRow key={i} className="border-border hover:bg-card/50">
+                                                    <TableCell className="font-mono text-sm text-foreground capitalize">{cat?.replace(/_/g, ' ')}</TableCell>
+                                                    <TableCell className="font-mono text-xs text-right text-amber-600 dark:text-amber-400">{formatCurrency(cost as number)}</TableCell>
                                                 </TableRow>
                                             ))}
                                             {(!maintenanceData?.costByCategory || Object.keys(maintenanceData.costByCategory).length === 0) && (
                                                 <TableRow>
-                                                    <TableCell colSpan={2} className="text-center text-zinc-500 py-4 font-mono">
+                                                    <TableCell colSpan={2} className="text-center text-muted-foreground py-4 font-mono">
                                                         No data
                                                     </TableCell>
                                                 </TableRow>
@@ -662,36 +662,36 @@ export default function ReportsPage() {
                                 </CardContent>
                             </Card>
 
-                            <Card className="bg-black border border-zinc-800">
+                            <Card className="bg-background border border-border">
                                 <CardHeader>
                                     <CardTitle className="text-sm font-mono uppercase text-amber-500">Vendor Performance</CardTitle>
                                 </CardHeader>
                                 <CardContent>
                                     <Table>
                                         <TableHeader>
-                                            <TableRow className="border-zinc-800">
-                                                <TableHead className="text-zinc-500 font-mono text-xs uppercase">Vendor</TableHead>
-                                                <TableHead className="text-zinc-500 font-mono text-xs uppercase text-center">Jobs</TableHead>
-                                                <TableHead className="text-zinc-500 font-mono text-xs uppercase text-center">Rating</TableHead>
-                                                <TableHead className="text-zinc-500 font-mono text-xs uppercase text-right">Cost</TableHead>
+                                            <TableRow className="border-border">
+                                                <TableHead className="text-muted-foreground font-mono text-xs uppercase">Vendor</TableHead>
+                                                <TableHead className="text-muted-foreground font-mono text-xs uppercase text-center">Jobs</TableHead>
+                                                <TableHead className="text-muted-foreground font-mono text-xs uppercase text-center">Rating</TableHead>
+                                                <TableHead className="text-muted-foreground font-mono text-xs uppercase text-right">Cost</TableHead>
                                             </TableRow>
                                         </TableHeader>
                                         <TableBody>
                                             {maintenanceData?.vendorPerformance?.map((vendor, i) => (
-                                                <TableRow key={i} className="border-zinc-800 hover:bg-zinc-900/50">
-                                                    <TableCell className="font-mono text-sm text-white">{vendor.vendorName}</TableCell>
-                                                    <TableCell className="font-mono text-xs text-center text-zinc-400">{vendor.completedJobs}</TableCell>
+                                                <TableRow key={i} className="border-border hover:bg-card/50">
+                                                    <TableCell className="font-mono text-sm text-foreground">{vendor.vendorName}</TableCell>
+                                                    <TableCell className="font-mono text-xs text-center text-muted-foreground">{vendor.completedJobs}</TableCell>
                                                     <TableCell className="font-mono text-xs text-center">
                                                         <Badge variant="default" className="font-mono">
                                                             {vendor.averageRating?.toFixed(1) || '-'}★
                                                         </Badge>
                                                     </TableCell>
-                                                    <TableCell className="font-mono text-xs text-right text-amber-400">{formatCurrency(vendor.totalCost)}</TableCell>
+                                                    <TableCell className="font-mono text-xs text-right text-amber-600 dark:text-amber-400">{formatCurrency(vendor.totalCost)}</TableCell>
                                                 </TableRow>
                                             ))}
                                             {(!maintenanceData?.vendorPerformance || maintenanceData.vendorPerformance.length === 0) && (
                                                 <TableRow>
-                                                    <TableCell colSpan={4} className="text-center text-zinc-500 py-4 font-mono">
+                                                    <TableCell colSpan={4} className="text-center text-muted-foreground py-4 font-mono">
                                                         No data
                                                     </TableCell>
                                                 </TableRow>
